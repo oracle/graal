@@ -117,6 +117,7 @@ public final class UnalignedHeapChunk {
         return HeapChunk.asPointer(that).add(getObjectStartOffset(that));
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static Pointer getObjectEnd(UnalignedHeader that) {
         return HeapChunk.getTopPointer(that);
     }

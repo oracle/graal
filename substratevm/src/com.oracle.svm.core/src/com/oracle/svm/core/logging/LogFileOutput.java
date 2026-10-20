@@ -35,13 +35,13 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.log.StdErrWriter;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
@@ -163,7 +163,7 @@ final class LogFileOutput extends LogOutput {
     /// section is uninterruptible so that a thread cannot stop at a safepoint while owning the
     /// mutex.
     @Override
-    @Uninterruptible(reason = "The output mutex must not be held across a safepoint.")
+    @Uninterruptible(reason = "The output mutex must not be held across a safepoint.", callerMustBe = true)
     protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
         mutex.lockNoTransition();
         try {
@@ -194,11 +194,7 @@ final class LogFileOutput extends LogOutput {
         if (rawDescriptor == 0) {
             RawFileDescriptor descriptor = files.create(path, FileCreationMode.CREATE_OR_REPLACE, FileAccessMode.WRITE);
             if (!files.isValid(descriptor)) {
-                Log.log().string("Could not open file ")
-                                .string(pathName)
-                                .string(" (code: ")
-                                .signed(descriptor.rawValue())
-                                .string(")").newline();
+                StdErrWriter.write("Could not open file " + pathName + " (code: " + descriptor.rawValue() + ")" + System.lineSeparator());
                 return;
             }
             rawDescriptor = descriptor.rawValue();

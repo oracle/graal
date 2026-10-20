@@ -41,6 +41,7 @@ import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.shared.util.UnsignedUtils;
 
 public final class ImageHeapWalker {
@@ -64,6 +65,24 @@ public final class ImageHeapWalker {
         walkPartition(heapInfo.firstAlignedWritableObject, heapInfo.lastAlignedWritableObject, visitor, true);
         walkPartition(heapInfo.firstUnalignedWritableObject, heapInfo.lastUnalignedWritableObject, visitor, false);
         walkPartition(heapInfo.firstUnalignedReadOnlyObject, heapInfo.lastUnalignedReadOnlyObject, visitor, false);
+    }
+
+    /// Formats the image's chunk lists without the interruptible fatal-diagnostic visitor.
+    @Uninterruptible(reason = "Formats GC chunk metadata without safepoints.", callerMustBe = true)
+    static void logImageHeapChunks(ImageHeapInfo heapInfo, NativeMemoryBuffer buffer) {
+        Object first = heapInfo.firstObject;
+        if (ObjectHeaderImpl.isAlignedObject(first)) {
+            AlignedHeader chunks = (AlignedHeader) getImageHeapChunkForObject(first, true);
+            HeapChunkLogging.logChunks(buffer, chunks, "I", false);
+        }
+        Object firstUnaligned = heapInfo.firstUnalignedWritableObject;
+        if (firstUnaligned == null) {
+            firstUnaligned = heapInfo.firstUnalignedReadOnlyObject;
+        }
+        if (firstUnaligned != null) {
+            UnalignedHeader chunks = (UnalignedHeader) getImageHeapChunkForObject(firstUnaligned, false);
+            HeapChunkLogging.logChunks(buffer, chunks, "I", false);
+        }
     }
 
     public static void walkImageHeapChunks(ImageHeapInfo heapInfo, HeapChunkVisitor visitor) {

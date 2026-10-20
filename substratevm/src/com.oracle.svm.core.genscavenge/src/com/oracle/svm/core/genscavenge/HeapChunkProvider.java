@@ -41,6 +41,7 @@ import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicUnsigned;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
@@ -301,6 +302,12 @@ final class HeapChunkProvider {
     }
 
     void logFreeChunks(Log log) {
+        HeapChunkLogging.logChunks(log, unusedAlignedChunks.get(), "F", false);
+    }
+
+    /// Formats GC diagnostics without invoking legacy log handlers.
+    @Uninterruptible(reason = "Formats GC diagnostics without safepoints.", callerMustBe = true)
+    void logFreeChunks(NativeMemoryBuffer log) {
         HeapChunkLogging.logChunks(log, unusedAlignedChunks.get(), "F", false);
     }
 

@@ -24,8 +24,9 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.core.util.Timer;
+import com.oracle.svm.shared.Uninterruptible;
 
 /** Collection timers primarily for {@link GCImpl}. */
 final class Timers {
@@ -92,8 +93,9 @@ final class Timers {
         /* The mutator timer is *not* reset here. */
     }
 
-    void logAfterCollection(Log log) {
-        log.newline();
+    @Uninterruptible(reason = "Formats the GC message without safepoints.", callerMustBe = true)
+    void logAfterCollection(NativeMemoryBuffer log) {
+        GCLogMessage.newline(log);
         log.string("  [GC nanoseconds:");
         logOneTimer(log, "    ", collection);
         logOneTimer(log, "      ", rootScan);
@@ -128,19 +130,21 @@ final class Timers {
     }
 
     /// Appends an elapsed timer when it recorded work during the collection.
-    static void logOneTimer(Log log, String prefix, Timer timer) {
+    @Uninterruptible(reason = "Formats the GC message without safepoints.", callerMustBe = true)
+    static void logOneTimer(NativeMemoryBuffer log, String prefix, Timer timer) {
         if (timer.totalNanos() > 0) {
-            log.newline().string(prefix).string(timer.name()).string(": ").signed(timer.totalNanos());
+            GCLogMessage.newline(log).string(prefix).string(timer.name()).string(": ").signed(timer.totalNanos());
         }
     }
 
     /// Appends the collection's share of the combined mutator and collection interval.
     /// Uses wall time, so it does not account for differences in the number of active threads.
-    private static void logGCLoad(Log log, String prefix, String label, Timer cTimer, Timer mTimer) {
+    @Uninterruptible(reason = "Formats the GC message without safepoints.", callerMustBe = true)
+    private static void logGCLoad(NativeMemoryBuffer log, String prefix, String label, Timer cTimer, Timer mTimer) {
         long collectionNanos = cTimer.lastIntervalNanos();
         long mutatorNanos = mTimer.lastIntervalNanos();
         long intervalNanos = mutatorNanos + collectionNanos;
         long intervalGCPercent = (((100 * collectionNanos) + (intervalNanos / 2)) / intervalNanos);
-        log.newline().string(prefix).string(label).string(": ").signed(intervalGCPercent).string("%");
+        GCLogMessage.newline(log).string(prefix).string(label).string(": ").signed(intervalGCPercent).string("%");
     }
 }

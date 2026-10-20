@@ -82,6 +82,7 @@ public class GCCause {
         this.completeCollection = completeCollection;
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public String getName() {
         return name;
     }

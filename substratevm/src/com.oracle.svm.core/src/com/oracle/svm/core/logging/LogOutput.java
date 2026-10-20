@@ -27,11 +27,13 @@ package com.oracle.svm.core.logging;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.core.log.NativeMemoryBuffer;
+import com.oracle.svm.core.log.StdErrWriter;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Math;
 import com.oracle.svm.shared.Uninterruptible;
@@ -66,12 +68,18 @@ public abstract class LogOutput {
     /// Prevents output options from being reapplied to an existing output.
     private boolean optionsConfigured;
 
-    private static final NativeMemoryLog OUTPUT_BUFFER = new NativeMemoryLog(NativeMemoryLog.BufferKind.OUTPUT);
+    private static final NativeMemoryBuffer OUTPUT_BUFFER = new NativeMemoryBuffer(NativeMemoryBuffer.OUTPUT, false);
 
-    private static final NativeMemoryLog DECORATOR_BUFFER = new NativeMemoryLog(NativeMemoryLog.BufferKind.DECORATOR);
+    private static final NativeMemoryBuffer DECORATOR_BUFFER = new NativeMemoryBuffer(NativeMemoryBuffer.SCRATCH, false);
 
     /// Tracks each output failure category that has already been reported.
     private final AtomicInteger reportedWriteErrors = new AtomicInteger(0);
+
+    @Uninterruptible(reason = "Releases carrier-owned output bytes.", callerMustBe = true)
+    static void releaseBuffers(org.graalvm.nativeimage.IsolateThread thread) {
+        OUTPUT_BUFFER.release(thread);
+        DECORATOR_BUFFER.release(thread);
+    }
 
     @SuppressWarnings("this-escape")
     protected LogOutput(String name) {
@@ -305,8 +313,8 @@ public abstract class LogOutput {
     }
 
     /// Writes one complete message to this output.
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    final void write(LogTagSet tagSet, LogMessage message, LogLevel outputLevel, LogDecorators configuredDecorators) {
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
+    final void write(LogTagSet tagSet, LogLevel outputLevel, LogDecorators configuredDecorators) {
         OUTPUT_BUFFER.reset();
         int lineCount = LogMessage.lineCount();
         boolean hasLine = false;
@@ -314,8 +322,8 @@ public abstract class LogOutput {
             LogLevel lineLevel = LogMessage.lineLevel(index);
             if (outputLevel.enables(lineLevel)) {
                 hasLine = true;
-                int decoratorWidth = writeRecordPrefix(configuredDecorators, lineLevel, tagSet);
-                message.writeLineTo(index, OUTPUT_BUFFER, foldMultilines, this, decoratorWidth);
+                int decoratorWidth = writeDecorators(configuredDecorators, lineLevel, tagSet);
+                LogMessage.writeLineTo(index, OUTPUT_BUFFER, foldMultilines, this, decoratorWidth);
                 OUTPUT_BUFFER.newline();
             }
         }
@@ -324,33 +332,34 @@ public abstract class LogOutput {
         }
     }
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
     private void finishWrite() {
-        int status = writeRaw0(OUTPUT_BUFFER.getBuffer(), Word.unsigned(OUTPUT_BUFFER.getPosition()));
+        int status = writeRaw(OUTPUT_BUFFER.getBuffer(), Word.unsigned(OUTPUT_BUFFER.getPosition()));
         int unreported = claimUnreportedWriteErrors(status);
         if (unreported != 0) {
             if ((unreported & WRITE_FAILED) != 0) {
-                Log.log().string("Could not write to log: ").string(name).newline();
+                reportFailure("Could not write to log: ");
             }
             if ((unreported & ROTATION_RENAME_FAILED) != 0) {
-                Log.log().string("Could not rotate log file: ").string(name).newline();
+                reportFailure("Could not rotate log file: ");
             }
             if ((unreported & ROTATION_OPEN_FAILED) != 0) {
-                Log.log().string("Could not reopen log file: ").string(name).newline();
+                reportFailure("Could not reopen log file: ");
             }
         }
         OUTPUT_BUFFER.reset();
     }
 
-    /// Production destinations use no-transition writes or the trusted low-level VM log.
-    /// Test destinations may instead capture bytes in managed storage.
-    @Uninterruptible(reason = "Production output follows the logging contract; test outputs may be interruptible.", calleeMustBe = false)
-    private int writeRaw0(CCharPointer bytes, UnsignedWord length) {
-        return writeRaw(bytes, length);
+    /// Uses the already allocated output buffer without reentering any configured destination.
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
+    private void reportFailure(String message) {
+        OUTPUT_BUFFER.reset();
+        OUTPUT_BUFFER.string(message).string(name).newline();
+        ImageSingletons.lookup(StdErrWriter.class).log(OUTPUT_BUFFER.getBuffer(), Word.unsigned(OUTPUT_BUFFER.getPosition()));
     }
 
     /// Atomically claims failure categories that have not been diagnosed before.
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
     private int claimUnreportedWriteErrors(int status) {
         int reported;
         int unreported;
@@ -364,16 +373,8 @@ public abstract class LogOutput {
         return unreported;
     }
 
-    /// Writes all metadata that precedes one physical log record.
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private int writeRecordPrefix(LogDecorators configuredDecorators, LogLevel level, LogTagSet tagSet) {
-        int decoratorWidth = writeDecorators(configuredDecorators, level, tagSet);
-        tagSet.writePrefix(OUTPUT_BUFFER);
-        return decoratorWidth;
-    }
-
     /// Writes the blank marker that aligns an unfolded continuation with its first physical line.
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
     void writeContinuationPrefix(int decoratorWidth) {
         if (decoratorWidth != 0) {
             OUTPUT_BUFFER.character('[').spaces(decoratorWidth - 2).character(']').character(' ');
@@ -382,7 +383,7 @@ public abstract class LogOutput {
 
     /// Writes `enabledDecorators` for `level` and `tagSet` using the captured thread-local values.
     /// Returns the combined width of their bracketed values, excluding the trailing separator.
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
     private int writeDecorators(LogDecorators enabledDecorators, LogLevel level, LogTagSet tagSet) {
         int decoratorsLength = 0;
         boolean decorated = false;
@@ -413,7 +414,7 @@ public abstract class LogOutput {
         return decoratorsLength;
     }
 
-    /// Writes bytes already formatted in native memory by a `Log` operation.
+    /// Writes bytes already formatted in native memory.
     ///
     /// @return a bit mask describing failures encountered while writing or rotating the output:
     /// - `0` when the bytes were successfully written.
@@ -423,6 +424,7 @@ public abstract class LogOutput {
     ///
     /// Multiple failures are combined with a bitwise OR, so callers can test each status bit
     /// independently.
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
     protected abstract int writeRaw(CCharPointer bytes, UnsignedWord length);
 
     /// Releases resources owned by this destination.

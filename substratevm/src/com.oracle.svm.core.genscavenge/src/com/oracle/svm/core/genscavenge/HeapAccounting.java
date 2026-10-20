@@ -79,6 +79,7 @@ public final class HeapAccounting {
         invalidData = false;
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     HeapSizes getHeapSizesBeforeGc() {
         return beforeGc;
     }
@@ -146,6 +147,7 @@ public final class HeapAccounting {
         HeapSizes() {
         }
 
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public UnsignedWord totalUsed() {
             return eden.add(survivor).add(old);
         }

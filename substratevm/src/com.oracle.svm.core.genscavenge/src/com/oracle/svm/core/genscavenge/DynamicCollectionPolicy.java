@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.heap.DynamicHeapSizeManager;
+import com.oracle.svm.shared.Uninterruptible;
 
 /**
  * This class provides the implementation of a dynamic collection policy that calls into an instance
@@ -36,6 +37,7 @@ import com.oracle.svm.core.heap.DynamicHeapSizeManager;
  */
 class DynamicCollectionPolicy extends AdaptiveCollectionPolicy2 {
     @Override
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public String getName() {
         return "dynamic";
     }

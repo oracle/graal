@@ -36,11 +36,10 @@ import static com.oracle.svm.core.logging.LogDecorators.Decorator.UTCTIME;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.LibCHelper;
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.TimeUtils;
-import com.oracle.svm.shared.util.VMError;
 
 /// Captures and formats event metadata from the current thread's native logging state.
 public final class LogDecorations {
@@ -58,7 +57,7 @@ public final class LogDecorations {
     private static final int UPTIME_DECORATORS = UPTIME.bit() | UPTIMEMILLIS.bit() | UPTIMENANOS.bit();
 
     /// Captures event metadata in the current thread's logging state.
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
     static void capture(LogDecorators decorators) {
         LogThreadLocal.Data data = LogThreadLocal.get();
         data.setSystemMillis(decorators.containsAny(TIME_MILLIS_DECORATORS) ? TimeUtils.currentTimeMillis() : 0);
@@ -68,13 +67,8 @@ public final class LogDecorations {
     }
 
     /// Writes one decorator value for `level` and `tagSet` from this event record to `target`.
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static void value(LogDecorators.Decorator decorator, LogLevel level, LogTagSet tagSet, NativeMemoryLog target) {
-        if (!HasXlogSupport.get()) {
-            VMError.guarantee(decorator == UPTIME, "Only uptime is supported (for PrintGC and VerboseGC) when -Xlog is not supported");
-            writeRoundedUptime(target, uptimeNanos());
-            return;
-        }
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
+    public static void value(LogDecorators.Decorator decorator, LogLevel level, LogTagSet tagSet, NativeMemoryBuffer target) {
         switch (decorator) {
             case TIME -> {
                 long value = systemMillis();
@@ -94,22 +88,22 @@ public final class LogDecorations {
         }
     }
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
     private static long systemMillis() {
         return LogThreadLocal.get().getSystemMillis();
     }
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
     private static long systemNanos() {
         return LogThreadLocal.systemNanos();
     }
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
     private static long uptimeNanos() {
         return LogThreadLocal.uptimeNanos();
     }
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
     private static long threadId() {
         return LogThreadLocal.threadId();
     }
@@ -117,8 +111,8 @@ public final class LogDecorations {
     /// Writes a timestamp with millisecond precision and a numeric UTC offset.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/java.base/share/classes/java/time/LocalDate.java#L346-L379")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/runtime/os.cpp#L147-L243")
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static void writeDateTime(Log target, long systemMillis, int utcOffsetSeconds) {
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
+    private static void writeDateTime(NativeMemoryBuffer target, long systemMillis, int utcOffsetSeconds) {
         long localSeconds = floorDivide(systemMillis, 1_000) + utcOffsetSeconds;
         long epochDay = floorDivide(localSeconds, SECONDS_PER_DAY);
         int secondOfDay = (int) positiveRemainder(localSeconds, SECONDS_PER_DAY);
@@ -165,22 +159,22 @@ public final class LogDecorations {
     }
 
     /// Divides by a positive `divisor`, rounding toward negative infinity for pre-epoch timestamps.
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
     private static long floorDivide(long value, long divisor) {
         long quotient = value / divisor;
         return value < 0 && value % divisor != 0 ? quotient - 1 : quotient;
     }
 
     /// Returns a nonnegative remainder for a positive `divisor` without interruptible JDK calls.
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
     private static long positiveRemainder(long value, long divisor) {
         long remainder = value % divisor;
         return remainder < 0 ? remainder + divisor : remainder;
     }
 
     /// Writes the rounded uptime representation used by the normal decoration path.
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static void writeRoundedUptime(Log target, long uptimeNanos) {
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
+    private static void writeRoundedUptime(NativeMemoryBuffer target, long uptimeNanos) {
         long milliseconds = uptimeNanos / 1_000_000;
         if (uptimeNanos % 1_000_000 >= 500_000) {
             milliseconds++;
@@ -192,8 +186,8 @@ public final class LogDecorations {
     }
 
     /// Writes an unsigned value with at least `width` decimal digits.
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static void writePadded(Log target, long value, int width) {
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
+    private static void writePadded(NativeMemoryBuffer target, long value, int width) {
         int digits = decimalLength(value);
         for (int index = digits; index < width; index++) {
             target.character('0');
@@ -203,8 +197,8 @@ public final class LogDecorations {
 
     /// Writes a proleptic Gregorian year with at least four magnitude digits and a minus sign only
     /// when negative.
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static void writeYear(Log target, long year) {
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
+    private static void writeYear(NativeMemoryBuffer target, long year) {
         if (year < 0) {
             target.character('-');
             writePadded(target, -year, 4);
@@ -215,7 +209,7 @@ public final class LogDecorations {
     }
 
     /// Returns the decimal width of `value`, including its sign when present.
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
     private static int decimalLength(long value) {
         int result = value < 0 ? 2 : 1;
         long remaining = value;

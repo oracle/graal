@@ -40,6 +40,7 @@ import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.core.thread.ThreadsLock;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
@@ -213,6 +214,13 @@ public final class Space {
     }
 
     public void logChunks(Log log) {
+        HeapChunkLogging.logChunks(log, getFirstAlignedHeapChunk(), shortName, isToSpace());
+        HeapChunkLogging.logChunks(log, getFirstUnalignedHeapChunk(), shortName, isToSpace());
+    }
+
+    /// Formats GC diagnostics without invoking legacy log handlers.
+    @Uninterruptible(reason = "Formats GC diagnostics without safepoints.", callerMustBe = true)
+    public void logChunks(NativeMemoryBuffer log) {
         HeapChunkLogging.logChunks(log, getFirstAlignedHeapChunk(), shortName, isToSpace());
         HeapChunkLogging.logChunks(log, getFirstUnalignedHeapChunk(), shortName, isToSpace());
     }

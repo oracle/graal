@@ -26,8 +26,11 @@ package com.oracle.svm.hosted;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.jdk.ImageClassLogging;
+import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogThreadLocal;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 
 /// Registers thread lifecycle cleanup for logging state allocated lazily on first use.
@@ -36,11 +39,12 @@ public final class UnifiedLoggingFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         // ThreadListenerSupport is an initial-layer singleton and cannot be looked up later.
-        return ImageLayerBuildingSupport.firstImageBuild();
+        return ImageLayerBuildingSupport.firstImageBuild() && HasXlogSupport.get();
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ThreadListenerSupport.get().register(new LogThreadLocal());
+        RuntimeSupport.getRuntimeSupport().addInitializationHook(ImageClassLogging.initializationHook());
     }
 }

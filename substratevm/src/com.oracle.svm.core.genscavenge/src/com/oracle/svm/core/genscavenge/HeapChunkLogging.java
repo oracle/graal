@@ -29,7 +29,9 @@ import static com.oracle.svm.guest.staging.log.Log.RIGHT_ALIGN;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.Uninterruptible;
 
 class HeapChunkLogging {
     private static final int MAX_CHUNKS_TO_PRINT = 64 * 1024;
@@ -73,6 +75,77 @@ class HeapChunkLogging {
     }
 
     public static void logChunk(Log log, HeapChunk.Header<?> chunk, Pointer bottom, Pointer top, Pointer end, boolean isAligned, String shortSpaceName, boolean isToSpace) {
+        log.string("|").zhex(chunk).string("|").zhex(bottom).string(", ").zhex(top).string(", ").zhex(end);
+        log.string("|");
+        if (top.isNonNull()) {
+            UnsignedWord used = top.subtract(bottom);
+            UnsignedWord capacity = end.subtract(bottom);
+            UnsignedWord usedPercent = used.multiply(100).unsignedDivide(capacity);
+            log.unsigned(usedPercent, 3, RIGHT_ALIGN).string("%");
+        } else {
+            log.spaces(3).string("?");
+        }
+        log.string("|").string(shortSpaceName, 3, RIGHT_ALIGN);
+        log.string("|").string(isAligned ? "A" : "U");
+        log.string("|").string(isToSpace ? "T" : " ");
+        log.string("|");
+        if (isAligned) {
+            AlignedHeapChunk.AlignedHeader aChunk = (AlignedHeapChunk.AlignedHeader) chunk;
+            if (aChunk.getObjectPinCount() != 0) {
+                log.signed(aChunk.getObjectPinCount());
+            }
+        }
+        log.newline();
+    }
+
+    /// Formats chunk metadata without entering a legacy handler.
+    @Uninterruptible(reason = "Formats GC diagnostics without safepoints.", callerMustBe = true)
+    public static void logChunks(NativeMemoryBuffer log, AlignedHeapChunk.AlignedHeader firstChunk, String shortSpaceName, boolean isToSpace) {
+        int i = 0;
+        AlignedHeapChunk.AlignedHeader chunk = firstChunk;
+        while (chunk.isNonNull() && i < MAX_CHUNKS_TO_PRINT) {
+            Pointer bottom = AlignedHeapChunk.getObjectsStart(chunk);
+            Pointer top = HeapChunk.getTopPointer(chunk);
+            Pointer end = AlignedHeapChunk.getObjectsEnd(chunk);
+
+            logChunk(log, chunk, bottom, top, end, true, shortSpaceName, isToSpace);
+
+            chunk = HeapChunk.getNext(chunk);
+            i++;
+        }
+        if (chunk.isNonNull()) {
+            assert i == MAX_CHUNKS_TO_PRINT;
+            GCLogMessage.ensureLinePrefix(log);
+            log.string("... (truncated)").newline();
+        }
+    }
+
+    /// Formats chunk metadata without entering a legacy handler.
+    @Uninterruptible(reason = "Formats GC diagnostics without safepoints.", callerMustBe = true)
+    public static void logChunks(NativeMemoryBuffer log, UnalignedHeapChunk.UnalignedHeader firstChunk, String shortSpaceName, boolean isToSpace) {
+        int i = 0;
+        UnalignedHeapChunk.UnalignedHeader chunk = firstChunk;
+        while (chunk.isNonNull() && i < MAX_CHUNKS_TO_PRINT) {
+            Pointer bottom = UnalignedHeapChunk.getObjectStart(chunk);
+            Pointer top = HeapChunk.getTopPointer(chunk);
+            Pointer end = UnalignedHeapChunk.getObjectEnd(chunk);
+
+            logChunk(log, chunk, bottom, top, end, false, shortSpaceName, isToSpace);
+
+            chunk = HeapChunk.getNext(chunk);
+            i++;
+        }
+        if (chunk.isNonNull()) {
+            assert i == MAX_CHUNKS_TO_PRINT;
+            GCLogMessage.ensureLinePrefix(log);
+            log.string("... (truncated)").newline();
+        }
+    }
+
+    /// Formats chunk metadata without entering a legacy handler.
+    @Uninterruptible(reason = "Formats GC diagnostics without safepoints.", callerMustBe = true)
+    public static void logChunk(NativeMemoryBuffer log, HeapChunk.Header<?> chunk, Pointer bottom, Pointer top, Pointer end, boolean isAligned, String shortSpaceName, boolean isToSpace) {
+        GCLogMessage.ensureLinePrefix(log);
         log.string("|").zhex(chunk).string("|").zhex(bottom).string(", ").zhex(top).string(", ").zhex(end);
         log.string("|");
         if (top.isNonNull()) {

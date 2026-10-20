@@ -33,6 +33,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.core.logging.HasXlogSupport;
+import com.oracle.svm.core.util.UserError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -41,7 +43,9 @@ public final class CoreLogSupport {
 
     @Platforms(HOSTED_ONLY.class)
     public static void finalizeDefaultLogHandler(LogHandler handler) {
-        if (!ImageSingletons.contains(LogHandler.class)) {
+        if (ImageSingletons.contains(LogHandler.class)) {
+            UserError.guarantee(!HasXlogSupport.get(), "Unified logging cannot be enabled with a custom LogHandler: its native outputs bypass that handler.");
+        } else {
             ImageSingletons.add(LogHandler.class, new FunctionPointerLogHandler(handler));
         }
     }

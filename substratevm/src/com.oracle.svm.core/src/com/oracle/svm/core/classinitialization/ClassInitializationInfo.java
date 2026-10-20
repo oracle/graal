@@ -50,10 +50,10 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.image.DefaultImageHeapObjectSorter;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
-import com.oracle.svm.core.logging.NativeMemoryLog;
 import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ContinuationSupport;
@@ -738,12 +738,11 @@ public final class ClassInitializationInfo {
 
     /// Formats a class initialization record using HotSpot's class name spelling.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/oops/instanceKlass.cpp#L1698-L1708")
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
     @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logClassInitialization(int sequence, String name, String method, String threadName) {
         LogMessage message = LogTagSet.class_init.message();
         try {
-            NativeMemoryLog line = message.info();
+            NativeMemoryBuffer line = message.info();
             line.signed(sequence).string(" Initializing '");
             /* Convert the class name without allocating a replacement string. */
             for (int index = 0; index < name.length(); index++) {

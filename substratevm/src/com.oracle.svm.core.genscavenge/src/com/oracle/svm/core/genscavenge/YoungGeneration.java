@@ -37,6 +37,7 @@ import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.shared.Uninterruptible;
@@ -117,6 +118,16 @@ public final class YoungGeneration extends Generation {
             }
         }
 
+        getEden().logChunks(log);
+        for (int i = 0; i < maxSurvivorSpaces; i++) {
+            this.survivorFromSpaces[i].logChunks(log);
+            this.survivorToSpaces[i].logChunks(log);
+        }
+    }
+
+    /// Formats GC diagnostics without invoking legacy log handlers.
+    @Uninterruptible(reason = "Formats GC diagnostics without safepoints.", callerMustBe = true)
+    public void logChunks(NativeMemoryBuffer log) {
         getEden().logChunks(log);
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             this.survivorFromSpaces[i].logChunks(log);

@@ -464,9 +464,6 @@ public class CompileQueue {
                 parseAll();
             }
 
-            // The message scope contract applies to every caller, regardless of analysis mode.
-            LogMessageScopeChecker.checkBeforeCompilation();
-
             if (!PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(universe.hostVM().options())) {
                 /*
                  * Reachability Analysis creates call graphs with more edges compared to the

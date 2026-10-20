@@ -33,6 +33,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.Uninterruptible;
 
@@ -66,6 +67,10 @@ public abstract class OldGeneration extends Generation {
     abstract boolean printLocationInfo(Log log, Pointer ptr);
 
     abstract void logChunks(Log log);
+
+    /// Formats chunks for an uninterruptible GC event.
+    @Uninterruptible(reason = "Formats GC diagnostics without safepoints.", callerMustBe = true)
+    abstract void logChunks(NativeMemoryBuffer log);
 
     abstract boolean verifyRememberedSets();
 

@@ -29,6 +29,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
@@ -86,6 +87,7 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public String getName() {
             return "only incrementally";
         }
@@ -99,6 +101,7 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public String getName() {
             return "only completely";
         }
@@ -117,6 +120,7 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public String getName() {
             return "never collect";
         }
@@ -165,6 +169,7 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public String getName() {
             return "by space and time";
         }

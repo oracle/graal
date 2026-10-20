@@ -85,6 +85,7 @@ public final class LogOutputList {
     /// Complete routing and formatting state published with one volatile write.
     private volatile Configuration configuration = Configuration.empty();
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public LogLevel getMostDetailedLevel() {
         return configuration.mostDetailedLevel;
     }
@@ -113,6 +114,7 @@ public final class LogOutputList {
         configuration = Configuration.empty();
     }
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     boolean isLevel(LogLevel level) {
         return configuration.mostDetailedLevel.enables(level);
     }

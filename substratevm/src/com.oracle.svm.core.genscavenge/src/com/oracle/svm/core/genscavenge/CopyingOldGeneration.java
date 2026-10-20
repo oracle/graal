@@ -36,6 +36,7 @@ import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
 
@@ -147,6 +148,14 @@ final class CopyingOldGeneration extends OldGeneration {
 
     @Override
     public void logChunks(Log log) {
+        getFromSpace().logChunks(log);
+        getToSpace().logChunks(log);
+    }
+
+    /// Formats GC diagnostics without invoking legacy log handlers.
+    @Uninterruptible(reason = "Formats GC diagnostics without safepoints.", callerMustBe = true)
+    @Override
+    public void logChunks(NativeMemoryBuffer log) {
         getFromSpace().logChunks(log);
         getToSpace().logChunks(log);
     }

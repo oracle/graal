@@ -33,7 +33,6 @@ import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogLevel;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
@@ -53,13 +52,10 @@ public final class JfrUnifiedLogging {
     /// Unified tag set indexed by the corresponding JDK JFR tag set identifier.
     private final LogTagSet[] logTagSets;
 
-    /// Creates the image-heap mapping when unified logging is supported.
+    /// Creates the image-heap mapping for enabled unified logging.
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrUnifiedLogging() {
-        if (!HasXlogSupport.get()) {
-            logTagSets = null;
-            return;
-        }
+        HasXlogSupport.require();
         LogTag[] values = LogTag.values();
         logTagSets = new LogTagSet[getMaxLogTagSetId(values) + 1];
         for (LogTag logTag : values) {
@@ -99,7 +95,6 @@ public final class JfrUnifiedLogging {
     }
 
     /// Formats a JFR record without crossing a safepoint before the record is delivered.
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
     @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logJfrRecord(LogTagSet tagSet, LogLevel level, String text) {
         LogMessage message = tagSet.message();
@@ -111,7 +106,6 @@ public final class JfrUnifiedLogging {
     }
 
     /// Formats one JFR event without crossing a safepoint before the event is delivered.
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
     @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logJfrEvent(LogTagSet tagSet, LogLevel level, String[] lines) {
         LogMessage message = tagSet.message();

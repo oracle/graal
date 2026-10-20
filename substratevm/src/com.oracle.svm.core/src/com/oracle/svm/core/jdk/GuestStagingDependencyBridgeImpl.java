@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.PrintStream;
-import org.graalvm.collections.EconomicSet;
 
 import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -40,24 +39,19 @@ import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogConfiguration;
-import com.oracle.svm.core.logging.LogMessage;
-import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -101,8 +95,9 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
 
     @Override
     public void heapOptionValueChanged(NotifyGCRuntimeOptionKey<?> key) {
-        LogConfiguration.legacyGCOptionValueChanged(key);
-        /* Native collectors (e.g. G1) consume `PrintGC` and `VerboseGC`. */
+        if (HasXlogSupport.get()) {
+            LogConfiguration.legacyGCOptionValueChanged(key);
+        }
         Heap.getHeap().optionValueChanged(key);
     }
 
@@ -170,7 +165,9 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
 
     @Override
     public void shutdownLogging() {
-        LogConfiguration.disableLogging();
+        if (HasXlogSupport.get()) {
+            LogConfiguration.disableLogging();
+        }
     }
 
     @Override
@@ -256,63 +253,6 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public void setVerifyMode(String mode) {
         RuntimeClassLoading.Options.ClassVerification.update(RuntimeClassLoading.VerifyMode.valueOf(mode));
-    }
-
-    @Override
-    public void endOfParsing() {
-        LogConfiguration.logInitializationComplete();
-        if (HasXlogSupport.get()) {
-            maybeReportImageClasses();
-        }
-    }
-
-    private static void maybeReportImageClasses() {
-        boolean logClassLoad = LogTagSet.class_load_image.isInfo();
-        boolean logModuleLoad = LogTagSet.module_load_image.isInfo();
-        if (logClassLoad || logModuleLoad) {
-            EconomicSet<Module> reportedModules = EconomicSet.create();
-            if (logModuleLoad) {
-                /*
-                 * Logging initialization completes after isolate initialization, before the startup hook
-                 * augments the boot layer with modules from the runtime module path. The boot layer
-                 * therefore still contains exactly the modules included in the image here.
-                 */
-                for (Module module : ModuleLayer.boot().modules()) {
-                    reportImageModule(module, reportedModules);
-                }
-            }
-            Heap.getHeap().visitLoadedClasses((cls) -> {
-                DynamicHub hub = DynamicHub.fromClass(cls);
-                if (!hub.isArray() && !hub.isPrimitive()) {
-                    if (logClassLoad) {
-                        ClassLoader loader = hub.getClassLoader();
-                        AbstractRuntimeClassRegistry.logClassLoadingMessage(LogTagSet.class_load_image, hub.getName(), loader, null, "image");
-                    }
-                    if (logModuleLoad) {
-                        reportImageModule(hub.getModule(), reportedModules);
-                    }
-                }
-            });
-        }
-    }
-
-    /// Reports `module` once if it is named.
-    private static void reportImageModule(Module module, EconomicSet<Module> reportedModules) {
-        String moduleName = ModuleNative.getName(module);
-        if (moduleName != null && reportedModules.add(module)) {
-            logImageModule(moduleName);
-        }
-    }
-
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
-    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
-    private static void logImageModule(String moduleName) {
-        LogMessage message = LogTagSet.module_load_image.message();
-        try {
-            message.info().string(moduleName).string(" location: image");
-        } finally {
-            message.close();
-        }
     }
 
     @Override

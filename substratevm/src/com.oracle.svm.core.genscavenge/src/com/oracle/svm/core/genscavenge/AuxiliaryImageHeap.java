@@ -54,5 +54,6 @@ public interface AuxiliaryImageHeap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void walkRegions(MemoryWalker.ImageHeapRegionVisitor visitor);
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     ImageHeapInfo getImageHeapInfo();
 }

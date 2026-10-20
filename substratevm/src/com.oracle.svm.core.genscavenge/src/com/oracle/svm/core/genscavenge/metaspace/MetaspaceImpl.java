@@ -42,6 +42,7 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.core.metaspace.AbstractMetaspace;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
@@ -131,6 +132,12 @@ public class MetaspaceImpl extends AbstractMetaspace {
     }
 
     public void logChunks(Log log) {
+        space.logChunks(log);
+    }
+
+    /// Formats GC diagnostics without invoking legacy log handlers.
+    @Uninterruptible(reason = "Formats GC diagnostics without safepoints.", callerMustBe = true)
+    public void logChunks(NativeMemoryBuffer log) {
         space.logChunks(log);
     }
 

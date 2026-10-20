@@ -42,10 +42,10 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SVMSymbols.SVMTypes;
 import com.oracle.svm.core.jdk.ModuleNative;
 import com.oracle.svm.core.jdk.Target_java_lang_ClassLoader;
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
-import com.oracle.svm.core.logging.NativeMemoryLog;
 import com.oracle.svm.espresso.classfile.ClassfileParser;
 import com.oracle.svm.espresso.classfile.ClassfileStream;
 import com.oracle.svm.espresso.classfile.ParserException;
@@ -57,7 +57,6 @@ import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.ValidationException;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -373,12 +372,11 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
         }
     }
 
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
     @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logClassLoadCause(String className, String[] stackTrace) {
         LogMessage message = LogTagSet.class_load_cause.message();
         try {
-            NativeMemoryLog line = message.info();
+            NativeMemoryBuffer line = message.info();
             line.string("Java stack when loading ").string(className);
             for (String stackTraceElement : stackTrace) {
                 message.info().string("  at ").string(stackTraceElement);
@@ -400,13 +398,12 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
 
     /// Writes a class-loading event without allocating a formatted string.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/oops/instanceKlass.cpp#L3914-L3985")
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
     @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     public static void logClassLoadingMessage(LogTagSet tagSet, String className, ClassLoader loader, String source, String detail) {
         String loaderName = ClassRegistries.loaderNameAndId(loader);
         LogMessage message = tagSet.message();
         try {
-            NativeMemoryLog line = message.info();
+            NativeMemoryBuffer line = message.info();
             line.string(className).string(" loader=").string(loaderName);
             if (source != null && !source.isEmpty()) {
                 line.string(" source='").string(source).character('\'');

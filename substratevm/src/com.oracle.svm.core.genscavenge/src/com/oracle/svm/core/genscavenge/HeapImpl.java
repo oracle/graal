@@ -29,6 +29,7 @@ import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -313,10 +314,6 @@ public final class HeapImpl extends Heap {
         oldGeneration.logUsage(log);
     }
 
-    void logChunks(Log log) {
-        logChunks(log, false);
-    }
-
     void logChunks(Log log, boolean allowUnsafe) {
         if (Metaspace.isSupported()) {
             MetaspaceImpl.singleton().logChunks(log);
@@ -329,6 +326,26 @@ public final class HeapImpl extends Heap {
             AuxiliaryImageHeap.singleton().walkHeapChunks(imageHeapChunkLogger);
         }
         getYoungGeneration().logChunks(log, allowUnsafe);
+        getOldGeneration().logChunks(log);
+        getChunkProvider().logFreeChunks(log);
+    }
+
+    /// Formats GC chunk records without entering the fatal-diagnostic logging path.
+    @Uninterruptible(reason = "Formats GC diagnostics without safepoints.", callerMustBe = true)
+    void logChunks(NativeMemoryBuffer log) {
+        if (Metaspace.isSupported()) {
+            MetaspaceImpl.singleton().logChunks(log);
+        }
+        for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
+            ImageHeapWalker.logImageHeapChunks(info, log);
+        }
+        if (AuxiliaryImageHeap.isPresent()) {
+            ImageHeapInfo info = AuxiliaryImageHeap.singleton().getImageHeapInfo();
+            if (info != null) {
+                ImageHeapWalker.logImageHeapChunks(info, log);
+            }
+        }
+        getYoungGeneration().logChunks(log);
         getOldGeneration().logChunks(log);
         getChunkProvider().logFreeChunks(log);
     }

@@ -30,6 +30,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.shared.util.UnsignedUtils;
@@ -155,6 +156,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     @Override
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public String getName() {
         return "adaptive";
     }

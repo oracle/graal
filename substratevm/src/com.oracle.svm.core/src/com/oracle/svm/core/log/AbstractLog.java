@@ -24,13 +24,11 @@
  */
 package com.oracle.svm.core.log;
 
-import com.oracle.svm.guest.staging.log.Log;
-
+import static com.oracle.svm.core.jdk.UninterruptibleUtils.String.charAt;
 import static com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Integer.highestOneBit;
 import static com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Math.abs;
 import static com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Math.max;
 import static com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Math.min;
-import static com.oracle.svm.core.jdk.UninterruptibleUtils.String.charAt;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.nio.charset.StandardCharsets;
@@ -42,12 +40,13 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.JDKUtils;
+import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
@@ -56,18 +55,6 @@ abstract class AbstractLog implements Log {
     private static final byte[] NEWLINE = System.lineSeparator().getBytes(StandardCharsets.US_ASCII);
 
     private int indent;
-
-    /// Gets the indentation owned by this log.
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected int indentation() {
-        return indent;
-    }
-
-    /// Updates the indentation owned by this log.
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected void setIndentation(int value) {
-        indent = value;
-    }
 
     /** Writes the logging data. This method is used by all the logging methods below. */
     protected abstract Log rawBytes(CCharPointer bytes, UnsignedWord length);
@@ -180,14 +167,8 @@ abstract class AbstractLog implements Log {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     final void newline0() {
-        string0(lineSeparator());
-        spaces0(indentation());
-    }
-
-    /// Gets the platform line separator emitted by newline operations.
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected byte[] lineSeparator() {
-        return NEWLINE;
+        string0(NEWLINE);
+        spaces0(indent);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -429,7 +410,7 @@ abstract class AbstractLog implements Log {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     final void redent0(boolean addOrRemove) {
         int delta = addOrRemove ? 2 : -2;
-        setIndentation(max(0, indentation() + delta));
+        indent = max(0, indent + delta);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -440,12 +421,12 @@ abstract class AbstractLog implements Log {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     final void resetIndentation0() {
-        setIndentation(0);
+        indent = 0;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     final int getIndentation0() {
-        return indentation();
+        return indent;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -590,10 +571,6 @@ abstract class AbstractLog implements Log {
         }
     }
 
-    /// Unified logging uses RealLog or NativeMemoryLog. NativeMemoryLog appends without safepoints;
-    /// RealLog forwards to an allocation-free LogHandler whose safepoint behavior is trusted
-    /// rather than enforced by this bridge. Other low-level logging implementations can be
-    /// interruptible, so this deliberately does not extend the annotation contract to rawBytes.
     @Uninterruptible(reason = "Some implementations are interruptible.", mayBeInlined = true, calleeMustBe = false)
     protected void writeBytes0(CCharPointer bytes, UnsignedWord length) {
         rawBytes(bytes, length);

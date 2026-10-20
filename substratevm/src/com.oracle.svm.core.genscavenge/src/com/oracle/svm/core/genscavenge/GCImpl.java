@@ -84,9 +84,8 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
-import com.oracle.svm.core.logging.LogMessage;
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.core.logging.LogTagSet;
-import com.oracle.svm.core.logging.LogThreadLocal;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.ChunkBasedCommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -143,6 +142,14 @@ public final class GCImpl implements GC {
     private final CollectionVMOperation collectOperation = new CollectionVMOperation();
     private final ChunkReleaser chunkReleaser = new ChunkReleaser();
 
+    /// Per-image route selection must not leak between images built by one hosted VM.
+    private final GCLogMessage logMessage = new GCLogMessage();
+
+    @Fold
+    static GCLogMessage getLogMessage() {
+        return getGCImpl().logMessage;
+    }
+
     private CollectionPolicy policy;
     private boolean completeCollection = false;
     private boolean outOfMemoryCollection = false;
@@ -168,6 +175,7 @@ public final class GCImpl implements GC {
     }
 
     @Override
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public String getName() {
         if (SubstrateOptions.useEpsilonGC()) {
             return "Epsilon GC";
@@ -176,9 +184,9 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Override
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void writeLogPrefix(LogTagSet logTagSet, Log log) {
+    /// Adds the collection identity where the GC constructs each message line.
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_ACCESS, callerMustBe = true)
+    void logPrefix(NativeMemoryBuffer log) {
         UnsignedWord epoch = collectionEpoch;
         if (!VMOperation.isGCInProgress() && epoch.notEqual(0)) {
             // Reference handling and other GC epilogue work pertains to the previous collection.
@@ -296,9 +304,7 @@ public final class GCImpl implements GC {
 
         JfrGCHeapSummaryEvent.emit(JfrGCWhen.BEFORE_GC);
         GCCause cause = GCCause.fromId(data.getCauseId());
-        if (LogTagSet.gc.isInfo()) {
-            logGCBefore(cause);
-        }
+        logGCBefore(cause);
 
         Timer collectionTimer = timers.collection.start();
         try {
@@ -396,12 +402,7 @@ public final class GCImpl implements GC {
         accounting.beforeCollectOnce(completeCollection);
         policy.onCollectionBegin(completeCollection, beginNanoTime);
 
-        LogThreadLocal.enterGCUnsafeRegion();
-        try {
-            doCollectCore();
-        } finally {
-            LogThreadLocal.exitGCUnsafeRegion();
-        }
+        doCollectCore();
         if (complete) {
             lastWholeHeapExaminedNanos = System.nanoTime();
         }
@@ -434,7 +435,7 @@ public final class GCImpl implements GC {
 
     private void verifyHeap(HeapVerifier.Occasion occasion) {
         if (SubstrateGCOptions.VerifyHeap.getValue() && shouldVerify(occasion)) {
-            if (LogTagSet.gc.isDebug()) {
+            if (GCLogMessage.isDebug()) {
                 logHeapVerification(occasion.name(), 0, false);
             }
 
@@ -450,16 +451,15 @@ public final class GCImpl implements GC {
                 throw VMError.shouldNotReachHere("Heap verification failed");
             }
 
-            if (LogTagSet.gc.isDebug()) {
+            if (GCLogMessage.isDebug()) {
                 logHeapVerification(occasion.name(), TimeUtils.nanoSecondsSince(start), true);
             }
         }
     }
 
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
     @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logHeapVerification(String occasionName, long elapsedNanos, boolean finished) {
-        LogMessage message = LogTagSet.gc.message();
+        GCLogMessage message = GCLogMessage.open();
         try {
             var line = message.debug().string("Verifying ").string(occasionName).string(" GC ");
             if (finished) {
@@ -510,14 +510,16 @@ public final class GCImpl implements GC {
         }
     }
 
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
-    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER_IN_GC, calleeMustBe = false)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private void logGCBefore(GCCause cause) {
-        LogMessage message = LogTagSet.gc.message();
+        if (!GCLogMessage.isInfo()) {
+            return;
+        }
+        GCLogMessage message = GCLogMessage.open();
         try {
             if (collectionEpoch.equal(0)) {
                 message.info().string("Using ").string(getName());
-                if (LogTagSet.gc.isDebug()) {
+                if (GCLogMessage.isDebug()) {
                     CollectionPolicy currentPolicy = getPolicy();
                     message.debug().spaces(2).string("Memory: ").rational(PhysicalMemory.size(), M, 0).string("M");
                     message.debug().spaces(2).string("GC policy: ").string(currentPolicy.getName());
@@ -528,7 +530,7 @@ public final class GCImpl implements GC {
                     message.debug().spaces(2).string("Large array threshold: ").rational(HeapParameters.getLargeArrayThreshold(), K, 0).string("K");
                 }
             }
-            if (LogTagSet.gc.isDebug()) {
+            if (GCLogMessage.isDebug()) {
                 message.debug().string(cause.getName());
             }
         } finally {
@@ -536,14 +538,13 @@ public final class GCImpl implements GC {
         }
     }
 
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
-    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER_IN_GC, calleeMustBe = false)
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private void logGCAfter(GCCause cause) {
         HeapAccounting heapAccounting = HeapImpl.getAccounting();
         HeapSizes beforeGc = heapAccounting.getHeapSizesBeforeGc();
 
-        if (LogTagSet.gc.isDebug()) {
-            LogMessage message = LogTagSet.gc.message();
+        if (GCLogMessage.isDebug()) {
+            GCLogMessage message = GCLogMessage.open();
             try {
                 logHeapSizeChange(message, "Eden", beforeGc.eden, heapAccounting.getEdenUsedBytes());
                 logHeapSizeChange(message, "Survivor", beforeGc.survivor, heapAccounting.getSurvivorUsedBytes());
@@ -562,8 +563,8 @@ public final class GCImpl implements GC {
             }
         }
 
-        if (LogTagSet.gc.isInfo()) {
-            LogMessage message = LogTagSet.gc.message();
+        if (GCLogMessage.isInfo()) {
+            GCLogMessage message = GCLogMessage.open();
             try {
                 String collectionType = completeCollection ? "Full GC" : "Incremental GC";
                 String causeName = cause.getName();
@@ -580,7 +581,8 @@ public final class GCImpl implements GC {
     }
 
     /// Appends a heap size change to the caller's debug message.
-    private static void logHeapSizeChange(LogMessage message, String text, UnsignedWord before, UnsignedWord after) {
+    @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER, callerMustBe = true)
+    private static void logHeapSizeChange(GCLogMessage message, String text, UnsignedWord before, UnsignedWord after) {
         message.debug().string("  ").string(text).string(": ").rational(before, M, 2).string("M->").rational(after, M, 2).string("M");
     }
 
@@ -1266,7 +1268,7 @@ public final class GCImpl implements GC {
         assert PlatformThreads.isCurrentAssigned() : "thread is not fully initialized yet";
         /* Most of the time, we won't have a pending reference list. So, we do that check first. */
         if (HeapImpl.getHeapImpl().hasReferencePendingListUnsafe()) {
-            boolean logTiming = LogTagSet.gc.isDebug() && SerialGCOptions.PrintGCTimes.getValue();
+            boolean logTiming = GCLogMessage.isDebug() && SerialGCOptions.PrintGCTimes.getValue();
             long startTime = logTiming ? System.nanoTime() : 0;
             ReferenceHandler.processPendingReferencesInRegularThread();
 
@@ -1276,11 +1278,10 @@ public final class GCImpl implements GC {
         }
     }
 
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
     @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logReferenceHandling(long startTime) {
         long executionTime = System.nanoTime() - startTime;
-        LogMessage message = LogTagSet.gc.message();
+        GCLogMessage message = GCLogMessage.open();
         try {
             message.debug().string("GC epilogue reference processing and cleaners: ").signed(executionTime).string(" ns");
         } finally {

@@ -28,6 +28,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.UnsignedUtils;
 
 /** A port of HotSpot's SerialGC size policy. */
@@ -54,6 +55,7 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
     }
 
     @Override
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public String getName() {
         return "proportionate";
     }

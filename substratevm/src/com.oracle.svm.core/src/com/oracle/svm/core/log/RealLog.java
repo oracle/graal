@@ -37,7 +37,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.shared.NeverInline;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -62,7 +61,6 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @Uninterruptible(reason = "Unified logging must format without a safepoint.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log string(String value) {
         string0(value);
@@ -119,7 +117,6 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @Uninterruptible(reason = "Unified logging must format without a safepoint.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log string(CCharPointer value, int length) {
         string0(value, length);
@@ -128,7 +125,6 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @Uninterruptible(reason = "Unified logging must format without a safepoint.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log character(char value) {
         character0(value);
@@ -137,7 +133,6 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @Uninterruptible(reason = "Unified logging must format without a safepoint.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log newline() {
         newline0();
@@ -162,7 +157,6 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @Uninterruptible(reason = "Unified logging must format without a safepoint.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log signed(int value) {
         signed0(value);
@@ -171,7 +165,6 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @Uninterruptible(reason = "Unified logging must format without a safepoint.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log signed(long value) {
         signed0(value);
@@ -188,7 +181,6 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @Uninterruptible(reason = "Unified logging must format without a safepoint.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log unsigned(WordBase value) {
         unsigned0(value);
@@ -205,7 +197,6 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @Uninterruptible(reason = "Unified logging must format without a safepoint.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log unsigned(int value) {
         unsigned0(value);
@@ -214,7 +205,6 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @Uninterruptible(reason = "Unified logging must format without a safepoint.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log unsigned(long value) {
         unsigned0(value);
@@ -231,7 +221,6 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @Uninterruptible(reason = "Unified logging must format without a safepoint.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log rational(long numerator, long denominator, long decimals) {
         rational0(numerator, denominator, decimals);
@@ -240,7 +229,6 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @Uninterruptible(reason = "Unified logging must format without a safepoint.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log rational(UnsignedWord numerator, long denominator, long decimals) {
         rational0(numerator, denominator, decimals);
@@ -335,10 +323,8 @@ public class RealLog extends AbstractLog {
         return this;
     }
 
-    /// Changes indentation and starts a line without a safepoint in a unified logging scope.
     @Override
     @NeverInline("Logging is always slow-path code")
-    @Uninterruptible(reason = "Unified logging must format without a safepoint.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log indent(boolean addOrRemove) {
         indent0(addOrRemove);
@@ -376,7 +362,6 @@ public class RealLog extends AbstractLog {
 
     @Override
     @NeverInline("Logging is always slow-path code")
-    @Uninterruptible(reason = "Unified logging must format without a safepoint.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log spaces(int value) {
         spaces0(value);

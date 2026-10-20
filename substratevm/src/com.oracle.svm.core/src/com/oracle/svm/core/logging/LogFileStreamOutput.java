@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.logging;
 
-import java.util.Locale;
-
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
@@ -33,45 +31,27 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.os.RawFileOperationSupport;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
-/// Writes log messages to `stdout`, `stderr`, or [Log#log()].
+/// Writes log messages directly to the native process streams.
 final class LogFileStreamOutput extends LogOutput {
 
-    /// Selects the destination used for a stream.
-    enum Target {
-        /// Denotes standard output.
-        STDOUT,
-
-        /// Denotes standard error.
-        STDERR,
-
-        /// Denotes the low-level VM log accessed by [Log#log()].
-        VMLOG
-    }
-
-    /// Destination used for this output.
-    private final Target target;
+    /// Selects standard error rather than standard output.
+    private final boolean stderr;
 
     /// Serializes writes to this native process stream.
     private final VMMutex mutex;
 
-    LogFileStreamOutput(Target target) {
-        super(target.name().toLowerCase(Locale.ROOT));
-        this.target = target;
+    LogFileStreamOutput(String name, boolean stderr) {
+        super(name);
+        this.stderr = stderr;
         this.mutex = new VMMutex("LogOutput." + name());
     }
 
     @Override
-    @Uninterruptible(reason = "Destination writes must not allow a safepoint.")
+    @Uninterruptible(reason = "Destination writes must not allow a safepoint.", callerMustBe = true)
     protected int writeRaw(CCharPointer bytes, UnsignedWord length) {
-        if (target == Target.VMLOG) {
-            // Output buffers have signed integer capacities, so this conversion is exact.
-            Log.log().string(bytes, (int) length.rawValue());
-            return 0;
-        }
         return writeRawLocked(bytes, length);
     }
 
@@ -84,7 +64,7 @@ final class LogFileStreamOutput extends LogOutput {
         try {
             /* Synchronous logging intentionally uses a no-transition write, as HotSpot does. */
             RawFileOperationSupport files = RawFileOperationSupport.nativeByteOrder();
-            return files.write(target == Target.STDERR ? files.getStderr() : files.getStdout(), (Pointer) bytes, length) ? 0 : WRITE_FAILED;
+            return files.write(stderr ? files.getStderr() : files.getStdout(), (Pointer) bytes, length) ? 0 : WRITE_FAILED;
         } finally {
             mutex.unlock();
         }
@@ -92,10 +72,6 @@ final class LogFileStreamOutput extends LogOutput {
 
     /// Writes undecorated text for configuration diagnostics and help output.
     void writePlain(String text) {
-        if (target == Target.VMLOG) {
-            Log.log().string(text);
-            return;
-        }
         try (CTypeConversion.CCharPointerHolder holder = CTypeConversion.toCString(text)) {
             CCharPointer bytes = holder.get();
             /* Configuration diagnostics are best effort and must not reject an otherwise valid option. */

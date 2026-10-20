@@ -29,8 +29,7 @@ import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
-/// Indicates whether the `-Xlog` command line interface is available. The logging API remains
-/// available without `-Xlog` so legacy options can emit messages through the low-level VM log.
+/// Indicates whether unified logging and its `-Xlog` command line interface are included.
 public final class HasXlogSupport {
     /// Returns whether `-Xlog` is supported.
     @Fold
@@ -41,7 +40,7 @@ public final class HasXlogSupport {
     /// Throws an error if `-Xlog` is not supported.
     public static void require() {
         if (!get()) {
-            VMError.shouldNotReachHere("-Xlog is not supported");
+            throw VMError.shouldNotReachHere("-Xlog is not supported");
         }
     }
 }

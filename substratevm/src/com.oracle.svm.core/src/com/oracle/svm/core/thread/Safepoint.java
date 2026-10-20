@@ -48,7 +48,6 @@ import com.oracle.svm.core.logging.LogTagSet;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
@@ -241,7 +240,6 @@ public final class Safepoint {
 
     /// Formats the completed safepoint's timing and thread counts.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/runtime/safepoint.cpp#L984-L1000")
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
     @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private void logSafepointSummary(String reason, long appTimeNs, long safepointLeaveTimeNs) {
         LogMessage message = LogTagSet.safepoint.message();

@@ -24,10 +24,6 @@
  */
 package com.oracle.svm.core.logging;
 
-import static com.oracle.svm.core.logging.LogDecorators.Decorator.UPTIME;
-import static com.oracle.svm.core.logging.LogFileStreamOutput.Target.STDERR;
-import static com.oracle.svm.core.logging.LogFileStreamOutput.Target.STDOUT;
-import static com.oracle.svm.core.logging.LogFileStreamOutput.Target.VMLOG;
 import static com.oracle.svm.core.logging.LogTagSet.logging;
 
 import java.time.LocalDateTime;
@@ -48,6 +44,7 @@ import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.log.StdErrWriter;
 import com.oracle.svm.core.os.RawFileOperationSupport;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFilePath;
@@ -57,23 +54,19 @@ import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.TimeUtils;
+import com.oracle.svm.shared.util.VMError;
 
-/// Owns the configuration for `-Xlog` and the GC logging fallback used when that command line
-/// interface is unavailable. Closing a message scope selects one immutable routing and formatting
-/// snapshot for its complete delivery. Runtime changes do not alter that retained snapshot.
+/// Owns unified-logging configuration. Closing a scope retains one immutable routing and
+/// formatting snapshot through synchronous delivery, even when configuration changes concurrently.
 public final class LogConfiguration {
     /// Preserves configuration insertion order for deterministic teardown and diagnostics.
     private static final List<LogFileOutput> OUTPUTS = new ArrayList<>();
 
-    private static final LogFileStreamOutput stdout = new LogFileStreamOutput(STDOUT);
+    private static final LogFileStreamOutput stdout = new LogFileStreamOutput("stdout", false);
 
-    private static final LogFileStreamOutput stderr = new LogFileStreamOutput(STDERR);
-
-    /// Redirects fallback logging to `Log.log()`. This output is not selectable through `-Xlog`.
-    private static final LogFileStreamOutput vmlog = new LogFileStreamOutput(VMLOG);
+    private static final LogFileStreamOutput stderr = new LogFileStreamOutput("stderr", true);
 
     /// Native host name.
     private static String hostname;
@@ -87,15 +80,15 @@ public final class LogConfiguration {
     /// Records whether startup option parsing and logging initialization have completed.
     private static volatile boolean initializationComplete;
 
-    /// Enables JDK JFR threshold publication after all startup logging options are applied.
-    private static boolean jfrLogLevelsPublished;
+    /// Publishes readiness only after baseline configuration has been installed.
+    private static volatile boolean initialized;
 
     /// Prevents output teardown from racing synchronous writers that retained an old immutable
     /// routing configuration.
     private static final AtomicInteger ACTIVE_WRITES = new AtomicInteger(0);
 
     /// Controls admission to message routing while outputs are being disabled.
-    private static volatile boolean writesEnabled = true;
+    private static volatile boolean writesEnabled;
 
     /// Prevents the legacy GC option updates used for synchronization from reconfiguring logging.
     private static volatile boolean synchronizingLegacyGCOptions;
@@ -214,29 +207,35 @@ public final class LogConfiguration {
         }
     }
 
-    /// Captures process metadata and installs the baseline logging configuration before runtime
-    /// options are parsed, including legacy GC logging when `-Xlog` is unavailable.
+    /// Installs baseline routing before runtime options and property-dependent JDK initialization.
     public static void initialize() {
+        HasXlogSupport.require();
         RuntimeSupport.getRuntimeSupport().addTearDownHook(_ -> LogConfiguration.disableLogging());
-        if (HasXlogSupport.get()) {
-            hostname = LibC.hostname();
-            pid = ProcessProperties.getProcessID();
-            long systemMillis = TimeUtils.currentTimeMillis();
-            startupTimestamp = formatStartupTimestamp(systemMillis, LibCHelper.localUTCOffsetSeconds(systemMillis));
-            for (LogTagSet tagSet : LogTagSet.values()) {
-                tagSet.outputList().setOutputLevel(stdout.configuration(), LogLevel.WARNING);
-            }
-            stdout.updateConfigString();
-            stderr.updateConfigString();
+        hostname = LibC.hostname();
+        pid = ProcessProperties.getProcessID();
+        long systemMillis = TimeUtils.currentTimeMillis();
+        startupTimestamp = formatStartupTimestamp(systemMillis, LibCHelper.localUTCOffsetSeconds(systemMillis));
+        for (LogTagSet tagSet : LogTagSet.values()) {
+            tagSet.outputList().setOutputLevel(stdout.configuration(), LogLevel.WARNING);
         }
+        stdout.updateConfigString();
+        stderr.updateConfigString();
         LogLevel legacyLevel = legacyGCLogLevel();
         if (legacyLevel != LogLevel.OFF) {
             updateGCLoggingLocked(legacyLevel);
         }
-        if (HasXlogSupport.get() && HasJfrSupport.get() && SubstrateOptions.FlightRecorderLogging.hasBeenSet()) {
+        initialized = true;
+        if (HasJfrSupport.get() && SubstrateOptions.FlightRecorderLogging.hasBeenSet()) {
             SubstrateJVM.getLogging().parseConfiguration(SubstrateOptions.FlightRecorderLogging.getValue());
         }
+        updateJfrLogLevels();
         writesEnabled = true;
+    }
+
+    /// Rejects preinitialization logging instead of silently dropping an empty routing table.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void guaranteeInitialized() {
+        VMError.guarantee(initialized, "Unified logging used before initialization.");
     }
 
     /// Formats the `%t` filename substitution without consulting JDK locale or time zone defaults.
@@ -373,7 +372,6 @@ public final class LogConfiguration {
         initializationComplete = true;
     }
 
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
     @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logInitializationDetails(String[] outputDescriptions, boolean debugEnabled) {
         LogMessage message = logging.message();
@@ -394,26 +392,11 @@ public final class LogConfiguration {
         }
     }
 
-    /// Sets the GC logging threshold to `level` on standard output when `-Xlog` is supported, or on
-    /// the low-level VM log otherwise. The fallback preserves the uptime-only decoration used by
-    /// legacy `VerboseGC` and `PrintGC` output.
-    public static void updateGCLogging(LogLevel level) {
-        VMOperation.guaranteeNotInProgress("Cannot reconfigure GC logging within a VM operation.");
-        synchronized (LogConfiguration.class) {
-            updateGCLoggingLocked(level);
-        }
-    }
-
     /// Updates the GC threshold while holding the configuration monitor.
     private static void updateGCLoggingLocked(LogLevel level) {
-        boolean hasXlogSupport = HasXlogSupport.get();
-        LogOutput output = hasXlogSupport ? stdout : vmlog;
-        LogDecorators decorators = !hasXlogSupport && level != LogLevel.OFF ? new LogDecorators(UPTIME.bit()) : output.decorators();
-        LogOutputConfiguration outputConfiguration = output.configure(decorators);
+        LogOutputConfiguration outputConfiguration = stdout.configure(stdout.decorators());
         LogTagSet.gc.outputList().setOutputLevel(outputConfiguration, level);
-        if (hasXlogSupport) {
-            stdout.updateConfigString();
-        }
+        stdout.updateConfigString();
         synchronizeLegacyGCOptions();
         writesEnabled = true;
     }
@@ -444,8 +427,7 @@ public final class LogConfiguration {
 
     /// Mirrors the GC threshold on its legacy option compatibility surface.
     private static void synchronizeLegacyGCOptions() {
-        LogOutput output = HasXlogSupport.get() ? stdout : vmlog;
-        LogLevel level = LogTagSet.gc.outputList().levelFor(output);
+        LogLevel level = LogTagSet.gc.outputList().levelFor(stdout);
         synchronizingLegacyGCOptions = true;
         try {
             if (SubstrateGCOptions.PrintGC.getValue() != level.enables(LogLevel.INFO)) {
@@ -459,15 +441,9 @@ public final class LogConfiguration {
         }
     }
 
-    /// Publishes the final startup thresholds before isolate initialization hooks run.
-    public static synchronized void publishJfrLogLevels() {
-        jfrLogLevelsPublished = true;
-        updateJfrLogLevels();
-    }
-
-    /// Refreshes JDK JFR thresholds after startup or subsequent logging reconfiguration.
+    /// Refreshes JDK JFR thresholds after baseline initialization and subsequent logging reconfiguration.
     private static void updateJfrLogLevels() {
-        if (HasXlogSupport.get() && HasJfrSupport.get() && jfrLogLevelsPublished) {
+        if (HasXlogSupport.get() && HasJfrSupport.get()) {
             SubstrateJVM.getLogging().updateLogLevels();
         }
     }
@@ -562,7 +538,7 @@ public final class LogConfiguration {
     }
 
     public static void warn(String message) {
-        stderr.writePlain("[warning][logging] " + message + System.lineSeparator());
+        StdErrWriter.write("[warning][logging] " + message + System.lineSeparator());
     }
 
     private static LogOutput findOrCreateOutput(String value) {

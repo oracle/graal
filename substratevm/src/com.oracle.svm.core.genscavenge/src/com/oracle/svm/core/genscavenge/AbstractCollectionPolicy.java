@@ -196,11 +196,13 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
+    @Uninterruptible(reason = CollectionPolicy.SIZE_PARAMETER_ACCESS)
     public final UnsignedWord getMaximumHeapSize() {
         return sizes.getMaxHeapSize();
     }
 
     @Override
+    @Uninterruptible(reason = CollectionPolicy.SIZE_PARAMETER_ACCESS)
     public final UnsignedWord getMaximumYoungGenerationSize() {
         return sizes.getMaxYoungSize();
     }
@@ -282,6 +284,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
+    @Uninterruptible(reason = CollectionPolicy.SIZE_PARAMETER_ACCESS)
     public final UnsignedWord getMinimumHeapSize() {
         return sizes.getMinHeapSize();
     }

@@ -29,6 +29,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.UnsignedUtils;
 
 import jdk.graal.compiler.options.Option;
@@ -66,6 +67,7 @@ final class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy2 {
     private GCCause lastGCCause = null;
 
     @Override
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public String getName() {
         return "libgraal";
     }

@@ -272,13 +272,6 @@ public interface GuestStagingDependencyBridge {
     void setVerifyMode(String mode);
 
     /**
-     * This method is called at the end of runtime options parsing.
-     * <p>
-     * Remove this method when runtime option parsing fully moves to guest/staging.
-     */
-    void endOfParsing();
-
-    /**
      * Delegates to
      * {@code com.oracle.svm.core.RuntimeStateTrimSupport.trimRuntimeState(config)}.
      * <p>

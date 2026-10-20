@@ -57,6 +57,7 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.core.log.NativeMemoryBuffer;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
@@ -540,6 +541,13 @@ final class CompactingOldGeneration extends OldGeneration {
 
     @Override
     public void logChunks(Log log) {
+        space.logChunks(log);
+    }
+
+    /// Formats GC diagnostics without invoking legacy log handlers.
+    @Uninterruptible(reason = "Formats GC diagnostics without safepoints.", callerMustBe = true)
+    @Override
+    public void logChunks(NativeMemoryBuffer log) {
         space.logChunks(log);
     }
 

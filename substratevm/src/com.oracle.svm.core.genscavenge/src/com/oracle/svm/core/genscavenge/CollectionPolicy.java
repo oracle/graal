@@ -34,8 +34,12 @@ import com.oracle.svm.shared.Uninterruptible;
 
 /** The interface for a garbage collection policy. All sizes are in bytes. */
 public interface CollectionPolicy {
+    /// Keeps the cached native size structure alive throughout its read.
+    String SIZE_PARAMETER_ACCESS = "Cached native size parameters must not be freed at a safepoint.";
+
     UnsignedWord UNDEFINED = Word.unsigned(-1L);
 
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     String getName();
 
     /**
@@ -105,12 +109,15 @@ public interface CollectionPolicy {
      *
      * NOTE: this can currently be exceeded during a collection with {@link CopyingOldGeneration}.
      */
+    @Uninterruptible(reason = CollectionPolicy.SIZE_PARAMETER_ACCESS)
     UnsignedWord getMaximumHeapSize();
 
     /** The maximum capacity of the young generation, comprising eden and survivor spaces. */
+    @Uninterruptible(reason = CollectionPolicy.SIZE_PARAMETER_ACCESS)
     UnsignedWord getMaximumYoungGenerationSize();
 
     /** The minimum heap size, for inclusion in diagnostic output. */
+    @Uninterruptible(reason = CollectionPolicy.SIZE_PARAMETER_ACCESS)
     UnsignedWord getMinimumHeapSize();
 
     /** May be {@link #UNDEFINED}. */

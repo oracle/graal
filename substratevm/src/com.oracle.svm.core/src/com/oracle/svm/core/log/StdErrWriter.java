@@ -24,14 +24,34 @@
  */
 package com.oracle.svm.core.log;
 
+import static com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Math.min;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.shared.Uninterruptible;
 
 public interface StdErrWriter {
+    /// Writes diagnostics without allocating or invoking a configurable legacy log handler.
+    @Uninterruptible(reason = "The temporary native buffer must stay on the current carrier.")
+    static void write(String text) {
+        final int capacity = 256;
+        CCharPointer bytes = UnsafeStackValue.get(capacity);
+        for (int offset = 0; offset < text.length();) {
+            int count = min(capacity, text.length() - offset);
+            for (int index = 0; index < count; index++) {
+                bytes.write(index, (byte) UninterruptibleUtils.String.charAt(text, offset + index));
+            }
+            ImageSingletons.lookup(StdErrWriter.class).log(bytes, Word.unsigned(count));
+            offset += count;
+        }
+    }
+
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     void log(CCharPointer bytes, UnsignedWord length);
 

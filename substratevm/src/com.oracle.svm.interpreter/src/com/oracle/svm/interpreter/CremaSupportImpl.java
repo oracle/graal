@@ -167,7 +167,6 @@ import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
@@ -2079,7 +2078,6 @@ public class CremaSupportImpl implements CremaSupport {
     /// Logs the verification boundaries at the point where class verification occurs.
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/classfile/verifier.cpp#L173-L178")
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/classfile/verifier.cpp#L219")
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
     @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logClassVerification(boolean starting, String className) {
         LogMessage message = LogTagSet.class_init.message();

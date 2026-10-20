@@ -35,7 +35,6 @@ import javax.lang.model.SourceVersion;
 import com.oracle.svm.core.logging.HasXlogSupport;
 import com.oracle.svm.core.logging.LogMessage;
 import com.oracle.svm.core.logging.LogTagSet;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -137,7 +136,6 @@ public final class ModuleNative {
         }
     }
 
-    @NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
     @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
     private static void logModuleLoad(String moduleName, String location) {
         LogMessage message = LogTagSet.module_load.message();

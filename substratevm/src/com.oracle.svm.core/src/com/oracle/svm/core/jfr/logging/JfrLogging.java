@@ -57,7 +57,7 @@ public class JfrLogging {
     /// JDK tag instances indexed by their tag set identifiers.
     private final LogTag[] logTags;
 
-    /// Unified tag set mapping for JFR records.
+    /// Present only when the image supports unified logging.
     private final JfrUnifiedLogging unifiedLogging;
 
     private int levelDecorationFill;
@@ -69,7 +69,7 @@ public class JfrLogging {
         logLevels = createLogLevels();
         logTagSets = createLogTagSets();
         logTags = createLogTags();
-        unifiedLogging = new JfrUnifiedLogging();
+        unifiedLogging = HasXlogSupport.get() ? new JfrUnifiedLogging() : null;
     }
 
     /// Applies `FlightRecorderLogging` to the active logging implementation.
@@ -151,6 +151,9 @@ public class JfrLogging {
 
     /// Publishes unified logging thresholds to JDK JFR.
     public void updateLogLevels() {
+        if (!HasXlogSupport.get()) {
+            return;
+        }
         for (int tagSetId = 0; tagSetId < logTags.length; tagSetId++) {
             LogTag logTag = logTags[tagSetId];
             if (logTag != null) {

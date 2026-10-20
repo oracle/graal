@@ -113,7 +113,6 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.code.CEntryPointGuestValue;
 import com.oracle.svm.hosted.code.InliningUtilities;
-import com.oracle.svm.hosted.code.LogMessageScopeChecker;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
 import com.oracle.svm.hosted.dynamicaccessinference.ConstantExpressionRegistry;
@@ -805,7 +804,6 @@ public class SVMHost extends HostVM {
                 new ImplicitAssertionsPhase().apply(graph, getProviders(method.getMethodVariantKey()));
             }
             UninterruptibleAnnotationChecker.checkAfterParsing(method, graph, bb.getConstantReflectionProvider());
-            LogMessageScopeChecker.checkAfterParsing(graph);
 
             optimizeAfterParsing(bb, method, graph);
             /*
