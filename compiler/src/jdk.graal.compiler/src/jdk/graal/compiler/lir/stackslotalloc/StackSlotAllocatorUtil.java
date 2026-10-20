@@ -26,7 +26,10 @@ package jdk.graal.compiler.lir.stackslotalloc;
 
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.LIRInstruction.OperandMode;
 import jdk.graal.compiler.lir.VirtualStackSlot;
+import jdk.graal.compiler.lir.framemap.SimpleVirtualStackSlotAlias;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 
 import jdk.vm.ci.code.StackSlot;
@@ -52,4 +55,13 @@ public final class StackSlotAllocatorUtil {
     public static final CounterKey allocatedFramesize = DebugContext.counter("StackSlotAllocator[AllocatedFramesize]");
     /** The size (in bytes) required for all virtual stack slots. */
     public static final CounterKey virtualFramesize = DebugContext.counter("StackSlotAllocator[VirtualFramesize]");
+
+    /** Preserves an alias's kind when replacing a virtual slot with its assigned location. */
+    static StackSlot toStackSlot(VirtualStackSlot virtualSlot, StackSlot location, OperandMode mode) {
+        if (virtualSlot instanceof SimpleVirtualStackSlotAlias) {
+            GraalError.guarantee(mode == OperandMode.USE || mode == OperandMode.USE_KILL || mode == OperandMode.ALIVE, "Invalid application of SimpleVirtualStackSlotAlias");
+            return StackSlot.get(virtualSlot.getValueKind(), location.getRawOffset(), location.getRawAddFrameSize());
+        }
+        return location;
+    }
 }

@@ -90,13 +90,8 @@ public class SimpleStackSlotAllocator extends AllocationPhase {
         try (DebugContext.Scope scope = debug.scope("StackSlotMappingLIR")) {
             ValueProcedure updateProc = (value, mode, flags) -> {
                 if (isVirtualStackSlot(value)) {
-                    StackSlot stackSlot = mapping[asVirtualStackSlot(value).getId()];
-                    if (value instanceof SimpleVirtualStackSlotAlias) {
-                        GraalError.guarantee(mode == LIRInstruction.OperandMode.USE || mode == LIRInstruction.OperandMode.USE_KILL || mode == LIRInstruction.OperandMode.ALIVE,
-                                        "Invalid application of SimpleVirtualStackSlotAlias");
-                        // return the same slot, but with the alias's kind.
-                        stackSlot = StackSlot.get(value.getValueKind(), stackSlot.getRawOffset(), stackSlot.getRawAddFrameSize());
-                    }
+                    VirtualStackSlot virtualSlot = asVirtualStackSlot(value);
+                    StackSlot stackSlot = StackSlotAllocatorUtil.toStackSlot(virtualSlot, mapping[virtualSlot.getId()], mode);
                     debug.log("map %s -> %s", value, stackSlot);
                     return stackSlot;
                 }
