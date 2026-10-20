@@ -25,14 +25,19 @@
 
 package com.oracle.svm.hosted.heap;
 
+import com.oracle.graal.pointsto.ObjectScanner;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 
+import java.util.function.Consumer;
+
 @AutomaticallyRegisteredFeature
 final class ImageHeapCollectionFeature implements InternalFeature {
+
+    private final ObjectScanner.ScanReason scanReason = new ObjectScanner.OtherReason("Manual rescan triggered from " + ImageHeapCollectionFeature.class);
 
     @Override
     public void duringSetup(DuringSetupAccess config) {
@@ -43,7 +48,10 @@ final class ImageHeapCollectionFeature implements InternalFeature {
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
-        ImageHeapCollectionSupport.singleton().updateAndRescanCollections((DuringAnalysisAccessImpl) a);
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        Consumer<Object> rescanObject = obj -> access.rescanObject(obj, scanReason);
+        Runnable triggerAnalysisIteration = access::requireAnalysisIteration;
+        ImageHeapCollectionSupport.singleton().updateAndRescanCollections(rescanObject, triggerAnalysisIteration);
     }
 
     @Override

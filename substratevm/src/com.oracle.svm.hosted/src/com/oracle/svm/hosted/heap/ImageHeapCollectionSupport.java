@@ -26,18 +26,16 @@ package com.oracle.svm.hosted.heap;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
-import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.svm.shared.BuildPhaseProvider;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.util.ImageHeapList.HostedImageHeapList;
 import com.oracle.svm.guest.staging.util.ImageHeapMap.HostedImageHeapMap;
 import com.oracle.svm.guest.staging.util.LayeredHostedImageHeapMapCollector;
 import com.oracle.svm.guest.staging.util.LayeredImageHeapMap;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -53,7 +51,6 @@ import com.oracle.svm.shared.util.VMError;
 final class ImageHeapCollectionSupport {
     private final Set<HostedImageHeapMap<?, ?>> allMaps = ConcurrentHashMap.newKeySet();
     private final Set<HostedImageHeapList<?>> allLists = ConcurrentHashMap.newKeySet();
-    private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + ImageHeapCollectionSupport.class);
 
     static ImageHeapCollectionSupport singleton() {
         return ImageSingletons.lookup(ImageHeapCollectionSupport.class);
@@ -101,7 +98,7 @@ final class ImageHeapCollectionSupport {
      * rescanned. The split prevents concurrent modifications of the hosted collections during the
      * execution of this method, as they may be updated indirectly during the heap scanning.
      */
-    void updateAndRescanCollections(DuringAnalysisAccessImpl access) {
+    void updateAndRescanCollections(Consumer<Object> rescanObject, Runnable triggerAnalysisIteration) {
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             allMaps.addAll(LayeredHostedImageHeapMapCollector.singleton().getPreviousLayerReachableMaps());
         }
@@ -119,8 +116,8 @@ final class ImageHeapCollectionSupport {
             }
         });
         if (!objectsToRescan.isEmpty()) {
-            objectsToRescan.parallelStream().forEach(obj -> access.rescanObject(obj, scanReason));
-            access.requireAnalysisIteration();
+            objectsToRescan.parallelStream().forEach(rescanObject);
+            triggerAnalysisIteration.run();
         }
     }
 
