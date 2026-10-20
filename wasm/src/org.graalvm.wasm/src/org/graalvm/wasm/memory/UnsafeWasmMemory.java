@@ -61,6 +61,7 @@ import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -111,7 +112,11 @@ public final class UnsafeWasmMemory extends WasmMemory {
         return unsafe.getLong(buffer, addressOffset);
     }
 
-    private void validateAddress(Node node, long address, long length) {
+    long startAddress() {
+        return startAddress;
+    }
+
+    void validateAddress(Node node, long address, long length) {
         validateAddress(node, address, length, byteSize());
     }
 
@@ -969,13 +974,30 @@ public final class UnsafeWasmMemory extends WasmMemory {
     }
 
     @ExportMessage
-    public void copyFrom(Node node, WasmMemory source, long sourceOffset, long destinationOffset, long length) {
-        assert source instanceof UnsafeWasmMemory;
-        final UnsafeWasmMemory s = (UnsafeWasmMemory) source;
-        validateLength(node, length);
-        s.validateAddress(node, sourceOffset, length);
-        validateAddress(node, destinationOffset, length);
-        unsafe.copyMemory(s.startAddress + sourceOffset, this.startAddress + destinationOffset, length);
+    static final class CopyFrom {
+        @Specialization
+        static void doByteArray(UnsafeWasmMemory memory, Node node, ByteArrayWasmMemory source, long sourceOffset, long destinationOffset, long length) {
+            validateLength(node, length);
+            source.validateAddress(node, sourceOffset, length);
+            memory.validateAddress(node, destinationOffset, length);
+            unsafe.copyMemory(source.buffer(), Unsafe.ARRAY_BYTE_BASE_OFFSET + sourceOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, null, memory.startAddress + destinationOffset, length);
+        }
+
+        @Specialization
+        static void doUnsafe(UnsafeWasmMemory memory, Node node, UnsafeWasmMemory source, long sourceOffset, long destinationOffset, long length) {
+            validateLength(node, length);
+            source.validateAddress(node, sourceOffset, length);
+            memory.validateAddress(node, destinationOffset, length);
+            unsafe.copyMemory(source.startAddress + sourceOffset, memory.startAddress + destinationOffset, length);
+        }
+
+        @Specialization
+        static void doNative(UnsafeWasmMemory memory, Node node, NativeWasmMemory source, long sourceOffset, long destinationOffset, long length) {
+            validateLength(node, length);
+            source.validateAddress(node, sourceOffset, length);
+            memory.validateAddress(node, destinationOffset, length);
+            unsafe.copyMemory(source.startAddress() + sourceOffset, memory.startAddress + destinationOffset, length);
+        }
     }
 
     @ExportMessage
