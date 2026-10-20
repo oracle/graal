@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.guest.staging.meta.MethodOffset;
 import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.guest.staging.meta.MethodRef;
@@ -85,7 +86,10 @@ public final class MethodRefSupport {
     }
 
     private synchronized <T extends MethodRef> T register(T methodRef, ResolvedJavaMethod method) {
-        methods.put(Objects.requireNonNull(methodRef), Objects.requireNonNull(method));
+        Objects.requireNonNull(methodRef);
+        Objects.requireNonNull(method);
+        VMError.guarantee(MethodVariant.isOriginalMethod(method), "Only original method variants may be registered: %s", method);
+        methods.put(methodRef, method);
         return methodRef;
     }
 
