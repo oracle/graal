@@ -129,12 +129,12 @@ public class JavaMainSupport {
             if (module.isNamed()) {
                 Module myModule = JavaMainSupport.class.getModule();
                 String declaringPackage = declaringClass.getPackageName();
-                if (!module.isExported(declaringPackage, myModule)) {
+                if (!module.isOpen(declaringPackage, myModule)) {
                     /*
-                     * Package containing main method must be exported for Method.setAccessible to
-                     * succeed.
+                     * The package must be open for Method.setAccessible to succeed for non-public
+                     * main methods or declaring classes.
                      */
-                    ModuleSupport.accessModule(Access.EXPORT, myModule, module, declaringPackage);
+                    ModuleSupport.accessModule(Access.OPEN, myModule, module, declaringPackage);
                 }
             }
             method.setAccessible(true);
