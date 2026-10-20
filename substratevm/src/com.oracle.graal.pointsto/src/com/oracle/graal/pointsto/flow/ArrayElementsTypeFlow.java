@@ -52,12 +52,12 @@ public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> implements Glo
     @Override
     public boolean canSaturate(PointsToAnalysis bb) {
         /* Arrays flows with a closed component type don't saturate, they track all input types. */
-        return !bb.isClosed(declaredType);
+        return !bb.getExtensionPolicy().isTypeClosed(declaredType);
     }
 
     @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
-        if (bb.isClosed(declaredType)) {
+        if (bb.getExtensionPolicy().isTypeClosed(declaredType)) {
             /*
              * When an array store is saturated conservatively assume that the array can contain any
              * subtype of its declared type, i.e., of its component type.

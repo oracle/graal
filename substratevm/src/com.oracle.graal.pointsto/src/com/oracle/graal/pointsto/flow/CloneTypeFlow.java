@@ -100,7 +100,7 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        if (bb.isClosed(declaredType)) {
+        if (bb.getExtensionPolicy().isTypeClosed(declaredType)) {
             if (!isSaturated()) {
                 /*
                  * When the input flow saturates start observing the flow of the declared type,

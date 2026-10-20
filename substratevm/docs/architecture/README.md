@@ -12,3 +12,7 @@ Native Image has two closely related architectural views:
 
 The build-time guide links to the eight detailed lifecycle phases.
 The runtime guide describes the generated image after image writing has finished.
+
+## Analysis Contracts
+
+- [Partially Open World Analysis](PARTIALLY-OPEN-WORLD-ANALYSIS.md): extension model, closure guarantees, and extension-policy rules.

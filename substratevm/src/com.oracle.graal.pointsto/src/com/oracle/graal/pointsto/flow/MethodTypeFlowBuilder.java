@@ -2109,7 +2109,7 @@ public class MethodTypeFlowBuilder {
                 loadFieldBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, LoadInstanceFieldTypeFlow.class, () -> {
                     LoadInstanceFieldTypeFlow loadFieldFlow = new LoadInstanceFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, objectBuilder.get());
                     processOpenWorldField(field);
-                    if (!bb.isClosed(loadFieldFlow.field().getDeclaringClass())) {
+                    if (!bb.getExtensionPolicy().isTypeClosed(loadFieldFlow.field().getDeclaringClass())) {
                         /*
                          * If the field declaring type is open then the receiver object state of a
                          * load may be empty/incomplete. Saturate the load, assuming there are
@@ -2129,7 +2129,7 @@ public class MethodTypeFlowBuilder {
     }
 
     private void processOpenWorldField(PointsToAnalysisField field) {
-        if (!bb.isClosed(field)) {
+        if (!bb.getExtensionPolicy().isFieldClosed(field)) {
             /*
              * Open fields can be written from the open world and may contain state not seen by the
              * analysis. This is equivalent with assuming any of their input is saturated.
@@ -2141,7 +2141,7 @@ public class MethodTypeFlowBuilder {
     protected void processStoreField(ValueNode node, PointsToAnalysisField field, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
         field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
 
-        if (!bb.isClosed(field)) {
+        if (!bb.getExtensionPolicy().isFieldClosed(field)) {
             /*
              * Open fields can be written from the open world and may contain state not seen by the
              * analysis. We don't track their writes, instead we eagerly saturate their loads (See

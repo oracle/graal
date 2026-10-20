@@ -70,13 +70,13 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> implements GlobalFlow
          * Fields with a closed declared type don't saturate; when their input saturates they are
          * injected their declared type, and they track all its instantiated subtypes.
          */
-        return !bb.isClosed(declaredType);
+        return !bb.getExtensionPolicy().isTypeClosed(declaredType);
     }
 
     @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         /* The field input, which is usually a field-store, is saturated. */
-        if (bb.isClosed(declaredType)) {
+        if (bb.getExtensionPolicy().isTypeClosed(declaredType)) {
             /*
              * If the field's declared type is closed, conservatively assume that the field state
              * can contain any subtype of its declared type or any primitive value for primitive

@@ -90,7 +90,7 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
          * If the declared type is open we cannot make any assumptions and simply propagate the
          * saturation stamp.
          */
-        if (!bb.isClosed(declaredType)) {
+        if (!bb.getExtensionPolicy().isTypeClosed(declaredType)) {
             super.onInputSaturated(bb, input);
         }
     }
