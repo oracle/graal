@@ -160,6 +160,8 @@ public class NativeImageGeneratorRunner {
                             throw new RuntimeException();
                         }
                     } catch (Exception e) {
+                        e.printStackTrace(System.out);
+                        System.out.flush();
                         System.exit(ExitStatus.WATCHDOG_EXIT.getValue());
                     }
                 }
