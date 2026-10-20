@@ -14,14 +14,14 @@ perspective. SVM only instantiates tag sets used by its runtime.
 `-Xlog:help` is the authoritative list for a particular native image; a tag that
 is not listed cannot be selected.
 
-The `-Xlog` command line interface is included when
-`StrictRuntimeJavaOptions` is enabled. The logging API remains available when
-it is disabled because legacy GC options use the same message and routing
-infrastructure. `VerboseGC` and `PrintGC` remain synchronized with the `gc` tag
-set on standard output, so either compatibility options or `-Xlog` can
-reconfigure GC logging at run time. In an image without `-Xlog` support, those
-legacy options enable DEBUG or INFO output for the `gc` tag set on the low-level
-VM log.
+Unified logging is included when `StrictRuntimeJavaOptions` is enabled.
+`VerboseGC` and `PrintGC` stay synchronized with the `gc` threshold on standard output, so either compatibility options or `-Xlog` can reconfigure GC logging at run time.
+Without unified logging, GC producers use those legacy options directly and deliver buffered text through `Log.log()`.
+That route honors `-XX:LogFile` and embedding callbacks without retaining unified routing or decorator state.
+
+Images with unified logging reject an explicitly registered custom `LogHandler` during image building because native unified outputs would bypass it.
+The public legacy handler contract and JNI callbacks remain unchanged.
+Unified logging itself never invokes a legacy handler.
 
 The native G1 collector has its own HotSpot logging implementation. SVM forwards
 the synchronized `PrintGC` and `VerboseGC` values so that the native collector
@@ -33,13 +33,8 @@ routes and is not forwarded to the native collector.
 
 ## Writing log messages
 
-Every message is logged against a specific tag set value (e.g.
-`LogTagSet.class_load`).
-It starts with a level predicate so minimal work is done when the tag set is not
-configured to log at the level specified in the predicate. Except for
-`LogTagSet.gc`, the folded `HasXlogSupport.get()` check should precede the
-predicate to keep unified logging infrastructure out of images that do not
-support parsing `-Xlog`:
+Every unified message is logged against a tag set such as `LogTagSet.class_load`.
+Guard the level predicate and any allocating preparation with the folded `HasXlogSupport.get()` check so image analysis can discard this code when unified logging is disabled:
 
 ```java
 if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
@@ -47,7 +42,6 @@ if (HasXlogSupport.get() && LogTagSet.class_load.isInfo()) {
     logClassLoad(className, loaderDescription);
 }
 
-@NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
 @Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)
 private static void logClassLoad(String className, String loaderDescription) {
     LogMessage message = LogTagSet.class_load.message();
@@ -60,69 +54,26 @@ private static void logClassLoad(String className, String loaderDescription) {
 }
 ```
 
-Ideally, applying `@AlwaysInline` to the level predicates would make the
-explicit `HasXlogSupport.get()` check at each logging site unnecessary. However,
-inlining is not guaranteed to happen before analysis, so the annotation cannot
-be relied upon to fold the guarded message construction away. The support
-check therefore remains explicit at each non-GC logging site.
+Append values directly to the native buffer instead of concatenating Java strings.
+A dedicated `log*` method owns the complete scope, including synchronous delivery from `LogMessage.close()`.
+Annotate that owner with plain `@Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)`.
+Neither `@NeverInline` nor a separate `@RestrictHeapAccess` annotation is necessary.
+The uninterruptible compiler contract forbids Java allocation, safepoints, and runtime class initialization transitively.
+Scope-sensitive logging APIs require an uninterruptible caller, so ordinary compiler checks detect an interruptible call site without a logging-specific checker.
 
-Values are appended directly to the message's native buffer instead of being
-combined with Java string concatenation.
-The dedicated `log*` method owns formatting and synchronous delivery through
-`LogMessage.close()`.
-Every call to `LogTagSet.message()`, including calls in tests and GC code, must
-appear directly in a `void` method whose name starts with `log`.
-That method must declare `@NeverInline(LogTagSet.LOG_MESSAGE_OWNER)` and
-`@Uninterruptible` with one of the two ownership reasons described below.
-Native Image checks this caller contract during image building, before
-inlining can hide a call.
-There are no exemptions for particular methods or test classes.
+Keep allocating preparation outside the owner.
+Use try/finally to close the scope because try-with-resources generates an interruptible `Throwable.addSuppressed` call.
+Configuration and level predicates can run outside a scope.
+The explicit build-time support guard remains necessary because inlining is not guaranteed before reachability analysis.
 
-For ordinary logging, use
-`@Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER)` with the default
-options.
-The logging checker requires `calleeMustBe = true` for this reason.
-The annotations prevent inlining, heap allocation, safepoints, and class
-initialization on the checked path.
-`@Uninterruptible` implies `RestrictHeapAccess.NO_ALLOCATION`;
-`UninterruptibleAnnotationChecker` enforces this without a separate allocation
-annotation.
-Keep level predicates and any allocating preparation outside that method.
-Use try-finally because try-with-resources generates an interruptible
-`Throwable.addSuppressed` call that violates the annotation contract.
-
-Logging within an uninterruptible GC phase can instead use:
-
-```java
-@NeverInline(LogTagSet.LOG_MESSAGE_OWNER)
-@Uninterruptible(reason = LogTagSet.LOG_MESSAGE_OWNER_IN_GC,
-                calleeMustBe = false)
-```
-
-These methods own complete message scopes within an allocation-free GC phase
-whose thread cannot safepoint. They can pass the line buffer returned by
-`message.debug()` to formatting helpers.
-The GC reason applies only to `@Uninterruptible`; `@NeverInline` still uses
-`LOG_MESSAGE_OWNER`.
-With `calleeMustBe = false`, annotation checking forbids allocations in the
-owner but does not reject its class initialization or require its callees to
-be uninterruptible.
-The existing GC context must provide the allocation and safepoint guarantees
-for those callees.
-The logging checker accepts this reason without verifying that the method
-actually executes within such a GC phase.
-Logging outside that phase, including reference handling outside the collection
-VM operation, uses the ordinary checked contract.
-
-The `gc` tag set omits `HasXlogSupport.get()` because `PrintGC` and
-`VerboseGC` can route it to the low-level VM log in images without `-Xlog`
-support.
-
-The level predicates and message APIs use the same output table for configured
-`-Xlog` routes and the legacy GC fallback. The fallback is filtered in the same
-way as any other output, but uses only the uptime decorator and the GC prefix.
-It writes through `Log.log()`, so it honors `-XX:LogFile` and embedding log
-callbacks rather than creating a separate unified-log destination.
+GC producers use `GCLogMessage` to select the route at build time and share text formatting through `NativeMemoryBuffer`.
+With unified logging, the same checked scope and output path applies to GC messages.
+Without it, the GC adapter buffers text and uses the existing legacy handler contract.
+GC producers add the collection prefix, including the previous collection's identity for epilogue work, rather than exposing a prefix hook on the generic GC interface.
+Logging remains outside collector regions that move or scan Java objects.
+Heap chunk records share one buffer formatter with fatal diagnostics.
+Fatal diagnostics borrow bounded stack storage for one row and immediately deliver it to their supplied legacy logger, without allocating native logging storage or acquiring GC event prefixes.
+The borrowed carrier binding is cleared before delivery; virtual threads stay pinned until the legacy handler has consumed the stack bytes.
 
 For multi-line events (e.g., logging a stack trace), `LogTagSet.message()`
 returns a shared facade for the tag set, while the mutable message bytes, line
@@ -140,12 +91,11 @@ their prebuilt mutex, then perform the no-transition native write, byte
 accounting, rotation, and reopen in the same kind of critical section. A file
 output archives an existing active file at startup when rotation is enabled.
 With `filecount=0`, startup truncates the active file.
-Consequently, synchronous events cannot be interleaved on a destination, file
-rotation cannot occur between their lines, and formatting does not hold an
-output lock.
-The low-level VM log fallback uses the synchronization provided by `Log.log()`
-instead of the stream-output mutex. The safepoint consequences of a blocked
-raw write are described below.
+Within an isolate, synchronous unified logging events using the same output cannot
+interleave, rotation cannot occur between their lines, and formatting does not hold
+an output lock. These locks do not coordinate application writes, legacy handlers,
+or other isolates that share the destination.
+A blocked raw write can delay safepoint progress, as described below.
 
 `LogDecorations` is a static utility backed by native thread-local state. It
 captures the wall-clock timestamp, isolate uptime, and thread id once before an
@@ -183,36 +133,24 @@ Configuration changes remain interruptible and cannot run within a VM operation.
 Disabling output first stops new writers and waits for admitted writers to
 finish before clearing their routes and closing destinations.
 
-The low-level VM-log destination and output-error diagnostics use `RealLog`.
-Its `AbstractLog.writeBytes0` bridge deliberately permits interruptible callees.
-The installed `LogHandler` must not allocate, but its safepoint behavior is
-trusted rather than enforced.
-The annotation checks therefore do not provide a transitive safepoint guarantee
-for this legacy boundary.
-Production stream and file destinations use checked no-transition native
-operations; managed test destinations are outside that guarantee.
+Unified message construction, formatting, and output have a transitive uninterruptible contract.
+Production and test destinations must satisfy that contract.
+Logging-internal failures use `StdErrWriter`, not `RealLog` or a configurable `LogHandler`.
+Legacy GC delivery and fatal-error logging retain their separate, existing contracts.
 
 ## Allocation-free runtime behavior
 
-Ordinary logging owners and their checked callees are validated by
-`UninterruptibleAnnotationChecker`, which also forbids heap allocation.
-GC owners using `LOG_MESSAGE_OWNER_IN_GC` with `calleeMustBe = false` rely on
-the existing GC context for the same guarantees in their formatting callees.
-The contract starts after the caller has provided the message text; string
-concatenation or formatting at the call site can still allocate before logging
-is entered if the broader context allows allocation.
+Logging owners and their callees are validated by `UninterruptibleAnnotationChecker`, which also forbids Java heap allocation.
+String preparation at the call site can still allocate before entering the owner when the surrounding context permits it.
 
 The runtime path maintains this contract as follows:
 
-1. `NativeMemoryLog` stores thread-local event bytes in raw native structures
-   containing a position, capacity, and inline byte storage. Message, output,
-   and decorator buffers are shared by the current carrier thread through
-   `FastThreadLocalFactory`. `reset` rewinds a reusable buffer, whereas `clear`
-   frees it during teardown. These buffers may grow with native `malloc` or
-   `realloc`, but do not allocate Java heap objects during logging. A thread
-   listener releases all thread-local buffers
-   after Java thread execution, including launcher handoff, and again during
-   thread exit if needed.
+1. `NativeMemoryBuffer` formats into carrier-owned native allocations with position, capacity, indentation, and inline byte storage.
+   It neither extends `RealLog` nor implements `Log`.
+   A static native thread-local slot block lets generic formatter methods select the message, output, or scratch buffer without relying on inlining.
+   `reset` retains storage for reuse; `release` frees it.
+   Growth uses native `malloc` or `realloc`, not Java allocation.
+   Lifecycle callbacks release buffers after Java execution, including launcher handoff, and again during thread exit if necessary.
 2. `LogDecorations` formats event metadata and the explicitly supplied line
    level directly into native memory. Host name and process id are cached
    during initialization, while `localUTCOffsetSeconds` computes the local
@@ -238,21 +176,18 @@ help output run outside message scopes and may allocate.
 
 ## Configuration and routing
 
-When `-Xlog` is supported, `LogConfiguration.initialize` installs the default
-`all=warning` configuration on `stdout` and caches the host name, process id,
-and local startup timestamp used for filename expansion.
-Isolate startup initializes logging before option parsing and registers teardown before opening resources.
-Without `-Xlog`, initialization installs the GC fallback if `VerboseGC` or `PrintGC` is enabled as an image default.
-Ordinary parser calls after startup preserve the current logging configuration. `VerboseGC`, `PrintGC`,
-and `MemoryMXBean.setVerbose` update the GC threshold on standard output when
-`-Xlog` is available and on the fallback output otherwise. Changes to the GC
-threshold on standard output are mirrored back to `VerboseGC` and `PrintGC`.
-Shared message buffers and their thread-exit cleanup remain present for fallback
-GC logging.
-The `time` decorator
-obtains the local UTC offset for the event timestamp through the native
-`LibCHelper.localUTCOffsetSeconds(millisecondsSince19700101)` helper when
-the timestamp is formatted.
+When unified logging is supported, `LogConfiguration.initialize` installs the default `all=warning` configuration on `stdout` before runtime option parsing.
+It registers teardown before opening resources and caches the host name, process ID, and local startup timestamp for filename expansion.
+Using unified logging before this baseline is installed is a fatal invariant violation, distinct from intentionally disabling its outputs.
+An isolate initialization hook completes logging startup and reports image classes after parsing.
+
+Ordinary parser calls preserve the current configuration.
+`VerboseGC`, `PrintGC`, and `MemoryMXBean.setVerbose` update the unified GC threshold when supported.
+Changes to the GC threshold on standard output are mirrored back to the legacy options.
+Without unified logging, GC producers read the legacy options directly, including image defaults available before initialization hooks.
+Only the independent native-buffer formatter and its cleanup remain necessary for that route.
+
+The `time` decorator obtains the UTC offset for the captured timestamp through native `LibCHelper.localUTCOffsetSeconds` when the timestamp is formatted.
 
 Mutating configuration methods synchronize on `LogConfiguration.class`. Each
 tag set's `LogOutputList` also synchronizes updates and publishes a replacement
@@ -337,7 +272,7 @@ restricted to POSIX platforms.
 When `-Xlog` is supported, ordinary JFR records use unified logging as their only sink.
 `-XX:FlightRecorderLogging` acts as a compatibility option for JFR tag sets on standard output.
 It is applied in command-line order with `-Xlog`, so later selections determine the final configuration.
-The JDK `LogTag.tagSetLevel` thresholds are published once before isolate initialization hooks and refreshed after runtime logging reconfiguration.
+The JDK `LogTag.tagSetLevel` thresholds are published during baseline logging initialization and refreshed after configuration changes, including startup options and output disabling.
 
 The `com.oracle.svm.core.logging.jfr.JfrUnifiedLogging` bridge maps JDK JFR tag sets to `LogTagSet` instances.
 A regular record becomes one unified message, and a multiline JFR event becomes one atomic `LogMessage`.
@@ -349,6 +284,25 @@ There is no independent second sink or separate threshold array.
 
 The emergency JFR informational, warning, and system error helpers always use the low-level log destination even when `-Xlog` is supported.
 They respect the published JFR thresholds but bypass unified output routing and decorators to avoid allocating native logging buffers during a native memory shortage.
+
+## Testing
+
+From the `substratevm-enterprise` suite, you can run compatible logging cases in one native image:
+
+```shell
+mx --java-home=lookup:default svmtest UnifiedLoggingTestSuite
+```
+
+The suite enables JFR and native memory tracking so the allocation and launcher-handoff cleanup checks exercise real native buffers.
+It runs cases sequentially because they reconfigure shared logging state.
+Platform-specific cases use explicit platform metadata.
+Tests with custom startup options or expected image-building failures remain standalone:
+
+```shell
+mx --java-home=lookup:default svmtest UnifiedLoggingTest_testOrdersJfrOptions \
+    UnifiedLoggingTest_testRejectsLateJfrOptionWithoutChangingRoutes \
+    LegacyGCLoggingInitializationTest UnifiedLoggingBuildTests
+```
 
 ## Comparison with HotSpot unified logging
 
@@ -365,13 +319,13 @@ SVM uses the same broad configuration model but a smaller runtime design.
 | Area | HotSpot | SVM |
 | --- | --- | --- |
 | Available tag sets | Every tag set instantiated by HotSpot logging sites. | Every tag set used by the SVM runtime. |
-| Output routing | Per-level linked-list heads with atomic reader tracking. | Per-tag-set, per-level immutable output arrays published through volatile fields. The legacy GC fallback uses the same table with a low-level VM-log destination. |
+| Output routing | Per-level linked-list heads with atomic reader tracking. | Per-tag-set, per-level immutable output arrays published through volatile fields. Legacy-only GC logging does not use these tables. |
 | Configuration | `ConfigurationLock` and reader counts protect updates and delayed reclamation; `jcmd VM.log` supports runtime changes. | Synchronized configuration methods publish replacement arrays. Configuration is startup-oriented except for GC verbosity changes through `MemoryMXBean` and `RuntimeOptions.set` with `PrintGC` or `VerboseGC`. |
 | Synchronous output locking | `FileLocker` protects writes; a rotation semaphore covers file rotation. | Stream outputs use an uninterruptible critical section to serialize no-transition native writes with a dedicated `VMMutex`; file outputs use the same pattern with a prebuilt `VMMutex` across the no-transition write, accounting, rotation, and reopen. VM operations use the same serialized paths. |
 | Decoration state | Event decorations are resolved for each message. | Event metadata lives in fast thread-local state; line levels remain explicit per line. |
 | File rotation | Native C++ file streams and rotation locks. An existing active file is archived at startup when rotation is enabled. | Precomputed native paths, native byte counters, and raw close/delete/rename/reopen operations. An existing active file is archived at startup when rotation is enabled; `filecount=0` truncates it. The `%i` filename placeholder separates isolate-local rotation state into distinct operating-system paths. |
 | JFR integration | JFR writes directly through HotSpot unified logging. | `FlightRecorderLogging` configures unified JFR stdout routes when supported; otherwise JFR retains its legacy output. |
-| Allocation contract | Native C++ allocation rules apply. | Event processing, including JFR routing, is Java-heap allocation-free; native buffers may grow except on the emergency JFR fallback path. |
+| Allocation contract | Native C++ allocation rules apply. | Unified event processing is transitively uninterruptible and Java-heap allocation-free. Native buffers may grow; emergency JFR helpers bypass this path. |
 
 SVM's design is optimized for a native image whose tag sets and output routing
 are known from startup configuration. It avoids dynamic reader reclamation in

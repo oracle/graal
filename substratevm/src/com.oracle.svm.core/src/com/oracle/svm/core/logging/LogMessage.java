@@ -34,6 +34,8 @@ import com.oracle.svm.shared.util.VMError;
 
 /// Builds and synchronously delivers a complete message in one uninterruptible region.
 /// A carrier thread owns the mutable bytes and line metadata; tag sets share immutable facades.
+/// Lines recorded in the scope form one event and are delivered together when [#close()] is
+/// called. Closing an empty scope produces no output. [LogTagSet] provides a usage example.
 /// Allocating preparation and level predicates stay outside the annotated `log*` owner.
 /// Try/finally closes the scope without the interruptible suppressed-exception machinery emitted
 /// by try-with-resources. Nested message scopes, including output callbacks, are unsupported.

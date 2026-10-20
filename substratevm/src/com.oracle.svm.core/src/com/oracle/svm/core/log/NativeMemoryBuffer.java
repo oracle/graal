@@ -448,6 +448,9 @@ public final class NativeMemoryBuffer implements ThreadListener {
         release(isolateThread);
     }
 
+    /// Clears and frees the allocation owned by `isolateThread`. The caller ensures that the
+    /// thread cannot concurrently use the buffer. Repeated cleanup is harmless; borrowed
+    /// diagnostic storage must instead be unbound with [#clearStackBuffer()].
     @Uninterruptible(reason = BUFFER_ACCESS, callerMustBe = true)
     public void release(IsolateThread isolateThread) {
         VMError.guarantee(slot != DIAGNOSTIC, "Borrowed diagnostic storage must not be freed.");
