@@ -53,6 +53,7 @@ import org.graalvm.wasm.test.suites.bytecode.BytecodeSuite;
 import org.graalvm.wasm.test.suites.bytecode.MultiInstantiationSuite;
 import org.graalvm.wasm.test.suites.bytecode.WasmLegacyCatchOSRSuite;
 import org.graalvm.wasm.test.suites.bytecode.WasmOSRSuite;
+import org.graalvm.wasm.test.suites.compiler.CompilationSuite;
 import org.graalvm.wasm.test.suites.control.BlockWithLocalsSuite;
 import org.graalvm.wasm.test.suites.control.BranchBlockSuite;
 import org.graalvm.wasm.test.suites.control.ExceptionSuite;
@@ -120,6 +121,7 @@ import org.junit.runners.Suite;
                 MultiInstantiationSuite.class,
                 WasmLegacyCatchOSRSuite.class,
                 WasmOSRSuite.class,
+                CompilationSuite.class,
                 MultiMemorySuite.class,
                 ThreadsSuite.class,
                 ExceptionSuite.class,
