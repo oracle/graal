@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub.crema;
+package com.oracle.svm.core.interpreter;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
@@ -35,99 +35,110 @@ import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.shared.Uninterruptible;
 
 /**
- * Encodes JNI field IDs for runtime-loaded Crema classes.
+ * Encodes JNI field IDs for interpreter-backed classes.
  *
  * Instance field IDs store the field offset directly, while static field IDs store a pointer to a
  * metaspace node that keeps the declaring hub and offset together. The high bit tags both forms as
- * Crema IDs and distinguishes them from IDs created for image-build-time classes.
+ * interpreter IDs and distinguishes them from regular image-build-time JNI IDs.
  */
-public final class CremaJNIFieldIds {
-    /** Marks a field id as using the Crema runtime-loaded field-id encoding. */
+public final class InterpreterJNIFieldIds {
+    /** Marks a field id as using the interpreter field-id encoding. */
     private static final long TAG_MASK = 0x8000_0000_0000_0000L;
 
     /** Selects the pointer or offset payload stored below the tag bit. */
     private static final long PAYLOAD_MASK = ~TAG_MASK;
 
-    private CremaJNIFieldIds() {
+    private InterpreterJNIFieldIds() {
     }
 
     /**
-     * Encodes an instance runtime-loaded field id. The payload is the field offset with the high bit
+     * Encodes an instance interpreter field id. The payload is the field offset with the high bit
      * set to distinguish it from AOT field ids.
      */
     public static JNIFieldId forInstanceField(int offset) {
         assert offset > 0;
         JNIFieldId result = Word.pointer(offset | TAG_MASK);
-        assert isCremaFieldId(result);
+        assert isInterpreterFieldId(result);
         return result;
     }
 
     /**
-     * Encodes a static runtime-loaded field id. The payload is a metaspace pointer to the static
+     * Encodes a static interpreter field id. The payload is a metaspace pointer to the static
      * field-id node with the high bit set to distinguish it from AOT field ids.
      */
-    public static JNIFieldId forStaticField(CremaJNIStaticFieldId id) {
+    public static JNIFieldId forStaticField(InterpreterJNIStaticFieldId id) {
         JNIFieldId result = Word.pointer(Word.objectToUntrackedPointer(id).rawValue() | TAG_MASK);
-        assert canBeCremaStaticFieldId(result);
+        assert canBeInterpreterStaticFieldId(result);
         return result;
     }
 
-    /** Returns whether the field id uses the runtime-loaded Crema field-id encoding. */
+    /** Returns whether the field id uses the interpreter field-id encoding. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean isCremaFieldId(JNIFieldId fieldId) {
+    public static boolean isInterpreterFieldId(JNIFieldId fieldId) {
         return (fieldId.rawValue() & TAG_MASK) != 0;
     }
 
-    /** Returns whether the field id uses the runtime-loaded Crema static field-id encoding. */
+    /** Returns whether the field id uses the interpreter static field-id encoding. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static boolean canBeCremaStaticFieldId(JNIFieldId fieldId) {
-        return isCremaFieldId(fieldId) && Metaspace.singleton().isInAddressSpace(Word.pointer(fieldId.rawValue() & PAYLOAD_MASK));
+    private static boolean canBeInterpreterStaticFieldId(JNIFieldId fieldId) {
+        return isInterpreterFieldId(fieldId) && Metaspace.singleton().isInAddressSpace(Word.pointer(fieldId.rawValue() & PAYLOAD_MASK));
     }
 
     /** Returns the offset payload of a tagged instance field id. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long getInstanceFieldOffset(JNIFieldId fieldId) {
-        assert isCremaFieldId(fieldId);
+        assert isInterpreterFieldId(fieldId);
         return fieldId.rawValue() & PAYLOAD_MASK;
     }
 
     /** Returns the static field offset stored in a tagged static field id. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static int getStaticFieldOffset(JNIFieldId fieldId) {
-        assert canBeCremaStaticFieldId(fieldId);
+        assert canBeInterpreterStaticFieldId(fieldId);
         return asStaticFieldId(fieldId).getOffset();
+    }
+
+    /** Returns the installed image layer that owns the static field storage. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static int getStaticFieldLayerNum(JNIFieldId fieldId) {
+        assert canBeInterpreterStaticFieldId(fieldId);
+        return asStaticFieldId(fieldId).getLayerNum();
     }
 
     /** Returns the declaring class hub stored in a tagged static field id. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static DynamicHub getStaticFieldHolder(JNIFieldId fieldId) {
-        assert canBeCremaStaticFieldId(fieldId);
+        assert canBeInterpreterStaticFieldId(fieldId);
         return asStaticFieldId(fieldId).getHolder();
     }
 
     /** Decodes a tagged static field id back to its metaspace node. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static CremaJNIStaticFieldId asStaticFieldId(JNIFieldId fieldId) {
+    private static InterpreterJNIStaticFieldId asStaticFieldId(JNIFieldId fieldId) {
         Pointer pointer = Word.pointer(fieldId.rawValue() & PAYLOAD_MASK);
-        return (CremaJNIStaticFieldId) pointer.toObject();
+        return (InterpreterJNIStaticFieldId) pointer.toObject();
     }
 
-    /** Metaspace node containing the information needed to resolve a static Crema field id. */
-    public static final class CremaJNIStaticFieldId {
+    /** Metaspace node containing the information needed to resolve a static interpreter field id. */
+    public static final class InterpreterJNIStaticFieldId {
         /** Stores the declaring class hub for a static field id. */
         private DynamicHub holder;
 
         /** Stores the static field offset within the holder's static storage. */
         private int offset;
 
-        private CremaJNIStaticFieldId() {
+        /** Stores the installed image layer that owns the static field storage. */
+        private int layerNum;
+
+        private InterpreterJNIStaticFieldId() {
         }
 
         /** Allocates and initializes a static field-id node in metaspace. */
-        public static CremaJNIStaticFieldId allocate(DynamicHub holder, int offset) {
-            CremaJNIStaticFieldId result = Metaspace.singleton().allocateObject(CremaJNIStaticFieldId.class);
+        public static InterpreterJNIStaticFieldId allocate(DynamicHub holder, int offset, int layerNum) {
+            InterpreterJNIStaticFieldId result = Metaspace.singleton().allocateObject(InterpreterJNIStaticFieldId.class);
             result.holder = holder;
             result.offset = offset;
+            result.layerNum = layerNum;
             return result;
         }
 
@@ -139,6 +150,11 @@ public final class CremaJNIFieldIds {
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public int getOffset() {
             return offset;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public int getLayerNum() {
+            return layerNum;
         }
     }
 }

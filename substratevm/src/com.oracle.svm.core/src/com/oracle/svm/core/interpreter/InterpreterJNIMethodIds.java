@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub.crema;
+package com.oracle.svm.core.interpreter;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
@@ -33,55 +33,57 @@ import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.shared.Uninterruptible;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 /**
- * Encodes JNI method IDs for runtime-loaded Crema classes.
+ * Encodes JNI method IDs for interpreter-backed classes.
  *
- * Each ID is a tagged pointer to a metaspace node that references the resolved Crema method.
- * The high-bit tag also lets JNI call trampolines distinguish Crema methods from image-build-time
+ * Each ID is a tagged pointer to a metaspace node that references the resolved interpreter method.
+ * The high-bit tag also lets JNI call trampolines distinguish interpreter methods from image-build-time
  * methods.
  */
-public final class CremaJNIMethodIds {
-    /** Marks a method id as a pointer to a Crema runtime-loaded method-id node. */
+public final class InterpreterJNIMethodIds {
+    /** Marks a method id as a pointer to an interpreter method-id node. */
     private static final long TAG_MASK = 0x8000_0000_0000_0000L;
 
     private static final long PAYLOAD_MASK = ~TAG_MASK;
 
-    private CremaJNIMethodIds() {
+    private InterpreterJNIMethodIds() {
     }
 
     /**
-     * Encodes a runtime-loaded method id. The payload is a metaspace pointer to the method-id node
+     * Encodes an interpreter method id. The payload is a metaspace pointer to the method-id node
      * with the high bit set to distinguish it from AOT method ids.
      */
-    public static JNIMethodId forMethod(CremaJNIMethodId id) {
+    public static JNIMethodId forMethod(InterpreterJNIMethodId id) {
         JNIMethodId result = Word.pointer(Word.objectToUntrackedPointer(id).rawValue() | TAG_MASK);
-        assert isCremaMethodId(result);
+        assert isInterpreterMethodId(result);
         return result;
     }
 
-    /** Returns whether the method id uses the runtime-loaded Crema method-id encoding. */
+    /** Returns whether the method id uses the interpreter method-id encoding. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean isCremaMethodId(JNIMethodId methodId) {
+    public static boolean isInterpreterMethodId(JNIMethodId methodId) {
         return (methodId.rawValue() & TAG_MASK) != 0 && Metaspace.singleton().isInAddressSpace(Word.pointer(methodId.rawValue() & PAYLOAD_MASK));
     }
 
-    /** Returns the resolved Crema method stored in a tagged method id. */
+    /** Returns the resolved interpreter method stored in a tagged method id. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static CremaResolvedJavaMethod getMethod(JNIMethodId methodId) {
-        assert isCremaMethodId(methodId);
+    public static ResolvedJavaMethod getMethod(JNIMethodId methodId) {
+        assert isInterpreterMethodId(methodId);
         Pointer pointer = Word.pointer(methodId.rawValue() & PAYLOAD_MASK);
-        return ((CremaJNIMethodId) pointer.toObject()).method;
+        return ((InterpreterJNIMethodId) pointer.toObject()).method;
     }
 
-    public static final class CremaJNIMethodId {
-        private CremaResolvedJavaMethod method;
+    public static final class InterpreterJNIMethodId {
+        private ResolvedJavaMethod method;
 
-        private CremaJNIMethodId() {
+        private InterpreterJNIMethodId() {
         }
 
         /** Allocates and initializes a method-id node in metaspace. */
-        public static CremaJNIMethodId allocate(CremaResolvedJavaMethod method) {
-            CremaJNIMethodId result = Metaspace.singleton().allocateObject(CremaJNIMethodId.class);
+        public static InterpreterJNIMethodId allocate(ResolvedJavaMethod method) {
+            InterpreterJNIMethodId result = Metaspace.singleton().allocateObject(InterpreterJNIMethodId.class);
             result.method = method;
             return result;
         }

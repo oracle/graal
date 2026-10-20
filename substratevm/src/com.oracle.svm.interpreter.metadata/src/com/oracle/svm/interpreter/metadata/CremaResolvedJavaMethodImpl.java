@@ -29,13 +29,11 @@ import java.lang.reflect.Modifier;
 import java.util.Set;
 
 import com.oracle.svm.core.graal.code.PreparedSignature;
-import com.oracle.svm.core.hub.crema.CremaJNIMethodIds;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SVMSymbols;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
-import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.reflect.CremaConstructorAccessor;
 import com.oracle.svm.core.reflect.CremaMethodAccessor;
 import com.oracle.svm.core.reflect.FallbackCallerSensitiveCremaMethodAccessor;
@@ -87,12 +85,6 @@ public class CremaResolvedJavaMethodImpl extends InterpreterResolvedJavaMethod i
             return new CremaResolvedNativeJavaMethod(declaringClass, m, vtableIndex);
         }
         return new CremaResolvedJavaMethodImpl(declaringClass, m, vtableIndex);
-    }
-
-    @Override
-    public JNIMethodId getOrCreateJNIMethodId() {
-        CremaResolvedObjectType type = ((CremaResolvedObjectType) getDeclaringClass());
-        return CremaJNIMethodIds.forMethod(type.classRegistry().getOrCreateCremaJNIMethodId(this));
     }
 
     @Override
