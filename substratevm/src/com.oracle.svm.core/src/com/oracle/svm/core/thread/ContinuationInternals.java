@@ -42,6 +42,34 @@ import com.oracle.svm.shared.util.VMError;
 /** Implementation of and access to {@link Target_jdk_internal_vm_Continuation} internals. */
 @InternalVMMethod
 public final class ContinuationInternals {
+    /// Pins the mounted continuation while caller-owned native stack storage is passed to
+    /// interruptible code. Pin overflow is a fatal invariant violation rather than an exception
+    /// that allocates on the Java heap.
+    /// The returned continuation, or `null` if none is mounted, is passed to `unpinForNativeStack`
+    /// in a `finally` block after the last use of the storage.
+    @Uninterruptible(reason = "Pins the continuation before exposing a native stack address.")
+    public static Target_jdk_internal_vm_Continuation pinCurrentForNativeStack() {
+        if (!ContinuationSupport.isSupported()) {
+            return null;
+        }
+        Target_java_lang_Thread carrier = JavaThreads.toTarget(PlatformThreads.currentThread.get());
+        Target_jdk_internal_vm_Continuation continuation = carrier == null ? null : carrier.cont;
+        if (continuation != null) {
+            VMError.guarantee(continuation.pinCount + 1 != 0, "Continuation pin overflow.");
+            continuation.pinCount++;
+        }
+        return continuation;
+    }
+
+    /// Releases one pin after all uses of the native stack storage have completed.
+    @Uninterruptible(reason = "Releases the native stack storage pin without allocating.")
+    public static void unpinForNativeStack(Target_jdk_internal_vm_Continuation continuation) {
+        if (continuation != null) {
+            VMError.guarantee(continuation.pinCount != 0, "Continuation pin underflow.");
+            continuation.pinCount--;
+        }
+    }
+
     public static Pointer getBaseSP(Target_jdk_internal_vm_Continuation c) {
         return c.baseSP;
     }

@@ -60,6 +60,8 @@ import jdk.graal.compiler.api.replacements.Fold;
 /// For ordinary logging, the image-heap facade owns an independent native allocation and indentation
 /// on each carrier thread. All facade accesses belong to one uninterruptible region.
 /// This formatter has no dependency on legacy log handlers or unified-logging configuration.
+/// A diagnostic facade can instead borrow bounded stack storage for one formatting operation;
+/// its binding must be cleared before calling interruptible code.
 public final class NativeMemoryBuffer implements ThreadListener {
     /// Keeps native pointers and carrier-owned state valid across a formatting operation.
     private static final String BUFFER_ACCESS = "Native buffer state requires an uninterruptible caller.";
@@ -82,8 +84,11 @@ public final class NativeMemoryBuffer implements ThreadListener {
     /// Temporary formatting whose bytes are copied into another buffer.
     public static final int SCRATCH = 2;
 
+    /// Bounded storage borrowed only while formatting a fatal-diagnostic record.
+    public static final int DIAGNOSTIC = 3;
+
     /// Maximum number of simultaneously used formatting buffers on one carrier.
-    private static final int SLOT_COUNT = 3;
+    private static final int SLOT_COUNT = 4;
 
     /// Fast thread-local receivers must be constants even in generic formatter methods.
     private static final FastThreadLocalBytes<WordPointer> slots = FastThreadLocalFactory.createBytes(() -> SLOT_COUNT * SubstrateTarget.getWordSize(), "NativeMemoryBuffer.slots");
@@ -105,7 +110,33 @@ public final class NativeMemoryBuffer implements ThreadListener {
     /// Registers cleanup only for buffers used by this image configuration.
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerCleanup() {
+        VMError.guarantee(slot != DIAGNOSTIC, "Borrowed diagnostic storage must not be freed.");
         ThreadListenerSupport.get().register(this);
+    }
+
+    /// Binds caller-owned stack storage to the diagnostic facade. The caller must clear the
+    /// binding in a `finally` block before leaving its uninterruptible formatting region.
+    @Uninterruptible(reason = BUFFER_ACCESS, callerMustBe = true)
+    public void initializeStackBuffer(Data storage, int capacity) {
+        VMError.guarantee(slot == DIAGNOSTIC && capacity >= 0, "Invalid diagnostic buffer.");
+        storage.setPosition(0);
+        storage.setIndentation(0);
+        storage.setCapacity(capacity);
+        setData(storage);
+    }
+
+    /// Removes the borrowed pointer before control can reach an interruptible legacy handler.
+    @Uninterruptible(reason = BUFFER_ACCESS, callerMustBe = true)
+    public void clearStackBuffer() {
+        VMError.guarantee(slot == DIAGNOSTIC, "Only diagnostic buffers borrow storage.");
+        setData(Word.nullPointer());
+    }
+
+    /// Includes the native header in a caller's bounded stack allocation.
+    @Fold
+    public static int stackBufferSize(int capacity) {
+        VMError.guarantee(capacity >= 0 && capacity <= maximumCapacity(), "Invalid diagnostic buffer capacity.");
+        return headerSizeAsInt() + capacity;
     }
 
     /// Appends text using the same byte narrowing as low-level VM diagnostics.
@@ -419,6 +450,7 @@ public final class NativeMemoryBuffer implements ThreadListener {
 
     @Uninterruptible(reason = BUFFER_ACCESS, callerMustBe = true)
     public void release(IsolateThread isolateThread) {
+        VMError.guarantee(slot != DIAGNOSTIC, "Borrowed diagnostic storage must not be freed.");
         WordPointer threadSlots = slots.getAddress(isolateThread);
         Data data = threadSlots.read(slot);
         threadSlots.write(slot, Word.nullPointer());
@@ -433,6 +465,7 @@ public final class NativeMemoryBuffer implements ThreadListener {
     /// Applies doubling growth algorithm to the native buffer.
     @Uninterruptible(reason = BUFFER_ACCESS, callerMustBe = true)
     private void grow(int minimumCapacity) {
+        VMError.guarantee(slot != DIAGNOSTIC, "Bounded diagnostic buffer capacity exceeded.");
         int maximumCapacity = maximumCapacity();
         guaranteeValidMinimumCapacity(minimumCapacity, maximumCapacity);
 
@@ -495,8 +528,10 @@ public final class NativeMemoryBuffer implements ThreadListener {
         }
     }
 
-    @Uninterruptible(reason = BUFFER_ACCESS, callerMustBe = true)
-    private static CCharPointer dataStart(Data data) {
+    /// Resolves the bytes of caller-owned storage. If its owner is a stack frame, the caller must
+    /// prevent continuation unmounting until the last use of the returned pointer.
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static CCharPointer dataStart(Data data) {
         return (CCharPointer) ((Pointer) data).add(headerSize());
     }
 
