@@ -24,15 +24,13 @@
  */
 package com.oracle.graal.pointsto.heap;
 
-import java.util.Collection;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -56,6 +54,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.GuestCollectionHelper;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalMethodProvider;
 
@@ -68,6 +67,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Maintains shadow-heap snapshots and their semantic reachability. Creating or structurally
@@ -741,9 +741,8 @@ public abstract class ImageHeapScanner {
      * Trigger rescanning of a root field. If the value was not scanned before it will first be
      * scanned and added to the shadow heap, then it will be linked to the field. If the value is
      * already in the shadow heap it will not be rescanned, i.e., its fields will not be followed,
-     * with an exception: if the value is a known collection type ({@code Object[]},
-     * {@link Collection}, {@link Map}, or {@link EconomicMap}) then its elements will be rescanned
-     * too.
+     * with an exception: if the value is a supported guest collection type then its elements will
+     * be rescanned too.
      * <p>
      * The provided {@link ResolvedJavaField} must be the original field owned by
      * {@link GuestAccess}, not an analysis wrapper. Use
@@ -773,14 +772,21 @@ public abstract class ImageHeapScanner {
      * be linked to the field. If the value is already in the shadow heap and reachable it will not
      * be rescanned, i.e., its fields will not be followed. An equal but unreachable
      * {@link ImageHeapConstant} is processed through the normal field-reachability path. If the
-     * value is a known collection type ({@code Object[]}, {@link Collection}, {@link Map}, or
-     * {@link EconomicMap}) then its elements will be rescanned too.
+     * value is a supported guest collection type then its elements will be rescanned too.
      * <p>
      * The provided {@link ResolvedJavaField} must be the original field owned by
      * {@link GuestAccess}, not an analysis wrapper. Use
      * {@code OriginalFieldProvider.getOriginalField()} when adapting a field from another layer.
      */
     public void rescanField(Object receiver, ResolvedJavaField field, ScanReason reason) {
+        rescanField(field, () -> asConstant(receiver), reason);
+    }
+
+    protected void rescanFieldConstant(JavaConstant receiver, ResolvedJavaField field, ScanReason reason) {
+        rescanField(field, () -> receiver, reason);
+    }
+
+    private void rescanField(ResolvedJavaField field, Supplier<JavaConstant> receiverSupplier, ScanReason reason) {
         maybeRunInExecutor(unused -> {
             AnalysisField analysisField = lookupAnalysisField(field);
             AnalysisType type = analysisField.getType();
@@ -789,7 +795,7 @@ public abstract class ImageHeapScanner {
                 if (!analysisField.isReachable()) {
                     return;
                 }
-                JavaConstant receiverConstant = asConstant(receiver);
+                JavaConstant receiverConstant = receiverSupplier.get();
                 Optional<JavaConstant> replaced = maybeReplace(receiverConstant, reason);
                 if (replaced.isPresent()) {
                     if (replaced.get().isNull()) {
@@ -915,8 +921,8 @@ public abstract class ImageHeapScanner {
     }
 
     /**
-     * Add the constant to the image heap and, if the constant unwraps to a collection-like hosted
-     * object, rescan its elements.
+     * Add the constant to the image heap and, if it unwraps to a supported guest collection,
+     * rescan its elements.
      */
     public void rescanConstant(JavaConstant constant, ScanReason reason) {
         if (constant == null || constant.isNull()) {
@@ -942,38 +948,34 @@ public abstract class ImageHeapScanner {
     }
 
     private void rescanCollectionElements(JavaConstant constant, ScanReason reason) {
-        if (isNonNullObjectConstant(constant)) {
-            rescanCollectionElementsHosted(snippetReflection.asObject(Object.class, constant), reason);
+        JavaConstant hostedConstant = constant instanceof ImageHeapConstant imageHeapConstant ? imageHeapConstant.getHostedObject() : constant;
+        if (hostedConstant == null || !isNonNullObjectConstant(hostedConstant)) {
+            return;
         }
-    }
-
-    /**
-     * Temporary hosted-object fallback for collection element rescanning until GR-72717 migrates
-     * this path to Terminus.
-     */
-    private void rescanCollectionElementsHosted(Object object, ScanReason reason) {
-        if (object instanceof Object[] array) {
-            for (Object element : array) {
-                doScan(asConstant(element), reason);
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType collectionType = access.getProviders().getMetaAccess().lookupJavaType(hostedConstant);
+        Consumer<JavaConstant> scanElement = element -> doScan(hostedValuesProvider.canonicalizeConstant(element), reason);
+        if (collectionType.isArray()) {
+            if (!collectionType.getComponentType().isPrimitive()) {
+                GuestCollectionHelper.forEachArrayElement(hostedConstant, scanElement);
             }
-        } else if (object instanceof Collection<?> collection) {
-            collection.forEach(e -> doScan(asConstant(e), reason));
-        } else if (object instanceof Map<?, ?> map) {
-            map.forEach((k, v) -> {
-                doScan(asConstant(k), reason);
-                doScan(asConstant(v), reason);
+        } else if (access.elements.java_util_Collection.isAssignableFrom(collectionType)) {
+            GuestCollectionHelper.forEachCollectionElement(hostedConstant, scanElement);
+        } else if (access.elements.java_util_Map.isAssignableFrom(collectionType)) {
+            GuestCollectionHelper.forEachMapEntry(hostedConstant, (key, value) -> {
+                scanElement.accept(key);
+                scanElement.accept(value);
             });
-        } else if (object instanceof EconomicMap) {
-            rescanEconomicMap((EconomicMap<?, ?>) object, reason);
+        } else if (access.lookupType(EconomicMap.class).isAssignableFrom(collectionType)) {
+            rescanEconomicMap(hostedConstant, reason);
         }
     }
 
-    protected void rescanEconomicMap(EconomicMap<?, ?> object, ScanReason reason) {
-        MapCursor<?, ?> cursor = object.getEntries();
-        while (cursor.advance()) {
-            doScan(asConstant(cursor.getKey()), reason);
-            doScan(asConstant(cursor.getValue()), reason);
-        }
+    protected void rescanEconomicMap(JavaConstant map, ScanReason reason) {
+        GuestCollectionHelper.forEachEconomicMapEntry(map, (key, value) -> {
+            doScan(hostedValuesProvider.canonicalizeConstant(key), reason);
+            doScan(hostedValuesProvider.canonicalizeConstant(value), reason);
+        });
     }
 
     public void doScan(JavaConstant constant, ScanReason reason) {
