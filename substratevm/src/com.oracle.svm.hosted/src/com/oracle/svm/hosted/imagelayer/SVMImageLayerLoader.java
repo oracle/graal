@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -1241,6 +1242,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
 
     public ImageHeapConstant getOrCreateConstant(int id) {
         return constantLoader.getOrCreateConstant(id);
+    }
+
+    /** Visits the relinked hosted objects for all persisted base-layer MethodTypes. */
+    public void forEachPersistedMethodType(Consumer<MethodType> consumer) {
+        constantLoader.forEachPersistedMethodType(consumer);
     }
 
     /* Retrieves the given constant iff it has already been relinked. */
