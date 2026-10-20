@@ -638,12 +638,18 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     /**
-     * Inject custom types in the analysis field type state. This utility is used for:
+     * Injects custom types into a reference field's initial flow. This utility is used for:
      * <ul>
      * <li>root fields - whose state is forced to be that of the declared type</li>
      * <li>unsafe accessed fields - whose state is conservatively also the declared type</li>
      * <li>lazily computed fields - for which writes are not visible during analysis</li>
-     * <ul/>
+     * </ul>
+     * <p>
+     * For instance fields, injection alone does not propagate state to the sink. This requires a
+     * receiver-specific field flow created and connected by analyzing a field load or store, or by
+     * heap scanning. A retained load creates these connections only when its receiver flow contains
+     * an analyzed object. Once connected, the field flow propagates both existing and future
+     * initial-flow values to the sink. Static reference fields share their initial and sink flows.
      */
     @Override
     public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
@@ -659,7 +665,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
             if (type.isArray()) {
                 AnalysisType fieldComponentType = type.getComponentType();
-                ptaField.getInitialFlow().addUse(this, ptaField.getSinkFlow());
                 if (!(fieldComponentType.isPrimitive() || fieldComponentType.isWordType())) {
                     /*
                      * Write the component type abstract object into the field array elements type
