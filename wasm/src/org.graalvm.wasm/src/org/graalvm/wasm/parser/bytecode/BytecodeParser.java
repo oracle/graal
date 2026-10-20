@@ -814,7 +814,10 @@ public abstract class BytecodeParser {
                     int aggregateOpcode = rawPeekU8(bytecode, offset);
                     offset++;
                     switch (aggregateOpcode) {
-                        case Bytecode.ARRAY_LEN: {
+                        case Bytecode.ARRAY_LEN:
+                        case Bytecode.REF_I31:
+                        case Bytecode.I31_GET_S:
+                        case Bytecode.I31_GET_U: {
                             break;
                         }
                         case Bytecode.STRUCT_NEW:

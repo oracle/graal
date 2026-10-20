@@ -576,6 +576,30 @@ public class MultiInstantiationSuite {
         }
     }
 
+    @Test
+    public void testI31Instructions() throws IOException {
+        // (module
+        // (func (export "main") (param i32) (result i32)
+        // local.get 0
+        // ref.i31
+        // i31.get_s
+        // drop
+        // local.get 0
+        // ref.i31
+        // i31.get_u))
+        final byte[] source = WasmTestUtils.hexStringToByteArray(
+                        "00 61 73 6D 01 00 00 00",
+                        "01 06 01 60 01 7F 01 7F",
+                        "03 02 01 00",
+                        "07 08 01 04 6D 61 69 6E 00 00",
+                        "0A 11 01 0F 00 20 00 FB 1C FB 1D 1A 20 00 FB 1C FB 1E 0B");
+
+        test(source, wasm -> null, (wasm, instance) -> {
+            Value main = Value.asValue(WebAssembly.instanceExport(instance, "main"));
+            Assert.assertEquals("Unsigned i31 value does not match", 0x7FFFFFFF, main.execute(-1).asInt());
+        });
+    }
+
     // Tests that exercise the BytecodeParser#readCodeEntries code path that is used when
     // instantiating a module multiple times.
     @Test
