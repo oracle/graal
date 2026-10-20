@@ -25,14 +25,15 @@
 
 package com.oracle.svm.hosted.heap;
 
-import com.oracle.graal.pointsto.ObjectScanner;
+import java.util.function.Consumer;
+
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.guest.staging.util.ImageHeapCollectionSupport;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-
-import java.util.function.Consumer;
 
 @AutomaticallyRegisteredFeature
 final class ImageHeapCollectionFeature implements InternalFeature {

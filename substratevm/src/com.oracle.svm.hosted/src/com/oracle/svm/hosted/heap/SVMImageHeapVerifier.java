@@ -37,6 +37,7 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.guest.staging.util.ImageHeapCollectionSupport;
 import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.Constant;
@@ -59,7 +60,7 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
      * - an image heap map, e.g., via an object replacer like
      * com.oracle.svm.hosted.stringformat.StringFormatFeature.collectZeroDigits(). Signal this by
      * returning true to make sure that
-     * com.oracle.svm.hosted.heap.ImageHeapCollectionSupport.updateAndRescanCollections() is run to
+     * com.oracle.svm.guest.staging.util.ImageHeapCollectionSupport.updateAndRescanCollections() is run to
      * properly patch all ImageHeapMaps.
      * 
      * - runtime reflection registration.

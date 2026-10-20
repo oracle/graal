@@ -22,20 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.heap;
+package com.oracle.svm.guest.staging.util;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.shared.BuildPhaseProvider;
+import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.util.ImageHeapList.HostedImageHeapList;
 import com.oracle.svm.guest.staging.util.ImageHeapMap.HostedImageHeapMap;
-import com.oracle.svm.guest.staging.util.LayeredHostedImageHeapMapCollector;
-import com.oracle.svm.guest.staging.util.LayeredImageHeapMap;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -47,12 +47,13 @@ import com.oracle.svm.shared.util.VMError;
  * the owner of the object replacer so all collection state captured during setup, analysis, and
  * image writing stays in one place.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
-final class ImageHeapCollectionSupport {
+public final class ImageHeapCollectionSupport {
     private final Set<HostedImageHeapMap<?, ?>> allMaps = ConcurrentHashMap.newKeySet();
     private final Set<HostedImageHeapList<?>> allLists = ConcurrentHashMap.newKeySet();
 
-    static ImageHeapCollectionSupport singleton() {
+    public static ImageHeapCollectionSupport singleton() {
         return ImageSingletons.lookup(ImageHeapCollectionSupport.class);
     }
 
@@ -62,7 +63,7 @@ final class ImageHeapCollectionSupport {
      * a collection registers it for subsequent update/rescan handling; after analysis, encountering
      * a collection that was never captured is treated as an invariant violation.
      */
-    Object replaceHostedWithRuntime(Object obj) {
+    public Object replaceHostedWithRuntime(Object obj) {
         if (obj instanceof HostedImageHeapMap) {
             HostedImageHeapMap<?, ?> hostedImageHeapMap = (HostedImageHeapMap<?, ?>) obj;
             if (BuildPhaseProvider.isAnalysisFinished()) {
@@ -98,8 +99,8 @@ final class ImageHeapCollectionSupport {
      * rescanned. The split prevents concurrent modifications of the hosted collections during the
      * execution of this method, as they may be updated indirectly during the heap scanning.
      */
-    void updateAndRescanCollections(Consumer<Object> rescanObject, Runnable triggerAnalysisIteration) {
-        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+    public void updateAndRescanCollections(Consumer<Object> rescanObject, Runnable triggerAnalysisIteration) {
+        if (GuestImageLayerBuildingSupport.buildingExtensionLayer()) {
             allMaps.addAll(LayeredHostedImageHeapMapCollector.singleton().getPreviousLayerReachableMaps());
         }
         Set<Object> objectsToRescan = ConcurrentHashMap.newKeySet();
@@ -121,7 +122,7 @@ final class ImageHeapCollectionSupport {
         }
     }
 
-    boolean needsUpdate() {
+    public boolean needsUpdate() {
         for (var hostedImageHeapMap : allMaps) {
             if (hostedImageHeapMap.needsUpdate()) {
                 return true;
@@ -135,7 +136,7 @@ final class ImageHeapCollectionSupport {
         return false;
     }
 
-    void verifyCollectionsAreStableAfterAnalysis() {
+    public void verifyCollectionsAreStableAfterAnalysis() {
         for (var hostedImageHeapMap : allMaps) {
             if (hostedImageHeapMap.needsUpdate()) {
                 throw VMError.shouldNotReachHere("ImageHeapMap modified after static analysis:%n%s%n%s",
