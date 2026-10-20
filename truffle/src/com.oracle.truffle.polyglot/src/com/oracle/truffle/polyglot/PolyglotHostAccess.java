@@ -54,6 +54,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 final class PolyglotHostAccess extends AbstractHostAccess {
 
@@ -72,7 +73,7 @@ final class PolyglotHostAccess extends AbstractHostAccess {
 
     static Object toGuestValue(Node node, APIAccess access, Object hostValue) {
         if (access.isValue(hostValue)) {
-            return migrateValue(node, access, hostValue, access.getValueReceiver(hostValue));
+            return migrateValue(node, access, hostValue, access.getValueReceiver(hostValue), InlinedBranchProfile.getUncached());
         } else if (PolyglotWrapper.isInstance(hostValue)) {
             PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithNode(node);
             return context.migrateHostWrapper(PolyglotWrapper.asInstance(hostValue));
@@ -80,11 +81,13 @@ final class PolyglotHostAccess extends AbstractHostAccess {
         return hostValue;
     }
 
-    static Object migrateValue(Node node, APIAccess access, Object hostValue, Object valueReceiver) {
+    static Object migrateValue(Node node, APIAccess access, Object hostValue, Object valueReceiver, InlinedBranchProfile migrationProfile) {
         PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithNode(node);
         PolyglotLanguageContext languageContext = (PolyglotLanguageContext) access.getValueContext(hostValue);
         PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
         if (valueContext != context) {
+            // Preserve the receiver's exact type until this conversion site needs migration.
+            migrationProfile.enter(node);
             return context.migrateValue(valueReceiver, valueContext);
         }
         return valueReceiver;

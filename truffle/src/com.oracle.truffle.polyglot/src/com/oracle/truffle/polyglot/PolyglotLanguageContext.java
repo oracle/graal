@@ -1220,8 +1220,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         @Bind("getEngine(node)") PolyglotEngineImpl engine,
                         @Bind("engine.getAPIAccess()") APIAccess api,
                         @Bind("api.getValueReceiver(receiver)") Object valueReceiver,
-                        @Cached("valueReceiver.getClass()") Class<?> cachedReceiverClass) {
-            Object migratedReceiver = PolyglotHostAccess.migrateValue(node, api, receiver, cachedReceiverClass.cast(valueReceiver));
+                        @Cached("valueReceiver.getClass()") Class<?> cachedReceiverClass,
+                        @Cached InlinedBranchProfile migrationProfile) {
+            Object migratedReceiver = PolyglotHostAccess.migrateValue(node, api, receiver, cachedReceiverClass.cast(valueReceiver), migrationProfile);
             return engine.host.toGuestValue(node, migratedReceiver, false);
         }
 
