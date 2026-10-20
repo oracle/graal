@@ -25,14 +25,10 @@
 
 package com.oracle.svm.hosted.heap;
 
-import java.util.function.Consumer;
-
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.guest.staging.util.ImageHeapCollectionSupport;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 
 @AutomaticallyRegisteredFeature
@@ -41,22 +37,22 @@ final class ImageHeapCollectionFeature implements InternalFeature {
     private final ObjectScanner.ScanReason scanReason = new ObjectScanner.OtherReason("Manual rescan triggered from " + ImageHeapCollectionFeature.class);
 
     @Override
-    public void duringSetup(DuringSetupAccess config) {
-        ImageHeapCollectionSupport support = new ImageHeapCollectionSupport();
-        ImageSingletons.add(ImageHeapCollectionSupport.class, support);
-        config.registerObjectReplacer(support::replaceHostedWithRuntime);
+    public void duringSetup(DuringSetupAccess a) {
+        BuilderImageHeapCollectionSupport.initialize();
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
+        access.registerJVMCIObjectReplacer(BuilderImageHeapCollectionSupport.createObjectReplacer());
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        Consumer<Object> rescanObject = obj -> access.rescanObject(obj, scanReason);
-        Runnable triggerAnalysisIteration = access::requireAnalysisIteration;
-        ImageHeapCollectionSupport.singleton().updateAndRescanCollections(rescanObject, triggerAnalysisIteration);
+        BuilderImageHeapCollectionSupport.updateAndRescanCollections(
+                        object -> access.rescanConstant(object, scanReason),
+                        access::requireAnalysisIteration);
     }
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
-        ImageHeapCollectionSupport.singleton().verifyCollectionsAreStableAfterAnalysis();
+        BuilderImageHeapCollectionSupport.verifyCollectionsAreStableAfterAnalysis();
     }
 }

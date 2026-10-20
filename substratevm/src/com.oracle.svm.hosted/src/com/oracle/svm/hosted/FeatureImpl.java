@@ -483,6 +483,10 @@ public class FeatureImpl {
             return guestMethod == null ? null : guestAccess.asExecutableConstant(guestMethod);
         }
 
+        public void rescanConstant(JavaConstant constant, ScanReason reason) {
+            getUniverse().getHeapScanner().rescanConstant(constant, reason);
+        }
+
         public void rescanObject(Object obj, ScanReason reason) {
             getUniverse().getHeapScanner().rescanObject(obj, reason);
         }

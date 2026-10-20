@@ -36,6 +36,7 @@ import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.util.ImageHeapList.HostedImageHeapList;
 import com.oracle.svm.guest.staging.util.ImageHeapMap.HostedImageHeapMap;
 import com.oracle.svm.shared.BuildPhaseProvider;
+import com.oracle.svm.shared.BuilderInvoked;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -63,6 +64,7 @@ public final class ImageHeapCollectionSupport {
      * a collection registers it for subsequent update/rescan handling; after analysis, encountering
      * a collection that was never captured is treated as an invariant violation.
      */
+    @BuilderInvoked
     public Object replaceHostedWithRuntime(Object obj) {
         if (obj instanceof HostedImageHeapMap) {
             HostedImageHeapMap<?, ?> hostedImageHeapMap = (HostedImageHeapMap<?, ?>) obj;
@@ -99,6 +101,7 @@ public final class ImageHeapCollectionSupport {
      * rescanned. The split prevents concurrent modifications of the hosted collections during the
      * execution of this method, as they may be updated indirectly during the heap scanning.
      */
+    @BuilderInvoked
     public void updateAndRescanCollections(Consumer<Object> rescanObject, Runnable triggerAnalysisIteration) {
         if (GuestImageLayerBuildingSupport.buildingExtensionLayer()) {
             allMaps.addAll(LayeredHostedImageHeapMapCollector.singleton().getPreviousLayerReachableMaps());
@@ -122,6 +125,7 @@ public final class ImageHeapCollectionSupport {
         }
     }
 
+    @BuilderInvoked
     public boolean needsUpdate() {
         for (var hostedImageHeapMap : allMaps) {
             if (hostedImageHeapMap.needsUpdate()) {
@@ -136,6 +140,7 @@ public final class ImageHeapCollectionSupport {
         return false;
     }
 
+    @BuilderInvoked
     public void verifyCollectionsAreStableAfterAnalysis() {
         for (var hostedImageHeapMap : allMaps) {
             if (hostedImageHeapMap.needsUpdate()) {
