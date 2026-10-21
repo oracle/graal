@@ -43,12 +43,14 @@ package org.graalvm.wasm.test.suites.bytecode;
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 import java.io.IOException;
+import java.util.EnumSet;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.utils.WasmBinaryTools.WabtOption;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -71,6 +73,71 @@ public class WasmBranchTargetSuite {
     public WasmBranchTargetSuite(int stackSize, boolean compiled) {
         this.stackSize = stackSize;
         this.compiled = compiled;
+    }
+
+    private static final String THROW_AT_DIFFERENT_STACK_HEIGHTS = """
+                    local.get $choice
+                    if
+                        i64.const 99
+                        i32.const 42
+                        local.get $ref
+                        throw $tag
+                    end
+                    i32.const 42
+                    local.get $ref
+                    throw $tag
+                    """;
+
+    /**
+     * Checks that a modern typed catch discards operands above its target stack height and delivers
+     * its numeric and reference payload, with legacy EH enabled and disabled.
+     */
+    @Test
+    public void testCatch() throws IOException, InterruptedException {
+        runCatch("catch $tag", "i32 externref", "");
+    }
+
+    /**
+     * Checks typed catch_ref transfers from different stack heights, including removing discarded
+     * operands before pushing the payload and exception reference to avoid transient frame
+     * overflow.
+     */
+    @Test
+    public void testCatchRef() throws IOException, InterruptedException {
+        runCatch("catch_ref $tag", "i32 externref exnref", "drop");
+    }
+
+    /**
+     * Checks that a modern catch_all discards the thrown payload and excess operands while
+     * preserving the stack below its target, with legacy EH enabled and disabled.
+     */
+    @Test
+    public void testCatchAll() throws IOException, InterruptedException {
+        runCatch("catch_all", "", "i32.const 42 local.get $ref");
+    }
+
+    /**
+     * Checks that catch_all_ref transfers only the exception reference after discarding the payload
+     * and excess operands, with legacy EH enabled and disabled.
+     */
+    @Test
+    public void testCatchAllRef() throws IOException, InterruptedException {
+        runCatch("catch_all_ref", "exnref", "drop i32.const 42 local.get $ref");
+    }
+
+    private void runCatch(String catchClause, String resultTypes, String cleanup) throws IOException, InterruptedException {
+        String instructions = """
+                        block $target (result %s)
+                            try_table (%s $target)
+                                %s
+                            end
+                            unreachable
+                        end
+                        %s
+                        """.formatted(resultTypes, catchClause, THROW_AT_DIFFERENT_STACK_HEIGHTS, cleanup);
+        // Modern handlers must work with legacy EH both enabled and disabled.
+        run(instructions, true);
+        run(instructions, false);
     }
 
     /** Checks prefixed backward branches in both displacement widths and execution modes. */
@@ -120,4 +187,35 @@ public class WasmBranchTargetSuite {
         return builder;
     }
 
+    private void run(String body, boolean legacyExceptions) throws IOException, InterruptedException {
+        String wat = """
+                        (module
+                            (tag $tag (param i32 externref))
+                            (func (export "test") (param $choice i32) (param $ref externref) (result i32 externref)
+                                (local $caught externref)
+                                %s
+                                %s
+                                local.set $caught
+                                %s
+                                local.get $caught
+                            )
+                        )
+                        """.formatted("i32.const 7\n".repeat(stackSize), body, "i32.add\n".repeat(stackSize));
+        ByteSequence binary = ByteSequence.create(compileWat("branch-target", wat, EnumSet.of(WabtOption.EXCEPTIONS, WabtOption.FUNCTION_REFERENCES)));
+        Source source = Source.newBuilder(WasmLanguage.ID, binary, "branch-target").build();
+        Context.Builder builder = contextBuilder();
+        builder.option("wasm.LegacyExceptions", Boolean.toString(legacyExceptions));
+        try (Context context = builder.build()) {
+            Value module = context.eval(source);
+            Object sentinel = new Object();
+            for (int instance = 0; instance < 2; instance++) {
+                Value function = module.newInstance().getMember("exports").getMember("test");
+                for (int choice : new int[]{0, 1, 2, -1}) {
+                    Value result = function.execute(choice, sentinel);
+                    Assert.assertEquals(42 + 7 * stackSize, result.getArrayElement(0).asInt());
+                    Assert.assertSame(sentinel, result.getArrayElement(1).asHostObject());
+                }
+            }
+        }
+    }
 }

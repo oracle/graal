@@ -1506,8 +1506,13 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         pushReference(frame, exceptionSlot, e);
                         state.activeLegacyCatchCount++;
                     }
-                    virtualState.stackPointer = pushExceptionFieldsAndReference(frame, e, virtualState.stackPointer, catchType, tagIndex);
-                    offset = target;
+                    // Unwind before pushing the payload: keeping discarded operands underneath it
+                    // could exceed the frame's maximum stack size, particularly for catch_ref.
+                    final int targetStackPointer = state.stackBase + labelStackSize(target);
+                    dropStack(frame, virtualState.stackPointer, targetStackPointer);
+                    virtualState.stackPointer = pushExceptionFieldsAndReference(frame, e, targetStackPointer, catchType, tagIndex);
+                    final int labelEndOffset = labelEndOffset(target);
+                    offset = hasLegacyCatchUnwind(bytecode, labelEndOffset) ? labelEndOffset + 6 : labelEndOffset;
                     continue loop;
                 }
                 throw e;
@@ -8167,25 +8172,39 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         return catchType == ExceptionHandlerType.LEGACY_CATCH || catchType == ExceptionHandlerType.LEGACY_CATCH_ALL;
     }
 
+    /**
+     * Exception targets start with a label and its stack operands, optionally followed by
+     * {@code MISC LEGACY_CATCH_UNWIND <depth:i32>}. Prepare the target stack and catch state before
+     * pushing payloads, then continue execution past the label and optional unwind metadata.
+     */
+    private int labelEndOffset(int offset) {
+        return offset + switch (rawPeekU8(bytecode, offset)) {
+            case Bytecode.LABEL_U8 -> 2;
+            case Bytecode.LABEL_U16 -> 3;
+            case Bytecode.LABEL_I32 -> 10;
+            default -> throw CompilerDirectives.shouldNotReachHere("Branch target must point to a label");
+        };
+    }
+
+    private int labelStackSize(int offset) {
+        return switch (rawPeekU8(bytecode, offset)) {
+            case Bytecode.LABEL_U8 -> rawPeekU8(bytecode, offset + 1) & BytecodeBitEncoding.LABEL_U8_STACK_SIZE;
+            case Bytecode.LABEL_U16 -> rawPeekU8(bytecode, offset + 2);
+            case Bytecode.LABEL_I32 -> rawPeekI32(bytecode, offset + 6);
+            default -> throw CompilerDirectives.shouldNotReachHere("Branch target must point to a label");
+        };
+    }
+
+    private static boolean hasLegacyCatchUnwind(byte[] bytecode, int offset) {
+        // A label may end the byte array or precede an unrelated instruction. Only consume a
+        // complete unwind instruction immediately following the stack operands.
+        return offset <= bytecode.length - 6 && rawPeekU8(bytecode, offset) == Bytecode.MISC && rawPeekU8(bytecode, offset + 1) == Bytecode.LEGACY_CATCH_UNWIND;
+    }
+
     private int legacyCatchTargetDepth(int target) {
         CompilerAsserts.partialEvaluationConstant(target);
-        final int opcode = rawPeekU8(bytecode, target);
-        final int unwindOffset;
-        switch (opcode) {
-            case Bytecode.LABEL_U8:
-                unwindOffset = target + 2;
-                break;
-            case Bytecode.LABEL_U16:
-                unwindOffset = target + 3;
-                break;
-            case Bytecode.LABEL_I32:
-                unwindOffset = target + 10;
-                break;
-            default:
-                throw CompilerDirectives.shouldNotReachHere("Legacy catch target must point to a label");
-        }
-        assert rawPeekU8(bytecode, unwindOffset) == Bytecode.MISC : "Missing legacy catch unwind helper";
-        assert rawPeekU8(bytecode, unwindOffset + 1) == Bytecode.LEGACY_CATCH_UNWIND : "Missing legacy catch unwind helper";
+        final int unwindOffset = labelEndOffset(target);
+        assert hasLegacyCatchUnwind(bytecode, unwindOffset) : "Missing legacy catch unwind helper";
         final int targetDepth = rawPeekI32(bytecode, unwindOffset + 2);
         assert targetDepth > 0 : "Legacy catch target depth must include the entered catch";
         return targetDepth;
