@@ -1800,6 +1800,7 @@ def _debuginfotest(native_image, path, build_only, args):
     env['debuginfotest_layered'] = 'no'
 
     testhello_py = join(sourcepath, 'gdb-tests', 'testhello.py')
+    lldb_test_py = join(sourcepath, 'lldb-tests', 'testhello.py')
     testhello_args = [
         # We do not want to step into class initializer, so initialize everything at build time.
         '--initialize-at-build-time=hello',
@@ -1811,6 +1812,8 @@ def _debuginfotest(native_image, path, build_only, args):
     hello_binary = build_debug_test('default', 'hello_image', testhello_args)
     if mx.get_os() == 'linux' and not build_only:
         mx.run(gdb_base_command() + ['-x', testhello_py, hello_binary], env=env)
+    if mx.get_os() == 'darwin' and not build_only:
+        mx.run([sys.executable, lldb_test_py, hello_binary], env=env)
 
 
 def _layereddebuginfotest(native_image, output_path, skip_base_layer, args):
