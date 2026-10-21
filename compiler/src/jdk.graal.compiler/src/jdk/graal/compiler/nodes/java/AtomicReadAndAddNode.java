@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,13 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.AbstractMemoryCheckpoint;
+import jdk.graal.compiler.nodes.memory.OrderedMemoryAccess;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
@@ -42,10 +44,11 @@ import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Represents an atomic read-and-add operation like
- * {@code sun.misc.Unsafe.getAndAddInt(Object, long, int)}.
+ * {@code sun.misc.Unsafe.getAndAddInt(Object, long, int)}. The operation has volatile memory
+ * semantics.
  */
 @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_8, size = SIZE_2)
-public final class AtomicReadAndAddNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill, TrackedUnsafeAccess {
+public final class AtomicReadAndAddNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill, TrackedUnsafeAccess, OrderedMemoryAccess {
 
     public static final NodeClass<AtomicReadAndAddNode> TYPE = NodeClass.create(AtomicReadAndAddNode.class);
     @Input ValueNode object;
@@ -84,8 +87,17 @@ public final class AtomicReadAndAddNode extends AbstractMemoryCheckpoint impleme
         return valueKind;
     }
 
+    public LocationIdentity getLocationIdentity() {
+        return locationIdentity;
+    }
+
+    @Override
+    public MemoryOrderMode getMemoryOrder() {
+        return MemoryOrderMode.VOLATILE;
+    }
+
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        return locationIdentity;
+        return LocationIdentity.any();
     }
 }
