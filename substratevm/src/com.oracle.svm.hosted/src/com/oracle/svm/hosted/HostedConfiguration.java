@@ -54,6 +54,7 @@ import com.oracle.svm.core.config.ObjectLayout.IdentityHashMode;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
@@ -333,8 +334,33 @@ public class HostedConfiguration {
             setMonitorField(hUniverse, type);
         }
 
-        /* Then decide what other types may need it. */
-        processedSynchronizedTypes(bb, hUniverse, immutableTypes);
+        boolean sharedLayer = ImageLayerBuildingSupport.buildingSharedLayer();
+        if (!sharedLayer) {
+            /*
+             * Single-image builds and final application layers consider all instantiated types
+             * for monitor slots. PGO can narrow this selection using recorded monitor-enter counts.
+             */
+            processedSynchronizedTypes(bb, hUniverse, immutableTypes);
+        }
+
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            /*
+             * In shared layers, reserve monitor slots for reachable, non-abstract classes because
+             * later layers may instantiate them or synchronize on their instances. Arrays omit slots to keep their
+             * headers small. Interfaces and primitives have no instances. Known immutable types
+             * must not gain mutable slots. @ValueBased classes omit slots to save space because
+             * synchronization on them is discouraged.
+             *
+             * In the final application layer, apply the same reservation only to imported
+             * classes so their layouts still match the shared layer.
+             */
+            for (HostedType hostedType : hUniverse.getTypes()) {
+                AnalysisType type = hostedType.getWrapped();
+                if (type.isReachable() && (sharedLayer || type.isInSharedLayer())) {
+                    maybeSetMonitorField(hUniverse, immutableTypes, type);
+                }
+            }
+        }
     }
 
     private static EconomicSet<AnalysisType> getForceMonitorSlotTypes(BigBang bb) {
@@ -360,6 +386,9 @@ public class HostedConfiguration {
     }
 
     /**
+     * Only concrete instance classes receive optional monitor fields. Abstract classes cannot be
+     * instantiated, and their synthetic monitor fields are not inherited by subclasses.
+     *
      * Monitor fields on arrays would enlarge the array header too much.
      *
      * Also, never burden @ValueBased classes with a monitor field, which in particular reduces
@@ -369,7 +398,7 @@ public class HostedConfiguration {
      * Types that must be immutable cannot have a monitor field.
      */
     protected static void maybeSetMonitorField(HostedUniverse hUniverse, EconomicSet<AnalysisType> immutableTypes, AnalysisType type) {
-        if (!type.isArray() && !immutableTypes.contains(type) && !GuestAnnotationAccess.isAnnotationPresent(type, ValueBased.class)) {
+        if (type.isInstanceClass() && !type.isAbstract() && !immutableTypes.contains(type) && !GuestAnnotationAccess.isAnnotationPresent(type, ValueBased.class)) {
             setMonitorField(hUniverse, type);
         }
     }
