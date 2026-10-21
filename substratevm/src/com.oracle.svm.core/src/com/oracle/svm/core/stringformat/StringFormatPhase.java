@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.option.LayerVerifiedOption;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
@@ -77,6 +78,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class StringFormatPhase extends BasePhase<Providers> {
 
     public static final class Options {
+        @LayerVerifiedOption(kind = LayerVerifiedOption.Kind.Changed, severity = LayerVerifiedOption.Severity.Error)//
         @Option(help = "Intrinsify String.format with constant format strings.")//
         public static final HostedOptionKey<Boolean> IntrinsifyStringFormat = new HostedOptionKey<>(true);
     }
