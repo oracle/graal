@@ -314,21 +314,21 @@ final class ImageLayerConstantLoader {
             return null;
         }
         /* Read the persisted values because the hosted hub is populated again in each layer. */
-        int layoutEncoding = readPersistedHubIntField(hub, "layoutEncoding");
-        int monitorOffset = readPersistedHubIntField(hub, "monitorOffset");
-        int identityHashOffset = readPersistedHubIntField(hub, "identityHashOffset");
+        AnalysisType hubType = loader.getAnalysisTypeForBaseLayerId(hub.getTypeId());
+        int layoutEncoding = readPersistedHubIntField(hub, hubType, "layoutEncoding");
+        int monitorOffset = readPersistedHubIntField(hub, hubType, "monitorOffset");
+        int identityHashOffset = readPersistedHubIntField(hub, hubType, "identityHashOffset");
         return new PersistedHubLayout(layoutEncoding, monitorOffset, identityHashOffset);
     }
 
-    private int readPersistedHubIntField(PersistedConstantData.Loader hub, String name) {
-        var fieldIds = findType(hub.getTypeId()).getInstanceFieldIdsWithSuper();
-        for (int fieldId : fieldIds) {
-            var field = loader.findField(fieldId);
+    private static int readPersistedHubIntField(PersistedConstantData.Loader hub, AnalysisType hubType, String name) {
+        for (var field : hubType.getInstanceFields(true)) {
             if (!field.getName().equals(name)) {
                 continue;
             }
 
-            var value = hub.getObject().getData().get(field.getPosition());
+            int position = ((AnalysisField) field).getPosition();
+            var value = hub.getObject().getData().get(position);
             VMError.guarantee(value.kind() == ConstantReferenceData.Kind.PRIMITIVE_VALUE, "Persisted hub field %s must be a primitive value.", name);
             var primitiveValue = value.getPrimitiveValue();
             VMError.guarantee(primitiveValue.getTypeChar() == 'I', "Persisted hub field %s must be an int.", name);

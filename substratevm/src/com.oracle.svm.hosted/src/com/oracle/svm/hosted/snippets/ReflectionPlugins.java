@@ -455,7 +455,7 @@ public final class ReflectionPlugins {
                  * A later layer can provide the class. Keep the invoke and register its name so
                  * an absent class still throws ClassNotFoundException with exact metadata.
                  */
-                if (reason.duringAnalysis() && reason != ParsingReason.JITCompilation) {
+                if (reason == ParsingReason.PointsToAnalysis) {
                     b.add(ReachabilityCallbackNode.create(() -> RuntimeReflection.registerClassLookup(className), reason));
                     if (inferenceLog != null) {
                         inferenceLog.logRegistration(b, reason, targetMethod, null, arguments);
