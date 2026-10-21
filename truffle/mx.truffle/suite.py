@@ -742,6 +742,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "TRUFFLE_API",
+        "com.oracle.truffle.api.test",
         "mx:JUNIT",
         "TRUFFLE_JCODINGS",
       ],

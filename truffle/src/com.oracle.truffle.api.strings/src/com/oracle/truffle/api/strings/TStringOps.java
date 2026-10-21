@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -596,7 +596,7 @@ final class TStringOps {
     static int indexOfStringWithOrMaskWithStride(Node location,
                     byte[] arrayA, long offsetA, int lengthA, int strideA,
                     byte[] arrayB, long offsetB, int lengthB, int strideB, int fromIndex, int toIndex, byte[] maskB) {
-        int offsetMask = byteArrayBaseOffset();
+        long offsetMask = byteArrayBaseOffset();
         assert lengthB > 1;
         assert lengthA >= lengthB;
         final int max = toIndex - (lengthB - 2);
@@ -662,7 +662,7 @@ final class TStringOps {
     static int lastIndexOfStringWithOrMaskWithStride(Node location,
                     byte[] arrayA, long offsetA, int lengthA, int strideA,
                     byte[] arrayB, long offsetB, int lengthB, int strideB, int fromIndex, int toIndex, byte[] maskB) {
-        int offsetMask = byteArrayBaseOffset();
+        long offsetMask = byteArrayBaseOffset();
         assert lengthB > 1;
         assert lengthA >= lengthB;
         int index = fromIndex;
