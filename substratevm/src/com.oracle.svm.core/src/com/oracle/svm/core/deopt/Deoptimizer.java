@@ -61,7 +61,7 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame.DeoptTargetTier;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.RelockObjectData;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
-import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.guest.staging.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.jvmci.shared.meta.DeoptStub;
 import com.oracle.svm.core.heap.ReferenceAccess;

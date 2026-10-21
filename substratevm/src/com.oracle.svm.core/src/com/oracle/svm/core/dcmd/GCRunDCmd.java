@@ -28,7 +28,7 @@ package com.oracle.svm.core.dcmd;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.guest.staging.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
