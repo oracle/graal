@@ -43,8 +43,10 @@ package org.graalvm.wasm.test.suites.bytecode;
 
 import java.util.function.Consumer;
 
+import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.Bytecode;
+import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.ExceptionHandlerType;
 import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
@@ -178,9 +180,13 @@ public class BytecodeSuite {
         test(b -> b.addLabel(0, 256, 0), new byte[]{Bytecode.SKIP_LABEL_I32, Bytecode.LABEL_I32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00});
     }
 
+    /**
+     * Checks the compact loop-header encoding: an ordinary skip prefix, a label carrying one
+     * numeric parameter and its stack height, then the LOOP instruction.
+     */
     @Test
     public void testAddLoopLabel() {
-        test(b -> b.addLoopLabel(1, 20, WasmType.NUM_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0x94, Bytecode.LOOP});
+        test(b -> b.addLoopLabel(1, 20, WasmType.NUM_COMMON_TYPE, 0), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0x94, Bytecode.LOOP});
     }
 
     @Test
@@ -332,6 +338,160 @@ public class BytecodeSuite {
     @Test
     public void testBrTableI32Min() {
         test(b -> b.addBranchTable(256), new byte[]{Bytecode.BR_TABLE_I32, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00});
+    }
+
+    /**
+     * Checks label-width selection and encoded operands across stack-height, arity, and catch-depth
+     * boundaries, including matching ordinary and legacy skip prefixes.
+     */
+    @Test
+    public void testLabelDataLengths() {
+        for (int arity : new int[]{0, 1, 2, 63, 64, 256}) {
+            for (int stackSize : new int[]{0, 63, 64, 255, 256}) {
+                for (int depth : new int[]{0, 1, 256}) {
+                    RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
+                    bytecode.addOp(Bytecode.NOP);
+                    int label = bytecode.addLabel(arity, stackSize, arity == 0 ? WasmType.NONE_COMMON_TYPE : WasmType.NUM_COMMON_TYPE, depth);
+                    Assert.assertEquals(depth == 0 ? 2 : 3, label);
+                    byte[] bytes = bytecode.toArray();
+                    int labelSize = arity <= 1 && stackSize <= 63 ? 2 : arity <= 63 && stackSize <= 255 ? 3 : 10;
+                    int labelOpcode = labelSize == 2 ? Bytecode.LABEL_U8 : labelSize == 3 ? Bytecode.LABEL_U16 : Bytecode.LABEL_I32;
+                    int skipOpcode = labelSize == 2 ? Bytecode.SKIP_LABEL_U8 : labelSize == 3 ? Bytecode.SKIP_LABEL_U16 : Bytecode.SKIP_LABEL_I32;
+                    if (depth != 0) {
+                        skipOpcode = labelSize == 2 ? Bytecode.LEGACY_SKIP_LABEL_U8 : labelSize == 3 ? Bytecode.LEGACY_SKIP_LABEL_U16 : Bytecode.LEGACY_SKIP_LABEL_I32;
+                        Assert.assertEquals(Bytecode.MISC, BinaryStreamParser.rawPeekU8(bytes, label - 2));
+                    }
+                    Assert.assertEquals(skipOpcode, BinaryStreamParser.rawPeekU8(bytes, label - 1));
+                    int ordinarySkipOpcode = labelSize == 2 ? Bytecode.SKIP_LABEL_U8 : labelSize == 3 ? Bytecode.SKIP_LABEL_U16 : Bytecode.SKIP_LABEL_I32;
+                    Assert.assertEquals(labelSize, ordinarySkipOpcode);
+                    Assert.assertEquals(labelOpcode, BinaryStreamParser.rawPeekU8(bytes, label));
+                    if (labelSize == 2) {
+                        Assert.assertEquals((arity == 0 ? 0 : 0x80) | stackSize, BinaryStreamParser.rawPeekU8(bytes, label + 1));
+                    } else if (labelSize == 3) {
+                        Assert.assertEquals((arity == 0 ? 0 : 0x40) | arity, BinaryStreamParser.rawPeekU8(bytes, label + 1));
+                        Assert.assertEquals(stackSize, BinaryStreamParser.rawPeekU8(bytes, label + 2));
+                    } else {
+                        Assert.assertEquals(arity == 0 ? 0 : 1, BinaryStreamParser.rawPeekU8(bytes, label + 1));
+                        Assert.assertEquals(arity, BinaryStreamParser.rawPeekI32(bytes, label + 2));
+                        Assert.assertEquals(stackSize, BinaryStreamParser.rawPeekI32(bytes, label + 6));
+                    }
+                    if (depth != 0) {
+                        Assert.assertEquals(Bytecode.MISC, BinaryStreamParser.rawPeekU8(bytes, label + labelSize));
+                        Assert.assertEquals(Bytecode.LEGACY_CATCH_UNWIND, BinaryStreamParser.rawPeekU8(bytes, label + labelSize + 1));
+                        Assert.assertEquals(depth, BinaryStreamParser.rawPeekI32(bytes, label + labelSize + 2));
+                    }
+                    Assert.assertEquals(label + labelSize + (depth == 0 ? 0 : 6), bytes.length);
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks that each label width can explicitly encode cleanup to catch depth zero,
+     * distinguishable from absent metadata, immediately followed by LOOP.
+     */
+    @Test
+    public void testExplicitZeroDepthLegacyUnwind() {
+        for (int stackSize : new int[]{0, 64, 256}) {
+            RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
+            int label = bytecode.addLabel(0, stackSize, WasmType.NONE_COMMON_TYPE, 0, true);
+            bytecode.addOp(Bytecode.LOOP);
+            byte[] bytes = bytecode.toArray();
+            int labelSize = stackSize == 0 ? 2 : stackSize == 64 ? 3 : 10;
+            int skipOpcode = stackSize == 0 ? Bytecode.LEGACY_SKIP_LABEL_U8 : stackSize == 64 ? Bytecode.LEGACY_SKIP_LABEL_U16 : Bytecode.LEGACY_SKIP_LABEL_I32;
+            Assert.assertEquals(2, label);
+            Assert.assertEquals(Bytecode.MISC, BinaryStreamParser.rawPeekU8(bytes, 0));
+            Assert.assertEquals(skipOpcode, BinaryStreamParser.rawPeekU8(bytes, 1));
+            Assert.assertEquals(Bytecode.MISC, BinaryStreamParser.rawPeekU8(bytes, label + labelSize));
+            Assert.assertEquals(Bytecode.LEGACY_CATCH_UNWIND, BinaryStreamParser.rawPeekU8(bytes, label + labelSize + 1));
+            Assert.assertEquals(0, BinaryStreamParser.rawPeekI32(bytes, label + labelSize + 2));
+            Assert.assertEquals(Bytecode.LOOP, BinaryStreamParser.rawPeekU8(bytes, label + labelSize + 6));
+            Assert.assertEquals(label + labelSize + 7, bytes.length);
+        }
+    }
+
+    /**
+     * Checks all loop-label widths with and without legacy catches: depth-zero unwind metadata and
+     * the legacy skip prefix appear only when requested, and LOOP follows the complete label.
+     */
+    @Test
+    public void testLoopLabelUnwindMetadata() {
+        for (boolean hasLegacyCatches : new boolean[]{false, true}) {
+            for (int stackSize : new int[]{0, 64, 256}) {
+                RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
+                int label = bytecode.addLoopLabel(1, stackSize, WasmType.OBJ_COMMON_TYPE, 0, hasLegacyCatches);
+                byte[] bytes = bytecode.toArray();
+                int labelSize = stackSize == 0 ? 2 : stackSize == 64 ? 3 : 10;
+                int skipOpcode = stackSize == 0 ? Bytecode.SKIP_LABEL_U8 : stackSize == 64 ? Bytecode.SKIP_LABEL_U16 : Bytecode.SKIP_LABEL_I32;
+                if (hasLegacyCatches) {
+                    skipOpcode = stackSize == 0 ? Bytecode.LEGACY_SKIP_LABEL_U8 : stackSize == 64 ? Bytecode.LEGACY_SKIP_LABEL_U16 : Bytecode.LEGACY_SKIP_LABEL_I32;
+                    Assert.assertEquals(Bytecode.MISC, BinaryStreamParser.rawPeekU8(bytes, 0));
+                }
+                Assert.assertEquals(hasLegacyCatches ? 2 : 1, label);
+                Assert.assertEquals(skipOpcode, BinaryStreamParser.rawPeekU8(bytes, label - 1));
+                int loopOffset = label + labelSize + (hasLegacyCatches ? 6 : 0);
+                Assert.assertEquals(Bytecode.LOOP, BinaryStreamParser.rawPeekU8(bytes, loopOffset));
+                Assert.assertEquals(loopOffset + 1, bytes.length);
+                if (hasLegacyCatches) {
+                    Assert.assertEquals(Bytecode.MISC, BinaryStreamParser.rawPeekU8(bytes, label + labelSize));
+                    Assert.assertEquals(Bytecode.LEGACY_CATCH_UNWIND, BinaryStreamParser.rawPeekU8(bytes, label + labelSize + 1));
+                    Assert.assertEquals(0, BinaryStreamParser.rawPeekI32(bytes, label + labelSize + 2));
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks that a loop inside legacy catches encodes its nonzero unwind depth after the parameter
+     * label and before LOOP, for every label width.
+     */
+    @Test
+    public void testLegacyLoopLabel() {
+        for (int stackSize : new int[]{0, 64, 256}) {
+            RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
+            bytecode.addOp(Bytecode.NOP);
+            int label = bytecode.addLoopLabel(1, stackSize, WasmType.OBJ_COMMON_TYPE, 2);
+            byte[] bytes = bytecode.toArray();
+            Assert.assertEquals(3, label);
+            int labelSize = stackSize <= 63 ? 2 : stackSize <= 255 ? 3 : 10;
+            int labelOpcode = labelSize == 2 ? Bytecode.LABEL_U8 : labelSize == 3 ? Bytecode.LABEL_U16 : Bytecode.LABEL_I32;
+            Assert.assertEquals(labelOpcode, BinaryStreamParser.rawPeekU8(bytes, label));
+            Assert.assertEquals(Bytecode.MISC, BinaryStreamParser.rawPeekU8(bytes, label + labelSize));
+            Assert.assertEquals(Bytecode.LEGACY_CATCH_UNWIND, BinaryStreamParser.rawPeekU8(bytes, label + labelSize + 1));
+            Assert.assertEquals(2, BinaryStreamParser.rawPeekI32(bytes, label + labelSize + 2));
+            Assert.assertEquals(Bytecode.LOOP, BinaryStreamParser.rawPeekU8(bytes, label + labelSize + 6));
+            Assert.assertEquals(label + labelSize + 7, bytes.length);
+        }
+    }
+
+    /**
+     * Checks the six-byte placeholder for a branch-table entry: a four-byte displacement followed
+     * by a two-byte profile.
+     */
+    @Test
+    public void testBranchTableItems() {
+        test(b -> b.addBranchTableItemLocation(), new byte[]{0, 0, 0, 0, 0, 0});
+    }
+
+    /**
+     * Checks that U8 and I32 branch-table headers followed by fixed-size entries end exactly at the
+     * next instruction.
+     */
+    @Test
+    public void testBranchTableLayout() {
+        for (int size : new int[]{2, 256}) {
+            RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
+            bytecode.addBranchTable(size);
+            for (int i = 0; i < size; i++) {
+                bytecode.addBranchTableItemLocation();
+            }
+            int callOffset = bytecode.location();
+            bytecode.addCall(0, 42);
+            byte[] bytes = bytecode.toArray();
+            int headerSize = size <= 255 ? BytecodeBitEncoding.BR_TABLE_U8_HEADER_SIZE : BytecodeBitEncoding.BR_TABLE_I32_HEADER_SIZE;
+            Assert.assertEquals(callOffset, headerSize + size * BytecodeBitEncoding.BR_TABLE_ITEM_SIZE);
+            Assert.assertEquals(Bytecode.CALL_U8, bytes[callOffset]);
+        }
     }
 
     @Test
@@ -966,5 +1126,47 @@ public class BytecodeSuite {
     public void testCatchRefExceptionHandler() {
         test(b -> b.addExceptionHandler(0, 12, ExceptionHandlerType.CATCH_REF, 1, 256),
                         new byte[]{0x00, 0x00, 0x00, 0x00, 0x0C, 0x00, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00});
+    }
+
+    /**
+     * Checks truncation at the current offset, an interior offset, and zero, preserving the
+     * retained bytes and allowing subsequent appends and single-byte retreat.
+     */
+    @Test
+    public void testRetreatTo() {
+        RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
+        bytecode.retreatTo(0);
+        for (int i = 0; i < 6; i++) {
+            bytecode.addOp(i);
+        }
+        bytecode.retreatTo(bytecode.location());
+        Assert.assertArrayEquals(new byte[]{0, 1, 2, 3, 4, 5}, bytecode.toArray());
+        bytecode.retreatTo(3);
+        Assert.assertEquals(3, bytecode.location());
+        Assert.assertArrayEquals(new byte[]{0, 1, 2}, bytecode.toArray());
+        bytecode.addOp(99);
+        Assert.assertArrayEquals(new byte[]{0, 1, 2, 99}, bytecode.toArray());
+        bytecode.retreat();
+        Assert.assertArrayEquals(new byte[]{0, 1, 2}, bytecode.toArray());
+        bytecode.retreatTo(0);
+        Assert.assertEquals(0, bytecode.location());
+        Assert.assertArrayEquals(new byte[0], bytecode.toArray());
+        bytecode.addOp(7);
+        Assert.assertArrayEquals(new byte[]{7}, bytecode.toArray());
+    }
+
+    /**
+     * Checks that negative offsets and offsets beyond the current end are rejected without changing
+     * the bytecode length or contents.
+     */
+    @Test
+    public void testRetreatToInvalidOffset() {
+        RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
+        bytecode.addOp(42);
+        for (int offset : new int[]{-1, Integer.MIN_VALUE, 2, Integer.MAX_VALUE}) {
+            Assert.assertThrows(IndexOutOfBoundsException.class, () -> bytecode.retreatTo(offset));
+            Assert.assertEquals(1, bytecode.location());
+            Assert.assertArrayEquals(new byte[]{42}, bytecode.toArray());
+        }
     }
 }

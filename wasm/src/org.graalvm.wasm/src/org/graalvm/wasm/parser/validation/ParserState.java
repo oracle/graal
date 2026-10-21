@@ -311,10 +311,11 @@ public class ParserState {
      *
      * @param paramTypes The param types of the loop that was entered.
      * @param resultTypes The result types of the loop that was entered.
+     * @param hasLegacyCatches Whether this function contains legacy catches.
      */
-    public void enterLoop(int[] paramTypes, int[] resultTypes) {
+    public void enterLoop(int[] paramTypes, int[] resultTypes, boolean hasLegacyCatches) {
         final ControlFrame parentFrame = controlStack.peek();
-        final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonValueType(paramTypes), parentFrame.legacyCatchDepth());
+        final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonValueType(paramTypes), parentFrame.legacyCatchDepth(), hasLegacyCatches);
         ControlFrame frame = new LoopFrame(paramTypes, resultTypes, valueStack.size(), parentFrame, label);
         controlStack.push(frame);
         pushAll(paramTypes);
@@ -513,7 +514,7 @@ public class ParserState {
         final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
         pushAll(labelTypes);
-        frame.addLabelFixup(createBranchFixup(BranchOp.BR_IF, branchHint));
+        frame.addBranchFixup(createBranchFixup(BranchOp.BR_IF, branchHint), controlStack.peek().legacyCatchDepth());
     }
 
     /**
@@ -527,7 +528,7 @@ public class ParserState {
         ControlFrame frame = getFrame(branchLabel);
         final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
-        frame.addLabelFixup(createBranchFixup(BranchOp.BR));
+        frame.addBranchFixup(createBranchFixup(BranchOp.BR), controlStack.peek().legacyCatchDepth());
     }
 
     public void addBranchOnNull(int branchLabel) {
@@ -536,7 +537,7 @@ public class ParserState {
         final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
         pushAll(labelTypes);
-        frame.addLabelFixup(createBranchFixup(BranchOp.BR_ON_NULL));
+        frame.addBranchFixup(createBranchFixup(BranchOp.BR_ON_NULL), controlStack.peek().legacyCatchDepth());
     }
 
     public void addBranchOnNonNull(int branchLabel, int referenceType) {
@@ -555,7 +556,7 @@ public class ParserState {
         for (int i = 0; i < labelTypes.length - 1; i++) {
             push(labelTypes[i]);
         }
-        frame.addLabelFixup(createBranchFixup(BranchOp.BR_ON_NON_NULL));
+        frame.addBranchFixup(createBranchFixup(BranchOp.BR_ON_NON_NULL), controlStack.peek().legacyCatchDepth());
     }
 
     public void addBranchOnCast(int branchLabel, int topReferenceType, int jumpReferenceType, int noJumpReferenceType, BranchOp branchOp) {
@@ -577,7 +578,7 @@ public class ParserState {
             push(labelTypes[i]);
         }
         push(noJumpReferenceType);
-        frame.addLabelFixup(createBranchFixup(branchOp));
+        frame.addBranchFixup(createBranchFixup(branchOp), controlStack.peek().legacyCatchDepth());
     }
 
     /**
@@ -605,7 +606,7 @@ public class ParserState {
             } catch (WasmException e) {
                 throw ValidationErrors.createLabelTypesMismatch(labelTypes, otherLabelTypes);
             }
-            frame.addLabelFixup(createBranchTableItemFixup());
+            frame.addBranchFixup(createBranchTableItemFixup(), controlStack.peek().legacyCatchDepth());
         }
         popAll(labelTypes);
     }

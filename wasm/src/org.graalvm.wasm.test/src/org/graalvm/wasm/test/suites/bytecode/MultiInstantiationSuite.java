@@ -42,6 +42,7 @@
 package org.graalvm.wasm.test.suites.bytecode;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
@@ -63,6 +64,7 @@ import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
 import org.graalvm.wasm.api.Sequence;
 import org.graalvm.wasm.api.WebAssembly;
+import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -631,6 +633,120 @@ public class MultiInstantiationSuite {
                         """, EnumSet.of(WasmBinaryTools.WabtOption.FUNCTION_REFERENCES)));
 
         Assert.assertArrayEquals(new int[]{WasmType.withNullable(false, 0)}, codeEntries[1].resultTypes());
+    }
+
+    /**
+     * Checks that bytecode rereading skips every operand byte of U8, U16, and I32 labels and finds
+     * the following call at its exact offset. Poisoning label operands with call opcodes exposes
+     * scans that stop too early or skip too far.
+     */
+    @Test
+    public void testRereadSkipLabels() throws IOException, InterruptedException {
+        for (int stackSize : new int[]{0, 64, 256}) {
+            byte[] binary = WasmBinaryTools.compileWat("skip-labels", """
+                            (module
+                                (func $callee)
+                                (func
+                                    %s
+                                    block $target
+                                        br $target
+                                    end
+                                    call $callee
+                                    %s
+                                )
+                            )
+                            """.formatted("i32.const 0\n".repeat(stackSize), "drop\n".repeat(stackSize)));
+            try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
+                WasmTestUtils.runInWasmContext(context, c -> {
+                    WasmModule module = new WebAssembly(c).moduleDecode(binary);
+                    CodeEntry original = module.codeEntries()[1];
+                    Assert.assertEquals(1, original.callNodes().size());
+                    // Initial parsing records the end of this three-byte CALL_U8 instruction.
+                    int callOffset = original.callNodes().get(0).getBytecodeOffset() - 3;
+                    int labelSize = stackSize == 0 ? 2 : stackSize == 64 ? 3 : 10;
+                    int labelOpcode = stackSize == 0 ? Bytecode.LABEL_U8 : stackSize == 64 ? Bytecode.LABEL_U16 : Bytecode.LABEL_I32;
+                    int skipOpcode = stackSize == 0 ? Bytecode.SKIP_LABEL_U8 : stackSize == 64 ? Bytecode.SKIP_LABEL_U16 : Bytecode.SKIP_LABEL_I32;
+                    byte[] bytecode = module.bytecode().clone();
+                    Assert.assertEquals(skipOpcode, Byte.toUnsignedInt(bytecode[callOffset - labelSize - 1]));
+                    Assert.assertEquals(labelOpcode, Byte.toUnsignedInt(bytecode[callOffset - labelSize]));
+                    Assert.assertEquals(Bytecode.CALL_U8, Byte.toUnsignedInt(bytecode[callOffset]));
+                    // Poison every operand byte, so landing in the operands registers a call at
+                    // the wrong offset. This copy is only scanned, never executed or installed.
+                    Arrays.fill(bytecode, callOffset - labelSize + 1, callOffset, (byte) Bytecode.CALL_U8);
+                    CodeEntry reread = BytecodeParser.readCodeEntry(module, bytecode, 1);
+                    String message = "Incorrect label scan at stack height " + stackSize;
+                    Assert.assertEquals(message, 1, reread.callNodes().size());
+                    Assert.assertEquals(message, callOffset, reread.callNodes().get(0).getBytecodeOffset());
+                    Assert.assertEquals(message, 0, reread.callNodes().get(0).getFunctionIndex());
+                });
+            }
+        }
+    }
+
+    /**
+     * Checks that enabling legacy EH alone leaves loop bytecode unchanged in functions with no EH
+     * or modern EH only, and that the emitted code-entry metadata can be reread.
+     */
+    @Test
+    public void testUnusedLegacyOptionDoesNotChangeLoopBytecode() throws IOException, InterruptedException {
+        for (String wat : new String[]{
+                        "(module (func (result i32) (loop (result i32) i32.const 42)))",
+                        """
+                                        (module
+                                            (tag $tag)
+                                            (func (result i32)
+                                                block $done
+                                                    loop $again
+                                                        try_table (catch_all $done)
+                                                            throw $tag
+                                                        end
+                                                        br $again
+                                                    end
+                                                end
+                                                i32.const 42
+                                            )
+                                        )
+                                        """}) {
+            byte[] binary = WasmBinaryTools.compileWat("unused-legacy-option", wat, EnumSet.of(WasmBinaryTools.WabtOption.EXCEPTIONS));
+            Assert.assertArrayEquals(functionBytecode(binary, false, 0), functionBytecode(binary, true, 0));
+        }
+    }
+
+    /**
+     * Checks that actual legacy EH usage in one function does not add loop cleanup metadata to a
+     * different function that has no legacy catches.
+     */
+    @Test
+    public void testLegacyUseInAnotherFunctionDoesNotChangeLoopBytecode() throws IOException, InterruptedException {
+        byte[] plain = WasmBinaryTools.compileWat("plain-loop", "(module (func (result i32) (loop (result i32) i32.const 42)))");
+        byte[] withLegacy = WasmBinaryTools.compileWat("legacy-and-plain-loop", """
+                        (module
+                            (tag $tag)
+                            (func
+                                try
+                                    throw $tag
+                                catch_all
+                                end
+                            )
+                            (func (result i32) (loop (result i32) i32.const 42))
+                        )
+                        """, EnumSet.of(WasmBinaryTools.WabtOption.EXCEPTIONS));
+        Assert.assertArrayEquals(functionBytecode(plain, false, 0), functionBytecode(withLegacy, true, 1));
+    }
+
+    private static byte[] functionBytecode(byte[] binary, boolean legacyExceptions, int functionIndex) {
+        byte[][] result = new byte[1][];
+        try (Context context = Context.newBuilder(WasmLanguage.ID).allowExperimentalOptions(true).option("wasm.LegacyExceptions", Boolean.toString(legacyExceptions)).build()) {
+            WasmTestUtils.runInWasmContext(context, c -> {
+                WasmModule module = new WebAssembly(c).moduleDecode(binary);
+                CodeEntry entry = module.codeEntries()[functionIndex];
+                result[0] = Arrays.copyOfRange(module.bytecode(), entry.bytecodeStartOffset(), entry.bytecodeEndOffset());
+                CodeEntry[] reread = BytecodeParser.readCodeEntries(module);
+                Assert.assertEquals(module.codeEntries().length, reread.length);
+                Assert.assertEquals(entry.maxLegacyCatchDepth(), reread[functionIndex].maxLegacyCatchDepth());
+            });
+        }
+        return result[0];
     }
 
     @Test

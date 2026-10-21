@@ -95,7 +95,7 @@ public final class LegacyTryFrame extends ControlFrame {
 
         if (!branchLabelFixups.isEmpty()) {
             // bytecode label reached by branches targeting the try label
-            int exitLabelLocation = bytecode.addLabel(resultTypeLength(), initialStackSize(), commonResultType(), legacyCatchDepth());
+            int exitLabelLocation = addBranchLabel(bytecode);
             for (BytecodeFixup labelFixup : branchLabelFixups) {
                 labelFixup.patch(exitLabelLocation);
             }

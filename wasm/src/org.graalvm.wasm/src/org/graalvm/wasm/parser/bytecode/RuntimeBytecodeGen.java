@@ -119,7 +119,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds an opcode to the bytecode. See {@link Bytecode} for a list of opcodes.
-     * 
+     *
      * @param opcode The opcode
      */
     public void addOp(int opcode) {
@@ -130,7 +130,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     /**
      * Adds an opcode and an i32 immediate value to the bytecode. See {@link Bytecode} for a list of
      * opcode.
-     * 
+     *
      * @param opcode The opcode
      * @param value The immediate value
      */
@@ -143,7 +143,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     /**
      * Adds an opcode and an i64 immediate value to the bytecode. See {@link Bytecode} for a list of
      * opcodes.
-     * 
+     *
      * @param opcode The opcode
      * @param value The immediate value
      */
@@ -169,7 +169,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     /**
      * Adds an opcode and two i32 immediate values to the bytecode. See {@link Bytecode} for a list
      * of opcodes.
-     * 
+     *
      * @param opcode The opcode
      * @param value1 The first immediate value
      * @param value2 The second immediate value
@@ -185,7 +185,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * Adds an opcode and an immediate value to the bytecode. If the value fits into a signed i8
      * value, the i8 opcode and an i8 value are added. Otherwise, the i32 opcode and an i32 value
      * are added. See {@link Bytecode} for a list of opcode.
-     * 
+     *
      * @param opcodeI8 The i8 opcode
      * @param opcodeI32 The i32 opcode
      * @param value The immediate value
@@ -266,7 +266,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * indexType64 is false, the u8 opcode and a u8 value are added. If the value fits into a i32
      * value and indexType64 is false, the i32 opcode and an i32 value are added. Otherwise, the
      * generic opcode and data encoding are added. See {@link Bytecode} for a list of opcode.
-     * 
+     *
      * @param opcode The generic memory opcode
      * @param opcodeU8 The u8 memory opcode
      * @param opcodeI32 The i32 memory opcode
@@ -339,22 +339,32 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
-     * Adds a branch label to the bytecode.
+     * Adds a fallthrough skip instruction followed by a branch label. Labels unwind the interpreter
+     * stack; compiled branches normalize before the target and skip the label. Legacy skip
+     * instructions also bypass the trailing catch-unwind metadata.
      *
      * @param labelArity The number of values carried when branching to the label.
      * @param stackSize The stack size at the start of the block.
      * @param commonLabelValueType The common value type of the values carried when branching to the
      *            label. See {@link WasmType#getCommonValueType(int[])}.
      * @param legacyCatchDepth The number of active legacy catches that must remain active when
-     *            control transfers to this label. If non-zero, the label is immediately followed by
-     *            a {@code LEGACY_CATCH_UNWIND} helper bytecode. Non-legacy labels keep their
-     *            previous encoding unchanged.
-     * @return The location of the label in the bytecode.
+     *            control transfers to this label. A {@code LEGACY_CATCH_UNWIND} instruction after
+     *            the label stores the depth if it is non-zero.
+     * @return The location of the label in the bytecode, after the fallthrough skip instruction.
      */
     public int addLabel(int labelArity, int stackSize, int commonLabelValueType, int legacyCatchDepth) {
+        return addLabel(labelArity, stackSize, commonLabelValueType, legacyCatchDepth, false);
+    }
+
+    /**
+     * Emits explicit depth-zero cleanup when a branch exits all active catches. Otherwise absent
+     * catch metadata means no depth change.
+     */
+    public int addLabel(int labelArity, int stackSize, int commonLabelValueType, int legacyCatchDepth, boolean unwindLegacyCatches) {
         assert commonLabelValueType == WasmType.NONE_COMMON_TYPE || commonLabelValueType == WasmType.NUM_COMMON_TYPE || commonLabelValueType == WasmType.OBJ_COMMON_TYPE ||
                         commonLabelValueType == WasmType.MIX_COMMON_TYPE : "invalid label value type";
-        final boolean hasLegacyCatchUnwind = legacyCatchDepth != 0;
+        assert labelArity >= 0 && stackSize >= 0 && legacyCatchDepth >= 0;
+        final boolean hasLegacyCatchUnwind = unwindLegacyCatches || legacyCatchDepth != 0;
         final int location;
         if (labelArity <= 1 && stackSize <= 63) {
             if (labelArity == 0) {
@@ -419,7 +429,15 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @return The location of the loop label in the bytecode.
      */
     public int addLoopLabel(int paramCount, int stackSize, int commonParamType, int legacyCatchDepth) {
-        int loopLabel = addLabel(paramCount, stackSize, commonParamType, legacyCatchDepth);
+        return addLoopLabel(paramCount, stackSize, commonParamType, legacyCatchDepth, false);
+    }
+
+    /**
+     * In functions containing legacy catches, loop headers need explicit cleanup even at depth zero:
+     * a catch later in the body may branch back to this label.
+     */
+    public int addLoopLabel(int paramCount, int stackSize, int commonParamType, int legacyCatchDepth, boolean hasLegacyCatches) {
+        int loopLabel = addLabel(paramCount, stackSize, commonParamType, legacyCatchDepth, hasLegacyCatches);
         addOp(Bytecode.LOOP);
         return loopLabel;
     }
@@ -592,8 +610,8 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
-     * Adds a branch opcode to the bytecode and reserves an i32 value for the jump offset. In
-     * addition, a profile with a size of 2-byte is added.
+     * Adds a branch opcode with an i32 jump offset to be patched later, followed by its optional
+     * two-byte profile.
      *
      * @param branchOp The branch operation to add.
      * @param branchHint Optional branch hint used to initialize the branch profile.
@@ -619,7 +637,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * Adds a branch table opcode to the bytecode. If the size fits into an u8 value, a br_table_u8
      * and u8 size are added. Otherwise, a br_table_i32 and i32 size are added. In both cases, a
      * profile with a size of 2-byte is added.
-     * 
+     *
      * @param size The number of items in the branch table.
      */
     public void addBranchTable(int size) {
@@ -638,7 +656,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Reserves an i32 jump offset location and 2-byte profile for a branch table item.
-     * 
+     *
      * @return The location of the jump offset to be patched later. (see
      *         {@link #patchLocation(int, int)}).
      */
@@ -653,7 +671,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds an exception handler that catches a specific exception type (tag), formatted as below.
-     * 
+     *
      * <pre>
      * from (4 byte) | to (4 byte) | type (1 byte) | tag (4 byte) | target (4 byte)
      * </pre>
@@ -691,7 +709,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * Adds a call instruction to the bytecode. If the nodeIndex and functionIndex both fit into a
      * u8 value, a call_u8 and two u8 values are added. Otherwise, a call_i32 and two i32 value are
      * added.
-     * 
+     *
      * @param nodeIndex The node index of the call
      * @param functionIndex The function index of the call
      */
@@ -890,7 +908,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds the header of a data segment to the bytecode.
-     * 
+     *
      * @param length The length of the data segment
      * @param offsetBytecode The offset bytecode of the data segment, null if missing
      * @param offsetAddress The offset address of the data segment, -1 if missing
@@ -901,7 +919,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds the header of a non-active data segment to the bytecode.
-     * 
+     *
      * @param mode The segment mode of the data segment
      * @param length The length of the data segment
      */
@@ -912,7 +930,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds the header of an elem segment to the bytecode.
-     * 
+     *
      * @param mode The segment mode of the elem segment
      * @param count The number of elements in the elem segment
      * @param elemType The type of the elements in the elem segment
@@ -1000,7 +1018,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds a single byte to the bytecode.
-     * 
+     *
      * @param value The byte that should be added
      */
     public void addByte(byte value) {
@@ -1018,7 +1036,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds a function index entry to the data of an elem segment.
-     * 
+     *
      * @param functionIndex The function index of the element in the elem segment
      */
     public void addElemFunctionIndex(int functionIndex) {
@@ -1038,7 +1056,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds a bytecode entry to the data of an elem segment.
-     * 
+     *
      * @param elementBytecode The bytecode of the element expression in the elem segment
      */
     public void addElemBytecode(byte[] elementBytecode) {
@@ -1060,7 +1078,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds information about a code entry to the bytecode.
-     * 
+     *
      * @param functionIndex The function index of the code entry
      * @param maxStackSize The maximum stack size of the code entry
      * @param length The length of the function in the bytecode
@@ -1116,7 +1134,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds a notify instruction used for instrumentation.
-     * 
+     *
      * @param lineNumber the line number in the source code
      * @param sourceCodeLocation the location in the source
      */

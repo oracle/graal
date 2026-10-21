@@ -179,4 +179,8 @@ public class BytecodeBitEncoding {
     // Exception handlers
 
     public static final int INVALID_EXCEPTION_TABLE_OFFSET = -1;
+
+    public static final int BR_TABLE_U8_HEADER_SIZE = 4;
+    public static final int BR_TABLE_I32_HEADER_SIZE = 7;
+    public static final int BR_TABLE_ITEM_SIZE = 6;
 }

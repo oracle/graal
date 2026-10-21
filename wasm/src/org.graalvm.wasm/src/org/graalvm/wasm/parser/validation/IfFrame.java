@@ -97,10 +97,11 @@ class IfFrame extends ControlFrame {
                 }
             }
         }
-        if (labelFixups.isEmpty()) {
+        // The jump over the else branch also needs a label, even without explicit branches.
+        if (labelFixups.isEmpty() && !elseBranch) {
             bytecode.patchLocation(falseJumpLocation, bytecode.location());
         } else {
-            final int location = bytecode.addLabel(resultTypeLength(), initialStackSize(), commonResultType(), legacyCatchDepth());
+            final int location = addBranchLabel(bytecode);
             bytecode.patchLocation(falseJumpLocation, location);
             for (BytecodeFixup labelFixup : labelFixups) {
                 labelFixup.patch(location);
