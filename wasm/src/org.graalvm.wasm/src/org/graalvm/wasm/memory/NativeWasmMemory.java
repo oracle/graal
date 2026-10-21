@@ -1005,12 +1005,15 @@ public final class NativeWasmMemory extends WasmMemory {
 
     @ExportMessage
     public void copyFrom(Node node, WasmMemory source, long sourceOffset, long destinationOffset, long length) {
-        assert source instanceof NativeWasmMemory;
-        final NativeWasmMemory s = (NativeWasmMemory) source;
-        validateLength(node, length);
-        s.validateAddress(node, sourceOffset, length);
-        validateAddress(node, destinationOffset, length);
-        unsafe.copyMemory(s.startAddress + sourceOffset, this.startAddress + destinationOffset, length);
+        if (source instanceof NativeWasmMemory) {
+            final NativeWasmMemory s = (NativeWasmMemory) source;
+            validateLength(node, length);
+            s.validateAddress(node, sourceOffset, length);
+            validateAddress(node, destinationOffset, length);
+            unsafe.copyMemory(s.startAddress + sourceOffset, this.startAddress + destinationOffset, length);
+        } else {
+            copyFromGeneric(node, source, sourceOffset, destinationOffset, length);
+        }
     }
 
     @ExportMessage
