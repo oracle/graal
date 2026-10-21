@@ -67,7 +67,7 @@ public class PosixAttachApiSupport implements AttachApiSupport {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/posix/attachListener_posix.cpp#L344-L360")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.5.0.2+1/src/hotspot/os/posix/attachListener_posix.cpp#L346-L364")
     public void startup() {
         String path = getSocketFilePath();
         try (CCharPointerHolder f = CTypeConversion.toCString(path)) {
@@ -186,7 +186,7 @@ public class PosixAttachApiSupport implements AttachApiSupport {
         return cachedSocketFilePath;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+18/src/hotspot/os/posix/attachListener_posix.cpp#L185-L249")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.5.0.2+1/src/hotspot/os/posix/attachListener_posix.cpp#L185-L251")
     private boolean createListener() {
         assert lock.isHeldByCurrentThread();
 

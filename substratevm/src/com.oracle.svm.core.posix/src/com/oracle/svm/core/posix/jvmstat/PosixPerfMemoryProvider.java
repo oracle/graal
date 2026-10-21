@@ -146,7 +146,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         return DirectByteBufferUtil.allocate(mapAddress.rawValue(), size);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L134-L157")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.5.0.2+1/src/hotspot/os/posix/perfMemory_posix.cpp#L133-L159")
     private static String getUserTmpDir(String user, int vmId, int nsPid) {
         String tmpDir = Target_jdk_internal_vm_VMSupport.getVMTemporaryDirectory();
         if (Platform.includedIn(LINUX.class)) {
