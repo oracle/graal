@@ -120,8 +120,20 @@ The analysis must also account for the callback's permitted mutations and except
 Method entry coverage, callback results and continuations, and field mutation coverage are separate obligations in this single interaction.
 
 The callback's return signature alone does not enumerate its possible runtime types.
-A declared interface type is not necessarily an enforced bound: the analysis accounts for unchecked interface declarations through [`TypeFlow.filterUncheckedInterface`](../../src/com.oracle.graal.pointsto/src/com/oracle/graal/pointsto/flow/TypeFlow.java).
+A declared interface type is not necessarily an enforced bound: the analysis accounts for unchecked interface declarations through [`TypeFlow.dropUncheckedInterfaceBound`](../../src/com.oracle.graal.pointsto/src/com/oracle/graal/pointsto/flow/TypeFlow.java).
+For example, an unchecked declaration `I` supplies only an `Object` bound, and `I[]` supplies only an `Object[]` bound.
+Field flows use this effective bound when deciding whether finite recovery is justified; the field metadata retains the original declaration.
 Recovery based solely on the bound established by a successful checked cast must satisfy the conditions in [Representing Possible Runtime Types](#representing-possible-runtime-types).
+
+### Indirect Field Writes
+
+An analyzed method can receive an extension value and store it through an indirect access, such as `Unsafe` or reflection.
+A later ordinary field read must account for that value, even when the field is closed to direct extension writes.
+If the analysis omits individual indirect stores, its field mutation summary must cover the values those stores can write.
+
+Enumerating known instantiated types is insufficient when a field can hold values of types introduced by an extension.
+Such a field requires an open value approximation independently of the number of known types.
+A closed value bound permits a finite approximation only under the conditions in [Representing Possible Runtime Types](#representing-possible-runtime-types).
 
 ## Architectural Requirements
 

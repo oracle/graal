@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -143,6 +143,23 @@ public class PointsToAnalysisField extends AnalysisField {
     @Override
     public boolean registerAsUnsafeAccessed(Object reason) {
         if (super.registerAsUnsafeAccessed(reason)) {
+            var bb = (PointsToAnalysis) getUniverse().getBigbang();
+            if (bb.analysisPolicy().useConservativeUnsafeAccess()) {
+                /*
+                 * Conservative unsafe stores have no value flow. An unsafe store in analyzed code
+                 * can write an extension value into a field that extensions cannot write directly.
+                 * An open value bound therefore requires saturation, independently of the field
+                 * classification and the saturation cutoff, so ordinary reads account for unknown
+                 * runtime types.
+                 */
+                if (getStorageKind().isObject() && !bb.getExtensionPolicy().isTypeClosed(initialFlow.getDeclaredType())) {
+                    // An open reference bound must account for unknown extension types.
+                    bb.getPreSaturatedSourceTypeFlow().addUse(bb, initialFlow);
+                } else {
+                    // Retain declared-type injection for closed reference bounds and primitive values.
+                    injectDeclaredType();
+                }
+            }
             if (fieldType.getStorageKind().isPrimitive()) {
                 /*
                  * Primitive type states are not propagated through unsafe loads/stores. Instead,
@@ -151,7 +168,7 @@ public class PointsToAnalysisField extends AnalysisField {
                  */
                 saturatePrimitiveField();
             }
-            ((PointsToAnalysis) getUniverse().getBigbang()).forceUnsafeUpdate();
+            bb.forceUnsafeUpdate();
             return true;
         }
         return false;

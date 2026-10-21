@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafeLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafeStoreTypeFlow;
+import com.oracle.graal.pointsto.flow.PreSaturatedTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -108,6 +109,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     private final boolean usePredicates;
     private AnyPrimitiveSourceTypeFlow anyPrimitiveSourceTypeFlow;
     private AlwaysEnabledPredicateFlow alwaysEnabledPredicateFlow;
+    private PreSaturatedTypeFlow preSaturatedSourceTypeFlow;
 
     protected final boolean trackTypeFlowInputs;
     protected final boolean reportAnalysisStatistics;
@@ -126,6 +128,10 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext, TimerCollection timerCollection,
                     ClassInclusionPolicy classInclusionPolicy) {
         super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection, classInclusionPolicy);
+        AnalysisError.guarantee(!analysisPolicy.removeSaturatedTypeFlows() || analysisPolicy.aliasArrayTypeFlows(),
+                        "RemoveSaturatedTypeFlows requires AliasArrayTypeFlows.");
+        AnalysisError.guarantee(!analysisPolicy.useConservativeUnsafeAccess() || analysisPolicy.removeSaturatedTypeFlows(),
+                        "Conservative unsafe access requires RemoveSaturatedTypeFlows.");
         this.extensionPolicy = createExtensionPolicy(hostVM);
         this.typeFlowTimer = timerCollection.createTimer("(typeflow)");
 
@@ -156,6 +162,11 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
         timing = PointstoOptions.ProfileAnalysisOperations.getValue(options) ? new AnalysisTiming() : null;
         executor.init(timing);
+
+        if (analysisPolicy.removeSaturatedTypeFlows()) {
+            preSaturatedSourceTypeFlow = new PreSaturatedTypeFlow(null);
+            preSaturatedSourceTypeFlow.enableFlow(this);
+        }
     }
 
     private static ExtensionPolicy createExtensionPolicy(HostVM hostVM) {
@@ -273,6 +284,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         super.cleanupAfterAnalysis();
         anyPrimitiveSourceTypeFlow = null;
         alwaysEnabledPredicateFlow = null;
+        preSaturatedSourceTypeFlow = null;
         unsafeLoads = null;
         unsafeStores = null;
 
@@ -307,6 +319,16 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     public AnyPrimitiveSourceTypeFlow getAnyPrimitiveSourceTypeFlow() {
         return anyPrimitiveSourceTypeFlow;
+    }
+
+    /**
+     * Returns the shared, unconditionally enabled saturation source for this analysis. Requires
+     * saturation to be enabled. Flows whose saturation depends on an operation's predicate must use
+     * a separate source.
+     */
+    public PreSaturatedTypeFlow getPreSaturatedSourceTypeFlow() {
+        assert preSaturatedSourceTypeFlow != null : "Saturation source is unavailable when saturation is disabled.";
+        return preSaturatedSourceTypeFlow;
     }
 
     public AlwaysEnabledPredicateFlow getAlwaysEnabledPredicateFlow() {

@@ -2254,8 +2254,9 @@ public class MethodTypeFlowBuilder {
     protected void processUnsafeStore(ValueNode node, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
         if (bb.analysisPolicy().useConservativeUnsafeAccess()) {
             /*
-             * When unsafe writes are modeled conservatively all unsafe accessed fields contain all
-             * instantiated subtypes of their declared type, so no need to model the unsafe store.
+             * Conservative unsafe registration accounts for any value under the field's declared
+             * bound, including extension values when that bound is open. The store needs no value
+             * flow; ordinary field reads receive the state or saturation from the registered field.
              */
             return;
         }
