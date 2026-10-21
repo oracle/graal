@@ -633,6 +633,21 @@ public class MultiInstantiationSuite {
         Assert.assertArrayEquals(new int[]{WasmType.withNullable(false, 0)}, codeEntries[1].resultTypes());
     }
 
+    @Test
+    public void testRereadCodeEntryMaxStackSize() throws IOException, InterruptedException {
+        for (int stackSize : new int[]{255, 256, 257, 65535, 65536}) {
+            byte[] binary = WasmBinaryTools.compileWat("max-stack-size", """
+                            (module
+                                (func (export "test") (result i32)
+                                    %s
+                                    %s
+                                )
+                            )
+                            """.formatted("i32.const 1\n".repeat(stackSize), "i32.add\n".repeat(stackSize - 1)));
+            Assert.assertEquals("Incorrect maximum stack size after rereading", stackSize, readCodeEntries(binary)[0].maxStackSize());
+        }
+    }
+
     private static CodeEntry[] readCodeEntries(byte[] binary) {
         CodeEntry[][] codeEntries = new CodeEntry[1][];
         try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {

@@ -391,7 +391,7 @@ public abstract class BytecodeParser {
                 effectiveOffset++;
                 break;
             case BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_U16:
-                maxStackSize = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                maxStackSize = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                 effectiveOffset += 2;
                 break;
             case BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_I32:
