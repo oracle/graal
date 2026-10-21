@@ -51,6 +51,8 @@ import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.memory.ByteArraySupport;
+
 /**
  * Tests the correctness of the bytecode produced by the {@link RuntimeBytecodeGen}.
  */
@@ -272,6 +274,49 @@ public class BytecodeSuite {
             }
             b.addBranch(0, RuntimeBytecodeGen.BranchOp.BR_IF);
         }, expected);
+    }
+
+    /**
+     * Checks that all six branch forms compute displacements relative to the displacement operand,
+     * accounting for opcode prefixes and cast type operands. Covers forward and backward targets
+     * and both sides of the U8 displacement limit.
+     */
+    @Test
+    public void testBranchOperandOffsets() {
+        RuntimeBytecodeGen.BranchOp[] branches = {
+                        RuntimeBytecodeGen.BranchOp.BR,
+                        RuntimeBytecodeGen.BranchOp.BR_IF,
+                        RuntimeBytecodeGen.BranchOp.BR_ON_NULL,
+                        RuntimeBytecodeGen.BranchOp.BR_ON_NON_NULL,
+                        new RuntimeBytecodeGen.BranchOp.BrOnCast(false, WasmType.FUNCREF_TYPE),
+                        new RuntimeBytecodeGen.BranchOp.BrOnCast(true, WasmType.FUNCREF_TYPE)};
+        for (RuntimeBytecodeGen.BranchOp branch : branches) {
+            boolean castBranch = branch instanceof RuntimeBytecodeGen.BranchOp.BrOnCast;
+            // Derive the operand position from the encoding, independently of prefixSize().
+            int prefixSize = castBranch ? 5 : branch == RuntimeBytecodeGen.BranchOp.BR || branch == RuntimeBytecodeGen.BranchOp.BR_IF ? 1 : 2;
+            // Include both sides of the u8 displacement limit for every prefix size.
+            for (int padding : new int[]{0, 249, 250, 253, 254, 255, 256}) {
+                for (int target : new int[]{0, 1024}) {
+                    RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
+                    for (int i = 0; i < padding; i++) {
+                        bytecode.addOp(Bytecode.NOP);
+                    }
+                    if (castBranch) {
+                        bytecode.addOp(Bytecode.AGGREGATE);
+                    }
+                    int displacementOffset = bytecode.location() + prefixSize;
+                    bytecode.addBranch(target, branch);
+                    byte[] bytes = bytecode.toArray();
+                    boolean compact = target <= displacementOffset && displacementOffset - target <= 255;
+                    int displacementSize = compact ? 1 : 4;
+                    int profileSize = branch == RuntimeBytecodeGen.BranchOp.BR ? 0 : 2;
+                    Assert.assertEquals(displacementOffset + displacementSize + profileSize, bytes.length);
+                    int displacement = compact ? -Byte.toUnsignedInt(bytes[displacementOffset])
+                                    : ByteArraySupport.littleEndian().getInt(bytes, displacementOffset);
+                    Assert.assertEquals(target, displacementOffset + displacement);
+                }
+            }
+        }
     }
 
     @Test

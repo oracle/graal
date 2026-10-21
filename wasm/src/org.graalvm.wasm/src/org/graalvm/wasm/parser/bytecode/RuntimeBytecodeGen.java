@@ -512,6 +512,12 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             }
 
             @Override
+            public int prefixSize() {
+                // Bytecode.AGGREGATE already emitted by caller.
+                return 5;
+            }
+
+            @Override
             public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
                 // Bytecode.AGGREGATE already emitted by caller
                 bytecode.add1(brOnCastFail ? Bytecode.BR_ON_CAST_FAIL_U8 : Bytecode.BR_ON_CAST_U8);
@@ -532,6 +538,22 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             this.profiled = profiled;
         }
 
+        /**
+         * Returns the number of bytes emitted by {@link #emitOpcodesU8(RuntimeBytecodeGen)} or
+         * {@link #emitOpcodesI32(RuntimeBytecodeGen)} before the displacement operand. Both encodings
+         * use the same prefix size. The displacement is relative to its own position, so
+         * {@link RuntimeBytecodeGen#addBranch(int, BranchOp)} uses this size to locate its origin.
+         *
+         * Includes opcodes and preceding operands, such as the four-byte reference type for cast
+         * branches. Excludes any prefix already emitted by the caller (notably {@link Bytecode#AGGREGATE}),
+         * the displacement itself, and the trailing profile.
+         *
+         * @return 1 for BR/BR_IF, 2 for null/non-null branches, or 5 for cast branches.
+         */
+        public int prefixSize() {
+            return this == BR || this == BR_IF ? 1 : 2;
+        }
+
         public abstract void emitOpcodesU8(RuntimeBytecodeGen bytecode);
 
         public abstract void emitOpcodesI32(RuntimeBytecodeGen bytecode);
@@ -548,15 +570,14 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
-     * Adds a branch opcode to the bytecode. If the jump offset fits into a signed i8 value,
-     * {@code opcodesU8} and i8 jump offset is added. Otherwise, {@code opcodesI32} and i32 jump
-     * offset is added. In both cases, a profile with a size of 2-byte is added.
+     * Adds a branch opcode followed by its displacement and optional two-byte profile. Backward
+     * displacements up to 255 use the u8 form; other displacements use i32.
      *
      * @param location The target location of the branch.
      */
     public void addBranch(int location, BranchOp branchOp) {
         assert location >= 0;
-        final int relativeOffset = location - (location() + 1);
+        final int relativeOffset = location - (location() + branchOp.prefixSize());
         if (relativeOffset <= 0 && relativeOffset >= -255) {
             branchOp.emitOpcodesU8(this);
             // target
