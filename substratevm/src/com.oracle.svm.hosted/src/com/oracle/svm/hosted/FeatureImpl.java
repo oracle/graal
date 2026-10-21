@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -388,7 +389,7 @@ public class FeatureImpl {
         }
 
         public Set<Class<?>> reachableSubtypes(Class<?> baseClass) {
-            return reachableSubtypes(getMetaAccess().lookupJavaType(baseClass)).toHashSet().stream()
+            return reachableSubtypesWithHostType(getMetaAccess().lookupJavaType(baseClass))
                             .map(OriginalClassProvider::getJavaClass).collect(Collectors.toCollection(HashSet::new));
         }
 
@@ -398,6 +399,15 @@ public class FeatureImpl {
 
         public Set<ResolvedJavaType> reachableSubtypes(ResolvedJavaType baseType) {
             return new LinkedHashSet<>(reachableSubtypes(asAnalysisType(baseType)).toHashSet());
+        }
+
+        private Stream<AnalysisType> reachableSubtypesWithHostType(ResolvedJavaType baseType) {
+            /*
+             * Base-layer placeholders have no corresponding Class in the current layer.
+             * OriginalClassProvider would map them to Object.class. The general JVMCI query
+             * preserves their analysis identity and does not need this filter.
+             */
+            return reachableSubtypes(asAnalysisType(baseType)).toHashSet().stream().filter(AnalysisType::isBackedByHostType);
         }
 
         public Set<Executable> reachableMethodOverrides(Executable baseMethod) {
@@ -428,12 +438,7 @@ public class FeatureImpl {
             if (baseType == null) {
                 throw UserError.abort("Guest reachable-subtype query requires a Class object");
             }
-            Set<ResolvedJavaType> types = reachableSubtypes(baseType);
-            JavaConstant[] classes = new JavaConstant[types.size()];
-            int index = 0;
-            for (ResolvedJavaType type : types) {
-                classes[index++] = guestClassConstant(guestAccess, type);
-            }
+            JavaConstant[] classes = reachableSubtypesWithHostType(baseType).map(type -> guestClassConstant(guestAccess, type)).toArray(JavaConstant[]::new);
             return guestSetConstant(guestAccess, classes);
         }
 
@@ -860,7 +865,12 @@ public class FeatureImpl {
         @Override
         public void registerMethodOverrideReachabilityHandler(BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod) {
             AnalysisMethod baseAnalysisMethod = getMetaAccess().lookupJavaMethod(baseMethod);
-            MethodOverrideReachableNotification notification = new MethodOverrideReachableNotification(callback);
+            MethodOverrideReachableNotification notification = new MethodOverrideReachableNotification((access, method) -> {
+                Executable executable = method.getJavaMethod();
+                if (executable != null) {
+                    callback.accept(access, executable);
+                }
+            });
             baseAnalysisMethod.registerOverrideReachabilityNotification(notification);
 
             /*
@@ -876,9 +886,7 @@ public class FeatureImpl {
         @Override
         public void registerMethodOverrideReachabilityHandler(BiConsumer<JVMCIFeatureAccess.DuringAnalysisAccess, ResolvedJavaMethod> callback, ResolvedJavaMethod baseMethod) {
             AnalysisMethod baseAnalysisMethod = asAnalysisMethod(baseMethod);
-            // TODO GR-76812: make the notification payload expose JVMCI metadata directly.
-            MethodOverrideReachableNotification notification = new MethodOverrideReachableNotification((access, executable) -> callback.accept((JVMCIFeatureAccess.DuringAnalysisAccess) access,
-                            getMetaAccess().lookupJavaMethod(executable)));
+            MethodOverrideReachableNotification notification = new MethodOverrideReachableNotification((access, method) -> callback.accept((JVMCIFeatureAccess.DuringAnalysisAccess) access, method));
             baseAnalysisMethod.registerOverrideReachabilityNotification(notification);
 
             for (AnalysisMethod override : reachableMethodOverrides(baseAnalysisMethod)) {
@@ -889,7 +897,16 @@ public class FeatureImpl {
         @Override
         public void registerSubtypeReachabilityHandler(BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
             AnalysisType baseType = getMetaAccess().lookupJavaType(baseClass);
-            SubtypeReachableNotification notification = new SubtypeReachableNotification(callback);
+            SubtypeReachableNotification notification = new SubtypeReachableNotification((access, type) -> {
+                /*
+                 * A placeholder for a hidden type from a shared layer has no Class in this build.
+                 * OriginalClassProvider maps it to Object.class, which would report spurious,
+                 * duplicate notifications instead of the actual reachable subtype.
+                 */
+                if (type.isBackedByHostType()) {
+                    callback.accept(access, OriginalClassProvider.getJavaClass(type));
+                }
+            });
             baseType.registerSubtypeReachabilityNotification(notification);
 
             /*
@@ -904,9 +921,7 @@ public class FeatureImpl {
         @Override
         public void registerSubtypeReachabilityHandler(BiConsumer<JVMCIFeatureAccess.DuringAnalysisAccess, ResolvedJavaType> callback, ResolvedJavaType baseType) {
             AnalysisType baseAnalysisType = asAnalysisType(baseType);
-            // TODO GR-76812: make the notification payload expose JVMCI metadata directly.
-            SubtypeReachableNotification notification = new SubtypeReachableNotification((access, clazz) -> callback.accept((JVMCIFeatureAccess.DuringAnalysisAccess) access,
-                            getMetaAccess().lookupJavaType(clazz)));
+            SubtypeReachableNotification notification = new SubtypeReachableNotification((access, type) -> callback.accept((JVMCIFeatureAccess.DuringAnalysisAccess) access, type));
             baseAnalysisType.registerSubtypeReachabilityNotification(notification);
 
             for (AnalysisType subtype : reachableSubtypes(baseAnalysisType)) {
