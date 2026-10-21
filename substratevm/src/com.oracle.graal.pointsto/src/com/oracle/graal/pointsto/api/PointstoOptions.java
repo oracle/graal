@@ -153,7 +153,8 @@ public class PointstoOptions {
      * fields with closed value bounds receive all instantiated subtypes of those bounds; fields
      * with open value bounds saturate to account for unknown extension types. Unsafe reference loads
      * start saturated because the analysis does not track their source fields and therefore cannot
-     * derive a narrower value bound.
+     * derive a narrower value bound. Requires {@link #RemoveSaturatedTypeFlows}, which in turn
+     * requires {@link #AliasArrayTypeFlows}.
      */
     @Option(help = "Conservatively model unsafe-accessed field values and saturate all unsafe loads.")//
     public static final OptionKey<Boolean> UseConservativeUnsafeAccess = new OptionKey<>(true);

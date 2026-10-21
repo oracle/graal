@@ -31,7 +31,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
-import com.oracle.graal.pointsto.flow.PreSaturatedTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreInstanceFieldTypeFlow;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -155,9 +154,7 @@ public class PointsToAnalysisField extends AnalysisField {
                  */
                 if (getStorageKind().isObject() && !bb.getExtensionPolicy().isTypeClosed(initialFlow.getDeclaredType())) {
                     // An open reference bound must account for unknown extension types.
-                    var unsafeValues = new PreSaturatedTypeFlow(null);
-                    unsafeValues.enableFlow(bb);
-                    unsafeValues.addUse(bb, initialFlow);
+                    bb.getPreSaturatedSourceTypeFlow().addUse(bb, initialFlow);
                 } else {
                     // Retain declared-type injection for closed reference bounds and primitive values.
                     injectDeclaredType();
