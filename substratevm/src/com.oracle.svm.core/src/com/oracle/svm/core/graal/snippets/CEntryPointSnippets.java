@@ -1139,7 +1139,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 default:
                     throw shouldNotReachHereUnexpectedInput(node.getLeaveAction()); // ExcludeFromJacocoGeneratedReport
             }
-            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            SnippetTemplate template = template(tool, node, args);
+            /*
+             * Leaving Java changes the thread status, and assertions checking the transition's
+             * precondition may first read the current status. Allow these reads even though the
+             * replacee has no memory input for the status location.
+             */
+            template.setMayRemoveLocation(true);
+            template.instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
     }
