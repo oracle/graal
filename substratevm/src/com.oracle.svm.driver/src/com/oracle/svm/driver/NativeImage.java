@@ -1799,12 +1799,13 @@ public class NativeImage {
         arguments.addAll(config.getGeneratorMainClass());
 
         Path keepAliveFile;
-        if (OS.getCurrent().hasProcFS) {
+        Path procPIDCommPath = Path.of("/proc/" + ProcessHandle.current().pid() + "/comm");
+        if (OS.getCurrent().hasProcFS && Files.isReadable(procPIDCommPath)) {
             /*
              * On Linux we use the procfs entry of the driver itself. This guarantees builder
              * shutdown even if the driver is terminated via SIGKILL.
              */
-            keepAliveFile = Path.of("/proc/" + ProcessHandle.current().pid() + "/comm");
+            keepAliveFile = procPIDCommPath;
         } else {
             keepAliveFile = createFileInTempDir(".native_image.alive");
         }
