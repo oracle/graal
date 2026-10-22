@@ -52,7 +52,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.registry.TypeIDs;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.memory.NullableNativeMemory;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.coder.ByteStream;
 import com.oracle.svm.core.util.coder.ByteStreamAccess;

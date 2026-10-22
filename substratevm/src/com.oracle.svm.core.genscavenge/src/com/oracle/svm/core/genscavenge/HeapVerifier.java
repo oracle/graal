@@ -52,7 +52,7 @@ import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;

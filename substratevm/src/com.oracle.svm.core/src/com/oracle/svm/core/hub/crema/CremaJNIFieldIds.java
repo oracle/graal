@@ -31,7 +31,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.shared.Uninterruptible;
 
 /**

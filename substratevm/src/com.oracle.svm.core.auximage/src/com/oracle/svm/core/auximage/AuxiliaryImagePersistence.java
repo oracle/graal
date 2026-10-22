@@ -67,7 +67,7 @@ import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayoutCancelledException;
 import com.oracle.svm.core.image.ImageHeapObject;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.thread.JavaVMOperation;
