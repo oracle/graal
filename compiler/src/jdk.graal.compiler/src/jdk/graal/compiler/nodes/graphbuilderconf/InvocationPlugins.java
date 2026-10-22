@@ -560,6 +560,15 @@ public class InvocationPlugins {
     }
 
     public void flushDeferrables() {
+        runDeferredRegistrations();
+    }
+
+    /**
+     * Executes pending registrations with the same synchronization and failure handling in every
+     * runtime. Kept separate so Native Image can check whether the plugin set was allocated during
+     * image generation before allowing runtime registration.
+     */
+    private void runDeferredRegistrations() {
         if (deferredRegistrations != null) {
             synchronized (this) {
                 if (deferredRegistrations != null) {
