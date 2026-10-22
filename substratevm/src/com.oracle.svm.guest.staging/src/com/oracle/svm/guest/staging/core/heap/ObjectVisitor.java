@@ -22,9 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
-
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+package com.oracle.svm.guest.staging.core.heap;
 
 /**
  * Supply a closure to be applied to Objects.
