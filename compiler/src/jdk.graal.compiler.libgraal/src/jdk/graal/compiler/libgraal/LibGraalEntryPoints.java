@@ -48,21 +48,28 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GlobalMetrics;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.hotspot.CompilationContext;
 import jdk.graal.compiler.hotspot.CompilationTask;
+import jdk.graal.compiler.hotspot.HotSpotCompilationIdentifier;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.graal.compiler.hotspot.ProfileReplaySupport;
+import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.replaycomp.HardwarePerformanceCounters;
 import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationRunner;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.spi.StableProfileProvider;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.util.OptionsEncoder;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -435,6 +442,52 @@ final class LibGraalEntryPoints {
             } finally {
                 JNIUtil.DeleteLocalRef(env, result);
             }
+        }
+    }
+
+    /**
+     * Compiles the supplied method with libgraal and verifies that Vector API library operations
+     * expand to foreign calls. In particular, resolving the library symbol must work for string
+     * constants in the application JVM, rather than only for objects in the compiler's runtime.
+     */
+    @CEntryPoint(name = "Java_jdk_graal_compiler_hotspot_test_LibGraalCompilerTest_checkVectorAPILibraryCalls", include = LibGraalFeature.IsEnabled.class)
+    @SuppressWarnings({"unused", "try"})
+    private static void checkVectorAPILibraryCalls(JNIEnv jniEnv,
+                    PointerBase jclass,
+                    @IsolateThreadContext long isolateThreadAddress,
+                    long methodHandle,
+                    int expectedUnaryCalls,
+                    int expectedBinaryCalls) {
+        try (JNIMethodScope scope = new JNIMethodScope("checkVectorAPILibraryCalls", jniEnv)) {
+            HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
+            HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
+            HotSpotResolvedJavaMethod method = runtime.unhand(HotSpotResolvedJavaMethod.class, methodHandle);
+            HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, JVMCICompiler.INVOCATION_ENTRY_BCI, 0L);
+            HotSpotCompilationIdentifier compilationId = new HotSpotCompilationIdentifier(request);
+            OptionValues options = compiler.getGraalRuntime().getOptions();
+            HotSpotProviders providers = compiler.getGraalRuntime().getHostProviders();
+            try (CompilationContext ignored = HotSpotGraalServices.openLocalCompilationContext(request);
+                            DebugContext debug = compiler.getGraalRuntime().openDebugContext(options, compilationId, method, compiler.getDebugHandlersFactories(),
+                                            DebugContext.getDefaultLogStream())) {
+                StructuredGraph graph = compiler.createGraph(method, JVMCICompiler.INVOCATION_ENTRY_BCI, new StableProfileProvider(), compilationId, options, debug);
+                Suites suites = providers.getSuites().getDefaultSuites(options, providers.getLowerer().getTarget().arch);
+                compiler.compile(graph, false, false, true, compilationId, debug, suites);
+                int unaryCalls = 0;
+                int binaryCalls = 0;
+                /* Match the library call checks in VectorAPITest.checkLowTierGraph. */
+                for (ForeignCallNode call : graph.getNodes().filter(ForeignCallNode.class)) {
+                    if (call.getDescriptor().isLazilyResolved()) {
+                        switch (call.getDescriptor().getArgumentTypes().length) {
+                            case 1 -> unaryCalls++;
+                            case 2 -> binaryCalls++;
+                        }
+                    }
+                }
+                GraalError.guarantee(unaryCalls == expectedUnaryCalls, "expected %s unary Vector API library calls, got %s", expectedUnaryCalls, unaryCalls);
+                GraalError.guarantee(binaryCalls == expectedBinaryCalls, "expected %s binary Vector API library calls, got %s", expectedBinaryCalls, binaryCalls);
+            }
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(jniEnv, t);
         }
     }
 }
