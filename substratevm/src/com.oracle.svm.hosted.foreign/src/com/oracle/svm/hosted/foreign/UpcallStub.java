@@ -94,7 +94,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/hotspot/share/prims/upcallLinker.cpp")
+@BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.5-b25/src/hotspot/share/prims/upcallLinker.cpp")
 @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+17/src/hotspot/cpu/x86/upcallLinker_x86_64.cpp")
 @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+17/src/hotspot/cpu/aarch64/upcallLinker_aarch64.cpp")
 public abstract class UpcallStub extends NonBytecodeMethod {
