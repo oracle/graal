@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -146,11 +146,12 @@ import jdk.vm.ci.meta.JavaType;
  * entries encode the following:
  *
  * <pre>
- * hashTable[hash(interfaceID)] = (iTableOffset << {@link DynamicHubUtils#HASHING_ITABLE_SHIFT HASHING_ITABLE_OFFSET}) | interfaceID
+ * hashTable[hash(interfaceID)] = ((long) iTableOffset << {@link DynamicHubUtils#HASHING_ITABLE_SHIFT}) | interfaceID
  * </pre>
  *
  * Thus, interfaceIDs encoded in hash tables must be > 0, to properly distinguish them from empty
- * hash table entries.
+ * hash table entries. Each long entry stores the interface ID in its low 32 bits and the full
+ * byte offset in its upper 32 bits.
  * <p>
  * The implementation of the open-world typechecks can be found in {@link OpenTypeWorldSnippets},
  * the loading of interface methods can be found in {@link OpenTypeWorldDispatchTableSnippets}. The

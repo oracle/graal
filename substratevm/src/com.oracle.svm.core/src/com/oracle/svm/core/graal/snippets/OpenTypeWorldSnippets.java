@@ -26,7 +26,6 @@ package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHub;
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHubOrNull;
-import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_INTERFACE_MASK;
 import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_SHIFT_OFFSET;
 import static jdk.graal.compiler.core.common.GraalOptions.TypeCheckMaxHints;
 import static jdk.graal.compiler.core.common.GraalOptions.TypeCheckMinProfileHitProbability;
@@ -40,6 +39,7 @@ import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.impl.ObjectAccess;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.config.ObjectLayout;
@@ -57,7 +57,6 @@ import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
@@ -304,23 +303,20 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
                     DynamicHub checkedHub,
                     SubstrateIntrinsics.Any trueValue,
                     SubstrateIntrinsics.Any falseValue) {
-        ReplacementsUtil.dynamicAssert(NumUtil.isUShort(interfaceID), "InterfaceIDs must fit in a short to be used for hashing.");
+        ReplacementsUtil.dynamicAssert(interfaceID > 0 && interfaceID <= DynamicHubUtils.MAX_HASHED_INTERFACE_ID, "Interface ID must be in the supported hashing range.");
 
-        // The upper byte of the hashParam holds the shift value, the lower three bytes hold p
-        // which is used for bitwise "and": hashParam = shift << HASHING_SHIFT_OFFSET | p.
+        // The upper byte holds the shift; the low 16 bits hold the mask. The remaining bits are unused.
         int hashParam = checkedHub.getOpenTypeWorldInterfaceHashParam();
         int shift = hashParam >>> HASHING_SHIFT_OFFSET;
-        int[] hashTable = checkedHub.getOpenTypeWorldInterfaceHashTable();
+        long[] hashTable = checkedHub.getOpenTypeWorldInterfaceHashTable();
 
-        // No need to mask hashParam to get "p". interfaceID fits in a short -> the two upper
-        // bytes are 0.
+        // No need to mask hashParam: interfaceID fits in 16 bits, excluding the shift.
         int hash = (interfaceID >>> shift) & hashParam;
-        int offset = (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, hash);
-        int hashTableEntry = ObjectAccess.readInt(hashTable, offset, NamedLocationIdentity.FINAL_LOCATION);
+        long offset = ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Long, hash);
+        long hashTableEntry = ObjectAccess.readLong(hashTable, Word.signed(offset), NamedLocationIdentity.FINAL_LOCATION);
 
-        // Hashtable entries contain integers which hold the iTableOffset and the interfaceID:
-        // hashTableEntry = iTableOffset << HASHING_ITABLE_SHIFT | interfaceID
-        if ((hashTableEntry & HASHING_INTERFACE_MASK) == interfaceID) {
+        // The interface ID occupies the low word.
+        if ((int) hashTableEntry == interfaceID) {
             return trueValue;
         } else {
             return falseValue;

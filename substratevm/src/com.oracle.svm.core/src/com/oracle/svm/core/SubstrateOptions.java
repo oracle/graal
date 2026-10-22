@@ -62,6 +62,7 @@ import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
@@ -95,7 +96,6 @@ import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.phases.LowTier;
 import jdk.graal.compiler.core.phases.MidTier;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
@@ -1829,16 +1829,16 @@ public class SubstrateOptions {
     @Option(help = "Use the closed type world dynamic hub representation. This is only allowed when the option ClosedTypeWorld is also set to true.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ClosedTypeWorldHubLayout = new HostedOptionKey<>(true);
 
-    @Option(help = "Defines a threshold for interfaceIDs which can be covered by hashing if UseInterfaceHashing is enabled. Must be <= 65535 (ushort max). Larger interfaceIDs are handled by the slow path.", type = OptionType.Debug) //
-    public static final HostedOptionKey<Integer> InterfaceHashingMaxId = new HostedOptionKey<>(0xffff, key -> {
+    @Option(help = "Maximum interface ID eligible for hashing with UseInterfaceHashing. Must be between 0 and 65535, the current hash construction limit. Larger IDs remain supported through iterative lookup.", type = OptionType.Debug) //
+    public static final HostedOptionKey<Integer> InterfaceHashingMaxId = new HostedOptionKey<>(DynamicHubUtils.MAX_HASHED_INTERFACE_ID, key -> {
         if (key.hasBeenSet()) {
             UserError.guarantee(useInterfaceHashing(), "Interface hashing needs to be enabled for the InterfaceHashingMaxId to be used. " +
                             "Enable interface hashing with %s",
                             SubstrateOptionsParser.commandArgument(ConcealedOptions.UseInterfaceHashing, "+"));
         }
         int value = key.getValue();
-        if (!NumUtil.isUShort(value)) {
-            UserError.invalidOptionValue(key, value, "The specified value must be <= 65535 (ushort max)");
+        if (value < 0 || value > DynamicHubUtils.MAX_HASHED_INTERFACE_ID) {
+            UserError.invalidOptionValue(key, value, "The specified value must be between 0 and " + DynamicHubUtils.MAX_HASHED_INTERFACE_ID + " (the current hash construction limit)");
         }
     });
 

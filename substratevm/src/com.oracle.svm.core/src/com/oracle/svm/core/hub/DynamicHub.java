@@ -332,7 +332,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /// These entries start after the [#numClassTypes] class-display prefix and are laid out
     /// as `(interfaceID, itableOffset)` pairs. Only interfaces that are not represented in
     /// [#openTypeWorldInterfaceHashTable] are counted here, so the value determines how many
-    /// interface pairs must be scanned for iterative interface type checks and itable lookups.
+    /// interface pairs must be scanned for iterative interface type checks.
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
     private short numIterableInterfaceTypes;
 
@@ -364,7 +364,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * the image heap or {@link Metaspace}.
      */
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
-    private int[] openTypeWorldInterfaceHashTable;
+    private long[] openTypeWorldInterfaceHashTable;
 
     /**
      * Hashing parameter used for interface hashing under open type world if
@@ -534,7 +534,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                     short typeIDDepth,
                     short numIterableInterfaceTypes,
                     int[] openTypeWorldTypeCheckSlots,
-                    int[] openTypeWorldInterfaceHashTable,
+                    long[] openTypeWorldInterfaceHashTable,
                     int openTypeWorldInterfaceHashParam,
                     int vTableEntries,
                     int[] declaredInstanceReferenceFieldOffsets,
@@ -643,7 +643,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         Metaspace metaspace = Metaspace.singleton();
         VMError.guarantee(metaspace.isInAddressSpace(openTypeWorldTypeCheckSlots), "openTypeWorldTypeCheckSlots must have already been copied to the metaspace");
-        VMError.guarantee(metaspace.isInAddressSpace(openTypeWorldInterfaceHashTable), "openTypeWorldInterfaceHashTable must have already been copied to the metaspace");
+        VMError.guarantee(openTypeWorldInterfaceHashTable == null ? !SubstrateOptions.useInterfaceHashing() : metaspace.isInAddressSpace(openTypeWorldInterfaceHashTable),
+                        "openTypeWorldInterfaceHashTable must be in metaspace, or null when interface hashing is disabled");
 
         /* Allocate the hub in the metaspace. */
         DynamicHub hub = metaspace.allocateDynamicHub(vTableEntries);
@@ -800,7 +801,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setOpenTypeWorldData(MethodRef[] vtable, int typeID, int interfaceID, int typeCheckDepth, int numClassTypes, int numIterableInterfaceTypes, int[] typeCheckSlots,
-                    int[] openTypeWorldInterfaceHashTable,
+                    long[] openTypeWorldInterfaceHashTable,
                     int openTypeWorldInterfaceHashParam) {
         assert this.vtable == null : "Initialization must be called only once";
 
@@ -1044,6 +1045,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return typeIDDepth;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getNumClassTypes() {
         return numClassTypes;
     }
@@ -1059,6 +1061,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return numIterableInterfaceTypes;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int[] getOpenTypeWorldTypeCheckSlots() {
         return openTypeWorldTypeCheckSlots;
     }
@@ -1068,7 +1071,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return interfaceID;
     }
 
-    public int[] getOpenTypeWorldInterfaceHashTable() {
+    public long[] getOpenTypeWorldInterfaceHashTable() {
         return openTypeWorldInterfaceHashTable;
     }
 

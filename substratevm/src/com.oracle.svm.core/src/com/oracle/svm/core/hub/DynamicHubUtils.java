@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,28 +49,31 @@ public final class DynamicHubUtils {
     @DuplicatedInNativeCode //
     public static final int HASHING_SHIFT_OFFSET = 24;
 
+    /** Width of the mask in the packed shift-and-mask hash parameter. */
+    public static final int INTERFACE_HASH_MASK_BITS = 16;
+
     /**
-     * The bitmask to be used on the encoded {@code hashParam} to exclude the {@code shift}.
+     * The bitmask to be used on the encoded {@code hashParam} to exclude the shift.
      * {@code p = hashParam & bitmask}. See {@link #hashParam(int[])} for details.
+     * A constant expression lets option defaults use this value without initializing this class.
      */
-    public static final int HASHING_PARAM_MASK = NumUtil.getNbitNumberInt(HASHING_SHIFT_OFFSET);
+    public static final int HASHING_PARAM_MASK = (1 << INTERFACE_HASH_MASK_BITS) - 1;
 
     /**
-     * The number of bits that the {@code iTableOffset} is shifted inside a hash table entry.
-     * {@code hashTable[hash(interfaceID)] = (iTableOffset << shift | interfaceID}. See the
-     * documentation on TypeCheckBuilder for details.
+     * The byte offset occupies the upper 32 bits of each long hash table entry:
+     * {@code ((long) iTableOffset << HASHING_ITABLE_SHIFT) | interfaceID}. The low 32 bits
+     * contain the interface ID.
      */
-    public static final int HASHING_ITABLE_SHIFT = 16;
+    public static final int HASHING_ITABLE_SHIFT = Integer.SIZE;
 
     /**
-     * The bitmask that extracts the {@code interfaceID} from a hash table entry.
-     * {@code hashTable[hash(interfaceID)] = (iTableOffset << shift | interfaceID}. See the
-     * documentation on TypeCheckBuilder for details.
+     * Construction limit that guarantees every eligible ID set has a collision-free
+     * shift-and-mask hash. IDs above the configured hashing cutoff use iterative lookup.
      */
     @DuplicatedInNativeCode //
-    public static final int HASHING_INTERFACE_MASK = NumUtil.getNbitNumberInt(HASHING_ITABLE_SHIFT);
+    public static final int MAX_HASHED_INTERFACE_ID = HASHING_PARAM_MASK;
 
-    public record TypeCheckData(int[] openTypeWorldTypeCheckSlots, int[] openTypeWorldInterfaceHashTable, int openTypeWorldInterfaceHashParam, short numIterableInterfaces) {
+    public record TypeCheckData(int[] openTypeWorldTypeCheckSlots, long[] openTypeWorldInterfaceHashTable, int openTypeWorldInterfaceHashParam, short numIterableInterfaces) {
     }
 
     /**
@@ -101,26 +104,34 @@ public final class DynamicHubUtils {
      * hash table entries encode the following:
      *
      * <pre>
-     * hashTable[hash(interfaceID)] = (iTableOffset << {@link #HASHING_ITABLE_SHIFT}) | interfaceID
+     * hashTable[hash(interfaceID)] = ((long) iTableOffset << {@link #HASHING_ITABLE_SHIFT}) | interfaceID
      * </pre>
      * <p>
      * Interfaces that have interfaceIDs > {@link SubstrateOptions#InterfaceHashingMaxId} are
-     * encoded in the checkSlots array as before.
+     * encoded in the checkSlots array as before. Each long entry holds the interface ID in its
+     * low 32 bits and the full byte offset in its upper 32 bits. Both hosted and runtime-loaded
+     * hubs use the same encoding, without an overflow representation.
      */
     public static TypeCheckData computeOpenTypeWorldTypeCheckData(boolean implementsMethods, int[] typeHierarchy, int[] interfaceIDs, int[] iTableStartingOffsets, long vTableBaseOffset,
                     long vTableEntrySize) {
-        int hashParam = 0;
-        int[] hashTable = null;
+        return computeOpenTypeWorldTypeCheckData(implementsMethods, typeHierarchy, interfaceIDs, iTableStartingOffsets, vTableBaseOffset, vTableEntrySize,
+                        SubstrateOptions.useInterfaceHashing(), SubstrateOptions.interfaceHashingMaxId());
+    }
 
-        boolean useInterfaceHashing = SubstrateOptions.useInterfaceHashing();
+    static TypeCheckData computeOpenTypeWorldTypeCheckData(boolean implementsMethods, int[] typeHierarchy, int[] interfaceIDs, int[] iTableStartingOffsets, long vTableBaseOffset,
+                    long vTableEntrySize, boolean useInterfaceHashing, int interfaceHashingMaxId) {
+        int hashParam = 0;
+        long[] hashTable = null;
+
         int numHashedInterfaces = 0;
 
         if (useInterfaceHashing) {
             // count interfaces that can be hashed (i.e., their IDs are smaller than
             // SubstrateOptions.interfaceHashingMaxId())
-            for (int interfaceID : interfaceIDs) {
+            for (int i = 0; i < interfaceIDs.length; i++) {
+                int interfaceID = interfaceIDs[i];
                 GraalError.guarantee(interfaceID > 0, "Interface IDs are expected to be strictly positive");
-                if (interfaceID <= SubstrateOptions.interfaceHashingMaxId()) {
+                if (interfaceID <= interfaceHashingMaxId) {
                     numHashedInterfaces++;
                 }
             }
@@ -130,14 +141,14 @@ public final class DynamicHubUtils {
             // collect hashable interfaces
             int hashedIdx = 0;
             for (int interfaceID : interfaceIDs) {
-                if (interfaceID <= SubstrateOptions.interfaceHashingMaxId()) {
+                if (interfaceID <= interfaceHashingMaxId) {
                     hashedInterfaces[hashedIdx++] = interfaceID;
                 }
             }
 
             // calculate hash parameter for hashable interfaces
             hashParam = DynamicHubUtils.hashParam(hashedInterfaces);
-            hashTable = new int[(hashParam & HASHING_PARAM_MASK) + 1];
+            hashTable = new long[(hashParam & HASHING_PARAM_MASK) + 1];
         }
 
         // Remaining interfaces that are not covered by the hash table and need to be iterated.
@@ -150,10 +161,9 @@ public final class DynamicHubUtils {
         int iterableInterfaceIdx = 0;
         for (int interfaceIdx = 0; interfaceIdx < interfaceIDs.length; interfaceIdx++) {
             int interfaceID = interfaceIDs[interfaceIdx];
-            if (useInterfaceHashing && interfaceID <= SubstrateOptions.interfaceHashingMaxId()) {
+            if (useInterfaceHashing && interfaceID <= interfaceHashingMaxId) {
                 int offset = implementsMethods ? Math.toIntExact(vTableBaseOffset + iTableStartingOffsets[interfaceIdx] * vTableEntrySize) : Short.MIN_VALUE;
-                GraalError.guarantee(NumUtil.isShort(offset), "ItableDynamicHubOffset cannot be encoded as a short. Try -H:-UseInterfaceHashing.");
-                hashTable[DynamicHubUtils.hash(interfaceID, hashParam)] = ((offset << HASHING_ITABLE_SHIFT) | interfaceID);
+                hashTable[DynamicHubUtils.hash(interfaceID, hashParam)] = (((long) offset << HASHING_ITABLE_SHIFT) | interfaceID);
             } else {
                 int offset = implementsMethods ? Math.toIntExact(vTableBaseOffset + iTableStartingOffsets[interfaceIdx] * vTableEntrySize) : 0xBADD0D1D;
                 openTypeWorldTypeCheckSlots[iterableInterfaceIdx * 2 + numClassTypes] = interfaceID;
@@ -203,7 +213,7 @@ public final class DynamicHubUtils {
         }
         int hashParam = or ^ and;
 
-        assert (or & HASHING_INTERFACE_MASK) == or : "Values are too large to be encoded in a hash table.";
+        assert or > 0 && or <= MAX_HASHED_INTERFACE_ID : "Interface IDs exceed the supported hashing range.";
 
         /*
          * 2) Clear bits that are not required for injectivity. E.g., highest bit of 1010 is not

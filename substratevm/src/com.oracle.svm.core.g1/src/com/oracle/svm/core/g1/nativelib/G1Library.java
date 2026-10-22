@@ -74,7 +74,7 @@ public class G1Library {
                     Word staticObjectFields, Word staticPrimitiveFields, Word vmOperationThread, Word safepoint, Word runtimeCodeInfoMemory,
                     int referenceMapCompressedOffsetShift, Word threadLocalsReferenceMap,
                     Word classesAssumedReachableForCodeUnloading, Word performanceData, boolean closedTypeWorld,
-                    boolean useInterfaceHashing, int interfaceHashingMaxId, int dynamicHubHashingInterfaceMask, int dynamicHubHashingShiftOffset,
+                    boolean useInterfaceHashing, int interfaceHashingMaxId, int dynamicHubMaxHashedInterfaceId, int dynamicHubHashingShiftOffset,
                     Word offsets, int offsetsLength,
                     CFunctionPointer collectForAllocationOp, CFunctionPointer executePauseRemark, CFunctionPointer executePauseCleanup,
                     CFunctionPointer collectFullOp, CFunctionPointer verifyHeapOp, CFunctionPointer tryInitiateConcMarkOp,

@@ -182,7 +182,7 @@ public class CremaSupportImpl implements CremaSupport {
     private static final int[] EMPTY_INT_ARRAY = new int[0];
     private final MethodHandleIntrinsics<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> methodHandleIntrinsics = new MethodHandleIntrinsics<>();
     private final CremaLoadingConstraints loadingConstraints = new CremaLoadingConstraints();
-    private final CanonicalMetaspaceIntArrayCache canonicalMetaspaceInterfaceHashTableCache = new CanonicalMetaspaceIntArrayCache();
+    private final CanonicalMetaspaceLongArrayCache canonicalMetaspaceInterfaceHashTableCache = new CanonicalMetaspaceLongArrayCache();
     private final CremaSubstitutions cremaSubstitutions = new CremaSubstitutions();
 
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
@@ -397,13 +397,13 @@ public class CremaSupportImpl implements CremaSupport {
         TypeCheckData typeCheckData = computeTypeCheckData(typeID, isInterface, numClassTypes, typeCheckSuperHub, dispatchTable, typeCheckInterfaceIDs, dispatchTransitiveSuperInterfaces);
 
         int[] openTypeWorldTypeCheckSlots = typeCheckData.openTypeWorldTypeCheckSlots();
-        int[] openTypeWorldInterfaceHashTable = typeCheckData.openTypeWorldInterfaceHashTable();
+        long[] openTypeWorldInterfaceHashTable = typeCheckData.openTypeWorldInterfaceHashTable();
         int openTypeWorldInterfaceHashParam = typeCheckData.openTypeWorldInterfaceHashParam();
         // number of interfaces which are not covered by hashing and need to be iterated
         short numIterableInterfaces = typeCheckData.numIterableInterfaces();
 
         int[] metaspaceTypeCheckSlots = Metaspace.singleton().copyToMetaspace(openTypeWorldTypeCheckSlots);
-        int[] metaspaceInterfaceHashTable = canonicalMetaspaceInterfaceHashTableCache.getOrCreate(openTypeWorldInterfaceHashTable);
+        long[] metaspaceInterfaceHashTable = canonicalMetaspaceInterfaceHashTableCache.getOrCreate(openTypeWorldInterfaceHashTable);
 
         // Compute fields layout
         InterpreterResolvedObjectType typeCheckSuperType = (InterpreterResolvedObjectType) typeCheckSuperHub.getInterpreterType();
@@ -714,13 +714,13 @@ public class CremaSupportImpl implements CremaSupport {
         int[] typeCheckInterfaceIDs = getTypeCheckInterfaceIDs(transitiveSuperInterfaces, interfaceID);
         TypeCheckData typeCheckData = computeTypeCheckData(typeID, isInterfaceLikeArray, numClassTypes, typeCheckSuperHub, typeCheckInterfaceIDs, null);
         int[] openTypeWorldTypeCheckSlots = typeCheckData.openTypeWorldTypeCheckSlots();
-        int[] openTypeWorldInterfaceHashTable = typeCheckData.openTypeWorldInterfaceHashTable();
+        long[] openTypeWorldInterfaceHashTable = typeCheckData.openTypeWorldInterfaceHashTable();
         int openTypeWorldInterfaceHashParam = typeCheckData.openTypeWorldInterfaceHashParam();
         // number of interfaces which are not covered by hashing and need to be iterated
         short numIterableInterfaces = typeCheckData.numIterableInterfaces();
 
         int[] metaspaceTypeCheckSlots = Metaspace.singleton().copyToMetaspace(openTypeWorldTypeCheckSlots);
-        int[] metaspaceInterfaceHashTable = canonicalMetaspaceInterfaceHashTableCache.getOrCreate(openTypeWorldInterfaceHashTable);
+        long[] metaspaceInterfaceHashTable = canonicalMetaspaceInterfaceHashTableCache.getOrCreate(openTypeWorldInterfaceHashTable);
 
         InterpreterResolvedJavaMethod[] cremaVTable = objectArrayType.getVtable();
         int vTableEntries = cremaVTable.length;
@@ -2189,31 +2189,35 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     /**
-     * This cache allows sharing {@code int[]} stored in the metaspace across multiple users. This
+     * This cache allows sharing {@code long[]} stored in the metaspace across multiple users. This
      * is used for example for interface hash tables which can be quite large and are sometimes
      * similar (e.g., classes that have the same marker interfaces such as arrays).
      * <p>
      * The cache entries are only weakly held so the cache does not become an additional root once
      * runtime-loaded hubs become unloadable.
      */
-    private static final class CanonicalMetaspaceIntArrayCache {
+    private static final class CanonicalMetaspaceLongArrayCache {
         private final ConcurrentHashMap<Entry, Entry> canonicalMap = new ConcurrentHashMap<>();
-        private final ReferenceQueue<int[]> queue = new ReferenceQueue<>();
+        private final ReferenceQueue<long[]> queue = new ReferenceQueue<>();
 
-        private int[] getOrCreate(int[] heapArray) {
+        private long[] getOrCreate(long[] heapArray) {
+            // No hash table is created when interface hashing is disabled.
+            if (heapArray == null) {
+                return null;
+            }
             drainQueue();
 
             Entry probe = new Entry(heapArray, null);
             Entry canonical = canonicalMap.get(probe);
             if (canonical != null) {
-                int[] metaspaceArray = canonical.get();
+                long[] metaspaceArray = canonical.get();
                 if (metaspaceArray != null) {
                     return metaspaceArray;
                 }
                 canonicalMap.remove(canonical, canonical);
             }
 
-            int[] metaspaceArray = Metaspace.singleton().copyToMetaspace(heapArray);
+            long[] metaspaceArray = Metaspace.singleton().copyToMetaspace(heapArray);
             Entry entry = new Entry(metaspaceArray, queue);
             while (true) {
                 Entry concurrent = canonicalMap.putIfAbsent(entry, entry);
@@ -2221,7 +2225,7 @@ public class CremaSupportImpl implements CremaSupport {
                     return metaspaceArray;
                 }
 
-                int[] concurrentArray = concurrent.get();
+                long[] concurrentArray = concurrent.get();
                 if (concurrentArray != null) {
                     return concurrentArray;
                 }
@@ -2236,10 +2240,10 @@ public class CremaSupportImpl implements CremaSupport {
             }
         }
 
-        private static final class Entry extends WeakReference<int[]> {
+        private static final class Entry extends WeakReference<long[]> {
             private final int hash;
 
-            private Entry(int[] referent, ReferenceQueue<int[]> queue) {
+            private Entry(long[] referent, ReferenceQueue<long[]> queue) {
                 super(referent, queue);
                 hash = Arrays.hashCode(referent);
             }
