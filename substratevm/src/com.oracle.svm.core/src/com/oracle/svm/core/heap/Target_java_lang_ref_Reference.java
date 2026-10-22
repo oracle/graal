@@ -44,6 +44,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.OpenJDK;
 import com.oracle.svm.guest.staging.core.heap.UnknownClass;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -126,7 +127,7 @@ public final class Target_java_lang_ref_Reference<T> {
     native T get();
 
     @Substitute
-    @TargetElement(onlyWith = ReferenceGet0Present.class)
+    @TargetElement(onlyWith = OpenJDK.class)
     @SuppressWarnings("unchecked")
     private T get0() {
         /* Use the regular referent field access so the selected GC's read barrier is applied. */
@@ -219,14 +220,6 @@ class ComputeReferenceValue implements FieldValueTransformer {
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class ReferenceGet0Present implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return ReflectionUtil.lookupMethod(true, Reference.class, "get0") != null;
     }
 }
 
