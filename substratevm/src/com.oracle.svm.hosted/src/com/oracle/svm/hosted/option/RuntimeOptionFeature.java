@@ -41,9 +41,9 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.guest.staging.IsolateArgumentParser;
+import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.option.CommonOptions;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
@@ -59,7 +59,6 @@ import com.oracle.svm.hosted.imagelayer.LayeredImageUtils;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.CommonOptionNames;
-import com.oracle.svm.shared.option.CommonOptionParser;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -142,7 +141,7 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
         HostedOptionParser optionParser = accessImpl.getImageClassLoader().classLoaderSupport.getHostedOptionParser();
         boolean firstImage = ImageLayerBuildingSupport.firstImageBuild();
         if (firstImage) {
-            registerPrintFlagsOptions(optionParser);
+            registerAlwaysAvailableOptions(optionParser);
         }
         for (var descriptor : optionParser.getAllRuntimeOptions().getValues()) {
             if (descriptor.getOptionKey() instanceof RuntimeOptionKey<?> runtimeOptionKey && runtimeOptionKey.shouldRegisterForIsolateArgumentParser()) {
@@ -176,16 +175,15 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
         }
     }
 
-    /**
-     * The {@link OptionKey} values defined in {@link CommonOptions} are not accessed in a way seen
-     * during analysis; {@link CommonOptionParser} only refers to them by name so they need to be
-     * explicitly registered.
-     */
-    private static void registerPrintFlagsOptions(HostedOptionParser optionParser) {
+    /// Registers parser options that are not discovered through ordinary runtime option references.
+    /// PrintFlags options are looked up by name, while `UnlockDiagnosticVMOptions` is a no-op
+    /// compatibility flag with no other runtime consumer.
+    private static void registerAlwaysAvailableOptions(HostedOptionParser optionParser) {
         RuntimeOptionParser parser = RuntimeOptionParser.singleton();
         UnmodifiableEconomicMap<String, OptionDescriptor> allRuntimeOptions = optionParser.getAllRuntimeOptions();
         parser.addDescriptor(allRuntimeOptions.get(CommonOptionNames.PrintFlags));
         parser.addDescriptor(allRuntimeOptions.get(CommonOptionNames.PrintFlagsWithExtraHelp));
+        parser.addDescriptor(allRuntimeOptions.get(SubstrateGuestOptions.UnlockDiagnosticVMOptions.getName()));
     }
 
     @Override
