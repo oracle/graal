@@ -119,6 +119,7 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.TypeResult;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
@@ -126,7 +127,9 @@ import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
 import jdk.internal.access.SharedSecrets;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
@@ -731,8 +734,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private void registerHybridProviderServices(DuringAnalysisAccess access) {
-        Optional.ofNullable(access.findClassByName("sun.security.ssl.HybridProvider")).ifPresent(hybridProviderClass -> {
-            Provider provider = ReflectionUtil.readStaticField(hybridProviderClass, "PROVIDER");
+        optionalType(access, "sun.security.ssl.HybridProvider").ifPresent(hybridProviderType -> {
+            ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(hybridProviderType);
+            // Constant reflection does not initialize the class before reading static fields.
+            originalType.initialize();
+            JavaConstant providerConst = JVMCIReflectionUtil.readStaticField(originalType, "PROVIDER");
+            Provider provider = GuestAccess.get().getSnippetReflection().asObject(Provider.class, providerConst);
             for (Service service : provider.getServices()) {
                 registerService(access, service);
             }
