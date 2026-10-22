@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.metaspace;
+package com.oracle.svm.guest.staging.core.metaspace;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
@@ -30,24 +30,22 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
-import com.oracle.svm.core.hub.DynamicHub;
-
-import jdk.graal.compiler.api.replacements.Fold;
 
 /**
- * The metaspace is used for VM-internal objects (such as runtime-allocated {@link DynamicHub}s)
+ * The metaspace is used for VM-internal objects (such as runtime-allocated {@code DynamicHub}s)
  * that have a different lifecycle than normal Java heap objects. Objects in the metaspace are
  * neither collected nor moved by the GC. Objects in the metaspace also do not count towards the
  * Java heap size.
  */
 public interface Metaspace {
-    @Fold
+    @GuestFold
     static Metaspace singleton() {
         return ImageSingletons.lookup(Metaspace.class);
     }
 
-    @Fold
+    @GuestFold
     static boolean isSupported() {
         return !(singleton() instanceof NoMetaspace);
     }
@@ -81,10 +79,12 @@ public interface Metaspace {
     boolean isInAllocatedMemory(Pointer ptr);
 
     /**
-     * Allocates a {@link DynamicHub} and zeroes all its fields. Typically, there should be no need
-     * to call this method directly and {@link DynamicHub#allocate} should be used instead.
+     * Allocates a {@code DynamicHub} and zeroes all its fields. Typically, there should be no need
+     * to call this method directly and {@code DynamicHub#allocate} should be used instead.
+     * <p>
+     * The return type should be restored to {@code DynamicHub} once it moves to guest staging (GR-78110).
      */
-    DynamicHub allocateDynamicHub(int numVTableEntries);
+    Object allocateDynamicHub(int numVTableEntries);
 
     /** Allocates a byte array. */
     byte[] allocateByteArray(int length);

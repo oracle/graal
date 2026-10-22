@@ -649,7 +649,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                         "openTypeWorldInterfaceHashTable must be in metaspace, or null when interface hashing is disabled");
 
         /* Allocate the hub in the metaspace. */
-        DynamicHub hub = metaspace.allocateDynamicHub(vTableEntries);
+        DynamicHub hub = (DynamicHub) metaspace.allocateDynamicHub(vTableEntries);
         int referenceMapCompressedOffset = RuntimeInstanceReferenceMapSupport.singleton().getOrCreateReferenceMap(metadataSuperHub, monitorOffset, declaredInstanceReferenceFieldOffsets);
 
         /* Write fields in defining order. */
