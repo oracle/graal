@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.guest.staging;
 
+import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
 
 import com.oracle.svm.shared.meta.GuestFold;
@@ -42,6 +43,26 @@ public final class SubstrateGuestOptions {
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
+
+    // @formatter:off
+
+    /// Controls whether unknown VM options are discarded during startup.
+    @Option(help = """
+            Ignore unrecognized VM options.
+
+            The last setting of this option determines its policy for the complete command line.
+            An incoming JNI `JavaVMInitArgs.ignoreUnrecognized=true` setting remains effective
+            when this option is disabled.""")
+    public static final RuntimeOptionKey<Boolean> IgnoreUnrecognizedVMOptions = new RuntimeOptionKey<>(false, Immutable);
+
+    /// Records the HotSpot unlock setting. Native Image runtime options do not
+    /// have the concept of being diagnostic. This option exists purely for
+    /// HotSpot command line compatibility.
+    @Option(help = "Accept the HotSpot diagnostic option unlock setting for compatibility; " +
+                   "Native Image runtime options do not require unlocking.")
+    public static final RuntimeOptionKey<Boolean> UnlockDiagnosticVMOptions = new RuntimeOptionKey<>(false, Immutable);
+
+    // @formatter:on
 
     @Option(help = "Internal, instead use 'auxiliary_image_reserved_space_size' in 'graal_create_isolate_params_t', or option ReservedAuxiliaryImageBytes.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Long> AuxiliaryImageBytesIsolateArgument = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);

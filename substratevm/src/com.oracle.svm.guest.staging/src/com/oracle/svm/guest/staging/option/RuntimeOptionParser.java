@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.IsolateArgumentParser;
+import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.util.AbstractImageHeapList;
 import com.oracle.svm.guest.staging.util.ImageHeapList;
@@ -136,9 +137,7 @@ public final class RuntimeOptionParser {
     /// `CREMA_HOTSPOT_OPTION_COMPATIBILITY` is enabled.
     @GuaranteeFolded private static final Set<String> RECOGNIZED_BOOLEAN_HOTSPOT_COMPATIBILITY_OPTIONS = Set.of(
                     "UnlockExperimentalVMOptions",
-                    "UnlockDiagnosticVMOptions",
                     "AbortVMOnCompilationFailure",
-                    "IgnoreUnrecognizedVMOptions",
                     "TieredCompilation",
                     "UseCompressedOops",
                     "VerifyDependencies",
@@ -259,7 +258,7 @@ public final class RuntimeOptionParser {
         ParseContext context = new ParseContext();
         String[] args = parseJavaVMOptions(initialArgs, context);
         args = consumeCompatibilityOptions(args);
-        args = singleton().parse(args, ignoreUnrecognized);
+        args = singleton().parse(args, ignoreUnrecognized || shouldIgnoreUnrecognizedJavaOptions(args));
         if (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions()) {
             rejectRecognizedUnimplementedJavaOptions(args);
         }
@@ -298,15 +297,30 @@ public final class RuntimeOptionParser {
         }
     }
 
-    /**
-     * Parses {@code args} and sets/updates runtime option values for the elements matching a
-     * runtime option.
-     *
-     * @param args arguments to be parsed
-     * @return elements in {@code args} that do not match any runtime options
-     * @throws IllegalArgumentException if an element in {@code args} is invalid. The parse error is
-     *             described by {@link Throwable#getMessage()}.
-     */
+    /// Determines the unknown-option policy before general parsing because a later flag can control
+    /// how earlier options are handled. The last explicit setting takes precedence over the current
+    /// option value.
+    private static boolean shouldIgnoreUnrecognizedJavaOptions(String[] args) {
+        for (int i = args.length - 1; i >= 0; i--) {
+            String arg = args[i];
+            if (arg.equals("-XX:+IgnoreUnrecognizedVMOptions")) {
+                return true;
+            } else if (arg.equals("-XX:-IgnoreUnrecognizedVMOptions")) {
+                return false;
+            }
+        }
+        return SubstrateGuestOptions.IgnoreUnrecognizedVMOptions.getValue();
+    }
+
+    /// Parses `args` and updates runtime option values for recognized options.
+    ///
+    /// @param args arguments to be parsed
+    /// @param ignoreUnrecognized whether unrecognized options starting with `-` are discarded.
+    /// Invalid values of recognized options remain errors. In strict mode, recognized
+    /// but unsupported Java VM options also remain errors.
+    /// @return arguments that were not consumed
+    /// @throws IllegalArgumentException if an argument cannot be parsed under the selected policy.
+    /// The parse error is described by [Throwable#getMessage()].
     private String[] parse(String[] args, boolean ignoreUnrecognized) {
         int newIdx = 0;
         EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
@@ -322,6 +336,11 @@ public final class RuntimeOptionParser {
                 parseRistrettoCompilationModeOption(values, arg);
             } else if (arg.startsWith(X_OPTION_PREFIX) && XOptions.parse(arg.substring(X_OPTION_PREFIX.length()), values)) {
                 // option value was already parsed and added to the map
+            } else if (ignoreUnrecognized && arg.startsWith("-")) {
+                // Strict mode still rejects recognized options whose behavior is unsupported.
+                if (GuestStagingDependencyBridge.singleton().strictRuntimeJavaOptions()) {
+                    rejectRecognizedUnimplementedJavaOptions(new String[]{arg});
+                }
             } else {
                 assert newIdx <= oldIdx;
                 args[newIdx] = arg;
@@ -472,7 +491,7 @@ public final class RuntimeOptionParser {
     }
 
     private static boolean parseVerifyOption(String arg) {
-        if (!arg.startsWith("-Xverify")) {
+        if (!arg.equals("-Xverify") && !arg.startsWith("-Xverify:")) {
             return false;
         }
         String mode = switch (arg.substring("-Xverify".length())) {
@@ -482,11 +501,8 @@ public final class RuntimeOptionParser {
                 Log.log().string("Substrate VM warning: ").string(VERIFY_NONE_WARNING).newline();
                 yield "NONE";
             }
-            default -> null;
+            default -> throw new IllegalArgumentException("Invalid option '" + arg + "'. Expected -Xverify, -Xverify:all, -Xverify:remote, or -Xverify:none.");
         };
-        if (mode == null) {
-            return false;
-        }
         GuestStagingDependencyBridge.singleton().setVerifyMode(mode);
         return true;
     }

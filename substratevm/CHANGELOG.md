@@ -4,6 +4,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM 25.5 (Internal Version 25.5.5)
 
+* (GR-80731) Added runtime support for `IgnoreUnrecognizedVMOptions`, `UnlockDiagnosticVMOptions`.
 * (GR-80597) Added the `org.graalvm.nativeimage.graalos` Java system property to identify images built for GraalOS at build time and runtime.
 * (GR-80328) Native Images built with `--enable-monitoring=jvmstat` can attach to file-backed JVMStat performance data from other HotSpot and Native Image processes on Linux and macOS. JDK tools such as `jstack`, `jinfo`, `jps`, and `jstat` can run on Crema to inspect other JVM processes.
 * (GR-80571) Added an unboxed calling convention for compiled Truffle-to-Truffle calls.

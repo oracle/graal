@@ -32,6 +32,18 @@ of these mode options is present, they are processed in command-line order and t
 including on-stack replacement compilation. If run-time compilation is disabled or a compilation
 fails, Ristretto continues execution in the interpreter.
 
+### Runtime VM Options
+
+`-XX:+IgnoreUnrecognizedVMOptions` discards unknown VM options, including options that precede it.
+For JNI VM creation, an incoming `JavaVMInitArgs.ignoreUnrecognized=true` also enables this policy,
+and `-XX:-IgnoreUnrecognizedVMOptions` does not disable it. Otherwise, the final `+` or `-` setting
+determines the policy. Malformed values of options parsed by Native Image still fail.
+For Java main entry points with strict runtime option handling enabled
+(`-H:+StrictRuntimeJavaOptions`), arguments after the first `--` remain application arguments.
+
+`-XX:±UnlockDiagnosticVMOptions` is supported for HotSpot command-line compatibility. Native Image
+does not currently have diagnostic warnings to unlock.
+
 ## Resource URLs
 The semantics of the internal `resource:` URL depends on `ClassForNameRespectsClassLoader`:
 * `-H:-ClassForNameRespectsClassLoader`: the host part of the URL is the module name, matching the legacy resource lookup scheme.
