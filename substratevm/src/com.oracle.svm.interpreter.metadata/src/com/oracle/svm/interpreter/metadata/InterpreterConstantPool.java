@@ -543,6 +543,10 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
      * same encoding.
      */
     public static final class LinkedInvoke {
+        public static final byte NO_TYPE_CHECK = 0;
+        public static final byte COMBINED_INTERFACE_LOOKUP = 1;
+        public static final byte SYMBOLIC_TYPE_CHECK = 2;
+
         public final InterpreterResolvedJavaType symbolicHolder;
         public final InterpreterResolvedJavaMethod seedMethod;
         public final CallKind callKind;
@@ -551,9 +555,14 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         public final byte returnKind;
         public final short argumentCount;
         public final boolean hasReceiver;
-        public final boolean requiresSymbolicTypeCheck;
+        /**
+         * Receiver validation for this invoke opcode: omitted, combined with hashed interface
+         * dispatch, or performed separately against the required receiver type.
+         */
+        private final byte receiverCheckKind;
 
-        public LinkedInvoke(InterpreterResolvedJavaType symbolicHolder, InterpreterResolvedJavaMethod seedMethod, CallKind callKind, Object appendix, boolean requiresInterfaceReceiverCheck) {
+        public LinkedInvoke(InterpreterResolvedJavaType symbolicHolder, InterpreterResolvedJavaMethod seedMethod, CallKind callKind, Object appendix, boolean requiresInterfaceReceiverCheck,
+                        int opcode) {
             this.symbolicHolder = symbolicHolder;
             this.seedMethod = seedMethod;
             this.callKind = callKind;
@@ -561,7 +570,27 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             InterpreterUnresolvedSignature signature = seedMethod.getSignature();
             this.returnKind = (byte) signature.getReturnKind().getBasicType();
             this.hasReceiver = !seedMethod.isStatic();
-            this.requiresSymbolicTypeCheck = requiresInterfaceReceiverCheck;
+            byte checkKind = switch (opcode) {
+                case Bytecodes.INVOKESTATIC, Bytecodes.INVOKEVIRTUAL -> NO_TYPE_CHECK;
+                case Bytecodes.INVOKEINTERFACE -> SYMBOLIC_TYPE_CHECK;
+                default -> requiresInterfaceReceiverCheck ? SYMBOLIC_TYPE_CHECK : NO_TYPE_CHECK;
+            };
+            /*
+             * An inherited method may dispatch through a superinterface. Its table entry cannot
+             * establish membership in the symbolic subinterface, so retain both checks there.
+             * This caches only the linkage shape, not a receiver class or resolved target.
+             */
+            if (opcode == Bytecodes.INVOKEINTERFACE && SubstrateOptions.useInterfaceHashing()) {
+                assert !SubstrateOptions.useClosedTypeWorldHubLayout();
+                if (callKind == CallKind.ITABLE_LOOKUP && seedMethod.hasDispatchIndex() && symbolicHolder.equals(seedMethod.getDeclaringClass())) {
+                    int interfaceID = symbolicHolder.getHub().getInterfaceID();
+                    assert interfaceID > 0;
+                    if (interfaceID <= SubstrateOptions.interfaceHashingMaxId()) {
+                        checkKind = COMBINED_INTERFACE_LOOKUP;
+                    }
+                }
+            }
+            this.receiverCheckKind = checkKind;
 
             int count = signature.getParameterCount(hasReceiver);
             assert count <= 256;
@@ -591,11 +620,10 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             };
         }
 
-        public boolean requiresSymbolicTypeCheck(int opcode) {
+        public byte getReceiverCheckKind(int opcode) {
             return switch (opcode) {
-                case Bytecodes.INVOKESTATIC, Bytecodes.INVOKEVIRTUAL -> false;
-                case Bytecodes.INVOKEINTERFACE -> true;
-                default -> requiresSymbolicTypeCheck;
+                case Bytecodes.INVOKESTATIC, Bytecodes.INVOKEVIRTUAL -> NO_TYPE_CHECK;
+                default -> receiverCheckKind;
             };
         }
     }

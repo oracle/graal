@@ -3333,9 +3333,10 @@ public final class Interpreter {
                  */
                 virtualStack.popArguments(callerFrame, linkedInvoke.argumentKinds, calleeArgs, linkedInvoke.getAppendix(opcode));
             }
+            byte receiverCheckKind = linkedInvoke.getReceiverCheckKind(opcode);
             if (linkedInvoke.hasReceiver(opcode)) {
                 Object receiver = profileAndCheckReceiver(callerFrame, curBCI, calleeArgs, virtualStack.getState());
-                if (linkedInvoke.requiresSymbolicTypeCheck(opcode)) {
+                if (receiverCheckKind == LinkedInvoke.SYMBOLIC_TYPE_CHECK) {
                     DynamicHub instanceHub = DynamicHubIntrinsics.readHub(receiver);
                     if (linkedInvoke.symbolicHolder != null) {
                         // JVMS 4.9.2, Structural Constraints (the non-constructor invokespecial
@@ -3351,7 +3352,12 @@ public final class Interpreter {
             }
 
             boolean stayInInterpreter = callerFrame.forceStayInInterpreter() | preferStayInInterpreter;
-            Object retObj = InterpreterToVM.dispatchInvocation(linkedInvoke.seedMethod, calleeArgs, linkedInvoke.callKind, stayInInterpreter, false);
+            Object retObj;
+            if (opcode == INVOKEINTERFACE && receiverCheckKind == LinkedInvoke.COMBINED_INTERFACE_LOOKUP) {
+                retObj = InterpreterToVM.dispatchCheckedInterfaceInvocation(linkedInvoke.seedMethod, calleeArgs, stayInInterpreter);
+            } else {
+                retObj = InterpreterToVM.dispatchInvocation(linkedInvoke.seedMethod, calleeArgs, linkedInvoke.callKind, stayInInterpreter, false);
+            }
             virtualStack.pushBasicType(callerFrame, retObj, linkedInvoke.returnKind);
         }
 
@@ -3922,7 +3928,7 @@ public final class Interpreter {
 
     /// Reports an invalid interface receiver with the exception required by `opcode`.
     @NeverInline("Keep incompatible-receiver exception construction out of bytecode-handler stubs")
-    private static SemanticJavaException incompatibleInvokeReceiver(ResolvedJavaType receiverType, ResolvedJavaType symbolicHolder, int opcode) {
+    static SemanticJavaException incompatibleInvokeReceiver(ResolvedJavaType receiverType, ResolvedJavaType symbolicHolder, int opcode) {
         if (opcode == INVOKESPECIAL) {
             throw SemanticJavaException.raiseInlined(new IllegalAccessError(MetadataUtil.fmt("Receiver class %s must be the current class or a subtype of interface %s",
                             receiverType.toJavaName(), symbolicHolder.toJavaName())));
@@ -4147,7 +4153,7 @@ public final class Interpreter {
             traceInterpreter().string("  ").string(callKind.toString()).string(": ").string(seedMethod.toString()).newline();
         }
 
-        LinkedInvoke linkedInvoke = new LinkedInvoke(symbolicHolder, seedMethod, callKind, appendix, requiresSymbolicTypeCheck);
+        LinkedInvoke linkedInvoke = new LinkedInvoke(symbolicHolder, seedMethod, callKind, appendix, requiresSymbolicTypeCheck, opcode);
         linkedInvoke = frame.constantPoolCacheLinkedInvoke(cpi, opcode, linkedInvoke);
         return linkedInvoke;
     }

@@ -30,12 +30,14 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
 
+import java.nio.ByteOrder;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
@@ -142,7 +144,7 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
 
         // The interface ID occupies the low word.
         ReplacementsUtil.dynamicAssert(interfaceID == (int) hashTableEntry, "InterfaceIDs do not match.");
-        return hashTableEntry >>> HASHING_ITABLE_SHIFT;
+        return Integer.toUnsignedLong(readInterfaceHashTableOffset(hashTable, hashParam, interfaceID));
     }
 
     public static long determineITableStartingOffset(
@@ -172,7 +174,39 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
 
         // The interface ID occupies the low word.
         assert interfaceID == (int) hashTableEntry : "InterfaceIDs do not match.";
-        return hashTableEntry >>> HASHING_ITABLE_SHIFT;
+        return Integer.toUnsignedLong(readInterfaceHashTableOffset(hashTable, hashParam, interfaceID));
+    }
+
+    /**
+     * Returns the itable byte offset, or {@code -1} if the receiver does not implement the
+     * interface. The interface ID must be positive and covered by interface hashing. Unlike the
+     * unchecked dispatch lookup, this verifies the stored ID before using its offset, allowing
+     * receiver validation and dispatch to share a single hash-table read.
+     */
+    @AlwaysInline("Combine interface receiver validation and dispatch lookup")
+    public static long findHashedITableStartingOffset(DynamicHub checkedHub, int interfaceID) {
+        assert SubstrateOptions.useInterfaceHashing() && interfaceID > 0 && interfaceID <= SubstrateOptions.interfaceHashingMaxId();
+        int hashParam = checkedHub.getOpenTypeWorldInterfaceHashParam();
+        long[] hashTable = checkedHub.getOpenTypeWorldInterfaceHashTable();
+        long entry = readInterfaceHashTableEntry(hashTable, hashParam, interfaceID);
+        if (probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, (int) entry != interfaceID)) {
+            return -1;
+        }
+        return entry >>> HASHING_ITABLE_SHIFT;
+    }
+
+    @Fold
+    static int itableOffsetWordOffset() {
+        return SubstrateTarget.getArchitecture().getByteOrder() == ByteOrder.LITTLE_ENDIAN ? Integer.BYTES : 0;
+    }
+
+    @AlwaysInline("Read only the offset for unchecked interface dispatch")
+    private static int readInterfaceHashTableOffset(long[] hashTable, int hashParam, int interfaceID) {
+        int shift = hashParam >>> HASHING_SHIFT_OFFSET;
+        int hash = (interfaceID >>> shift) & hashParam;
+        long offset = ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Long, hash) + itableOffsetWordOffset();
+        // The offset occupies the upper word; the table's encoding and stride are unchanged.
+        return ObjectAccess.readInt(hashTable, Word.signed(offset), NamedLocationIdentity.FINAL_LOCATION);
     }
 
     @AlwaysInline("Keep the packed interface entry available to its caller")
