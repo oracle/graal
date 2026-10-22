@@ -36,7 +36,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.genscavenge.compacting.CompactingAlignedChunkAccess;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
-import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;

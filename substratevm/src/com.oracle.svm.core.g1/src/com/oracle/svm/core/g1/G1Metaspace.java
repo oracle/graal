@@ -35,7 +35,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.g1.nativelib.G1Library;
 import com.oracle.svm.core.gc.shared.NativeGCStructs.MetaspaceStatistics;
 import com.oracle.svm.core.gc.shared.graal.NativeGCAllocationSupport;
-import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.metaspace.AbstractMetaspace;
 import com.oracle.svm.core.metaspace.Metaspace;

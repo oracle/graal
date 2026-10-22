@@ -32,7 +32,7 @@ import com.oracle.svm.core.genscavenge.AuxiliaryImageHeap;
 import com.oracle.svm.core.genscavenge.HeapChunkVisitor;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.ImageHeapWalker;
-import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
 import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
