@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub;
+package com.oracle.svm.guest.staging.reflect;
 
 import static com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
+import com.oracle.svm.guest.staging.reflect.target.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-/**
- * This singleton provides the {@link Target_jdk_internal_reflect_ConstantPool} for the requested
- * layer. Native Image normally does not use the constant pool, but in the context of Layered Image,
- * the constant pool needs to be associated with a layer number. More information can be found in
- * {@link Target_jdk_internal_reflect_ConstantPool}.
- */
+/** Provides the layered constant-pool facade for the requested layer. */
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
 public class ConstantPoolProvider {
-    private final Target_jdk_internal_reflect_ConstantPool constantPool = new Target_jdk_internal_reflect_ConstantPool(DynamicImageLayerInfo.getCurrentLayerNumber(), null);
+    private final Target_jdk_internal_reflect_ConstantPool constantPool;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public ConstantPoolProvider(int layerId) {
+        this.constantPool = new Target_jdk_internal_reflect_ConstantPool(layerId, null);
+    }
 
     public static ConstantPoolProvider[] singletons() {
         return MultiLayeredImageSingleton.getAllLayers(ConstantPoolProvider.class);
@@ -54,22 +51,5 @@ public class ConstantPoolProvider {
 
     public Target_jdk_internal_reflect_ConstantPool getConstantPool() {
         return constantPool;
-    }
-}
-
-@AutomaticallyRegisteredFeature
-class ConstantPoolProviderFeature implements InternalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return ImageLayerBuildingSupport.buildingImageLayer();
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        /*
-         * The ConstantPoolProvider needs to be created after the afterRegistration hook as it
-         * depends on the DynamicImageLayerInfo.
-         */
-        ImageSingletons.add(ConstantPoolProvider.class, new ConstantPoolProvider());
     }
 }

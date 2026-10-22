@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.hosted.ExcludeFromReferenceMapGuestValue;
 import com.oracle.svm.hosted.ContendedGuestValue;
 import java.io.Serializable;
@@ -72,7 +73,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.Heap;
@@ -541,7 +542,7 @@ public class UniverseBuilder {
             /*
              * Reserve the vtable and typeslots
              */
-            int intSize = layout.sizeInBytes(JavaKind.Int);
+            int intSize = ObjectLayoutCompilerSupport.sizeInBytes(layout, JavaKind.Int);
             int afterVTableLengthOffset = dynamicHubLayout.getVTableLengthOffset() + intSize;
 
             /*
@@ -568,7 +569,7 @@ public class UniverseBuilder {
             }
 
         } else if (mustReserveArrayFields(clazz)) {
-            int intSize = layout.sizeInBytes(JavaKind.Int);
+            int intSize = ObjectLayoutCompilerSupport.sizeInBytes(layout, JavaKind.Int);
             int afterArrayLengthOffset = layout.getArrayLengthOffset() + intSize;
             firstInstanceFieldOffset = afterArrayLengthOffset;
 
@@ -713,7 +714,7 @@ public class UniverseBuilder {
         int lastSearchSize = -1;
         boolean lastSearchSuccess = false;
         for (HostedField field : fields) {
-            int fieldSize = layout.sizeInBytes(field.getStorageKind());
+            int fieldSize = ObjectLayoutCompilerSupport.sizeInBytes(layout, field.getStorageKind());
             int offset = -1;
             int endOffset = usedBytes.length();
             if (lastSearchSuccess || lastSearchSize != fieldSize) {
@@ -852,15 +853,15 @@ public class UniverseBuilder {
                         offsets = layeredStaticFieldSupport.getFutureLayerOffsets(field, layerNum);
                     }
                     if (field.getStorageKind().isObject()) {
-                        field.setLocation(NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, offsets.nextObjectField)), layerNum);
+                        field.setLocation(NumUtil.safeToInt(ObjectLayoutCompilerSupport.getArrayElementOffset(layout, JavaKind.Object, offsets.nextObjectField)), layerNum);
                         offsets.nextObjectField += 1;
                     } else {
-                        int fieldSize = layout.sizeInBytes(field.getStorageKind());
-                        while (layout.getArrayElementOffset(JavaKind.Byte, offsets.nextPrimitiveField) % fieldSize != 0) {
+                        int fieldSize = ObjectLayoutCompilerSupport.sizeInBytes(layout, field.getStorageKind());
+                        while (ObjectLayoutCompilerSupport.getArrayElementOffset(layout, JavaKind.Byte, offsets.nextPrimitiveField) % fieldSize != 0) {
                             // Insert padding byte for alignment
                             offsets.nextPrimitiveField++;
                         }
-                        field.setLocation(NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Byte, offsets.nextPrimitiveField)), layerNum);
+                        field.setLocation(NumUtil.safeToInt(ObjectLayoutCompilerSupport.getArrayElementOffset(layout, JavaKind.Byte, offsets.nextPrimitiveField)), layerNum);
                         offsets.nextPrimitiveField += fieldSize;
                     }
                 }
@@ -952,12 +953,12 @@ public class UniverseBuilder {
                 if (instanceClass.isAbstract()) {
                     layoutHelper = LayoutEncoding.forAbstract();
                 } else if (dynamicHubLayout.isDynamicHub(type)) {
-                    layoutHelper = LayoutEncoding.forDynamicHub(type, dynamicHubLayout.vTableOffset(), ol.getArrayIndexShift(dynamicHubLayout.getVTableSlotStorageKind()));
+                    layoutHelper = LayoutEncoding.forDynamicHub(type, dynamicHubLayout.vTableOffset(), ObjectLayoutCompilerSupport.getArrayIndexShift(ol, dynamicHubLayout.getVTableSlotStorageKind()));
                 } else if (HybridLayout.isHybrid(type)) {
                     HybridLayout hybridLayout = new HybridLayout(instanceClass, ol, hMetaAccess);
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
-                    layoutHelper = LayoutEncoding.forHybrid(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
+                    layoutHelper = LayoutEncoding.forHybrid(type, isObject, hybridLayout.getArrayBaseOffset(), ObjectLayoutCompilerSupport.getArrayIndexShift(ol, storageKind));
                 } else {
                     int instanceSize = instanceClass.getInstanceSize();
                     long sizeWithIdentityHash = LayoutEncoding.getPureInstanceSize(instanceSize, instanceClass.getIdentityHashOffset(), true);
@@ -970,7 +971,8 @@ public class UniverseBuilder {
             } else if (type.isArray()) {
                 JavaKind storageKind = type.getComponentType().getStorageKind();
                 boolean isObject = (storageKind == JavaKind.Object);
-                layoutHelper = LayoutEncoding.forArray(type, isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind));
+                layoutHelper = LayoutEncoding.forArray(type, isObject, ObjectLayoutCompilerSupport.getArrayBaseOffset(ol, storageKind), ObjectLayoutCompilerSupport.getArrayIndexShift(ol,
+                                storageKind));
                 if (ol.isIdentityHashFieldInObjectHeader() || ol.isIdentityHashFieldAtTypeSpecificOffset()) {
                     identityHashOffset = NumUtil.safeToInt(ol.getObjectHeaderIdentityHashOffset());
                 }

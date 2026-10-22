@@ -29,7 +29,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.ObjectAccess;

@@ -30,8 +30,8 @@ import java.lang.reflect.Method;
 
 import org.graalvm.nativeimage.impl.ReflectionIntrospector;
 
-import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
-import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
+import com.oracle.svm.guest.staging.reflect.target.Target_java_lang_reflect_Constructor;
+import com.oracle.svm.guest.staging.reflect.target.Target_java_lang_reflect_Method;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;

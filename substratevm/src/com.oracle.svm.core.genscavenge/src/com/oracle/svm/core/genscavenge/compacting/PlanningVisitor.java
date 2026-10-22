@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge.compacting;
 import static com.oracle.svm.core.genscavenge.HeapChunk.CHUNK_HEADER_TOP_IDENTITY;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;

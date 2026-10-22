@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;

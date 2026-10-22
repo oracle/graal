@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.core.code;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.c.CIsolateData;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
@@ -59,7 +60,7 @@ public class ImageCodeInfoStorage {
 
     protected ImageCodeInfoStorage() {
         long size = SizeOf.get(CodeInfoImpl.class);
-        int arrayBaseOffset = ObjectLayout.singleton().getArrayBaseOffset(JavaKind.Byte);
+        int arrayBaseOffset = ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.Byte);
         int alignedOffset = getAlignedOffsetInArray();
         int addend = alignedOffset - arrayBaseOffset;
         int dataSize = NumUtil.safeToInt(size + addend);
@@ -68,7 +69,7 @@ public class ImageCodeInfoStorage {
 
     @Fold
     static int getAlignedOffsetInArray() {
-        return NumUtil.roundUp(ObjectLayout.singleton().getArrayBaseOffset(JavaKind.Byte), ALIGNMENT);
+        return NumUtil.roundUp(ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.Byte), ALIGNMENT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

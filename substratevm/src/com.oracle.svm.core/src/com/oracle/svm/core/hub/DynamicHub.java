@@ -27,25 +27,25 @@ package com.oracle.svm.core.hub;
 import static com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_CLASSES_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_CONSTRUCTORS_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_DECLARED_CLASSES_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_DECLARED_CONSTRUCTORS_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_DECLARED_FIELDS_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_DECLARED_METHODS_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_FIELDS_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_METHODS_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_NEST_MEMBERS_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_RECORD_COMPONENTS_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.CLASS_ACCESS_FLAGS_MASK;
 import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeByte;
 import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeInt;
 import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeObject;
 import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeShort;
 import static com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry.UNINITIALIZED_DECLARING_CLASS_SENTINEL;
-import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_CLASSES_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_CONSTRUCTORS_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_DECLARED_CLASSES_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_DECLARED_CONSTRUCTORS_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_DECLARED_FIELDS_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_DECLARED_METHODS_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_FIELDS_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_METHODS_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_NEST_MEMBERS_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_PERMITTED_SUBCLASSES_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_RECORD_COMPONENTS_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_SIGNERS_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.CLASS_ACCESS_FLAGS_MASK;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.NO_DATA;
 import static com.oracle.svm.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.shared.util.NumUtil.safeToByte;
@@ -112,9 +112,9 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
-import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.graal.meta.DynamicHubOffsets;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
@@ -132,12 +132,14 @@ import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.reflect.CremaSerializationConstructorAccessor;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
-import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
+import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
+import com.oracle.svm.guest.staging.reflect.ConstantPoolProvider;
+import com.oracle.svm.guest.staging.reflect.ReflectionModifiers;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
-import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
-import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Constructor;
-import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
-import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstructorAccessor;
+import com.oracle.svm.guest.staging.reflect.target.Target_java_lang_reflect_AccessibleObject;
+import com.oracle.svm.guest.staging.reflect.target.Target_java_lang_reflect_Constructor;
+import com.oracle.svm.guest.staging.reflect.target.Target_jdk_internal_reflect_ConstantPool;
+import com.oracle.svm.guest.staging.reflect.target.Target_jdk_internal_reflect_ConstructorAccessor;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.guest.staging.hub.HubType;
@@ -581,7 +583,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             // array
             JavaKind componentKind = JavaKind.fromJavaClass(DynamicHub.toClass(componentHub));
             boolean isObject = (componentKind == JavaKind.Object);
-            layoutEncoding = LayoutEncoding.forArray(isObject, ol.getArrayBaseOffset(componentKind), ol.getArrayIndexShift(componentKind));
+            layoutEncoding = LayoutEncoding.forArray(isObject, ObjectLayoutCompilerSupport.getArrayBaseOffset(ol, componentKind), ObjectLayoutCompilerSupport.getArrayIndexShift(ol, componentKind));
             if (ol.isIdentityHashFieldInObjectHeader() || ol.isIdentityHashFieldAtTypeSpecificOffset()) {
                 identityHashOffset = NumUtil.safeToInt(ol.getObjectHeaderIdentityHashOffset());
             }
@@ -1707,7 +1709,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             throw new NoSuchFieldException(fieldName);
         } else {
             RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
-            int fieldModifiers = RuntimeMetadataDecoderImpl.getRawModifiers(field);
+            int fieldModifiers = ReflectionModifiers.getRawModifiers(field);
             boolean negative = decoder.isNegative(fieldModifiers);
             boolean hiding = decoder.isHiding(fieldModifiers);
             RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadata(field);
@@ -1799,7 +1801,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             return true;
         } else {
             RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
-            int methodModifiers = RuntimeMetadataDecoderImpl.getRawModifiers(method);
+            int methodModifiers = ReflectionModifiers.getRawModifiers(method);
             boolean negative = decoder.isNegative(methodModifiers);
             boolean hiding = decoder.isHiding(methodModifiers);
             RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadata(method);
@@ -1945,7 +1947,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             for (int layerNum = singletons.length - 1; layerNum >= 0; --layerNum) {
                 ImageReflectionMetadata reflectionMetadata = singletons[layerNum].getReflectionMetadata(this);
                 if (reflectionMetadata != null && reflectionMetadata.recordComponentsEncodingIndex != NO_DATA) {
-                    return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseRecordComponents(this, reflectionMetadata.recordComponentsEncodingIndex, layerNum);
+                    return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseRecordComponents(DynamicHub.toClass(this), reflectionMetadata.recordComponentsEncodingIndex, layerNum);
                 }
             }
             /* See ReflectionDataBuilder.buildRecordComponents() for details. */
@@ -2405,7 +2407,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             if (hubIsArray()) {
                 return null;
             }
-            return new Target_jdk_internal_reflect_ConstantPool(layerId, this);
+            return new Target_jdk_internal_reflect_ConstantPool(layerId, DynamicHub.toClass(this));
         }
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
             return ConstantPoolProvider.singletons()[layerId].getConstantPool();
@@ -2581,7 +2583,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         List<Field> filtered = new ArrayList<>();
         RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
         for (Field field : fields) {
-            int modifiers = RuntimeMetadataDecoderImpl.getRawModifiers(field);
+            int modifiers = ReflectionModifiers.getRawModifiers(field);
             if (!decoder.isHiding(modifiers) && !decoder.isNegative(modifiers)) {
                 filtered.add(field);
             }
@@ -2593,7 +2595,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         List<Method> filtered = new ArrayList<>();
         RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
         for (Method method : methods) {
-            int modifiers = RuntimeMetadataDecoderImpl.getRawModifiers(method);
+            int modifiers = ReflectionModifiers.getRawModifiers(method);
             if (!decoder.isHiding(modifiers) && !decoder.isNegative(modifiers)) {
                 filtered.add(method);
             }
@@ -2605,7 +2607,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         List<Constructor<?>> filtered = new ArrayList<>();
         RuntimeMetadataDecoder decoder = ImageSingletons.lookup(RuntimeMetadataDecoder.class);
         for (Constructor<?> constructor : constructors) {
-            if (!decoder.isNegative(RuntimeMetadataDecoderImpl.getRawModifiers(constructor))) {
+            if (!decoder.isNegative(ReflectionModifiers.getRawModifiers(constructor))) {
                 filtered.add(constructor);
             }
         }

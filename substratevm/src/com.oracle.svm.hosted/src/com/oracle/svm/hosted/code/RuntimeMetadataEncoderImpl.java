@@ -25,19 +25,19 @@
 package com.oracle.svm.hosted.code;
 
 import com.oracle.svm.hosted.DeleteGuestValue;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_FLAGS_MASK;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_NEST_MEMBERS_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.CLASS_ACCESS_FLAGS_MASK;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.COMPLETE_FLAG_MASK;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.FIRST_ERROR_INDEX;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.HIDING_FLAG_MASK;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.IN_HEAP_FLAG_MASK;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.NEGATIVE_FLAG_MASK;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.NULL_OBJECT;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.PRESERVED_FLAG_MASK;
-import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_FLAGS_MASK;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_NEST_MEMBERS_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_PERMITTED_SUBCLASSES_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_SIGNERS_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.CLASS_ACCESS_FLAGS_MASK;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.COMPLETE_FLAG_MASK;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.HIDING_FLAG_MASK;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.IN_HEAP_FLAG_MASK;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.NEGATIVE_FLAG_MASK;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.NO_DATA;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.PRESERVED_FLAG_MASK;
 import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.AccessibleObjectMetadata;
 import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.ClassMetadata;
 import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.ConstructorMetadata;
@@ -90,13 +90,12 @@ import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import com.oracle.svm.core.code.RuntimeMetadataEncoding;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.jvmci.shared.meta.SharedField;
-import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
-import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
+import com.oracle.svm.guest.staging.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoderFactory;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.RuntimeMetadataEncoder;
@@ -1235,7 +1234,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
      *
      * We use a modified version of the ConstantPool and AnnotationParser classes to decode the
      * data, since those are not used in their original functions at runtime. (see
-     * {@link Target_jdk_internal_reflect_ConstantPool} and
+     * {@link com.oracle.svm.guest.staging.reflect.target.Target_jdk_internal_reflect_ConstantPool} and
      * {@code Target_sun_reflect_annotation_AnnotationParser})
      */
     private byte[] encodeAnnotations(AnnotationValue[] annotations) {

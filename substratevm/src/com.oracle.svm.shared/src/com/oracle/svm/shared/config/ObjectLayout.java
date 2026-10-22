@@ -22,22 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.config;
+package com.oracle.svm.shared.config;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.shared.util.UnsignedUtils;
+import com.oracle.svm.shared.SharedIntrinsics;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
 import com.oracle.svm.shared.singletons.ImageSingletonWriter;
@@ -48,22 +45,12 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.CodeUtil;
+import com.oracle.svm.shared.util.NumUtil;
+import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.GuestAnnotationAccess;
-import com.oracle.svm.util.GuestAccess;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.replacements.ReplacementsUtil;
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.UnresolvedJavaType;
+import com.oracle.svm.shared.meta.GuestFold;
 
 /**
  * Immutable class that holds all sizes and offsets that contribute to the object layout.
@@ -86,12 +73,11 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = ObjectLayout.LayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 public final class ObjectLayout {
 
-    @Fold
+    @GuestFold
     public static ObjectLayout singleton() {
         return ImageSingletons.lookup(ObjectLayout.class);
     }
 
-    private final SubstrateTarget target;
     private final int referenceSize;
     private final int objectAlignment;
     private final int alignmentMask;
@@ -105,7 +91,7 @@ public final class ObjectLayout {
     private final int identityHashNumBits;
     private final int identityHashShift;
 
-    public ObjectLayout(SubstrateTarget target, int referenceSize, int objectAlignment, int hubSize, int hubOffset, int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset,
+    public ObjectLayout(int referenceSize, int objectAlignment, int hubSize, int hubOffset, int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset,
                     int headerIdentityHashOffset, IdentityHashMode identityHashMode, int identityHashNumBits, int identityHashShift) {
         assert CodeUtil.isPowerOf2(referenceSize) : referenceSize;
         assert CodeUtil.isPowerOf2(objectAlignment) : objectAlignment;
@@ -117,7 +103,6 @@ public final class ObjectLayout {
         assert identityHashNumBits > 0 && identityHashNumBits <= Integer.SIZE;
         assert identityHashShift >= 0 && identityHashShift < Long.SIZE;
 
-        this.target = target;
         this.referenceSize = referenceSize;
         this.objectAlignment = objectAlignment;
         this.alignmentMask = objectAlignment - 1;
@@ -153,21 +138,6 @@ public final class ObjectLayout {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getReferenceSize() {
         return referenceSize;
-    }
-
-    /**
-     * The size (in bytes) of values with the given kind.
-     */
-    public int sizeInBytes(JavaKind kind) {
-        return (kind == JavaKind.Object) ? referenceSize : target.arch.getPlatformKind(kind).getSizeInBytes();
-    }
-
-    public int getArrayIndexShift(JavaKind kind) {
-        return CodeUtil.log2(getArrayIndexScale(kind));
-    }
-
-    public int getArrayIndexScale(JavaKind kind) {
-        return sizeInBytes(kind);
     }
 
     /**
@@ -224,10 +194,16 @@ public final class ObjectLayout {
         return identityHashMode == IdentityHashMode.OPTIONAL.value;
     }
 
+    /**
+     * Returns the offset of the identity hash field when it is stored in the object header. The
+     * caller must ensure that the identity hash field is in the object header. Ordinary Java access
+     * checks this precondition with an assertion; calls from an intrinsic or snippet use a dynamic
+     * assertion provided by {@link SharedIntrinsics}.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getObjectHeaderIdentityHashOffset() {
-        if (GraalDirectives.inIntrinsic()) {
-            ReplacementsUtil.dynamicAssert(objectHeaderIdentityHashOffset >= 0, "must check before calling");
+        if (SharedIntrinsics.inIntrinsic()) {
+            SharedIntrinsics.dynamicAssert(objectHeaderIdentityHashOffset >= 0, "must check before calling");
         } else {
             assert objectHeaderIdentityHashOffset >= 0 : "must check before calling";
         }
@@ -250,25 +226,46 @@ public final class ObjectLayout {
         return mask << identityHashShift;
     }
 
-    public int getArrayBaseOffset(JavaKind kind) {
-        return NumUtil.roundUp(arrayBaseOffset, sizeInBytes(kind));
+    /**
+     * Returns the base offset of an array with elements of the given storage size in bytes.
+     *
+     * @param elementSize the element storage size in bytes, a positive power of two
+     */
+    public int getArrayBaseOffset(int elementSize) {
+        return NumUtil.roundUp(arrayBaseOffset, elementSize);
     }
 
-    public long getArrayElementOffset(JavaKind kind, int index) {
-        return getArrayBaseOffset(kind) + ((long) index) * sizeInBytes(kind);
+    /**
+     * Returns the offset of an array element with the given storage size in bytes.
+     *
+     * @param elementSize the element storage size in bytes, a positive power of two
+     */
+    public long getArrayElementOffset(int elementSize, int index) {
+        return getArrayBaseOffset(elementSize) + ((long) index) * elementSize;
     }
 
-    public long getArraySize(JavaKind kind, int length, boolean withOptionalIdHashField) {
-        return computeArrayTotalSize(getArrayUnalignedSize(kind, length), withOptionalIdHashField);
+    /**
+     * Returns the size of an array with elements of the given storage size in bytes.
+     *
+     * @param elementSize the element storage size in bytes, a positive power of two
+     */
+    public long getArraySize(int elementSize, int length, boolean withOptionalIdHashField) {
+        return computeArrayTotalSize(getArrayUnalignedSize(elementSize, length), withOptionalIdHashField);
     }
 
-    private long getArrayUnalignedSize(JavaKind kind, int length) {
+    private long getArrayUnalignedSize(int elementSize, int length) {
         assert length >= 0 : length;
-        return getArrayBaseOffset(kind) + ((long) length << getArrayIndexShift(kind));
+        return getArrayBaseOffset(elementSize) + ((long) length << CodeUtil.log2(elementSize));
     }
 
-    public long getArrayIdentityHashOffset(JavaKind kind, int length) {
-        return getArrayIdentityHashOffset(getArrayUnalignedSize(kind, length));
+    /**
+     * Returns the offset of an array's identity hash field with elements of the given storage size
+     * in bytes.
+     *
+     * @param elementSize the element storage size in bytes, a positive power of two
+     */
+    public long getArrayIdentityHashOffset(int elementSize, int length) {
+        return getArrayIdentityHashOffset(getArrayUnalignedSize(elementSize, length));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -307,17 +304,16 @@ public final class ObjectLayout {
     }
 
     public int getMinImageHeapArraySize() {
-        return NumUtil.safeToInt(getArraySize(JavaKind.Byte, 0, true));
+        return NumUtil.safeToInt(getArraySize(Byte.BYTES, 0, true));
     }
 
-    @Fold
+    @GuestFold
     public int getMinImageHeapObjectSize() {
         return Math.min(getMinImageHeapArraySize(), getMinImageHeapInstanceSize());
     }
 
     private List<Integer> getCurrentValues() {
-        return List.of(/* this.target, */
-                        this.referenceSize,
+        return List.of(this.referenceSize,
                         this.objectAlignment,
                         this.alignmentMask,
                         this.hubSize,
@@ -329,21 +325,6 @@ public final class ObjectLayout {
                         this.identityHashMode,
                         this.identityHashNumBits,
                         this.identityHashShift);
-    }
-
-    public static JavaKind getCallSignatureKind(boolean isEntryPoint, JavaType type, MetaAccessProvider metaAccess, TargetDescription target) {
-        if (!(type instanceof ResolvedJavaType resolvedJavaType)) {
-            assert type instanceof UnresolvedJavaType : type;
-            return JavaKind.Object;
-        }
-
-        if (metaAccess != null && metaAccess.lookupJavaType(WordBase.class).isAssignableFrom(resolvedJavaType)) {
-            return target.wordJavaKind;
-        }
-        if (isEntryPoint && GuestAnnotationAccess.isAnnotationPresent(resolvedJavaType, CEnum.class)) {
-            return JavaKind.Int;
-        }
-        return type.getJavaKind();
     }
 
     public enum IdentityHashMode {
@@ -377,8 +358,10 @@ public final class ObjectLayout {
                     List<Integer> currentValues = singleton.getCurrentValues();
                     List<Integer> priorValues = loader.readIntList("priorValues");
 
-                    var numFields = Arrays.stream(GuestAccess.get().lookupType(ObjectLayout.class).getInstanceFields(false)).filter(Predicate.not(ResolvedJavaField::isSynthetic)).count();
-                    VMError.guarantee(numFields - 1 == currentValues.size(), "Missing fields");
+                    long numFields = Arrays.stream(ObjectLayout.class.getDeclaredFields())
+                                    .filter(field -> !Modifier.isStatic(field.getModifiers()) && !field.isSynthetic())
+                                    .count();
+                    VMError.guarantee(numFields == currentValues.size(), "Missing fields");
 
                     VMError.guarantee(currentValues.equals(priorValues),
                                     "The object layout values should be consistent across layers. The previous layer object layout were %s, but the current layer are %s",

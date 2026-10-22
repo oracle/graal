@@ -39,6 +39,7 @@ import com.oracle.objectfile.debugentry.PointerToTypeEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
@@ -230,7 +231,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
             return (javaKind == JavaKind.Void ? 0 : javaKind.getByteCount());
         } else if (type.isArray()) {
             SharedType componentType = (SharedType) type.getComponentType();
-            return getObjectLayout().getArrayBaseOffset(componentType.getStorageKind());
+            return ObjectLayoutCompilerSupport.getArrayBaseOffset(getObjectLayout(), componentType.getStorageKind());
         } else if (type.isInterface() || type.isInstanceClass()) {
             return getObjectLayout().getFirstFieldOffset();
         } else {

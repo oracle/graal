@@ -36,7 +36,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.vm.ci.code.ReferenceMap;

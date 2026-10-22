@@ -1142,6 +1142,7 @@ public class NativeImageGenerator {
                 registerEntryPoints(entryPoints);
 
                 setDefaultConfiguration();
+                GuestImageGeneratorSupport.setupObjectLayout();
 
                 SVMImageLayerSnapshotUtil imageLayerSnapshotUtil = null;
                 if (ImageLayerBuildingSupport.buildingImageLayer()) {

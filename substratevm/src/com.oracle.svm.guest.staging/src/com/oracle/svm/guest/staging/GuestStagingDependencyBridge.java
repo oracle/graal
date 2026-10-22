@@ -25,8 +25,13 @@
 package com.oracle.svm.guest.staging;
 
 import java.io.PrintStream;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Parameter;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.MissingReflectionRegistrationError;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -34,6 +39,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.guest.staging.reflect.RuntimeConstantPool;
 import com.oracle.svm.shared.Uninterruptible;
 
 /**
@@ -236,6 +242,29 @@ public interface GuestStagingDependencyBridge {
     boolean isRuntimeClassLoadingSupported();
 
     /**
+     * Returns checked constant-pool access for a run-time-loaded class, or {@code null} when runtime
+     * class loading is disabled or {@code clazz} is not runtime-loaded.
+     * <p>
+     * Remove this method when the constant-pool adapter and its Crema access move to guest/staging.
+     */
+    RuntimeConstantPool getRuntimeConstantPool(Class<?> clazz);
+
+    /**
+     * Delegates to {@code com.oracle.svm.core.hub.DynamicHub.fromClass(clazz).isReached()}.
+     * <p>
+     * Remove this method when the type-reached query is available directly to guest/staging.
+     */
+    boolean isTypeReached(Class<?> clazz);
+
+    /**
+     * Delegates to
+     * {@code com.oracle.svm.core.configure.ConfigurationFiles.Options.TrackUnsatisfiedTypeReachedConditions.getValue()}.
+     * <p>
+     * Remove this method when tracking unsatisfied type-reached conditions becomes guest-owned.
+     */
+    boolean trackUnsatisfiedTypeReachedConditions();
+
+    /**
      * Delegates to {@code com.oracle.svm.core.SubstrateOptions.useRistretto()}.
      * <p>
      * Remove this method when Ristretto options move to guest/staging.
@@ -282,4 +311,24 @@ public interface GuestStagingDependencyBridge {
      * to guest/staging.
      */
     void trimRuntimeState(RuntimeStateTrimConfig config);
+
+    /** Remove when {@code DynamicHub} moves to guest/staging. */
+    boolean isRuntimeLoadedClass(Class<?> clazz);
+
+    /** Remove when parameter metadata conversion moves to guest/staging. */
+    Parameter[] getRuntimeReflectParameters(Executable executable, Object parameterMetadata);
+
+    /** Remove when metadata tracing moves to guest/staging. */
+    boolean isMetadataTracingEnabled();
+
+    /** Remove when metadata tracing moves to guest/staging. */
+    void traceReflectionExecutableAccess(Executable executable);
+
+    /** Remove when missing-reflection-registration reporting moves to guest/staging. */
+    MissingReflectionRegistrationError reportInvokedExecutable(Executable executable);
+
+    /** Remove when layered-image reflection support moves to guest/staging. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    int currentImageLayerNumber();
+
 }

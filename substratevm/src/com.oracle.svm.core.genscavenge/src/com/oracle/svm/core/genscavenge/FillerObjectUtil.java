@@ -27,7 +27,8 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.replacements.AllocationSnippets.FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -62,12 +63,12 @@ public class FillerObjectUtil {
 
     @Fold
     static int arrayMinSize() {
-        return NumUtil.safeToInt(ObjectLayout.singleton().getArraySize(ARRAY_ELEMENT_KIND, 0, false));
+        return NumUtil.safeToInt(ObjectLayoutCompilerSupport.getArraySize(ObjectLayout.singleton(), ARRAY_ELEMENT_KIND, 0, false));
     }
 
     @Fold
     static int arrayBaseOffset() {
-        return ObjectLayout.singleton().getArrayBaseOffset(ARRAY_ELEMENT_KIND);
+        return ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), ARRAY_ELEMENT_KIND);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

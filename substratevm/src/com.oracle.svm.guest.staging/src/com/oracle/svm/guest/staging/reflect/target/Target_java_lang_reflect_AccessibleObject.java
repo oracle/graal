@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.guest.staging.reflect.target;
 
 import java.lang.reflect.AccessibleObject;
 
@@ -33,7 +33,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 
 @TargetClass(value = AccessibleObject.class)
 public final class Target_java_lang_reflect_AccessibleObject {

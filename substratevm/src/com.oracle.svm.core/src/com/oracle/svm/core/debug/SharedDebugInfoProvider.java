@@ -76,7 +76,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.code.CompilationResultFrameTree;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;

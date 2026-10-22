@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.guest.staging.reflect.target;
 
-import com.oracle.svm.shared.BuildPhaseProvider;
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.annotate.TargetClass;
 
-public abstract class ReflectionMetadataComputer implements FieldValueTransformerWithAvailability {
-    // JVMCI migration blocked by GR-72585: Migrate com.oracle.svm.core.reflect for terminus
-
-    @Override
-    public boolean isAvailable() {
-        return BuildPhaseProvider.isCompilationFinished();
-    }
+@TargetClass(className = "jdk.internal.reflect.FieldAccessor")
+final class Target_jdk_internal_reflect_FieldAccessor {
 }

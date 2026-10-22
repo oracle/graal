@@ -56,7 +56,8 @@ import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.c.struct.OffsetOf;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
 import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.graal.code.PreparedSignature;
@@ -271,7 +272,7 @@ public class AMD64InterpreterStubs {
              * index * referenceSize + array header.
              */
             AMD64Assembler.AMD64RMOp.MOV.emit(masm, referenceOperandSize(), method,
-                            new AMD64Address(scratch1, vtableIndex, Stride.fromLog2(CodeUtil.log2(ol.getReferenceSize())), ol.getArrayBaseOffset(JavaKind.Object)));
+                            new AMD64Address(scratch1, vtableIndex, Stride.fromLog2(CodeUtil.log2(ol.getReferenceSize())), ObjectLayoutCompilerSupport.getArrayBaseOffset(ol, JavaKind.Object)));
 
             emitInstalledCodeFastPath(masm, method, true, scratch1);
             masm.bind(slowPath);

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.guest.staging.reflect.target;
 
 import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
 
@@ -30,12 +30,8 @@ import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 
-import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.configure.config.ConfigurationMemberInfo;
-import com.oracle.svm.configure.config.SignatureUtil;
-import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -43,9 +39,10 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
-import com.oracle.svm.core.metadata.MetadataTracer;
-import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import sun.reflect.generics.repository.ConstructorRepository;
 
@@ -69,7 +66,7 @@ public final class Target_java_lang_reflect_Constructor {
      * constructors.
      */
     @Alias //
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableAccessorComputer.class) //
+    @RecomputeFieldValue(kind = Kind.Custom, declClassName = "com.oracle.svm.core.reflect.target.ExecutableAccessorComputer") //
     public Target_jdk_internal_reflect_ConstructorAccessor constructorAccessor;
 
     /**
@@ -92,20 +89,20 @@ public final class Target_java_lang_reflect_Constructor {
     @Substitute
     public Target_jdk_internal_reflect_ConstructorAccessor acquireConstructorAccessor() {
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata;
-        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {
+        if (GuestStagingDependencyBridge.singleton().isMetadataTracingEnabled() && (dynamicAccessMetadata == null || dynamicAccessMetadata.isPreserved())) {
             ConstructorUtil.traceConstructorAccess(SubstrateUtil.cast(this, Executable.class));
         }
 
         assert constructorAccessor == null : "acquireConstructorAccessor() method must not be called if instance is in image heap.";
         if (constructorAccessorFromMetadata == null || !dynamicAccessMetadata.satisfied()) {
-            throw MissingReflectionRegistrationUtils.reportInvokedExecutable(SubstrateUtil.cast(this, Executable.class));
+            throw GuestStagingDependencyBridge.singleton().reportInvokedExecutable(SubstrateUtil.cast(this, Executable.class));
         }
         return constructorAccessorFromMetadata;
     }
 
     @Substitute
     public int getModifiers() {
-        return RuntimeMetadataDecoderImpl.clearInternalModifiers(modifiers);
+        return RuntimeMetadataDecoder.clearInternalModifiers(modifiers);
     }
 
     static class AnnotationsComputer extends ReflectionMetadataComputer {
@@ -126,7 +123,6 @@ public final class Target_java_lang_reflect_Constructor {
 class ConstructorUtil {
 
     static void traceConstructorAccess(Executable ctor) {
-        MetadataTracer.singleton().traceMethodAccess(ctor.getDeclaringClass(), CONSTRUCTOR_NAME, SignatureUtil.toInternalSignature(ctor.getParameterTypes()),
-                        ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+        GuestStagingDependencyBridge.singleton().traceReflectionExecutableAccess(ctor);
     }
 }

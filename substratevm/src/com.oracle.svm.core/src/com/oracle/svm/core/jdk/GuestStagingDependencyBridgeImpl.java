@@ -25,29 +25,47 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.PrintStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Parameter;
 
+import org.graalvm.nativeimage.MissingReflectionRegistrationError;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
+import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.RuntimeStateTrimSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
+import com.oracle.svm.core.metadata.MetadataTracer;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
+import com.oracle.svm.core.reflect.RuntimeConstantPoolImpl;
+import com.oracle.svm.core.reflect.RuntimeReflectionSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
+import com.oracle.svm.guest.staging.reflect.RuntimeConstantPool;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.shared.Uninterruptible;
@@ -56,6 +74,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Provides core implementations for runtime services that guest-staging code cannot yet access
@@ -197,6 +216,28 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
+    public RuntimeConstantPool getRuntimeConstantPool(Class<?> clazz) {
+        if (!RuntimeClassLoading.isSupported()) {
+            return null;
+        }
+        DynamicHub hub = DynamicHub.fromClass(clazz);
+        if (!hub.isRuntimeLoaded()) {
+            return null;
+        }
+        return new RuntimeConstantPoolImpl(CremaSupport.singleton().getConstantPool(hub));
+    }
+
+    @Override
+    public boolean isTypeReached(Class<?> clazz) {
+        return DynamicHub.fromClass(clazz).isReached();
+    }
+
+    @Override
+    public boolean trackUnsatisfiedTypeReachedConditions() {
+        return ConfigurationFiles.Options.TrackUnsatisfiedTypeReachedConditions.getValue();
+    }
+
+    @Override
     public boolean useRistretto() {
         return SubstrateOptions.useRistretto();
     }
@@ -242,4 +283,42 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     public void trimRuntimeState(RuntimeStateTrimConfig config) {
         RuntimeStateTrimSupport.singleton().trimRuntimeState(config);
     }
+
+    @Override
+    public boolean isRuntimeLoadedClass(Class<?> clazz) {
+        return DynamicHub.fromClass(clazz).isRuntimeLoaded();
+    }
+
+    @Override
+    public Parameter[] getRuntimeReflectParameters(Executable executable, Object parameterMetadata) {
+        if (!RuntimeClassLoading.isSupported()) {
+            throw VMError.shouldNotReachHere("Runtime class loading is disabled");
+        }
+        return RuntimeReflectionSupport.getRuntimeReflectParameters(executable, parameterMetadata);
+    }
+
+    @Override
+    @AlwaysInline("tracing should fold away when disabled")
+    public boolean isMetadataTracingEnabled() {
+        return MetadataTracer.enabled();
+    }
+
+    @Override
+    public void traceReflectionExecutableAccess(Executable executable) {
+        String methodName = executable instanceof Constructor<?> ? TargetElement.CONSTRUCTOR_NAME : executable.getName();
+        MetadataTracer.singleton().traceMethodAccess(executable.getDeclaringClass(), methodName,
+                        SignatureUtil.toInternalSignature(executable.getParameterTypes()), ConfigurationMemberDeclaration.DECLARED);
+    }
+
+    @Override
+    public MissingReflectionRegistrationError reportInvokedExecutable(Executable executable) {
+        return MissingReflectionRegistrationUtils.reportInvokedExecutable(executable);
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public int currentImageLayerNumber() {
+        return DynamicImageLayerInfo.getCurrentLayerNumber();
+    }
+
 }

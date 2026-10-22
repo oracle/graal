@@ -60,12 +60,13 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.MissingRegistrationUtils;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
@@ -2194,8 +2195,8 @@ public final class JNIFunctions {
                 throw new ArrayIndexOutOfBoundsException();
             }
             if (count > 0) {
-                long offset = ObjectLayout.singleton().getArrayElementOffset(elementKind, start);
-                int elementSize = ObjectLayout.singleton().sizeInBytes(elementKind);
+                long offset = ObjectLayoutCompilerSupport.getArrayElementOffset(ObjectLayout.singleton(), elementKind, start);
+                int elementSize = ObjectLayoutCompilerSupport.sizeInBytes(ObjectLayout.singleton(), elementKind);
                 UnsignedWord bytes = Word.unsigned(count).multiply(elementSize);
                 JavaMemoryUtil.copyOnHeap(obj, Word.unsigned(offset), null, Word.unsigned(buffer.rawValue()), bytes);
             }
@@ -2207,8 +2208,8 @@ public final class JNIFunctions {
                 throw new ArrayIndexOutOfBoundsException();
             }
             if (count > 0) {
-                long offset = ObjectLayout.singleton().getArrayElementOffset(elementKind, start);
-                int elementSize = ObjectLayout.singleton().sizeInBytes(elementKind);
+                long offset = ObjectLayoutCompilerSupport.getArrayElementOffset(ObjectLayout.singleton(), elementKind, start);
+                int elementSize = ObjectLayoutCompilerSupport.sizeInBytes(ObjectLayout.singleton(), elementKind);
                 UnsignedWord bytes = Word.unsigned(count).multiply(elementSize);
                 JavaMemoryUtil.copyOnHeap(null, Word.unsigned(buffer.rawValue()), obj, Word.unsigned(offset), bytes);
             }

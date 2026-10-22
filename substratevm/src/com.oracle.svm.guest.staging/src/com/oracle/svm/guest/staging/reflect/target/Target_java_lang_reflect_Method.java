@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.guest.staging.reflect.target;
 
 import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
 
@@ -34,8 +34,6 @@ import java.nio.ByteBuffer;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.configure.config.ConfigurationMemberInfo;
-import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -43,13 +41,11 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
-import com.oracle.svm.core.hub.ConstantPoolProvider;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.metadata.MetadataTracer;
-import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
+import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.reflect.ConstantPoolProvider;
+import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.internal.reflect.ConstantPool;
@@ -79,7 +75,7 @@ public final class Target_java_lang_reflect_Method {
      * methods.
      */
     @Alias //
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableAccessorComputer.class) //
+    @RecomputeFieldValue(kind = Kind.Custom, declClassName = "com.oracle.svm.core.reflect.target.ExecutableAccessorComputer") //
     public Target_jdk_internal_reflect_MethodAccessor methodAccessor;
 
     @Alias //
@@ -136,12 +132,12 @@ public final class Target_java_lang_reflect_Method {
     @Substitute
     public Target_jdk_internal_reflect_MethodAccessor acquireMethodAccessor() {
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata;
-        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {
+        if (GuestStagingDependencyBridge.singleton().isMetadataTracingEnabled() && (dynamicAccessMetadata == null || dynamicAccessMetadata.isPreserved())) {
             MethodUtil.traceMethodAccess(SubstrateUtil.cast(this, Executable.class));
         }
         assert methodAccessor == null : "acquireMethodAccessor() method must not be called if `this` is in image heap.";
         if (methodAccessorFromMetadata == null || !dynamicAccessMetadata.satisfied()) {
-            throw MissingReflectionRegistrationUtils.reportInvokedExecutable(SubstrateUtil.cast(this, Executable.class));
+            throw GuestStagingDependencyBridge.singleton().reportInvokedExecutable(SubstrateUtil.cast(this, Executable.class));
         }
         return methodAccessorFromMetadata;
     }
@@ -154,10 +150,9 @@ public final class Target_java_lang_reflect_Method {
         Class<?> memberType = AnnotationType.invocationHandlerReturnType(getReturnType());
         int layerId = SubstrateUtil.cast(this, Target_java_lang_reflect_Executable.class).layerId;
         Target_jdk_internal_reflect_ConstantPool constPool;
-        DynamicHub declaringHub = DynamicHub.fromClass(getDeclaringClass());
-        if (declaringHub.isRuntimeLoaded()) {
-            constPool = new Target_jdk_internal_reflect_ConstantPool(layerId, declaringHub);
-        } else if (ImageLayerBuildingSupport.buildingImageLayer()) {
+        if (GuestStagingDependencyBridge.singleton().isRuntimeLoadedClass(getDeclaringClass())) {
+            constPool = new Target_jdk_internal_reflect_ConstantPool(layerId, getDeclaringClass());
+        } else if (GuestImageLayerBuildingSupport.buildingImageLayer()) {
             /*
              * The layer id of the method is not necessarily the same as the declaring class, so the
              * constant pool used need to be chosen using the layer id of the method.
@@ -197,7 +192,7 @@ public final class Target_java_lang_reflect_Method {
 
     @Substitute
     public int getModifiers() {
-        return RuntimeMetadataDecoderImpl.clearInternalModifiers(modifiers);
+        return RuntimeMetadataDecoder.clearInternalModifiers(modifiers);
     }
 
     static class AnnotationsComputer extends ReflectionMetadataComputer {
@@ -224,7 +219,6 @@ public final class Target_java_lang_reflect_Method {
 
 class MethodUtil {
     static void traceMethodAccess(Executable meth) {
-        MetadataTracer.singleton().traceMethodAccess(meth.getDeclaringClass(), meth.getName(), SignatureUtil.toInternalSignature(meth.getParameterTypes()),
-                        ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+        GuestStagingDependencyBridge.singleton().traceReflectionExecutableAccess(meth);
     }
 }

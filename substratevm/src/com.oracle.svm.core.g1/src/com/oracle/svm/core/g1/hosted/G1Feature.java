@@ -50,8 +50,8 @@ import com.oracle.svm.core.GCRelatedMXBeans;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.config.ObjectLayout.IdentityHashMode;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout.IdentityHashMode;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.g1.G1CommittedMemoryProvider;
 import com.oracle.svm.core.g1.G1Constants;
@@ -366,7 +366,7 @@ public class G1Feature implements InternalFeature {
         int identityHashNumBits = 31;
         int identityHashShift = 6;
 
-        return new ObjectLayout(target, referenceSize, objectAlignment, hubSize, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset,
+        return new ObjectLayout(referenceSize, objectAlignment, hubSize, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset,
                         headerIdentityHashOffset, IdentityHashMode.OBJECT_HEADER, identityHashNumBits, identityHashShift);
     }
 

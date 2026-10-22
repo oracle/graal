@@ -1548,11 +1548,9 @@ suite = {
                 "java.base" : [
                     "jdk.internal.misc",
                     "jdk.internal.reflect",
+                    "sun.reflect.annotation",
+                    "sun.reflect.generics.repository",
                     "sun.security.util",
-                ],
-                "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.meta.annotation",
                 ],
             },
             "checkstyle": "com.oracle.svm.core",

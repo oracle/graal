@@ -79,7 +79,7 @@ import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ResourceLoaderKeys;
 import com.oracle.svm.core.jdk.Resources;

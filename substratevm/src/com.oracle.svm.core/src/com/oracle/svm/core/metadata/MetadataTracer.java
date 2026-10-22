@@ -48,7 +48,7 @@ import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.core.MissingRegistrationUtils;
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;

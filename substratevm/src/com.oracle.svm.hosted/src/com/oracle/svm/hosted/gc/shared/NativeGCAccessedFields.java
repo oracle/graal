@@ -35,7 +35,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfoOffsets;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.VMThreads;

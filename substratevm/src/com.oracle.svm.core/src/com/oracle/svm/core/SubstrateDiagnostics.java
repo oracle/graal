@@ -59,7 +59,7 @@ import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.RuntimeCodeInfoHistory;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.code.RuntimeCodeInstallation;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.container.OperatingSystem;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;

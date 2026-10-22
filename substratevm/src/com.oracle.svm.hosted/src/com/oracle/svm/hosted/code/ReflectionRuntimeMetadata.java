@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.code;
 import static com.oracle.svm.jvmci.shared.meta.SharedField.LOC_UNINITIALIZED;
 import static com.oracle.svm.shared.singletons.MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
 
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.graal.compiler.annotation.AnnotationValue;

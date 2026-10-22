@@ -22,24 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.guest.staging.reflect.target;
 
-import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import com.oracle.svm.shared.BuildPhaseProvider;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public interface EncodedRuntimeMetadataSupplier {
-    byte[] getAnnotationsEncoding(AccessibleObject object);
+public abstract class ReflectionMetadataComputer implements FieldValueTransformer {
+    // JVMCI migration blocked by GR-72585: Migrate com.oracle.svm.core.reflect for terminus
 
-    byte[] getParameterAnnotationsEncoding(Executable object);
-
-    byte[] getAnnotationDefaultEncoding(Method object);
-
-    byte[] getTypeAnnotationsEncoding(AccessibleObject object);
-
-    byte[] getReflectParametersEncoding(Executable object);
+    @Override
+    public boolean isAvailable() {
+        return BuildPhaseProvider.isCompilationFinished();
+    }
 }

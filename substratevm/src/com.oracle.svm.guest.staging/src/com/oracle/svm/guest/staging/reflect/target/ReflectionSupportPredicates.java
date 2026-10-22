@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.guest.staging.reflect.target;
 
-import java.lang.reflect.Executable;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.Type;
+import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-@TargetClass(Parameter.class)
-final class Target_java_lang_reflect_Parameter {
+import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    private Type parameterTypeCache;
+public final class ReflectionSupportPredicates {
+    private ReflectionSupportPredicates() {
+    }
 
-    @Alias //
-    @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
-    native void constructor(String name, int modifiers, Executable executable, int index);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static final class BuildingImageLayer implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return GuestImageLayerBuildingSupport.buildingImageLayer();
+        }
+    }
 }

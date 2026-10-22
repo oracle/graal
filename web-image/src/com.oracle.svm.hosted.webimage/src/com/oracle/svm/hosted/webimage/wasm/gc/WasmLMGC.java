@@ -30,7 +30,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import java.lang.ref.Reference;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

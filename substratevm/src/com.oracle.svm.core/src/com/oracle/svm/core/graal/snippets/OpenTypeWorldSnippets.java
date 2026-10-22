@@ -42,7 +42,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.impl.ObjectAccess;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubProvider;
@@ -224,7 +225,7 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
         }
         int[] checkedTypeIds = checkedHub.getOpenTypeWorldTypeCheckSlots();
         // int checkedClassId = checkedTypeIds[typeIDDepth];
-        int offset = (int) ImageSingletons.lookup(ObjectLayout.class).getArrayElementOffset(JavaKind.Int, typeIDDepth);
+        int offset = (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, typeIDDepth);
         // GR-51603 can make a floating read
         int checkedClassId = ObjectAccess.readInt(checkedTypeIds, offset, NamedLocationIdentity.FINAL_LOCATION);
         if (checkedClassId == typeID) {
@@ -273,7 +274,7 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
         int[] checkedTypeIds = checkedHub.getOpenTypeWorldTypeCheckSlots();
         for (int i = 0; i < numInterfaceTypes * 2; i += 2) {
             // int checkedInterfaceId = checkedTypeIds[numClassTypes + i];
-            int offset = (int) ImageSingletons.lookup(ObjectLayout.class).getArrayElementOffset(JavaKind.Int, numClassTypes + i);
+            int offset = (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, numClassTypes + i);
             // GR-51603 can make a floating read
             int checkedInterfaceId = ObjectAccess.readInt(checkedTypeIds, offset, NamedLocationIdentity.FINAL_LOCATION);
             if (checkedInterfaceId == interfaceID) {
@@ -314,7 +315,7 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
         // No need to mask hashParam to get "p". interfaceID fits in a short -> the two upper
         // bytes are 0.
         int hash = (interfaceID >>> shift) & hashParam;
-        int offset = (int) ImageSingletons.lookup(ObjectLayout.class).getArrayElementOffset(JavaKind.Int, hash);
+        int offset = (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, hash);
         int hashTableEntry = ObjectAccess.readInt(hashTable, offset, NamedLocationIdentity.FINAL_LOCATION);
 
         // Hashtable entries contain integers which hold the iTableOffset and the interfaceID:

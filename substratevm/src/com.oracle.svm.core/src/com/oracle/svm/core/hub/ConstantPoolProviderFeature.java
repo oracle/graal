@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.core.hub;
 
-import java.lang.reflect.Method;
+import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.guest.staging.reflect.ConstantPoolProvider;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 
-@TargetClass(java.lang.reflect.RecordComponent.class)
-final class Target_java_lang_reflect_RecordComponent {
-    @Alias Class<?> clazz;
+@AutomaticallyRegisteredFeature
+class ConstantPoolProviderFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.buildingImageLayer();
+    }
 
-    @Alias String name;
-
-    @Alias Class<?> type;
-
-    @Alias Method accessor;
-
-    @Alias String signature;
-
-    @Alias byte[] annotations;
-
-    @Alias byte[] typeAnnotations;
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        /*
+         * The provider needs to be created after the afterRegistration hook as it depends on the
+         * DynamicImageLayerInfo.
+         */
+        ImageSingletons.add(ConstantPoolProvider.class, new ConstantPoolProvider(DynamicImageLayerInfo.getCurrentLayerNumber()));
+    }
 }

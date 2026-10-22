@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.reflect.target;
+package com.oracle.svm.guest.staging.reflect;
 
-import com.oracle.svm.core.annotate.TargetClass;
+/**
+ * Minimal checked access to constant-pool values needed by guest reflection code.
+ */
+public interface RuntimeConstantPool {
+    String getUTF8At(int index);
 
-@TargetClass(className = "jdk.internal.reflect.ConstructorAccessor")
-public final class Target_jdk_internal_reflect_ConstructorAccessor {
+    int getIntAt(int index);
+
+    long getLongAt(int index);
+
+    float getFloatAt(int index);
+
+    double getDoubleAt(int index);
 }
