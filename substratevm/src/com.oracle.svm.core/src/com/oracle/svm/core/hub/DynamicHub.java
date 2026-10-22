@@ -332,7 +332,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /// These entries start after the [#numClassTypes] class-display prefix and are laid out
     /// as `(interfaceID, itableOffset)` pairs. Only interfaces that are not represented in
     /// [#openTypeWorldInterfaceHashTable] are counted here, so the value determines how many
-    /// interface pairs must be scanned for iterative interface type checks.
+    /// interface pairs must be scanned for iterative interface type checks and itable lookups.
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
     private short numIterableInterfaceTypes;
 
@@ -358,18 +358,20 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     public static final int NO_INTERFACE_ID = -1;
 
     /**
-     * HashTable used for interface hashing under open type world if
-     * {@link SubstrateOptions#useInterfaceHashing()} is enabled. See TypeCheckBuilder for a general
-     * documentation. This array may be used by the garbage collector and therefore needs to live in
-     * the image heap or {@link Metaspace}.
+     * Hash table used for interface type checks and itable lookups under open type world if
+     * {@link SubstrateOptions#useInterfaceHashing()} is enabled. Each entry contains an interface
+     * ID and its itable byte offset; see {@link DynamicHubUtils#HASHING_ITABLE_SHIFT}. This array
+     * may be used by the garbage collector and therefore needs to live in the image heap or
+     * {@link Metaspace}.
      */
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
     private long[] openTypeWorldInterfaceHashTable;
 
     /**
      * Hashing parameter used for interface hashing under open type world if
-     * {@link SubstrateOptions#useInterfaceHashing()} is enabled. See TypeCheckBuilder for a general
-     * documentation.
+     * {@link SubstrateOptions#useInterfaceHashing()} is enabled. With PEXT, this is the bit selection
+     * mask; otherwise it packs a shift and mask. All hubs use the same image-wide format, including
+     * runtime-loaded hubs. See {@link DynamicHubUtils#hash(int, int)}.
      */
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
     private int openTypeWorldInterfaceHashParam;
@@ -1045,23 +1047,19 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return typeIDDepth;
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getNumClassTypes() {
         return numClassTypes;
     }
 
     /**
      * The number of interfaces that are stored in {@link #openTypeWorldTypeCheckSlots} and need to
-     * be iterated for type checks or itable loading. Depending on
-     * {@link SubstrateOptions#useInterfaceHashing()} interfaces a likely encoded in
-     * {@link #openTypeWorldInterfaceHashTable}. Their number is excluded from the number of
-     * iterable interfaces.
+     * be iterated for type checks or itable loading. Interfaces represented in
+     * {@link #openTypeWorldInterfaceHashTable} are excluded from this count.
      */
     public int getNumIterableInterfaceTypes() {
         return numIterableInterfaceTypes;
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int[] getOpenTypeWorldTypeCheckSlots() {
         return openTypeWorldTypeCheckSlots;
     }

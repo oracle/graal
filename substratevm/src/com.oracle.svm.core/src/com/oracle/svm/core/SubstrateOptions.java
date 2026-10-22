@@ -1526,6 +1526,17 @@ public class SubstrateOptions {
             }
         });
 
+        /** Use {@link SubstrateOptions#usePextInterfaceHashing()} instead. */
+        @Option(help = "Use PEXT to compute interface hash-table indices. Selected automatically for open type world interface hashing on AMD64 targets with BMI2. Can be disabled on CPUs with slow PEXT.", type = OptionType.Debug) //
+        @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error) //
+        public static final HostedOptionKey<Boolean> UsePextInterfaceHashing = new HostedOptionKey<>(null, key -> {
+            if (Boolean.TRUE.equals(key.getValue())) {
+                UserError.guarantee(useInterfaceHashing() && !useClosedTypeWorldHubLayout(), "UsePextInterfaceHashing requires open type world interface hashing.");
+                UserError.guarantee(SubstrateTarget.getArchitecture() instanceof AMD64 arch && arch.getFeatures().contains(AMD64.CPUFeature.BMI2),
+                                "UsePextInterfaceHashing requires BMI2 in the target CPU baseline (for example, -march=x86-64-v3).");
+            }
+        });
+
         /** Use {@link SubstrateOptions#isSignalHandlingAllowed()} instead. */
         @Option(help = "Enables signal handling", stability = OptionStability.EXPERIMENTAL, type = Expert)//
         public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<>(null, RegisterForIsolateArgumentParser) {
@@ -1841,6 +1852,18 @@ public class SubstrateOptions {
             UserError.invalidOptionValue(key, value, "The specified value must be between 0 and " + DynamicHubUtils.MAX_HASHED_INTERFACE_ID + " (the current hash construction limit)");
         }
     });
+
+    /**
+     * Returns whether open type world interface hash tables use PEXT to compute table indices.
+     * The choice is fixed during image building based on the target CPU features and applies to
+     * all image layers and runtime-loaded classes, keeping table construction and lookup consistent.
+     */
+    @Fold
+    public static boolean usePextInterfaceHashing() {
+        return !Boolean.FALSE.equals(ConcealedOptions.UsePextInterfaceHashing.getValue()) && useInterfaceHashing() && !useClosedTypeWorldHubLayout() &&
+                        SubstrateTarget.getArchitecture() instanceof AMD64 arch &&
+                        arch.getFeatures().contains(AMD64.CPUFeature.BMI2);
+    }
 
     @Fold
     public static boolean useClosedTypeWorldHubLayout() {

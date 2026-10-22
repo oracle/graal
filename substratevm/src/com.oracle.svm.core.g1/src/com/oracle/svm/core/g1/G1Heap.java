@@ -208,8 +208,8 @@ public final class G1Heap extends Heap {
         Word performanceData = Word.objectToUntrackedWord(perfData);
         boolean closedTypeWorldHubLayout = SubstrateOptions.useClosedTypeWorldHubLayout();
         boolean useInterfaceHashing = SubstrateOptions.useInterfaceHashing();
+        boolean usePextInterfaceHashing = SubstrateOptions.usePextInterfaceHashing();
         int interfaceHashingMaxId = SubstrateOptions.interfaceHashingMaxId();
-        int dynamicHubMaxHashedInterfaceId = DynamicHubUtils.MAX_HASHED_INTERFACE_ID;
         int dynamicHubHashingShiftOffset = DynamicHubUtils.HASHING_SHIFT_OFFSET;
         Word offsets = Word.objectToUntrackedWord(accessedFieldOffsets).add(getByteArrayBaseOffset());
         int offsetsLength = accessedFieldOffsets.length;
@@ -240,7 +240,7 @@ public final class G1Heap extends Heap {
                         staticObjectFields, staticPrimitiveFields, vmOperationThread, safepointMaster, runtimeCodeInfoMemory,
                         referenceMapCompressedOffsetShift, threadLocalsReferenceMap,
                         classesAssumedReachableForCodeUnloading, performanceData, closedTypeWorldHubLayout,
-                        useInterfaceHashing, interfaceHashingMaxId, dynamicHubMaxHashedInterfaceId, dynamicHubHashingShiftOffset,
+                        useInterfaceHashing, usePextInterfaceHashing, interfaceHashingMaxId, dynamicHubHashingShiftOffset,
                         offsets, offsetsLength,
                         collectForAllocationOp, executePauseRemark, executePauseCleanup,
                         collectFullOp, verifyHeapOp, tryInitiateConcMarkOp,

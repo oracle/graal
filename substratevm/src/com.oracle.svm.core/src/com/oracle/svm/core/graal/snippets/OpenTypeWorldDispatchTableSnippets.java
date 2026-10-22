@@ -25,8 +25,6 @@
 package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_ITABLE_SHIFT;
-import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_SHIFT_OFFSET;
-import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
 
@@ -45,7 +43,6 @@ import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOff
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.shared.AlwaysInline;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
 
@@ -67,6 +64,7 @@ import org.graalvm.word.impl.Word;
 import jdk.vm.ci.meta.JavaKind;
 
 public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates implements Snippets {
+
     @Snippet
     private static long loadITableStartingOffset(
                     @Snippet.NonNullParameter DynamicHub hub,
@@ -94,30 +92,24 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
         }
     }
 
-    // Resolve layout access during image building, outside the uninterruptible lookup loop.
-    @Fold
-    static int intArrayBaseOffset() {
-        return (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, 0);
-    }
-
     /**
      * Iterative lookup of itable starting offsets used if
      * {@link SubstrateOptions#useInterfaceHashing()} is disabled or if the interfaceID exceeds
      * {@link SubstrateOptions#interfaceHashingMaxId()}.
      */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static long determineITableStartingOffsetIterative(
                     DynamicHub checkedHub,
                     int interfaceID) {
         int numClassTypes = checkedHub.getNumClassTypes();
+        int numInterfaceTypes = checkedHub.getNumIterableInterfaceTypes();
         int[] checkedTypeIds = checkedHub.getOpenTypeWorldTypeCheckSlots();
-        for (int i = 0; i < checkedTypeIds.length - numClassTypes; i += 2) {
+        for (int i = 0; i < numInterfaceTypes * 2; i += 2) {
             // int checkedInterfaceId = checkedTypeIds[numClassTypes + i];
-            int offset = intArrayBaseOffset() + Integer.BYTES * (numClassTypes + i);
+            int offset = (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, numClassTypes + i);
             // GR-51603 can make a floating read
             int checkedInterfaceId = ObjectAccess.readInt(checkedTypeIds, offset, NamedLocationIdentity.FINAL_LOCATION);
             if (checkedInterfaceId == interfaceID) {
-                offset = intArrayBaseOffset() + Integer.BYTES * (numClassTypes + i + 1);
+                offset = (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, numClassTypes + i + 1);
                 long result = ObjectAccess.readInt(checkedTypeIds, offset, NamedLocationIdentity.FINAL_LOCATION);
                 return result;
             }
@@ -130,8 +122,8 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
      * If {@link SubstrateOptions#useInterfaceHashing()} is enabled, interfaceIDs and itable
      * starting offsets are stored in a hash table (see TypeCheckBuilder for a general
      * documentation). This snippet handles the lookup in the hash table and returns the itable
-     * starting offset for the given interfaceID. See {@link DynamicHubUtils#hashParam(int[])} for
-     * details on the hashing function and hashing parameter.
+     * starting offset for the given interfaceID. See {@link DynamicHubUtils#hash(int, int)} for
+     * the image-wide choice between shift-and-mask and PEXT hashing.
      */
     private static long determineITableStartingOffsetHashed(
                     DynamicHub checkedHub,
@@ -200,10 +192,9 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
         return SubstrateTarget.getArchitecture().getByteOrder() == ByteOrder.LITTLE_ENDIAN ? Integer.BYTES : 0;
     }
 
-    @AlwaysInline("Read only the offset for unchecked interface dispatch")
+    @AlwaysInline("Avoid a helper call for the hash calculation and offset load")
     private static int readInterfaceHashTableOffset(long[] hashTable, int hashParam, int interfaceID) {
-        int shift = hashParam >>> HASHING_SHIFT_OFFSET;
-        int hash = (interfaceID >>> shift) & hashParam;
+        int hash = DynamicHubUtils.hash(interfaceID, hashParam);
         long offset = ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Long, hash) + itableOffsetWordOffset();
         // The offset occupies the upper word; the table's encoding and stride are unchanged.
         return ObjectAccess.readInt(hashTable, Word.signed(offset), NamedLocationIdentity.FINAL_LOCATION);
@@ -211,9 +202,7 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
 
     @AlwaysInline("Keep the packed interface entry available to its caller")
     private static long readInterfaceHashTableEntry(long[] hashTable, int hashParam, int interfaceID) {
-        int shift = hashParam >>> HASHING_SHIFT_OFFSET;
-        // The interface ID fits in 16 bits, so the shift bits need no masking.
-        int hash = (interfaceID >>> shift) & hashParam;
+        int hash = DynamicHubUtils.hash(interfaceID, hashParam);
         long offset = ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Long, hash);
         return ObjectAccess.readLong(hashTable, Word.signed(offset), NamedLocationIdentity.FINAL_LOCATION);
     }

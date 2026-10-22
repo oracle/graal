@@ -26,7 +26,6 @@ package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHub;
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHubOrNull;
-import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_SHIFT_OFFSET;
 import static jdk.graal.compiler.core.common.GraalOptions.TypeCheckMaxHints;
 import static jdk.graal.compiler.core.common.GraalOptions.TypeCheckMinProfileHitProbability;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
@@ -35,6 +34,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUE
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
 
+import java.nio.ByteOrder;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -42,6 +42,7 @@ import org.graalvm.word.impl.ObjectAccess;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -56,6 +57,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -294,8 +296,8 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
      * starting offsets are stored in a hash table (see TypeCheckBuilder for a general
      * documentation). This snippet does a hash table lookup and returns true if the provided
      * interfaceID matches the interfaceID in the hash table, false otherwise. See
-     * {@link DynamicHubUtils#hashParam(int[])} for details on the hashing function and hashing
-     * parameter.
+     * {@link DynamicHubUtils#hash(int, int)} for the image-wide choice between shift-and-mask and
+     * PEXT hashing.
      */
     @DuplicatedInNativeCode
     protected static SubstrateIntrinsics.Any hashedInterfaceTypeCheck(
@@ -305,22 +307,25 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
                     SubstrateIntrinsics.Any falseValue) {
         ReplacementsUtil.dynamicAssert(interfaceID > 0 && interfaceID <= DynamicHubUtils.MAX_HASHED_INTERFACE_ID, "Interface ID must be in the supported hashing range.");
 
-        // The upper byte holds the shift; the low 16 bits hold the mask. The remaining bits are unused.
         int hashParam = checkedHub.getOpenTypeWorldInterfaceHashParam();
-        int shift = hashParam >>> HASHING_SHIFT_OFFSET;
         long[] hashTable = checkedHub.getOpenTypeWorldInterfaceHashTable();
 
-        // No need to mask hashParam: interfaceID fits in 16 bits, excluding the shift.
-        int hash = (interfaceID >>> shift) & hashParam;
-        long offset = ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Long, hash);
-        long hashTableEntry = ObjectAccess.readLong(hashTable, Word.signed(offset), NamedLocationIdentity.FINAL_LOCATION);
+        int hash = DynamicHubUtils.hash(interfaceID, hashParam);
+        long offset = ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Long, hash) + interfaceIdWordOffset();
+        // Keep the long-entry stride, but read only the low 32-bit ID used by this check.
+        int storedInterfaceID = ObjectAccess.readInt(hashTable, Word.signed(offset), NamedLocationIdentity.FINAL_LOCATION);
 
-        // The interface ID occupies the low word.
-        if ((int) hashTableEntry == interfaceID) {
+        if (storedInterfaceID == interfaceID) {
             return trueValue;
         } else {
             return falseValue;
         }
+    }
+
+    /** Byte offset of the low 32-bit interface ID within a long hash-table entry. */
+    @Fold
+    static int interfaceIdWordOffset() {
+        return SubstrateTarget.getArchitecture().getByteOrder() == ByteOrder.LITTLE_ENDIAN ? 0 : Integer.BYTES;
     }
 
     public void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, Providers providers) {

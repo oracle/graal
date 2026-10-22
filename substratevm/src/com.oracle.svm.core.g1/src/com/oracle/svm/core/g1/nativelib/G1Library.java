@@ -59,7 +59,7 @@ import com.oracle.svm.guest.staging.c.function.CFunctionOptions;
 @CContext(value = G1LibraryDependencies.class)
 public class G1Library {
     // GraalVM major, GraalVM minor, interface revision
-    public static final int VERSION = 250501;
+    public static final int VERSION = 250502;
 
     @CFunction(value = "svm_g1gc_parse_options", transition = Transition.NO_TRANSITION)
     public static native void parseOptions(int nativeImageVersion, int argc, CCharPointerPointer argv, CCharPointer imageBuildHostedArguments, CCharPointer imageBuildRuntimeArguments,
@@ -74,7 +74,7 @@ public class G1Library {
                     Word staticObjectFields, Word staticPrimitiveFields, Word vmOperationThread, Word safepoint, Word runtimeCodeInfoMemory,
                     int referenceMapCompressedOffsetShift, Word threadLocalsReferenceMap,
                     Word classesAssumedReachableForCodeUnloading, Word performanceData, boolean closedTypeWorld,
-                    boolean useInterfaceHashing, int interfaceHashingMaxId, int dynamicHubMaxHashedInterfaceId, int dynamicHubHashingShiftOffset,
+                    boolean useInterfaceHashing, boolean usePextInterfaceHashing, int interfaceHashingMaxId, int dynamicHubHashingShiftOffset,
                     Word offsets, int offsetsLength,
                     CFunctionPointer collectForAllocationOp, CFunctionPointer executePauseRemark, CFunctionPointer executePauseCleanup,
                     CFunctionPointer collectFullOp, CFunctionPointer verifyHeapOp, CFunctionPointer tryInitiateConcMarkOp,

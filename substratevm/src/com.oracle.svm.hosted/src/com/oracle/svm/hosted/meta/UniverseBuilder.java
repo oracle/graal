@@ -1038,8 +1038,7 @@ public class UniverseBuilder {
 
         long[] interfaceHashTable = typeCheckData.openTypeWorldInterfaceHashTable();
         if (interfaceHashTable != null) {
-            long[] newTable = interfaceHashTable;
-            interfaceHashTable = interfaceHashTables.computeIfAbsent(LongBuffer.wrap(newTable), key -> newTable);
+            interfaceHashTable = interfaceHashTables.computeIfAbsent(LongBuffer.wrap(interfaceHashTable), LongBuffer::array);
         }
 
         MethodRef[] vtable = createVTable(type.openTypeWorldDispatchTables, useOffsets);
