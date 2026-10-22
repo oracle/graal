@@ -51,7 +51,7 @@ import com.oracle.svm.core.SubstrateDiagnostics.DumpRuntimeCodeInfoMemory;
 import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.code.CodeInfoTable;

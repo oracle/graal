@@ -31,6 +31,8 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
+import com.oracle.svm.guest.staging.core.code.UntetheredCodeInfo;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.c.NonmovableArray;
