@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -155,34 +155,74 @@ public class ReadNode extends FloatableAccessNode
         }
     }
 
+    /**
+     * Determines whether this read can be eliminated because it has no usages.
+     *
+     * A read used as the null check for dominated memory accesses must be retained:
+     *
+     * <pre>
+     * readWithNullCheck(object.a);
+     * read(object.b);
+     * read(object.c);
+     * </pre>
+     *
+     * The first read must still check {@code object} for null even if its result is unused.
+     *
+     * An ordered read must also be retained because its ordering effects can remain observable.
+     * For example, let {@code v} and {@code w} be volatile fields and {@code data} be a plain field,
+     * all initially zero, with initialization preceding both threads:
+     *
+     * <pre>
+     * Thread 0:             Thread 1:
+     * v = 1;                data = 1;
+     * int ignored = w;      w = 1;
+     * r0 = data;            r1 = v;
+     * </pre>
+     *
+     * {@code r0 == 0 && r1 == 0} is forbidden. If {@code r1 == 0}, synchronization order requires
+     * {@code write(w, 1) < read(v, 0) < write(v, 1) < read(w)}. The write of {@code w} therefore
+     * synchronizes-with the ignored read, so {@code data = 1} happens-before {@code r0 = data},
+     * requiring {@code r0 == 1}. The unused result does not remove the read's synchronization
+     * effects.
+     *
+     * An unused acquire read can also be required. Let {@code FLAG} be a VarHandle for an
+     * {@code int flag}, with both {@code flag} and plain {@code data} initially zero, initialization
+     * preceding both threads, and no other writes:
+     *
+     * <pre>
+     * Publisher:              Reader:
+     * data = 1;               r0 = (int) FLAG.getOpaque();
+     * FLAG.setRelease(1);     int ignored = (int) FLAG.getAcquire();
+     *                         r1 = data;
+     * </pre>
+     *
+     * {@code r0 == 1 && r1 == 0} is forbidden. If the opaque read observes {@code 1}, coherence
+     * requires the following acquire to read {@code 1} too. The matching release/acquire pair orders
+     * the publisher's write of {@code data} before the reader's read, requiring {@code r1 == 1}.
+     * The opaque read alone provides no acquire ordering.
+     */
+    private boolean canEliminateRead(CanonicalizerTool tool) {
+        return !getUsedAsNullCheck() && !ordersMemoryAccesses() && tool.allUsagesAvailable() && hasNoUsages();
+    }
+
+    /**
+     * Determines whether this read can be canonicalized to another value.
+     *
+     * Null-check and ordering effects must be preserved for the same reasons described in
+     * {@link #canEliminateRead(CanonicalizerTool)}.
+     */
     private boolean canCanonicalizeRead() {
-        return !getUsedAsNullCheck() && !extendsAccess();
+        return !ordersMemoryAccesses() && !getUsedAsNullCheck() && !extendsAccess();
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (!getUsedAsNullCheck() && tool.allUsagesAvailable() && hasNoUsages()) {
-            /**
-             * Read without usages or guard can be safely removed as long as it does not act as the
-             * null check for dominated memory accesses.
-             *
-             * <pre>
-             * readWithNullCheck(object.a);
-             * read(object.b);
-             * read(object.c);
-             * </pre>
-             *
-             * In this pattern the first read is the null check for the dominated reads of b and c.
-             * Thus, the read of a must not be removed after fix reads phase even if it has no
-             * usages.
-             */
+        if (canEliminateRead(tool)) {
             return null;
         }
         if (canCanonicalizeRead()) {
             return canonicalizeRead(this, getAddress(), getLocationIdentity(), tool);
         } else {
-            // if this read is a null check, then replacing it with the value is incorrect for
-            // guard-type usages
             return this;
         }
     }
