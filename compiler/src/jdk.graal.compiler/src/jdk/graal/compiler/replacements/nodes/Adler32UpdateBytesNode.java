@@ -97,6 +97,11 @@ public final class Adler32UpdateBytesNode extends PureFunctionStubIntrinsicNode 
     }
 
     @Override
+    public boolean needsExplicitZeroExtension(Architecture arch) {
+        return !(arch instanceof AMD64);
+    }
+
+    @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         var result = gen.getLIRGeneratorTool().emitAdler32UpdateBytes(getRuntimeCheckedCPUFeatures(), gen.operand(adler), gen.operand(bufferAddress), gen.operand(length));
         gen.setResult(this, result);

@@ -43,6 +43,7 @@ import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
@@ -126,6 +127,11 @@ public class BigIntegerMultiplyToLenNode extends MemoryKillStubIntrinsicNode {
     @Override
     public ForeignCallDescriptor getForeignCallDescriptor() {
         return STUB;
+    }
+
+    @Override
+    public boolean needsExplicitZeroExtension(Architecture arch) {
+        return false;
     }
 
     @Override

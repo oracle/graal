@@ -68,7 +68,7 @@ public enum MemoryExtendKind {
     }
 
     public boolean isSignExtend() {
-        return zeroExtend;
+        return signExtend;
     }
 
     public int getExtendedBitSize() {
