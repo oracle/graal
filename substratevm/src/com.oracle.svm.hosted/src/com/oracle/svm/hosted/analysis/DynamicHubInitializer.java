@@ -68,6 +68,7 @@ import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -196,7 +197,8 @@ public class DynamicHubInitializer {
      */
     private boolean shouldRescanHub(ImageHeapScanner heapScanner, DynamicHub hub, ScanReason reason) {
         if (hostVM.buildingExtensionLayer()) {
-            ImageHeapConstant hubConstant = (ImageHeapConstant) heapScanner.createImageHeapConstant(hub, reason);
+            JavaConstant hubConst = GuestAccess.get().getSnippetReflection().forObject(hub);
+            ImageHeapConstant hubConstant = (ImageHeapConstant) heapScanner.createImageHeapConstant(hubConst, reason);
             return hubConstant == null || !hubConstant.isInSharedLayer();
         }
         return true;

@@ -390,7 +390,8 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        return universe.getHeapScanner().createImageHeapConstant(getHostVM().dynamicHub(type), ObjectScanner.OtherReason.UNKNOWN);
+        JavaConstant hubConst = GuestAccess.get().getSnippetReflection().forObject(getHostVM().dynamicHub(type));
+        return universe.getHeapScanner().createImageHeapConstant(hubConst, ObjectScanner.OtherReason.UNKNOWN);
     }
 
     @Override
@@ -398,7 +399,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         if (value == null) {
             return JavaConstant.NULL_POINTER;
         }
-        return universe.getHeapScanner().createImageHeapConstant(value, ObjectScanner.OtherReason.UNKNOWN);
+        return universe.getHeapScanner().createImageHeapConstant(GuestAccess.get().asGuestString(value), ObjectScanner.OtherReason.UNKNOWN);
     }
 
     @Override
