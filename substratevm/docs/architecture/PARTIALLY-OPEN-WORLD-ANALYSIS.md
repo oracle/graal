@@ -91,6 +91,19 @@ Recovery based solely on that bound requires both a complete assignable-type hie
 A successful checked cast can provide the bound, but does not by itself establish either condition.
 An open bound alone cannot justify enumerating all possible types; a particular value can nevertheless have a precise type established by its analyzed allocation.
 
+### Array Bounds
+
+Array classes cannot be extended by declaring subclasses, but array assignability is covariant.
+An extension that defines `Future extends Base` introduces `Future[]` assignable to `Base[]`, and similarly for additional dimensions.
+Finite recovery under an array bound therefore depends on the completeness of its elemental type's hierarchy, after removing all array dimensions.
+Primitive and final elemental types retain complete array hierarchies.
+A particular analyzed array allocation can still establish an exact runtime array type even when its elemental type is extensible.
+
+Array invoke targets and element values require separate reasoning.
+Extensions cannot introduce array method overrides; this does not make the runtime array type or its elements fully known.
+Cloning preserves the actual runtime array type and copies its element references.
+Element flows must cover permitted stores, subject to the array's runtime component check, including stores of array values into multidimensional arrays.
+
 ## Values Across Component Boundaries
 
 The analysis represents these interactions in a shared points-to graph, linking method graphs through calls and memory flows.
