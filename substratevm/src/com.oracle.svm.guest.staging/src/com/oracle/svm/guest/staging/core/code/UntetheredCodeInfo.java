@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.code;
+package com.oracle.svm.guest.staging.core.code;
 
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
@@ -30,14 +30,14 @@ import org.graalvm.word.PointerBase;
 /**
  * The untethered version of {@link CodeInfo}, which can be released by the GC at <b>ANY</b>
  * safepoint. Before it is possible to access any data, it is necessary to convert a pointer of this
- * type to a {@link CodeInfo} pointer using {@link CodeInfoAccess#acquireTether} and
- * {@link CodeInfoAccess#convert}. For more details, refer to the documentation of
- * {@link CodeInfoAccess}.
+ * type to a {@link CodeInfo} pointer using {@code CodeInfoAccess#acquireTether} and
+ * {@code CodeInfoAccess#convert}. For more details, refer to the documentation of
+ * {@code CodeInfoAccess}.
  * <p>
  * <b>NEVER</b> do a direct cast from {@link UntetheredCodeInfo} to {@link CodeInfo}.
  * <p>
  * If it is necessary to access data without acquiring the tether, then call the static methods of
- * the class {@link UntetheredCodeInfoAccess} from uninterruptible code.
+ * the class {@code UntetheredCodeInfoAccess} from uninterruptible code.
  */
 @RawStructure
 public interface UntetheredCodeInfo extends PointerBase {

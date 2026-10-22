@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.code;
+package com.oracle.svm.guest.staging.core.code;
 
 import org.graalvm.nativeimage.c.struct.RawStructure;
 
@@ -30,9 +30,9 @@ import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 
 /**
  * A tethered {@link CodeInfo} object that can be accessed using the static methods on the class
- * {@link CodeInfoAccess}. As long as the tether object is reachable, it is guaranteed that the GC
+ * {@code CodeInfoAccess}. As long as the tether object is reachable, it is guaranteed that the GC
  * won't free the {@link CodeInfo} object. For more details, refer to the documentation of
- * {@link CodeInfoAccess}.
+ * {@code CodeInfoAccess}.
  */
 @RawStructure
 public interface CodeInfo extends UntetheredCodeInfo {
@@ -47,7 +47,7 @@ public interface CodeInfo extends UntetheredCodeInfo {
      * Indicates that the code is fully installed from the GC point of view. The GC must visit all
      * heap references, including code constants that are directly embedded into the machine code.
      *
-     * @see CodeInfoAccess#isAliveState
+     * @see "CodeInfoAccess#isAliveState"
      */
     @DuplicatedInNativeCode //
     int STATE_CODE_CONSTANTS_LIVE = STATE_CREATED + 1;
@@ -58,7 +58,7 @@ public interface CodeInfo extends UntetheredCodeInfo {
      * visit all heap references, including code constants that are directly embedded into the
      * machine code.
      *
-     * @see CodeInfoAccess#isAliveState
+     * @see "CodeInfoAccess#isAliveState"
      */
     @DuplicatedInNativeCode //
     int STATE_NON_ENTRANT = STATE_CODE_CONSTANTS_LIVE + 1;
@@ -80,7 +80,7 @@ public interface CodeInfo extends UntetheredCodeInfo {
      * visiting all heap references, including code constants that are directly embedded into the
      * machine code.
      *
-     * @see CodeInfoAccess#isLiveCodeConstantsState
+     * @see "CodeInfoAccess#isLiveCodeConstantsState"
      */
     @DuplicatedInNativeCode //
     int STATE_REMOVED_FROM_CODE_CACHE = STATE_PENDING_REMOVAL_FROM_CODE_CACHE + 1;
