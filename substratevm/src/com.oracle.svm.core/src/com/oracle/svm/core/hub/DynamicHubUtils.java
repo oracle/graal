@@ -191,8 +191,10 @@ public final class DynamicHubUtils {
     /**
      * Computes a hashing parameter {@code hashParam = shift << HASHING_SHIFT_OFFSET | p}, such that
      * {@code (val>>>shift) & p} is injective (i.e., collision-free) for each value in {@code vals}.
-     * The hash table will have size {@code p + 1} which is why a minimal hash parameter is
-     * computed.
+     * The hash table will have size {@code p + 1}. Greedily removing high bits keeps this size
+     * small, but a larger unshifted mask can sometimes yield a smaller table after shifting.
+     * Therefore, also try discarding low bits before minimizing the mask. This only affects
+     * metadata construction; all lookups still use the same shift-and-mask hash function.
      */
     public static int hashParam(int[] vals) {
         if (vals.length <= 1) {
@@ -211,7 +213,7 @@ public final class DynamicHubUtils {
             or |= vals[i];
             and &= vals[i];
         }
-        int hashParam = or ^ and;
+        int discriminativeBits = or ^ and;
 
         assert or > 0 && or <= MAX_HASHED_INTERFACE_ID : "Interface IDs exceed the supported hashing range.";
 
@@ -220,35 +222,52 @@ public final class DynamicHubUtils {
          * needed such that 0011 & 1010 != 1001 & 1010. Updated hashParam = 0010.
          */
         EconomicSet<Integer> set = EconomicSet.create();
-        for (int i = 31; i >= 0; i--) {
-            int bitI = 1 << i;
-            if ((hashParam & bitI) != 0) {
-                int hashParamToTest = hashParam & ~bitI;
-                if (isValidHashParam(vals, hashParamToTest, set)) {
-                    hashParam = hashParamToTest;
-                }
-                set.clear();
-            }
-        }
+        int hashParam = minimizeHashMask(vals, discriminativeBits, set);
 
         /*
          * 3) Calculate the number of trailing 0s. This can be used to shift the hash parameter,
          * making it smaller in the process. This changes the hash function to: (id>>>shift) & p.
          * Updated hashParam = 0001 with shift = 1.
          */
-        int shift = 0;
-        for (int i = 0; i < 31; i++) {
-            if ((hashParam & (1 << i)) == 0) {
-                shift++;
-            } else {
+        int shift = Integer.numberOfTrailingZeros(hashParam);
+        int bestMask = hashParam >>> shift;
+        int bestShift = shift;
+
+        // A bit-selection hash needs at least ceil(log2(n)) bits. Skip the extra search if the
+        // first mask already reaches that lower bound, as is common for small interface sets.
+        int minimumTableSize = Integer.highestOneBit(2 * vals.length - 1);
+        int interfaceBits = Integer.SIZE - Integer.numberOfLeadingZeros(MAX_HASHED_INTERFACE_ID);
+        for (int minimumShift = shift + 1; minimumShift < interfaceBits && bestMask + 1 > minimumTableSize; minimumShift++) {
+            int candidate = discriminativeBits & (-1 << minimumShift);
+            if (!isValidHashParam(vals, candidate, set)) {
+                // Discarding more low bits cannot separate values that already collide.
                 break;
+            }
+            candidate = minimizeHashMask(vals, candidate, set);
+            int candidateShift = Integer.numberOfTrailingZeros(candidate);
+            int candidateMask = candidate >>> candidateShift;
+            if (candidateMask < bestMask) {
+                bestMask = candidateMask;
+                bestShift = candidateShift;
             }
         }
 
-        assert (hashParam & HASHING_PARAM_MASK) == hashParam : "Hash parameter is too large to be encoded.";
-        assert (shift << HASHING_SHIFT_OFFSET) >>> HASHING_SHIFT_OFFSET == shift : "Shift is too large to be encoded: " + shift;
+        assert (bestMask & HASHING_PARAM_MASK) == bestMask : "Hash parameter is too large to be encoded.";
+        assert (bestShift << HASHING_SHIFT_OFFSET) >>> HASHING_SHIFT_OFFSET == bestShift : "Shift is too large to be encoded: " + bestShift;
 
-        return hashParam == 0 ? hashParam : (shift << HASHING_SHIFT_OFFSET) | (hashParam >>> shift);
+        return (bestShift << HASHING_SHIFT_OFFSET) | bestMask;
+    }
+
+    private static int minimizeHashMask(int[] vals, int mask, EconomicSet<Integer> tmp) {
+        for (int bit = Integer.highestOneBit(mask); bit != 0; bit >>>= 1) {
+            if ((mask & bit) != 0) {
+                int candidate = mask & ~bit;
+                if (isValidHashParam(vals, candidate, tmp)) {
+                    mask = candidate;
+                }
+            }
+        }
+        return mask;
     }
 
     /**
@@ -257,6 +276,7 @@ public final class DynamicHubUtils {
      * {@code vals}.
      */
     private static boolean isValidHashParam(int[] vals, int hashParam, EconomicSet<Integer> tmp) {
+        tmp.clear();
         for (int v : vals) {
             int hash = hash(v, hashParam);
             if (tmp.contains(hash)) {

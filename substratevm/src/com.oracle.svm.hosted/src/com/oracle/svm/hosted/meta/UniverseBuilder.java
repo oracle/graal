@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import com.oracle.svm.hosted.ExcludeFromReferenceMapGuestValue;
 import com.oracle.svm.hosted.ContendedGuestValue;
 import java.io.Serializable;
 import java.lang.reflect.Modifier;
+import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -943,6 +944,10 @@ public class UniverseBuilder {
         boolean closedTypeWorldHubLayout = SubstrateOptions.useClosedTypeWorldHubLayout();
         boolean useOffsets = SubstrateOptions.useRelativeCodePointers();
 
+        // Hash tables are immutable once constructed. Share equal contents within this image layer;
+        // the build-local map and its content-based LongBuffer keys do not enter the image heap.
+        Map<LongBuffer, long[]> interfaceHashTables = new HashMap<>();
+
         for (HostedType type : hUniverse.getTypes()) {
             hUniverse.hostVM().recordActivity();
 
@@ -1006,7 +1011,7 @@ public class UniverseBuilder {
                 hub.setClosedTypeWorldData(vtable, type.getTypeID(), type.getTypeCheckStart(), type.getTypeCheckRange(),
                                 type.getTypeCheckSlot(), type.getClosedTypeWorldTypeCheckSlots());
             } else {
-                setOpenTypeWorldData(type, dynamicHubLayout, hub, useOffsets);
+                setOpenTypeWorldData(type, dynamicHubLayout, hub, useOffsets, interfaceHashTables);
             }
         }
     }
@@ -1015,7 +1020,7 @@ public class UniverseBuilder {
      * See {@link DynamicHubUtils#computeOpenTypeWorldTypeCheckData} for details on the
      * {@link DynamicHub} type check layout in the open type world.
      */
-    private static void setOpenTypeWorldData(HostedType type, DynamicHubLayout dynamicHubLayout, DynamicHub hub, boolean useOffsets) {
+    private static void setOpenTypeWorldData(HostedType type, DynamicHubLayout dynamicHubLayout, DynamicHub hub, boolean useOffsets, Map<LongBuffer, long[]> interfaceHashTables) {
         boolean implementsMethods = type.itableStartingOffsets.length > 0;
         int numClassTypes = type.numClassTypes;
         int[] typeHierarchy = new int[numClassTypes];
@@ -1031,10 +1036,16 @@ public class UniverseBuilder {
         DynamicHubUtils.TypeCheckData typeCheckData = DynamicHubUtils.computeOpenTypeWorldTypeCheckData(implementsMethods, typeHierarchy, interfaceIDs, iTableOffsets, vTableOffset,
                         vTableSlotSize);
 
+        long[] interfaceHashTable = typeCheckData.openTypeWorldInterfaceHashTable();
+        if (interfaceHashTable != null) {
+            long[] newTable = interfaceHashTable;
+            interfaceHashTable = interfaceHashTables.computeIfAbsent(LongBuffer.wrap(newTable), key -> newTable);
+        }
+
         MethodRef[] vtable = createVTable(type.openTypeWorldDispatchTables, useOffsets);
         hub.setOpenTypeWorldData(vtable, type.getTypeID(), type.getInterfaceID(), type.getTypeIDDepth(), type.getNumClassTypes(), typeCheckData.numIterableInterfaces(),
                         typeCheckData.openTypeWorldTypeCheckSlots(),
-                        typeCheckData.openTypeWorldInterfaceHashTable(), typeCheckData.openTypeWorldInterfaceHashParam());
+                        interfaceHashTable, typeCheckData.openTypeWorldInterfaceHashParam());
     }
 
     private static MethodRef[] createVTable(HostedMethod[] methods, boolean useOffsets) {
