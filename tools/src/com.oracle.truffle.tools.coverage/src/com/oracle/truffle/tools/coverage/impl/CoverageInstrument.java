@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -136,7 +136,6 @@ public class CoverageInstrument extends TruffleInstrument {
         try {
             if (absoluteOutputPath != null) {
                 final File file = new File(absoluteOutputPath);
-                new PrintStream(env.out()).println("Printing output to " + file.getAbsolutePath());
                 return new PrintStream(new FileOutputStream(file));
             } else {
                 return new PrintStream(env.out());
