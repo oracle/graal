@@ -24,48 +24,56 @@
  */
 package com.oracle.svm.hosted.c;
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Map;
-
+import com.oracle.svm.core.GuestImageSingletonSupport;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.feature.JVMCIFeatureAccess;
 import com.oracle.svm.guest.staging.core.c.CIsolateData;
 import com.oracle.svm.guest.staging.core.c.CIsolateDataStorage;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.shared.collections.ConcurrentIdentityHashMap;
-import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
-import jdk.graal.compiler.core.common.NumUtil;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-/** See {@link CIsolateData} and {@link CIsolateDataStorage}. */
+/**
+ * Automatically registered builder-context bridge for {@code CIsolateData} and
+ * {@code CIsolateDataStorage}.
+ *
+ * Guest features do not currently have unconditional automatic registration, so mandatory setup
+ * remains here instead of relying on removable configuration. Collection and layout execute on the
+ * guest-owned {@code CIsolateDataStorage} through {@link GuestAccess}.
+ */
 @AutomaticallyRegisteredFeature
 public class CIsolateDataFeature implements InternalFeature {
 
-    private final Map<String, CIsolateData<?>> usedEntries = new ConcurrentIdentityHashMap<>();
+    private ResolvedJavaMethod collectMethod;
+    private ResolvedJavaMethod layoutMethod;
+    private JavaConstant storage;
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReachabilityHandler(this::collectCIsolateData, CIsolateData.class);
+        GuestAccess guestAccess = GuestAccess.get();
+        ResolvedJavaType dataType = guestAccess.lookupType(CIsolateData.class);
+        ResolvedJavaType storageType = guestAccess.lookupType(CIsolateDataStorage.class);
+
+        collectMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(storageType, "collect", dataType);
+        layoutMethod = JVMCIReflectionUtil.getUniqueDeclaredMethod(storageType, "layout");
+
+        ResolvedJavaMethod storageConstructor = JVMCIReflectionUtil.getDeclaredConstructor(storageType);
+        storage = guestAccess.invoke(storageConstructor, null);
+        GuestImageSingletonSupport.add(storageType, storage);
+
+        ((JVMCIFeatureAccess.DuringSetupAccess) access).registerObjectReachabilityHandler(this::collectCIsolateData, dataType);
     }
 
-    private void collectCIsolateData(CIsolateData<?> data) {
-        usedEntries.compute(data.getName(), (key, old) -> {
-            VMError.guarantee(old == null || old == data, "The isolate data section already contains an entry for %s", key);
-            return data;
-        });
+    private void collectCIsolateData(JavaConstant data) {
+        GuestAccess.get().invoke(collectMethod, storage, data);
     }
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        CIsolateData<?>[] entries = usedEntries.values().toArray(new CIsolateData<?>[0]);
-        Arrays.sort(entries, Comparator.comparing(CIsolateData<?>::getSize).thenComparing(CIsolateData<?>::getName));
-
-        long offset = 0;
-        for (CIsolateData<?> entry : entries) {
-            offset = NumUtil.roundUp(offset, CIsolateDataStorage.ALIGNMENT);
-            entry.setOffset(offset);
-            offset += entry.getSize();
-        }
-        CIsolateDataStorage.singleton().setSize(offset);
+        GuestAccess.get().invoke(layoutMethod, storage);
     }
 }
