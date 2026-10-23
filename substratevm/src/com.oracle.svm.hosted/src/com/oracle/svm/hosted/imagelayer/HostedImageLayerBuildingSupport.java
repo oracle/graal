@@ -541,7 +541,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             }
         }
         HostedDynamicLayerInfo.singleton().registerLibName(libName);
-        nativeLibs.addDynamicNonJniLibrary(libName);
+        nativeLibs.addDynamicLibrary(libName);
     }
 
     public static void registerBaseLayerTypes(BigBang bb, GuestTypes guestTypes) {
