@@ -119,6 +119,7 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.TypeResult;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
@@ -126,7 +127,9 @@ import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
 import jdk.internal.access.SharedSecrets;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
@@ -193,6 +196,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static final String SIGNATURE_SERVICE = "Signature";
     private static final String CIPHER_SERVICE = "Cipher";
     private static final String KEY_AGREEMENT_SERVICE = "KeyAgreement";
+    private static final String KEM_SERVICE = "KEM";
     private static final String KEY_STORE = "KeyStore";
     private static final String CERTIFICATE_FACTORY = "CertificateFactory";
     private static final String JKS = "JKS";
@@ -268,6 +272,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
 
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), true, "java.base", "sun.security.ssl");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
                         "Force initialization of sun.security.krb5.KerberosSecrets.javaxSecurityAuthKerberosAccess");
@@ -722,7 +727,24 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             for (Service service : services) {
                 registerService(access, service);
             }
+            if (serviceType.equals(KEM_SERVICE)) {
+                registerHybridProviderServices(access);
+            }
         }
+    }
+
+    private void registerHybridProviderServices(DuringAnalysisAccess access) {
+        optionalType(access, "sun.security.ssl.HybridProvider").ifPresent(hybridProviderType -> {
+            ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(hybridProviderType);
+            // Constant reflection does not initialize the class before reading static fields.
+            originalType.initialize();
+            JavaConstant providerConst = JVMCIReflectionUtil.readStaticField(originalType, "PROVIDER");
+            Provider provider = GuestAccess.get().getSnippetReflection().asObject(Provider.class, providerConst);
+            for (Service service : provider.getServices()) {
+                registerService(access, service);
+            }
+            registerProvider(access, provider);
+        });
     }
 
     /** Service.getInstance() methods must be public static and should return the service type. */
