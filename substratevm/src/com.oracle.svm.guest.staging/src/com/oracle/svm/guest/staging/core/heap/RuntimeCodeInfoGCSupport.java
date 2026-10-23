@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.guest.staging.core.heap;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.core.code.CodeInfo;
