@@ -265,22 +265,49 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     /**
-     * Injects custom types into a reference field's initial flow. This utility is used for:
-     * <ul>
-     * <li>root fields - whose state is forced to be that of the declared type</li>
-     * <li>unsafe accessed fields - whose state is conservatively also the declared type</li>
-     * <li>lazily computed fields - for which writes are not visible during analysis</li>
-     * </ul>
+     * Supplies conservative field summaries for roots, conservative unsafe writes, and hosted
+     * values unavailable during analysis.
      * <p>
-     * For instance fields, injection alone does not propagate state to the sink. This requires a
+     * In points-to analysis, uses the effective field bound after dropping unchecked interface
+     * constraints and permits null. Closed bounds supply all instantiated assignable types,
+     * including types instantiated later during analysis. Open bounds require saturation, which may
+     * lose bound and nullability precision. Finite reference coverage requires every possible value
+     * type to be registered as instantiated; injection does not perform that registration. Tracked
+     * primitive fields receive unconstrained values.
+     * <p>
+     * Also summarizes immediate reference-array elements, permitting null independently of the
+     * array reference, including arrays held through an effective Object bound. Further array
+     * dimensions require separate coverage. Injection does not change write permissions.
+     * <p>
+     * Reference values enter the initial flow. Propagation to an instance field's sink requires a
      * receiver-specific field flow created and connected by analyzing a field load or store, or by
      * heap scanning. A retained load creates these connections only when its receiver flow contains
-     * an analyzed object. Once connected, the field flow propagates both existing and future
-     * initial-flow values to the sink. Static reference fields share their initial and sink flows.
+     * an analyzed object. Once connected, both existing and future initial-flow values reach the
+     * sink. Static reference fields share their initial and sink flows.
      */
-    public abstract void injectFieldTypes(List<AnalysisType> customTypes, boolean canBeNull);
+    public void injectConservativeFieldValues() {
+        /* By default, nothing to do. */
+    }
 
-    public void injectDeclaredType() {
+    /**
+     * Summarizes unavailable reference values using bounds and nullability guaranteed by the
+     * producer. The bounds must cover all summarized non-null values and be assignable to the effective
+     * field bound. They may supply stricter guarantees, including interface constraints that the
+     * field declaration does not enforce.
+     * <p>
+     * Saturation, type registration, array element summaries, and propagation follow
+     * {@link #injectConservativeFieldValues()}. {@code canBeNull} applies to field references;
+     * reference-array elements remain nullable. An empty list contributes null when
+     * {@code canBeNull} is true, and no values otherwise.
+     */
+    public abstract void injectConservativeFieldValues(List<AnalysisType> customBounds, boolean canBeNull);
+
+    /**
+     * Injects field values without summarizing array contents. Uses the effective bound, nullability,
+     * and propagation rules of {@link #injectConservativeFieldValues()}. Use when array contents are
+     * already covered by analyzed stores, heap scanning, or another summary.
+     */
+    public void injectFieldValueBound() {
         /* By default, nothing to do. */
     }
 

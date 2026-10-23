@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -267,7 +267,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @Override
     public void registerAsJNIAccessed(AnalysisField field, boolean writable) {
-        field.injectDeclaredType();
+        field.injectConservativeFieldValues();
     }
 
     /**
@@ -509,7 +509,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             if (addFields) {
                 field.registerAsAccessed("field of root class");
             }
-            field.injectDeclaredType();
+            field.injectConservativeFieldValues();
         }
         if (type.getSuperclass() != null) {
             addRootClass(type.getSuperclass(), addFields, addArrayClass);
@@ -530,7 +530,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     public AnalysisType addRootField(AnalysisField field) {
         field.registerAsAccessed((field.isStatic() ? "static" : "instance") + " root field");
-        field.injectDeclaredType();
+        field.injectConservativeFieldValues();
         return field.getType();
     }
 

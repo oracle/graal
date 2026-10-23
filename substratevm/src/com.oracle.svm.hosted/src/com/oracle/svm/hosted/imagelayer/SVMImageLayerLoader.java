@@ -1169,12 +1169,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             analysisField.getDeclaringClass().getInstanceFields(true);
         }
         postTask(isAccessed, _ -> {
-            analysisField.injectDeclaredType();
+            analysisField.injectConservativeFieldValues();
             analysisField.registerAsAccessed(PERSISTED);
         });
         postTask(isRead, _ -> analysisField.registerAsRead(PERSISTED));
         postTask(fieldData.getIsWritten(), _ -> {
-            analysisField.injectDeclaredType();
+            analysisField.injectConservativeFieldValues();
             analysisField.registerAsWritten(PERSISTED);
         });
         postTask(fieldData.getIsFolded(), _ -> analysisField.registerAsFolded(PERSISTED));

@@ -87,7 +87,7 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> implements GlobalFlow
              * fields. Even if a store is not visible to the analysis, i.e., it is from the
              * open-world, the complete hierarchy of the field's declared type is visible.
              */
-            source.injectDeclaredType();
+            source.injectConservativeFieldValues();
         } else {
             /* Otherwise, propagate saturation stamp through the field flow. */
             super.onInputSaturated(bb, input);

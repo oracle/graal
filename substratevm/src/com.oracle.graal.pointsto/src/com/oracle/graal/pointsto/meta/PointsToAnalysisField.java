@@ -117,57 +117,69 @@ public class PointsToAnalysisField extends AnalysisField {
     }
 
     @Override
-    public void injectFieldTypes(List<AnalysisType> customTypes, boolean canBeNull) {
-        assert getStorageKind().isObject();
-        var bb = (PointsToAnalysis) getUniverse().getBigbang();
-
-        /* Link the field with all declared types. */
-        for (AnalysisType type : customTypes) {
-            if (type.isPrimitive() || type.isWordType()) {
-                continue;
-            }
-            type.getTypeFlow(bb, canBeNull).addUse(bb, initialFlow);
-
-            if (type.isArray()) {
-                AnalysisType fieldComponentType = type.getComponentType();
-                if (!(fieldComponentType.isPrimitive() || fieldComponentType.isWordType())) {
-                    /*
-                     * Write the component type abstract object into the field array elements type
-                     * flow, i.e., the array elements type flow of the abstract object of the field
-                     * declared type.
-                     *
-                     * This is required so that the index loads from this array return all the
-                     * possible objects that can be stored in the array.
-                     */
-                    TypeFlow<?> elementsFlow = type.getContextInsensitiveAnalysisObject().getArrayElementsFlow(bb, true);
-                    fieldComponentType.getTypeFlow(bb, false).addUse(bb, elementsFlow);
-
-                    /*
-                     * In the current implementation it is not necessary to do it recursively for
-                     * multidimensional arrays since we don't model individual array elements, so
-                     * from the point of view of the static analysis the field's array elements
-                     * value is non-null (in the case of an n-dimensional array that value is
-                     * another array, n-1 dimensional).
-                     */
-                }
-            }
+    public void injectConservativeFieldValues() {
+        if (getStorageKind().isObject()) {
+            injectConservativeFieldValues(List.of(initialFlow.getDeclaredType()), true);
+        } else {
+            injectFieldValueBound();
         }
     }
 
     @Override
-    public void injectDeclaredType() {
-        var bb = getUniverse().getBigbang();
+    public void injectConservativeFieldValues(List<AnalysisType> customBounds, boolean canBeNull) {
+        assert getStorageKind().isObject();
+        var bb = (PointsToAnalysis) getUniverse().getBigbang();
+        var effectiveBound = initialFlow.getDeclaredType();
+        if (canBeNull) {
+            initialFlow.addState(bb, TypeState.forNull());
+        }
+        for (AnalysisType valueBound : customBounds) {
+            assert !valueBound.isPrimitive() && !valueBound.isWordType() : valueBound;
+            assert effectiveBound.isAssignableFrom(valueBound) : "Custom bound must be assignable to the effective field bound: field: " + this +
+                            " | effective bound: " + effectiveBound + " | custom bound: " + valueBound;
+            injectBoundValues(bb, valueBound, initialFlow, false);
+            injectArrayContents(bb, valueBound);
+        }
+    }
+
+    @Override
+    public void injectFieldValueBound() {
+        var bb = (PointsToAnalysis) getUniverse().getBigbang();
         if (!bb.isSupportedJavaKind(getStorageKind())) {
-            /*
-             * If this JavaKind is not tracked by the analysis, there is no point in inserting any
-             * state into the field.
-             */
+            /* There is no point in inserting state for a kind not tracked by the analysis. */
             return;
         }
         if (getStorageKind().isObject()) {
-            injectFieldTypes(List.of(initialFlow.getDeclaredType()), true);
+            injectBoundValues(bb, initialFlow.getDeclaredType(), initialFlow, true);
         } else {
             this.saturatePrimitiveField();
+        }
+    }
+
+    private static void injectBoundValues(PointsToAnalysis bb, AnalysisType valueBound, TypeFlow<?> flow, boolean canBeNull) {
+        if (bb.getExtensionPolicy().isTypeClosed(valueBound)) {
+            // A closed bound has a complete assignable-type hierarchy.
+            valueBound.getTypeFlow(bb, canBeNull).addUse(bb, flow);
+        } else {
+            // An open bound must include values whose runtime types are not yet known.
+            bb.getPreSaturatedSourceTypeFlow().addUse(bb, flow);
+        }
+    }
+
+    /**
+     * Summarizes immediate reference-array contents admitted by the bound, using its array type or
+     * Object[] for a supertype such as Object, Cloneable, or Serializable. Further dimensions require
+     * separate coverage (GR-80797).
+     */
+    private static void injectArrayContents(PointsToAnalysis bb, AnalysisType valueBound) {
+        AnalysisType arrayType = valueBound.isArray() ? valueBound : bb.getObjectType().getArrayClass();
+        if (!valueBound.isAssignableFrom(arrayType)) {
+            return;
+        }
+        AnalysisType componentType = arrayType.getComponentType();
+        if (!componentType.isPrimitive() && !componentType.isWordType()) {
+            var elements = arrayType.getContextInsensitiveAnalysisObject().getArrayElementsFlow(bb, true);
+            injectBoundValues(bb, componentType, elements, true);
         }
     }
 
@@ -191,13 +203,7 @@ public class PointsToAnalysisField extends AnalysisField {
                  * classification and the saturation cutoff, so ordinary reads account for unknown
                  * runtime types.
                  */
-                if (getStorageKind().isObject() && !bb.getExtensionPolicy().isTypeClosed(initialFlow.getDeclaredType())) {
-                    // An open reference bound must account for unknown extension types.
-                    bb.getPreSaturatedSourceTypeFlow().addUse(bb, initialFlow);
-                } else {
-                    // Retain declared-type injection for closed reference bounds and primitive values.
-                    injectDeclaredType();
-                }
+                injectConservativeFieldValues();
             }
             if (fieldType.getStorageKind().isPrimitive()) {
                 /*

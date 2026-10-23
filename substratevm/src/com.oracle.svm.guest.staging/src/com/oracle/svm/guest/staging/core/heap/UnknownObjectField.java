@@ -38,11 +38,16 @@ import org.graalvm.nativeimage.hosted.Feature;
  * Marks an object field whose hosted value is not available until a later image-build phase. The
  * annotation prevents static analysis from reading and wrongly constant-folding the hosted value
  * before {@link #availability()} returns {@code true}. Instead, analysis registers the concrete
- * classes specified by {@link #types()} and {@link #fullyQualifiedTypes()} as instantiated and
- * injects their type flows, together with the null state specified by {@link #canBeNull()}, into the
- * field. If no class is specified, the declared field type must be concrete and is used as the
- * field's analysis type. The specified classes must conservatively cover all values that the field
- * can contain after it becomes available.
+ * classes specified by {@link #types()} and {@link #fullyQualifiedTypes()} as instantiated and uses
+ * them as bounds for a conservative field summary, with nullability specified by
+ * {@link #canBeNull()}. If no class is specified, the declared field type must be concrete and is
+ * used as the bound. The specified classes and their permitted subtypes must cover all summarized
+ * non-null values.
+ * <p>
+ * Closed bounds use instantiated assignable types; open bounds also account for unknown extension
+ * types. Saturation may lose bound and nullability precision. Hosted availability and bound openness
+ * are independent: processing a later hosted value adds heap and reachability information without
+ * narrowing the existing summary. Write permissions are determined separately.
  * <p>
  * Availability is polled rather than notified. Becoming available does not enqueue field
  * processing; a later scan, rescan, or heap verification must revisit the field. Object values then
@@ -57,19 +62,20 @@ import org.graalvm.nativeimage.hosted.Feature;
 public @interface UnknownObjectField {
 
     /**
-     * Specifies concrete types that this field can take. Each type must be assignable to the
-     * declared field type.
+     * Specifies concrete classes used as value bounds, including their permitted subtypes. Each
+     * class must be assignable to the declared field type.
      */
     Class<?>[] types() default {};
 
     /**
-     * Specifies fully qualified names of concrete types that this field can take. Each type must be
-     * assignable to the declared field type.
+     * Fully qualified names of additional value bounds, with the same requirements as
+     * {@link #types()}.
      */
     String[] fullyQualifiedTypes() default {};
 
     /**
-     * Specify if this field can be null. By default unknown value object fields cannot be null.
+     * Whether the unavailable field value may be null (false by default). Array elements may still
+     * be null.
      */
     boolean canBeNull() default false;
 

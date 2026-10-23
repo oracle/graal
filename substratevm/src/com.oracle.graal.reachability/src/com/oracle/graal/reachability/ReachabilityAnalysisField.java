@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,12 +37,19 @@ public class ReachabilityAnalysisField extends AnalysisField {
         super(universe, wrappedField);
     }
 
+    @Override
+    public void injectConservativeFieldValues() {
+        if (getStorageKind().isObject()) {
+            injectConservativeFieldValues(List.of(getType()), true);
+        }
+    }
+
     /** Records field access and bound reachability; this analysis does not track value flows. */
     @Override
-    public void injectFieldTypes(List<AnalysisType> customTypes, boolean canBeNull) {
+    public void injectConservativeFieldValues(List<AnalysisType> customBounds, boolean canBeNull) {
         assert getStorageKind().isObject();
         registerAsAccessed("@UnknownObjectField annotated field.");
-        for (AnalysisType declaredType : customTypes) {
+        for (AnalysisType declaredType : customBounds) {
             declaredType.registerAsReachable("injected field types for unknown annotated field " + format("%H.%n"));
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,19 +56,18 @@ public final class CustomTypeFieldHandler {
          */
         assert field.isAccessed();
         if (fieldValueInterceptionSupport.hasFieldValueTransformer(field) && !fieldValueInterceptionSupport.isValueAvailable(field, null, !field.isStatic())) {
-            field.injectDeclaredType();
+            field.injectConservativeFieldValues();
         } else if (fieldValueInterceptionSupport.lookupFieldValueInterceptor(field) instanceof FieldValueComputer fieldValueComputer) {
             if (field.getStorageKind().isObject()) {
-                /* Insert the specified set of types. */
+                /* Instantiate the specified classes and summarize their permitted subtypes. */
                 List<AnalysisType> types = transformTypes(field, fieldValueComputer.types());
                 for (AnalysisType type : types) {
                     assert !type.isPrimitive() : type + " for " + field;
                     type.registerAsInstantiated("Is declared as the type of an unknown object field.");
                 }
-                field.injectFieldTypes(types, fieldValueComputer.canBeNull());
+                field.injectConservativeFieldValues(types, fieldValueComputer.canBeNull());
             } else {
-                /* It is a primitive field, let injectDeclaredType handle it. */
-                field.injectDeclaredType();
+                field.injectConservativeFieldValues();
             }
         }
     }
