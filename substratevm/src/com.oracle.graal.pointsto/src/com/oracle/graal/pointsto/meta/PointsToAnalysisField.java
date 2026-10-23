@@ -33,6 +33,7 @@ import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreInstanceFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 
@@ -116,6 +117,44 @@ public class PointsToAnalysisField extends AnalysisField {
     }
 
     @Override
+    public void injectFieldTypes(List<AnalysisType> customTypes, boolean canBeNull) {
+        assert getStorageKind().isObject();
+        var bb = (PointsToAnalysis) getUniverse().getBigbang();
+
+        /* Link the field with all declared types. */
+        for (AnalysisType type : customTypes) {
+            if (type.isPrimitive() || type.isWordType()) {
+                continue;
+            }
+            type.getTypeFlow(bb, canBeNull).addUse(bb, initialFlow);
+
+            if (type.isArray()) {
+                AnalysisType fieldComponentType = type.getComponentType();
+                if (!(fieldComponentType.isPrimitive() || fieldComponentType.isWordType())) {
+                    /*
+                     * Write the component type abstract object into the field array elements type
+                     * flow, i.e., the array elements type flow of the abstract object of the field
+                     * declared type.
+                     *
+                     * This is required so that the index loads from this array return all the
+                     * possible objects that can be stored in the array.
+                     */
+                    TypeFlow<?> elementsFlow = type.getContextInsensitiveAnalysisObject().getArrayElementsFlow(bb, true);
+                    fieldComponentType.getTypeFlow(bb, false).addUse(bb, elementsFlow);
+
+                    /*
+                     * In the current implementation it is not necessary to do it recursively for
+                     * multidimensional arrays since we don't model individual array elements, so
+                     * from the point of view of the static analysis the field's array elements
+                     * value is non-null (in the case of an n-dimensional array that value is
+                     * another array, n-1 dimensional).
+                     */
+                }
+            }
+        }
+    }
+
+    @Override
     public void injectDeclaredType() {
         var bb = getUniverse().getBigbang();
         if (!bb.isSupportedJavaKind(getStorageKind())) {
@@ -126,7 +165,7 @@ public class PointsToAnalysisField extends AnalysisField {
             return;
         }
         if (getStorageKind().isObject()) {
-            bb.injectFieldTypes(this, List.of(initialFlow.getDeclaredType()), true);
+            injectFieldTypes(List.of(initialFlow.getDeclaredType()), true);
         } else {
             this.saturatePrimitiveField();
         }

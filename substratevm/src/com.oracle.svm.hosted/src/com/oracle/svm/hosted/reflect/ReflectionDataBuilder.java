@@ -1246,7 +1246,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             analysisType.registerAsInstantiated("Is used by annotation of element registered for reflection.");
             for (var f : analysisType.getInstanceFields(true)) {
                 var aField = (AnalysisField) f;
-                universe.getBigbang().injectFieldTypes(aField, List.of(aField.getType()), true);
+                aField.injectFieldTypes(List.of(aField.getType()), true);
             }
         }
     }

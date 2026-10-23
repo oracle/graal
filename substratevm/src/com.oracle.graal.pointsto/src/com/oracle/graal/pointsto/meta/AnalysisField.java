@@ -264,6 +264,22 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         });
     }
 
+    /**
+     * Injects custom types into a reference field's initial flow. This utility is used for:
+     * <ul>
+     * <li>root fields - whose state is forced to be that of the declared type</li>
+     * <li>unsafe accessed fields - whose state is conservatively also the declared type</li>
+     * <li>lazily computed fields - for which writes are not visible during analysis</li>
+     * </ul>
+     * <p>
+     * For instance fields, injection alone does not propagate state to the sink. This requires a
+     * receiver-specific field flow created and connected by analyzing a field load or store, or by
+     * heap scanning. A retained load creates these connections only when its receiver flow contains
+     * an analyzed object. Once connected, the field flow propagates both existing and future
+     * initial-flow values to the sink. Static reference fields share their initial and sink flows.
+     */
+    public abstract void injectFieldTypes(List<AnalysisType> customTypes, boolean canBeNull);
+
     public void injectDeclaredType() {
         /* By default, nothing to do. */
     }

@@ -24,7 +24,10 @@
  */
 package com.oracle.graal.reachability;
 
+import java.util.List;
+
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -32,5 +35,15 @@ public class ReachabilityAnalysisField extends AnalysisField {
 
     public ReachabilityAnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
         super(universe, wrappedField);
+    }
+
+    /** Records field access and bound reachability; this analysis does not track value flows. */
+    @Override
+    public void injectFieldTypes(List<AnalysisType> customTypes, boolean canBeNull) {
+        assert getStorageKind().isObject();
+        registerAsAccessed("@UnknownObjectField annotated field.");
+        for (AnalysisType declaredType : customTypes) {
+            declaredType.registerAsReachable("injected field types for unknown annotated field " + format("%H.%n"));
+        }
     }
 }

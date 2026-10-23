@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -39,13 +38,11 @@ import com.oracle.svm.util.GuestAccess;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class CustomTypeFieldHandler {
-    private final BigBang bb;
     private final AnalysisMetaAccess metaAccess;
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
     private Set<AnalysisField> processedFields = ConcurrentHashMap.newKeySet();
 
-    public CustomTypeFieldHandler(BigBang bb, AnalysisMetaAccess metaAccess) {
-        this.bb = bb;
+    public CustomTypeFieldHandler(AnalysisMetaAccess metaAccess) {
         this.metaAccess = metaAccess;
     }
 
@@ -68,7 +65,7 @@ public final class CustomTypeFieldHandler {
                     assert !type.isPrimitive() : type + " for " + field;
                     type.registerAsInstantiated("Is declared as the type of an unknown object field.");
                 }
-                bb.injectFieldTypes(field, types, fieldValueComputer.canBeNull());
+                field.injectFieldTypes(types, fieldValueComputer.canBeNull());
             } else {
                 /* It is a primitive field, let injectDeclaredType handle it. */
                 field.injectDeclaredType();
