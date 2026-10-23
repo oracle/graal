@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.test.suites.compiler;
 
+import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 import java.io.IOException;
@@ -49,6 +50,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.vector.Vector128Ops;
 import org.junit.Assert;
@@ -92,6 +94,44 @@ public class CompilationSuite {
             Assert.assertEquals(32768, exports.getMember("load16x4_u").execute().asInt());
             Assert.assertEquals(0xffff_ffff_8000_1234L, exports.getMember("load32x2_s").execute().asLong());
             Assert.assertEquals(0x0000_0000_8000_1234L, exports.getMember("load32x2_u").execute().asLong());
+        }
+    }
+
+    /*
+     * (module
+     *   (func (export "w0") (param externref) (result i32)
+     *     (block (result nullexternref)
+     *       (local.get 0)
+     *       (br_on_cast 0 externref nullexternref)
+     *       (drop)
+     *       (i32.const 0)
+     *       (return)
+     *     )
+     *     (drop)
+     *     (i32.const 1)
+     *   )
+     * )
+     */
+    @Test
+    public void brOnCastCompiles() throws IOException {
+        Assume.assumeTrue("Optimizing runtime is not available", Engine.supportsCompilation());
+        final byte[] binary = hexStringToByteArray(
+                        "0061736d0100000001060160016f017f",
+                        "0302010007060102773000000a160114",
+                        "0002722000fb1803006f721a41000f0b",
+                        "1a41010b");
+        final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binary), "issue14715").build();
+        Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        contextBuilder.allowExperimentalOptions(true);
+        contextBuilder.option("engine.BackgroundCompilation", "false");
+        contextBuilder.option("engine.CompilationFailureAction", "Throw");
+        contextBuilder.option("engine.CompileImmediately", "true");
+        try (Context context = contextBuilder.build()) {
+            Value exports = context.eval(source).newInstance().getMember("exports");
+            Value w0 = exports.getMember("w0");
+            Assert.assertEquals(0, w0.execute("wasm-execution").asInt());
+            Assert.assertEquals(1, w0.execute(WasmConstant.NULL).asInt());
+            Assert.assertEquals(1, w0.execute(WasmConstant.NULL).asInt());
         }
     }
 }
