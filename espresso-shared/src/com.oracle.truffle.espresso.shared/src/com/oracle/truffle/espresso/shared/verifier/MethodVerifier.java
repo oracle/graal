@@ -1643,8 +1643,8 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
                 case RET: verifyRET(bci, stack, locals); return bci;
 
-                case TABLESWITCH:  return verifyTableSwitch(bci, stack, locals);
-                case LOOKUPSWITCH: return verifyLookupSwitch(bci, stack, locals);
+                case TABLESWITCH:  verifyTableSwitch(bci, stack, locals); return bci;
+                case LOOKUPSWITCH: verifyLookupSwitch(bci, stack, locals); return bci;
 
                 case IRETURN: {
                     stack.pop(intOp);
@@ -1892,7 +1892,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         stack.push(op);
     }
 
-    private int verifyLookupSwitch(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
+    private void verifyLookupSwitch(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
         stack.popInt();
         BytecodeLookupSwitch switchHelper = BytecodeLookupSwitch.INSTANCE;
         // Padding checks
@@ -1917,12 +1917,11 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             branch(bci + switchHelper.offsetAt(code, bci, i), stack, locals);
             previousKey = thisKey;
         }
-
         // Verify default branch
-        return switchHelper.defaultTarget(code, bci);
+        branch(switchHelper.defaultTarget(code, bci), stack, locals);
     }
 
-    private int verifyTableSwitch(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
+    private void verifyTableSwitch(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
         stack.popInt();
         BytecodeTableSwitch switchHelper = BytecodeTableSwitch.INSTANCE;
         // Padding checks
@@ -1940,7 +1939,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         }
 
         // Verify default branch
-        return switchHelper.defaultTarget(code, bci);
+        branch(switchHelper.defaultTarget(code, bci), stack, locals);
     }
 
     private void verifyJSR(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
