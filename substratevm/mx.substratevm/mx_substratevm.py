@@ -1082,6 +1082,9 @@ def java_desktop_integration_task(native_image, extra_build_args=None):
         '--test-classes-per-run', '1',
         'com.oracle.svm.integrationtest.HeadlessJavaDesktopTest',
         'com.oracle.svm.integrationtest.NonHeadlessJavaDesktopTest',
+        'com.oracle.svm.integrationtest.DynamicJavaLibraryLinkageTest',
+        'com.oracle.svm.integrationtest.DynamicJDKLibraryLinkageTest',
+        'com.oracle.svm.integrationtest.UserProvidedStaticLibraryTest',
     ] + build_args)
 
 def conditional_config_task(native_image):
