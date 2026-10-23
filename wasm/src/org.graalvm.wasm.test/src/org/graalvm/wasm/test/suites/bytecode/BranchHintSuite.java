@@ -79,6 +79,11 @@ public class BranchHintSuite extends AbstractBinarySuite {
     }
 
     @Test
+    public void testBackwardBrIfLikelyTrue() {
+        assertBranchProfile(moduleWithBackwardBrIf(branchHint(5, 1)), Bytecode.BR_IF_U8, 2, 255, 0);
+    }
+
+    @Test
     public void testHintOffsetIncludesLocalsDeclaration() {
         assertBranchProfile(module(new int[]{WasmType.I32_TYPE}, "20 00 04 7f 41 01 05 41 00 0b 0b", branchHint(5, 1)), Bytecode.IF, 5, 255, 0);
     }
@@ -156,6 +161,10 @@ public class BranchHintSuite extends AbstractBinarySuite {
 
     private static byte[] moduleWithBrIf(byte[] branchHintPayload) {
         return module(EMPTY_INTS, "02 7f 41 01 20 00 0d 00 1a 41 00 0b 0b", new byte[][]{branchHintPayload});
+    }
+
+    private static byte[] moduleWithBackwardBrIf(byte[] branchHintPayload) {
+        return module(EMPTY_INTS, "03 40 20 00 0d 00 0b 41 00 0b", new byte[][]{branchHintPayload});
     }
 
     private static byte[] module(int[] locals, String code, byte[]... branchHintPayloads) {

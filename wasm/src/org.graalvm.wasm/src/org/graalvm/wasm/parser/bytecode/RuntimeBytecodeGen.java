@@ -447,18 +447,27 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
+     * Reserves an i32 value for a forward jump offset.
+     *
+     * @return The location of the jump offset to be patched later.
+     */
+    private BytecodeFixup addForwardLocation() {
+        final int location = location();
+        add4(0);
+        return targetOffet -> patchLocation(location, targetOffet);
+    }
+
+    /**
      * Adds an if opcode to the bytecode and reserves an i32 value for the jump offset and a 2-byte
      * profile.
      *
      * @param branchHint Optional branch hint used to initialize the branch profile.
-     * @return The location of the jump offset to be patched later. (see
-     *         {@link #patchLocation(int, int)}.
+     * @return The location of the jump offset to be patched later
      */
-    public int addIfLocation(BranchHint branchHint) {
+    public BytecodeFixup addIf(BranchHint branchHint) {
         add1(Bytecode.IF);
-        final int location = location();
         // target
-        add4(0);
+        BytecodeFixup location = addForwardLocation();
         // profile
         addProfile(branchHint);
         return location;
@@ -560,7 +569,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
          * Returns the number of bytes emitted by {@link #emitOpcodesU8(RuntimeBytecodeGen)} or
          * {@link #emitOpcodesI32(RuntimeBytecodeGen)} before the displacement operand. Both encodings
          * use the same prefix size. The displacement is relative to its own position, so
-         * {@link RuntimeBytecodeGen#addBranch(int, BranchOp)} uses this size to locate its origin.
+         * {@link RuntimeBytecodeGen#addBackwardBranch(int, BranchOp)} uses this size to locate its origin.
          *
          * Includes opcodes and preceding operands, such as the four-byte reference type for cast
          * branches. Excludes any prefix already emitted by the caller (notably {@link Bytecode#AGGREGATE}),
@@ -592,9 +601,12 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * displacements up to 255 use the u8 form; other displacements use i32.
      *
      * @param location The target location of the branch.
+     * @param branchOp The branch operation to add.
+     * @param branchHint Optional branch hint used to initialize the branch profile.
      */
-    public void addBranch(int location, BranchOp branchOp) {
+    public void addBackwardBranch(int location, BranchOp branchOp, BranchHint branchHint) {
         assert location >= 0;
+        assert branchHint == BranchHint.NONE || branchOp == BranchOp.BR_IF : branchOp;
         final int relativeOffset = location - (location() + branchOp.prefixSize());
         if (relativeOffset <= 0 && relativeOffset >= -255) {
             branchOp.emitOpcodesU8(this);
@@ -606,7 +618,11 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             add4(relativeOffset);
         }
         // profile
-        branchOp.emitProfile(this);
+        branchOp.emitProfile(this, branchHint);
+    }
+
+    public void addBackwardBranch(int location, BranchOp branchOp) {
+        addBackwardBranch(location, branchOp, BranchHint.NONE);
     }
 
     /**
@@ -615,22 +631,20 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      *
      * @param branchOp The branch operation to add.
      * @param branchHint Optional branch hint used to initialize the branch profile.
-     * @return The location of the jump offset to be patched later. (see
-     *         {@link #patchLocation(int, int)})
+     * @return The location of the jump offset to be patched later
      */
-    public int addBranchLocation(BranchOp branchOp, BranchHint branchHint) {
+    public BytecodeFixup addForwardBranch(BranchOp branchOp, BranchHint branchHint) {
         assert branchHint == BranchHint.NONE || branchOp == BranchOp.BR_IF : branchOp;
         branchOp.emitOpcodesI32(this);
-        final int location = location();
         // target
-        add4(0);
+        final BytecodeFixup location = addForwardLocation();
         // profile
         branchOp.emitProfile(this, branchHint);
         return location;
     }
 
-    public int addBranchLocation(BranchOp branchOp) {
-        return addBranchLocation(branchOp, BranchHint.NONE);
+    public BytecodeFixup addForwardBranch(BranchOp branchOp) {
+        return addForwardBranch(branchOp, BranchHint.NONE);
     }
 
     /**
@@ -657,13 +671,11 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     /**
      * Reserves an i32 jump offset location and 2-byte profile for a branch table item.
      *
-     * @return The location of the jump offset to be patched later. (see
-     *         {@link #patchLocation(int, int)}).
+     * @return The location of the jump offset to be patched later
      */
-    public int addBranchTableItemLocation() {
-        final int location = location();
+    public BytecodeFixup addBranchTableItem() {
         // target
-        add4(0);
+        final BytecodeFixup location = addForwardLocation();
         // profile
         addProfile();
         return location;
@@ -697,7 +709,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @param jumpOffsetLocation The jump offset location
      * @param targetLocation The target location
      */
-    public void patchLocation(int jumpOffsetLocation, int targetLocation) {
+    private void patchLocation(int jumpOffsetLocation, int targetLocation) {
         final int relativeOffset = targetLocation - jumpOffsetLocation;
         set(jumpOffsetLocation, (byte) (relativeOffset & 0x0000_00FF));
         set(jumpOffsetLocation + 1, (byte) ((relativeOffset >>> 8) & 0x0000_00FF));

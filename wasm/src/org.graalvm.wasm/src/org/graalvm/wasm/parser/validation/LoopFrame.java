@@ -68,6 +68,12 @@ class LoopFrame extends ControlFrame {
     }
 
     @Override
+    void addBranch(RuntimeBytecodeGen bytecode, RuntimeBytecodeGen.BranchOp branchOp, RuntimeBytecodeGen.BranchHint branchHint, int sourceLegacyCatchDepth) {
+        bytecode.addBackwardBranch(labelLocation, branchOp, branchHint);
+        registerBackwardBranch(sourceLegacyCatchDepth);
+    }
+
+    @Override
     void addLabelFixup(BytecodeFixup fixup) {
         fixup.patch(labelLocation);
     }

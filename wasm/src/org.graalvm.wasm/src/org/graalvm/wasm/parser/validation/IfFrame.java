@@ -56,10 +56,10 @@ class IfFrame extends ControlFrame {
 
     private final ArrayList<BytecodeFixup> labelFixups;
     private final ControlFrame parentFrame;
-    private int falseJumpLocation;
+    private BytecodeFixup falseJumpLocation;
     private boolean elseBranch;
 
-    IfFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, ControlFrame parentFrame, int falseJumpLocation) {
+    IfFrame(int[] paramTypes, int[] resultTypes, int initialStackSize, ControlFrame parentFrame, BytecodeFixup falseJumpLocation) {
         super(paramTypes, resultTypes, parentFrame.getSymbolTable(), initialStackSize, (BitSet) parentFrame.initializedLocals.clone(), parentFrame.legacyCatchDepth());
         this.labelFixups = new ArrayList<>();
         this.parentFrame = parentFrame;
@@ -74,8 +74,8 @@ class IfFrame extends ControlFrame {
 
     void enterElse(ParserState state, RuntimeBytecodeGen bytecode) {
         initializedLocals = (BitSet) parentFrame.initializedLocals.clone();
-        final int location = bytecode.addBranchLocation(RuntimeBytecodeGen.BranchOp.BR);
-        bytecode.patchLocation(falseJumpLocation, bytecode.location());
+        final BytecodeFixup location = bytecode.addForwardBranch(RuntimeBytecodeGen.BranchOp.BR);
+        falseJumpLocation.patch(bytecode.location());
         falseJumpLocation = location;
         elseBranch = true;
         state.checkStackAfterFrameExit(this);
@@ -99,10 +99,10 @@ class IfFrame extends ControlFrame {
         }
         // The jump over the else branch also needs a label, even without explicit branches.
         if (labelFixups.isEmpty() && !elseBranch) {
-            bytecode.patchLocation(falseJumpLocation, bytecode.location());
+            falseJumpLocation.patch(bytecode.location());
         } else {
             final int location = addBranchLabel(bytecode);
-            bytecode.patchLocation(falseJumpLocation, location);
+            falseJumpLocation.patch(location);
             for (BytecodeFixup labelFixup : labelFixups) {
                 labelFixup.patch(location);
             }

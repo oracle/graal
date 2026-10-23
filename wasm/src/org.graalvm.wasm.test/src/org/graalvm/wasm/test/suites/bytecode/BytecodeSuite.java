@@ -196,7 +196,7 @@ public class BytecodeSuite {
 
     @Test
     public void testBrU8Min() {
-        test(b -> b.addBranch(1, RuntimeBytecodeGen.BranchOp.BR), new byte[]{Bytecode.BR_U8, 0x00});
+        test(b -> b.addBackwardBranch(1, RuntimeBytecodeGen.BranchOp.BR), new byte[]{Bytecode.BR_U8, 0x00});
     }
 
     @Test
@@ -208,18 +208,18 @@ public class BytecodeSuite {
             for (int i = 0; i < 254; i++) {
                 b.addOp(0);
             }
-            b.addBranch(0, RuntimeBytecodeGen.BranchOp.BR);
+            b.addBackwardBranch(0, RuntimeBytecodeGen.BranchOp.BR);
         }, expected);
     }
 
     @Test
     public void testBrI32MinForward() {
-        test(b -> b.addBranch(2, RuntimeBytecodeGen.BranchOp.BR), new byte[]{Bytecode.BR_I32, 0x01, 0x00, 0x00, 0x00});
+        test(b -> b.addForwardBranch(RuntimeBytecodeGen.BranchOp.BR).patch(2), new byte[]{Bytecode.BR_I32, 0x01, 0x00, 0x00, 0x00});
     }
 
     @Test
     public void testBrI32MaxForward() {
-        test(b -> b.addBranch(2147483647, RuntimeBytecodeGen.BranchOp.BR), new byte[]{Bytecode.BR_I32, (byte) 0xFE, (byte) 0xFF, (byte) 0xFF, 0x7F});
+        test(b -> b.addForwardBranch(RuntimeBytecodeGen.BranchOp.BR).patch(2147483647), new byte[]{Bytecode.BR_I32, (byte) 0xFE, (byte) 0xFF, (byte) 0xFF, 0x7F});
     }
 
     @Test
@@ -234,13 +234,13 @@ public class BytecodeSuite {
             for (int i = 0; i < 255; i++) {
                 b.addOp(0);
             }
-            b.addBranch(0, RuntimeBytecodeGen.BranchOp.BR);
+            b.addBackwardBranch(0, RuntimeBytecodeGen.BranchOp.BR);
         }, expected);
     }
 
     @Test
     public void testBrIfU8Min() {
-        test(b -> b.addBranch(1, RuntimeBytecodeGen.BranchOp.BR_IF), new byte[]{Bytecode.BR_IF_U8, 0x00, 0x00, 0x00});
+        test(b -> b.addBackwardBranch(1, RuntimeBytecodeGen.BranchOp.BR_IF), new byte[]{Bytecode.BR_IF_U8, 0x00, 0x00, 0x00});
     }
 
     @Test
@@ -252,18 +252,19 @@ public class BytecodeSuite {
             for (int i = 0; i < 254; i++) {
                 b.addOp(0);
             }
-            b.addBranch(0, RuntimeBytecodeGen.BranchOp.BR_IF);
+            b.addBackwardBranch(0, RuntimeBytecodeGen.BranchOp.BR_IF);
         }, expected);
     }
 
     @Test
     public void testBrIfI32MinForward() {
-        test(b -> b.addBranch(2, RuntimeBytecodeGen.BranchOp.BR_IF), new byte[]{Bytecode.BR_IF_I32, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00});
+        test(b -> b.addForwardBranch(RuntimeBytecodeGen.BranchOp.BR_IF).patch(2), new byte[]{Bytecode.BR_IF_I32, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00});
     }
 
     @Test
     public void testBrIfI32MaxForward() {
-        test(b -> b.addBranch(2147483647, RuntimeBytecodeGen.BranchOp.BR_IF), new byte[]{Bytecode.BR_IF_I32, (byte) 0xFE, (byte) 0xFF, (byte) 0xFF, 0x7F, 0x00, 0x00});
+        test(b -> b.addForwardBranch(RuntimeBytecodeGen.BranchOp.BR_IF).patch(2147483647),
+                        new byte[]{Bytecode.BR_IF_I32, (byte) 0xFE, (byte) 0xFF, (byte) 0xFF, 0x7F, 0x00, 0x00});
     }
 
     @Test
@@ -278,7 +279,7 @@ public class BytecodeSuite {
             for (int i = 0; i < 255; i++) {
                 b.addOp(0);
             }
-            b.addBranch(0, RuntimeBytecodeGen.BranchOp.BR_IF);
+            b.addBackwardBranch(0, RuntimeBytecodeGen.BranchOp.BR_IF);
         }, expected);
     }
 
@@ -311,9 +312,14 @@ public class BytecodeSuite {
                         bytecode.addOp(Bytecode.AGGREGATE);
                     }
                     int displacementOffset = bytecode.location() + prefixSize;
-                    bytecode.addBranch(target, branch);
+                    boolean backward = target <= displacementOffset;
+                    if (backward) {
+                        bytecode.addBackwardBranch(target, branch);
+                    } else {
+                        bytecode.addForwardBranch(branch).patch(target);
+                    }
                     byte[] bytes = bytecode.toArray();
-                    boolean compact = target <= displacementOffset && displacementOffset - target <= 255;
+                    boolean compact = backward && displacementOffset - target <= 255;
                     int displacementSize = compact ? 1 : 4;
                     int profileSize = branch == RuntimeBytecodeGen.BranchOp.BR ? 0 : 2;
                     Assert.assertEquals(displacementOffset + displacementSize + profileSize, bytes.length);
@@ -466,11 +472,16 @@ public class BytecodeSuite {
 
     /**
      * Checks the six-byte placeholder for a branch-table entry: a four-byte displacement followed
-     * by a two-byte profile.
+     * by a two-byte profile, and verifies that the returned fixup patches the displacement.
      */
     @Test
     public void testBranchTableItems() {
-        test(b -> b.addBranchTableItemLocation(), new byte[]{0, 0, 0, 0, 0, 0});
+        test(b -> b.addBranchTableItem().patch(1), new byte[]{1, 0, 0, 0, 0, 0});
+    }
+
+    @Test
+    public void testIfLocation() {
+        test(b -> b.addIf(RuntimeBytecodeGen.BranchHint.NONE).patch(6), new byte[]{Bytecode.IF, 5, 0, 0, 0, 0, 0});
     }
 
     /**
@@ -483,7 +494,7 @@ public class BytecodeSuite {
             RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
             bytecode.addBranchTable(size);
             for (int i = 0; i < size; i++) {
-                bytecode.addBranchTableItemLocation();
+                bytecode.addBranchTableItem();
             }
             int callOffset = bytecode.location();
             bytecode.addCall(0, 42);
