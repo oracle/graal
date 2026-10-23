@@ -46,6 +46,7 @@ import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.heap.GC;
 import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
 import com.oracle.svm.guest.staging.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.shared.Uninterruptible;
 
