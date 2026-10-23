@@ -30,8 +30,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.c.CIsolateData;
-import com.oracle.svm.core.c.CIsolateDataFactory;
+import com.oracle.svm.guest.staging.core.c.CIsolateData;
+import com.oracle.svm.guest.staging.core.c.CIsolateDataFactory;
 import com.oracle.svm.core.locks.PlatformLockingSupport.PlatformSemaphore;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;

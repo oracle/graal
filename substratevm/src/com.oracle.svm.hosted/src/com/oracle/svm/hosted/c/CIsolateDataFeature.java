@@ -28,8 +28,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Map;
 
-import com.oracle.svm.core.c.CIsolateData;
-import com.oracle.svm.core.c.CIsolateDataStorage;
+import com.oracle.svm.guest.staging.core.c.CIsolateData;
+import com.oracle.svm.guest.staging.core.c.CIsolateDataStorage;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.shared.collections.ConcurrentIdentityHashMap;

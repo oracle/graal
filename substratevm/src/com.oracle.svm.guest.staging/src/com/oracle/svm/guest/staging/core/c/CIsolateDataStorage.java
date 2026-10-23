@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.c;
+package com.oracle.svm.guest.staging.core.c;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
@@ -34,11 +34,10 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
-import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -46,9 +45,8 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.vm.ci.meta.JavaKind;
+import com.oracle.svm.shared.util.NumUtil;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 /**
  * Defines a section of memory where per-isolate singleton instances of native data structures can
@@ -71,7 +69,7 @@ public final class CIsolateDataStorage {
     public CIsolateDataStorage() {
     }
 
-    @Fold
+    @GuestFold
     public static CIsolateDataStorage singleton() {
         return ImageSingletons.lookup(CIsolateDataStorage.class);
     }
@@ -89,12 +87,12 @@ public final class CIsolateDataStorage {
         assert data != null : "invalid isolate data section entry";
         Pointer base = Word.objectToUntrackedPointer(managedIsolateSectionData).add(arrayBaseOffset());
         Pointer result = base.add(Word.unsigned(data.getOffset()));
-        assert PointerUtils.isAMultiple(result, Word.unsigned(ALIGNMENT));
+        assert UnsignedUtils.isAMultiple(result, Word.unsigned(ALIGNMENT));
         return (T) result;
     }
 
-    @Fold
+    @GuestFold
     static int arrayBaseOffset() {
-        return ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.Long);
+        return ObjectLayout.singleton().getArrayBaseOffset(Long.BYTES);
     }
 }
