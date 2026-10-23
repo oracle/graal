@@ -163,7 +163,7 @@ public final class PinnedObjectSupportImpl extends AbstractPinnedObjectSupport {
         if (!SubstrateOptions.PinnedObjectAddressing.getValue()) {
             throw new UnsupportedOperationException("Pinned object addressing has been disabled.");
         }
-        DynamicHub hub = ObjectHeader.readDynamicHubFromObject(array);
+        DynamicHub hub = (DynamicHub) ObjectHeader.readDynamicHubFromObject(array);
         assert hub.isArray();
         UnsignedWord offsetOfArrayElement = LayoutEncoding.getArrayElementOffset(hub.getLayoutEncoding(), index);
         return addressOfPinnedObject(array).add(offsetOfArrayElement);

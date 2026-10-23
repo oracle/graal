@@ -612,7 +612,7 @@ public final class G1Heap extends Heap {
 
         if (objectHeader.isEncodedObjectHeader((Word) value)) {
             log.string("is the encoded object header for an object of type ");
-            DynamicHub hub = objectHeader.dynamicHubFromObjectHeader((Word) value);
+            DynamicHub hub = (DynamicHub) objectHeader.dynamicHubFromObjectHeader((Word) value);
             log.string(hub.getName());
             return true;
         }

@@ -205,7 +205,7 @@ final class UnalignedChunkRememberedSet {
         UnsignedWord objStartOffset = getObjectStartOffset(chunk);
         Object obj = HeapChunk.asPointer(chunk).add(objStartOffset).toObjectNonNull();
 
-        DynamicHub objHub = ObjectHeader.readDynamicHubFromObject(obj);
+        DynamicHub objHub = (DynamicHub) ObjectHeader.readDynamicHubFromObject(obj);
 
         // Return as early as possible for primitive arrays.
         if (objHub.getHubType() == HubType.PRIMITIVE_ARRAY) {
@@ -250,7 +250,7 @@ final class UnalignedChunkRememberedSet {
     private static void walkObjectArrayPrecise(Object obj, Pointer cardTableStart, UnsignedWord cardTableLimitIdx, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean) {
         int referenceSize = ObjectLayout.singleton().getReferenceSize();
 
-        DynamicHub objHub = ObjectHeader.readDynamicHubFromObject(obj);
+        DynamicHub objHub = (DynamicHub) ObjectHeader.readDynamicHubFromObject(obj);
         int length = ArrayLengthNode.arrayLength(obj);
         int layoutEncoding = objHub.getLayoutEncoding();
 

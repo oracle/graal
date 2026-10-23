@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -35,6 +37,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues.Origin;
@@ -52,6 +56,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
@@ -76,6 +81,8 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
+
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
 
 /**
  * Provides core implementations for runtime services that guest-staging code cannot yet access
@@ -113,6 +120,28 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Override
     public void heapOptionValueChanged(NotifyGCRuntimeOptionKey<?> key) {
         Heap.getHeap().optionValueChanged(key);
+    }
+
+    @Override
+    public LocationIdentity offHeapLocationIdentity() {
+        return NamedLocationIdentity.OFF_HEAP_LOCATION;
+    }
+
+    @Override
+    public Class<?> dynamicHubClass() {
+        return DynamicHub.class;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public Object readHub(Object object) {
+        return DynamicHubIntrinsics.readHub(object);
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean isInImageHeap(Pointer pointer) {
+        return Heap.getHeap().isInImageHeap(pointer);
     }
 
     @Override

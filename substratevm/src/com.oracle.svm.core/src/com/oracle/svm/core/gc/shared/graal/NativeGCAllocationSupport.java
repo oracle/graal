@@ -116,7 +116,7 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
     private static Object slowPathNewInstance(Word objectHeader) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            DynamicHub hub = Heap.getHeap().getObjectHeader().dynamicHubFromObjectHeader(objectHeader);
+            DynamicHub hub = (DynamicHub) Heap.getHeap().getObjectHeader().dynamicHubFromObjectHeader(objectHeader);
             guaranteeAllocationAllowed("allocateInstance", hub);
 
             Object result = NativeGCAllocationSupport.singleton().allocateInstance0(hub);
@@ -131,7 +131,7 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
     private static Object slowPathNewArray(Word objectHeader, int length) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            DynamicHub hub = Heap.getHeap().getObjectHeader().dynamicHubFromObjectHeader(objectHeader);
+            DynamicHub hub = (DynamicHub) Heap.getHeap().getObjectHeader().dynamicHubFromObjectHeader(objectHeader);
             guaranteeAllocationAllowed("allocateArray", hub);
             checkArrayLength(length);
 
@@ -147,7 +147,7 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
     private static Object slowPathNewStoredContinuation(Word objectHeader, int length) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            DynamicHub hub = Heap.getHeap().getObjectHeader().dynamicHubFromObjectHeader(objectHeader);
+            DynamicHub hub = (DynamicHub) Heap.getHeap().getObjectHeader().dynamicHubFromObjectHeader(objectHeader);
             guaranteeAllocationAllowed("allocateStoredContinuation", hub);
             checkArrayLength(length);
 
@@ -163,7 +163,7 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
     private static Object slowPathNewPodInstance(Word objectHeader, int length, byte[] referenceMap) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            DynamicHub hub = Heap.getHeap().getObjectHeader().dynamicHubFromObjectHeader(objectHeader);
+            DynamicHub hub = (DynamicHub) Heap.getHeap().getObjectHeader().dynamicHubFromObjectHeader(objectHeader);
             guaranteeAllocationAllowed("allocatePod", hub);
             checkArrayLength(length);
 

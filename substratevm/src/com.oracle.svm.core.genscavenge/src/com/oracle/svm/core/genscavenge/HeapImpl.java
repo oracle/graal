@@ -742,7 +742,7 @@ public final class HeapImpl extends Heap {
 
         if (objectHeaderImpl.isEncodedObjectHeader((Word) value)) {
             log.string("is the encoded object header for an object of type ");
-            DynamicHub hub = objectHeaderImpl.dynamicHubFromObjectHeader((Word) value);
+            DynamicHub hub = (DynamicHub) objectHeaderImpl.dynamicHubFromObjectHeader((Word) value);
             log.string(hub.getName());
             return true;
         }

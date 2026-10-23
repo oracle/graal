@@ -195,7 +195,7 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
             if (referent == null) {
                 throw new NullPointerException("PinnedObject is missing a referent");
             }
-            DynamicHub hub = ObjectHeader.readDynamicHubFromObject(referent);
+            DynamicHub hub = (DynamicHub) ObjectHeader.readDynamicHubFromObject(referent);
             UnsignedWord offsetOfArrayElement = LayoutEncoding.getArrayElementOffset(hub.getLayoutEncoding(), index);
             return (T) addressOfObject().add(offsetOfArrayElement);
         }

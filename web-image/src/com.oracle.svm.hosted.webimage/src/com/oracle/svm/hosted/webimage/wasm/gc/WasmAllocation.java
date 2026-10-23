@@ -948,7 +948,7 @@ public final class WasmAllocation {
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object newInstance(Word objectHeader) {
-        DynamicHub hub = WasmObjectHeader.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
+        DynamicHub hub = (DynamicHub) WasmObjectHeader.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
         return newInstanceWithoutAllocating(hub);
     }
 
@@ -967,7 +967,7 @@ public final class WasmAllocation {
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
     private static Object newArrayLikeObject0(Word objectHeader, int length) {
-        DynamicHub hub = WasmObjectHeader.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
+        DynamicHub hub = (DynamicHub) WasmObjectHeader.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
 
         WasmHeap.exitIfAllocationDisallowed("WasmAllocation.newArrayLikeObject0", DynamicHub.toClass(hub).getName());
         WasmLMGC.getGC().maybeCollectOnAllocation();

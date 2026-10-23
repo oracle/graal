@@ -38,7 +38,6 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -90,9 +89,9 @@ public class WasmObjectHeader extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public Word encodeAsUnmanagedObjectHeader(DynamicHub hub) {
+    public Word encodeAsUnmanagedObjectHeader(Object hub) {
         // Headers in unmanaged memory don't need any GC-specific bits set
-        return encodeAsObjectHeader(hub, false, false);
+        return encodeAsObjectHeader((DynamicHub) hub, false, false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -150,8 +149,8 @@ public class WasmObjectHeader extends ObjectHeader {
     }
 
     @Override
-    public Word encodeAsTLABObjectHeader(DynamicHub hub) {
-        return encodeAsObjectHeader(hub, false, false);
+    public Word encodeAsTLABObjectHeader(Object hub) {
+        return encodeAsObjectHeader((DynamicHub) hub, false, false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -191,7 +190,7 @@ public class WasmObjectHeader extends ObjectHeader {
     }
 
     @Override
-    public long encodeHubPointerForImageHeap(ImageHeapObject obj, long hubOffsetFromHeapBase) {
+    public long encodeHubPointerForImageHeap(Object obj, long hubOffsetFromHeapBase) {
         long header = hubOffsetFromHeapBase;
         assert (header & MASK_HEADER_BITS.rawValue()) == 0 : "Object header bits must be zero initially";
         return header;

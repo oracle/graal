@@ -124,9 +124,9 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public Word encodeAsUnmanagedObjectHeader(DynamicHub hub) {
+    public Word encodeAsUnmanagedObjectHeader(Object hub) {
         // Headers in unmanaged memory don't need any GC-specific bits set
-        return encodeAsObjectHeader(hub, false, false);
+        return encodeAsObjectHeader((DynamicHub) hub, false, false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -260,8 +260,8 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Override
-    public Word encodeAsTLABObjectHeader(DynamicHub hub) {
-        return encodeAsObjectHeader(hub, false, false);
+    public Word encodeAsTLABObjectHeader(Object hub) {
+        return encodeAsObjectHeader((DynamicHub) hub, false, false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -316,10 +316,10 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Override
-    public long encodeHubPointerForImageHeap(ImageHeapObject obj, long hubOffsetFromHeapBase) {
+    public long encodeHubPointerForImageHeap(Object obj, long hubOffsetFromHeapBase) {
         long header = hubOffsetFromHeapBase << numReservedExtraHubBits;
         assert (header & reservedHubBitsMask) == 0 : "Object header bits must be zero initially";
-        ChunkedImageHeapPartition partition = (ChunkedImageHeapPartition) obj.getPartition();
+        ChunkedImageHeapPartition partition = (ChunkedImageHeapPartition) ((ImageHeapObject) obj).getPartition();
         if (partition.isWritable() && HeapImpl.usesImageHeapCardMarking()) {
             header |= REMSET_OR_MARKED1_BIT.rawValue();
         }

@@ -217,7 +217,7 @@ public final class ThreadLocalAllocation {
     }
 
     public static Object slowPathNewInstance(Word objectHeader) {
-        DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
+        DynamicHub hub = (DynamicHub) ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
 
         UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
         Object result = allocateInstanceInCurrentTlab(hub, size);
@@ -258,7 +258,7 @@ public final class ThreadLocalAllocation {
             throw new NegativeArraySizeException();
         }
 
-        DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
+        DynamicHub hub = (DynamicHub) ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
         UnsignedWord size = LayoutEncoding.getArrayAllocationSize(hub.getLayoutEncoding(), length);
         checkArrayLikeObjectSizeBeforeAllocation(size);
 

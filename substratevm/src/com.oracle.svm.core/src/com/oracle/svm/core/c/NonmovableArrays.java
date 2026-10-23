@@ -122,7 +122,7 @@ public final class NonmovableArrays {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static DynamicHub readHub(NonmovableArray<?> array) {
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
-        return objectHeader.readDynamicHubFromPointer((Pointer) array);
+        return (DynamicHub) objectHeader.readDynamicHubFromPointer((Pointer) array);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

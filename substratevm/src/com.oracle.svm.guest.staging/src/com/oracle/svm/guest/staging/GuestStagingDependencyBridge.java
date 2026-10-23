@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.guest.staging;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.io.PrintStream;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Parameter;
@@ -35,6 +37,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.guest.staging.log.Log;
@@ -99,6 +103,39 @@ public interface GuestStagingDependencyBridge {
      * Remove this method when GC option change notification moves to guest/staging.
      */
     void heapOptionValueChanged(NotifyGCRuntimeOptionKey<?> key);
+
+    /**
+     * Returns the exact canonical {@code NamedLocationIdentity.OFF_HEAP_LOCATION} used by the
+     * compiler.
+     * <p>
+     * Remove this method when the guest-visible word API can directly supply the canonical off-heap
+     * identity without a compiler implementation dependency.
+     */
+    LocationIdentity offHeapLocationIdentity();
+
+    /**
+     * Returns the canonical class object for {@code com.oracle.svm.core.hub.DynamicHub}.
+     * <p>
+     * Remove this method when DynamicHub moves to guest staging (GR-78110).
+     */
+    Class<?> dynamicHubClass();
+
+    /**
+     * Delegates to {@code com.oracle.svm.core.hub.DynamicHubIntrinsics.readHub(object)}.
+     * <p>
+     * Remove this method when DynamicHub and its hub-read intrinsic move to guest staging
+     * (GR-78110).
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    Object readHub(Object object);
+
+    /**
+     * Delegates to {@code com.oracle.svm.core.heap.Heap.getHeap().isInImageHeap(pointer)}.
+     * <p>
+     * Remove this method when heap membership queries become guest-owned.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    boolean isInImageHeap(Pointer pointer);
 
     /**
      * Delegates to {@code com.oracle.svm.core.Isolates.isCurrentFirst()}.

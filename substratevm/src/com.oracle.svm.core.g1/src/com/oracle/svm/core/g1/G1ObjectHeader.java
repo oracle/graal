@@ -37,7 +37,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
@@ -98,8 +97,8 @@ public class G1ObjectHeader extends ObjectHeader {
     }
 
     @Override
-    public Word encodeAsTLABObjectHeader(DynamicHub hub) {
-        return encodeAsObjectHeader(hub);
+    public Word encodeAsTLABObjectHeader(Object hub) {
+        return encodeAsObjectHeader((DynamicHub) hub);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -130,7 +129,7 @@ public class G1ObjectHeader extends ObjectHeader {
     }
 
     @Override
-    public long encodeHubPointerForImageHeap(ImageHeapObject obj, long hubOffsetFromHeapBase) {
+    public long encodeHubPointerForImageHeap(Object obj, long hubOffsetFromHeapBase) {
         assert isInHubAddressSpace(hubOffsetFromHeapBase) : hubOffsetFromHeapBase;
 
         if (SubstrateOptions.useCompressedReferences()) {
@@ -180,8 +179,8 @@ public class G1ObjectHeader extends ObjectHeader {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     @Override
-    public Word encodeAsUnmanagedObjectHeader(DynamicHub hub) {
-        return encodeAsObjectHeader(hub);
+    public Word encodeAsUnmanagedObjectHeader(Object hub) {
+        return encodeAsObjectHeader((DynamicHub) hub);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

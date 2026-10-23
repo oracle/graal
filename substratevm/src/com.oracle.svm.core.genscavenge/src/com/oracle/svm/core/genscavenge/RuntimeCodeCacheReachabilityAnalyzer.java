@@ -106,7 +106,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
         if (space.isCompactingOldSpace() && !GCImpl.getGCImpl().isCompleteCollection()) {
             return true;
         }
-        Class<?> clazz = DynamicHub.toClass(ohi.dynamicHubFromObjectHeader(header));
+        Class<?> clazz = DynamicHub.toClass((DynamicHub) ohi.dynamicHubFromObjectHeader(header));
         return isAssumedReachable(clazz);
     }
 
