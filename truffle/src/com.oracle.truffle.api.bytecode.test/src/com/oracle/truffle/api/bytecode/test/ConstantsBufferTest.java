@@ -43,6 +43,7 @@ package com.oracle.truffle.api.bytecode.test;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 
 import java.util.stream.IntStream;
@@ -56,11 +57,106 @@ public class ConstantsBufferTest {
     @Test
     public void linearPathDeduplicatesBelowThreshold() {
         ConstantsBuffer b = new ConstantsBuffer();
-        int a = b.add("A");
-        int a2 = b.add(new String("A"));
+        String s = "A";
+        int a = b.add(s);
+        int a2 = b.add(s);
         assertEquals(a, a2);
         assertEquals(1, b.materialize().length);
         b.clear();
+    }
+
+    @Test
+    public void equalButDistinctBelowThreshold() {
+        ConstantsBuffer b = new ConstantsBuffer();
+        Colliding c1 = new Colliding(1);
+        Colliding c2 = new Colliding(1);
+        int i1 = b.add(c1);
+        int i2 = b.add(c2);
+        assertNotEquals(i1, i2);
+        assertEquals(i1, b.add(c1));
+        assertEquals(i2, b.add(c2));
+        Object[] constants = b.materialize();
+        assertEquals(2, constants.length);
+        assertSame(c1, constants[i1]);
+        assertSame(c2, constants[i2]);
+        b.clear();
+    }
+
+    @Test
+    public void equalButDistinctAboveThreshold() {
+        ConstantsBuffer b = new ConstantsBuffer();
+        int n = 100;
+        Colliding[] values = new Colliding[n];
+        for (int i = 0; i < n; i++) {
+            values[i] = new Colliding(7);
+            assertEquals(i, b.add(values[i]));
+        }
+        for (int i = 0; i < n; i++) {
+            assertEquals(i, b.add(values[i]));
+        }
+        Object[] constants = b.materialize();
+        assertEquals(n, constants.length);
+        for (int i = 0; i < n; i++) {
+            assertSame(values[i], constants[i]);
+        }
+        b.clear();
+    }
+
+    @Test
+    public void equalButDistinctStrings() {
+        ConstantsBuffer b = new ConstantsBuffer();
+        String s1 = new String("A");
+        String s2 = new String("A");
+        assertNotEquals(b.add(s1), b.add(s2));
+        assertEquals(2, b.materialize().length);
+        b.clear();
+    }
+
+    @Test
+    public void boxedPrimitivesDeduplicateByValue() {
+        for (int prefill : new int[]{0, 16}) {
+            ConstantsBuffer b = new ConstantsBuffer();
+            for (int i = 0; i < prefill; i++) {
+                b.add(new Object());
+            }
+            // outside of the boxing caches, so each valueOf call allocates
+            int[] indices = {
+                            b.add(Integer.valueOf(100_000)), b.add(Integer.valueOf(100_000)),
+                            b.add(Long.valueOf(100_000L)), b.add(Long.valueOf(100_000L)),
+                            b.add(Double.valueOf(1.5)), b.add(Double.valueOf(1.5)),
+                            b.add(Float.valueOf(1.5f)), b.add(Float.valueOf(1.5f)),
+                            b.add(Short.valueOf((short) 1000)), b.add(Short.valueOf((short) 1000)),
+                            b.add(Character.valueOf('\u1234')), b.add(Character.valueOf('\u1234')),
+            };
+            for (int i = 0; i < indices.length; i += 2) {
+                assertEquals(indices[i], indices[i + 1]);
+            }
+            // different boxed types with the same numeric value are not merged
+            assertNotEquals(indices[0], indices[2]);
+            assertEquals(prefill + indices.length / 2, b.materialize().length);
+            b.clear();
+        }
+    }
+
+    @Test
+    public void floatingPointComparesRawBits() {
+        for (int prefill : new int[]{0, 16}) {
+            ConstantsBuffer b = new ConstantsBuffer();
+            for (int i = 0; i < prefill; i++) {
+                b.add(new Object());
+            }
+            double nan1 = Double.longBitsToDouble(0x7ff8000000000001L);
+            double nan2 = Double.longBitsToDouble(0x7ff8000000000002L);
+            assertNotEquals(b.add(0.0d), b.add(-0.0d));
+            assertNotEquals(b.add(nan1), b.add(nan2));
+            assertEquals(b.add(nan1), b.add(nan1));
+            float fnan1 = Float.intBitsToFloat(0x7fc00001);
+            float fnan2 = Float.intBitsToFloat(0x7fc00002);
+            assertNotEquals(b.add(0.0f), b.add(-0.0f));
+            assertNotEquals(b.add(fnan1), b.add(fnan2));
+            assertEquals(prefill + 8, b.materialize().length);
+            b.clear();
+        }
     }
 
     @Test
