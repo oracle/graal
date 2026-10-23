@@ -76,11 +76,13 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -1203,6 +1205,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     @GenerateUncached
     @GenerateInline
+    @ImportStatic(PolyglotFastThreadLocals.class)
     abstract static class ToGuestValueNode extends Node {
 
         abstract Object execute(Node node, Object receiver);
@@ -1210,6 +1213,16 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         @Specialization(guards = "receiver == null")
         static Object doNull(Node node, @SuppressWarnings("unused") Object receiver) {
             return PolyglotLanguageContext.toGuestValue(node, receiver);
+        }
+
+        @Specialization(guards = "valueReceiver.getClass() == cachedReceiverClass", limit = "3")
+        static Object doValue(Node node, Value receiver,
+                        @Bind("getEngine(node)") PolyglotEngineImpl engine,
+                        @Bind("engine.getAPIAccess()") APIAccess api,
+                        @Bind("api.getValueReceiver(receiver)") Object valueReceiver,
+                        @Cached("valueReceiver.getClass()") Class<?> cachedReceiverClass) {
+            Object migratedReceiver = PolyglotHostAccess.migrateValue(node, api, receiver, cachedReceiverClass.cast(valueReceiver));
+            return engine.host.toGuestValue(node, migratedReceiver, false);
         }
 
         @Specialization(guards = {"receiver != null", "receiver.getClass() == cachedReceiver"}, limit = "3")

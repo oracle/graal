@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,20 +72,22 @@ final class PolyglotHostAccess extends AbstractHostAccess {
 
     static Object toGuestValue(Node node, APIAccess access, Object hostValue) {
         if (access.isValue(hostValue)) {
-            PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithNode(node);
-            Object receiverValue = hostValue;
-            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) access.getValueContext(receiverValue);
-            PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
-            Object valueReceiver = access.getValueReceiver(receiverValue);
-            if (valueContext != context) {
-                valueReceiver = context.migrateValue(valueReceiver, valueContext);
-            }
-            return valueReceiver;
+            return migrateValue(node, access, hostValue, access.getValueReceiver(hostValue));
         } else if (PolyglotWrapper.isInstance(hostValue)) {
             PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithNode(node);
             return context.migrateHostWrapper(PolyglotWrapper.asInstance(hostValue));
         }
         return hostValue;
+    }
+
+    static Object migrateValue(Node node, APIAccess access, Object hostValue, Object valueReceiver) {
+        PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithNode(node);
+        PolyglotLanguageContext languageContext = (PolyglotLanguageContext) access.getValueContext(hostValue);
+        PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
+        if (valueContext != context) {
+            return context.migrateValue(valueReceiver, valueContext);
+        }
+        return valueReceiver;
     }
 
     @Override
