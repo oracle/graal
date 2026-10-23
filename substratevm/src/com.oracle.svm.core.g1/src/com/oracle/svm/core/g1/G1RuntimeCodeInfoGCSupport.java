@@ -38,7 +38,7 @@ import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
-import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
+import com.oracle.svm.guest.staging.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.g1.nativelib.G1Library;
 
 public class G1RuntimeCodeInfoGCSupport extends RuntimeCodeInfoGCSupport {

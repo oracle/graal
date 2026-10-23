@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.core.code.CodeInfo;
-import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
+import com.oracle.svm.guest.staging.core.heap.RuntimeCodeInfoGCSupport;
 
 public class RuntimeCodeInfoGCSupportImpl extends RuntimeCodeInfoGCSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
