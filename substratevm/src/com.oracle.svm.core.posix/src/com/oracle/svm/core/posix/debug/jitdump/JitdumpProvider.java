@@ -176,7 +176,7 @@ public class JitdumpProvider {
             }
 
             /* Create the jitdump file and get a raw file descriptor. */
-            RawFileOperationSupport.RawFileDescriptor fd = getFileSupport().create(jitdumpPath.toFile(), RawFileOperationSupport.FileCreationMode.CREATE_OR_REPLACE,
+            RawFileOperationSupport.RawFileDescriptor fd = getFileSupport().create(jitdumpPath.toString(), RawFileOperationSupport.FileCreationMode.CREATE_OR_REPLACE,
                             RawFileOperationSupport.FileAccessMode.READ_WRITE);
             if (!getFileSupport().isValid(fd)) {
                 LogUtils.warning("Failed to create the jitdump file " + jitdumpPath.toFile().getAbsolutePath());

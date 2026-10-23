@@ -27,10 +27,9 @@ package com.oracle.svm.hosted.jdk;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -44,98 +43,44 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         systemLoadMethod = method(access, "java.lang.System", "load", String.class);
+
+        JNIRegistrationSupport registrationSupport = JNIRegistrationSupport.singleton();
+        registrationSupport.addLibraryRegistrationHandler(JNIRegistrationAWTSupport::registerLibrarySupport);
+
         if (isLinux() || isDarwin()) {
-            JNIRegistrationSupport.singleton().addLibraryRegistrationHandler(this::registerHeadlessJavaDesktopSupport);
-            if (JNIRegistrationSupport.singleton().isPreviousLayerRegisteredLibrary("awt")) {
+            registrationSupport.addLibraryRegistrationHandler(this::registerHeadlessJavaDesktopSupport);
+            if (registrationSupport.isPreviousLayerRegisteredLibrary("awt")) {
                 registerHeadlessJavaDesktopSupport("awt");
             }
         }
+
     }
 
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        JNIRegistrationSupport jniRegistrationSupport = JNIRegistrationSupport.singleton();
-        if (jniRegistrationSupport.isCurrentLayerRegisteredLibrary("awt")) {
-            jniRegistrationSupport.addJvmShimExports(
-                            "JVM_IsStaticallyLinked");
-            jniRegistrationSupport.addJavaShimExports(
-                            "JNU_CallMethodByName",
-                            "JNU_CallStaticMethodByName",
-                            "JNU_GetEnv",
-                            "JNU_GetStaticFieldByName",
-                            "JNU_IsInstanceOfByName",
-                            "JNU_NewObjectByName",
-                            "JNU_NewStringPlatform",
-                            "JNU_SetFieldByName",
-                            "JNU_ThrowArrayIndexOutOfBoundsException",
-                            "JNU_ThrowByName",
-                            "JNU_ThrowIllegalArgumentException",
-                            "JNU_ThrowInternalError",
-                            "JNU_ThrowNullPointerException",
-                            "JNU_ThrowOutOfMemoryError",
-                            "jio_snprintf");
-            if (isWindows()) {
-                jniRegistrationSupport.addJvmShimExports(
-                                "JVM_CurrentTimeMillis",
-                                "JVM_RaiseSignal");
-                jniRegistrationSupport.addJavaShimExports(
-                                "JDK_LoadSystemLibrary",
-                                "JNU_CallMethodByNameV",
-                                "JNU_ClassString",
-                                "JNU_GetFieldByName",
-                                "JNU_ThrowIOException",
-                                "getEncodingFromLangID",
-                                "getJavaIDFromLangID");
-            } else if (isLinux()) {
-                jniRegistrationSupport.addJvmShimExports(
-                                "jio_fprintf");
-                jniRegistrationSupport.addJavaShimExports(
-                                "JNU_GetStringPlatformChars",
-                                "JNU_ReleaseStringPlatformChars");
-                /* Since `awt` loads either `awt_headless` or `awt_xawt`, we register them both. */
-                jniRegistrationSupport.registerLibrary("awt_headless");
-                jniRegistrationSupport.registerLibrary("awt_xawt");
-            } else if (isDarwin()) {
-                jniRegistrationSupport.addJavaShimExports(
-                                "JNU_ThrowIOException");
-                /*
-                 * Darwin AWT uses dynamically loaded JDK libraries as on Linux and Windows, but
-                 * its dependency chain is platform-specific.
-                 */
-                jniRegistrationSupport.registerLibrary("awt_lwawt");
-                jniRegistrationSupport.registerLibrary("osxapp");
-                jniRegistrationSupport.registerLibrary("javajpeg");
-                jniRegistrationSupport.registerLibrary("lcms");
-                jniRegistrationSupport.registerLibrary("mlib_image");
-                jniRegistrationSupport.registerLibrary("fontmanager");
-                jniRegistrationSupport.registerLibrary("freetype");
-            }
-        }
-        if (jniRegistrationSupport.isCurrentLayerRegisteredLibrary("javaaccessbridge")) {
-            /* Dependency on `jawt` is not expressed in Java, so we register it manually here. */
-            jniRegistrationSupport.registerLibrary("jawt");
-        }
-        if (jniRegistrationSupport.isCurrentLayerRegisteredLibrary("javajpeg")) {
-            jniRegistrationSupport.addJavaShimExports(
-                            "JNU_GetEnv",
-                            "JNU_ThrowByName",
-                            "JNU_ThrowNullPointerException",
-                            "jio_snprintf");
+    private static void registerLibrarySupport(String libname) {
+        JNIRegistrationSupport registrationSupport = JNIRegistrationSupport.singleton();
+        switch (libname) {
+            case "awt" -> registerAWTDependencies(registrationSupport);
+            case "javaaccessbridge" -> registrationSupport.registerJNILibrary("jawt");
         }
     }
 
-    @Override
-    public void beforeImageWrite(BeforeImageWriteAccess access) {
-        if (isWindows() && JNIRegistrationSupport.singleton().isCurrentLayerRegisteredLibrary("awt")) {
-            ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
-                /*
-                 * Add Windows libraries that are pulled in as a side effect of exporting the
-                 * `getEncodingFromLangID` and `getJavaIDFromLangID` symbols.
-                 */
-                linkerInvocation.addNativeLinkerOption("shell32.lib");
-                linkerInvocation.addNativeLinkerOption("ole32.lib");
-                return linkerInvocation;
-            });
+    private static void registerAWTDependencies(JNIRegistrationSupport registrationSupport) {
+        if (isLinux()) {
+            /* Since `awt` loads either `awt_headless` or `awt_xawt`, we register them both. */
+            registrationSupport.registerJNILibrary("awt_headless");
+            registrationSupport.registerJNILibrary("awt_xawt");
+        } else if (isDarwin()) {
+            /*
+             * Darwin AWT uses dynamically loaded JDK libraries as on Linux and Windows, but its
+             * dependency chain is platform-specific.
+             */
+            registrationSupport.registerJNILibrary("awt_lwawt");
+            registrationSupport.registerJNILibrary("osxapp");
+            registrationSupport.registerJNILibrary("javajpeg");
+            registrationSupport.registerJNILibrary("lcms");
+            registrationSupport.registerJNILibrary("mlib_image");
+            registrationSupport.registerJNILibrary("fontmanager");
+            registrationSupport.registerJNILibrary("freetype");
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,20 +56,20 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.GCRelatedMXBeans;
-import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.core.thread.ThreadListener;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
-import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.util.HostModuleUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.sun.jmx.mbeanserver.MXBeanLookup;
@@ -275,11 +275,20 @@ public final class ManagementSupport implements ThreadListener {
         }
     }
 
+    @SuppressWarnings("restricted")
     private synchronized OperatingSystemMXBean getOsMXBean() {
         if (osMXBean == null) {
-            Object osMXBeanImpl = Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)
-                            ? new Target_com_sun_management_internal_OperatingSystemImpl(null)
-                            : new Target_sun_management_BaseOperatingSystemImpl(null);
+            Object osMXBeanImpl;
+            if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
+                /*
+                 * The substituted management code paths bypass
+                 * PlatformMBeanProviderImpl.<clinit>, which normally loads this library.
+                 */
+                System.loadLibrary("management_ext");
+                osMXBeanImpl = new Target_com_sun_management_internal_OperatingSystemImpl(null);
+            } else {
+                osMXBeanImpl = new Target_sun_management_BaseOperatingSystemImpl(null);
+            }
             osMXBean = SubstrateUtil.cast(osMXBeanImpl, OperatingSystemMXBean.class);
         }
         return osMXBean;

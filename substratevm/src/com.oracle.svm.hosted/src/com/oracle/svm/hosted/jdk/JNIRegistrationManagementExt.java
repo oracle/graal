@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,6 @@ package com.oracle.svm.hosted.jdk;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 
@@ -37,20 +35,14 @@ public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         initializeAtRunTime(access, "com.sun.management.internal.OperatingSystemImpl");
 
-        access.registerReachabilityHandler(this::linkManagementExt, type(access, "com.sun.management.internal.OperatingSystemImpl"));
-        PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("com_sun_management_internal_OperatingSystemImpl");
+        if (isWindows()) {
+            JNIRegistrationSupport.singleton().addLibraryRegistrationHandler(JNIRegistrationManagementExt::registerWindowsLibrarySupport);
+        }
     }
 
-    private void linkManagementExt(DuringAnalysisAccess access) {
-        NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) access).getNativeLibraries();
-        /*
-         * Note that we register `management_ext` as a non-JNI static library. This avoids pulling
-         * in `JNI_OnLoad`, which is fine since we're only interested in the native methods of the
-         * `OperatingSystemImpl` class anyway.
-         */
-        nativeLibraries.addStaticNonJniLibrary("management_ext", "java");
-        if (isWindows()) {
-            nativeLibraries.addDynamicNonJniLibrary("psapi");
+    private static void registerWindowsLibrarySupport(String library) {
+        if (library.equals("management_ext")) {
+            NativeLibraries.singleton().addDynamicLibrary("psapi");
         }
     }
 }
