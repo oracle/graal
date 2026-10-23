@@ -71,8 +71,8 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> implements GlobalFlow
     @Override
     public boolean canSaturate(PointsToAnalysis bb) {
         /*
-         * Fields with a closed declared type don't saturate; when their input saturates they are
-         * injected their declared type, and they track all its instantiated subtypes.
+         * Object fields with a closed effective value bound retain finite type information. A
+         * saturated input is replaced with all instantiated types assignable to that bound.
          */
         return !bb.getExtensionPolicy().isTypeClosed(declaredType);
     }
@@ -82,12 +82,11 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> implements GlobalFlow
         /* The field input, which is usually a field-store, is saturated. */
         if (bb.getExtensionPolicy().isTypeClosed(declaredType)) {
             /*
-             * If the field's declared type is closed, conservatively assume that the field state
-             * can contain any subtype of its declared type or any primitive value for primitive
-             * fields. Even if a store is not visible to the analysis, i.e., it is from the
-             * open-world, the complete hierarchy of the field's declared type is visible.
+             * Recover all instantiated types under the effective bound, or any primitive value.
+             * The effective bound drops unchecked interface constraints from the declaration.
+             * A saturated reference input does not establish an additional array-element write.
              */
-            source.injectConservativeFieldValues();
+            source.injectFieldValueBound();
         } else {
             /* Otherwise, propagate saturation stamp through the field flow. */
             super.onInputSaturated(bb, input);
