@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -452,11 +452,11 @@ jboolean VerifyClassname(char *utf_name, jboolean arrayAllowed) {
     abort();
 }
 
-int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
+JNIEXPORT int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
   return vfprintf(f, fmt, args);
 }
 
-int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
+JNIEXPORT int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
   int result;
 
   if ((intptr_t)count <= 0) return -1;
