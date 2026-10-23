@@ -51,7 +51,6 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FullInfopointNode;
 import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ReturnNode;
@@ -333,7 +332,7 @@ public class InterproceduralPartialEscapeAnalysisClosure extends PartialEscapeCl
 
             VirtualObjectNode returnResultVirtualObject = virtualReturnResultState.virtual.duplicate();
             vt.createVirtualObject(returnResultVirtualObject, returnResultStateEntries, Collections.emptyList(), null, false);
-            ((InvokeWithExceptionNode) invoke).graph().add(returnResultVirtualObject);
+            invoke.asNode().graph().add(returnResultVirtualObject);
             callerContext.putVirtualObjectAllocationNode(returnResultVirtualObject, callerContext.getAllocationNode(virtualReturnResultState.virtual));
             /* Replace invoke with caller side representation of the virtual return result */
             vt.replaceWithVirtual(returnResultVirtualObject);

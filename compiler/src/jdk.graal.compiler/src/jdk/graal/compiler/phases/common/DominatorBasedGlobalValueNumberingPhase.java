@@ -46,6 +46,7 @@ import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
@@ -386,6 +387,8 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
      * {@link VirtualizableAllocation} allocations must not be GVNed, though they are no side effect
      * they have identity
      *
+     * {@link Invoke} calls must not be GVNed based only on their memory access identity
+     *
      * {@link ControlFlowAnchored} special nodes used to model control flow paths that must not be
      * changed
      *
@@ -393,8 +396,8 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
      * which they must not float
      */
     public static boolean canGVN(Node n) {
-        return !MemoryKill.isMemoryKill(n) && (n instanceof MemoryAccess || n instanceof FixedGuardNode || n instanceof FixedBinaryNode) && !(n instanceof ControlFlowAnchored) &&
-                        !(n instanceof AnchoringNode) &&
+        return !MemoryKill.isMemoryKill(n) && (n instanceof MemoryAccess || n instanceof FixedGuardNode || n instanceof FixedBinaryNode) && !(n instanceof Invoke) &&
+                        !(n instanceof ControlFlowAnchored) && !(n instanceof AnchoringNode) &&
                         !(n instanceof NodeWithIdentity);
     }
 
