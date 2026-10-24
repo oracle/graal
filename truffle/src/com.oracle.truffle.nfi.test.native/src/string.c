@@ -104,13 +104,3 @@ EXPORT const char *native_string_callback(const char *(*str_ret)()) {
         return "different";
     }
 }
-
-#if defined(_WIN32)
-EXPORT char *reexport_strdup(const char *str) {
-    return strdup(str);
-}
-
-EXPORT void reexport_free(char *str) {
-    free(str);
-}
-#endif
