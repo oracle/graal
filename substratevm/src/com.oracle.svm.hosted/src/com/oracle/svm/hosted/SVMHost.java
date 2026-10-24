@@ -488,6 +488,24 @@ public class SVMHost extends HostVM {
     }
 
     @Override
+    public void beforeFieldValueAccess(ResolvedJavaType type) {
+        var oType = OriginalClassProvider.getOriginalType(type);
+
+        /*
+         * These transformations are required to be available before field's value is
+         * accessed. Both beforeFieldValueAccess and onTypeReachable can be called
+         * simultaneously and their behavior around field value transformers has to be
+         * synchronized.
+         *
+         * Additionally, when the type becomes reachable, fields that
+         * were accessed by the initializer, need to be marked as unsafely accessed.
+         */
+        automaticUnsafeTransformations
+                        .getOrComputeTransformations(this, oType)
+                        .ensureDone();
+    }
+
+    @Override
     public void onTypeReachable(BigBang bb, AnalysisType analysisType) {
         if (!analysisType.isReachable()) {
             throw VMError.shouldNotReachHere("Registering and initializing a type that was not yet marked as reachable: " + analysisType);
@@ -500,8 +518,17 @@ public class SVMHost extends HostVM {
         /* Decide when the type should be initialized. */
         classInitializationSupport.maybeInitializeAtBuildTime(analysisType);
 
-        /* Compute the automatic substitutions. */
-        automaticUnsafeTransformations.computeTransformations(bb, this, OriginalClassProvider.getOriginalType(analysisType));
+        /* Compute the automatic substitutions. See beforeFieldValueAccess for reference. */
+        ResolvedJavaType type = OriginalClassProvider.getOriginalType(analysisType);
+        var pendingFieldAccesses = automaticUnsafeTransformations
+                        .getOrComputeTransformations(this, type)
+                        .ensureDone();
+
+        for (var pendingAccess : pendingFieldAccesses) {
+            var field = bb.getUniverse().lookup(pendingAccess.targetField());
+
+            bb.postTask(_ -> field.registerAsUnsafeAccessed(pendingAccess.reason()));
+        }
     }
 
     @Override

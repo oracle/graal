@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,6 +77,7 @@ import com.oracle.graal.pointsto.meta.JVMCIObjectReachableCallback;
 import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MethodVariant;
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -107,11 +108,13 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
+import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestInvoked;
+import com.oracle.svm.util.HeapObjectReplacer;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
@@ -533,7 +536,11 @@ public class FeatureImpl {
         @Override
         public void registerObjectReplacer(Function<Object, Object> replacer) {
             // GR-78997: migrate builder-side clients to JVMCI or guest features.
-            getUniverse().registerObjectReplacer(new LegacyObjectReplacerAdapter(replacer, getUniverse().getHostedValuesProvider()));
+            if (replacer instanceof HeapObjectReplacer heapObjectReplacer) {
+                getUniverse().registerObjectReplacer(new HeapObjectReplacerAdapter(heapObjectReplacer, getUniverse().getHostedValuesProvider()));
+            } else {
+                getUniverse().registerObjectReplacer(new LegacyObjectReplacerAdapter(replacer, getUniverse().getHostedValuesProvider()));
+            }
         }
 
         /**
@@ -929,14 +936,22 @@ public class FeatureImpl {
             registerJVMCIReachabilityHandler(callback, type);
         }
 
+        /**
+         * Registers a field value transformer for the provided field. Under
+         * {@code --future-defaults=predictable-build-time-initialization}, registration of
+         * transformers will only be possible before analysis starts.
+         */
         @Override
         public void registerFieldValueTransformer(Field field, FieldValueTransformer transformer) {
+            checkFieldValueTransformerRegistrationAllowed();
             FieldValueInterceptionSupport.singleton().registerLegacyFieldValueTransformer(field, transformer);
         }
 
         /**
          * Registers a field value transformer for the provided field. See the JavaDoc of
-         * {@link FieldValueTransformer} for details.
+         * {@link FieldValueTransformer} for details. Under
+         * {@code --future-defaults=predictable-build-time-initialization}, registration of
+         * transformers will only be possible before analysis starts.
          *
          * @param field This should be the <em>original</em> (Host VM) field. See
          *            {@link OriginalFieldProvider#getOriginalField}.
@@ -944,6 +959,7 @@ public class FeatureImpl {
          */
         @Override
         public void registerFieldValueTransformer(ResolvedJavaField field, JVMCIFieldValueTransformer transformer) {
+            checkFieldValueTransformerRegistrationAllowed();
             VMError.guarantee(!(field instanceof OriginalFieldProvider),
                             "The ResolvedJavaField %s must be the original (Host VM) field. You can use OriginalFieldProvider.getOriginalField() to retrieve that", field);
             FieldValueInterceptionSupport.singleton().registerFieldValueTransformer(field, transformer);
@@ -1100,13 +1116,25 @@ public class FeatureImpl {
          * forward from an initial layer and updated by an extension layer. Unlike
          * {@link #registerFieldValueTransformer(Field, FieldValueTransformer)}, the transformer is
          * represented as an image-layer-aware JVMCI transformer so that updatable prior-layer field
-         * values can be tracked and patched when a later layer supplies a replacement value.
+         * values can be tracked and patched when a later layer supplies a replacement value. Under
+         * {@code --future-defaults=predictable-build-time-initialization}, registration of
+         * transformers will only be possible before analysis starts.
          *
          * @param field the field whose value should be transformed
          * @param transformer the layered transformer instance to apply to the field
          */
         public void registerLayeredFieldValueTransformer(Field field, LayeredFieldValueTransformer<?> transformer) {
+            checkFieldValueTransformerRegistrationAllowed();
             FieldValueInterceptionSupport.singleton().registerLayeredFieldValueTransformer(getMetaAccess().lookupJavaField(field), transformer);
+        }
+
+        private static void checkFieldValueTransformerRegistrationAllowed() {
+            if (FutureDefaultsOptions.predictableBuildTimeInitialization() && BuildPhaseProvider.isAnalysisStarted()) {
+                throw UserError.abort(
+                                "Field value transformers must be registered before analysis" +
+                                                "or in a beforeFieldValueAccess callback when " +
+                                                "--future-defaults=predictable-build-time-initialization is enabled.");
+            }
         }
 
         /**
@@ -1140,6 +1168,43 @@ public class FeatureImpl {
 
         public void allowStableFieldFoldingBeforeAnalysis(ResolvedJavaField field) {
             getHostVM().allowStableFieldFoldingBeforeAnalysis(field instanceof AnalysisField analysisField ? analysisField : getUniverse().lookup(field));
+        }
+
+        /**
+         * Guest-invoked method for the public before field value access handler registration method.
+         *
+         * @param callback a {@link JavaConstant} representing the guest
+         *            {@code BiConsumer<Feature.BeforeFieldValueAccess, Class<?>>}
+         * @param baseType a JVMCI type representing the guest {@code Class<?>} whose field value access triggers the callback
+         * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerBeforeFieldValueAccessHandler(BiConsumer, Class)
+         */
+        @GuestInvoked
+        public void registerBeforeFieldValueAccessHandler(JavaConstant callback, ResolvedJavaType baseType) {
+            if (callback == null || callback.isNull()) {
+                throw UserError.abort("'registerBeforeFieldValueAccessHandler' called with a null callback");
+            }
+            BiConsumer<JVMCIFeatureAccess.BeforeFieldValueAccess, ResolvedJavaType> wrappedCallback = (access, type) -> {
+                GuestFeatureDispatchFeature dispatch = ImageSingletons.lookup(GuestFeatureDispatchFeature.class);
+                dispatch.invokeGuestBeforeFieldValueAccessHandler(callback, (Feature.BeforeFieldValueAccess) access, type);
+            };
+            registerBeforeFieldValueAccessHandler(wrappedCallback, baseType);
+        }
+
+        /**
+         * JVMCI-based counterpart of
+         * {@link org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerBeforeFieldValueAccessHandler(BiConsumer, Class)}.
+         */
+        @Override
+        public void registerBeforeFieldValueAccessHandler(BiConsumer<JVMCIFeatureAccess.BeforeFieldValueAccess, ResolvedJavaType> callback, ResolvedJavaType baseType) {
+            FieldValueInterceptionSupport.singleton().registerBeforeFieldValueAccessHandler(callback, baseType);
+        }
+
+        @Override
+        public void registerBeforeFieldValueAccessHandler(BiConsumer<Feature.BeforeFieldValueAccess, Class<?>> callback, Class<?> baseClass) {
+            AnalysisType baseType = getMetaAccess().lookupJavaType(baseClass);
+            FieldValueInterceptionSupport.singleton().registerBeforeFieldValueAccessHandler((access, type) -> {
+                callback.accept((Feature.BeforeFieldValueAccess) access, OriginalClassProvider.getJavaClass(type));
+            }, baseType);
         }
     }
 

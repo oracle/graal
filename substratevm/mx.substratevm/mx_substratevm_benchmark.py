@@ -952,6 +952,10 @@ _scala_daCapo_exclude_lib = {
 _scala_daCapo_additional_lib = {
 }
 
+_scala_daCapo_extra_image_build_args = {
+    'scalac': ['--initialize-at-build-time=org.apache.xerces.jaxp.datatype.DatatypeFactoryImpl'],
+}
+
 
 class ScalaDaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.ScalaDaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     def name(self):
@@ -995,6 +999,10 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.ScalaDaCapoBenchmark
             return user_args
         else:
             return []
+
+    def extra_image_build_argument(self, benchmark, args):
+        default_args = _scala_daCapo_extra_image_build_args.get(benchmark, [])
+        return default_args + super().extra_image_build_argument(benchmark, args)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:

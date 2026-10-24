@@ -61,6 +61,8 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisElement.MethodOverrideReachableNotification;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
+import com.oracle.svm.util.HeapConstantToConstantReplacer;
+import com.oracle.svm.util.HeapObjectConstantReplacer;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -712,13 +714,80 @@ public class AnalysisUniverse implements Universe {
 
         JavaConstant destination = source;
         for (Function<JavaConstant, JavaConstant> replacer : objectReplacers) {
-            destination = Objects.requireNonNull(replacer.apply(destination));
+            if (replacer instanceof HeapObjectConstantReplacer heapObjectReplacer) {
+                destination = Objects.requireNonNull(heapObjectReplacer.replaceConstant(destination, true));
+            } else {
+                destination = Objects.requireNonNull(replacer.apply(destination));
+            }
+            assert !HeapObjectConstantReplacer.CANNOT_REPLACE_MARKER.equals(destination);
             assert destination.getJavaKind() == JavaKind.Object : destination;
         }
 
+        return finishObjectReplacement(destination, allowObjectToConstantReplacement);
+    }
+
+    /**
+     * Applies registered replacers without using internal operations described in
+     * {@link com.oracle.svm.util.HeapObjectReplacer} that expand the analysis/hosted universe or image heap.
+     * This supports verification of objects that are not otherwise reachable by the image heap.
+     *
+     * @return the replaced constant, {@link HeapObjectConstantReplacer#CANNOT_REPLACE_MARKER}, or
+     *         {@code source} if no replacer changes it
+     */
+    public JavaConstant replaceConstantNoHeap(JavaConstant source) {
+        assert !(source instanceof ImageHeapConstant) : "ImageHeapConstants were already processed and must not reach object replacement again: " + source;
+        if (source == null || source.getJavaKind() != JavaKind.Object || source.isNull()) {
+            return source;
+        }
+
+        JavaConstant destination = source;
+        for (Function<JavaConstant, JavaConstant> replacer : objectReplacers) {
+            if (replacer instanceof HeapObjectConstantReplacer heapObjectReplacer) {
+                destination = Objects.requireNonNull(heapObjectReplacer.replaceConstant(destination, false));
+                if (HeapObjectConstantReplacer.CANNOT_REPLACE_MARKER.equals(destination)) {
+                    return destination;
+                }
+            } else {
+                destination = Objects.requireNonNull(replacer.apply(destination));
+            }
+            assert destination.getJavaKind() == JavaKind.Object : destination;
+        }
+
+        return finishObjectReplacement(destination, true, false);
+    }
+
+    private JavaConstant finishObjectReplacement(JavaConstant destination, boolean allowObjectToConstantReplacement) {
+        return finishObjectReplacement(destination, allowObjectToConstantReplacement, true);
+    }
+
+    /**
+     * Applies object-to-constant replacers.
+     *
+     * <p>
+     * When {@code reachable} is {@code false}, then these replacers cannot
+     * use internal operations that expand the analysis/hosted universe or image heap,
+     * described in {@link HeapConstantToConstantReplacer}.
+     * </p>
+     *
+     * @return Replacement constant, or {@link HeapConstantToConstantReplacer#CANNOT_REPLACE_MARKER},
+     * if the replacer could not replace the constant without using an internal operation
+     * that expands the analysis/hosted universe or image heap.
+     */
+    private JavaConstant finishObjectReplacement(JavaConstant destination, boolean allowObjectToConstantReplacement, boolean reachable) {
         ImageHeapConstant imageHeapConstant = null;
         for (Function<JavaConstant, ImageHeapConstant> replacer : objectToConstantSnapshotReplacers) {
-            ImageHeapConstant result = replacer.apply(destination);
+            ImageHeapConstant result;
+            if (replacer instanceof HeapConstantToConstantReplacer<?> heapObjectReplacer) {
+                var heapResult = heapObjectReplacer.replaceConstant(destination, reachable);
+                if (HeapConstantToConstantReplacer.CANNOT_REPLACE_MARKER.equals(heapResult)) {
+                    return heapResult;
+                }
+                AnalysisError.guarantee(heapResult == null || heapResult instanceof ImageHeapConstant,
+                                "Heap object to constant replacer must always return null, ImageHeapConstant, or the marker constant: %s", heapResult);
+                result = (ImageHeapConstant) heapResult;
+            } else {
+                result = replacer.apply(destination);
+            }
             if (result != null) {
                 AnalysisError.guarantee(allowObjectToConstantReplacement, "Object to constant replacement has been triggered from an unsupported location");
                 AnalysisError.guarantee(imageHeapConstant == null, "Multiple object to constant replacers have been triggered on a single object %s %s %s", destination, imageHeapConstant, result);

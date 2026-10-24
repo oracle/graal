@@ -29,17 +29,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
-import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
-import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.svm.shared.BuildPhaseProvider;
-import com.oracle.svm.core.jfr.JfrJavaEvents;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.jfr.internal.JVM;
+import jdk.jfr.internal.JVMSupport;
 import jdk.jfr.internal.MetadataRepository;
+import jdk.jfr.internal.TypeLibrary;
+import jdk.jfr.internal.event.EventConfiguration;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -52,20 +50,24 @@ import jdk.vm.ci.meta.Signature;
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public class JfrEventSubstitution extends SubstitutionProcessor {
-
-    private final ImageHeapScanner heapScanner;
-
     private final ResolvedJavaType baseEventType;
     private final ConcurrentHashMap<ResolvedJavaType, Boolean> typeSubstitution;
     private final ConcurrentHashMap<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions;
     private final ConcurrentHashMap<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
 
-    JfrEventSubstitution(MetaAccessProvider metaAccess, ImageHeapScanner heapScanner) {
-        this.heapScanner = heapScanner;
+    /**
+     * Event configurations stored for events that do not yet have
+     * the associated analysis type. {@link #takeEventConfiguration(Class)}
+     * is called in {@link JfrEventFeature} when analysis type is created.
+     */
+    private final ConcurrentHashMap<Class<? extends jdk.internal.event.Event>, EventConfiguration> eventConfigurations;
+
+    JfrEventSubstitution(MetaAccessProvider metaAccess) {
         baseEventType = metaAccess.lookupJavaType(jdk.internal.event.Event.class);
         typeSubstitution = new ConcurrentHashMap<>();
         methodSubstitutions = new ConcurrentHashMap<>();
         fieldSubstitutions = new ConcurrentHashMap<>();
+        eventConfigurations = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -138,21 +140,52 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     }
 
     private Boolean initEventClass(ResolvedJavaType eventType) throws RuntimeException {
-        VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished());
         try {
             Class<? extends jdk.internal.event.Event> newEventClass = OriginalClassProvider.getJavaClass(eventType).asSubclass(jdk.internal.event.Event.class);
             eventType.initialize();
 
-            MetadataRepository.getInstance().register(newEventClass);
+            MetadataRepository repository = MetadataRepository.getInstance();
 
-            JfrJavaEvents.registerEventClass(newEventClass);
-            // the reflection registration for the event handler field is delayed to the JfrFeature
-            // duringAnalysis callback so it does not race/interfere with other retransforms
+            EventConfiguration previousConfiguration = JVMSupport.getConfiguration(newEventClass);
+            boolean previouslyUnregistered = previousConfiguration != null && !previousConfiguration.isRegistered();
+            repository.register(newEventClass);
+
+            /*
+             * Retransformation requires the event to have a configuration, that is why register() is called.
+             * The instrumentation is required for the substitution processor, but instrumented methods
+             * reference the configuration that is cleared until AnalysisType is created to reduce number configurations
+             * included in the image heap when the processor is called outside of analysis.
+             */
             JVM.retransformClasses(new Class<?>[]{newEventClass});
 
-            // make sure the EventConfiguration object is fully scanned
-            ScanReason reason = new OtherReason("Manual rescan for " + newEventClass + " triggered from " + JfrEventSubstitution.class);
-            heapScanner.rescanObject(JVM.getConfiguration(newEventClass), reason);
+            /* JDK internal events can still be emitted by the builder VM after retransformation. */
+            if (previousConfiguration == null && jdk.jfr.Event.class.isAssignableFrom(newEventClass)) {
+                /*
+                 * If the event configuration was not previously present, then the external
+                 * effects are reverted - type is unregistered, removed and configuration is reset.
+                 *
+                 * This allows the substitution processor be used outside of analysis, but
+                 * have correct field/method substitutions after instrumentation without
+                 * affecting the image size with configurations for unused types.
+                 * The only "side effect" of this approach, is that the class is still instrumented
+                 * in the builder/host vm.
+                 *
+                 * When analysis type is created for this class, then configuration and type
+                 * information (TypeLibrary) are re-added back in JfrEventFeature in a onTypeCreated event handler.
+                 */
+                EventConfiguration configuration = JVMSupport.getConfiguration(newEventClass);
+                eventConfigurations.put(newEventClass, configuration);
+
+                repository.unregister(newEventClass.asSubclass(jdk.jfr.Event.class));
+                TypeLibrary.removeType(configuration.platformEventType().getId());
+                JVMSupport.setConfiguration(newEventClass, null);
+            } else if (previouslyUnregistered) {
+                /*
+                 * Previous configuration was not registered, mark the current one as
+                 * unregistered and only mark it as registered in JfrEventFeature after analysis type has been created.
+                 */
+                JVMSupport.getConfiguration(newEventClass).platformEventType().setRegistered(false);
+            }
 
             return Boolean.TRUE;
         } catch (Throwable ex) {
@@ -160,7 +193,11 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
         }
     }
 
-    private boolean needsClassRedefinition(ResolvedJavaType type) {
+    EventConfiguration takeEventConfiguration(Class<? extends jdk.internal.event.Event> eventClass) {
+        return eventConfigurations.remove(eventClass);
+    }
+
+    boolean needsClassRedefinition(ResolvedJavaType type) {
         return !type.isAbstract() && baseEventType.isAssignableFrom(type) && !baseEventType.equals(type);
     }
 }

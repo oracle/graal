@@ -172,6 +172,14 @@ public abstract class HostVM {
     }
 
     /**
+     * Register all field value transformers before fields of this type
+     * are accessed.
+     *
+     * @param type the hosted type whose fields are being accessed
+     */
+    public abstract void beforeFieldValueAccess(ResolvedJavaType type);
+
+    /**
      * Run initialization tasks for a newly created {@link AnalysisType}.
      *
      * @param newValue the type to initialize

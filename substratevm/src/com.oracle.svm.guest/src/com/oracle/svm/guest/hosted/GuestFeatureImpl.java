@@ -277,6 +277,11 @@ public final class GuestFeatureImpl {
             // A guest wrapper backed by a host proxy is required because the field transformer is a guest callback.
             beforeAnalysisAccess.registerFieldValueTransformer(field, transformer);
         }
+
+        @Override
+        public void registerBeforeFieldValueAccessHandler(BiConsumer<Feature.BeforeFieldValueAccess, Class<?>> callback, Class<?> subclass) {
+            beforeAnalysisAccess.registerBeforeFieldValueAccessHandler(callback, subclass);
+        }
     }
 
     public static class DuringAnalysisAccessImpl extends BeforeAnalysisAccessImpl implements Feature.DuringAnalysisAccess {

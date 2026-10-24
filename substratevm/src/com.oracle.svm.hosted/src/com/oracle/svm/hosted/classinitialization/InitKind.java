@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,7 @@ package com.oracle.svm.hosted.classinitialization;
  * The initialization kind for a class. The order of the enum values matters, {@link #max} depends
  * on it.
  */
-enum InitKind {
+public enum InitKind {
     /** Class is initialized during image building, so it is already initialized at runtime. */
     BUILD_TIME,
     /** Class should be initialized at runtime and not during image building. */
