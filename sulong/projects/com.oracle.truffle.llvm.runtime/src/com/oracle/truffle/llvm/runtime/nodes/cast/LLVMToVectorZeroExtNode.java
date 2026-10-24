@@ -65,6 +65,30 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
         }
 
         @Specialization
+        @ExplodeLoop
+        protected LLVMI8Vector doFloatVector(LLVMFloatVector from) {
+            assert from.getLength() == getVectorLength();
+            final byte[] vector = new byte[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                float value = from.getValue(i);
+                vector[i] = value < -(float) Byte.MIN_VALUE ? (byte) value : (byte) ((byte) (value + Byte.MIN_VALUE) - Byte.MIN_VALUE);
+            }
+            return LLVMI8Vector.create(vector);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI8Vector doDoubleVector(LLVMDoubleVector from) {
+            assert from.getLength() == getVectorLength();
+            final byte[] vector = new byte[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                double value = from.getValue(i);
+                vector[i] = value < -(double) Byte.MIN_VALUE ? (byte) value : (byte) ((byte) (value + Byte.MIN_VALUE) - Byte.MIN_VALUE);
+            }
+            return LLVMI8Vector.create(vector);
+        }
+
+        @Specialization
         protected LLVMI8Vector doI8Vector(LLVMI8Vector from) {
             assert from.getLength() == getVectorLength();
             return from;
@@ -234,6 +258,30 @@ public abstract class LLVMToVectorZeroExtNode extends LLVMToVectorNode {
             final long[] vector = new long[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
                 vector[i] = from.getValue(i) & LLVMExpressionNode.I32_MASK;
+            }
+            return LLVMI64Vector.create(vector);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI64Vector doFloatVector(LLVMFloatVector from) {
+            assert from.getLength() == getVectorLength();
+            final long[] vector = new long[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                float value = from.getValue(i);
+                vector[i] = value < -(float) Long.MIN_VALUE ? (long) value : (long) (value + Long.MIN_VALUE) - Long.MIN_VALUE;
+            }
+            return LLVMI64Vector.create(vector);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI64Vector doDoubleVector(LLVMDoubleVector from) {
+            assert from.getLength() == getVectorLength();
+            final long[] vector = new long[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                double value = from.getValue(i);
+                vector[i] = value < -(double) Long.MIN_VALUE ? (long) value : (long) (value + Long.MIN_VALUE) - Long.MIN_VALUE;
             }
             return LLVMI64Vector.create(vector);
         }
