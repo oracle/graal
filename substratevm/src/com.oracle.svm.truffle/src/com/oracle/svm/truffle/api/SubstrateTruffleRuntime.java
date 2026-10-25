@@ -32,6 +32,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues.Origin;
 import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -161,7 +162,7 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
             compileQueue = TruffleSupport.singleton().createBackgroundCompileQueue(this);
         }
         if (callTarget.engine.traceTransferToInterpreter) {
-            Deoptimizer.Options.TraceDeoptimization.update(true);
+            Deoptimizer.Options.TraceDeoptimization.update(true, Origin.Runtime);
         }
         installDefaultListeners();
         RuntimeSupport.getRuntimeSupport().addTearDownHook(_ -> teardownCompilerIsolate());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package com.oracle.svm.guest.staging.option;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.collections.EconomicMap;
@@ -55,13 +56,13 @@ import jdk.graal.compiler.options.OptionValues;
 public class RuntimeOptionValues {
     private final EconomicSet<String> allOptionNames;
 
-    private final AtomicReference<OptionValues> v;
+    private final AtomicReference<Snapshot> v;
 
     public RuntimeOptionValues(UnmodifiableEconomicMap<OptionKey<?>, Object> values, EconomicSet<String> allOptionNames) {
         this.allOptionNames = allOptionNames;
 
         updateCache(values);
-        v = new AtomicReference<>(new OptionValues(values));
+        v = new AtomicReference<>(snapshot(null, values, values, Origin.BuildTime));
     }
 
     public static RuntimeOptionsSupport createRuntimeOptionsSupport() {
@@ -86,7 +87,8 @@ public class RuntimeOptionValues {
         return allOptionNames;
     }
 
-    public void update(OptionKey<?> key, Object value) {
+    /// Applies an individual update with its explicit source.
+    public void update(OptionKey<?> key, Object value, Origin origin) {
         if (key instanceof RuntimeOptionKey<?> r) {
             r.validateValueBeforeUpdate(value);
             /*
@@ -96,18 +98,19 @@ public class RuntimeOptionValues {
             r.setRawCachedValue(value);
         }
 
-        OptionValues expect;
-        OptionValues newValues;
+        UnmodifiableEconomicMap<OptionKey<?>, Object> updates = OptionValues.asMap(key, value);
+        Snapshot expect;
+        Snapshot newValues;
         EconomicMap<OptionKey<?>, Object> newMap;
         do {
             expect = v.get();
-            newMap = EconomicMap.create(expect.getMap());
+            newMap = EconomicMap.create(expect.values().getMap());
             if (key instanceof RuntimeOptionKey<?> runtimeOptionKey) {
                 runtimeOptionKey.updateAfterValidation(newMap, value);
             } else {
                 key.update(newMap, value);
             }
-            newValues = new OptionValues(newMap);
+            newValues = snapshot(expect, newMap, updates, origin);
         } while (!v.compareAndSet(expect, newValues));
 
         if (key instanceof RuntimeOptionKey<?> r) {
@@ -115,7 +118,8 @@ public class RuntimeOptionValues {
         }
     }
 
-    public void update(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+    /// Applies an update while preserving its source through value publication.
+    public void update(UnmodifiableEconomicMap<OptionKey<?>, Object> values, Origin origin) {
         if (values.isEmpty()) {
             return;
         }
@@ -123,12 +127,12 @@ public class RuntimeOptionValues {
         validateValues(values);
         updateCache(values);
 
-        OptionValues expect;
-        OptionValues newValues;
+        Snapshot expect;
+        Snapshot newValues;
         EconomicMap<OptionKey<?>, Object> newMap;
         do {
             expect = v.get();
-            newMap = EconomicMap.create(expect.getMap());
+            newMap = EconomicMap.create(expect.values().getMap());
             var cursor = values.getEntries();
             while (cursor.advance()) {
                 OptionKey<?> key = cursor.getKey();
@@ -139,7 +143,7 @@ public class RuntimeOptionValues {
                     key.update(newMap, value);
                 }
             }
-            newValues = new OptionValues(newMap);
+            newValues = snapshot(expect, newMap, values, origin);
         } while (!v.compareAndSet(expect, newValues));
 
         var cursor = values.getEntries();
@@ -151,7 +155,26 @@ public class RuntimeOptionValues {
     }
 
     public OptionValues get() {
+        return v.get().values();
+    }
+
+    /// Gets the values and origins from the same publication.
+    Snapshot getSnapshot() {
         return v.get();
+    }
+
+    /// Retains unchanged origins and attributes explicit and dependent changes to this update.
+    private static Snapshot snapshot(Snapshot previous, UnmodifiableEconomicMap<OptionKey<?>, Object> values,
+                    UnmodifiableEconomicMap<OptionKey<?>, Object> updates, Origin origin) {
+        EconomicMap<OptionKey<?>, Origin> origins = EconomicMap.create();
+        var cursor = values.getEntries();
+        while (cursor.advance()) {
+            OptionKey<?> key = cursor.getKey();
+            boolean updated = previous == null || updates.containsKey(key) || !previous.values().containsKey(key) ||
+                            !Objects.equals(previous.values().getMap().get(key), cursor.getValue());
+            origins.put(key, updated ? origin : previous.origin(key));
+        }
+        return new Snapshot(new OptionValues(values), origins);
     }
 
     public UnmodifiableEconomicMap<OptionKey<?>, Object> getMap() {
@@ -196,6 +219,43 @@ public class RuntimeOptionValues {
             if (cursor.getKey() instanceof RuntimeOptionKey<?> runtimeOptionKey) {
                 runtimeOptionKey.validateValueBeforeUpdate(cursor.getValue());
             }
+        }
+    }
+
+    /// Identifies how an option received its current value.
+    public enum Origin {
+        /// Uses the option's declared default.
+        Default("default"),
+
+        /// Was supplied while building the image.
+        BuildTime("build-time"),
+
+        /// Was supplied through runtime arguments from any entry point, including JNI VM creation.
+        /// Uses the label "command line" for compatibility with HotSpot.
+        CommandLine("command line"),
+
+        /// Was set programmatically at runtime.
+        Runtime("runtime");
+
+        /// Preserves the diagnostic label independently of the enum constant's spelling.
+        private final String displayName;
+
+        Origin(String displayName) {
+            this.displayName = displayName;
+        }
+
+        @Override
+        public String toString() {
+            return displayName;
+        }
+    }
+
+    /// Publishes values and their origins together so diagnostic output (e.g., `-XX:+PrintFlagsFinal`)
+    /// observes a consistent pair.
+    record Snapshot(OptionValues values, UnmodifiableEconomicMap<OptionKey<?>, Origin> origins) {
+        /// Gets the origin of the current value, including an unset option's default.
+        Origin origin(OptionKey<?> key) {
+            return origins.get(key, Origin.Default);
         }
     }
 }

@@ -106,6 +106,10 @@ public final class RuntimeSupport implements VMRuntimeSupport, RuntimeStateSuppo
             IsolateArgumentParser.singleton().verifyOptionValues();
             HeapSizeVerifier.verifyHeapOptions();
 
+            if (SubstrateGuestOptions.PrintFlagsFinal.getValue()) {
+                RuntimeOptionParser.singleton().printFinalFlags();
+            }
+
             executeHooks(startupHooks);
             VMError.guarantee(initializationState.compareAndSet(InitializationState.InProgress, InitializationState.Done), "Only one thread can call the initialization");
         } else if (initializationState.get() != InitializationState.Done) {
