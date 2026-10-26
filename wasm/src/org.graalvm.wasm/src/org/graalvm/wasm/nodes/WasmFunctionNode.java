@@ -4493,6 +4493,36 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 WasmFrame.pushReference(frame, virtualState.stackPointer++, array);
                 break;
             }
+            case Bytecode.BR_ON_CAST_U8:
+            case Bytecode.BR_ON_CAST_FAIL_U8: {
+                final int expectedReferenceType = rawPeekI32(state.bytecode, offset + 2);
+                final boolean brOnCastFail = aggregateOpcode == Bytecode.BR_ON_CAST_FAIL_U8;
+
+                // Peek at top of stack instead of popping and pushing the same value.
+                Object ref = frame.getObjectStatic(virtualState.stackPointer - 1);
+                boolean match = state.thiz.runTimeTypeCheck(expectedReferenceType, ref);
+                if (profileCondition(state.bytecode, offset + 7, match != brOnCastFail)) {
+                    final int offsetDelta = rawPeekU8(state.bytecode, offset + 6);
+                    // BR_ON_CAST_U8 encodes the back jump value as a positive byte value.
+                    // BR_ON_CAST_U8 can never perform a forward jump.
+                    return offset + 6 - offsetDelta;
+                }
+                return offset + 9;
+            }
+            case Bytecode.BR_ON_CAST_I32:
+            case Bytecode.BR_ON_CAST_FAIL_I32: {
+                final int expectedReferenceType = rawPeekI32(state.bytecode, offset + 2);
+                final boolean brOnCastFail = aggregateOpcode == Bytecode.BR_ON_CAST_FAIL_I32;
+
+                // Peek at top of stack instead of popping and pushing the same value.
+                Object ref = frame.getObjectStatic(virtualState.stackPointer - 1);
+                boolean match = state.thiz.runTimeTypeCheck(expectedReferenceType, ref);
+                if (profileCondition(state.bytecode, offset + 10, match != brOnCastFail)) {
+                    final int offsetDelta = rawPeekI32(state.bytecode, offset + 6);
+                    return offset + 6 + offsetDelta;
+                }
+                return offset + 12;
+            }
             default: {
                 nextOffset = state.thiz.executeAggregate(state.instance, frame, offset + 2, virtualState.stackPointer, aggregateOpcode);
                 virtualState.stackPointer += StackEffects.getAggregateOpStackEffect(aggregateOpcode);
@@ -5436,40 +5466,6 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                     throw WasmException.create(Failure.CAST_FAILURE, this);
                 }
                 WasmFrame.pushReference(frame, stackPointer - 1, ref);
-                break;
-            }
-            case Bytecode.BR_ON_CAST_U8:
-            case Bytecode.BR_ON_CAST_FAIL_U8: {
-                final int expectedReferenceType = rawPeekI32(bytecode, offset);
-                final boolean brOnCastFail = aggregateOpcode == Bytecode.BR_ON_CAST_FAIL_U8;
-
-                // Peek at top of stack instead of popping and pushing the same value.
-                Object ref = frame.getObjectStatic(stackPointer - 1);
-                boolean match = runTimeTypeCheck(expectedReferenceType, ref);
-                if (profileCondition(bytecode, offset + 5, match != brOnCastFail)) {
-                    final int offsetDelta = rawPeekU8(bytecode, offset + 4);
-                    // BR_ON_CAST_U8 encodes the back jump value as a positive byte value.
-                    // BR_ON_CAST_U8 can never perform a forward jump.
-                    offset = offset + 4 - offsetDelta;
-                } else {
-                    offset += 7;
-                }
-                break;
-            }
-            case Bytecode.BR_ON_CAST_I32:
-            case Bytecode.BR_ON_CAST_FAIL_I32: {
-                final int expectedReferenceType = rawPeekI32(bytecode, offset);
-                final boolean brOnCastFail = aggregateOpcode == Bytecode.BR_ON_CAST_FAIL_I32;
-
-                // Peek at top of stack instead of popping and pushing the same value.
-                Object ref = frame.getObjectStatic(stackPointer - 1);
-                boolean match = runTimeTypeCheck(expectedReferenceType, ref);
-                if (profileCondition(bytecode, offset + 8, match != brOnCastFail)) {
-                    final int offsetDelta = rawPeekI32(bytecode, offset + 4);
-                    offset = offset + 4 + offsetDelta;
-                } else {
-                    offset += 10;
-                }
                 break;
             }
             case Bytecode.REF_I31: {
