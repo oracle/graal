@@ -36,6 +36,7 @@ import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
+import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
 import com.oracle.svm.shared.option.CommonOptionParser;
 import com.oracle.svm.truffle.SubstrateTruffleCompilationIdentifier;
 import com.oracle.truffle.compiler.TruffleCompilable;
@@ -48,6 +49,7 @@ import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
@@ -68,12 +70,12 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleCompilerImpl(TruffleCompilerConfiguration config) {
-        super(config);
+        super(config, RuntimeCompilationFeature.singleton().getHostedProviders().getGraphBuilderPlugins());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    protected PartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration configuration) {
+    protected PartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration configuration, GraphBuilderConfiguration builderConfig) {
         return new SubstratePartialEvaluator(configuration, builderConfig);
     }
 

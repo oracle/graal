@@ -194,10 +194,10 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         GraphBuilderPhase phase = (GraphBuilderPhase) lastTier.backend().getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
         Plugins plugins = phase.getGraphBuilderConfig().getPlugins();
 
-        final TruffleCompilerConfiguration compilerConfig = new TruffleCompilerConfiguration(runtime, plugins, snippetReflection,
+        final TruffleCompilerConfiguration compilerConfig = new TruffleCompilerConfiguration(runtime, snippetReflection,
                         firstTier, lastTier, knownTruffleTypes, hostSuites, openCanCallTruffleRuntimeScope);
 
-        HotSpotTruffleCompilerImpl compiler = new HotSpotTruffleCompilerImpl(graalRuntime, compilerConfig);
+        HotSpotTruffleCompilerImpl compiler = new HotSpotTruffleCompilerImpl(graalRuntime, compilerConfig, plugins);
 
         /*
          * Through inlining during host the truffle compiler may be used we also need to install the
@@ -269,8 +269,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         return HotSpotGraalCompilerFactory.createCompiler("Truffle", runtime, options, compilerConfigurationFactory, null);
     }
 
-    public HotSpotTruffleCompilerImpl(HotSpotGraalRuntimeProvider hotspotGraalRuntime, TruffleCompilerConfiguration config) {
-        super(config);
+    public HotSpotTruffleCompilerImpl(HotSpotGraalRuntimeProvider hotspotGraalRuntime, TruffleCompilerConfiguration config, Plugins plugins) {
+        super(config, plugins);
         this.hotspotGraalRuntime = hotspotGraalRuntime;
         getPartialEvaluator().setJvmciReservedReference0Offset(hotspotGraalRuntime.getVMConfig().jvmciReservedReference0Offset);
     }
@@ -310,7 +310,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
-    protected HotSpotPartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration configuration) {
+    protected HotSpotPartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration configuration, GraphBuilderConfiguration builderConfig) {
         return new HotSpotPartialEvaluator(configuration, builderConfig);
     }
 
