@@ -42,6 +42,8 @@ package com.oracle.truffle.api.bytecode.test;
 
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -63,6 +65,14 @@ public class NotUpdatableBytecodeTest {
 
         protected TracingDisabledRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
+        }
+
+        @Operation
+        public static final class Add {
+            @Specialization
+            public static int doInts(int a, int b) {
+                return a + b;
+            }
         }
     }
 
