@@ -27,6 +27,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-79418: Guest-language inlining now uses Graal IR call-site frequencies instead of runtime direct-call counters. Language implementations should ensure that injected branch probabilities are accurate because inaccurate probabilities are likely to cause peak-performance regressions.
 * GR-61178: Bytecode DSL: Added support for `StackValue`s, handles to temporary stack operands. Languages can use `BindStackValue` to obtain a `StackValue` and then access the current operand value with `LoadStackValue` and `StoreStackValue`. Stack values are useful for supporting common subexpressions/temporary values without using locals.
 * GR-72480: Bytecode DSL: Implemented compressed source information, configurable with `@GenerateBytecode(enableCompressedSources = true|false)`. Compression is enabled by default and reduces the source-table memory footprint, at the cost of slower decoding when source information is accessed.
+* Bytecode DSL: Constants used inside a `finally` handler are now serialized once, in the outermost context that can decode them, and the handler refers to that entry. Replays of the handler and the enclosing code therefore share one deserialized instance. A constant that references a root node declared inside the handler stays in the handler's own table. Equality-based deduplication is unchanged. Previously serialized bytecode still deserializes.
 
 ## Version 25.3
 * GR-57730: Improved descriptive `toString()` output for Polyglot API objects and builders.
