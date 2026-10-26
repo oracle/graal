@@ -348,23 +348,17 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @param commonLabelValueType The common value type of the values carried when branching to the
      *            label. See {@link WasmType#getCommonValueType(int[])}.
      * @param legacyCatchDepth The number of active legacy catches that must remain active when
-     *            control transfers to this label. A {@code LEGACY_CATCH_UNWIND} instruction after
-     *            the label stores the depth if it is non-zero.
+     *            control transfers to this label. When {@code unwindLegacyCatches} is true, a
+     *            {@code LEGACY_CATCH_UNWIND} instruction after the label stores this depth.
+     * @param unwindLegacyCatches Whether to emit legacy catch-depth metadata after the label. This
+     *            must be true for legacy catch entry labels and labels reached by branches that exit
+     *            active catches.
      * @return The location of the label in the bytecode, after the fallthrough skip instruction.
-     */
-    public int addLabel(int labelArity, int stackSize, int commonLabelValueType, int legacyCatchDepth) {
-        return addLabel(labelArity, stackSize, commonLabelValueType, legacyCatchDepth, false);
-    }
-
-    /**
-     * Emits explicit depth-zero cleanup when a branch exits all active catches. Otherwise absent
-     * catch metadata means no depth change.
      */
     public int addLabel(int labelArity, int stackSize, int commonLabelValueType, int legacyCatchDepth, boolean unwindLegacyCatches) {
         assert commonLabelValueType == WasmType.NONE_COMMON_TYPE || commonLabelValueType == WasmType.NUM_COMMON_TYPE || commonLabelValueType == WasmType.OBJ_COMMON_TYPE ||
                         commonLabelValueType == WasmType.MIX_COMMON_TYPE : "invalid label value type";
         assert labelArity >= 0 && stackSize >= 0 && legacyCatchDepth >= 0;
-        final boolean hasLegacyCatchUnwind = unwindLegacyCatches || legacyCatchDepth != 0;
         final int location;
         if (labelArity <= 1 && stackSize <= 63) {
             if (labelArity == 0) {
@@ -372,7 +366,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             } else {
                 assert commonLabelValueType == WasmType.NUM_COMMON_TYPE || commonLabelValueType == WasmType.OBJ_COMMON_TYPE : "Single label value must either have number or reference type.";
             }
-            addSkipLabel(hasLegacyCatchUnwind, Bytecode.SKIP_LABEL_U8, Bytecode.LEGACY_SKIP_LABEL_U8);
+            addSkipLabel(unwindLegacyCatches, Bytecode.SKIP_LABEL_U8, Bytecode.LEGACY_SKIP_LABEL_U8);
             location = location();
             add1(Bytecode.LABEL_U8);
             final int encodedLabelValueType = switch (commonLabelValueType) {
@@ -383,20 +377,20 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             };
             add1(encodedLabelValueType | stackSize);
         } else if (labelArity <= 63 && fitsIntoUnsignedByte(stackSize)) {
-            addSkipLabel(hasLegacyCatchUnwind, Bytecode.SKIP_LABEL_U16, Bytecode.LEGACY_SKIP_LABEL_U16);
+            addSkipLabel(unwindLegacyCatches, Bytecode.SKIP_LABEL_U16, Bytecode.LEGACY_SKIP_LABEL_U16);
             location = location();
             add1(Bytecode.LABEL_U16);
             add1(commonLabelValueType << BytecodeBitEncoding.LABEL_U16_VALUE_TYPE_SHIFT | labelArity);
             add1(stackSize);
         } else {
-            addSkipLabel(hasLegacyCatchUnwind, Bytecode.SKIP_LABEL_I32, Bytecode.LEGACY_SKIP_LABEL_I32);
+            addSkipLabel(unwindLegacyCatches, Bytecode.SKIP_LABEL_I32, Bytecode.LEGACY_SKIP_LABEL_I32);
             location = location();
             add1(Bytecode.LABEL_I32);
             add1(commonLabelValueType);
             add4(labelArity);
             add4(stackSize);
         }
-        if (hasLegacyCatchUnwind) {
+        if (unwindLegacyCatches) {
             add1(Bytecode.MISC);
             add1(Bytecode.LEGACY_CATCH_UNWIND);
             add4(legacyCatchDepth);
@@ -414,7 +408,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     public int addLabel(int labelArity, int stackSize, int commonLabelValueType) {
-        return addLabel(labelArity, stackSize, commonLabelValueType, 0);
+        return addLabel(labelArity, stackSize, commonLabelValueType, 0, false);
     }
 
     /**
@@ -426,15 +420,9 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      *            {@link WasmType#getCommonValueType(int[])}.
      * @param legacyCatchDepth The number of active legacy catches that must remain active when
      *            control transfers to this loop label.
+     * @param hasLegacyCatches Whether the function contains legacy catches and the loop label
+     *            therefore needs explicit catch-depth metadata.
      * @return The location of the loop label in the bytecode.
-     */
-    public int addLoopLabel(int paramCount, int stackSize, int commonParamType, int legacyCatchDepth) {
-        return addLoopLabel(paramCount, stackSize, commonParamType, legacyCatchDepth, false);
-    }
-
-    /**
-     * In functions containing legacy catches, loop headers need explicit cleanup even at depth zero:
-     * a catch later in the body may branch back to this label.
      */
     public int addLoopLabel(int paramCount, int stackSize, int commonParamType, int legacyCatchDepth, boolean hasLegacyCatches) {
         int loopLabel = addLabel(paramCount, stackSize, commonParamType, legacyCatchDepth, hasLegacyCatches);
@@ -443,7 +431,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     public int addLoopLabel(int paramCount, int stackSize, int commonParamType) {
-        return addLoopLabel(paramCount, stackSize, commonParamType, 0);
+        return addLoopLabel(paramCount, stackSize, commonParamType, 0, false);
     }
 
     /**

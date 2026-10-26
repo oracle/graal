@@ -133,7 +133,7 @@ public class BytecodeSuite {
 
     @Test
     public void testLegacyLabelU8Encoding() {
-        test(b -> b.addLabel(1, 20, WasmType.NUM_COMMON_TYPE, 3), new byte[]{
+        test(b -> b.addLabel(1, 20, WasmType.NUM_COMMON_TYPE, 3, true), new byte[]{
                         (byte) Bytecode.MISC, (byte) Bytecode.LEGACY_SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0x94,
                         (byte) Bytecode.MISC, (byte) Bytecode.LEGACY_CATCH_UNWIND,
                         0x03, 0x00, 0x00, 0x00});
@@ -141,7 +141,7 @@ public class BytecodeSuite {
 
     @Test
     public void testLegacyLabelU16Encoding() {
-        test(b -> b.addLabel(2, 64, WasmType.NUM_COMMON_TYPE, 3), new byte[]{
+        test(b -> b.addLabel(2, 64, WasmType.NUM_COMMON_TYPE, 3, true), new byte[]{
                         (byte) Bytecode.MISC, (byte) Bytecode.LEGACY_SKIP_LABEL_U16, Bytecode.LABEL_U16, 0x42, 0x40,
                         (byte) Bytecode.MISC, (byte) Bytecode.LEGACY_CATCH_UNWIND,
                         0x03, 0x00, 0x00, 0x00});
@@ -149,10 +149,15 @@ public class BytecodeSuite {
 
     @Test
     public void testLegacyLabelI32Encoding() {
-        test(b -> b.addLabel(64, 256, WasmType.NUM_COMMON_TYPE, 3), new byte[]{
+        test(b -> b.addLabel(64, 256, WasmType.NUM_COMMON_TYPE, 3, true), new byte[]{
                         (byte) Bytecode.MISC, (byte) Bytecode.LEGACY_SKIP_LABEL_I32, Bytecode.LABEL_I32, 0x01, 0x40, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
                         (byte) Bytecode.MISC, (byte) Bytecode.LEGACY_CATCH_UNWIND,
                         0x03, 0x00, 0x00, 0x00});
+    }
+
+    @Test
+    public void testNonzeroLegacyCatchDepthWithoutUnwind() {
+        test(b -> b.addLabel(0, 0, WasmType.NONE_COMMON_TYPE, 3, false), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, 0x00});
     }
 
     @Test
@@ -186,7 +191,7 @@ public class BytecodeSuite {
      */
     @Test
     public void testAddLoopLabel() {
-        test(b -> b.addLoopLabel(1, 20, WasmType.NUM_COMMON_TYPE, 0), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0x94, Bytecode.LOOP});
+        test(b -> b.addLoopLabel(1, 20, WasmType.NUM_COMMON_TYPE, 0, false), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0x94, Bytecode.LOOP});
     }
 
     @Test
@@ -357,7 +362,7 @@ public class BytecodeSuite {
                 for (int depth : new int[]{0, 1, 256}) {
                     RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
                     bytecode.addOp(Bytecode.NOP);
-                    int label = bytecode.addLabel(arity, stackSize, arity == 0 ? WasmType.NONE_COMMON_TYPE : WasmType.NUM_COMMON_TYPE, depth);
+                    int label = bytecode.addLabel(arity, stackSize, arity == 0 ? WasmType.NONE_COMMON_TYPE : WasmType.NUM_COMMON_TYPE, depth, depth != 0);
                     Assert.assertEquals(depth == 0 ? 2 : 3, label);
                     byte[] bytes = bytecode.toArray();
                     int labelSize = arity <= 1 && stackSize <= 63 ? 2 : arity <= 63 && stackSize <= 255 ? 3 : 10;
@@ -456,7 +461,7 @@ public class BytecodeSuite {
         for (int stackSize : new int[]{0, 64, 256}) {
             RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
             bytecode.addOp(Bytecode.NOP);
-            int label = bytecode.addLoopLabel(1, stackSize, WasmType.OBJ_COMMON_TYPE, 2);
+            int label = bytecode.addLoopLabel(1, stackSize, WasmType.OBJ_COMMON_TYPE, 2, true);
             byte[] bytes = bytecode.toArray();
             Assert.assertEquals(3, label);
             int labelSize = stackSize <= 63 ? 2 : stackSize <= 255 ? 3 : 10;

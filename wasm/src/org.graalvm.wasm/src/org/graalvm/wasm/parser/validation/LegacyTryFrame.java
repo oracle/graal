@@ -133,7 +133,7 @@ public final class LegacyTryFrame extends ControlFrame {
         }
         initializedLocals = (BitSet) parentFrame.initializedLocals.clone();
         inCatchClause = true;
-        final int catchLabel = bytecode.addLabel(paramTypes.length, initialStackSize(), WasmType.getCommonValueType(paramTypes), legacyCatchDepth());
+        final int catchLabel = bytecode.addLabel(paramTypes.length, initialStackSize(), WasmType.getCommonValueType(paramTypes), legacyCatchDepth(), true);
         final ExceptionHandler handler = new ExceptionHandler(opcode, tag, catchLabel);
         addProtectedRegionHandler(handler);
         // Since catch is a separate block the unreachable state has to be reset.
