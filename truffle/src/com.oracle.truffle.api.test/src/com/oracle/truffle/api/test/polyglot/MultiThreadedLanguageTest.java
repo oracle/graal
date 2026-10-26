@@ -70,6 +70,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -162,6 +163,20 @@ public class MultiThreadedLanguageTest extends AbstractThreadedPolyglotTest {
         }
     }
 
+    private static String threadDescriptionPattern(Thread thread) {
+        // The first '#' introduces the thread ID; do not match IDs in names or prefixes of other IDs.
+        return "[^#]*#" + thread.threadId() + "(?![0-9]).*";
+    }
+
+    private static void assertThreadAccessError(String message, Thread requestingThread, Thread activeThread) {
+        String pattern = Pattern.quote("Multi threaded access requested by thread ") + threadDescriptionPattern(requestingThread) +
+                        Pattern.quote(" but is not allowed for language(s) " + MultiThreadedLanguage.ID + ".");
+        if (activeThread != null) {
+            pattern += Pattern.quote(" Thread ") + threadDescriptionPattern(activeThread) + Pattern.quote(" was already active.");
+        }
+        assertTrue(message, message.matches(pattern));
+    }
+
     @Test
     public void testSingleThreadedAccessErrorIncludesActiveThread() throws Exception {
         MultiThreadedLanguage.isThreadAccessAllowed = (req) -> req.singleThreaded;
@@ -184,9 +199,7 @@ public class MultiThreadedLanguageTest extends AbstractThreadedPolyglotTest {
                             context.enter();
                             context.leave();
                         }, IllegalStateException.class, (e) -> {
-                            assertTrue(e.getMessage(), e.getMessage().contains("Multi threaded access requested by thread "));
-                            assertTrue(e.getMessage(), e.getMessage().contains("requesting-thread"));
-                            assertTrue(e.getMessage(), e.getMessage().endsWith(" Thread " + activeThread + " was already active."));
+                            assertThreadAccessError(e.getMessage(), Thread.currentThread(), activeThread);
                         });
                     }).get(10, TimeUnit.SECONDS);
                 } finally {
@@ -224,7 +237,7 @@ public class MultiThreadedLanguageTest extends AbstractThreadedPolyglotTest {
             };
             MultiThreadedLanguage.isThreadAccessAllowed = denyMultiThreadedAccess;
             AbstractPolyglotTest.assertFails(() -> context.initialize(MultiThreadedLanguage.ID), IllegalStateException.class, (e) -> {
-                assertEquals("Multi threaded access requested by thread " + deniedThread.get() + " but is not allowed for language(s) " + MultiThreadedLanguage.ID + ".", e.getMessage());
+                assertThreadAccessError(e.getMessage(), deniedThread.get(), null);
             });
 
             MultiThreadedLanguage.isThreadAccessAllowed = (req) -> true;
@@ -236,7 +249,7 @@ public class MultiThreadedLanguageTest extends AbstractThreadedPolyglotTest {
                     context.enter();
                     context.leave();
                 }, IllegalStateException.class, (e) -> {
-                    assertEquals("Multi threaded access requested by thread " + deniedThread.get() + " but is not allowed for language(s) " + MultiThreadedLanguage.ID + ".", e.getMessage());
+                    assertThreadAccessError(e.getMessage(), deniedThread.get(), null);
                 });
             }).get(10, TimeUnit.SECONDS);
         }
@@ -767,7 +780,7 @@ public class MultiThreadedLanguageTest extends AbstractThreadedPolyglotTest {
             eval(context, (env) -> {
                 AbstractPolyglotTest.assertFails(() -> env.newTruffleThreadBuilder(() -> {
                 }).virtual(vthreads).build(), IllegalStateException.class, (ise) -> {
-                    assertEquals("Multi threaded access requested by thread " + deniedThread.get() + " but is not allowed for language(s) " + MultiThreadedLanguage.ID + ".", ise.getMessage());
+                    assertThreadAccessError(ise.getMessage(), deniedThread.get(), null);
                 });
                 return null;
             });
