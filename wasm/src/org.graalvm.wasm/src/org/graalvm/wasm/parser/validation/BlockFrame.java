@@ -89,7 +89,7 @@ class BlockFrame extends ControlFrame {
         if (labelFixups.isEmpty()) {
             return;
         }
-        final int location = bytecode.addLabel(resultTypeLength(), initialStackSize(), commonResultType(), legacyCatchDepth());
+        final int location = addBranchLabel(bytecode);
         for (BytecodeFixup labelFixup : labelFixups) {
             labelFixup.patch(location);
         }

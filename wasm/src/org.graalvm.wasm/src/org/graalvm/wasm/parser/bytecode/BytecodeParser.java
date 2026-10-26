@@ -391,7 +391,7 @@ public abstract class BytecodeParser {
                 effectiveOffset++;
                 break;
             case BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_U16:
-                maxStackSize = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                maxStackSize = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                 effectiveOffset += 2;
                 break;
             case BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_I32:
@@ -507,11 +507,6 @@ public abstract class BytecodeParser {
                 case Bytecode.CALL_REF_I32: {
                     callNodes.add(new CallNode(originalOffset));
                     offset += 8;
-                    break;
-                }
-                case Bytecode.SELECT:
-                case Bytecode.SELECT_OBJ: {
-                    offset += 2;
                     break;
                 }
                 case Bytecode.UNREACHABLE:
@@ -652,11 +647,6 @@ public abstract class BytecodeParser {
                 case Bytecode.REF_IS_NULL: {
                     break;
                 }
-                case Bytecode.SKIP_LABEL_U8:
-                case Bytecode.SKIP_LABEL_U16:
-                case Bytecode.SKIP_LABEL_I32:
-                    offset += opcode;
-                    break;
                 case Bytecode.LABEL_U8:
                 case Bytecode.LOCAL_GET_U8:
                 case Bytecode.LOCAL_GET_OBJ_U8:
@@ -690,20 +680,22 @@ public abstract class BytecodeParser {
                 case Bytecode.I64_STORE_16_U8:
                 case Bytecode.I64_STORE_32_U8:
                 case Bytecode.I32_CONST_I8:
-                case Bytecode.I64_CONST_I8: {
-                    offset++;
-                    break;
-                }
+                case Bytecode.I64_CONST_I8:
                 case Bytecode.BR_U8:
                 case Bytecode.RETURN_CALL_U8:
                 case Bytecode.RETURN_CALL_REF_U8: {
                     offset += 1;
                     break;
                 }
+                case Bytecode.SKIP_LABEL_U8:
                 case Bytecode.LABEL_U16:
                 case Bytecode.RETURN_CALL_INDIRECT_U8:
+                case Bytecode.SELECT:
+                case Bytecode.SELECT_OBJ: {
                     offset += 2;
                     break;
+                }
+                case Bytecode.SKIP_LABEL_U16:
                 case Bytecode.BR_IF_U8: {
                     offset += 3;
                     break;
@@ -752,20 +744,26 @@ public abstract class BytecodeParser {
                 case Bytecode.I64_CONST_I64:
                 case Bytecode.F64_CONST:
                 case Bytecode.NOTIFY:
-                case Bytecode.RETURN_CALL_INDIRECT_I32:
+                case Bytecode.RETURN_CALL_INDIRECT_I32: {
                     offset += 8;
                     break;
-                case Bytecode.LABEL_I32:
+                }
+                case Bytecode.LABEL_I32: {
                     offset += 9;
                     break;
+                }
+                case Bytecode.SKIP_LABEL_I32: {
+                    offset += 10;
+                    break;
+                }
                 case Bytecode.BR_TABLE_U8: {
                     final int size = rawPeekU8(bytecode, offset);
-                    offset += 3 + size * 6;
+                    offset += BytecodeBitEncoding.BR_TABLE_U8_HEADER_SIZE - 1 + size * BytecodeBitEncoding.BR_TABLE_ITEM_SIZE;
                     break;
                 }
                 case Bytecode.BR_TABLE_I32: {
                     final int size = rawPeekI32(bytecode, offset);
-                    offset += 6 + size * 6;
+                    offset += BytecodeBitEncoding.BR_TABLE_I32_HEADER_SIZE - 1 + size * BytecodeBitEncoding.BR_TABLE_ITEM_SIZE;
                     break;
                 }
                 case Bytecode.I32_LOAD:
@@ -870,21 +868,10 @@ public abstract class BytecodeParser {
                             offset += 4;
                             break;
                         }
-                        case Bytecode.LEGACY_SKIP_LABEL_U8: {
-                            // Legacy skip labels embed the label-local unwind helper, so the
-                            // reread path has to recover the reserved legacy catch depth here.
-                            maxLegacyCatchDepth = Math.max(maxLegacyCatchDepth, rawPeekI32(bytecode, offset + 4));
-                            offset += 8;
-                            break;
-                        }
-                        case Bytecode.LEGACY_SKIP_LABEL_U16: {
-                            maxLegacyCatchDepth = Math.max(maxLegacyCatchDepth, rawPeekI32(bytecode, offset + 5));
-                            offset += 9;
-                            break;
-                        }
+                        case Bytecode.LEGACY_SKIP_LABEL_U8:
+                        case Bytecode.LEGACY_SKIP_LABEL_U16:
                         case Bytecode.LEGACY_SKIP_LABEL_I32: {
-                            maxLegacyCatchDepth = Math.max(maxLegacyCatchDepth, rawPeekI32(bytecode, offset + 12));
-                            offset += 16;
+                            // Scan the following label and catch-unwind instruction separately.
                             break;
                         }
                         case Bytecode.I32_TRUNC_SAT_F32_S:

@@ -119,7 +119,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds an opcode to the bytecode. See {@link Bytecode} for a list of opcodes.
-     * 
+     *
      * @param opcode The opcode
      */
     public void addOp(int opcode) {
@@ -130,7 +130,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     /**
      * Adds an opcode and an i32 immediate value to the bytecode. See {@link Bytecode} for a list of
      * opcode.
-     * 
+     *
      * @param opcode The opcode
      * @param value The immediate value
      */
@@ -143,7 +143,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     /**
      * Adds an opcode and an i64 immediate value to the bytecode. See {@link Bytecode} for a list of
      * opcodes.
-     * 
+     *
      * @param opcode The opcode
      * @param value The immediate value
      */
@@ -169,7 +169,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     /**
      * Adds an opcode and two i32 immediate values to the bytecode. See {@link Bytecode} for a list
      * of opcodes.
-     * 
+     *
      * @param opcode The opcode
      * @param value1 The first immediate value
      * @param value2 The second immediate value
@@ -185,7 +185,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * Adds an opcode and an immediate value to the bytecode. If the value fits into a signed i8
      * value, the i8 opcode and an i8 value are added. Otherwise, the i32 opcode and an i32 value
      * are added. See {@link Bytecode} for a list of opcode.
-     * 
+     *
      * @param opcodeI8 The i8 opcode
      * @param opcodeI32 The i32 opcode
      * @param value The immediate value
@@ -266,7 +266,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * indexType64 is false, the u8 opcode and a u8 value are added. If the value fits into a i32
      * value and indexType64 is false, the i32 opcode and an i32 value are added. Otherwise, the
      * generic opcode and data encoding are added. See {@link Bytecode} for a list of opcode.
-     * 
+     *
      * @param opcode The generic memory opcode
      * @param opcodeU8 The u8 memory opcode
      * @param opcodeI32 The i32 memory opcode
@@ -339,22 +339,26 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
-     * Adds a branch label to the bytecode.
+     * Adds a fallthrough skip instruction followed by a branch label. Labels unwind the interpreter
+     * stack; compiled branches normalize before the target and skip the label. Legacy skip
+     * instructions also bypass the trailing catch-unwind metadata.
      *
      * @param labelArity The number of values carried when branching to the label.
      * @param stackSize The stack size at the start of the block.
      * @param commonLabelValueType The common value type of the values carried when branching to the
      *            label. See {@link WasmType#getCommonValueType(int[])}.
      * @param legacyCatchDepth The number of active legacy catches that must remain active when
-     *            control transfers to this label. If non-zero, the label is immediately followed by
-     *            a {@code LEGACY_CATCH_UNWIND} helper bytecode. Non-legacy labels keep their
-     *            previous encoding unchanged.
-     * @return The location of the label in the bytecode.
+     *            control transfers to this label. When {@code unwindLegacyCatches} is true, a
+     *            {@code LEGACY_CATCH_UNWIND} instruction after the label stores this depth.
+     * @param unwindLegacyCatches Whether to emit legacy catch-depth metadata after the label. This
+     *            must be true for legacy catch entry labels and labels reached by branches that exit
+     *            active catches.
+     * @return The location of the label in the bytecode, after the fallthrough skip instruction.
      */
-    public int addLabel(int labelArity, int stackSize, int commonLabelValueType, int legacyCatchDepth) {
+    public int addLabel(int labelArity, int stackSize, int commonLabelValueType, int legacyCatchDepth, boolean unwindLegacyCatches) {
         assert commonLabelValueType == WasmType.NONE_COMMON_TYPE || commonLabelValueType == WasmType.NUM_COMMON_TYPE || commonLabelValueType == WasmType.OBJ_COMMON_TYPE ||
                         commonLabelValueType == WasmType.MIX_COMMON_TYPE : "invalid label value type";
-        final boolean hasLegacyCatchUnwind = legacyCatchDepth != 0;
+        assert labelArity >= 0 && stackSize >= 0 && legacyCatchDepth >= 0;
         final int location;
         if (labelArity <= 1 && stackSize <= 63) {
             if (labelArity == 0) {
@@ -362,31 +366,25 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             } else {
                 assert commonLabelValueType == WasmType.NUM_COMMON_TYPE || commonLabelValueType == WasmType.OBJ_COMMON_TYPE : "Single label value must either have number or reference type.";
             }
-            addSkipLabel(hasLegacyCatchUnwind, Bytecode.SKIP_LABEL_U8, Bytecode.LEGACY_SKIP_LABEL_U8);
+            addSkipLabel(unwindLegacyCatches, Bytecode.SKIP_LABEL_U8, Bytecode.LEGACY_SKIP_LABEL_U8);
             location = location();
             add1(Bytecode.LABEL_U8);
-            final int encodedLabelValueType = switch (commonLabelValueType) {
-                case WasmType.NONE_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_NONE;
-                case WasmType.NUM_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_NUM;
-                case WasmType.OBJ_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_OBJ;
-                default -> throw new IllegalArgumentException("Invalid common label value type: " + commonLabelValueType);
-            };
-            add1(encodedLabelValueType | stackSize);
+            add1(commonLabelValueType << BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_SHIFT | stackSize);
         } else if (labelArity <= 63 && fitsIntoUnsignedByte(stackSize)) {
-            addSkipLabel(hasLegacyCatchUnwind, Bytecode.SKIP_LABEL_U16, Bytecode.LEGACY_SKIP_LABEL_U16);
+            addSkipLabel(unwindLegacyCatches, Bytecode.SKIP_LABEL_U16, Bytecode.LEGACY_SKIP_LABEL_U16);
             location = location();
             add1(Bytecode.LABEL_U16);
             add1(commonLabelValueType << BytecodeBitEncoding.LABEL_U16_VALUE_TYPE_SHIFT | labelArity);
             add1(stackSize);
         } else {
-            addSkipLabel(hasLegacyCatchUnwind, Bytecode.SKIP_LABEL_I32, Bytecode.LEGACY_SKIP_LABEL_I32);
+            addSkipLabel(unwindLegacyCatches, Bytecode.SKIP_LABEL_I32, Bytecode.LEGACY_SKIP_LABEL_I32);
             location = location();
             add1(Bytecode.LABEL_I32);
             add1(commonLabelValueType);
             add4(labelArity);
             add4(stackSize);
         }
-        if (hasLegacyCatchUnwind) {
+        if (unwindLegacyCatches) {
             add1(Bytecode.MISC);
             add1(Bytecode.LEGACY_CATCH_UNWIND);
             add4(legacyCatchDepth);
@@ -404,7 +402,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     public int addLabel(int labelArity, int stackSize, int commonLabelValueType) {
-        return addLabel(labelArity, stackSize, commonLabelValueType, 0);
+        return addLabel(labelArity, stackSize, commonLabelValueType, 0, false);
     }
 
     /**
@@ -416,16 +414,29 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      *            {@link WasmType#getCommonValueType(int[])}.
      * @param legacyCatchDepth The number of active legacy catches that must remain active when
      *            control transfers to this loop label.
+     * @param hasLegacyCatches Whether the function contains legacy catches and the loop label
+     *            therefore needs explicit catch-depth metadata.
      * @return The location of the loop label in the bytecode.
      */
-    public int addLoopLabel(int paramCount, int stackSize, int commonParamType, int legacyCatchDepth) {
-        int loopLabel = addLabel(paramCount, stackSize, commonParamType, legacyCatchDepth);
+    public int addLoopLabel(int paramCount, int stackSize, int commonParamType, int legacyCatchDepth, boolean hasLegacyCatches) {
+        int loopLabel = addLabel(paramCount, stackSize, commonParamType, legacyCatchDepth, hasLegacyCatches);
         addOp(Bytecode.LOOP);
         return loopLabel;
     }
 
     public int addLoopLabel(int paramCount, int stackSize, int commonParamType) {
-        return addLoopLabel(paramCount, stackSize, commonParamType, 0);
+        return addLoopLabel(paramCount, stackSize, commonParamType, 0, false);
+    }
+
+    /**
+     * Reserves an i32 value for a forward jump offset.
+     *
+     * @return The location of the jump offset to be patched later.
+     */
+    private BytecodeFixup addForwardLocation() {
+        final int location = location();
+        add4(0);
+        return targetOffet -> patchLocation(location, targetOffet);
     }
 
     /**
@@ -433,14 +444,12 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * profile.
      *
      * @param branchHint Optional branch hint used to initialize the branch profile.
-     * @return The location of the jump offset to be patched later. (see
-     *         {@link #patchLocation(int, int)}.
+     * @return The location of the jump offset to be patched later
      */
-    public int addIfLocation(BranchHint branchHint) {
+    public BytecodeFixup addIf(BranchHint branchHint) {
         add1(Bytecode.IF);
-        final int location = location();
         // target
-        add4(0);
+        BytecodeFixup location = addForwardLocation();
         // profile
         addProfile(branchHint);
         return location;
@@ -512,6 +521,12 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             }
 
             @Override
+            public int prefixSize() {
+                // Bytecode.AGGREGATE already emitted by caller.
+                return 5;
+            }
+
+            @Override
             public void emitOpcodesU8(RuntimeBytecodeGen bytecode) {
                 // Bytecode.AGGREGATE already emitted by caller
                 bytecode.add1(brOnCastFail ? Bytecode.BR_ON_CAST_FAIL_U8 : Bytecode.BR_ON_CAST_U8);
@@ -532,6 +547,22 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             this.profiled = profiled;
         }
 
+        /**
+         * Returns the number of bytes emitted by {@link #emitOpcodesU8(RuntimeBytecodeGen)} or
+         * {@link #emitOpcodesI32(RuntimeBytecodeGen)} before the displacement operand. Both encodings
+         * use the same prefix size. The displacement is relative to its own position, so
+         * {@link RuntimeBytecodeGen#addBackwardBranch(int, BranchOp)} uses this size to locate its origin.
+         *
+         * Includes opcodes and preceding operands, such as the four-byte reference type for cast
+         * branches. Excludes any prefix already emitted by the caller (notably {@link Bytecode#AGGREGATE}),
+         * the displacement itself, and the trailing profile.
+         *
+         * @return 1 for BR/BR_IF, 2 for null/non-null branches, or 5 for cast branches.
+         */
+        public int prefixSize() {
+            return this == BR || this == BR_IF ? 1 : 2;
+        }
+
         public abstract void emitOpcodesU8(RuntimeBytecodeGen bytecode);
 
         public abstract void emitOpcodesI32(RuntimeBytecodeGen bytecode);
@@ -548,15 +579,17 @@ public class RuntimeBytecodeGen extends BytecodeGen {
     }
 
     /**
-     * Adds a branch opcode to the bytecode. If the jump offset fits into a signed i8 value,
-     * {@code opcodesU8} and i8 jump offset is added. Otherwise, {@code opcodesI32} and i32 jump
-     * offset is added. In both cases, a profile with a size of 2-byte is added.
+     * Adds a branch opcode followed by its displacement and optional two-byte profile. Backward
+     * displacements up to 255 use the u8 form; other displacements use i32.
      *
      * @param location The target location of the branch.
+     * @param branchOp The branch operation to add.
+     * @param branchHint Optional branch hint used to initialize the branch profile.
      */
-    public void addBranch(int location, BranchOp branchOp) {
+    public void addBackwardBranch(int location, BranchOp branchOp, BranchHint branchHint) {
         assert location >= 0;
-        final int relativeOffset = location - (location() + 1);
+        assert branchHint == BranchHint.NONE || branchOp == BranchOp.BR_IF : branchOp;
+        final int relativeOffset = location - (location() + branchOp.prefixSize());
         if (relativeOffset <= 0 && relativeOffset >= -255) {
             branchOp.emitOpcodesU8(this);
             // target
@@ -567,38 +600,40 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             add4(relativeOffset);
         }
         // profile
-        branchOp.emitProfile(this);
+        branchOp.emitProfile(this, branchHint);
+    }
+
+    public void addBackwardBranch(int location, BranchOp branchOp) {
+        addBackwardBranch(location, branchOp, BranchHint.NONE);
     }
 
     /**
-     * Adds a branch opcode to the bytecode and reserves an i32 value for the jump offset. In
-     * addition, a profile with a size of 2-byte is added.
+     * Adds a branch opcode with an i32 jump offset to be patched later, followed by its optional
+     * two-byte profile.
      *
      * @param branchOp The branch operation to add.
      * @param branchHint Optional branch hint used to initialize the branch profile.
-     * @return The location of the jump offset to be patched later. (see
-     *         {@link #patchLocation(int, int)})
+     * @return The location of the jump offset to be patched later
      */
-    public int addBranchLocation(BranchOp branchOp, BranchHint branchHint) {
+    public BytecodeFixup addForwardBranch(BranchOp branchOp, BranchHint branchHint) {
         assert branchHint == BranchHint.NONE || branchOp == BranchOp.BR_IF : branchOp;
         branchOp.emitOpcodesI32(this);
-        final int location = location();
         // target
-        add4(0);
+        final BytecodeFixup location = addForwardLocation();
         // profile
         branchOp.emitProfile(this, branchHint);
         return location;
     }
 
-    public int addBranchLocation(BranchOp branchOp) {
-        return addBranchLocation(branchOp, BranchHint.NONE);
+    public BytecodeFixup addForwardBranch(BranchOp branchOp) {
+        return addForwardBranch(branchOp, BranchHint.NONE);
     }
 
     /**
      * Adds a branch table opcode to the bytecode. If the size fits into an u8 value, a br_table_u8
      * and u8 size are added. Otherwise, a br_table_i32 and i32 size are added. In both cases, a
      * profile with a size of 2-byte is added.
-     * 
+     *
      * @param size The number of items in the branch table.
      */
     public void addBranchTable(int size) {
@@ -617,14 +652,12 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Reserves an i32 jump offset location and 2-byte profile for a branch table item.
-     * 
-     * @return The location of the jump offset to be patched later. (see
-     *         {@link #patchLocation(int, int)}).
+     *
+     * @return The location of the jump offset to be patched later
      */
-    public int addBranchTableItemLocation() {
-        final int location = location();
+    public BytecodeFixup addBranchTableItem() {
         // target
-        add4(0);
+        final BytecodeFixup location = addForwardLocation();
         // profile
         addProfile();
         return location;
@@ -632,7 +665,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds an exception handler that catches a specific exception type (tag), formatted as below.
-     * 
+     *
      * <pre>
      * from (4 byte) | to (4 byte) | type (1 byte) | tag (4 byte) | target (4 byte)
      * </pre>
@@ -658,7 +691,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @param jumpOffsetLocation The jump offset location
      * @param targetLocation The target location
      */
-    public void patchLocation(int jumpOffsetLocation, int targetLocation) {
+    private void patchLocation(int jumpOffsetLocation, int targetLocation) {
         final int relativeOffset = targetLocation - jumpOffsetLocation;
         set(jumpOffsetLocation, (byte) (relativeOffset & 0x0000_00FF));
         set(jumpOffsetLocation + 1, (byte) ((relativeOffset >>> 8) & 0x0000_00FF));
@@ -670,7 +703,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * Adds a call instruction to the bytecode. If the nodeIndex and functionIndex both fit into a
      * u8 value, a call_u8 and two u8 values are added. Otherwise, a call_i32 and two i32 value are
      * added.
-     * 
+     *
      * @param nodeIndex The node index of the call
      * @param functionIndex The function index of the call
      */
@@ -869,7 +902,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds the header of a data segment to the bytecode.
-     * 
+     *
      * @param length The length of the data segment
      * @param offsetBytecode The offset bytecode of the data segment, null if missing
      * @param offsetAddress The offset address of the data segment, -1 if missing
@@ -880,7 +913,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds the header of a non-active data segment to the bytecode.
-     * 
+     *
      * @param mode The segment mode of the data segment
      * @param length The length of the data segment
      */
@@ -891,7 +924,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds the header of an elem segment to the bytecode.
-     * 
+     *
      * @param mode The segment mode of the elem segment
      * @param count The number of elements in the elem segment
      * @param elemType The type of the elements in the elem segment
@@ -979,7 +1012,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds a single byte to the bytecode.
-     * 
+     *
      * @param value The byte that should be added
      */
     public void addByte(byte value) {
@@ -997,7 +1030,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds a function index entry to the data of an elem segment.
-     * 
+     *
      * @param functionIndex The function index of the element in the elem segment
      */
     public void addElemFunctionIndex(int functionIndex) {
@@ -1017,7 +1050,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds a bytecode entry to the data of an elem segment.
-     * 
+     *
      * @param elementBytecode The bytecode of the element expression in the elem segment
      */
     public void addElemBytecode(byte[] elementBytecode) {
@@ -1039,7 +1072,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds information about a code entry to the bytecode.
-     * 
+     *
      * @param functionIndex The function index of the code entry
      * @param maxStackSize The maximum stack size of the code entry
      * @param length The length of the function in the bytecode
@@ -1095,7 +1128,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
 
     /**
      * Adds a notify instruction used for instrumentation.
-     * 
+     *
      * @param lineNumber the line number in the source code
      * @param sourceCodeLocation the location in the source
      */

@@ -381,6 +381,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         CompilerDirectives.ensureVirtualized(virtualState);
 
         int opcode = Bytecode.UNREACHABLE;
+        offset = CompilerDirectives.mergeExplodeKey(offset);
         loop: while (true) {
             try {
                 opcode = nextOpcode(offset, state, virtualState, frame);
@@ -1440,6 +1441,10 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                  *
                  * from | to | type | tag index | target
                  *
+                 * For catch handlers, target points to a label containing the stack size,
+                 * optionally followed by legacy catch unwind metadata. Control transfers past both
+                 * after preparing the handler's stack and catch state.
+                 *
                  * The values from (inclusive) and to (exclusive) define a range. If the current
                  * bytecode offset is inside this range, the entry defines a possible exception
                  * handler for the exception. If the type of the exception handler is catch or
@@ -1489,11 +1494,14 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         continue;
                     }
 
+                    // Validation forbids mixing legacy and modern EH in a module, so modern
+                    // handlers cannot have active legacy catches in this frame.
                     if (isLegacyCatchType(catchType)) {
                         // Legacy catch labels encode the final number of active legacy catches
                         // that must remain inside the catch body. Unwind first so entering an
                         // enclosing catch from a nested catch does not transiently exceed the
                         // reserved frame slots before the target label's helper runs.
+                        // The target depth includes the catch being entered.
                         final int targetDepth = legacyCatchTargetDepth(target);
                         final int catchEntryDepth = targetDepth - 1;
                         state.activeLegacyCatchCount = unwindLegacyCatchesToDepth(frame, state.legacyCatchBase, state.stackBase, state.activeLegacyCatchCount, catchEntryDepth);
@@ -1502,12 +1510,17 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         // stack layout.
                         final int exceptionSlot = state.legacyCatchBase + state.activeLegacyCatchCount;
                         assert exceptionSlot >= state.legacyCatchBase && exceptionSlot < state.stackBase : "Exceeded reserved legacy catch slots";
-                        CompilerDirectives.isPartialEvaluationConstant(exceptionSlot);
+                        CompilerAsserts.partialEvaluationConstant(exceptionSlot);
                         pushReference(frame, exceptionSlot, e);
                         state.activeLegacyCatchCount++;
                     }
-                    virtualState.stackPointer = pushExceptionFieldsAndReference(frame, e, virtualState.stackPointer, catchType, tagIndex);
-                    offset = target;
+                    // Unwind before pushing the payload: keeping discarded operands underneath it
+                    // could exceed the frame's maximum stack size, particularly for catch_ref.
+                    final int targetStackPointer = state.stackBase + labelStackSize(target);
+                    dropStack(frame, virtualState.stackPointer, targetStackPointer);
+                    virtualState.stackPointer = pushExceptionFieldsAndReference(frame, e, targetStackPointer, catchType, tagIndex);
+                    final int labelEndOffset = labelEndOffset(target);
+                    offset = hasLegacyCatchUnwind(bytecode, labelEndOffset) ? labelEndOffset + 6 : labelEndOffset;
                     continue loop;
                 }
                 throw e;
@@ -1579,7 +1592,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
          * BR_U8 encodes the back jump value as a positive byte value. BR_U8 can never perform a
          * forward jump.
          */
-        return offset + 1 - offsetDelta;
+        final int targetOffset = offset + 1 - offsetDelta;
+        return enterBranchTarget(targetOffset, state, virtualState, frame);
     }
 
     @EarlyInline
@@ -1587,7 +1601,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     @BytecodeInterpreterHandler(value = {Bytecode.BR_I32}, safepoint = false)
     private static int brI32Handler(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
         final int offsetDelta = rawPeekI32(state.bytecode, offset + 1);
-        return offset + 1 + offsetDelta;
+        final int targetOffset = offset + 1 + offsetDelta;
+        return enterBranchTarget(targetOffset, state, virtualState, frame);
     }
 
     @EarlyInline
@@ -1601,7 +1616,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
              * BR_IF_U8 encodes the back jump value as a positive byte value. BR_IF_U8 can never
              * perform a forward jump.
              */
-            return offset + 1 - offsetDelta;
+            final int targetOffset = offset + 1 - offsetDelta;
+            return enterBranchTarget(targetOffset, state, virtualState, frame);
         }
         return offset + 4;
     }
@@ -1613,7 +1629,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         virtualState.stackPointer--;
         if (profileCondition(state.bytecode, offset + 5, popBoolean(frame, virtualState.stackPointer))) {
             final int offsetDelta = rawPeekI32(state.bytecode, offset + 1);
-            return offset + 1 + offsetDelta;
+            final int targetOffset = offset + 1 + offsetDelta;
+            return enterBranchTarget(targetOffset, state, virtualState, frame);
         }
         return offset + 7;
     }
@@ -1632,10 +1649,11 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 // default (last) index.
                 index = size - 1;
             }
-            final int indexOffset = offset + 4 + index * 6;
+            final int indexOffset = offset + BytecodeBitEncoding.BR_TABLE_U8_HEADER_SIZE + index * BytecodeBitEncoding.BR_TABLE_ITEM_SIZE;
             updateBranchTableProfile(state.bytecode, counterOffset, indexOffset + 4);
             final int offsetDelta = rawPeekI32(state.bytecode, indexOffset);
-            return indexOffset + offsetDelta;
+            final int targetOffset = indexOffset + offsetDelta;
+            return enterBranchTarget(targetOffset, state, virtualState, frame);
         } else {
             /*
              * This loop is implemented to create a separate path for every index. This guarantees
@@ -1647,11 +1665,12 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
              */
             int precedingSum = 0;
             for (int i = 0; i < size; i++) {
-                final int indexOffset = offset + 4 + i * 6;
+                final int indexOffset = offset + BytecodeBitEncoding.BR_TABLE_U8_HEADER_SIZE + i * BytecodeBitEncoding.BR_TABLE_ITEM_SIZE;
                 int profile = rawPeekU16(state.bytecode, indexOffset + 4);
                 if (profileBranchTable(state.bytecode, counterOffset, profile, precedingSum, i == index || i == size - 1)) {
                     final int offsetDelta = rawPeekI32(state.bytecode, indexOffset);
-                    return indexOffset + offsetDelta;
+                    final int targetOffset = indexOffset + offsetDelta;
+                    return enterBranchTarget(targetOffset, state, virtualState, frame);
                 }
                 precedingSum += profile;
             }
@@ -1673,10 +1692,11 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 // default (last) index.
                 index = size - 1;
             }
-            final int indexOffset = offset + 7 + index * 6;
+            final int indexOffset = offset + BytecodeBitEncoding.BR_TABLE_I32_HEADER_SIZE + index * BytecodeBitEncoding.BR_TABLE_ITEM_SIZE;
             updateBranchTableProfile(state.bytecode, counterOffset, indexOffset + 4);
             final int offsetDelta = rawPeekI32(state.bytecode, indexOffset);
-            return indexOffset + offsetDelta;
+            final int targetOffset = indexOffset + offsetDelta;
+            return enterBranchTarget(targetOffset, state, virtualState, frame);
         } else {
             /*
              * This loop is implemented to create a separate path for every index. This guarantees
@@ -1685,11 +1705,12 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
              */
             int precedingSum = 0;
             for (int i = 0; i < size; i++) {
-                final int indexOffset = offset + 7 + i * 6;
+                final int indexOffset = offset + BytecodeBitEncoding.BR_TABLE_I32_HEADER_SIZE + i * BytecodeBitEncoding.BR_TABLE_ITEM_SIZE;
                 int profile = rawPeekU16(state.bytecode, indexOffset + 4);
                 if (profileBranchTable(state.bytecode, counterOffset, profile, precedingSum, i == index || i == size - 1)) {
                     final int offsetDelta = rawPeekI32(state.bytecode, indexOffset);
-                    return indexOffset + offsetDelta;
+                    final int targetOffset = indexOffset + offsetDelta;
+                    return enterBranchTarget(targetOffset, state, virtualState, frame);
                 }
                 precedingSum += profile;
             }
@@ -1902,6 +1923,41 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     }
 
     @EarlyInline
+    private static int enterBranchTarget(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
+        /*
+         * Compiled branches must normalize operand-stack and legacy-catch state before paths merge
+         * at the same bytecode offset. The interpreter has no such merge and can execute the target
+         * label and catch-unwind instructions through normal dispatch, which is still faster than
+         * decoding them here.
+         */
+        if (CompilerDirectives.inCompiledCode()) {
+            return enterCompiledBranchTarget(offset, state, virtualState, frame);
+        }
+        return offset;
+    }
+
+    @EarlyInline
+    private static int enterCompiledBranchTarget(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
+        final int labelEndOffset = switch (rawPeekU8(state.bytecode, offset)) {
+            case Bytecode.LABEL_U8 -> labelU8Handler(offset, state, virtualState, frame);
+            case Bytecode.LABEL_U16 -> labelU16Handler(offset, state, virtualState, frame);
+            case Bytecode.LABEL_I32 -> labelI32Handler(offset, state, virtualState, frame);
+            default -> throw CompilerDirectives.shouldNotReachHere("Branch target must point to a label");
+        };
+        if (hasLegacyCatchUnwind(state.bytecode, labelEndOffset)) {
+            return legacyCatchUnwindHandler(labelEndOffset, state, frame);
+        }
+        return labelEndOffset;
+    }
+
+    @EarlyInline
+    private static int legacyCatchUnwindHandler(int offset, State state, FrameWithoutBoxing frame) {
+        final int targetDepth = rawPeekI32(state.bytecode, offset + 2);
+        state.activeLegacyCatchCount = unwindLegacyCatchesToDepth(frame, state.legacyCatchBase, state.stackBase, state.activeLegacyCatchCount, targetDepth);
+        return offset + 6;
+    }
+
+    @EarlyInline
     @SuppressWarnings("unused")
     @BytecodeInterpreterHandler(value = {Bytecode.LABEL_I32}, safepoint = false)
     private static int labelI32Handler(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
@@ -2021,6 +2077,9 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     @SuppressWarnings("unused")
     @BytecodeInterpreterHandler(value = {Bytecode.SKIP_LABEL_U8}, safepoint = false)
     private static int skipLabelU8Handler(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
+        assert virtualState.stackPointer == state.stackBase + (rawPeekU8(state.bytecode, offset + 2) & BytecodeBitEncoding.LABEL_U8_STACK_SIZE) +
+                        ((rawPeekU8(state.bytecode, offset + 2) & BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_MASK) == BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_NONE ? 0
+                                        : 1) : "Operand stack must already match label";
         return offset + 1 + Bytecode.SKIP_LABEL_U8;
     }
 
@@ -2028,6 +2087,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     @SuppressWarnings("unused")
     @BytecodeInterpreterHandler(value = {Bytecode.SKIP_LABEL_U16}, safepoint = false)
     private static int skipLabelU16Handler(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
+        assert virtualState.stackPointer == state.stackBase + rawPeekU8(state.bytecode, offset + 3) +
+                        (rawPeekU8(state.bytecode, offset + 2) & BytecodeBitEncoding.LABEL_U16_ARITY) : "Operand stack must already match label";
         return offset + 1 + Bytecode.SKIP_LABEL_U16;
     }
 
@@ -2035,6 +2096,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     @SuppressWarnings("unused")
     @BytecodeInterpreterHandler(value = {Bytecode.SKIP_LABEL_I32}, safepoint = false)
     private static int skipLabelI32Handler(int offset, State state, VirtualState virtualState, FrameWithoutBoxing frame) {
+        assert virtualState.stackPointer == state.stackBase + rawPeekI32(state.bytecode, offset + 7) + rawPeekI32(state.bytecode, offset + 3) : "Operand stack must already match label";
         return offset + 1 + Bytecode.SKIP_LABEL_I32;
     }
 
@@ -4505,7 +4567,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                     final int offsetDelta = rawPeekU8(state.bytecode, offset + 6);
                     // BR_ON_CAST_U8 encodes the back jump value as a positive byte value.
                     // BR_ON_CAST_U8 can never perform a forward jump.
-                    return offset + 6 - offsetDelta;
+                    return enterBranchTarget(offset + 6 - offsetDelta, state, virtualState, frame);
                 }
                 return offset + 9;
             }
@@ -4519,7 +4581,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 boolean match = state.thiz.runTimeTypeCheck(expectedReferenceType, ref);
                 if (profileCondition(state.bytecode, offset + 10, match != brOnCastFail)) {
                     final int offsetDelta = rawPeekI32(state.bytecode, offset + 6);
-                    return offset + 6 + offsetDelta;
+                    return enterBranchTarget(offset + 6 + offsetDelta, state, virtualState, frame);
                 }
                 return offset + 12;
             }
@@ -4582,17 +4644,26 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 return offset + 2;
             }
             case Bytecode.LEGACY_CATCH_UNWIND: {
-                final int targetDepth = rawPeekI32(state.bytecode, offset + 2);
-                state.activeLegacyCatchCount = unwindLegacyCatchesToDepth(frame, state.legacyCatchBase, state.stackBase, state.activeLegacyCatchCount, targetDepth);
-                return offset + 6;
+                // Interpreter labels only unwind operands; catch cleanup executes separately.
+                // Compiled branches invoke the handler directly before the shared merge point.
+                return legacyCatchUnwindHandler(offset, state, frame);
             }
             case Bytecode.LEGACY_SKIP_LABEL_U8: {
+                assert virtualState.stackPointer == state.stackBase + (rawPeekU8(state.bytecode, offset + 3) & BytecodeBitEncoding.LABEL_U8_STACK_SIZE) +
+                                ((rawPeekU8(state.bytecode, offset + 3) & BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_MASK) == BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_NONE ? 0
+                                                : 1) : "Operand stack must already match label";
+                assert state.activeLegacyCatchCount == rawPeekI32(state.bytecode, offset + 6) : "Legacy catch count must already match label";
                 return offset + 10;
             }
             case Bytecode.LEGACY_SKIP_LABEL_U16: {
+                assert virtualState.stackPointer == state.stackBase + rawPeekU8(state.bytecode, offset + 4) +
+                                (rawPeekU8(state.bytecode, offset + 3) & BytecodeBitEncoding.LABEL_U16_ARITY) : "Operand stack must already match label";
+                assert state.activeLegacyCatchCount == rawPeekI32(state.bytecode, offset + 7) : "Legacy catch count must already match label";
                 return offset + 11;
             }
             case Bytecode.LEGACY_SKIP_LABEL_I32: {
+                assert virtualState.stackPointer == state.stackBase + rawPeekI32(state.bytecode, offset + 8) + rawPeekI32(state.bytecode, offset + 4) : "Operand stack must already match label";
+                assert state.activeLegacyCatchCount == rawPeekI32(state.bytecode, offset + 14) : "Legacy catch count must already match label";
                 return offset + 18;
             }
             case Bytecode.BR_ON_NULL_U8: {
@@ -4601,7 +4672,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                     final int offsetDelta = rawPeekU8(state.bytecode, offset + 2);
                     // BR_ON_NULL_U8 encodes the back jump value as a positive byte
                     // value. BR_ON_NULL_U8 can never perform a forward jump.
-                    nextOffset = offset + 2 - offsetDelta;
+                    nextOffset = enterBranchTarget(offset + 2 - offsetDelta, state, virtualState, frame);
                 } else {
                     nextOffset = offset + 5;
                     pushReference(frame, virtualState.stackPointer++, reference);
@@ -4612,7 +4683,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 Object reference = popReference(frame, --virtualState.stackPointer);
                 if (profileCondition(state.bytecode, offset + 6, reference == WasmConstant.NULL)) {
                     final int offsetDelta = rawPeekI32(state.bytecode, offset + 2);
-                    nextOffset = offset + 2 + offsetDelta;
+                    nextOffset = enterBranchTarget(offset + 2 + offsetDelta, state, virtualState, frame);
                 } else {
                     nextOffset = offset + 8;
                     pushReference(frame, virtualState.stackPointer++, reference);
@@ -4626,8 +4697,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                     // BR_ON_NULL_U8 encodes the back jump value as a positive byte
                     // value. BR_ON_NULL_U8
                     // can never perform a forward jump.
-                    nextOffset = offset + 2 - offsetDelta;
                     pushReference(frame, virtualState.stackPointer++, reference);
+                    nextOffset = enterBranchTarget(offset + 2 - offsetDelta, state, virtualState, frame);
                 } else {
                     nextOffset = offset + 5;
                 }
@@ -4637,8 +4708,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 Object reference = popReference(frame, --virtualState.stackPointer);
                 if (profileCondition(state.bytecode, offset + 6, reference != WasmConstant.NULL)) {
                     final int offsetDelta = rawPeekI32(state.bytecode, offset + 2);
-                    nextOffset = offset + 2 + offsetDelta;
                     pushReference(frame, virtualState.stackPointer++, reference);
+                    nextOffset = enterBranchTarget(offset + 2 + offsetDelta, state, virtualState, frame);
                 } else {
                     nextOffset = offset + 8;
                 }
@@ -4698,8 +4769,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 // the active legacy catch count is always zero at the start of the function.
                 state.activeLegacyCatchCount = 0;
                 /*
-                 * As this return call forms a loop without explicit header,
-                 * we report the loop count here.
+                 * As this return call forms a loop without explicit header, we report the loop
+                 * count here.
                  */
                 updateBackEdgeCounterAndTryOSR(nextOffset, state, virtualState, frame);
                 break;
@@ -8167,25 +8238,40 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         return catchType == ExceptionHandlerType.LEGACY_CATCH || catchType == ExceptionHandlerType.LEGACY_CATCH_ALL;
     }
 
+    /**
+     * Branch and exception targets start with a label and its stack operands, optionally followed
+     * by {@code MISC LEGACY_CATCH_UNWIND <depth:i32>}. Compiled branches consume both before
+     * merging; interpreted branches execute them. Exception handlers prepare the target before
+     * pushing payloads in both modes.
+     */
+    private int labelEndOffset(int offset) {
+        return offset + switch (rawPeekU8(bytecode, offset)) {
+            case Bytecode.LABEL_U8 -> 2;
+            case Bytecode.LABEL_U16 -> 3;
+            case Bytecode.LABEL_I32 -> 10;
+            default -> throw CompilerDirectives.shouldNotReachHere("Branch target must point to a label");
+        };
+    }
+
+    private int labelStackSize(int offset) {
+        return switch (rawPeekU8(bytecode, offset)) {
+            case Bytecode.LABEL_U8 -> rawPeekU8(bytecode, offset + 1) & BytecodeBitEncoding.LABEL_U8_STACK_SIZE;
+            case Bytecode.LABEL_U16 -> rawPeekU8(bytecode, offset + 2);
+            case Bytecode.LABEL_I32 -> rawPeekI32(bytecode, offset + 6);
+            default -> throw CompilerDirectives.shouldNotReachHere("Branch target must point to a label");
+        };
+    }
+
+    private static boolean hasLegacyCatchUnwind(byte[] bytecode, int offset) {
+        // A label may end the byte array or precede an unrelated instruction. Only consume a
+        // complete unwind instruction immediately following the stack operands.
+        return offset <= bytecode.length - 6 && rawPeekU8(bytecode, offset) == Bytecode.MISC && rawPeekU8(bytecode, offset + 1) == Bytecode.LEGACY_CATCH_UNWIND;
+    }
+
     private int legacyCatchTargetDepth(int target) {
         CompilerAsserts.partialEvaluationConstant(target);
-        final int opcode = rawPeekU8(bytecode, target);
-        final int unwindOffset;
-        switch (opcode) {
-            case Bytecode.LABEL_U8:
-                unwindOffset = target + 2;
-                break;
-            case Bytecode.LABEL_U16:
-                unwindOffset = target + 3;
-                break;
-            case Bytecode.LABEL_I32:
-                unwindOffset = target + 10;
-                break;
-            default:
-                throw CompilerDirectives.shouldNotReachHere("Legacy catch target must point to a label");
-        }
-        assert rawPeekU8(bytecode, unwindOffset) == Bytecode.MISC : "Missing legacy catch unwind helper";
-        assert rawPeekU8(bytecode, unwindOffset + 1) == Bytecode.LEGACY_CATCH_UNWIND : "Missing legacy catch unwind helper";
+        final int unwindOffset = labelEndOffset(target);
+        assert hasLegacyCatchUnwind(bytecode, unwindOffset) : "Missing legacy catch unwind helper";
         final int targetDepth = rawPeekI32(bytecode, unwindOffset + 2);
         assert targetDepth > 0 : "Legacy catch target depth must include the entered catch";
         return targetDepth;
@@ -8427,8 +8513,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
     }
 
     /**
-     * Moves the values carried to the target label to the target stack position and resets the stack
-     * pointer.
+     * Moves the values carried to the target label to the target stack position and resets the
+     * stack pointer.
      *
      * @param frame The current frame.
      * @param stackPointer The current stack pointer.

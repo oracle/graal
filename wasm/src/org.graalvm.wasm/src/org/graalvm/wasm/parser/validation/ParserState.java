@@ -311,10 +311,11 @@ public class ParserState {
      *
      * @param paramTypes The param types of the loop that was entered.
      * @param resultTypes The result types of the loop that was entered.
+     * @param hasLegacyCatches Whether this function contains legacy catches.
      */
-    public void enterLoop(int[] paramTypes, int[] resultTypes) {
+    public void enterLoop(int[] paramTypes, int[] resultTypes, boolean hasLegacyCatches) {
         final ControlFrame parentFrame = controlStack.peek();
-        final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonValueType(paramTypes), parentFrame.legacyCatchDepth());
+        final int label = bytecode.addLoopLabel(paramTypes.length, valueStack.size(), WasmType.getCommonValueType(paramTypes), parentFrame.legacyCatchDepth(), hasLegacyCatches);
         ControlFrame frame = new LoopFrame(paramTypes, resultTypes, valueStack.size(), parentFrame, label);
         controlStack.push(frame);
         pushAll(paramTypes);
@@ -329,7 +330,7 @@ public class ParserState {
      * @param branchHint Optional branch hint used to initialize the branch profile.
      */
     public void enterIf(int[] paramTypes, int[] resultTypes, BranchHint branchHint) {
-        final int fixupLocation = bytecode.addIfLocation(branchHint);
+        final BytecodeFixup fixupLocation = bytecode.addIf(branchHint);
         ControlFrame frame = new IfFrame(paramTypes, resultTypes, valueStack.size(), controlStack.peek(), fixupLocation);
         controlStack.push(frame);
         pushAll(paramTypes);
@@ -513,7 +514,7 @@ public class ParserState {
         final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
         pushAll(labelTypes);
-        frame.addLabelFixup(createBranchFixup(BranchOp.BR_IF, branchHint));
+        frame.addBranch(bytecode, BranchOp.BR_IF, branchHint, controlStack.peek().legacyCatchDepth());
     }
 
     /**
@@ -527,7 +528,7 @@ public class ParserState {
         ControlFrame frame = getFrame(branchLabel);
         final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
-        frame.addLabelFixup(createBranchFixup(BranchOp.BR));
+        frame.addBranch(bytecode, BranchOp.BR, BranchHint.NONE, controlStack.peek().legacyCatchDepth());
     }
 
     public void addBranchOnNull(int branchLabel) {
@@ -536,7 +537,7 @@ public class ParserState {
         final int[] labelTypes = frame.labelTypes();
         popAll(labelTypes);
         pushAll(labelTypes);
-        frame.addLabelFixup(createBranchFixup(BranchOp.BR_ON_NULL));
+        frame.addBranch(bytecode, BranchOp.BR_ON_NULL, BranchHint.NONE, controlStack.peek().legacyCatchDepth());
     }
 
     public void addBranchOnNonNull(int branchLabel, int referenceType) {
@@ -555,7 +556,7 @@ public class ParserState {
         for (int i = 0; i < labelTypes.length - 1; i++) {
             push(labelTypes[i]);
         }
-        frame.addLabelFixup(createBranchFixup(BranchOp.BR_ON_NON_NULL));
+        frame.addBranch(bytecode, BranchOp.BR_ON_NON_NULL, BranchHint.NONE, controlStack.peek().legacyCatchDepth());
     }
 
     public void addBranchOnCast(int branchLabel, int topReferenceType, int jumpReferenceType, int noJumpReferenceType, BranchOp branchOp) {
@@ -577,7 +578,7 @@ public class ParserState {
             push(labelTypes[i]);
         }
         push(noJumpReferenceType);
-        frame.addLabelFixup(createBranchFixup(branchOp));
+        frame.addBranch(bytecode, branchOp, BranchHint.NONE, controlStack.peek().legacyCatchDepth());
     }
 
     /**
@@ -605,23 +606,9 @@ public class ParserState {
             } catch (WasmException e) {
                 throw ValidationErrors.createLabelTypesMismatch(labelTypes, otherLabelTypes);
             }
-            frame.addLabelFixup(createBranchTableItemFixup());
+            frame.registerForwardBranch(bytecode.addBranchTableItem(), controlStack.peek().legacyCatchDepth());
         }
         popAll(labelTypes);
-    }
-
-    public BytecodeFixup createBranchFixup(BranchOp branchOp) {
-        return createBranchFixup(branchOp, BranchHint.NONE);
-    }
-
-    public BytecodeFixup createBranchFixup(BranchOp branchOp, BranchHint branchHint) {
-        final int location = bytecode.addBranchLocation(branchOp, branchHint);
-        return targetOffset -> bytecode.patchLocation(location, targetOffset);
-    }
-
-    private BytecodeFixup createBranchTableItemFixup() {
-        final int location = bytecode.addBranchTableItemLocation();
-        return targetOffset -> bytecode.patchLocation(location, targetOffset);
     }
 
     /**

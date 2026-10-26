@@ -51,6 +51,7 @@ import org.graalvm.wasm.test.suites.arithmetic.WideArithmeticSuite;
 import org.graalvm.wasm.test.suites.bytecode.BranchHintSuite;
 import org.graalvm.wasm.test.suites.bytecode.BytecodeSuite;
 import org.graalvm.wasm.test.suites.bytecode.MultiInstantiationSuite;
+import org.graalvm.wasm.test.suites.bytecode.WasmBranchTargetSuite;
 import org.graalvm.wasm.test.suites.bytecode.WasmLegacyCatchOSRSuite;
 import org.graalvm.wasm.test.suites.bytecode.WasmOSRSuite;
 import org.graalvm.wasm.test.suites.compiler.CompilationSuite;
@@ -119,6 +120,7 @@ import org.junit.runners.Suite;
                 BranchHintSuite.class,
                 BytecodeSuite.class,
                 MultiInstantiationSuite.class,
+                WasmBranchTargetSuite.class,
                 WasmLegacyCatchOSRSuite.class,
                 WasmOSRSuite.class,
                 CompilationSuite.class,
