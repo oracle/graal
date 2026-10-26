@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -119,12 +119,11 @@ public class HostLanguageService extends AbstractHostLanguageService {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T toHostType(Object hostNode, Object targetNode, Object hostContext, Object value, Class<T> targetType, Type genericType) {
-        HostContext context = (HostContext) hostContext;
         HostToTypeNode node = (HostToTypeNode) hostNode;
         if (node == null) {
             node = HostToTypeNodeGen.getUncached();
         }
-        return (T) node.execute((Node) targetNode, context, value, targetType, genericType, true);
+        return (T) node.execute((Node) targetNode, hostContext, value, targetType, genericType, true);
     }
 
     @Override
