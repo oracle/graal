@@ -83,12 +83,12 @@ public class BytecodeSuite {
     // Test common result type encoding
     @Test
     public void testLabelU8ValueTypeNum() {
-        test(b -> b.addLabel(1, 0, WasmType.NUM_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0x80});
+        test(b -> b.addLabel(1, 0, WasmType.NUM_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, 0x40});
     }
 
     @Test
     public void testLabelU8ValueTypeObj() {
-        test(b -> b.addLabel(1, 0, WasmType.OBJ_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0xC0});
+        test(b -> b.addLabel(1, 0, WasmType.OBJ_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0x80});
     }
 
     @Test
@@ -134,7 +134,7 @@ public class BytecodeSuite {
     @Test
     public void testLegacyLabelU8Encoding() {
         test(b -> b.addLabel(1, 20, WasmType.NUM_COMMON_TYPE, 3, true), new byte[]{
-                        (byte) Bytecode.MISC, (byte) Bytecode.LEGACY_SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0x94,
+                        (byte) Bytecode.MISC, (byte) Bytecode.LEGACY_SKIP_LABEL_U8, Bytecode.LABEL_U8, 0x54,
                         (byte) Bytecode.MISC, (byte) Bytecode.LEGACY_CATCH_UNWIND,
                         0x03, 0x00, 0x00, 0x00});
     }
@@ -191,7 +191,7 @@ public class BytecodeSuite {
      */
     @Test
     public void testAddLoopLabel() {
-        test(b -> b.addLoopLabel(1, 20, WasmType.NUM_COMMON_TYPE, 0, false), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0x94, Bytecode.LOOP});
+        test(b -> b.addLoopLabel(1, 20, WasmType.NUM_COMMON_TYPE, 0, false), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, 0x54, Bytecode.LOOP});
     }
 
     @Test
@@ -377,7 +377,7 @@ public class BytecodeSuite {
                     Assert.assertEquals(labelSize, ordinarySkipOpcode);
                     Assert.assertEquals(labelOpcode, BinaryStreamParser.rawPeekU8(bytes, label));
                     if (labelSize == 2) {
-                        Assert.assertEquals((arity == 0 ? 0 : 0x80) | stackSize, BinaryStreamParser.rawPeekU8(bytes, label + 1));
+                        Assert.assertEquals((arity == 0 ? 0 : 0x40) | stackSize, BinaryStreamParser.rawPeekU8(bytes, label + 1));
                     } else if (labelSize == 3) {
                         Assert.assertEquals((arity == 0 ? 0 : 0x40) | arity, BinaryStreamParser.rawPeekU8(bytes, label + 1));
                         Assert.assertEquals(stackSize, BinaryStreamParser.rawPeekU8(bytes, label + 2));

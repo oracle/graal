@@ -369,13 +369,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             addSkipLabel(unwindLegacyCatches, Bytecode.SKIP_LABEL_U8, Bytecode.LEGACY_SKIP_LABEL_U8);
             location = location();
             add1(Bytecode.LABEL_U8);
-            final int encodedLabelValueType = switch (commonLabelValueType) {
-                case WasmType.NONE_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_NONE;
-                case WasmType.NUM_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_NUM;
-                case WasmType.OBJ_COMMON_TYPE -> BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_OBJ;
-                default -> throw new IllegalArgumentException("Invalid common label value type: " + commonLabelValueType);
-            };
-            add1(encodedLabelValueType | stackSize);
+            add1(commonLabelValueType << BytecodeBitEncoding.LABEL_U8_VALUE_TYPE_SHIFT | stackSize);
         } else if (labelArity <= 63 && fitsIntoUnsignedByte(stackSize)) {
             addSkipLabel(unwindLegacyCatches, Bytecode.SKIP_LABEL_U16, Bytecode.LEGACY_SKIP_LABEL_U16);
             location = location();

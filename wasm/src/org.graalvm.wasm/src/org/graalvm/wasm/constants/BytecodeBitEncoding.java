@@ -49,8 +49,9 @@ public class BytecodeBitEncoding {
 
     public static final int LABEL_U8_VALUE_TYPE_MASK = 0b1100_0000;
     public static final int LABEL_U8_VALUE_TYPE_NONE = 0b0000_0000;
-    public static final int LABEL_U8_VALUE_TYPE_NUM = 0b1000_0000;
-    public static final int LABEL_U8_VALUE_TYPE_OBJ = 0b1100_0000;
+    public static final int LABEL_U8_VALUE_TYPE_NUM = 0b0100_0000;
+    public static final int LABEL_U8_VALUE_TYPE_OBJ = 0b1000_0000;
+    public static final int LABEL_U8_VALUE_TYPE_SHIFT = 6;
     public static final int LABEL_U8_STACK_SIZE = 0b0011_1111;
 
     public static final int LABEL_U16_VALUE_TYPE_MASK = 0b1100_0000;
