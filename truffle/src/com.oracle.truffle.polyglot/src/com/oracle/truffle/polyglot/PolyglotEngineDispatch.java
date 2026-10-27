@@ -116,6 +116,9 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     @Override
     public void close(Object oreceiver, Object apiObject, boolean cancelIfExecuting) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
+        if (receiver.inExplicitPreinitialization) {
+            throw new IllegalStateException("The engine supplied to the preinitialization callback cannot be closed.");
+        }
         try {
             receiver.ensureClosed(cancelIfExecuting, false);
         } catch (Throwable t) {
@@ -177,12 +180,10 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                     ProcessHandler processHandler, Consumer<PolyglotException> exceptionHandler, Object environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl,
                     String currentWorkingDirectory, String tmpDir, ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit, boolean registerInActiveContexts) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
-        return receiver.createContext(engineApi, sandboxPolicy, out, err, in, allowHostLookup, hostAccess, polyglotAccess,
-                        allowNativeAccess, allowCreateThread, null, allowHostClassLoading,
-                        allowInnerContextOptions,
-                        allowExperimentalOptions,
-                        classFilter, options, arguments, onlyLanguages, ioAccess, logHandler, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
-                        currentWorkingDirectory, tmpDir, hostClassLoader, allowValueSharing, useSystemExit, registerInActiveContexts, exceptionHandler);
+        return receiver.createContext(engineApi, sandboxPolicy, out, err, in, allowHostLookup, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread, null,
+                        allowHostClassLoading, allowInnerContextOptions, allowExperimentalOptions, classFilter, options, arguments, onlyLanguages, ioAccess, logHandler, allowCreateProcess,
+                        processHandler, environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, tmpDir, hostClassLoader, allowValueSharing, useSystemExit,
+                        registerInActiveContexts, exceptionHandler);
     }
 
     @Override
@@ -339,14 +340,12 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
 
     @Override
     public boolean storeCache(Object engineReceiver, Path targetFile, long cancelledWord) {
-        PolyglotEngineImpl engine = ((PolyglotEngineImpl) engineReceiver);
-        return engine.storeCache(targetFile, cancelledWord);
+        return ((PolyglotEngineImpl) engineReceiver).storeCache(targetFile, cancelledWord);
     }
 
     @Override
     public ByteBuffer persistCache(Object engineReceiver, Engine.CancellationCallback callback) {
-        PolyglotEngineImpl engine = ((PolyglotEngineImpl) engineReceiver);
-        return engine.persistCache(callback);
+        return ((PolyglotEngineImpl) engineReceiver).persistCache(callback);
     }
 
 }

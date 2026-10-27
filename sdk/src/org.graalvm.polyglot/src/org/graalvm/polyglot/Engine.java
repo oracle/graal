@@ -487,6 +487,27 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
+     * Creates a new engine builder that consumes the given prepared state when
+     * {@link Builder#build()} is called. The builder inherits the permitted languages and sandbox
+     * policy used to prepare the state. A prepared state can create only one engine. Calling
+     * {@code build()} consumes the state even if building the engine fails.
+     * <p>
+     * Runtime options must be compatible with the prepared state. The options
+     * {@code engine.SpecializationStatistics} and {@code engine.AssertProbes}, and the options of
+     * retained instruments, must match the preparation configuration. For retained instruments,
+     * this includes which options were explicitly set. The experimental-option policy uses the
+     * consuming builder's {@link Builder#allowExperimentalOptions(boolean) configuration}.
+     *
+     * @param state the prepared state to consume
+     * @return a builder that can create an engine
+     * @throws NullPointerException if {@code state} is {@code null}
+     * @since 25.6
+     */
+    public static Builder newBuilder(Preinitialized state) {
+        return EMPTY.new Builder(Objects.requireNonNull(state, "Preinitialized state must not be null."));
+    }
+
+    /**
      * Finds the GraalVM home folder.
      *
      * This is equivalent to {@link HomeFinder#getHomeFolder()} which should be preferred.
@@ -630,6 +651,92 @@ public final class Engine implements AutoCloseable {
     private static final Engine EMPTY = new Engine(null, null);
 
     /**
+     * Prepared engine state that can be consumed by one {@link Builder#build() engine build}.
+     * Prepared state is useful for retaining initialized languages and cached code in a native
+     * image. It may also be used on HotSpot to test preparation and consumption behavior, but does
+     * not provide an image-startup benefit there.
+     * <p>
+     * A prepared state is thread-safe and one-shot. A call to {@link Builder#build()} consumes the
+     * state even if building the engine fails. An unused state should be {@linkplain #close()
+     * closed} to release its resources.
+     * <p>
+     * To persist prepared state in a native image, store it in a static field of a class initialized
+     * at image build time. For example:
+     *
+     * <pre>
+     * static final Engine.Preinitialized PREINITIALIZED =
+     *                 Engine.newBuilder("js").preinitialize(1, engine -&gt; {
+     *                     try (Context context = Context.newBuilder("js").engine(engine).build()) {
+     *                         context.eval("js", "42");
+     *                     }
+     *                 });
+     *
+     * Engine engine = Engine.newBuilder(PREINITIALIZED).build();
+     * </pre>
+     *
+     * The holder class must be configured using
+     * {@code --initialize-at-build-time=<holder-class>}. Preparing state at native-image run time is
+     * not supported.
+     *
+     * @since 25.6
+     */
+    public static final class Preinitialized implements AutoCloseable {
+
+        private final String[] permittedLanguages;
+        private final SandboxPolicy sandboxPolicy;
+        private Engine engine;
+
+        private Preinitialized(Engine engine, String[] permittedLanguages, SandboxPolicy sandboxPolicy) {
+            this.engine = engine;
+            this.permittedLanguages = permittedLanguages;
+            this.sandboxPolicy = sandboxPolicy;
+        }
+
+        /**
+         * Returns an immutable snapshot of the sources cached in this prepared state.
+         *
+         * @return an immutable set of cached sources
+         * @throws IllegalStateException if this state has been consumed or closed
+         * @since 25.6
+         */
+        public synchronized Set<Source> getCachedSources() {
+            checkAvailable();
+            return Collections.unmodifiableSet(engine.getCachedSources());
+        }
+
+        /**
+         * Releases this prepared state if it has not been consumed. This method is idempotent and
+         * has no effect if the state is already closed or consumed.
+         *
+         * @since 25.6
+         */
+        @Override
+        public void close() {
+            Engine engineToClose;
+            synchronized (this) {
+                engineToClose = engine;
+                engine = null;
+            }
+            if (engineToClose != null) {
+                engineToClose.close();
+            }
+        }
+
+        private synchronized Engine take() {
+            checkAvailable();
+            Engine result = engine;
+            engine = null;
+            return result;
+        }
+
+        private void checkAvailable() {
+            if (engine == null) {
+                throw new IllegalStateException("The preinitialized engine state is not available.");
+            }
+        }
+    }
+
+    /**
      *
      * @since 19.0
      */
@@ -656,6 +763,7 @@ public final class Engine implements AutoCloseable {
         private String[] permittedLanguages;
         private SandboxPolicy sandboxPolicy;
         private Boolean spawnIsolate;
+        private Preinitialized preinitialized;
 
         Builder(String[] permittedLanguages) {
             sandboxPolicy = SandboxPolicy.TRUSTED;
@@ -664,6 +772,12 @@ public final class Engine implements AutoCloseable {
                 Objects.requireNonNull(language);
             }
             this.permittedLanguages = permittedLanguages;
+        }
+
+        Builder(Preinitialized preinitialized) {
+            this(preinitialized.permittedLanguages);
+            this.sandboxPolicy = preinitialized.sandboxPolicy;
+            this.preinitialized = preinitialized;
         }
 
         Builder setBoundEngine(boolean boundEngine) {
@@ -967,6 +1081,78 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
+         * Prepares engine state using this builder's configuration. This is a terminal operation,
+         * like {@link #build()}.
+         * <p>
+         * The {@code initializer} is invoked once with a temporary explicit engine. It may create
+         * ordinary contexts using that engine to initialize languages and cache parsed or evaluated
+         * sources. All such contexts must be closed before the callback returns. The temporary
+         * engine must not be closed and must only be used during the callback. After the callback,
+         * context-specific state is discarded and {@code contextCount} clean contexts are
+         * preinitialized for later use by an engine built with
+         * {@link Engine#newBuilder(Preinitialized)}.
+         * <p>
+         * Preparation requires exactly one sharing layer containing only languages that support
+         * context-independent code with {@code ContextPolicy.SHARED}. All callback contexts must
+         * therefore use compatible language options. Custom file systems are not supported by
+         * callback contexts or contexts using the resulting engine. Files retained from callback
+         * contexts preserve their preparation-time IO permissions. Paths within language homes or
+         * internal resources are relocated when the prepared engine is consumed in a native image.
+         * Initialized instruments must explicitly support retaining their state in a preinitialized
+         * engine. Instruments that do not support preinitialization cause this operation to fail.
+         * <p>
+         * This method is intended primarily for preparing state while building a native image. It
+         * can also be used on HotSpot to test the lifecycle and compatibility of prepared state,
+         * without providing native-image startup benefits. During a native-image build, unrelated
+         * Truffle execution must not run concurrently with this operation.
+         * <p>
+         * To persist prepared state in a native image, store it in a static field of a class
+         * initialized at image build time. For example:
+         *
+         * <pre>
+         * static final Engine.Preinitialized PREINITIALIZED =
+         *                 Engine.newBuilder("js").preinitialize(1, engine -&gt; {
+         *                     try (Context context = Context.newBuilder("js").engine(engine).build()) {
+         *                         context.eval("js", "42");
+         *                     }
+         *                 });
+         *
+         * Engine engine = Engine.newBuilder(PREINITIALIZED).build();
+         * </pre>
+         *
+         * The holder class must be configured using
+         * {@code --initialize-at-build-time=<holder-class>}. Preparing state at native-image run
+         * time is not supported.
+         *
+         * @param contextCount the number of clean contexts to preinitialize; zero prepares only
+         *            engine state and cached code
+         * @param initializer callback that prepares the temporary engine
+         * @return one-shot prepared engine state
+         * @throws IllegalArgumentException if {@code contextCount} is negative or the configuration
+         *             cannot be prepared
+         * @throws IllegalStateException if callback contexts remain open, do not form exactly one
+         *             compatible sharing layer, or retain unsupported instrument state
+         * @throws NullPointerException if {@code initializer} is {@code null}
+         * @since 25.6
+         */
+        public Preinitialized preinitialize(int contextCount, Consumer<Engine> initializer) {
+            if (preinitialized != null) {
+                throw new IllegalStateException("A builder configured to consume preinitialized state cannot prepare another state.");
+            }
+            if (contextCount < 0) {
+                throw new IllegalArgumentException("Context count must not be negative.");
+            }
+            Objects.requireNonNull(initializer, "Initializer must not be null.");
+            AbstractPolyglotImpl polyglot = getPolyglotImpl();
+            EngineConfig config = new EngineConfig(polyglot);
+            String[] preinitializedLanguages = permittedLanguages.clone();
+            Engine preinitializedEngine = polyglot.preinitializeEngine(preinitializedLanguages, sandboxPolicy, out, err, config.in, options, config.systemPropertiesOptions,
+                            useSystemProperties, config.allowExperimentalOptions, spawnIsolate, messageTransport, config.logHandler, config.hostLanguage,
+                            exceptionHandler, contextCount, initializer);
+            return new Preinitialized(preinitializedEngine, preinitializedLanguages, sandboxPolicy);
+        }
+
+        /**
          * {@inheritDoc}
          *
          * @since 25.3
@@ -974,11 +1160,15 @@ public final class Engine implements AutoCloseable {
         @Override
         public String toString() {
             StringBuilder b = new StringBuilder("Engine.newBuilder(");
-            String separator = "";
-            for (String language : permittedLanguages) {
-                b.append(separator);
-                b.append(ToStringSupport.quote(language));
-                separator = ", ";
+            if (preinitialized != null) {
+                b.append(preinitialized);
+            } else {
+                String separator = "";
+                for (String language : permittedLanguages) {
+                    b.append(separator);
+                    b.append(ToStringSupport.quote(language));
+                    separator = ", ";
+                }
             }
             b.append(')');
             if (out != System.out) {
@@ -1019,30 +1209,65 @@ public final class Engine implements AutoCloseable {
 
         /**
          * Creates a new engine instance from the configuration provided in the builder. The same
-         * engine builder can be used to create multiple engine instances.
+         * engine builder can be used to create multiple engine instances unless it was created
+         * with {@link Engine#newBuilder(Preinitialized) prepared state}, which can be consumed only
+         * once.
          *
+         * @throws IllegalStateException if configured prepared state is unavailable
          * @since 19.0
          */
         public Engine build() {
+            AbstractPolyglotImpl polyglot = getPolyglotImpl();
+            Engine preinitializedEngine = preinitialized == null ? null : preinitialized.take();
+            try {
+                EngineConfig config = new EngineConfig(polyglot);
+                return polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, config.in, options, config.systemPropertiesOptions, useSystemProperties,
+                                config.allowExperimentalOptions, boundEngine, spawnIsolate, messageTransport, config.logHandler, config.hostLanguage, false, true, null, exceptionHandler,
+                                preinitializedEngine);
+            } catch (RuntimeException | Error e) {
+                if (preinitializedEngine != null) {
+                    try {
+                        preinitializedEngine.close();
+                    } catch (RuntimeException | Error closeFailure) {
+                        e.addSuppressed(closeFailure);
+                    }
+                }
+                throw e;
+            }
+        }
+
+        private AbstractPolyglotImpl getPolyglotImpl() {
             AbstractPolyglotImpl polyglot = getImpl();
             if (polyglot == null) {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
-            validateSandbox();
-            InputStream useIn = in;
-            if (useIn == null) {
-                useIn = switch (sandboxPolicy) {
-                    case TRUSTED -> System.in;
-                    case CONSTRAINED, ISOLATED, UNTRUSTED -> InputStream.nullInputStream();
-                    default -> throw new IllegalArgumentException(String.valueOf(sandboxPolicy));
-                };
+            return polyglot;
+        }
+
+        private final class EngineConfig {
+
+            final InputStream in;
+            final Object logHandler;
+            final Map<String, String> systemPropertiesOptions;
+            final boolean allowExperimentalOptions;
+            final Object hostLanguage;
+
+            EngineConfig(AbstractPolyglotImpl polyglot) {
+                validateSandbox();
+                InputStream configuredIn = Builder.this.in;
+                if (configuredIn == null) {
+                    configuredIn = switch (sandboxPolicy) {
+                        case TRUSTED -> System.in;
+                        case CONSTRAINED, ISOLATED, UNTRUSTED -> InputStream.nullInputStream();
+                        default -> throw new IllegalArgumentException(String.valueOf(sandboxPolicy));
+                    };
+                }
+                this.in = configuredIn;
+                this.logHandler = customLogHandler != null ? polyglot.newLogHandler(customLogHandler) : null;
+                this.systemPropertiesOptions = readOptionsFromSystemProperties();
+                this.allowExperimentalOptions = Builder.this.allowExperimentalOptions || readAllowExperimentalOptionsFromSystemProperties();
+                this.hostLanguage = polyglot.createHostLanguage(polyglot.createHostAccess());
             }
-            Object logHandler = customLogHandler != null ? polyglot.newLogHandler(customLogHandler) : null;
-            Map<String, String> systemPropertiesOptions = readOptionsFromSystemProperties();
-            boolean useAllowExperimentalOptions = allowExperimentalOptions || readAllowExperimentalOptionsFromSystemProperties();
-            Engine engine = polyglot.buildEngine(permittedLanguages, sandboxPolicy, out, err, useIn, options, systemPropertiesOptions, useSystemProperties, useAllowExperimentalOptions,
-                            boundEngine, spawnIsolate, messageTransport, logHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null, exceptionHandler);
-            return engine;
         }
 
         static Map<String, String> readOptionsFromSystemProperties() {
@@ -1077,6 +1302,10 @@ public final class Engine implements AutoCloseable {
         }
 
         private static boolean readAllowExperimentalOptionsFromSystemProperties() {
+            if (ImageInfo.inImageBuildtimeCode()) {
+                // Do not persist the image builder's property value in the runtime cache.
+                return Boolean.getBoolean("polyglot.engine.AllowExperimentalOptions");
+            }
             Boolean res = allowExperimentalOptionSystemPropertyValue.get();
             if (res == null) {
                 res = Boolean.getBoolean("polyglot.engine.AllowExperimentalOptions");
@@ -2016,7 +2245,8 @@ public final class Engine implements AutoCloseable {
         public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,
                         Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
                         boolean allowExperimentalOptions, boolean boundEngine, Boolean useIsolatedEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
-                        boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService, Consumer<PolyglotException> exceptionHandler) {
+                        boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService, Consumer<PolyglotException> exceptionHandler,
+                        Object preinitializedEngine) {
             throw noPolyglotImplementationFound();
         }
 

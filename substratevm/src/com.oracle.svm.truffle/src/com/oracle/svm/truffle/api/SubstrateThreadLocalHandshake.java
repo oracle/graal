@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,7 +72,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
     static final ThreadLocal<Boolean> HOSTED_PENDING = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     @Platforms(Platform.HOSTED_ONLY.class)//
-    private static final ThreadLocal<TruffleSafepointImpl> HOSTED_STATE = ThreadLocal.withInitial(() -> SINGLETON.getThreadState(Thread.currentThread()));
+    private static final ThreadLocal<TruffleSafepointImpl> HOSTED_STATE = ThreadLocal.withInitial(SINGLETON::createThreadState);
 
     @Override
     public void poll(Node location) {
@@ -134,9 +134,19 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
     }
 
     @Override
+    protected TruffleSafepointImpl getThreadState(Thread thread) {
+        if (SubstrateUtil.HOSTED && thread == Thread.currentThread()) {
+            return HOSTED_STATE.get();
+        } else {
+            return super.getThreadState(thread);
+        }
+    }
+
+    @Override
     public TruffleSafepointImpl getCurrent() {
         if (SubstrateUtil.HOSTED) {
-            return HOSTED_STATE.get();
+            TruffleSafepointImpl state = getThreadStateIfPresent(Thread.currentThread());
+            return state != null ? state : HOSTED_STATE.get();
         } else {
             return STATE.get();
         }

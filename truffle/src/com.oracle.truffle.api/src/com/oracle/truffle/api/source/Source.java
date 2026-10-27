@@ -1024,6 +1024,9 @@ public abstract class Source {
         String usePath = path;
         URL useUrl = url;
         Object useOrigin = origin;
+        boolean reinitializeURI = useUri == null;
+        boolean reinitializeURL = useUrl == null && useOrigin instanceof URL;
+        boolean reinitializePath = usePath == null;
         Charset useEncoding = encoding;
         TruffleFile useTruffleFile = null;
         Object useFileSystemContext = fileSystemContext;
@@ -1140,14 +1143,11 @@ public abstract class Source {
              */
             relativePathInLanguageHome = SourceAccessor.ACCESSOR.engineSupport().getRelativePathInResourceRoot(useTruffleFile);
             if (relativePathInLanguageHome != null) {
-                Object fsEngineObject = SourceAccessor.ACCESSOR.languageSupport().getFileSystemEngineObject(SourceAccessor.ACCESSOR.languageSupport().getFileSystemContext(useTruffleFile));
-                if (SourceAccessor.ACCESSOR.engineSupport().inContextPreInitialization(fsEngineObject)) {
+                if (SourceAccessor.ACCESSOR.engineSupport().inContextPreInitialization(useTruffleFile)) {
                     SourceImpl.Key key = new SourceImpl.ReinitializableKey(useTruffleFile, useContent, useMimeType, language,
                                     useUrl, useUri, useName, usePath, internal, interactive, cached,
-                                    relativePathInLanguageHome, embedderSource, useOptions);
-                    Source source = SOURCES.intern(key);
-                    SourceAccessor.onSourceCreated(source);
-                    return source;
+                                    relativePathInLanguageHome, embedderSource, useOptions, reinitializeURI, reinitializeURL, reinitializePath);
+                    return SOURCES.intern(key);
                 }
             }
         }

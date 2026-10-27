@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -98,7 +98,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
             FORCE_USE_NATIVE_IMAGE_CACHE = false;
         }
     }
-    private static final Map<String, LanguageCache> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
+    static final Map<String, LanguageCache> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
     private static final Map<String, LanguageCache> nativeImageMimes = TruffleOptions.AOT ? new HashMap<>() : null;
     private static final Set<String> languagesOverridingPatchContext = TruffleOptions.AOT ? new HashSet<>() : null;
     private static final Map<AbstractClassLoaderSupplier, Map<String, LanguageCache>> runtimeCaches = new HashMap<>();
@@ -404,7 +404,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
         into.add(new LanguageCache(id, name, implementationName, version, className, languageHome,
                         characterMimes, byteMimeTypes, defaultMime, dependentLanguages, interactive, internal, needsAllEncodings,
-                        servicesClassNames, reg.contextPolicy(), provider, reg.website(), sandboxPolicy, Collections.unmodifiableMap(resources)));
+                        servicesClassNames, reg.contextPolicy(), provider, reg.website(), sandboxPolicy, resources));
     }
 
     private static String formatLanguageLocation(LanguageCache languageCache) {
@@ -421,7 +421,29 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     static boolean overridesPatchContext(String languageId) {
         assert TruffleOptions.AOT : "Only supported in native image";
-        return languagesOverridingPatchContext.contains(languageId);
+        if (languagesOverridingPatchContext.contains(languageId)) {
+            return true;
+        }
+        if (ImageInfo.inImageBuildtimeCode()) {
+            LanguageCache language = languages().get(languageId);
+            return language != null && initializeOverridesPatchContext(language, language.provider.getClass().getClassLoader());
+        }
+        return false;
+    }
+
+    private static boolean initializeOverridesPatchContext(LanguageCache language, ClassLoader classLoader) {
+        try {
+            Class<?> languageClass = Class.forName(language.className, false, classLoader);
+            for (Method method : languageClass.getDeclaredMethods()) {
+                if (method.getName().equals("patchContext")) {
+                    languagesOverridingPatchContext.add(language.id);
+                    return true;
+                }
+            }
+        } catch (ReflectiveOperationException e) {
+            emitWarning("Failed to lookup patchContext method due to ", e);
+        }
+        return false;
     }
 
     static void resetNativeImageCacheLanguageHomes() {
@@ -449,22 +471,22 @@ final class LanguageCache implements Comparable<LanguageCache> {
      * @param imageClassLoader class loader passed by the image builder.
      */
     @SuppressWarnings("unused")
-    private static void initializeNativeImageState(ClassLoader imageClassLoader) {
+    private static synchronized void initializeNativeImageState(ClassLoader imageClassLoader) {
         assert TruffleOptions.AOT : "Only supported during image generation";
-        nativeImageCache.putAll(createLanguages(new StrongClassLoaderSupplier(imageClassLoader)));
+        languagesOverridingPatchContext.clear();
+        Map<String, LanguageCache> imageLanguages = createLanguages(new StrongClassLoaderSupplier(imageClassLoader));
+        for (Map<String, LanguageCache> runtimeLanguages : runtimeCaches.values()) {
+            for (Map.Entry<String, LanguageCache> entry : imageLanguages.entrySet()) {
+                LanguageCache runtimeLanguage = runtimeLanguages.get(entry.getKey());
+                if (runtimeLanguage != null) {
+                    runtimeLanguage.initializeNativeImageResources(entry.getValue());
+                }
+            }
+        }
+        nativeImageCache.putAll(imageLanguages);
         nativeImageMimes.putAll(createMimes());
         for (LanguageCache languageCache : nativeImageCache.values()) {
-            try {
-                Class<?> clz = Class.forName(languageCache.className, false, imageClassLoader);
-                for (Method m : clz.getDeclaredMethods()) {
-                    if (m.getName().equals("patchContext")) {
-                        languagesOverridingPatchContext.add(languageCache.id);
-                        break;
-                    }
-                }
-            } catch (ReflectiveOperationException roe) {
-                emitWarning("Failed to lookup patchContext method due to ", roe);
-            }
+            initializeOverridesPatchContext(languageCache, imageClassLoader);
         }
     }
 
@@ -640,6 +662,15 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     Collection<InternalResourceCache> getResources() {
         return internalResources.values();
+    }
+
+    private void initializeNativeImageResources(LanguageCache imageLanguage) {
+        for (Map.Entry<String, InternalResourceCache> entry : imageLanguage.internalResources.entrySet()) {
+            InternalResourceCache existing = internalResources.get(entry.getKey());
+            if (existing == null || existing.isMissing()) {
+                internalResources.put(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     @Override

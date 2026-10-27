@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
@@ -97,6 +98,22 @@ final class InternalResourceRoots {
     private volatile List<Root> roots;
 
     private InternalResourceRoots() {
+    }
+
+    static void resetNativeImageState() {
+        // Prepared engines may already reference these containers. Clearing runtimeCaches would
+        // leave those engines with stale roots, so invalidate the existing containers in place.
+        for (InternalResourceRoots resourceRoots : runtimeCaches.values()) {
+            List<Root> currentRoots = resourceRoots.roots;
+            if (currentRoots != null) {
+                for (Root root : currentRoots) {
+                    for (InternalResourceCache cache : root.resources()) {
+                        cache.clearCache();
+                    }
+                }
+                resourceRoots.roots = null;
+            }
+        }
     }
 
     static InternalResourceRoots getInstance() {
@@ -175,6 +192,17 @@ final class InternalResourceRoots {
             }
         }
         return null;
+    }
+
+    void forEachUsedResource(BiConsumer<InternalResourceCache, Path> action) {
+        for (Root root : roots) {
+            for (InternalResourceCache cache : root.resources) {
+                Path path = cache.getPathOrNull();
+                if (path != null) {
+                    action.accept(cache, path);
+                }
+            }
+        }
     }
 
     /**
