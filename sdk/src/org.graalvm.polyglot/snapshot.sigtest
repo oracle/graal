@@ -244,6 +244,7 @@ hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOption
 CLSS public final org.graalvm.polyglot.Engine
 innr public abstract interface static CancellationCallback
 innr public final Builder
+innr public final static Preinitialized
 intf java.lang.AutoCloseable
 meth public !varargs static boolean copyResources(java.nio.file.Path,java.lang.String[]) throws java.io.IOException
 meth public !varargs static org.graalvm.polyglot.Engine create(java.lang.String[])
@@ -262,6 +263,7 @@ meth public static boolean supportsCompilation()
 meth public static java.nio.file.Path findHome()
 meth public static org.graalvm.polyglot.Engine create()
 meth public static org.graalvm.polyglot.Engine$Builder newBuilder()
+meth public static org.graalvm.polyglot.Engine$Builder newBuilder(org.graalvm.polyglot.Engine$Preinitialized)
 meth public void close()
 meth public void close(boolean)
 supr java.lang.Object
@@ -285,13 +287,23 @@ meth public org.graalvm.polyglot.Engine$Builder sandbox(org.graalvm.polyglot.San
 meth public org.graalvm.polyglot.Engine$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 meth public org.graalvm.polyglot.Engine$Builder spawnIsolate(boolean)
 meth public org.graalvm.polyglot.Engine$Builder useSystemProperties(boolean)
+meth public org.graalvm.polyglot.Engine$Preinitialized preinitialize(int,java.util.function.Consumer<org.graalvm.polyglot.Engine>)
 supr java.lang.Object
-hfds allowExperimentalOptionSystemPropertyValue,allowExperimentalOptions,boundEngine,customLogHandler,err,exceptionHandler,in,messageTransport,options,out,permittedLanguages,sandboxPolicy,spawnIsolate,useSystemProperties
+hfds allowExperimentalOptionSystemPropertyValue,allowExperimentalOptions,boundEngine,customLogHandler,err,exceptionHandler,in,messageTransport,options,out,permittedLanguages,preinitialized,sandboxPolicy,spawnIsolate,useSystemProperties
+hcls EngineConfig
 
 CLSS public abstract interface static org.graalvm.polyglot.Engine$CancellationCallback
  outer org.graalvm.polyglot.Engine
  anno 0 java.lang.FunctionalInterface()
 meth public abstract boolean shouldCancel()
+
+CLSS public final static org.graalvm.polyglot.Engine$Preinitialized
+ outer org.graalvm.polyglot.Engine
+intf java.lang.AutoCloseable
+meth public java.util.Set<org.graalvm.polyglot.Source> getCachedSources()
+meth public void close()
+supr java.lang.Object
+hfds engine,permittedLanguages,sandboxPolicy
 
 CLSS public final org.graalvm.polyglot.EnvironmentAccess
 fld public final static org.graalvm.polyglot.EnvironmentAccess INHERIT

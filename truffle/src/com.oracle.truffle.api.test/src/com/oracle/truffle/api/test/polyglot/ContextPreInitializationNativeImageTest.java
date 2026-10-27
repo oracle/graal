@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.api.test.polyglot;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -56,10 +57,13 @@ import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Source;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
@@ -67,6 +71,8 @@ import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
@@ -97,6 +103,9 @@ import java.nio.file.Path;
 public class ContextPreInitializationNativeImageTest {
 
     static final String LANGUAGE = "ContextPreintializationNativeImageLanguage";
+    private static final String DIRECT_LANGUAGE = "DirectContextExecutionNativeImageLanguage";
+    private static final String EXPLICIT_LANGUAGE = "ExplicitContextPreintializationNativeImageLanguage";
+    private static final String RETAINED_SOURCE_LANGUAGE = "RetainedSourceNativeImageLanguage";
     private static Context ctx;
 
     @BeforeClass
@@ -139,6 +148,162 @@ public class ContextPreInitializationNativeImageTest {
     }
 
     @Test
+    public void directContextExecution() {
+        TruffleTestAssumptions.assumeAOT();
+        assertTrue(DirectContextExecution.RESULT);
+    }
+
+    @Test
+    public void experimentalOptionsUseRuntimeSystemProperty() {
+        TruffleTestAssumptions.assumeAOT();
+        assertEquals(Boolean.getBoolean("polyglot.engine.AllowExperimentalOptions"), acceptsExperimentalEngineOption());
+    }
+
+    private static boolean acceptsExperimentalEngineOption() {
+        try (Engine engine = Engine.newBuilder().option("engine.ShowInternalStackFrames", "false").build()) {
+            assertNotNull(engine);
+            return true;
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("Option 'engine.ShowInternalStackFrames' is experimental"));
+            return false;
+        }
+    }
+
+    @Test
+    public void explicitEnginePreinitialization() throws IOException {
+        TruffleTestAssumptions.assumeAOT();
+        assertEquals(2, ExplicitPreinitializedEngine.STATE.getCachedSources().size());
+        int fileSources = 0;
+        for (Source source : ExplicitPreinitializedEngine.STATE.getCachedSources()) {
+            if (source.getPath() != null) {
+                fileSources++;
+                assertFalse("truffle".equals(source.getURI().getScheme()));
+            }
+        }
+        assertEquals(1, fileSources);
+        try (Engine engine = Engine.newBuilder(ExplicitPreinitializedEngine.STATE).allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "true").build();
+                        Context context = Context.newBuilder(EXPLICIT_LANGUAGE).engine(engine).build()) {
+            AbstractPolyglotTest.assertFails(() -> Context.newBuilder(EXPLICIT_LANGUAGE).engine(engine).build(), IllegalStateException.class);
+            assertTrue(context.eval(ExplicitPreinitializedEngine.createSource()).asBoolean());
+            assertEquals(2, ExplicitLanguage.parseCount);
+            try (Context fresh = Context.newBuilder(EXPLICIT_LANGUAGE).engine(engine).allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "false").build()) {
+                assertFalse(fresh.eval(ExplicitPreinitializedEngine.createSource()).asBoolean());
+            }
+            context.enter();
+            try {
+                ExplicitLanguage language = ExplicitLanguage.LANGUAGE_REF.get(null);
+                assertEquals("callback resource", new String(language.callbackFile.readAllBytes(), StandardCharsets.UTF_8));
+                assertEquals(language.callbackFile.getPath(), language.callbackSource.getPath());
+                assertEquals(language.callbackFile.toUri(), language.callbackSource.getURI());
+                TruffleFile freshFile = ExplicitLanguage.CONTEXT_REF.get(null).env.getInternalResource(ExplicitResource.class).resolve("callback.txt");
+                assertEquals(language.callbackFile.getPath(), freshFile.getPath());
+                assertEquals("callback resource", new String(freshFile.readAllBytes(), StandardCharsets.UTF_8));
+            } finally {
+                context.leave();
+            }
+        }
+    }
+
+    @Test
+    public void explicitEnginePreinitializationResourceWithoutPool() throws IOException {
+        TruffleTestAssumptions.assumeAOT();
+        try (Engine engine = Engine.newBuilder(ExplicitPreinitializedEngine.ZERO_POOL_STATE).build()) {
+            AbstractPolyglotTest.assertFails(() -> Context.newBuilder(EXPLICIT_LANGUAGE).engine(engine).allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "true").build(),
+                            IllegalStateException.class);
+            assertEquals("callback resource", new String(ExplicitPreinitializedEngine.zeroPoolFile.readAllBytes(), StandardCharsets.UTF_8));
+            try (Context context = Context.newBuilder(EXPLICIT_LANGUAGE).engine(engine).build()) {
+                context.initialize(EXPLICIT_LANGUAGE);
+                context.enter();
+                try {
+                    TruffleFile freshFile = ExplicitLanguage.CONTEXT_REF.get(null).env.getInternalResource(ExplicitResource.class).resolve("callback.txt");
+                    assertEquals(ExplicitPreinitializedEngine.zeroPoolFile.getPath(), freshFile.getPath());
+                    assertEquals("callback resource", new String(freshFile.readAllBytes(), StandardCharsets.UTF_8));
+                } finally {
+                    context.leave();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void sequentialEnginePreinitializationWithResourceSources() throws IOException {
+        TruffleTestAssumptions.assumeAOT();
+        for (Engine.Preinitialized prepared : ExplicitPreinitializedEngine.SEQUENTIAL_STATES) {
+            assertEquals(1, prepared.getCachedSources().size());
+            Source cachedSource = prepared.getCachedSources().iterator().next();
+            try (Engine engine = Engine.newBuilder(prepared).build();
+                            Context context = Context.newBuilder(RETAINED_SOURCE_LANGUAGE).engine(engine).build()) {
+                assertTrue(context.eval(cachedSource).asBoolean());
+                context.enter();
+                try {
+                    Env env = RetainedSourceLanguage.CONTEXT_REF.get(null);
+                    TruffleFile file = env.getInternalResource(ExplicitResource.class).resolve("callback.txt");
+                    var sources = RetainedSourceLanguage.LANGUAGE_REF.get(null).sources;
+                    for (var source : sources) {
+                        assertEquals(file.getPath(), source.getPath());
+                        assertEquals(file.toUri(), source.getURI());
+                        assertEquals("callback resource", source.getCharacters().toString());
+                    }
+                } finally {
+                    context.leave();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void independentlyRetainedSourcesFromClosedEngine() throws IOException {
+        TruffleTestAssumptions.assumeAOT();
+        var sources = ExplicitPreinitializedEngine.retainedSources;
+        assertEquals(3, sources.length);
+        assertTrue(sources[0].isCached());
+        assertFalse(sources[1].isCached());
+        assertTrue(sources[2].isCached());
+        try (Context context = Context.create(RETAINED_SOURCE_LANGUAGE)) {
+            context.initialize(RETAINED_SOURCE_LANGUAGE);
+            context.enter();
+            try {
+                Env env = RetainedSourceLanguage.CONTEXT_REF.get(null);
+                TruffleFile file = env.getInternalResource(ExplicitResource.class).resolve("callback.txt");
+                for (var source : sources) {
+                    assertEquals(file.getPath(), source.getPath());
+                    assertEquals(file.toUri(), source.getURI());
+                    assertEquals("callback resource", source.getCharacters().toString());
+                }
+            } finally {
+                context.leave();
+            }
+        }
+    }
+
+    @Test
+    public void explicitEnginePreinitializationIdleDebugger() {
+        TruffleTestAssumptions.assumeAOT();
+        try (Engine engine = Engine.newBuilder(ExplicitPreinitializedEngine.DEBUGGER_STATE).build()) {
+            Debugger debugger = engine.getInstruments().get("debugger").lookup(Debugger.class);
+            assertSame(ExplicitPreinitializedEngine.debugger, debugger);
+            assertEquals(0, debugger.getSessionCount());
+            try (DebuggerSession session = debugger.startSession(event -> fail("Unexpected suspension."))) {
+                assertEquals(1, debugger.getSessionCount());
+                session.suspendNextExecution();
+            }
+            assertEquals(0, debugger.getSessionCount());
+        }
+    }
+
+    @Test
+    public void explicitEnginePreinitializationAtRuntimeFails() {
+        TruffleTestAssumptions.assumeAOT();
+        try {
+            Engine.newBuilder(EXPLICIT_LANGUAGE).preinitialize(0, engine -> {
+            });
+            fail("Expected preinitialization at native-image runtime to fail.");
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("--initialize-at-build-time=<holder-class>"));
+        }
+    }
+
+    @Test
     public void testInternalResourceFilesFromBuildTimeValidInRuntime() throws IOException {
         // only supported in AOT
         TruffleTestAssumptions.assumeAOT();
@@ -162,6 +327,239 @@ public class ContextPreInitializationNativeImageTest {
         TruffleTestAssumptions.assumeAOT();
         StaticObjectModelTest somTest = Language.CONTEXT_REF.get(null).staticObjectModelTest;
         somTest.testObjectAllocatedOnContextPreInit();
+    }
+
+    static final class DirectContextExecution {
+
+        static final boolean RESULT;
+
+        static {
+            String property = "polyglot.engine.AllowExperimentalOptions";
+            String previousValue = System.getProperty(property);
+            try {
+                System.setProperty(property, "false");
+                assertFalse(acceptsExperimentalEngineOption());
+                System.setProperty(property, "true");
+                assertTrue(acceptsExperimentalEngineOption());
+                try (Engine engine = Engine.newBuilder(DIRECT_LANGUAGE).allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "true").build()) {
+                    fail("The preinitialization requirement must be rejected during image building.");
+                } catch (IllegalArgumentException expected) {
+                    assertTrue(expected.getMessage(), expected.getMessage().contains("runtime-only"));
+                }
+                try (Engine engine = Engine.create(DIRECT_LANGUAGE)) {
+                    try (Context context = Context.newBuilder(DIRECT_LANGUAGE).engine(engine).allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "true").build()) {
+                        fail("A context option must not enable the requirement during image building.");
+                    } catch (IllegalArgumentException expected) {
+                        assertTrue(expected.getMessage(), expected.getMessage().contains("runtime-only"));
+                    }
+                }
+                try (Context context = Context.create(DIRECT_LANGUAGE)) {
+                    RESULT = context.eval(DIRECT_LANGUAGE, "42").asBoolean();
+                }
+            } finally {
+                if (previousValue == null) {
+                    System.clearProperty(property);
+                } else {
+                    System.setProperty(property, previousValue);
+                }
+            }
+        }
+    }
+
+    static final class ExplicitPreinitializedEngine {
+
+        static final Engine.Preinitialized STATE;
+
+        static final Engine.Preinitialized DEBUGGER_STATE;
+        static final Engine.Preinitialized ZERO_POOL_STATE;
+        static final Engine.Preinitialized[] SEQUENTIAL_STATES = new Engine.Preinitialized[2];
+        static Debugger debugger;
+        static TruffleFile zeroPoolFile;
+        static com.oracle.truffle.api.source.Source[] retainedSources;
+
+        static {
+            DEBUGGER_STATE = Engine.newBuilder(DIRECT_LANGUAGE).preinitialize(0, engine -> {
+                try (Context context = Context.newBuilder(DIRECT_LANGUAGE).engine(engine).build()) {
+                    context.initialize(DIRECT_LANGUAGE);
+                    debugger = engine.getInstruments().get("debugger").lookup(Debugger.class);
+                    context.enter();
+                    try {
+                        debugger.disableStepping();
+                        debugger.restoreStepping();
+                    } finally {
+                        context.leave();
+                    }
+                }
+            });
+            ZERO_POOL_STATE = Engine.newBuilder(EXPLICIT_LANGUAGE).preinitialize(0, engine -> {
+                try (Context context = Context.newBuilder(EXPLICIT_LANGUAGE).engine(engine).arguments(EXPLICIT_LANGUAGE, new String[]{"file-only"}).build()) {
+                    context.initialize(EXPLICIT_LANGUAGE);
+                    context.enter();
+                    try {
+                        zeroPoolFile = ExplicitLanguage.LANGUAGE_REF.get(null).callbackFile;
+                    } finally {
+                        context.leave();
+                    }
+                }
+            });
+            STATE = Engine.newBuilder(EXPLICIT_LANGUAGE).preinitialize(1, engine -> {
+                try (Context context = Context.newBuilder(EXPLICIT_LANGUAGE).engine(engine).build()) {
+                    assertFalse(context.eval(createSource()).asBoolean());
+                }
+            });
+            for (int i = 0; i < SEQUENTIAL_STATES.length; i++) {
+                SEQUENTIAL_STATES[i] = Engine.newBuilder(RETAINED_SOURCE_LANGUAGE).preinitialize(0, engine -> {
+                    try (Context context = Context.newBuilder(RETAINED_SOURCE_LANGUAGE).engine(engine).arguments(RETAINED_SOURCE_LANGUAGE, new String[]{"retain"}).build()) {
+                        context.initialize(RETAINED_SOURCE_LANGUAGE);
+                    }
+                });
+            }
+            try (Engine.Preinitialized prepared = Engine.newBuilder(RETAINED_SOURCE_LANGUAGE).preinitialize(0, engine -> {
+                try (Context context = Context.newBuilder(RETAINED_SOURCE_LANGUAGE).engine(engine).arguments(RETAINED_SOURCE_LANGUAGE, new String[]{"retain"}).build()) {
+                    context.initialize(RETAINED_SOURCE_LANGUAGE);
+                    context.enter();
+                    try {
+                        retainedSources = RetainedSourceLanguage.LANGUAGE_REF.get(null).sources;
+                    } finally {
+                        context.leave();
+                    }
+                }
+            })) {
+                assertEquals(1, prepared.getCachedSources().size());
+            }
+        }
+
+        static Source createSource() {
+            return Source.create(EXPLICIT_LANGUAGE, "42");
+        }
+    }
+
+    @TruffleLanguage.Registration(id = DIRECT_LANGUAGE, name = DIRECT_LANGUAGE, version = "1.0", contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
+    public static final class DirectLanguage extends TruffleLanguage<Boolean> {
+
+        @Override
+        protected Boolean createContext(Env env) {
+            return true;
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) {
+            return new RootNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return true;
+                }
+            }.getCallTarget();
+        }
+    }
+
+    @TruffleLanguage.Registration(id = EXPLICIT_LANGUAGE, name = EXPLICIT_LANGUAGE, version = "1.0", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, internalResources = ExplicitResource.class)
+    public static final class ExplicitLanguage extends TruffleLanguage<ExplicitLanguage.ExplicitContext> {
+
+        private static final ContextReference<ExplicitContext> CONTEXT_REF = ContextReference.create(ExplicitLanguage.class);
+        private static final LanguageReference<ExplicitLanguage> LANGUAGE_REF = LanguageReference.create(ExplicitLanguage.class);
+        static int parseCount;
+        private TruffleFile callbackFile;
+        private com.oracle.truffle.api.source.Source callbackSource;
+
+        static final class ExplicitContext {
+            Env env;
+            final boolean preinitialized;
+
+            ExplicitContext(Env env) {
+                this.env = env;
+                this.preinitialized = env.isPreInitialization();
+            }
+        }
+
+        @Override
+        protected ExplicitContext createContext(Env env) {
+            if (!env.isPreInitialization() && callbackFile == null) {
+                try {
+                    callbackFile = env.getInternalResource(ExplicitResource.class).resolve("callback.txt");
+                    // The zero-pool case exercises files independently of global source interning.
+                    if (env.getApplicationArguments().length == 0) {
+                        callbackSource = com.oracle.truffle.api.source.Source.newBuilder(EXPLICIT_LANGUAGE, callbackFile).build();
+                    }
+                } catch (IOException e) {
+                    throw new AssertionError(e);
+                }
+            }
+            return new ExplicitContext(env);
+        }
+
+        @Override
+        protected void initializeContext(ExplicitContext context) {
+            if (callbackSource != null) {
+                context.env.parseInternal(callbackSource);
+            }
+        }
+
+        @Override
+        protected boolean patchContext(ExplicitContext context, Env newEnv) {
+            context.env = newEnv;
+            return true;
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) {
+            parseCount++;
+            return new RootNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return CONTEXT_REF.get(this).preinitialized;
+                }
+            }.getCallTarget();
+        }
+    }
+
+    @TruffleLanguage.Registration(id = RETAINED_SOURCE_LANGUAGE, name = RETAINED_SOURCE_LANGUAGE, version = "1.0", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, internalResources = ExplicitResource.class)
+    public static final class RetainedSourceLanguage extends TruffleLanguage<Env> {
+
+        private static final ContextReference<Env> CONTEXT_REF = ContextReference.create(RetainedSourceLanguage.class);
+        private static final LanguageReference<RetainedSourceLanguage> LANGUAGE_REF = LanguageReference.create(RetainedSourceLanguage.class);
+        private com.oracle.truffle.api.source.Source[] sources;
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+        @Override
+        protected void initializeContext(Env env) throws IOException {
+            if (env.getApplicationArguments().length != 0) {
+                TruffleFile file = env.getInternalResource(ExplicitResource.class).resolve("callback.txt");
+                sources = new com.oracle.truffle.api.source.Source[]{
+                                com.oracle.truffle.api.source.Source.newBuilder(RETAINED_SOURCE_LANGUAGE, file).name("unparsed").build(),
+                                com.oracle.truffle.api.source.Source.newBuilder(RETAINED_SOURCE_LANGUAGE, file).name("uncached").cached(false).build(),
+                                com.oracle.truffle.api.source.Source.newBuilder(RETAINED_SOURCE_LANGUAGE, file).name("parsed").build()};
+                env.parseInternal(sources[2], "first");
+                env.parseInternal(sources[2], "second");
+            }
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) {
+            return new RootNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return true;
+                }
+            }.getCallTarget();
+        }
+    }
+
+    @Id("callback")
+    static final class ExplicitResource implements InternalResource {
+        @Override
+        public void unpackFiles(Env env, Path targetDirectory) throws IOException {
+            Files.writeString(targetDirectory.resolve("callback.txt"), "callback resource");
+        }
+
+        @Override
+        public String versionHash(Env env) {
+            return "1";
+        }
     }
 
     static class StaticObjectModelTest {

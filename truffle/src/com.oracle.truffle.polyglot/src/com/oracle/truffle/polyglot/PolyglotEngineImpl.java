@@ -137,6 +137,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.FileSystems.PreInitializeContextFileSystem;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.FileSystemConfig;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;
@@ -246,6 +247,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     @CompilationFinal AbstractHostLanguageService host; // effectively final after engine patching
 
     boolean inEnginePreInitialization; // effectively final after engine pre-initialization
+    boolean inExplicitPreinitialization;
+    private boolean explicitlyPreinitialized;
+    private List<FileSystemConfig> explicitPreinitializationFileSystems;
 
     final boolean hostLanguageOnly;
 
@@ -266,7 +270,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     final InternalResourceRoots internalResourceRoots;
 
     final long engineId;
-    final boolean allowExperimentalOptions;
+    @CompilationFinal boolean allowExperimentalOptions; // effectively final after engine patching
 
     @CompilationFinal Consumer<PolyglotException> exceptionHandler;
 
@@ -723,7 +727,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     static OptionDescriptors createEngineOptionDescriptors() {
         OptionDescriptors engineOptionDescriptors = new PolyglotEngineOptionsOptionDescriptors();
         OptionDescriptors compilerOptionDescriptors = EngineAccessor.RUNTIME.getRuntimeOptionDescriptors();
-        return LANGUAGE.createOptionDescriptorsUnion(engineOptionDescriptors, compilerOptionDescriptors);
+        return LANGUAGE.createOptionDescriptorsUnion(engineOptionDescriptors, PolyglotContextOptions.DESCRIPTORS, compilerOptionDescriptors);
     }
 
     boolean patch(SandboxPolicy newSandboxPolicy,
@@ -750,6 +754,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.boundEngine = newBoundEngine;
         this.logHandler = newLogHandler;
         this.engineOptionValues = engineOptions;
+        this.allowExperimentalOptions = newAllowExperimentalOptions;
         this.logLevels = newLogConfig.logLevels;
         if (!this.internalResourceRoots.patch(this)) {
             return false;
@@ -758,6 +763,11 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         if (PreInitContextHostLanguage.isInstance(hostLanguage)) {
             this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(newHostLanguage), HOST_LANGUAGE_INDEX, null);
             this.languages[HOST_LANGUAGE_INDEX] = this.hostLanguage;
+            synchronized (lock) {
+                for (PolyglotSharingLayer layer : sharedLayers) {
+                    layer.patchHostLanguage(this.hostLanguage);
+                }
+            }
         }
 
         usesPolyglotIsolate = newUsesPolyglotIsolate;
@@ -799,6 +809,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         printDeprecatedOptionsWarning(deprecatedDescriptors);
 
         RUNTIME.onEnginePatchSuccess(this.runtimeData);
+        reconnectExplicitPreinitializationFileSystems();
         return true;
     }
 
@@ -1479,6 +1490,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 closingThread = currentThread;
             }
 
+            closePreinitializedContexts();
+
             // instruments should be shut-down even if they are currently still executed
             // we want to see instrument output if the process is quit while executing.
             for (PolyglotInstrument instrumentImpl : idToInstrument.values()) {
@@ -1497,6 +1510,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
         synchronized (this.lock) {
             closed = true;
+            explicitPreinitializationFileSystems = null;
             // We want to flush as early as possible to make sure we start cancelling fast.
             // this also makes sure we are no longer accepting any compilations from this engine
             if (runtimeData != null) {
@@ -1643,6 +1657,225 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return preInitializedContext.get();
     }
 
+    void validatePreinitializedConfiguration(SandboxPolicy newSandboxPolicy, boolean newSpawnIsolate, MessageTransport newMessageTransport) {
+        synchronized (lock) {
+            checkState();
+            if (sandboxPolicy != newSandboxPolicy) {
+                throw PolyglotEngineException.illegalArgument("The sandbox policy must match the preinitialized engine configuration.");
+            }
+            if (newSpawnIsolate != usesPolyglotIsolate) {
+                throw PolyglotEngineException.illegalArgument("The polyglot-isolate configuration must match the preinitialized engine configuration.");
+            }
+            if (messageTransport != newMessageTransport) {
+                throw PolyglotEngineException.illegalArgument("The server transport must match the preinitialized engine configuration.");
+            }
+        }
+    }
+
+    void validatePreinitializedOptions(OptionValuesImpl newEngineOptions, Map<String, String> newOptions, Map<String, String> newSystemPropertiesOptions, boolean newUseSystemProperties,
+                    boolean newAllowExperimentalOptions) {
+        Map<PolyglotLanguage, Map<String, String>> languageOptionStrings = new HashMap<>();
+        Map<PolyglotInstrument, Map<String, String>> instrumentOptionStrings = new HashMap<>();
+        parseOptions(newOptions, newSystemPropertiesOptions, newUseSystemProperties, languageOptionStrings, instrumentOptionStrings);
+        synchronized (lock) {
+            if ((specializationStatistics != null) != newEngineOptions.get(PolyglotEngineOptions.SpecializationStatistics)) {
+                throw PolyglotEngineException.illegalArgument("Option engine.SpecializationStatistics must match the preinitialized engine configuration.");
+            }
+            if (probeAssertionsEnabled != initAssertProbes(newEngineOptions)) {
+                throw PolyglotEngineException.illegalArgument("Option engine.AssertProbes must match the preinitialized engine configuration.");
+            }
+            for (PolyglotSharingLayer layer : sharedLayers) {
+                Map<PolyglotLanguage, OptionValuesImpl> newLanguageOptions = new HashMap<>();
+                for (PolyglotLanguage language : layer.getInitializedLanguages()) {
+                    OptionValuesImpl optionValues = new OptionValuesImpl(language.getOptionsInternal(), sandboxPolicy, false);
+                    Map<String, String> optionStrings = languageOptionStrings.get(language);
+                    if (optionStrings != null) {
+                        parseAllOptions(optionValues, optionStrings, newAllowExperimentalOptions, new ArrayList<>());
+                    }
+                    newLanguageOptions.put(language, optionValues);
+                }
+                if (!layer.arePreinitializedEngineLanguageOptionsCompatible(newLanguageOptions)) {
+                    throw PolyglotEngineException.illegalArgument(
+                                    "The language options must be compatible with the preinitialized engine configuration.");
+                }
+            }
+            for (PolyglotInstrument instrument : idToInstrument.values()) {
+                if (instrument.isCreated()) {
+                    OptionValuesImpl optionValues = new OptionValuesImpl(instrument.getAllOptionsInternal(), sandboxPolicy, false);
+                    Map<String, String> optionStrings = instrumentOptionStrings.get(instrument);
+                    if (optionStrings != null) {
+                        parseAllOptions(optionValues, optionStrings, newAllowExperimentalOptions, new ArrayList<>());
+                    }
+                    // Retained instruments have no patch callback, including for hasBeenSet changes.
+                    if (!instrument.getEngineOptionValues().equals(optionValues)) {
+                        throw PolyglotEngineException.illegalArgument(String.format(
+                                        "The options for instrument '%s' must match the preinitialized engine configuration.", instrument.getId()));
+                    }
+                }
+            }
+            // Retain preparation-time engine defaults until validation, then apply runtime options.
+            for (PolyglotLanguage language : languages) {
+                if (language != null) {
+                    language.clearOptionValues();
+                }
+            }
+        }
+    }
+
+    void beginExplicitPreinitialization() {
+        synchronized (lock) {
+            checkState();
+            explicitlyPreinitialized = true;
+            inExplicitPreinitialization = true;
+            explicitPreinitializationFileSystems = new ArrayList<>();
+        }
+    }
+
+    void prepareHostLanguageForPreinitialization(TruffleLanguage<?> preinitializationHostLanguage) {
+        synchronized (lock) {
+            if (host != null) {
+                host.release();
+                host = null;
+            }
+            hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(preinitializationHostLanguage), HOST_LANGUAGE_INDEX, null);
+            languages[HOST_LANGUAGE_INDEX] = hostLanguage;
+            for (PolyglotSharingLayer layer : sharedLayers) {
+                layer.patchHostLanguage(hostLanguage);
+            }
+        }
+    }
+
+    void completeExplicitPreinitialization(int contextCount) {
+        synchronized (lock) {
+            checkState();
+            if (!contexts.isEmpty()) {
+                throw PolyglotEngineException.illegalState(
+                                "All contexts created by the preinitialization callback must be closed before the callback returns.");
+            }
+            if (sharedLayers.size() != 1) {
+                throw PolyglotEngineException.illegalState(String.format(
+                                "Preinitialization requires exactly one sharing layer, but the callback created %d sharing layers. All preparation contexts must use compatible language options.",
+                                sharedLayers.size()));
+            }
+            PolyglotSharingLayer layer = sharedLayers.get(0);
+            if (layer.getContextPolicy() != TruffleLanguage.ContextPolicy.SHARED) {
+                throw PolyglotEngineException.illegalState(
+                                "Preinitialization requires languages that support context-independent code using ContextPolicy.SHARED.");
+            }
+            inEnginePreInitialization = true;
+            try {
+                layer.preInitialize(contextCount);
+                preInitializeInstruments();
+                finalizeExplicitPreinitializationFileSystems();
+            } finally {
+                inEnginePreInitialization = false;
+                inExplicitPreinitialization = false;
+            }
+        }
+    }
+
+    private void preInitializeInstruments() {
+        assert Thread.holdsLock(lock);
+        Set<PolyglotInstrument> preinitialized = new HashSet<>();
+        boolean found;
+        do {
+            found = false;
+            for (PolyglotInstrument instrument : idToInstrument.values()) {
+                if (instrument.isCreated() && preinitialized.add(instrument)) {
+                    found = true;
+                    if (!INSTRUMENT.onInstrumentPreinitialize(instrumentationHandler, instrument)) {
+                        throw PolyglotEngineException.illegalState(String.format(
+                                        "Instrument '%s' has unsupported state that cannot be retained in a preinitialized engine.", instrument.getId()));
+                    }
+                }
+            }
+        } while (found);
+    }
+
+    void cancelExplicitPreinitialization() {
+        synchronized (lock) {
+            explicitlyPreinitialized = false;
+            inExplicitPreinitialization = false;
+            explicitPreinitializationFileSystems = null;
+        }
+    }
+
+    private FileSystemConfig createFileSystemConfig(Object ioAccess, FileSystem customFileSystem, String tmpDir) {
+        if (!ALLOW_IO) {
+            FileSystem fs = customFileSystem != null ? customFileSystem : FileSystems.newDenyIOFileSystem();
+            return new FileSystemConfig(ioAccess, fs, fs);
+        } else if (getImpl().getIO().hasHostFileAccess(ioAccess)) {
+            FileSystem fs = FileSystems.newDefaultFileSystem(tmpDir);
+            return new FileSystemConfig(ioAccess, fs, fs);
+        } else if (customFileSystem != null) {
+            return new FileSystemConfig(ioAccess, customFileSystem, customFileSystem);
+        } else {
+            return new FileSystemConfig(ioAccess, FileSystems.newDenyIOFileSystem(), FileSystems.newResourcesFileSystem(this));
+        }
+    }
+
+    private FileSystemConfig wrapExplicitPreinitializationFileSystems(FileSystemConfig fileSystemConfig) {
+        if (!inExplicitPreinitialization || inEnginePreInitialization) {
+            return fileSystemConfig;
+        }
+        synchronized (lock) {
+            FileSystemConfig wrapped = new FileSystemConfig(fileSystemConfig.ioAccess,
+                            new PreInitializeContextFileSystem(fileSystemConfig.fileSystem),
+                            new PreInitializeContextFileSystem(fileSystemConfig.internalFileSystem));
+            explicitPreinitializationFileSystems.add(wrapped);
+            return wrapped;
+        }
+    }
+
+    private void finalizeExplicitPreinitializationFileSystems() {
+        assert Thread.holdsLock(lock);
+        Map<String, Path> languageHomes = languageHomes();
+        for (FileSystemConfig fileSystemConfig : explicitPreinitializationFileSystems) {
+            ((PreInitializeContextFileSystem) fileSystemConfig.fileSystem).onPreInitializeContextEnd(internalResourceRoots, languageHomes);
+            ((PreInitializeContextFileSystem) fileSystemConfig.internalFileSystem).onPreInitializeContextEnd(internalResourceRoots, languageHomes);
+        }
+        for (PolyglotSharingLayer layer : sharedLayers) {
+            layer.invalidateSourcesAfterPreinitialization();
+        }
+    }
+
+    private void reconnectExplicitPreinitializationFileSystems() {
+        synchronized (lock) {
+            if (explicitPreinitializationFileSystems == null) {
+                return;
+            }
+            for (FileSystemConfig fileSystemConfig : explicitPreinitializationFileSystems) {
+                FileSystemConfig runtimeFileSystems = createFileSystemConfig(fileSystemConfig.ioAccess, null, null);
+                ((PreInitializeContextFileSystem) fileSystemConfig.fileSystem).onLoadPreinitializedContext(runtimeFileSystems.fileSystem);
+                ((PreInitializeContextFileSystem) fileSystemConfig.internalFileSystem).onLoadPreinitializedContext(runtimeFileSystems.internalFileSystem);
+            }
+            explicitPreinitializationFileSystems = null;
+        }
+    }
+
+    private void closePreinitializedContexts() {
+        List<PolyglotContextImpl> contextsToClose = new ArrayList<>();
+        synchronized (lock) {
+            for (PolyglotSharingLayer layer : sharedLayers) {
+                layer.drainPreinitializedContexts(contextsToClose);
+            }
+        }
+        int closedContexts = 0;
+        try {
+            for (; closedContexts < contextsToClose.size(); closedContexts++) {
+                contextsToClose.get(closedContexts).closeImpl(false);
+            }
+        } finally {
+            synchronized (lock) {
+                // Return failed and unattempted contexts to their pools for a close retry.
+                for (int i = closedContexts; i < contextsToClose.size(); i++) {
+                    PolyglotContextImpl context = contextsToClose.get(i);
+                    context.layer.restorePreinitializedContext(context);
+                }
+            }
+        }
+    }
+
     void preInitialize() {
         synchronized (this.lock) {
             inEnginePreInitialization = true;
@@ -1680,6 +1913,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     PreinitConfig preinitConfig = allowNativeAccess ? PreinitConfig.DEFAULT_WITH_NATIVE_ACCESS : PreinitConfig.DEFAULT;
                     this.preInitializedContext.set(PolyglotContextImpl.preinitialize(this, preinitConfig, null, preinitLanguages, true));
                 }
+                preInitializeInstruments();
             } finally {
                 inEnginePreInitialization = false;
             }
@@ -2002,22 +2236,13 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 throw PolyglotEngineException.illegalArgument(error);
             }
             final FileSystem customFileSystem = getImpl().getIO().getFileSystem(ioAccess);
-            final boolean allowHostFileAccess = getImpl().getIO().hasHostFileAccess(ioAccess);
-            final FileSystemConfig fileSystemConfig;
-            if (!ALLOW_IO) {
-                if (allowHostFileAccess) {
-                    throw PolyglotEngineException.illegalArgument("Cannot allowHostFileAccess() because the privilege is removed at image build time");
-                }
-                FileSystem fs = customFileSystem != null ? customFileSystem : FileSystems.newDenyIOFileSystem();
-                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs);
-            } else if (allowHostFileAccess) {
-                FileSystem fs = FileSystems.newDefaultFileSystem(tmpDir);
-                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs);
-            } else if (customFileSystem != null) {
-                fileSystemConfig = new FileSystemConfig(ioAccess, customFileSystem, customFileSystem);
-            } else {
-                fileSystemConfig = new FileSystemConfig(ioAccess, FileSystems.newDenyIOFileSystem(), FileSystems.newResourcesFileSystem(this));
+            if (explicitlyPreinitialized && customFileSystem != null) {
+                throw PolyglotEngineException.illegalArgument("Custom file systems are not supported by explicitly preinitialized engines.");
             }
+            if (!ALLOW_IO && getImpl().getIO().hasHostFileAccess(ioAccess)) {
+                throw PolyglotEngineException.illegalArgument("Cannot allowHostFileAccess() because the privilege is removed at image build time");
+            }
+            final FileSystemConfig fileSystemConfig = wrapExplicitPreinitializationFileSystems(createFileSystemConfig(ioAccess, customFileSystem, tmpDir));
             if (currentWorkingDirectory != null) {
                 Path publicFsCwd;
                 Path internalFsCwd;
@@ -2089,6 +2314,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 }
             }
         } catch (Throwable t) {
+            if (boundEngine && engineOptionValues.get(PolyglotContextOptions.RequirePreinitializedContext)) {
+                ensureClosed(false, false);
+            }
             throw PolyglotImpl.guestToHostException(this, t);
         }
         boolean hasContextBindings;
@@ -2176,6 +2404,16 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     private Context loadPreinitializedContext(PolyglotContextConfig config, Engine engineAPI, boolean registerInActiveContexts) {
+        if (!config.usePreinitializedContext) {
+            return null;
+        }
+        if (getEngineOptionValues().get(PolyglotEngineOptions.StaticObjectStorageStrategy) != PolyglotEngineOptions.StaticObjectStorageStrategy.getDefaultValue()) {
+            if (config.requirePreinitializedContext) {
+                throw PolyglotEngineException.illegalState("engine.RequirePreinitializedContext: the configured static object storage strategy prevents preinitialized context reuse.");
+            }
+            return null;
+        }
+
         PolyglotContextImpl context = null;
         final boolean sharing = isSharingEnabled(config);
         if (sharing) {
@@ -2193,14 +2431,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
 
         if (context == null) {
-            return null;
-        }
-
-        if (!getEngineOptionValues().get(PolyglotEngineOptions.UsePreInitializedContext)) {
-            return null;
-        }
-
-        if (getEngineOptionValues().get(PolyglotEngineOptions.StaticObjectStorageStrategy) != PolyglotEngineOptions.StaticObjectStorageStrategy.getDefaultValue()) {
+            if (config.requirePreinitializedContext) {
+                throw PolyglotEngineException.illegalState(
+                                "engine.RequirePreinitializedContext: no compatible preinitialized context is available (missing state, exhausted pool, or incompatible sharing layer).");
+            }
             return null;
         }
 
@@ -2237,7 +2471,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             } else {
                 context.closeImpl(false);
                 config.fileSystemConfig = oldFileSystemConfig;
-                if (sharing) {
+                if (sharing || config.requirePreinitializedContext) {
                     contextAPI = null;
                 } else {
                     PolyglotEngineImpl newEngine = new PolyglotEngineImpl(this);
@@ -2258,6 +2492,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     }
                 }
             }
+        }
+        if (contextAPI == null && config.requirePreinitializedContext) {
+            throw PolyglotEngineException.illegalState("engine.RequirePreinitializedContext: the preinitialized context could not be patched for the requested configuration.");
         }
         return contextAPI;
     }

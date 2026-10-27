@@ -131,6 +131,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     private static final TruffleLogger LOG = TruffleLogger.getLogger(PolyglotEngineImpl.OPTION_GROUP_ENGINE, PolyglotContextImpl.class);
     private static final Object[] DISPOSED_CONTEXT_THREAD_LOCALS = new Object[0];
     private static final Map<State, State[]> VALID_TRANSITIONS = new EnumMap<>(State.class);
+
     private static final TruffleSafepoint.Interrupter DO_NOTHING_INTERRUPTER = new TruffleSafepoint.Interrupter() {
         @Override
         public void interrupt(Thread thread) {
@@ -494,7 +495,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     @CompilationFinal private volatile FinalIntMap languageIndexMap;
 
     private final List<PolyglotContextImpl> childContexts = new ArrayList<>();
-    List<Source> sourcesToInvalidate;  // Non null only during content pre-initialization
 
     final AtomicLong volatileStatementCounter = new AtomicLong();
     long statementCounter;
@@ -3104,20 +3104,19 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                     PolyglotFastThreadLocals.cleanup(thread.fastThreadLocals);
                 }
                 localsCleared = true;
-                if (engine.inEnginePreInitialization) {
+                if (engine.inEnginePreInitialization || engine.inExplicitPreinitialization) {
                     /*
-                     * Remove references to the current thread from a closed inner context created
-                     * during context pre-initialization. Threads reachable from the image heap
-                     * cause native-image build failures, as build-time threads do not exist at
-                     * image runtime. Note: The top-level context remains active after
-                     * pre-initialization completes and its reference to the pre-initialization
-                     * thread is removed separately by leaveThreadChanged(prev, entered=true,
-                     * finalizeAndDispose=true) called from the preinitialize method.
+                     * Remove references to all threads from contexts closed during image-build
+                     * pre-initialization. Threads reachable from the image heap cause native-image
+                     * build failures, as build-time threads do not exist at image runtime. All
+                     * thread finalization and disposal notifications have already been delivered.
+                     * The top-level pre-initialized context remains active and is cleaned by
+                     * leaveThreadChanged(prev, entered=true, finalizeAndDispose=true).
                      */
-                    PolyglotThreadInfo threadInfo = threads.get(Thread.currentThread());
-                    if (threadInfo != null) {
-                        finishThreadDispose(Thread.currentThread(), threadInfo, null);
+                    for (PolyglotThreadInfo threadInfo : threads.values()) {
+                        threadInfo.setContextThreadLocals(DISPOSED_CONTEXT_THREAD_LOCALS);
                     }
+                    threads.clear();
                 }
             }
         }
@@ -3898,8 +3897,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             engine.addContext(context);
         }
 
-        context.sourcesToInvalidate = new ArrayList<>();
-
         try {
 
             if (sharableLayer != null) {
@@ -3951,23 +3948,22 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             return context;
         } finally {
             Reference.reachabilityFence(apiContext);
-            for (PolyglotLanguage language : engine.languages) {
-                if (language != null) {
-                    language.clearOptionValues();
+            if (!engine.inExplicitPreinitialization) {
+                for (PolyglotLanguage language : engine.languages) {
+                    if (language != null) {
+                        language.clearOptionValues();
+                    }
                 }
             }
             synchronized (engine.lock) {
                 engine.removeContext(context);
             }
-            for (Source sourceToInvalidate : context.sourcesToInvalidate) {
-                EngineAccessor.SOURCE.invalidateAfterPreinitialiation(sourceToInvalidate);
-            }
             context.singleThreadValue.reset();
-            context.sourcesToInvalidate = null;
             context.threadLocalActions.prepareContextStore();
             Map<String, Path> languageHomes = engine.languageHomes();
             ((PreInitializeContextFileSystem) fileSystemConfig.fileSystem).onPreInitializeContextEnd(engine.internalResourceRoots, languageHomes);
             ((PreInitializeContextFileSystem) fileSystemConfig.internalFileSystem).onPreInitializeContextEnd(engine.internalResourceRoots, languageHomes);
+            context.layer.invalidateSourcesAfterPreinitialization();
             EngineAccessor.LANGUAGE.configureLoggers(context, null, context.getAllLoggers());
             if (context.contextLocals != null) {
                 /*

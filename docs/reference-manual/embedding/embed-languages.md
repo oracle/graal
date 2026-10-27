@@ -780,6 +780,55 @@ To build a native executable with the above configuration, run:
 mvn -Pnative package
 ```
 
+### Preinitialize an Explicit Engine
+
+You can run guest code while building a native executable and retain initialized language state and cached code for use at run time.
+Preparation can parse or evaluate arbitrary sources, such as importing a Python package.
+The resulting runtime contexts start with fresh application state, not the globals or bindings created by the preparation code.
+
+Store the prepared engine state in a static field and initialize its holder class at image build time:
+
+```java
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Source;
+
+public final class Main {
+    static final class PreparedEngine {
+        static final Source SOURCE = Source.newBuilder("python", "import json\njson.dumps({'answer': 6 * 7})", "answer.py").buildLiteral();
+        static final Engine.Preinitialized STATE = Engine.newBuilder("python")
+                        .preinitialize(1, engine -> {
+                            try (Context context = Context.newBuilder("python").engine(engine).build()) {
+                                context.eval(SOURCE);
+                            }
+                        });
+    }
+
+    public static void main(String[] args) {
+        try (Engine engine = Engine.newBuilder(PreparedEngine.STATE).build();
+                        Context context = Context.newBuilder("python").engine(engine).build()) {
+            System.out.println(context.eval(PreparedEngine.SOURCE));
+        }
+    }
+}
+```
+
+Add the holder class to the Native Image build arguments:
+
+```bash
+--initialize-at-build-time=Main\$PreparedEngine
+```
+
+In this example, the callback imports Python's `json` module during the build.
+Its temporary context is then closed, discarding the application state while retaining initialized language state and cached code.
+At run time, `Engine.newBuilder(PreparedEngine.STATE)` creates an engine from that preparation, and the new context can reuse the cached code.
+
+The `contextCount` argument controls how many clean contexts are prepared in advance; use `0` to retain only engine state and cached code.
+After the prepared contexts are used, further contexts are created normally.
+Each prepared state can be consumed by only one engine build, including a failed build attempt.
+Runtime options must be compatible with the preparation configuration.
+See [`Engine.Builder.preinitialize(...)`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html) for configuration and lifecycle requirements.
+
 Building a native executable from a polyglot application, for example, a Java-host application embedding Python, automatically captures the internal resources required by the included languages and tools.
 By default, the resources are included in the native executable itself.
 The inclusion of resources in the native executable can be disabled by `-H:-IncludeLanguageResources`.

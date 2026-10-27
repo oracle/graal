@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.ref.WeakReference;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -94,6 +97,7 @@ import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -124,6 +128,9 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.Debugger;
+import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
@@ -135,6 +142,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.TestAPIAccessor;
 import com.oracle.truffle.api.test.polyglot.InternalResourceTest.TemporaryResourceCacheRoot;
@@ -187,6 +195,12 @@ public class ContextPreInitializationTest {
         ContextPreInitializationTestSecondLanguage.callDependentLanguageInPatch = false;
         ContextPreInitializationTestSecondLanguage.lookupService = false;
         ContextPreInitializationFirstInstrument.actions = null;
+        ContextPreInitializationFirstInstrument.preinitializeCount = 0;
+        ContextPreInitializationFirstInstrument.preinitializeResult = true;
+        ContextPreInitializationSecondInstrument.preinitializeCount = 0;
+        ContextPreInitializationSecondInstrument.preinitializeResult = true;
+        ContextPreInitializationSecondInstrument.preinitializeFailure = null;
+        ContextPreInitializationSecondInstrument.preinitializeAction = null;
         BaseLanguage.actions.clear();
         resetSystemPropertiesOptions();
         patchableLanguages.clear();
@@ -197,6 +211,1038 @@ public class ContextPreInitializationTest {
         final Method preInitMethod = holderClz.getDeclaredMethod("resetPreInitializedEngine");
         ReflectionUtils.setAccessible(preInitMethod, true);
         preInitMethod.invoke(null);
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationPoolAndCachedSources() throws Exception {
+        setPatchable(SHARED);
+        Source cachedSource = Source.newBuilder(SHARED, "cached", "cached-source").cached(true).build();
+        Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).preinitialize(2, (engine) -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                assertEquals("cached", context.eval(cachedSource).asString());
+            }
+        });
+
+        assertEquals(3, emittedContexts.size());
+        assertFalse(emittedContexts.get(0).preInitialized);
+        assertTrue(emittedContexts.get(1).preInitialized);
+        assertTrue(emittedContexts.get(2).preInitialized);
+        Set<Source> cachedSources = preinitialized.getCachedSources();
+        assertTrue(cachedSources.contains(cachedSource));
+        AbstractPolyglotTest.assertFails(cachedSources::clear, UnsupportedOperationException.class);
+        try (Engine engine = Engine.newBuilder(preinitialized).build()) {
+            assertTrue(engine.getCachedSources().contains(cachedSource));
+            try {
+                preinitialized.getCachedSources();
+                fail("Consumed state must not remain accessible.");
+            } catch (IllegalStateException expected) {
+            }
+            for (int i = 0; i < 2; i++) {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                    assertEquals("runtime", context.eval(SHARED, "runtime").asString());
+                }
+                assertEquals(3, emittedContexts.size());
+            }
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                assertEquals("runtime", context.eval(SHARED, "runtime").asString());
+            }
+            assertEquals(4, emittedContexts.size());
+            assertFalse(emittedContexts.get(3).preInitialized);
+        }
+        assertEquals(Set.of(cachedSource), cachedSources);
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationUsesWeakRuntimeCache() throws Exception {
+        TruffleTestAssumptions.assumeNotAOT();
+        Assume.assumeTrue(GCUtils.isSupported());
+        setPatchable(SHARED);
+        for (int contextCount = 0; contextCount <= 1; contextCount++) {
+            AtomicReference<WeakReference<Object>> preparedSourceRef = new AtomicReference<>();
+            Engine.Preinitialized prepared = Engine.newBuilder(SHARED).preinitialize(contextCount, engine -> {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                    Source source = Source.newBuilder(SHARED, "prepared", "prepared-source").build();
+                    assertEquals("prepared", context.eval(source).asString());
+                    preparedSourceRef.set(new WeakReference<>(ReflectionUtils.getField(source, "receiver")));
+                } catch (IOException e) {
+                    throw new AssertionError(e);
+                }
+            });
+            assertEquals(1, prepared.getCachedSources().size());
+            try (Engine engine = Engine.newBuilder(prepared).build();
+                            Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                assertEquals("prepared", context.eval(engine.getCachedSources().iterator().next()).asString());
+                Source runtimeSource = Source.newBuilder(SHARED, "runtime", "runtime-source").build();
+                assertEquals("runtime", context.eval(runtimeSource).asString());
+                assertEquals("runtime", context.eval(runtimeSource).asString());
+                assertEquals(2, engine.getCachedSources().size());
+                WeakReference<Object> runtimeSourceRef = new WeakReference<>(ReflectionUtils.getField(runtimeSource, "receiver"));
+                runtimeSource = null;
+                GCUtils.assertGc("Sources parsed after preparation must not be retained by the strong cache.", runtimeSourceRef);
+                assertNotNull(preparedSourceRef.get().get());
+                assertEquals(1, engine.getCachedSources().size());
+                assertEquals("prepared", context.eval(engine.getCachedSources().iterator().next()).asString());
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testExplicitEnginePreinitializationCallbackResourceFiles() throws Exception {
+        TruffleTestAssumptions.assumeNotAOT();
+        setPatchable(SHARED);
+        for (int contextCount : new int[]{0, 2}) {
+            emittedContexts.clear();
+            AtomicReference<TruffleFile> retainedFile = new AtomicReference<>();
+            AtomicReference<com.oracle.truffle.api.source.Source> retainedSource = new AtomicReference<>();
+            BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, env -> {
+                if (!env.isPreInitialization() && retainedFile.get() == null) {
+                    try {
+                        TruffleFile file = env.getInternalResource(ContextPreInitializationResource.class).resolve(ContextPreInitializationResource.FILE_NAME);
+                        retainedFile.set(file);
+                        com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(SHARED, file).build();
+                        env.parseInternal(source);
+                        retainedSource.set(source);
+                    } catch (IOException e) {
+                        throw new AssertionError(e);
+                    }
+                }
+            });
+            Engine.Preinitialized prepared;
+            try (TemporaryResourceCacheRoot buildTimeRoot = new TemporaryResourceCacheRoot(false)) {
+                prepared = Engine.newBuilder(SHARED).preinitialize(contextCount, engine -> {
+                    try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                        context.initialize(SHARED);
+                    }
+                });
+                assertFalse(retainedFile.get().isAbsolute());
+            }
+            Path runtimeRoot = Files.createTempDirectory("explicit-preinit-resources").toRealPath();
+            try (prepared) {
+                Engine.copyResources(runtimeRoot, SHARED);
+                try (TemporaryResourceCacheRoot executionRoot = new TemporaryResourceCacheRoot(runtimeRoot, true);
+                                Engine engine = Engine.newBuilder(prepared).build()) {
+                    // Reading shared source metadata must work before any context is consumed.
+                    assertTrue(retainedFile.get().getPath().startsWith(runtimeRoot.toString()));
+                    assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(retainedFile.get().readAllBytes(), StandardCharsets.UTF_8));
+                    assertEquals(retainedFile.get().getPath(), retainedSource.get().getPath());
+                    assertEquals(retainedFile.get().toUri(), retainedSource.get().getURI());
+                    for (int i = 0; i < Math.max(1, contextCount); i++) {
+                        try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                            context.initialize(SHARED);
+                            assertEquals(1 + Math.max(1, contextCount), emittedContexts.size());
+                            context.enter();
+                            try {
+                                TruffleFile freshFile = emittedContexts.get(i + 1).environment().getInternalResource(ContextPreInitializationResource.class).resolve(
+                                                ContextPreInitializationResource.FILE_NAME);
+                                assertEquals(retainedFile.get().getPath(), freshFile.getPath());
+                                assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(freshFile.readAllBytes(), StandardCharsets.UTF_8));
+                            } finally {
+                                context.leave();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testExplicitEnginePreinitializationFilesDoNotRetainCallbackContext() throws Exception {
+        AtomicReference<WeakReference<Object>> callbackContext = new AtomicReference<>();
+        AtomicReference<TruffleFile> retainedFile = new AtomicReference<>();
+        AtomicReference<com.oracle.truffle.api.source.Source> retainedSource = new AtomicReference<>();
+        BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, env -> {
+            try {
+                TruffleFile file = env.getInternalResource(ContextPreInitializationResource.class).resolve(ContextPreInitializationResource.FILE_NAME);
+                retainedFile.set(file);
+                com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(SHARED, file).build();
+                env.parseInternal(source);
+                retainedSource.set(source);
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+        });
+        try (TemporaryResourceCacheRoot root = new TemporaryResourceCacheRoot(false);
+                        Engine.Preinitialized prepared = Engine.newBuilder(SHARED).preinitialize(0, engine -> {
+                            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                                context.initialize(SHARED);
+                                callbackContext.set(new WeakReference<>(ReflectionUtils.getField(context, "receiver")));
+                            }
+                        })) {
+            emittedContexts.clear();
+            GCUtils.assertGc("Retained callback files and sources must not keep their context alive.", callbackContext.get());
+            try (Engine engine = Engine.newBuilder(prepared).build()) {
+                assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(retainedFile.get().readAllBytes(), StandardCharsets.UTF_8));
+                assertEquals(retainedFile.get().getPath(), retainedSource.get().getPath());
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testExplicitEnginePreinitializationCallbackFilePermissions() throws Exception {
+        Path file = Files.createTempFile("explicit-preinit-permissions", ".txt");
+        Files.writeString(file, "content");
+        List<TruffleFile> retainedFiles = new ArrayList<>();
+        BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, env -> {
+            retainedFiles.add(env.getPublicTruffleFile(file.toString()));
+        });
+        try (Engine.Preinitialized prepared = Engine.newBuilder(SHARED).preinitialize(0, engine -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).allowIO(IOAccess.ALL).build()) {
+                context.initialize(SHARED);
+            }
+            try (Context context = Context.newBuilder(SHARED).engine(engine).allowIO(IOAccess.NONE).build()) {
+                context.initialize(SHARED);
+            }
+            try {
+                assertEquals("content", new String(retainedFiles.get(0).readAllBytes(), StandardCharsets.UTF_8));
+                AbstractPolyglotTest.assertFails(() -> retainedFiles.get(1).readAllBytes(), SecurityException.class);
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+        }); Engine engine = Engine.newBuilder(prepared).build()) {
+            assertEquals("content", new String(retainedFiles.get(0).readAllBytes(), StandardCharsets.UTF_8));
+            AbstractPolyglotTest.assertFails(() -> retainedFiles.get(1).readAllBytes(), SecurityException.class);
+        } finally {
+            Files.delete(file);
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testExplicitEnginePreinitializationRejectsCustomFileSystems() {
+        IOAccess customIO = IOAccess.newBuilder().fileSystem(FileSystem.newDefaultFileSystem()).build();
+        AbstractPolyglotTest.assertFails(() -> Engine.newBuilder(SHARED).preinitialize(0, engine -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).allowIO(customIO).build()) {
+                context.initialize(SHARED);
+            }
+        }), IllegalArgumentException.class);
+        try (Engine.Preinitialized prepared = Engine.newBuilder(SHARED).preinitialize(0, engine -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                context.initialize(SHARED);
+            }
+        }); Engine engine = Engine.newBuilder(prepared).build()) {
+            AbstractPolyglotTest.assertFails(() -> {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).allowIO(customIO).build()) {
+                    context.initialize(SHARED);
+                }
+            }, IllegalArgumentException.class);
+        }
+    }
+
+    @Test
+    public void testFailedExplicitEnginePreinitializationResetsThreadState() {
+        RuntimeException failure = new RuntimeException("Expected failure");
+        try {
+            Engine.newBuilder(SHARED).preinitialize(0, engine -> {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                    context.eval(SHARED, "cached");
+                }
+                throw failure;
+            });
+            fail("Preinitialization must fail.");
+        } catch (RuntimeException e) {
+            assertSame(failure, e);
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationFailedConsumptionConsumesState() {
+        setPatchable(SHARED);
+        String option = SHARED + ".Option1";
+        Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).option(option, "true").preinitialize(1, (engine) -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                context.initialize(SHARED);
+            }
+        });
+        CountingContext pooledContext = emittedContexts.get(1);
+        assertEquals(0, pooledContext.disposeContextCount);
+        try {
+            Engine.newBuilder(preinitialized).option(option, "false").build();
+            fail("Incompatible language options must be rejected.");
+        } catch (IllegalArgumentException expected) {
+        }
+        assertEquals(1, pooledContext.disposeContextCount);
+        try {
+            Engine.newBuilder(preinitialized).option(option, "true").build();
+            fail("A failed build must consume the preinitialized state.");
+        } catch (IllegalStateException expected) {
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationLanguageOptionsAreStrict() {
+        setPatchable(SHARED);
+        String option = SHARED + ".Option1";
+        Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).option(option, "true").preinitialize(0, engine -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                context.initialize(SHARED);
+            }
+        });
+        try {
+            Engine.newBuilder(preinitialized).option(option, "false").build();
+            fail("Incompatible language options must be rejected.");
+        } catch (IllegalArgumentException expected) {
+        }
+        try {
+            Engine.newBuilder(preinitialized).option(option, "true").build();
+            fail("A failed build must consume the preinitialized state.");
+        } catch (IllegalStateException expected) {
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationExperimentalSourceOptions() {
+        Assume.assumeFalse(Boolean.getBoolean("polyglot.engine.AllowExperimentalOptions"));
+        setPatchable(SHARED);
+        Source source = Source.newBuilder(SHARED, "experimental", "experimental-source").option(SHARED + ".ExperimentalSourceOption", "true").buildLiteral();
+        for (boolean preparationPolicy : new boolean[]{false, true}) {
+            boolean runtimePolicy = !preparationPolicy;
+            Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).useSystemProperties(false).allowExperimentalOptions(preparationPolicy).preinitialize(1, engine -> {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                    context.initialize(SHARED);
+                }
+            });
+            try (Engine prepared = Engine.newBuilder(preinitialized).useSystemProperties(false).allowExperimentalOptions(runtimePolicy).build();
+                            Engine fresh = Engine.newBuilder(SHARED).useSystemProperties(false).allowExperimentalOptions(runtimePolicy).build()) {
+                for (Engine engine : new Engine[]{prepared, fresh}) {
+                    try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                        if (runtimePolicy) {
+                            assertEquals("experimental", context.eval(source).asString());
+                        } else {
+                            AbstractPolyglotTest.assertFails(() -> context.eval(source), IllegalArgumentException.class);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationImmutableEngineOptions() {
+        TruffleTestAssumptions.assumeNotAOT();
+        for (String option : new String[]{"engine.SpecializationStatistics", "engine.AssertProbes"}) {
+            for (boolean value : new boolean[]{false, true}) {
+                for (boolean compatible : new boolean[]{false, true}) {
+                    Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).useSystemProperties(false).allowExperimentalOptions(true).option(option, Boolean.toString(value)).err(
+                                    new ByteArrayOutputStream()).preinitialize(0, engine -> {
+                                        try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                                            context.initialize(SHARED);
+                                        }
+                                    });
+                    Engine.Builder builder = Engine.newBuilder(preinitialized).useSystemProperties(false).allowExperimentalOptions(true).option(option, Boolean.toString(compatible ? value
+                                    : !value)).err(new ByteArrayOutputStream());
+                    if (compatible) {
+                        try (Engine prepared = builder.build();
+                                        Engine fresh = Engine.newBuilder(SHARED).useSystemProperties(false).allowExperimentalOptions(true).option(option, Boolean.toString(value)).err(
+                                                        new ByteArrayOutputStream()).build()) {
+                            for (Engine engine : new Engine[]{prepared, fresh}) {
+                                Object receiver = ReflectionUtils.getField(engine, "receiver");
+                                if (option.equals("engine.SpecializationStatistics")) {
+                                    assertEquals(value, ReflectionUtils.getField(receiver, "specializationStatistics") != null);
+                                } else {
+                                    assertEquals(value, ReflectionUtils.getField(receiver, "probeAssertionsEnabled"));
+                                }
+                            }
+                        }
+                    } else {
+                        AbstractPolyglotTest.assertFails(builder::build, IllegalArgumentException.class,
+                                        failure -> assertTrue(failure.getMessage().contains(option)));
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationContextOptions() {
+        setPatchable(SHARED);
+        String option = SHARED + ".Option1";
+        for (int contextCount : new int[]{0, 1}) {
+            emittedContexts.clear();
+            try (Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).preinitialize(contextCount, engine -> {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).option(option, "true").build()) {
+                    context.initialize(SHARED);
+                }
+            }); Engine engine = Engine.newBuilder(preinitialized).build()) {
+                assertEquals(1 + contextCount, emittedContexts.size());
+                try (Context context = Context.newBuilder(SHARED).engine(engine).option(option, "true").build()) {
+                    context.initialize(SHARED);
+                    assertEquals(2, emittedContexts.size());
+                    CountingContext runtimeContext = emittedContexts.get(1);
+                    assertEquals(contextCount, runtimeContext.patchContextCount);
+                    assertTrue(runtimeContext.optionValues.get(ContextPreInitializationTestSharedLanguage.Option1));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationIncompatibleContextOptions() {
+        setPatchable(SHARED);
+        String option = SHARED + ".Option1";
+        try (Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).preinitialize(1, engine -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).option(option, "true").build()) {
+                context.initialize(SHARED);
+            }
+        }); Engine engine = Engine.newBuilder(preinitialized).build()) {
+            CountingContext pooledContext = emittedContexts.get(1);
+            try (Context context = Context.newBuilder(SHARED).engine(engine).option(option, "false").build()) {
+                context.initialize(SHARED);
+                assertEquals(3, emittedContexts.size());
+                assertEquals(0, pooledContext.patchContextCount);
+                assertFalse(emittedContexts.get(2).optionValues.get(ContextPreInitializationTestSharedLanguage.Option1));
+            }
+            try (Context context = Context.newBuilder(SHARED).engine(engine).option(option, "true").build()) {
+                context.initialize(SHARED);
+                assertEquals(3, emittedContexts.size());
+                assertEquals(1, pooledContext.patchContextCount);
+                assertTrue(pooledContext.optionValues.get(ContextPreInitializationTestSharedLanguage.Option1));
+            }
+        }
+    }
+
+    @Test
+    public void testContextPreinitializationOptionOverrides() {
+        setPatchable(SHARED);
+        for (boolean engineDefault : new boolean[]{false, true}) {
+            emittedContexts.clear();
+            try (Engine.Preinitialized prepared = Engine.newBuilder(SHARED).preinitialize(1, engine -> {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                    context.initialize(SHARED);
+                }
+            }); Engine engine = Engine.newBuilder(prepared).allowExperimentalOptions(true).option("engine.UsePreInitializedContext", Boolean.toString(engineDefault)).build()) {
+                CountingContext pooled = emittedContexts.get(1);
+                try (Context context = Context.newBuilder(SHARED).engine(engine).allowExperimentalOptions(true).option("engine.UsePreInitializedContext", "false").build()) {
+                    context.initialize(SHARED);
+                    assertFalse(emittedContexts.get(2).preInitialized);
+                    assertEquals(0, pooled.patchContextCount);
+                }
+                try (Context context = Context.newBuilder(SHARED).engine(engine).allowExperimentalOptions(true).option("engine.UsePreInitializedContext", "true").option(
+                                "engine.RequirePreinitializedContext", "true").build()) {
+                    context.initialize(SHARED);
+                    assertEquals(3, emittedContexts.size());
+                    assertEquals(1, pooled.patchContextCount);
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testRequirePreinitializedContextMissing() {
+        TestHandler handler = new TestHandler();
+        AbstractPolyglotTest.assertFails(() -> Context.newBuilder(FIRST).allowExperimentalOptions(true).logHandler(handler).option("engine.RequirePreinitializedContext", "true").build(),
+                        IllegalStateException.class);
+        assertTrue(handler.closed);
+        try (Engine engine = Engine.create()) {
+            AbstractPolyglotTest.assertFails(() -> Context.newBuilder(FIRST).engine(engine).allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "true").build(),
+                            IllegalStateException.class);
+        }
+    }
+
+    @Test
+    public void testRequirePreinitializedContextEmptyPool() {
+        try (Engine.Preinitialized prepared = Engine.newBuilder(SHARED).preinitialize(0, engine -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                context.initialize(SHARED);
+            }
+        }); Engine engine = Engine.newBuilder(prepared).build()) {
+            AbstractPolyglotTest.assertFails(() -> Context.newBuilder(SHARED).engine(engine).allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "true").build(),
+                            IllegalStateException.class);
+            assertEquals(1, emittedContexts.size());
+        }
+    }
+
+    @Test
+    public void testRequirePreinitializedContextPoolExhaustion() {
+        setPatchable(SHARED);
+        for (boolean engineRequirement : new boolean[]{false, true}) {
+            emittedContexts.clear();
+            try (Engine.Preinitialized prepared = Engine.newBuilder(SHARED).preinitialize(1, engine -> {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                    context.initialize(SHARED);
+                }
+            }); Engine engine = Engine.newBuilder(prepared).allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", Boolean.toString(engineRequirement)).build()) {
+                Context.Builder builder = Context.newBuilder(SHARED).engine(engine).allowExperimentalOptions(true);
+                if (!engineRequirement) {
+                    builder.option("engine.RequirePreinitializedContext", "true");
+                }
+                try (Context context = builder.build()) {
+                    context.initialize(SHARED);
+                    assertEquals(2, emittedContexts.size());
+                    assertEquals(1, emittedContexts.get(1).patchContextCount);
+                }
+                AbstractPolyglotTest.assertFails(builder::build, IllegalStateException.class);
+                assertEquals(2, emittedContexts.size());
+                assertEquals(1, emittedContexts.get(1).disposeContextCount);
+                try (Context context = builder.option("engine.RequirePreinitializedContext", "false").build()) {
+                    context.initialize(SHARED);
+                    assertEquals(3, emittedContexts.size());
+                    assertFalse(emittedContexts.get(2).preInitialized);
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testRequirePreinitializedContextCanBeDisabled() {
+        try (Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "true").build()) {
+            for (boolean use : new boolean[]{false, true}) {
+                try (Context context = Context.newBuilder(FIRST).engine(engine).allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "false").option(
+                                "engine.UsePreInitializedContext", Boolean.toString(use)).build()) {
+                    context.initialize(FIRST);
+                    assertFalse(emittedContexts.get(emittedContexts.size() - 1).preInitialized);
+                }
+            }
+            AbstractPolyglotTest.assertFails(() -> Context.newBuilder(FIRST).engine(engine).build(), IllegalStateException.class);
+        }
+    }
+
+    @Test
+    public void testRequirePreinitializedContextIncompatibleOptions() {
+        setPatchable(SHARED);
+        String option = SHARED + ".Option1";
+        try (Engine.Preinitialized prepared = Engine.newBuilder(SHARED).preinitialize(1, engine -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).option(option, "true").build()) {
+                context.initialize(SHARED);
+            }
+        }); Engine engine = Engine.newBuilder(prepared).build()) {
+            CountingContext pooled = emittedContexts.get(1);
+            Context.Builder builder = Context.newBuilder(SHARED).engine(engine).allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "true");
+            AbstractPolyglotTest.assertFails(() -> builder.option(option, "false").build(), IllegalStateException.class);
+            assertEquals(2, emittedContexts.size());
+            assertEquals(0, pooled.patchContextCount);
+            assertEquals(0, pooled.disposeContextCount);
+            try (Context context = builder.option(option, "true").build()) {
+                context.initialize(SHARED);
+                assertEquals(2, emittedContexts.size());
+                assertEquals(1, pooled.patchContextCount);
+            }
+        }
+    }
+
+    @Test
+    public void testRequirePreinitializedContextPatchFailure() {
+        try (Engine.Preinitialized prepared = Engine.newBuilder(SHARED).preinitialize(1, engine -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                context.initialize(SHARED);
+            }
+        }); Engine engine = Engine.newBuilder(prepared).build()) {
+            CountingContext pooled = emittedContexts.get(1);
+            AbstractPolyglotTest.assertFails(() -> Context.newBuilder(SHARED).engine(engine).allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "true").build(),
+                            IllegalStateException.class);
+            assertEquals(2, emittedContexts.size());
+            assertEquals(1, pooled.patchContextCount);
+            assertEquals(1, pooled.disposeContextCount);
+        }
+        assertEquals(1, emittedContexts.get(1).disposeContextCount);
+    }
+
+    @Test
+    public void testRequirePreinitializedContextDisabledUse() {
+        try (Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "true").build()) {
+            AbstractPolyglotTest.assertFails(() -> Context.newBuilder().engine(engine).allowExperimentalOptions(true).option("engine.UsePreInitializedContext", "false").build(),
+                            IllegalArgumentException.class);
+        }
+        AbstractPolyglotTest.assertFails(() -> Context.newBuilder().allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "true").option("engine.UsePreInitializedContext",
+                        "false").build(), IllegalArgumentException.class);
+    }
+
+    @Test
+    public void testContextPreinitializationOptionsDoNotAllowEngineOptions() {
+        try (Engine engine = Engine.create()) {
+            assertNotNull(engine.getOptions().get("engine.UsePreInitializedContext"));
+            assertNotNull(engine.getOptions().get("engine.RequirePreinitializedContext"));
+            AbstractPolyglotTest.assertFails(() -> Context.newBuilder().engine(engine).allowExperimentalOptions(true).option("engine.SafepointALot", "true").build(), IllegalArgumentException.class);
+        }
+    }
+
+    @Test
+    public void testRequirePreinitializedContextAutomatic() throws Exception {
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        CountingContext prepared = emittedContexts.get(0);
+        try (Context context = Context.newBuilder(FIRST).allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "true").build()) {
+            assertEquals("test", context.eval(FIRST, "test").asString());
+            assertEquals(1, emittedContexts.size());
+            assertEquals(1, prepared.patchContextCount);
+        }
+        assertEquals(1, prepared.disposeContextCount);
+    }
+
+    @Test
+    public void testRequirePreinitializedContextAutomaticPatchFailure() throws Exception {
+        doContextPreinitialize(FIRST);
+        CountingContext prepared = emittedContexts.get(0);
+        TestHandler handler = new TestHandler();
+        AbstractPolyglotTest.assertFails(() -> Context.newBuilder(FIRST).allowExperimentalOptions(true).logHandler(handler).option("engine.RequirePreinitializedContext", "true").build(),
+                        IllegalStateException.class);
+        assertTrue(handler.closed);
+        assertEquals(1, emittedContexts.size());
+        assertEquals(1, prepared.patchContextCount);
+        assertEquals(1, prepared.disposeContextCount);
+    }
+
+    @Test
+    public void testRequirePreinitializedContextPatchException() throws Exception {
+        setPatchable(FIRST);
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (Consumer<Env>) env -> {
+            throw new RuntimeException("patchContext() exception");
+        });
+        doContextPreinitialize(FIRST);
+        CountingContext prepared = emittedContexts.get(0);
+        TestHandler handler = new TestHandler();
+        AbstractPolyglotTest.assertFails(() -> Context.newBuilder(FIRST).allowExperimentalOptions(true).logHandler(handler).option("engine.RequirePreinitializedContext", "true").build(),
+                        PolyglotException.class,
+                        exception -> assertTrue(exception.getMessage(), exception.getMessage().contains("patchContext() exception")));
+        assertTrue(handler.closed);
+        assertEquals(1, emittedContexts.size());
+        assertEquals(1, prepared.patchContextCount);
+        assertEquals(1, prepared.disposeContextCount);
+    }
+
+    @Test
+    public void testRequirePreinitializedContextIncompatibleLanguages() throws Exception {
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        CountingContext prepared = emittedContexts.get(0);
+        AbstractPolyglotTest.assertFails(() -> Context.newBuilder(SECOND).allowExperimentalOptions(true).option("engine.RequirePreinitializedContext", "true").build(), IllegalStateException.class);
+        assertEquals(1, emittedContexts.size());
+        assertEquals(1, prepared.disposeContextCount);
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationDoesNotRetainCallbackHostAccess() {
+        setPatchable(SHARED);
+        Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).preinitialize(1, engine -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).allowHostAccess(HostAccess.ALL).build()) {
+                context.initialize(SHARED);
+            }
+        });
+        try (Engine engine = Engine.newBuilder(preinitialized).build();
+                        Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+            context.initialize(SHARED);
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationRejectsInstrumentState() {
+        ContextPreInitializationFirstInstrument.preinitializeResult = false;
+        try {
+            Engine.newBuilder(SHARED).option(ContextPreInitializationFirstInstrument.ID, "true").preinitialize(0, engine -> {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                    context.initialize(SHARED);
+                }
+            });
+            fail("Instrument state must not be persisted.");
+        } catch (IllegalStateException expected) {
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationInstrumentCallback() {
+        Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).preinitialize(1, engine -> {
+            engine.getInstruments().get(ContextPreInitializationSecondInstrument.ID).lookup(Service.class);
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                context.initialize(SHARED);
+            }
+        });
+        assertEquals(1, ContextPreInitializationSecondInstrument.preinitializeCount);
+        preinitialized.close();
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationInstrumentOptions() {
+        String instrumentId = ContextPreInitializationFirstInstrument.ID;
+        for (String preparationValue : new String[]{null, "false", "true"}) {
+            for (String runtimeValue : new String[]{null, "false", "true"}) {
+                AtomicReference<ContextPreInitializationFirstInstrument> retainedInstrument = new AtomicReference<>();
+                Engine.Builder preparationBuilder = Engine.newBuilder(SHARED).useSystemProperties(false);
+                if (preparationValue != null) {
+                    preparationBuilder.option(instrumentId, preparationValue);
+                }
+                Engine.Preinitialized preinitialized = preparationBuilder.preinitialize(0, engine -> {
+                    retainedInstrument.set(engine.getInstruments().get(instrumentId).lookup(ContextPreInitializationFirstInstrument.class));
+                    try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                        context.initialize(SHARED);
+                    }
+                });
+                ContextPreInitializationFirstInstrument instrument = retainedInstrument.get();
+                Engine.Builder runtimeBuilder = Engine.newBuilder(preinitialized).useSystemProperties(false);
+                if (runtimeValue != null) {
+                    runtimeBuilder.option(instrumentId, runtimeValue);
+                }
+                if (Objects.equals(preparationValue, runtimeValue)) {
+                    try (Engine engine = runtimeBuilder.build()) {
+                        assertSame(instrument, engine.getInstruments().get(instrumentId).lookup(ContextPreInitializationFirstInstrument.class));
+                    }
+                } else {
+                    AbstractPolyglotTest.assertFails(runtimeBuilder::build, IllegalArgumentException.class,
+                                    failure -> assertTrue(failure.getMessage().contains(instrumentId)));
+                }
+                // Failed consumption must not mutate the retained instrument's live option object.
+                assertEquals(Boolean.parseBoolean(preparationValue), instrument.enabledAtCreation);
+                assertEquals(instrument.enabledAtCreation, instrument.optionEnvironment.getOptions().get(ContextPreInitializationFirstInstrument.Enabled));
+                assertEquals(preparationValue != null, instrument.enabledWasSetAtCreation);
+                assertEquals(instrument.enabledWasSetAtCreation, instrument.optionEnvironment.getOptions().hasBeenSet(ContextPreInitializationFirstInstrument.Enabled));
+            }
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationCallbackInitializesInstrument() {
+        ContextPreInitializationSecondInstrument.preinitializeAction = env -> {
+            InstrumentInfo instrument = env.getInstruments().get(ContextPreInitializationFirstInstrument.ID);
+            env.lookup(instrument, Service.class);
+        };
+        Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).preinitialize(0, engine -> {
+            engine.getInstruments().get(ContextPreInitializationSecondInstrument.ID).lookup(Service.class);
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                context.initialize(SHARED);
+            }
+        });
+        assertEquals(1, ContextPreInitializationFirstInstrument.preinitializeCount);
+        assertEquals(1, ContextPreInitializationSecondInstrument.preinitializeCount);
+        preinitialized.close();
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationInstrumentCallbackFailure() {
+        RuntimeException failure = new RuntimeException("Expected failure.");
+        ContextPreInitializationSecondInstrument.preinitializeFailure = failure;
+        AbstractPolyglotTest.assertFails(() -> Engine.newBuilder(SHARED).preinitialize(0, engine -> {
+            engine.getInstruments().get(ContextPreInitializationSecondInstrument.ID).lookup(Service.class);
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                context.initialize(SHARED);
+            }
+        }), RuntimeException.class, actual -> assertSame(failure, actual));
+        assertEquals(1, ContextPreInitializationSecondInstrument.preinitializeCount);
+    }
+
+    @Test
+    public void testContextPreinitializationInstrumentCallback() throws Exception {
+        BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, env -> {
+            InstrumentInfo instrument = env.getInstruments().get(ContextPreInitializationSecondInstrument.ID);
+            env.lookup(instrument, Service.class);
+        });
+        doContextPreinitialize(SHARED);
+        assertEquals(1, ContextPreInitializationSecondInstrument.preinitializeCount);
+    }
+
+    @Test
+    public void testContextPreinitializationRejectsInstrument() throws Exception {
+        ContextPreInitializationSecondInstrument.preinitializeResult = false;
+        BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, env -> {
+            InstrumentInfo instrument = env.getInstruments().get(ContextPreInitializationSecondInstrument.ID);
+            env.lookup(instrument, Service.class);
+        });
+        try {
+            doContextPreinitialize(SHARED);
+            fail("Instrument state must not be persisted.");
+        } catch (InvocationTargetException expected) {
+            assertTrue(String.valueOf(expected.getCause()), expected.getCause().getCause() instanceof IllegalStateException);
+        }
+        assertEquals(1, ContextPreInitializationSecondInstrument.preinitializeCount);
+    }
+
+    @Test
+    public void testContextPreinitializationIdleDebugger() throws Exception {
+        BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, Debugger::find);
+        doContextPreinitialize(SHARED);
+    }
+
+    @Test
+    public void testContextPreinitializationRejectsActiveDebuggerSession() throws Exception {
+        AtomicReference<DebuggerSession> session = new AtomicReference<>();
+        BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT,
+                        env -> session.set(Debugger.find(env).startSession(event -> fail("Unexpected suspension."))));
+        try {
+            doContextPreinitialize(SHARED);
+            fail("Active debugger sessions must not be persisted.");
+        } catch (InvocationTargetException expected) {
+            assertTrue(String.valueOf(expected.getCause()), expected.getCause().getCause() instanceof IllegalStateException);
+        } finally {
+            session.get().close();
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationIdleDebugger() {
+        setPatchable(SHARED);
+        for (int contextCount : new int[]{0, 2}) {
+            emittedContexts.clear();
+            AtomicReference<Debugger> retainedDebugger = new AtomicReference<>();
+            BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, env -> {
+                Debugger debugger = retainedDebugger.get();
+                if (debugger == null) {
+                    debugger = Debugger.find(env);
+                    retainedDebugger.set(debugger);
+                }
+                debugger.disableStepping();
+                debugger.disableStepping();
+                debugger.restoreStepping();
+                debugger.restoreStepping();
+            });
+            try (Engine.Preinitialized prepared = Engine.newBuilder(SHARED).preinitialize(contextCount, engine -> {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                    context.initialize(SHARED);
+                }
+            });
+                            Engine engine = Engine.newBuilder(prepared).build();
+                            Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                assertSame(retainedDebugger.get(), engine.getInstruments().get("debugger").lookup(Debugger.class));
+                CountingContext pooledContext = contextCount == 0 ? null : emittedContexts.get(1);
+                context.initialize(SHARED);
+                if (pooledContext != null) {
+                    assertEquals(1, pooledContext.patchContextCount);
+                    assertEquals(1 + contextCount, emittedContexts.size());
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationDebuggerSteppingAtRuntime() {
+        Source source = Source.create("sl", "function main() { a = 1; a = a + 1; return a; }");
+        AtomicReference<Debugger> retainedDebugger = new AtomicReference<>();
+        try (Engine.Preinitialized prepared = Engine.newBuilder("sl").preinitialize(0, engine -> {
+            try (Context context = Context.newBuilder("sl").engine(engine).build()) {
+                context.eval(source);
+                retainedDebugger.set(engine.getInstruments().get("debugger").lookup(Debugger.class));
+            }
+        });
+                        Engine engine = Engine.newBuilder(prepared).build();
+                        Context context = Context.newBuilder("sl").engine(engine).build()) {
+            Debugger debugger = engine.getInstruments().get("debugger").lookup(Debugger.class);
+            assertSame(retainedDebugger.get(), debugger);
+            AtomicInteger suspensions = new AtomicInteger();
+            try (DebuggerSession session = debugger.startSession(event -> {
+                if (suspensions.incrementAndGet() == 1) {
+                    event.prepareStepInto(1);
+                } else {
+                    event.prepareContinue();
+                }
+            })) {
+                session.suspendNextExecution();
+                assertEquals(2, context.eval(source).asInt());
+                assertEquals(2, suspensions.get());
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testExplicitEnginePreinitializationReleasedDebuggerState() {
+        try (Engine.Preinitialized prepared = Engine.newBuilder(SHARED).preinitialize(0, engine -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                context.initialize(SHARED);
+                Debugger debugger = engine.getInstruments().get("debugger").lookup(Debugger.class);
+                try (DebuggerSession session = debugger.startSession(event -> fail("Unexpected suspension."))) {
+                    Breakpoint breakpoint = debugger.install(Breakpoint.newBuilder(URI.create("file:///prepared.sl")).lineIs(1).build());
+                    breakpoint.dispose();
+                }
+                Consumer<Breakpoint> listener = breakpoint -> fail("Unexpected breakpoint change.");
+                debugger.addBreakpointAddedListener(listener);
+                debugger.addBreakpointRemovedListener(listener);
+                debugger.removeBreakpointAddedListener(listener);
+                debugger.removeBreakpointRemovedListener(listener);
+            }
+        }); Engine engine = Engine.newBuilder(prepared).build()) {
+            assertEquals(0, engine.getInstruments().get("debugger").lookup(Debugger.class).getSessionCount());
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationRejectsActiveDebuggerSession() {
+        assertDebuggerRejectedDuringPreinitialization(debugger -> debugger.startSession(event -> fail("Unexpected suspension.")));
+    }
+
+    private static void assertDebuggerRejectedDuringPreinitialization(Consumer<Debugger> configureDebugger) {
+        for (boolean duringPoolPreparation : new boolean[]{false, true}) {
+            AtomicReference<Debugger> retainedDebugger = new AtomicReference<>();
+            BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, env -> {
+                if (!env.isPreInitialization()) {
+                    retainedDebugger.set(Debugger.find(env));
+                }
+                if (env.isPreInitialization() == duringPoolPreparation) {
+                    configureDebugger.accept(retainedDebugger.get());
+                }
+            });
+            AbstractPolyglotTest.assertFails(() -> Engine.newBuilder(SHARED).preinitialize(1, engine -> {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                    context.initialize(SHARED);
+                }
+            }), IllegalStateException.class);
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationRejectsCallbackEngineClose() {
+        AtomicReference<Engine> callbackEngine = new AtomicReference<>();
+        try {
+            Engine.newBuilder(SHARED).preinitialize(0, engine -> {
+                callbackEngine.set(engine);
+                engine.close();
+            });
+            fail("Closing the callback engine must fail.");
+        } catch (IllegalStateException expected) {
+        }
+        try {
+            callbackEngine.get().getLanguages();
+            fail("The callback engine must be invalid after failed preinitialization.");
+        } catch (IllegalStateException expected) {
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationConcurrentConsumption() throws InterruptedException {
+        setPatchable(SHARED);
+        Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).preinitialize(0, (engine) -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                context.initialize(SHARED);
+            }
+        });
+        CountDownLatch start = new CountDownLatch(1);
+        AtomicInteger successes = new AtomicInteger();
+        AtomicReference<Engine> consumedEngine = new AtomicReference<>();
+        List<Throwable> failures = Collections.synchronizedList(new ArrayList<>());
+        Runnable consume = () -> {
+            try {
+                start.await();
+                Engine engine = Engine.newBuilder(preinitialized).build();
+                consumedEngine.set(engine);
+                successes.incrementAndGet();
+            } catch (Throwable t) {
+                failures.add(t);
+            }
+        };
+        Thread first = new Thread(consume);
+        Thread second = new Thread(consume);
+        first.start();
+        second.start();
+        start.countDown();
+        first.join();
+        second.join();
+        assertEquals(1, successes.get());
+        assertEquals(1, failures.size());
+        assertTrue(failures.get(0) instanceof IllegalStateException);
+        consumedEngine.get().close();
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationRequiresSingleCompatibleLayer() {
+        try {
+            Engine.newBuilder(SHARED).preinitialize(0, (engine) -> {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).option(SHARED + ".Option1", "true").build()) {
+                    context.initialize(SHARED);
+                }
+                try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                    context.initialize(SHARED);
+                }
+            });
+            fail("Incompatible callback contexts must not create multiple sharing layers.");
+        } catch (IllegalStateException expected) {
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationRequiresClosedContexts() {
+        AtomicReference<Context> context = new AtomicReference<>();
+        try {
+            Engine.newBuilder(SHARED).preinitialize(0, (engine) -> context.set(Context.newBuilder(SHARED).engine(engine).build()));
+            fail("An unclosed callback context must be rejected.");
+        } catch (IllegalStateException expected) {
+        } finally {
+            Context openContext = context.get();
+            if (openContext != null) {
+                openContext.close(true);
+            }
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationDisabledPoolIsClosed() {
+        setPatchable(SHARED);
+        Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).allowExperimentalOptions(true).option("engine.UsePreInitializedContext", "false").preinitialize(1, engine -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                context.initialize(SHARED);
+            }
+        });
+        assertEquals(2, emittedContexts.size());
+        CountingContext pooledContext = emittedContexts.get(1);
+        assertEquals(0, pooledContext.disposeContextCount);
+        try (Engine engine = Engine.newBuilder(preinitialized).allowExperimentalOptions(true).option("engine.UsePreInitializedContext", "false").build();
+                        Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+            context.initialize(SHARED);
+            assertEquals(3, emittedContexts.size());
+            assertEquals(0, pooledContext.disposeContextCount);
+        }
+        assertEquals(1, pooledContext.disposeContextCount);
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationPoolCloseFailure() {
+        setPatchable(SHARED);
+        for (int failureIndex = 0; failureIndex < 2; failureIndex++) {
+            emittedContexts.clear();
+            Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).preinitialize(2, engine -> {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                    context.initialize(SHARED);
+                }
+            });
+            CountingContext failingContext = emittedContexts.get(failureIndex + 1);
+            AtomicBoolean failOnce = new AtomicBoolean(true);
+            try (Engine engine = Engine.newBuilder(preinitialized).build()) {
+                BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_FINALIZE_CONTEXT, env -> {
+                    if (env == failingContext.env && failOnce.getAndSet(false)) {
+                        throw new RuntimeException("Transient finalization failure.");
+                    }
+                });
+                AbstractPolyglotTest.assertFails(() -> {
+                    engine.close();
+                }, RuntimeException.class);
+                assertFalse(failOnce.get());
+                for (int i = 0; i < 2; i++) {
+                    assertEquals(i < failureIndex ? 1 : 0, emittedContexts.get(i + 1).disposeContextCount);
+                }
+                engine.close();
+                for (int i = 0; i < 2; i++) {
+                    assertEquals(1, emittedContexts.get(i + 1).disposeContextCount);
+                }
+            } finally {
+                BaseLanguage.actions.clear();
+            }
+            for (int i = 0; i < 2; i++) {
+                assertEquals(1, emittedContexts.get(i + 1).disposeContextCount);
+            }
+        }
+    }
+
+    @Test
+    public void testExplicitEnginePreinitializationStateClose() {
+        setPatchable(SHARED);
+        Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).preinitialize(1, (engine) -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                context.initialize(SHARED);
+            }
+        });
+        assertEquals(2, emittedContexts.size());
+        assertEquals(0, emittedContexts.get(1).disposeContextCount);
+        preinitialized.close();
+        assertEquals(1, emittedContexts.get(1).disposeContextCount);
+        preinitialized.close();
+        try {
+            preinitialized.getCachedSources();
+            fail("Closed state must not remain accessible.");
+        } catch (IllegalStateException expected) {
+        }
+        try {
+            Engine.newBuilder(preinitialized).build();
+            fail("Closed state must not be consumable.");
+        } catch (IllegalStateException expected) {
+        }
     }
 
     @Test
@@ -1953,23 +2999,6 @@ public class ContextPreInitializationTest {
     }
 
     @Test
-    @SuppressWarnings("try")
-    public void testFailToLookupInstrumentDuringContextPreInitialization() throws Exception {
-        setPatchable(FIRST);
-        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
-            InstrumentInfo instrumentInfo = env.getInstruments().get(ContextPreInitializationSecondInstrument.ID);
-            assertNotNull("Cannot find instrument " + ContextPreInitializationSecondInstrument.ID, instrumentInfo);
-            try {
-                env.lookup(instrumentInfo, Service.class);
-                Assert.fail("Expected IllegalStateException");
-            } catch (IllegalStateException ise) {
-                // Expected exception
-            }
-        });
-        doContextPreinitialize(FIRST);
-    }
-
-    @Test
     public void testIsSameFileAllowedIO() throws Exception {
         IsSameFileResult res = testIsSameFileImpl(IOAccess.ALL);
         assertTrue(res.imageBuildInternalFile.isSameFile(res.imageBuildPublicFile));
@@ -2508,19 +3537,27 @@ public class ContextPreInitializationTest {
         TruffleTestAssumptions.assumeNotAOT();
         setPatchable(FIRST);
         List<com.oracle.truffle.api.source.Source> sources = new ArrayList<>();
+        URI explicitURI = URI.create("custom:test-source");
         try (TemporaryResourceCacheRoot imageBuildTimeCacheRoot = new TemporaryResourceCacheRoot(false)) {
             BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
                 try {
                     TruffleFile root = env.getInternalResource(ContextPreInitializationResource.class);
                     TruffleFile sourceFile = root.resolve(ContextPreInitializationResource.FILE_NAME);
                     var source = com.oracle.truffle.api.source.Source.newBuilder(FIRST, sourceFile).build();
+                    env.parseInternal(source);
                     sources.add(source);
+                    var explicitURISource = com.oracle.truffle.api.source.Source.newBuilder(FIRST, sourceFile).uri(explicitURI).build();
+                    env.parseInternal(explicitURISource);
+                    sources.add(explicitURISource);
                 } catch (IOException ioe) {
                     throw new AssertionError(ioe);
                 }
             });
             doContextPreinitialize(FIRST);
-            assertFalse(sources.isEmpty());
+            assertEquals(2, sources.size());
+            prepareSourceForNativeImage(sources.get(0));
+            prepareSourceForNativeImage(sources.get(1));
+            assertEquals(explicitURI, sources.get(1).getURI());
         }
         Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
         Engine.copyResources(runtimeCacheRoot, FIRST);
@@ -2533,6 +3570,9 @@ public class ContextPreInitializationTest {
                     TruffleFile sourceFile = root.resolve(ContextPreInitializationResource.FILE_NAME);
                     var source2 = com.oracle.truffle.api.source.Source.newBuilder(FIRST, sourceFile).build();
                     assertEquals(source1, source2);
+                    assertEquals(sourceFile.getPath(), source1.getPath());
+                    assertEquals(sourceFile.toUri(), source1.getURI());
+                    assertEquals(explicitURI, sources.get(1).getURI());
                 } catch (IOException ioe) {
                     throw new RuntimeException(ioe);
                 }
@@ -2542,6 +3582,112 @@ public class ContextPreInitializationTest {
                 assertEquals("test", res.asString());
             }
         }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testUnparsedInternalResourceSourcesCanBeRetained() throws Exception {
+        TruffleTestAssumptions.assumeNotAOT();
+        setPatchable(FIRST);
+        List<com.oracle.truffle.api.source.Source> sources = new ArrayList<>();
+        try (TemporaryResourceCacheRoot imageBuildTimeCacheRoot = new TemporaryResourceCacheRoot(false)) {
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, env -> {
+                try {
+                    TruffleFile sourceFile = env.getInternalResource(ContextPreInitializationResource.class).resolve(ContextPreInitializationResource.FILE_NAME);
+                    sources.add(com.oracle.truffle.api.source.Source.newBuilder(FIRST, sourceFile).build());
+                    sources.add(com.oracle.truffle.api.source.Source.newBuilder(FIRST, sourceFile).cached(false).build());
+                } catch (IOException ioe) {
+                    throw new AssertionError(ioe);
+                }
+            });
+            doContextPreinitialize(FIRST);
+            assertEquals(2, sources.size());
+            assertTrue(sources.get(0).isCached());
+            assertFalse(sources.get(1).isCached());
+            for (var source : sources) {
+                prepareSourceForNativeImage(source);
+                prepareSourceForNativeImage(source);
+            }
+        }
+        Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
+        Engine.copyResources(runtimeCacheRoot, FIRST);
+        try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot, true)) {
+            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, env -> {
+                try {
+                    TruffleFile sourceFile = env.getInternalResource(ContextPreInitializationResource.class).resolve(ContextPreInitializationResource.FILE_NAME);
+                    for (var source : sources) {
+                        assertEquals(sourceFile.getPath(), source.getPath());
+                        assertEquals(sourceFile.toUri(), source.getURI());
+                    }
+                } catch (IOException e) {
+                    throw new AssertionError(e);
+                }
+            });
+            try (Context context = Context.create(FIRST)) {
+                context.initialize(FIRST);
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testCachedInternalResourceSourceAliasesRetainedAfterClose() throws Exception {
+        TruffleTestAssumptions.assumeNotAOT();
+        List<com.oracle.truffle.api.source.Source> sources = new ArrayList<>();
+        BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, env -> {
+            try {
+                TruffleFile file = env.getInternalResource(ContextPreInitializationResource.class).resolve(ContextPreInitializationResource.FILE_NAME);
+                var source = com.oracle.truffle.api.source.Source.newBuilder(SHARED, file).build();
+                var alias = (com.oracle.truffle.api.source.Source) ReflectionUtils.invoke(source, "copy");
+                assertNotSame(source, alias);
+                assertSame(ReflectionUtils.getField(source, "key"), ReflectionUtils.getField(alias, "key"));
+                env.parseInternal(source, "first");
+                env.parseInternal(alias, "second");
+                env.parseInternal(alias, "first");
+                sources.add(source);
+                sources.add(alias);
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+        });
+        try (TemporaryResourceCacheRoot root = new TemporaryResourceCacheRoot(false)) {
+            try (Engine.Preinitialized prepared = Engine.newBuilder(SHARED).preinitialize(0, engine -> {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                    context.initialize(SHARED);
+                }
+            })) {
+                assertEquals(1, prepared.getCachedSources().size());
+                assertEquals(2, sources.size());
+                prepareSourceForNativeImage(sources.get(0));
+            }
+            for (var source : sources) {
+                prepareSourceForNativeImage(source);
+                prepareSourceForNativeImage(source);
+            }
+        }
+        Path runtimeCacheRoot = Files.createTempDirectory(null).toRealPath();
+        Engine.copyResources(runtimeCacheRoot, SHARED);
+        try (TemporaryResourceCacheRoot imageExecutionCacheRoot = new TemporaryResourceCacheRoot(runtimeCacheRoot, true)) {
+            BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, env -> {
+                try {
+                    TruffleFile sourceFile = env.getInternalResource(ContextPreInitializationResource.class).resolve(ContextPreInitializationResource.FILE_NAME);
+                    for (var source : sources) {
+                        assertEquals(sourceFile.getPath(), source.getPath());
+                        assertEquals(sourceFile.toUri(), source.getURI());
+                    }
+                } catch (IOException e) {
+                    throw new AssertionError(e);
+                }
+            });
+            try (Context context = Context.create(SHARED)) {
+                context.initialize(SHARED);
+            }
+        }
+    }
+
+    private static void prepareSourceForNativeImage(com.oracle.truffle.api.source.Source source) throws ReflectiveOperationException {
+        Object key = ReflectionUtils.getField(source, "key");
+        ReflectionUtils.requireDeclaredMethod(key.getClass(), "invalidateMetadata", new Class<?>[0]).invoke(key);
     }
 
     @Test
@@ -3344,12 +4490,19 @@ public class ContextPreInitializationTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = SHARED, name = SHARED, version = "1.0", contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
+    @TruffleLanguage.Registration(id = SHARED, name = SHARED, version = "1.0", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, internalResources = ContextPreInitializationResource.class)
     public static final class ContextPreInitializationTestSharedLanguage extends BaseLanguage {
         @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Option 1") //
         public static final OptionKey<Boolean> Option1 = new OptionKey<>(false);
         @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Option 2") //
         public static final OptionKey<Boolean> Option2 = new OptionKey<>(false);
+
+        private static final OptionKey<Boolean> ExperimentalSourceOption = new OptionKey<>(false);
+
+        @Override
+        protected OptionDescriptors getSourceOptionDescriptors() {
+            return OptionDescriptors.create(List.of(OptionDescriptor.newBuilder(ExperimentalSourceOption, SHARED + ".ExperimentalSourceOption").stability(OptionStability.EXPERIMENTAL).build()));
+        }
 
         @Override
         protected CountingContext createContext(Env env) {
@@ -3537,12 +4690,18 @@ public class ContextPreInitializationTest {
     }
 
     @TruffleInstrument.Registration(id = ContextPreInitializationFirstInstrument.ID, name = ContextPreInitializationFirstInstrument.ID, //
-                    internalResources = ContextPreInitializationResource.class)
+                    services = {Service.class, ContextPreInitializationFirstInstrument.class}, internalResources = ContextPreInitializationResource.class)
     public static final class ContextPreInitializationFirstInstrument extends BaseInstrument {
 
         static final String ID = "ContextPreInitializationFirstInstrument";
 
         static volatile Map<String, Consumer<Event>> actions;
+        static int preinitializeCount;
+        static boolean preinitializeResult = true;
+
+        private Env optionEnvironment;
+        private boolean enabledAtCreation;
+        private boolean enabledWasSetAtCreation;
 
         @Option(name = "", category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Activates instrument", sandbox = SandboxPolicy.CONSTRAINED) //
         static final OptionKey<Boolean> Enabled = new OptionKey<>(false);
@@ -3557,12 +4716,38 @@ public class ContextPreInitializationTest {
             return actions;
         }
 
+        @Override
+        protected void onCreate(Env env) {
+            super.onCreate(env);
+            optionEnvironment = env;
+            enabledAtCreation = env.getOptions().get(Enabled);
+            enabledWasSetAtCreation = env.getOptions().hasBeenSet(Enabled);
+            env.registerService(this);
+            env.registerService(new Service() {
+                @Override
+                public Service.Kind getKind() {
+                    return Service.Kind.IMAGE_EXECUTION_TIME;
+                }
+            });
+        }
+
+        @Override
+        protected boolean onPreinitialize(Env env) {
+            preinitializeCount++;
+            return preinitializeResult;
+        }
+
     }
 
     @TruffleInstrument.Registration(id = ContextPreInitializationSecondInstrument.ID, name = ContextPreInitializationSecondInstrument.ID, services = Service.class)
     public static final class ContextPreInitializationSecondInstrument extends BaseInstrument {
 
         static final String ID = "ContextPreInitializationSecondInstrument";
+
+        static int preinitializeCount;
+        static boolean preinitializeResult = true;
+        static RuntimeException preinitializeFailure;
+        static Consumer<Env> preinitializeAction;
 
         @Override
         protected Map<String, Consumer<Event>> getActions() {
@@ -3578,6 +4763,18 @@ public class ContextPreInitializationTest {
                     return Service.Kind.IMAGE_EXECUTION_TIME;
                 }
             });
+        }
+
+        @Override
+        protected boolean onPreinitialize(Env env) {
+            preinitializeCount++;
+            if (preinitializeFailure != null) {
+                throw preinitializeFailure;
+            }
+            if (preinitializeAction != null) {
+                preinitializeAction.accept(env);
+            }
+            return preinitializeResult;
         }
 
     }

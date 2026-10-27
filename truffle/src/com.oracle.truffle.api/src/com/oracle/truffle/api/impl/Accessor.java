@@ -254,7 +254,9 @@ public abstract class Accessor {
 
         public abstract void setFileSystemContext(SourceBuilder builder, Object fileSystemContext);
 
-        public abstract void invalidateAfterPreinitialiation(Source source);
+        public abstract void invalidateAfterPreinitialization(Source source);
+
+        public abstract Object prepareForNativeImage(Object object);
 
         public abstract void mergeLoadedSources(Source[] sources);
 
@@ -456,6 +458,8 @@ public abstract class Accessor {
 
         public abstract boolean inContextPreInitialization(Object polyglotObject);
 
+        public abstract boolean inContextPreInitialization(TruffleFile file);
+
         public abstract TruffleContext createInternalContext(Object sourcePolyglotLanguageContext, OutputStream out, OutputStream err, InputStream in,
                         ZoneId timeZone, String[] permittedLanguages, Map<String, Object> config, Map<String, String> options, Map<String, String[]> arguments,
                         Boolean sharingEnabled, boolean initializeCreatorContext, Runnable onCancelled, Consumer<Integer> onExited,
@@ -617,8 +621,6 @@ public abstract class Accessor {
         public abstract ZoneId getTimeZone(Object polyglotLanguageContext);
 
         public abstract String getRelativePathInResourceRoot(TruffleFile truffleFile);
-
-        public abstract void onSourceCreated(Source source);
 
         public abstract void registerOnDispose(Object engineObject, Closeable closeable);
 
@@ -880,6 +882,8 @@ public abstract class Accessor {
 
         public abstract void collectNativeImagePresetOptions();
 
+        public abstract Object prepareForNativeImage(Object object);
+
         public abstract Source getSourceReceiver(org.graalvm.polyglot.Source source);
 
         public abstract TruffleLogger getEngineLogger(Object polyglotEngine);
@@ -1039,6 +1043,8 @@ public abstract class Accessor {
         public abstract void initializeInstrument(Object instrumentationHandler, Object polyglotInstrument, String instrumentClassName, Supplier<? extends Object> instrumentSupplier);
 
         public abstract void createInstrument(Object instrumentationHandler, Object polyglotInstrument, String[] expectedServices, OptionValues options);
+
+        public abstract boolean onInstrumentPreinitialize(Object instrumentationHandler, Object polyglotInstrument);
 
         public abstract void finalizeInstrument(Object instrumentationHandler, Object polyglotInstrument);
 

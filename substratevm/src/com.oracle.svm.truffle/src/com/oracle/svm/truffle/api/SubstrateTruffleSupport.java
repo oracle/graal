@@ -22,39 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle;
+package com.oracle.svm.truffle.api;
 
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
-import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
-import com.oracle.svm.truffle.api.SubstrateTruffleCompilerImpl;
-import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 import com.oracle.svm.truffle.isolated.IsolateAwareTruffleCompiler;
 import com.oracle.svm.truffle.isolated.IsolatedTruffleRuntimeSupport;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 import com.oracle.truffle.runtime.BackgroundCompileQueue;
 import com.oracle.truffle.runtime.OptimizedAssumption;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.truffle.AbstractTruffleCompilationSupport;
 import jdk.graal.compiler.truffle.EconomyPartialEvaluatorConfiguration;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluatorConfiguration;
@@ -63,15 +60,37 @@ import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleTierConfiguration;
 import jdk.vm.ci.meta.JavaConstant;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
-public class TruffleSupport {
+public class SubstrateTruffleSupport extends AbstractTruffleCompilationSupport {
 
-    public static TruffleSupport singleton() {
-        return ImageSingletons.lookup(TruffleSupport.class);
+    protected SubstrateTruffleSupport() {
     }
 
-    public SubstrateTruffleCompiler createTruffleCompiler(SubstrateTruffleRuntime runtime) {
-        SubstrateTruffleCompilerImpl compiler = new SubstrateTruffleCompilerImpl(createSubstrateTruffleCompilerConfig(runtime, "community"));
+    public static SubstrateTruffleSupport create() {
+        Class<? extends SubstrateTruffleSupport> supportClass;
+        try {
+            supportClass = Class.forName("com.oracle.svm.enterprise.truffle.EnterpriseTruffleSupport", false, SubstrateTruffleSupport.class.getClassLoader()).asSubclass(
+                            SubstrateTruffleSupport.class);
+        } catch (ClassNotFoundException e) {
+            supportClass = SubstrateTruffleSupport.class;
+        }
+        return ReflectionUtil.newInstance(supportClass);
+    }
+
+    @Override
+    public void registerRuntime(TruffleCompilerRuntime runtime) {
+        throw CompilerDirectives.shouldNotReachHere("Should not be called. Not necessary to be called on SVM.");
+    }
+
+    @Override
+    public String getCompilerConfigurationName(TruffleCompilerRuntime runtime) {
+        return "community";
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public SubstrateTruffleCompiler createCompiler(TruffleCompilerRuntime compilerRuntime) {
+        SubstrateTruffleRuntime runtime = (SubstrateTruffleRuntime) compilerRuntime;
+        SubstrateTruffleCompilerImpl compiler = new SubstrateTruffleCompilerImpl(createSubstrateTruffleCompilerConfig(runtime, getCompilerConfigurationName(runtime)));
         if (SubstrateOptions.SupportCompileInIsolates.getValue()) {
             return new IsolateAwareTruffleCompiler(compiler);
         }

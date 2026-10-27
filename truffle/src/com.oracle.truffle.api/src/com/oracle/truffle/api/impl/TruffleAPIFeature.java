@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,6 +84,11 @@ public final class TruffleAPIFeature implements Feature {
     }
 
     @Override
+    public void duringSetup(DuringSetupAccess access) {
+        access.registerObjectReplacer((object) -> DefaultRuntimeAccessor.SOURCE.prepareForNativeImage(DefaultRuntimeAccessor.ENGINE.prepareForNativeImage(object)));
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         String result = doVersionCheck();
         if (result != null) {
@@ -93,11 +98,17 @@ public final class TruffleAPIFeature implements Feature {
             out.printf("[%s] %s", getClass().getName(), result);
             throw new IllegalStateException(result);
         }
+        ThreadLocalHandshake.resetNativeImageState();
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         DefaultRuntimeAccessor.ENGINE.collectNativeImagePresetOptions();
+    }
+
+    @Override
+    public void beforeHeapLayout(BeforeHeapLayoutAccess access) {
+        ThreadLocalHandshake.resetNativeImageState();
     }
 
     private static String doVersionCheck() {

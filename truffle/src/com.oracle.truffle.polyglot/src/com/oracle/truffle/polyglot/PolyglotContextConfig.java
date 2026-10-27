@@ -56,6 +56,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
@@ -87,6 +88,8 @@ final class PolyglotContextConfig {
     final Set<String> allowedPublicLanguages;
     final Map<String, String> originalOptions;
     private final Map<String, OptionValuesImpl> optionsById;
+    final boolean usePreinitializedContext;
+    final boolean requirePreinitializedContext;
     @CompilationFinal FileSystemConfig fileSystemConfig;
     final Map<String, Level> logLevels;    // effectively final
     final LogHandler logHandler;
@@ -308,6 +311,7 @@ final class PolyglotContextConfig {
             addConfiguredLanguage(engine, languages, engine.idToLanguage.get(id));
         }
         List<OptionDescriptor> deprecatedOptions = null;
+        OptionValuesImpl contextOptionValues = engine.getEngineOptionValues().copy();
 
         for (String optionKey : options.keySet()) {
             final String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
@@ -315,30 +319,35 @@ final class PolyglotContextConfig {
                 logLevels.put(PolyglotEngineImpl.parseLoggerName(optionKey), Level.parse(options.get(optionKey)));
                 continue;
             }
-            VMObject object = findObjectForContextOption(engine, optionKey, group);
-            String id;
-            OptionValuesImpl engineOptionValues;
-            if (object instanceof PolyglotLanguage) {
-                PolyglotLanguage language = (PolyglotLanguage) object;
-                id = language.getId();
-                engineOptionValues = language.getOptionValues();
-                addConfiguredLanguage(engine, languages, language);
-            } else if (object instanceof PolyglotInstrument) {
-                PolyglotInstrument instrument = (PolyglotInstrument) object;
-                id = instrument.getId();
-                engineOptionValues = instrument.getEngineOptionValues();
-                if (instruments == null) {
-                    instruments = new ArrayList<>();
-                }
-                instruments.add(instrument);
+            OptionValuesImpl targetOptions;
+            if (PolyglotContextOptions.DESCRIPTORS.get(optionKey) != null) {
+                targetOptions = contextOptionValues;
             } else {
-                throw new AssertionError("invalid vm object");
-            }
+                VMObject object = findObjectForContextOption(engine, optionKey, group);
+                String id;
+                OptionValuesImpl engineOptionValues;
+                if (object instanceof PolyglotLanguage) {
+                    PolyglotLanguage language = (PolyglotLanguage) object;
+                    id = language.getId();
+                    engineOptionValues = language.getOptionValues();
+                    addConfiguredLanguage(engine, languages, language);
+                } else if (object instanceof PolyglotInstrument) {
+                    PolyglotInstrument instrument = (PolyglotInstrument) object;
+                    id = instrument.getId();
+                    engineOptionValues = instrument.getEngineOptionValues();
+                    if (instruments == null) {
+                        instruments = new ArrayList<>();
+                    }
+                    instruments.add(instrument);
+                } else {
+                    throw new AssertionError("invalid vm object");
+                }
 
-            OptionValuesImpl targetOptions = optionsById.get(id);
-            if (targetOptions == null) {
-                targetOptions = engineOptionValues.copy();
-                optionsById.put(id, targetOptions);
+                targetOptions = optionsById.get(id);
+                if (targetOptions == null) {
+                    targetOptions = engineOptionValues.copy();
+                    optionsById.put(id, targetOptions);
+                }
             }
 
             OptionDescriptor d = targetOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions, engine::getAllOptions);
@@ -347,6 +356,17 @@ final class PolyglotContextConfig {
                     deprecatedOptions = new ArrayList<>();
                 }
                 deprecatedOptions.add(d);
+            }
+        }
+
+        this.usePreinitializedContext = contextOptionValues.get(PolyglotContextOptions.UsePreInitializedContext);
+        this.requirePreinitializedContext = contextOptionValues.get(PolyglotContextOptions.RequirePreinitializedContext);
+        if (requirePreinitializedContext) {
+            if (ImageInfo.inImageBuildtimeCode()) {
+                throw PolyglotEngineException.illegalArgument("engine.RequirePreinitializedContext is a runtime-only testing option and cannot be enabled during native image building.");
+            }
+            if (!usePreinitializedContext) {
+                throw PolyglotEngineException.illegalArgument("engine.RequirePreinitializedContext=true cannot be combined with engine.UsePreInitializedContext=false.");
             }
         }
 

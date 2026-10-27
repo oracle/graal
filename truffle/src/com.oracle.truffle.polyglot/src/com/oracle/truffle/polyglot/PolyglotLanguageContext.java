@@ -104,6 +104,38 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     private static final TruffleLogger LOG = TruffleLogger.getLogger(PolyglotEngineImpl.OPTION_GROUP_ENGINE, PolyglotLanguageContext.class);
     private static final PolyglotThreadLocalActions.HandshakeConfig INITIALIZE_THREAD_HANDSHAKE_CONFIG = new PolyglotThreadLocalActions.HandshakeConfig(true, false, false, false);
 
+    /** Context-independent owner for file systems wrapped during explicit preinitialization. */
+    static final class PreinitializedFileSystemContext implements PolyglotImpl.VMObject {
+
+        final PolyglotLanguage language;
+        final boolean internal;
+        final boolean socketIOAllowed;
+        final Map<String, LanguageInfo> accessibleLanguages;
+
+        PreinitializedFileSystemContext(PolyglotLanguage language, boolean internal, boolean socketIOAllowed,
+                        Map<String, LanguageInfo> accessibleLanguages) {
+            this.language = language;
+            this.internal = internal;
+            this.socketIOAllowed = socketIOAllowed;
+            this.accessibleLanguages = accessibleLanguages;
+        }
+
+        @Override
+        public PolyglotEngineImpl getEngine() {
+            return language.getEngine();
+        }
+
+        @Override
+        public PolyglotImpl getImpl() {
+            return language.getImpl();
+        }
+
+        @Override
+        public APIAccess getAPIAccess() {
+            return language.getAPIAccess();
+        }
+    }
+
     /*
      * Lazily created when a language context is created.
      */
@@ -126,9 +158,20 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             this.polyglotGuestBindings = new PolyglotBindings(PolyglotLanguageContext.this);
             this.uncaughtExceptionHandler = new PolyglotUncaughtExceptionHandler();
             this.computeAccessPermissions(config);
+            Object publicFileSystemOwner = PolyglotLanguageContext.this;
+            Object internalFileSystemOwner = PolyglotLanguageContext.this;
+            if (context.engine.inExplicitPreinitialization && !context.engine.inEnginePreInitialization &&
+                            config.fileSystemConfig.fileSystem instanceof FileSystems.PreInitializeContextFileSystem &&
+                            config.fileSystemConfig.internalFileSystem instanceof FileSystems.PreInitializeContextFileSystem) {
+                boolean socketIOAllowed = language.getImpl().getIO().hasHostSocketAccess(config.fileSystemConfig.ioAccess);
+                publicFileSystemOwner = new PreinitializedFileSystemContext(language, false, socketIOAllowed, accessibleInternalLanguages);
+                internalFileSystemOwner = new PreinitializedFileSystemContext(language, true, socketIOAllowed, accessibleInternalLanguages);
+            }
             // file systems are patched after preinitialization internally using a delegate field
-            this.publicFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.fileSystemConfig.fileSystem);
-            this.internalFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.fileSystemConfig.internalFileSystem);
+            this.publicFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(publicFileSystemOwner,
+                            config.fileSystemConfig.fileSystem);
+            this.internalFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(internalFileSystemOwner,
+                            config.fileSystemConfig.internalFileSystem);
         }
 
         void computeAccessPermissions(PolyglotContextConfig config) {
@@ -612,9 +655,13 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             PolyglotSharingLayer layer = context.layer;
             synchronized (context.engine.lock) {
                 if (language.isHost()) {
-                    if (layer.isClaimed() && layer.hostLanguage == null) {
-                        // Patching layer created by context pre-initialization.
-                        languageInstance = layer.patchHostLanguage(language);
+                    if (layer.isClaimed()) {
+                        if (layer.hostLanguage == null) {
+                            // Patching layer created by context pre-initialization.
+                            languageInstance = layer.patchHostLanguage(language);
+                        } else {
+                            languageInstance = layer.hostLanguage;
+                        }
                     } else {
                         languageInstance = layer.allocateHostLanguage(language);
                     }

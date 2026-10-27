@@ -263,8 +263,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                     Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
                     boolean allowExperimentalOptions, boolean boundEngine, Boolean useIsolatedEngine, MessageTransport messageInterceptor,
                     Object logHandler, Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines,
-                    Object polyglotHostService, Consumer<PolyglotException> exceptionHandler) {
-
+                    Object polyglotHostService, Consumer<PolyglotException> exceptionHandler, Object preinitializedEngine) {
         Map<String, String> useOptions = applyPresetOptions(options, systemPropertiesOptions, useSystemProperties, hostLanguageOnly);
         if (EngineAccessor.ISOLATE.isIsolateHost()) {
             ValidatedOptions validatedOptions = validateOptions(sandboxPolicy, useIsolatedEngine, new HashSet<>(Arrays.asList(permittedLanguages)), useOptions, systemPropertiesOptions,
@@ -272,12 +271,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             useOptions = validatedOptions.options();
             String[] spawnIsolateValue = resolveIsolatedLanguages(validatedOptions, systemPropertiesOptions, useSystemProperties);
             if (spawnIsolateValue != null) {
+                if (preinitializedEngine != null) {
+                    throw new IllegalArgumentException("Preinitialized engines do not support polyglot isolates.");
+                }
                 IsolatePolicy isolatePolicy = parseOption(PolyglotEngineOptions.IsolateMode, "engine.IsolateMode", useOptions, systemPropertiesOptions, useSystemProperties);
                 OptionDescriptors engineOptionDescriptors = createEngineOptionDescriptors();
                 Engine localEngine = buildLocalEngine(EMPTY_LANGUAGES, sandboxPolicy, out, err, in, PolyglotEngineOptions.filterHostOptions(engineOptionDescriptors, useOptions),
                                 PolyglotEngineOptions.filterHostOptions(engineOptionDescriptors, systemPropertiesOptions), useSystemProperties,
                                 allowExperimentalOptions, boundEngine, true, messageInterceptor,
-                                logHandler, hostLanguage, true, false, null, exceptionHandler);
+                                logHandler, hostLanguage, true, false, null, exceptionHandler, null);
                 String isolateLibrary = parseOption(PolyglotEngineOptions.IsolateLibrary, "engine.IsolateLibrary", useOptions, systemPropertiesOptions, useSystemProperties);
                 String isolateLauncher = parseOption(PolyglotEngineOptions.IsolateLauncher, "engine.IsolateLauncher", useOptions, systemPropertiesOptions, useSystemProperties);
                 long stackHeadRoom = parseOption(PolyglotEngineOptions.HostCallStackHeadRoom, "engine.HostCallStackHeadRoom", useOptions, systemPropertiesOptions, useSystemProperties);
@@ -318,16 +320,86 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             useOptions = new HashMap<>(useOptions);
         }
 
-        return buildLocalEngine(permittedLanguages, sandboxPolicy, out, err, in, useOptions, systemPropertiesOptions, useSystemProperties,
-                        allowExperimentalOptions, boundEngine, Boolean.TRUE.equals(useIsolatedEngine), messageInterceptor, logHandler, hostLanguage,
-                        hostLanguageOnly, registerInActiveEngines, polyglotHostService, exceptionHandler);
+        Engine temporaryEngine = (Engine) preinitializedEngine;
+        PolyglotEngineImpl engine = temporaryEngine == null ? null : (PolyglotEngineImpl) getAPIAccess().getEngineReceiver(temporaryEngine);
+        try {
+            return buildLocalEngine(permittedLanguages, sandboxPolicy, out, err, in, useOptions, systemPropertiesOptions, useSystemProperties,
+                            allowExperimentalOptions, boundEngine, Boolean.TRUE.equals(useIsolatedEngine), messageInterceptor, logHandler, hostLanguage,
+                            hostLanguageOnly, registerInActiveEngines, polyglotHostService, exceptionHandler, engine);
+        } finally {
+            Reference.reachabilityFence(temporaryEngine);
+        }
+    }
+
+    @Override
+    public Engine preinitializeEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,
+                    Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
+                    boolean allowExperimentalOptions, Boolean useIsolatedEngine, MessageTransport messageInterceptor,
+                    Object logHandler, Object hostLanguage, Consumer<PolyglotException> exceptionHandler, int contextCount, Consumer<Engine> initializer) {
+        if (ImageInfo.inImageRuntimeCode()) {
+            throw new IllegalStateException(
+                            "Preinitialized engine state must be created during native-image generation. Initialize the holder class at build time using --initialize-at-build-time=<holder-class>.");
+        }
+        if (Boolean.TRUE.equals(useIsolatedEngine)) {
+            throw new IllegalArgumentException("Preinitialized engines do not support polyglot isolates.");
+        }
+        if (messageInterceptor != null) {
+            throw new IllegalArgumentException("Preinitialized engines do not support server transports.");
+        }
+
+        Engine temporaryEngine = buildEngine(permittedLanguages, sandboxPolicy, out, err, in, options, systemPropertiesOptions, useSystemProperties,
+                        allowExperimentalOptions, false, useIsolatedEngine, messageInterceptor, logHandler, hostLanguage, false, false, null, exceptionHandler, null);
+        PolyglotEngineImpl engine = (PolyglotEngineImpl) getAPIAccess().getEngineReceiver(temporaryEngine);
+        if (engine.isStoreEngine()) {
+            engine.ensureClosed(true, false);
+            throw new IllegalArgumentException("Engine cache storage options cannot be combined with explicit engine preinitialization.");
+        }
+
+        engine.beginExplicitPreinitialization();
+        boolean success = false;
+        Throwable failure = null;
+        try {
+            initializer.accept(temporaryEngine);
+            engine.prepareHostLanguageForPreinitialization(createHostLanguage(createHostAccess()));
+            engine.completeExplicitPreinitialization(contextCount);
+            engine.logLevels.clear();
+            engine.logHandler.close();
+            engine.logHandler = null;
+            engine.exceptionHandler = null;
+            success = true;
+            return temporaryEngine;
+        } catch (PolyglotEngineException e) {
+            try {
+                throw PolyglotImpl.guestToHostException(engine, e);
+            } catch (RuntimeException | Error hostException) {
+                failure = hostException;
+                throw hostException;
+            }
+        } catch (RuntimeException | Error e) {
+            failure = e;
+            throw e;
+        } finally {
+            try {
+                if (!success) {
+                    engine.cancelExplicitPreinitialization();
+                    engine.ensureClosed(true, false);
+                }
+            } catch (RuntimeException | Error e) {
+                if (failure != null) {
+                    failure.addSuppressed(e);
+                } else {
+                    throw e;
+                }
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")
     private Engine buildLocalEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,
                     Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
                     boolean allowExperimentalOptions, boolean boundEngine, boolean spawnIsolate, MessageTransport messageInterceptor, Object logHandler,
-                    Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService, Consumer<PolyglotException> exceptionHandler) {
+                    Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService, Consumer<PolyglotException> exceptionHandler,
+                    PolyglotEngineImpl preinitializedEngine) {
         PolyglotEngineImpl impl = null;
         try {
             OutputStream resolvedOut = out == null ? System.out : out;
@@ -366,9 +438,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                 usePolyglotHostService = new DefaultPolyglotHostService(this);
             }
 
-            impl = (PolyglotEngineImpl) EngineAccessor.RUNTIME.tryLoadCachedEngine(engineOptions, loggerProvider);
-            if (impl == null && boundEngine && !hostLanguageOnly && !EngineAccessor.RUNTIME.isStoreEnabled(engineOptions)) {
-                impl = preInitializedEngineRef.getAndSet(null);
+            if (preinitializedEngine != null) {
+                preinitializedEngine.validatePreinitializedConfiguration(sandboxPolicy, spawnIsolate, messageInterceptor);
+                preinitializedEngine.validatePreinitializedOptions(engineOptions, options, systemPropertiesOptions, useSystemProperties, allowExperimentalOptions);
+                impl = preinitializedEngine;
+            } else {
+                impl = (PolyglotEngineImpl) EngineAccessor.RUNTIME.tryLoadCachedEngine(engineOptions, loggerProvider);
+                if (impl == null && boundEngine && !hostLanguageOnly && !EngineAccessor.RUNTIME.isStoreEnabled(engineOptions)) {
+                    impl = preInitializedEngineRef.getAndSet(null);
+                }
             }
 
             if (impl != null) {
@@ -390,6 +468,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 usePolyglotHostService,
                                 exceptionHandler);
                 if (!patchSuccess) {
+                    if (preinitializedEngine != null) {
+                        throw new IllegalArgumentException("The preinitialized engine is incompatible with the runtime resource configuration.");
+                    }
                     // Engine patching failed create a new engine
                     impl = null;
                 }
@@ -749,6 +830,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotEngineImpl.parseEngineOptions(options, engineOptions, logOptions);
         OptionValuesImpl values = new OptionValuesImpl(engineOptionDescriptors, sandboxPolicy, true);
         values.putAll(engineOptions, allowExperimentalOptions, null);
+        if (ImageInfo.inImageBuildtimeCode() && values.get(PolyglotContextOptions.RequirePreinitializedContext)) {
+            throw PolyglotEngineException.illegalArgument("engine.RequirePreinitializedContext is a runtime-only testing option and cannot be enabled during native image building.");
+        }
         return values;
     }
 

@@ -135,7 +135,12 @@ These are internal options for debugging language implementations and tools.
 - `--engine.TraceThreadLocalActions` : Traces thread local events and when they are processed on the individual threads. Prints messages with the [engine] [tl] prefix.
 - `--engine.TriggerUncaughtExceptionHandlerForCancel` : Propagates cancel execution exception into UncaughtExceptionHandler. For testing purposes only.
 - `--engine.UseConservativeContextReferences` : Enables conservative context references. This allows invalid sharing between contexts. For testing purposes only.
-- `--engine.UsePreInitializedContext=true|false` : Use pre-initialized context when it's available (default: true).
+- `--engine.UsePreInitializedContext=true|false` : Use a preinitialized context when available (default: true).
+  You can set this experimental option on an engine or a context, including a context with an explicit engine.
+  A context value overrides the engine default.
+- `--engine.RequirePreinitializedContext=true|false` : Require successful reuse of a preinitialized context (default: false).
+  This experimental option is for testing only and works with explicit engine preinitialization and automatic context preinitialization.
+  Context creation fails if no compatible prepared context is available, the pool is exhausted, or patching fails; reusing only a sharing layer is not sufficient.
 - `--engine.DebugCacheCompile=none|compiled|hot|aot|executed` : Policy to use to force compilation for executed call targets before persisting the engine. Possible values are:
   - 'none':     No compilations will be persisted and existing compilations will be invalidated.
   - 'compiled': No compilations will be forced but finished compilations will be persisted.

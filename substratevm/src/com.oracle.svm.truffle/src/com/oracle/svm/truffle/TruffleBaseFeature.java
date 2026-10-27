@@ -783,8 +783,6 @@ public final class TruffleBaseFeature implements InternalFeature {
     public static void preInitializeEngine() {
         invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "preInitializeEngine",
                         Collections.emptyList());
-        invokeStaticMethod("com.oracle.truffle.api.impl.ThreadLocalHandshake", "resetNativeImageState",
-                        Collections.emptyList());
     }
 
     /**

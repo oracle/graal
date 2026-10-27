@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,9 +88,6 @@ public abstract class ThreadLocalHandshake {
     private static final Map<Thread, TruffleSafepointImpl> SAFEPOINTS = Collections.synchronizedMap(new WeakHashMap<>());
 
     static void resetNativeImageState() {
-        for (TruffleSafepointImpl impl : SAFEPOINTS.values()) {
-            impl.verifyUnused();
-        }
         SAFEPOINTS.clear();
     }
 
@@ -560,8 +557,16 @@ public abstract class ThreadLocalHandshake {
         }
     }
 
-    protected final TruffleSafepointImpl getThreadState(Thread thread) {
-        return SAFEPOINTS.computeIfAbsent(thread, (t) -> new TruffleSafepointImpl(this));
+    protected TruffleSafepointImpl getThreadState(Thread thread) {
+        return SAFEPOINTS.computeIfAbsent(thread, (t) -> createThreadState());
+    }
+
+    protected final TruffleSafepointImpl createThreadState() {
+        return new TruffleSafepointImpl(this);
+    }
+
+    protected static final TruffleSafepointImpl getThreadStateIfPresent(Thread thread) {
+        return SAFEPOINTS.get(thread);
     }
 
     protected static boolean isCurrentPolyglotContextEntered() {
@@ -586,38 +591,6 @@ public abstract class ThreadLocalHandshake {
         TruffleSafepointImpl(ThreadLocalHandshake handshake) {
             super(DefaultRuntimeAccessor.ENGINE);
             this.impl = handshake;
-        }
-
-        void verifyUnused() throws AssertionError {
-            if (this.lock.isHeldByCurrentThread() || this.lock.isLocked()) {
-                throw new AssertionError("Invalid locked state for safepoint.");
-            }
-            this.lock.lock();
-            try {
-                if (this.blockedAction != null) {
-                    throw new AssertionError("Invalid pending blocked action.");
-                }
-                if (this.interrupted) {
-                    throw new AssertionError("Invalid pending interrupted state.");
-                }
-                if (this.isPending()) {
-                    throw new AssertionError("Invalid pending handshakes.");
-                }
-                // correct usage always needs to reset the side-effects enabled state
-                if (!this.sideEffectsEnabled) {
-                    throw new AssertionError("Invalid side-effects disabled state");
-                }
-
-                if (!this.recurringActionsEnabled) {
-                    throw new AssertionError("Invalid recuring actions disabled state");
-                }
-
-                if (!this.enabled) {
-                    throw new AssertionError("Invalid allow actions disabled state");
-                }
-            } finally {
-                this.lock.unlock();
-            }
         }
 
         void processOrNotifyHandshakes(Node location, List<HandshakeEntry> toProcessOrNotify, Boolean blockedNotification) {

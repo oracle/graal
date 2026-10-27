@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,10 +87,6 @@ final class SourceAccessor extends Accessor {
         return ACCESSOR.languageSupport().isSocketIOAllowed(fileSystemContext);
     }
 
-    static void onSourceCreated(Source source) {
-        ACCESSOR.engineSupport().onSourceCreated(source);
-    }
-
     static String getReinitializedPath(TruffleFile truffleFile) {
         return ACCESSOR.engineSupport().getReinitializedPath(truffleFile);
     }
@@ -167,8 +163,20 @@ final class SourceAccessor extends Accessor {
         }
 
         @Override
-        public void invalidateAfterPreinitialiation(Source source) {
-            ((SourceImpl) source).key.invalidateAfterPreinitialiation();
+        public void invalidateAfterPreinitialization(Source source) {
+            SourceImpl.Key key = ((SourceImpl) source).key;
+            if (key instanceof SourceImpl.ReinitializableKey reinitializableKey) {
+                reinitializableKey.invalidateMetadata();
+            }
+        }
+
+        @Override
+        public Object prepareForNativeImage(Object object) {
+            Object key = object instanceof SourceImpl source ? source.key : object;
+            if (key instanceof SourceImpl.ReinitializableKey reinitializableKey) {
+                reinitializableKey.invalidateMetadata();
+            }
+            return object;
         }
 
         @Override
