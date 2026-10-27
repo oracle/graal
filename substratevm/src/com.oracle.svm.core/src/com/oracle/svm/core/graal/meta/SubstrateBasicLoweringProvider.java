@@ -45,6 +45,7 @@ import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
+import com.oracle.svm.guest.staging.core.graal.meta.DynamicHubOffsets;
 import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ReferenceAccess;

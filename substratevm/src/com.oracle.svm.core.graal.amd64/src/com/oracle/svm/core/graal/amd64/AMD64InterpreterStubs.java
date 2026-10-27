@@ -62,7 +62,7 @@ import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
 import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
-import com.oracle.svm.core.graal.meta.DynamicHubOffsets;
+import com.oracle.svm.guest.staging.core.graal.meta.DynamicHubOffsets;
 import com.oracle.svm.core.graal.meta.InterpreterExecutionOffsets;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.guest.staging.core.heap.Heap;
