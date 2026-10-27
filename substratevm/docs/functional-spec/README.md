@@ -25,17 +25,17 @@ Classes and interfaces from other packages are named by their canonical name, fo
 [`java.util.ServiceLoader`](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/util/ServiceLoader.html).
 
 A cross-reference within a specification is shown as §x.y and links to that section.
-A reference to The Java Language Specification is written as JLS §12.4, and a reference to the Java
+A reference to The Java Language Specification is written as JLS 12.4, and a reference to the Java
 SE API documentation names the specified class, interface, or member.
 
 The specifications use the following terms of the Java Platform specifications with their standard
 meaning:
 
-- *Loading* (JLS §12.2) is finding the binary form of a class and constructing a
+- *Loading* (JLS 12.2) is finding the binary form of a class and constructing a
   [`java.lang.Class`](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Class.html)
   object for it.
-  *Creation of a new class instance* (JLS §12.5) is the separate act of instantiating that class.
-- *Class initialization* (JLS §12.4) is the execution of a class's static initializers.
-- The *binary name* (JLS §13.1) of a class is the name by which reflection metadata,
+  *Creation of a new class instance* (JLS 12.5) is the separate act of instantiating that class.
+- *Class initialization* (JLS 12.4) is the execution of a class's static initializers.
+- The *binary name* (JLS 13.1) of a class is the name by which reflection metadata,
   [`java.lang.Class.forName`](https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Class.html#forName(java.lang.String)),
   and diagnostics identify it.

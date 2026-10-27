@@ -37,6 +37,6 @@ Both runs must print the same result and expose the same providers and services.
 The dormant [`Signature`][signature] call must not make a provider or service available or change
 provider selection.
 The security-provider reachability requirement applies this example directly
-([§FS-002-security-providers.8.6](../security-providers.md#86-reachability-independence)).
+([§FS-002-security-providers.requirements.6](../security-providers.md#requirements6-reachability-independence)).
 
 [signature]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/security/Signature.html
