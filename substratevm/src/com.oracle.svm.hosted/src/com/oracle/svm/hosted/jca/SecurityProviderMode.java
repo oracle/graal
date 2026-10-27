@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.jca;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
 
-/** The supported transition modes from §FS-002-security-providers.7. */
+/** The supported transition modes from §FS-002-security-providers.6. */
 public enum SecurityProviderMode {
     LEGACY_BUILD_TIME,
     LEGACY_RUN_TIME,

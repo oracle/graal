@@ -110,7 +110,7 @@ public final class SecurityProviderRuntimeState {
     @Platforms(Platform.HOSTED_ONLY.class)
     public synchronized void registerServiceLoadedConfiguredProvider(String providerName, String providerClassName, String constructionClassName, int descriptorOrder) {
         registerServiceLoadedConfiguredProviderKey(providerName, providerClassName, constructionClassName, descriptorOrder);
-        // §FS-002-security-providers.7.1
+        // §FS-002-security-providers.6.1
         // Security properties accept either the provider name or its implementation class name.
         registerServiceLoadedConfiguredProviderKey(providerClassName, providerClassName, constructionClassName, descriptorOrder);
     }
@@ -201,7 +201,7 @@ public final class SecurityProviderRuntimeState {
         return info != null && info.acquisitionKind() == AcquisitionKind.APPLICATION_SUPPLIED_ONLY;
     }
 
-    /** §FS-002-security-providers.1.3: Select the first active descriptor candidate in order. */
+    /** §FS-002-security-providers.1.2: Select the first active descriptor candidate in order. */
     public static ConfiguredProviderInfo getConfiguredProvider(String providerName) {
         for (SecurityProviderRuntimeState state : singletons()) {
             List<ConfiguredProviderInfo> candidates = state.configuredProviders.get(providerName);
@@ -216,7 +216,7 @@ public final class SecurityProviderRuntimeState {
         return null;
     }
 
-    /** §FS-002-security-providers.4.3: Resolve diagnostics without constructing a provider. */
+    /** §FS-002-security-providers.3.3: Resolve diagnostics without constructing a provider. */
     public static ConfiguredProviderInfo getConfiguredProviderForDiagnostics(String providerName) {
         for (SecurityProviderRuntimeState state : singletons()) {
             List<ConfiguredProviderInfo> candidates = state.configuredProviders.get(providerName);

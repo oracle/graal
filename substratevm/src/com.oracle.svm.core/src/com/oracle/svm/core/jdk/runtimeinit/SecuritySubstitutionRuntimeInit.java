@@ -26,12 +26,8 @@
 package com.oracle.svm.core.jdk.runtimeinit;
 
 import java.net.URL;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.security.Provider;
-import java.util.ArrayList;
 import java.util.Map;
-import java.util.Properties;
 import java.util.WeakHashMap;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -46,37 +42,6 @@ import com.oracle.svm.core.jdk.SecurityProvidersInitializedAtRunTime;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-
-@TargetClass(value = java.security.Security.class, onlyWith = SecurityProvidersInitializedAtRunTime.class)
-final class Target_java_security_Security {
-    @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
-    static Properties props;
-
-    /** §FS-002-security-providers.4.3: Keep omission diagnostics outside ProviderList mutation. */
-    @Substitute
-    public static Provider getProvider(String name) {
-        Provider provider = sun.security.jca.Providers.getProviderList().getProvider(name);
-        if (provider == null) {
-            SecurityProviderRuntimeAccess.reportMissingConfiguredProvider(name);
-        }
-        return SecurityProviderRuntimeAccess.traceJdkProviderLookup(provider);
-    }
-}
-
-@TargetClass(value = java.security.Security.class, innerClass = "SecPropLoader", onlyWith = SecurityProvidersInitializedAtRunTime.class)
-final class Target_java_security_Security_SecPropLoader {
-
-    /**
-     * On HotSpot, this method loads the properties from the JDK's default location. Since we do not
-     * have a full JDK at run time, we use a snapshot of these values captured at build time from
-     * the host JVM.
-     */
-    @Substitute
-    private static void loadMaster() {
-        Target_java_security_Security.props = SecurityProviderRuntimeState.getSavedInitialSecurityProperties();
-    }
-}
 
 /**
  * The {@code javax.crypto.JceSecurity#verificationResults} cache is initialized by the
@@ -113,6 +78,7 @@ final class Target_javax_crypto_JceSecurity {
     }
 }
 
+/* The provider-construction path is identical in explicit and legacy run-time initialization. */
 @TargetClass(className = "sun.security.jca.ProviderConfig", onlyWith = SecurityProvidersInitializedAtRunTime.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_security_jca_ProviderConfig {
@@ -161,7 +127,7 @@ final class Target_sun_security_jca_ProviderConfig {
             String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(provName);
             String providerClassName = configuredProviderClassName != null ? configuredProviderClassName
                             : builtInProviderClassName != null ? builtInProviderClassName : provName;
-            // §FS-002-security-providers.7.1
+            // §FS-002-security-providers.6.1
             // Omit unregistered providers from the run-time list.
             if (!SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName)) {
                 return null;
@@ -189,9 +155,9 @@ final class Target_sun_security_jca_ProviderConfig {
                     isLoading = true;
                     tries++;
                     if (configuredProviderClassName != null) {
-                        /* §FS-002-security-providers.1.3 and §FS-002-security-providers.7.1:
-                         * Use the ordered retained descriptor candidate under the same recursion
-                         * and retry state machine as the JDK ServiceLoader path. */
+                        /* §FS-002-security-providers.1.2, §FS-002-security-providers.6.1:
+                         * ordered retained descriptors, with the JDK ServiceLoader recursion and
+                         * retry state machine. */
                         provider = SecurityProviderRuntimeAccess.loadRegisteredConfiguredProvider(provName, configuredProviderClassName,
                                         configuredProvider.effectiveConstructionClassName(), argument);
                     } else {
@@ -205,66 +171,6 @@ final class Target_sun_security_jca_ProviderConfig {
         return provider;
     }
 
-}
-
-@TargetClass(className = "sun.security.jca.ProviderList", onlyWith = SecurityProvidersInitializedAtRunTime.class)
-@SuppressWarnings({"unused", "static-method"})
-final class Target_sun_security_jca_ProviderList {
-
-    @Alias //
-    private Target_sun_security_jca_ProviderConfig[] configs;
-
-    @Alias
-    private native Provider getProvider(int index);
-
-    @Alias
-    private native int getIndex(String name);
-
-    @Substitute
-    public Provider getProvider(String name) {
-        int index = getIndex(name);
-        if (index >= 0) {
-            return SecurityProviderRuntimeAccess.traceJdkProviderLookup(getProvider(index));
-        }
-        return null;
-    }
-
-    /** Return only active providers without removing inactive configurations from this list. */
-    @Substitute
-    public Provider[] toArray() {
-        ArrayList<Provider> activeProviders = new ArrayList<>(configs.length);
-        for (Target_sun_security_jca_ProviderConfig config : configs) {
-            Provider provider = config.getProvider();
-            if (provider != null) {
-                activeProviders.add(provider);
-            }
-        }
-        return activeProviders.toArray(new Provider[0]);
-    }
-}
-
-@TargetClass(className = "sun.security.jca.GetInstance", onlyWith = SecurityProvidersInitializedAtRunTime.class)
-final class Target_sun_security_jca_GetInstance_RuntimeInit {
-    /** §FS-002-security-providers.4.3: Named factories diagnose at their acquisition boundary. */
-    @Substitute
-    public static Provider.Service getService(String type, String algorithm, String providerName)
-                    throws NoSuchAlgorithmException, NoSuchProviderException {
-        // Checkstyle: allow inconsistent exceptions and errors (JDK-compatible messages)
-        if (providerName == null || providerName.isEmpty()) {
-            throw new IllegalArgumentException("missing provider");
-        }
-        Provider provider = sun.security.jca.Providers.getProviderList().getProvider(providerName);
-        if (provider == null) {
-            SecurityProviderRuntimeAccess.reportMissingConfiguredProvider(providerName);
-            throw new NoSuchProviderException("no such provider: " + providerName);
-        }
-        Provider.Service service = provider.getService(type, algorithm);
-        if (service == null) {
-            throw new NoSuchAlgorithmException("no such algorithm: " + algorithm + " for provider " + providerName);
-        }
-        // Checkstyle: disallow inconsistent exceptions and errors
-        return service;
-    }
 }
 
 @SuppressWarnings("unused")

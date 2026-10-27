@@ -43,8 +43,8 @@ import org.junit.Test;
 
 /**
  * Exercises provider enumeration under the native-image agent. The JCK harness and other
- * applications can initialize some providers before their test code enumerates the provider list,
- * so the agent must record both newly loaded and already cached providers.
+ * applications can initialize providers before their test code enumerates the provider list, so
+ * the generated configuration must retain real construction observed earlier in the same run.
  */
 public class SecurityProviderAgentTest {
     private static final String GENERATOR_ENABLED_PROPERTY = SecurityProviderAgentTest.class.getName() + ".generator.enabled";
@@ -53,7 +53,7 @@ public class SecurityProviderAgentTest {
     private static final String PARAMETERIZED_SERVICE_TYPE = "AgentParameterizedService";
     private static final String PARAMETERIZED_SERVICE_ALGORITHM = "AgentParameterizedAlgorithm";
 
-    /** Tests §FS-002-security-providers.6.1. */
+    /** Tests §FS-002-security-providers.5.1. */
     @Test
     public void enumerateSecurityProviders() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
@@ -64,7 +64,7 @@ public class SecurityProviderAgentTest {
         Assert.assertSame(ReflectiveProbe.class, Class.forName(ReflectiveProbe.class.getName()));
     }
 
-    /** Tests §FS-002-security-providers.6.1. */
+    /** Tests §FS-002-security-providers.5.1. */
     @Test
     public void programmaticProviderMutationDoesNotTraceProviders() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
@@ -80,7 +80,7 @@ public class SecurityProviderAgentTest {
         }
     }
 
-    /** Tests §FS-002-security-providers.6.1. */
+    /** Tests §FS-002-security-providers.5.1. */
     @Test
     public void providerServiceHelpersRetainConstructorMetadata() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
@@ -96,7 +96,7 @@ public class SecurityProviderAgentTest {
         }
     }
 
-    /** Tests §FS-002-security-providers.6.1 for selection before service instantiation. */
+    /** Tests §FS-002-security-providers.5.1 for selection before service instantiation. */
     @Test
     public void jceServiceSelectionRetainsConstructorMetadata() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",
@@ -112,7 +112,7 @@ public class SecurityProviderAgentTest {
         }
     }
 
-    /** Tests §FS-002-security-providers.6.1 for a non-standard parameterized service. */
+    /** Tests §FS-002-security-providers.5.1 for a non-standard parameterized service. */
     @Test
     public void providerServiceUsesTheActualConstructorArgument() throws Exception {
         assumeTrue("Test must be explicitly enabled because it is designed to run under the agent",

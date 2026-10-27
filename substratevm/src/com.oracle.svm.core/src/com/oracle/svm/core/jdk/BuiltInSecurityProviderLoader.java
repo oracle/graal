@@ -50,8 +50,8 @@ public final class BuiltInSecurityProviderLoader {
         return SecurityProviderCatalog.isDirectlyConstructible(providerNameOrClassName);
     }
 
-    // §FS-002-security-providers.3.1, §FS-002-security-providers.4.3
-    // §FS-002-security-providers.7.1
+    // §FS-002-security-providers.2.1, §FS-002-security-providers.3.3
+    // §FS-002-security-providers.6.1
     public static Provider load(String providerNameOrClassName, Debug debug) {
         String providerClassName = getProviderClassName(providerNameOrClassName);
         if (providerClassName == null) {
@@ -87,7 +87,7 @@ public final class BuiltInSecurityProviderLoader {
     private static Provider loadReflectively(String providerClassName, Debug debug) {
         try {
             Class<?> providerClass = Class.forName(GraalDirectives.opaque(providerClassName));
-            // §FS-002-security-providers.2.2
+            // §FS-002-security-providers.1.2
             // Use the same construction path the build-time rule chose.
             return SecurityProviderRuntimeAccess.constructProvider(providerClass);
         } catch (ReflectiveOperationException ex) {
