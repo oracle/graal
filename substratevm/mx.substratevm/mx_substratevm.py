@@ -3596,6 +3596,9 @@ class StaticLibrarySymbolsBuilder(mx.ArchivableProject, ABC):
             pattern = join('**', pattern)
         return sorted(glob(join(static_lib_root, pattern), recursive=recursive))
 
+    def _dependency_static_libs(self):
+        return self._static_libs()
+
     @abstractmethod
     def _manifest_path(self, static_lib):
         pass
@@ -3636,8 +3639,24 @@ class BaseJDKStaticLibrarySymbolsBuilder(StaticLibrarySymbolsBuilder):
         static_lib_root = join(jdk_lib_root, 'static')
         return static_lib_root if self._has_dedicated_static_lib_root() else jdk_lib_root
 
+    def _base_jdk_static_libs(self, include_jvm):
+        static_libs = super()._static_libs(recursive=self._has_dedicated_static_lib_root())
+        if include_jvm:
+            return static_libs
+        jvm_library = mx.add_static_lib_suffix(mx.add_lib_prefix('jvm'))
+        return [
+            static_lib
+            for static_lib in static_libs
+            if os.path.basename(static_lib) != jvm_library
+        ]
+
     def _static_libs(self):
-        return super()._static_libs(recursive=self._has_dedicated_static_lib_root())
+        return self._base_jdk_static_libs(include_jvm=False)
+
+    def _dependency_static_libs(self):
+        # Keep the Base JDK jvm archive visible while deriving dependency edges. Native Image
+        # provides the archive that satisfies those dependencies at link time.
+        return self._base_jdk_static_libs(include_jvm=True)
 
     def _manifest_path(self, static_lib):
         relative_path = os.path.relpath(static_lib, self._static_lib_root())
@@ -3707,8 +3726,9 @@ class SVMStaticLibrarySymbolsBuilder(StaticLibrarySymbolsBuilder):
 class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
     # Version 2 extends the original symbol-only files with "dependency:<library>" records.
     # Version 3 adds the JVM and Java ABI symbols needed by dynamically loaded JDK libraries.
+    # Version 4 retains jvm dependency records without generating a Base JDK jvm manifest.
     # Keeping the format version in the project stamp invalidates old manifests exactly once.
-    manifest_format_version = '3'
+    manifest_format_version = '4'
     dependency_prefix = 'dependency:'
 
     def __init__(self, subject, args):
@@ -3797,7 +3817,7 @@ class StaticLibrarySymbolsBuildTask(mx.ArchivableBuildTask):
                 mx.abort(f'{static_lib} exports JNI symbols but has no matching dynamic library')
             dependencies = []
         else:
-            dependencies = self._collect_dependencies(dynamic_lib, self.subject._static_libs())
+            dependencies = self._collect_dependencies(dynamic_lib, self.subject._dependency_static_libs())
         self.subject._validate_dependencies(dependencies)
         # Dependency records precede symbols so consumers can distinguish both record types
         # without changing the existing .symbols filename or the symbol line representation.
@@ -3923,9 +3943,15 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
     base_jdk_home = mx_sdk_vm.base_jdk().home
     lib_static = join(base_jdk_home, 'lib', 'static')
+    jvm_library = mx.add_static_lib_suffix(mx.add_lib_prefix('jvm'))
     if exists(lib_static):
+        jdk_jvm_libraries = sorted(glob(join(lib_static, '**', jvm_library), recursive=True))
         layout = {
-            './': ['file:' + lib_static],
+            './': [{
+                'source_type': 'file',
+                'path': lib_static,
+                'exclude': jdk_jvm_libraries,
+            }],
         }
         layout['./'].append('dependency:jdk-static-library-symbols/*')
     else:
@@ -3933,7 +3959,11 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         lib_suffix = mx.add_static_lib_suffix('')
         layout = {
             './': [
-                'file:' + join(base_jdk_home, 'lib', lib_prefix + '*' + lib_suffix),
+                {
+                    'source_type': 'file',
+                    'path': join(base_jdk_home, 'lib', lib_prefix + '*' + lib_suffix),
+                    'exclude': [join(base_jdk_home, 'lib', jvm_library)],
+                },
                 'dependency:jdk-static-library-symbols/*',
             ]
         }
