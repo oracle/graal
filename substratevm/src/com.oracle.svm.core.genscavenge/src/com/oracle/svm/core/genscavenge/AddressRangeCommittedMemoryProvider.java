@@ -52,7 +52,7 @@ import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.memory.NullableNativeMemory;

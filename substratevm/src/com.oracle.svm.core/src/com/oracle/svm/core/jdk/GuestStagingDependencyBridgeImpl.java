@@ -51,7 +51,7 @@ import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.hub.DynamicHub;

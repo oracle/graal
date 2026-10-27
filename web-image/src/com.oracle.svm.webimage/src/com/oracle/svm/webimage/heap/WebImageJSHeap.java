@@ -38,7 +38,7 @@ import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.guest.staging.core.heap.GC;
 import com.oracle.svm.guest.staging.core.heap.GCCause;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
 import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
 import com.oracle.svm.guest.staging.core.heap.RuntimeCodeInfoGCSupport;

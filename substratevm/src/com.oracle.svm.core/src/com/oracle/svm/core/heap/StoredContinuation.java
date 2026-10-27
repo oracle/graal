@@ -29,6 +29,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.guest.staging.hub.Hybrid;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 
 /**
  * Persisted execution state of a yielded continuation, use via {@link StoredContinuationAccess}.

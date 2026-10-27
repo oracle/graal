@@ -62,7 +62,7 @@ import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheck;
 import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheckImpl;
 import com.oracle.svm.guest.staging.core.heap.GCCause;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jfr.HasJfrSupport;

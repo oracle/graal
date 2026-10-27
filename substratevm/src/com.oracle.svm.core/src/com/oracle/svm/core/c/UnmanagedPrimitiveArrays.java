@@ -33,7 +33,7 @@ import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;

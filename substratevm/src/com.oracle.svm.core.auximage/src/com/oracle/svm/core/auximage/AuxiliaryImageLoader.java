@@ -39,7 +39,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.os.AuxiliaryImageProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;

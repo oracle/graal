@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.attach.AttachApiSupport;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.thread.VMOperation;

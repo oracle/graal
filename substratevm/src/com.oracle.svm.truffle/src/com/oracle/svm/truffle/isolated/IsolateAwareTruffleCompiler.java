@@ -47,7 +47,7 @@ import com.oracle.svm.core.graal.isolated.ClientIsolateThread;
 import com.oracle.svm.core.graal.isolated.CompilerIsolateThread;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileContext;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.graal.isolated.ImageHeapObjects;
 import com.oracle.svm.graal.isolated.ImageHeapRef;
