@@ -1183,6 +1183,7 @@ public class ContextPreInitializationTest {
     }
 
     @Test
+    @SuppressWarnings("try") // Explicit close calls verify retry after a finalization failure.
     public void testExplicitEnginePreinitializationPoolCloseFailure() {
         setPatchable(SHARED);
         for (int failureIndex = 0; failureIndex < 2; failureIndex++) {
