@@ -87,6 +87,8 @@ import com.oracle.svm.hosted.imagelayer.BaseLayerMethodResolver.BaseLayerProvide
 import com.oracle.svm.hosted.imagelayer.BaseLayerMethodResolver.PersistedMethod;
 import com.oracle.svm.hosted.jni.JNIAccessFeature;
 import com.oracle.svm.hosted.lambda.LambdaParser;
+import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.serialize.SerializationFeature;
@@ -964,6 +966,46 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
         DynamicHubInfoData.Loader result = SnapshotAdapters.binarySearchUnique(getBaseLayerTypeId(aType), snapshot.getDynamicHubInfos(), DynamicHubInfoData.Loader::getTypeId);
         assert result != null : aType;
         return result;
+    }
+
+    public void verifyObjectLayoutCompatibility(HostedType type) {
+        if (type.getWrapped().getWrapped() instanceof BaseLayerType) {
+            /*
+             * BaseLayerType represents a shared-layer type that could not be resolved in the
+             * application-layer builder. Its recomputed layout can omit fields that were not
+             * loaded during application analysis, so it may differ from the actual shared-layer layout.
+             */
+            return;
+        }
+
+        var layout = constantLoader.getPersistedHubLayout(type.getWrapped());
+        if (layout == null) {
+            /* No hub was installed in a shared layer, so there is no layout to preserve. */
+            return;
+        }
+
+        DynamicHub hub = type.getHub();
+        verifyLayoutProperty(type, "layoutEncoding", layout.layoutEncoding(), hub.getLayoutEncoding());
+        verifyLayoutProperty(type, "monitorOffset", layout.monitorOffset(), hub.getMonitorOffset());
+        verifyLayoutProperty(type, "identityHashOffset", layout.identityHashOffset(), hub.getIdentityHashOffsetOrZero());
+
+        for (HostedField field : type.getInstanceFields(true)) {
+            if (field.hasLocation()) {
+                var fieldData = getFieldData(field.getWrapped());
+                guarantee(fieldData != null, "Instance field %s is missing from the shared layer layout of %s.", field, type);
+                if (fieldData.getLocation() != field.getLocation()) {
+                    verifyLayoutProperty(type, field.format("%H.%n"), fieldData.getLocation(), field.getLocation());
+                }
+            }
+        }
+    }
+
+    private static void verifyLayoutProperty(HostedType type, String property, int baseValue, int currentValue) {
+        if (baseValue != currentValue) {
+            String message = String.format("Object layout differs across image layers for %s: %s is %d in the shared layer but %d in the current layer.",
+                            type.toJavaName(), property, baseValue, currentValue);
+            throw AnalysisError.shouldNotReachHere(message);
+        }
     }
 
     public SnapshotStructList.Loader<PersistedHostedMethodData.Loader> getHostedMethods() {
