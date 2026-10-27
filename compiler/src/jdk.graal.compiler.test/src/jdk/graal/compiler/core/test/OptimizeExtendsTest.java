@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,10 +28,13 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.common.OptimizeExtendsPhase;
 import jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase;
 
 /**
@@ -39,6 +42,33 @@ import jdk.graal.compiler.phases.schedule.PartialRedundancySchedulePhase;
  */
 
 public class OptimizeExtendsTest extends GraalCompilerTest {
+
+    /**
+     * Checks that combining precedes final canonicalization, and that read folding and
+     * upper-register-bit analysis follow fixed reads and final canonicalization.
+     */
+    @Test
+    public void testPhaseOrdering() {
+        OptimizeExtendsPhase combine = new OptimizeExtendsPhase(OptimizeExtendsPhase.Mode.COMBINE);
+        OptimizeExtendsPhase foldReads = new OptimizeExtendsPhase(OptimizeExtendsPhase.Mode.FOLD_READS);
+        GraphState state = GraphState.defaultGraphState();
+        Assert.assertTrue("Combining requires low-tier lowering", combine.notApplicableTo(state).isPresent());
+        state.setAfterStage(StageFlag.LOW_TIER_LOWERING);
+        Assert.assertTrue("Combining is allowed after low-tier lowering", combine.notApplicableTo(state).isEmpty());
+        Assert.assertTrue("Read folding requires fixed reads and final canonicalization", foldReads.notApplicableTo(state).isPresent());
+
+        GraphState canonicalized = state.copy();
+        canonicalized.setAfterStage(StageFlag.FINAL_CANONICALIZATION);
+        Assert.assertTrue("Combining must precede final canonicalization", combine.notApplicableTo(canonicalized).isPresent());
+        Assert.assertTrue("Read folding requires fixed reads even after final canonicalization", foldReads.notApplicableTo(canonicalized).isPresent());
+
+        state.setAfterStage(StageFlag.FIXED_READS);
+        state.setAfterStage(StageFlag.PARTIAL_REDUNDANCY_SCHEDULE);
+        Assert.assertTrue("Combining is allowed after read scheduling before final canonicalization", combine.notApplicableTo(state).isEmpty());
+        Assert.assertTrue("Read folding must follow final canonicalization", foldReads.notApplicableTo(state).isPresent());
+        state.setAfterStage(StageFlag.FINAL_CANONICALIZATION);
+        Assert.assertTrue("Read folding is allowed after reads are fixed and canonicalized", foldReads.notApplicableTo(state).isEmpty());
+    }
 
     long testSnippet1(byte[] value, int sumKind) {
         long result = 0;
