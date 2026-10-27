@@ -329,6 +329,8 @@ public class ContextPreInitializationNativeImageTest {
         somTest.testObjectAllocatedOnContextPreInit();
     }
 
+    // Resources are only created to verify build-time option rejection.
+    @SuppressWarnings("try")
     static final class DirectContextExecution {
 
         static final boolean RESULT;
