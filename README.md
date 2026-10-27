@@ -19,7 +19,7 @@ Instructions for building GraalVM from source are in [`vm/README.md`](vm/README.
 Native Image security-provider behavior and its implementation are described by:
 
 * [§FS-002-security-providers](substratevm/docs/functional-spec/security-providers.md#fs-002-security-providers-jca-security-provider-registration-and-run-time-access)
-* [§AR-001-security-providers](substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java)
+* [§AR-004-security-providers](substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java)
 
 ## Get Support
 
