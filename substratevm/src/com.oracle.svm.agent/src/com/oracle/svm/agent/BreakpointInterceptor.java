@@ -283,7 +283,7 @@ final class BreakpointInterceptor {
     }
 
     private static boolean handleForName(JNIEnvironment jni, Breakpoint bp, InterceptedState state, JNIObjectHandle name) {
-        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle callerClass = reflectionCallerClass(jni, state);
         String className = fromJniString(jni, name);
         if (className == null) {
             return true; /* No point in tracing this. */
@@ -510,11 +510,13 @@ final class BreakpointInterceptor {
     }
 
     private static boolean getConstructor(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle callerClass = reflectionCallerClass(jni, state);
         JNIObjectHandle self = getReceiver(thread);
         JNIObjectHandle paramTypesHandle = getObjectArgument(thread, 1);
+        JNIObjectHandle result = Support.callObjectMethodL(jni, self, bp.method, paramTypesHandle);
+        boolean validResult = !clearException(jni) && result.notEqual(nullHandle());
         Object paramTypes = getClassArrayNames(jni, paramTypesHandle);
-        traceReflectBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(), paramTypes);
+        traceReflectBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, validResult, state.getFullStackTraceOrNull(), paramTypes);
         return true;
     }
 
@@ -527,7 +529,7 @@ final class BreakpointInterceptor {
     }
 
     private static boolean handleGetMethod(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, boolean declaredOnly, InterceptedState state) {
-        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle callerClass = reflectionCallerClass(jni, state);
         JNIObjectHandle self = getReceiver(thread);
         JNIObjectHandle nameHandle = getObjectArgument(thread, 1);
         JNIObjectHandle paramTypesHandle = getObjectArgument(thread, 2);
@@ -617,7 +619,7 @@ final class BreakpointInterceptor {
     }
 
     private static boolean handleInvokeMethod(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state, boolean isInvoke) {
-        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle callerClass = reflectionCallerClass(jni, state);
         JNIObjectHandle method = getObjectArgument(thread, isInvoke ? 0 : 1);
 
         JNIObjectHandle declaring = Support.callObjectMethod(jni, method, agent.handles().javaLangReflectMemberGetDeclaringClass);
@@ -711,15 +713,20 @@ final class BreakpointInterceptor {
 
     private static boolean handleInvokeConstructor(JNIEnvironment jni, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state, JNIObjectHandle constructor) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle providerServiceCaller = findProviderServiceCaller(jni, state);
-        if (providerServiceCaller.notEqual(nullHandle())) {
-            /*
-             * Provider.Service performs the reflective construction on behalf of the application.
-             * Attribute that access to the application operation so caller filters do not discard
-             * the service implementation metadata merely because the immediate caller is in the
-             * JDK.
-             */
-            callerClass = providerServiceCaller;
+        JNIObjectHandle externalProviderConfigCaller = findExternalProviderConfigCaller(jni, state);
+        if (externalProviderConfigCaller.notEqual(nullHandle())) {
+            callerClass = externalProviderConfigCaller;
+        } else {
+            JNIObjectHandle providerServiceCaller = findProviderServiceCaller(jni, state);
+            if (providerServiceCaller.notEqual(nullHandle())) {
+                /*
+                 * Provider.Service performs the reflective construction on behalf of the
+                 * application. Attribute that access to the application operation so caller
+                 * filters do not discard the service implementation metadata merely because the
+                 * immediate caller is in the JDK.
+                 */
+                callerClass = providerServiceCaller;
+            }
         }
 
         JNIObjectHandle declaring = Support.callObjectMethod(jni, constructor, agent.handles().javaLangReflectMemberGetDeclaringClass);
@@ -738,13 +745,13 @@ final class BreakpointInterceptor {
     }
 
     private static boolean newInstance(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
-        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle callerClass = reflectionCallerClass(jni, state);
         JNIObjectHandle self = getReceiver(thread);
         traceReflectBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, self.notEqual(nullHandle()), state.getFullStackTraceOrNull());
         return true;
     }
 
-    /** §FS-002-security-providers.6.1: Tag only an insertion that reached list publication. */
+    /** §FS-002-security-providers.5.1: Tag only an insertion that reached list publication. */
     private static boolean publishApplicationSuppliedSecurityProvider(@SuppressWarnings("unused") JNIEnvironment jni, JNIObjectHandle thread,
                     @SuppressWarnings("unused") Breakpoint bp,
                     InterceptedState state) {
@@ -780,7 +787,7 @@ final class BreakpointInterceptor {
     }
 
     /**
-     * §FS-002-security-providers.6.1: Trace the provider and service selected for instantiation.
+     * §FS-002-security-providers.5.1: Trace the provider and service selected for instantiation.
      */
     private static boolean newSecurityServiceInstance(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         JNIObjectHandle service = getReceiver(thread);
@@ -797,7 +804,7 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    // §FS-002-security-providers.6.1
+    // §FS-002-security-providers.5.1
     /** Retain a service implementation cached by {@code Provider.Service}. */
     private static void traceCachedSecurityServiceImplementation(JNIEnvironment jni, JNIObjectHandle thread, JNIObjectHandle service, JNIObjectHandle callerClass,
                     InterceptedState state) {
@@ -834,7 +841,7 @@ final class BreakpointInterceptor {
             if (clearException(jni)) {
                 return;
             }
-            /* §FS-002-security-providers.6.1: A populated constructorCache records the JDK's
+            /* §FS-002-security-providers.5.1: A populated constructorCache records the JDK's
              * no-argument fallback, even when this engine declares a parameter type. */
             if (getObjectArgument(thread, 1).equal(nullHandle()) && parameterClass.notEqual(nullHandle())) {
                 JNIObjectHandle constructorCache = jniFunctions().getGetObjectField().invoke(jni, service, handles.javaSecurityProviderServiceConstructorCache);
@@ -933,7 +940,7 @@ final class BreakpointInterceptor {
         clearException(jni);
     }
 
-    // §FS-002-security-providers.6.1
+    // §FS-002-security-providers.5.1
     /** Trace a provider that was cached before a Security API lookup. */
     private static boolean getCachedSecurityProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         if (agent.handles().sunSecurityJcaProviderConfigProvider.isNull()) {
@@ -1024,7 +1031,7 @@ final class BreakpointInterceptor {
                         method.equal(handles.javaSecurityRemoveProvider);
     }
 
-    /** §FS-002-security-providers.6.1: Cross only contiguous Provider.Service helper frames. */
+    /** §FS-002-security-providers.5.1: Cross only contiguous Provider.Service helper frames. */
     private static JNIObjectHandle findProviderServiceCaller(JNIEnvironment jni, InterceptedState state) {
         NativeImageAgentJNIHandleSet handles = agent.handles();
         for (int depth = 1; depth < MAX_SECURITY_STACK_DEPTH; depth++) {
@@ -1052,6 +1059,34 @@ final class BreakpointInterceptor {
             JNIObjectHandle callerClass = getMethodDeclaringClass(callerMethod);
             String callerClassName = getClassNameOrNull(jni, callerClass);
             if (callerClassName != null && !isJdkRuntimeClass(jni, callerClass, callerClassName)) {
+                return callerClass;
+            }
+        }
+        return nullHandle();
+    }
+
+    /** §FS-002-security-providers.5.1: Attribute ProviderConfig's real reflection to its caller. */
+    private static JNIObjectHandle reflectionCallerClass(JNIEnvironment jni, InterceptedState state) {
+        JNIObjectHandle externalCaller = findExternalProviderConfigCaller(jni, state);
+        return externalCaller.notEqual(nullHandle()) ? externalCaller : state.getDirectCallerClass();
+    }
+
+    private static JNIObjectHandle findExternalProviderConfigCaller(JNIEnvironment jni, InterceptedState state) {
+        boolean foundProviderConfig = false;
+        for (int depth = 1; depth < MAX_SECURITY_STACK_DEPTH; depth++) {
+            JNIMethodId callerMethod = state.getCallerMethod(depth);
+            if (callerMethod.isNull()) {
+                return nullHandle();
+            }
+            JNIObjectHandle callerClass = getMethodDeclaringClass(callerMethod);
+            String callerClassName = getClassNameOrNull(jni, callerClass);
+            if (callerClassName == null) {
+                continue;
+            }
+            if (callerClassName.equals("sun.security.jca.ProviderConfig") ||
+                            callerClassName.startsWith("sun.security.jca.ProviderConfig$")) {
+                foundProviderConfig = true;
+            } else if (foundProviderConfig && !isJdkRuntimeClass(jni, callerClass, callerClassName)) {
                 return callerClass;
             }
         }
@@ -1102,7 +1137,7 @@ final class BreakpointInterceptor {
                         className.startsWith("com.oracle.security.ucrypto.");
     }
 
-    /** §FS-002-security-providers.6.1: Cross all JDK runtime-module intermediaries. */
+    /** §FS-002-security-providers.5.1: Cross all JDK runtime-module intermediaries. */
     private static boolean isJdkRuntimeClass(JNIEnvironment jni, JNIObjectHandle clazz, String className) {
         NativeImageAgentJNIHandleSet handles = agent.handles();
         if (handles.javaLangClassGetModule.isNonNull()) {
@@ -1118,7 +1153,7 @@ final class BreakpointInterceptor {
         return isJdkSecurityImplementation(className);
     }
 
-    // §FS-002-security-providers.6.1
+    // §FS-002-security-providers.5.1
     /** Retain construction for a successfully acquired JDK provider. */
     private static void traceJdkConstructibleSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider, JNIObjectHandle callerClass, InterceptedState state) {
         JNIObjectHandle providerClass = Support.callObjectMethod(jni, provider, agent.handles().javaLangObjectGetClass);
@@ -1139,7 +1174,7 @@ final class BreakpointInterceptor {
         }
     }
 
-    // §FS-002-security-providers.6.1
+    // §FS-002-security-providers.5.1
     /** JDK-managed provider lookup traces provider type access. */
     private static void traceSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider, boolean validResult, JNIObjectHandle callerClass, InterceptedState state) {
         if (!validResult) {
@@ -2032,16 +2067,17 @@ final class BreakpointInterceptor {
         JNIObjectHandle lastClass = nullHandle();
         String lastClassName = null;
         BreakpointSpecification[] breakpointSpecifications = BREAKPOINT_SPECIFICATIONS;
+        if (!agent.handles().hasSecurityProviderReflection) {
+            breakpointSpecifications = appendBreakpointSpecifications(breakpointSpecifications,
+                            LEGACY_SECURITY_PROVIDER_BREAKPOINT_SPECIFICATIONS);
+        }
         if (trackReflectionMetadata) {
-            breakpointSpecifications = new BreakpointSpecification[BREAKPOINT_SPECIFICATIONS.length + REFLECTION_ACCESS_BREAKPOINT_SPECIFICATIONS.length];
-            System.arraycopy(BREAKPOINT_SPECIFICATIONS, 0, breakpointSpecifications, 0, BREAKPOINT_SPECIFICATIONS.length);
-            System.arraycopy(REFLECTION_ACCESS_BREAKPOINT_SPECIFICATIONS, 0, breakpointSpecifications, BREAKPOINT_SPECIFICATIONS.length, REFLECTION_ACCESS_BREAKPOINT_SPECIFICATIONS.length);
+            breakpointSpecifications = appendBreakpointSpecifications(breakpointSpecifications,
+                            REFLECTION_ACCESS_BREAKPOINT_SPECIFICATIONS);
         }
         if (experimentalClassDefineSupport) {
-            BreakpointSpecification[] existingBreakpointSpecifications = breakpointSpecifications;
-            breakpointSpecifications = Arrays.copyOf(existingBreakpointSpecifications, existingBreakpointSpecifications.length + CLASS_PREDEFINITION_BREAKPOINT_SPECIFICATIONS.length);
-            System.arraycopy(CLASS_PREDEFINITION_BREAKPOINT_SPECIFICATIONS, 0, breakpointSpecifications, existingBreakpointSpecifications.length,
-                            CLASS_PREDEFINITION_BREAKPOINT_SPECIFICATIONS.length);
+            breakpointSpecifications = appendBreakpointSpecifications(breakpointSpecifications,
+                            CLASS_PREDEFINITION_BREAKPOINT_SPECIFICATIONS);
         }
         for (BreakpointSpecification br : breakpointSpecifications) {
             JNIObjectHandle clazz = nullHandle();
@@ -2209,6 +2245,13 @@ final class BreakpointInterceptor {
         }
     }
 
+    private static BreakpointSpecification[] appendBreakpointSpecifications(BreakpointSpecification[] existing,
+                    BreakpointSpecification[] additional) {
+        BreakpointSpecification[] combined = Arrays.copyOf(existing, existing.length + additional.length);
+        System.arraycopy(additional, 0, combined, existing.length, additional.length);
+        return combined;
+    }
+
     public static void onUnload() {
         builtinClassLoaders = null;
         installedBreakpoints = null;
@@ -2253,14 +2296,9 @@ final class BreakpointInterceptor {
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstance),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;[I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstanceMulti),
 
-                    brk("sun/security/jca/Providers", "setProviderList", "(Lsun/security/jca/ProviderList;)V",
-                                    BreakpointInterceptor::publishApplicationSuppliedSecurityProvider),
-                    brk("java/security/Provider$Service", "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;",
-                                    BreakpointInterceptor::newSecurityServiceInstance),
+                    /* JCE verification remains separate from ordinary reflective construction. */
                     brk("java/security/Provider$Service", "getProvider", "()Ljava/security/Provider;",
                                     BreakpointInterceptor::getSecurityServiceProviderForJceSelection),
-                    optionalBrk("sun/security/jca/ProviderConfig", "getProvider", "()Ljava/security/Provider;",
-                                    BreakpointInterceptor::getCachedSecurityProvider),
 
                     brk("java/lang/ClassLoader", "findSystemClass", "(Ljava/lang/String;)Ljava/lang/Class;",
                                     BreakpointInterceptor::findSystemClass),
@@ -2384,6 +2422,16 @@ final class BreakpointInterceptor {
                     brk("jdk/internal/foreign/abi/AbstractLinker", "upcallStub",
                                     "(Ljava/lang/invoke/MethodHandle;Ljava/lang/foreign/FunctionDescriptor;Ljava/lang/foreign/Arena;[Ljava/lang/foreign/Linker$Option;)Ljava/lang/foreign/MemorySegment;",
                                     BreakpointInterceptor::upcallStub)
+    };
+
+    /** Synthetic provider tracing retained only for JDKs without the ordinary reflection hook. */
+    private static final BreakpointSpecification[] LEGACY_SECURITY_PROVIDER_BREAKPOINT_SPECIFICATIONS = {
+                    brk("sun/security/jca/Providers", "setProviderList", "(Lsun/security/jca/ProviderList;)V",
+                                    BreakpointInterceptor::publishApplicationSuppliedSecurityProvider),
+                    brk("java/security/Provider$Service", "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;",
+                                    BreakpointInterceptor::newSecurityServiceInstance),
+                    optionalBrk("sun/security/jca/ProviderConfig", "getProvider", "()Ljava/security/Provider;",
+                                    BreakpointInterceptor::getCachedSecurityProvider),
     };
 
     private static boolean isValidURLProtocol(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {

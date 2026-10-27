@@ -78,7 +78,7 @@ public class SecurityProviderRuntimeAccessTest {
         assertTrue(error.getMessage().contains("could not be constructed"));
     }
 
-    // §FS-002-security-providers.1.3 and §FS-002-security-providers.2.2
+    // §FS-002-security-providers.1.2
     @Test
     public void configuredProviderUsesConfigureReturnValue() {
         Provider provider = SecurityProviderRuntimeAccess.configureProvider(new ConfigurableProvider(), "configured");
@@ -87,7 +87,7 @@ public class SecurityProviderRuntimeAccessTest {
         assertSame(ConfigurableProvider.class, provider.getClass());
     }
 
-    // §FS-002-security-providers.1.3
+    // §FS-002-security-providers.1.2
     @Test
     public void configuredProviderMayReturnAnotherProviderClass() {
         Provider provider = SecurityProviderRuntimeAccess.configureProvider(new DifferentClassConfigurableProvider(), "configured");
@@ -96,7 +96,7 @@ public class SecurityProviderRuntimeAccessTest {
         assertSame(ConfigurableProvider.class, provider.getClass());
     }
 
-    // §FS-002-security-providers.4.3
+    // §FS-002-security-providers.3.3
     @Test
     public void onlyThirdPartyProviderObjectPlansSuppressDiagnostics() {
         assertFalse(SecurityProviderRuntimeAccess.isApplicationSuppliedOnlyDiagnostic(null, null));
