@@ -38,11 +38,9 @@ import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.reflect.RuntimeConstantPool;
 import com.oracle.svm.shared.Uninterruptible;
 
@@ -98,13 +96,6 @@ public interface GuestStagingDependencyBridge {
     int getHeapCompressionShift();
 
     /**
-     * Delegates to {@code com.oracle.svm.core.heap.Heap.getHeap().optionValueChanged(key)}.
-     * <p>
-     * Remove this method when GC option change notification moves to guest/staging.
-     */
-    void heapOptionValueChanged(NotifyGCRuntimeOptionKey<?> key);
-
-    /**
      * Returns the exact canonical {@code NamedLocationIdentity.OFF_HEAP_LOCATION} used by the
      * compiler.
      * <p>
@@ -128,14 +119,6 @@ public interface GuestStagingDependencyBridge {
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     Object readHub(Object object);
-
-    /**
-     * Delegates to {@code com.oracle.svm.core.heap.Heap.getHeap().isInImageHeap(pointer)}.
-     * <p>
-     * Remove this method when heap membership queries become guest-owned.
-     */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    boolean isInImageHeap(Pointer pointer);
 
     /**
      * Delegates to {@code com.oracle.svm.core.Isolates.isCurrentFirst()}.
@@ -285,6 +268,14 @@ public interface GuestStagingDependencyBridge {
      * Remove this method when the constant-pool adapter and its Crema access move to guest/staging.
      */
     RuntimeConstantPool getRuntimeConstantPool(Class<?> clazz);
+
+    /**
+     * Delegates to {@code com.oracle.svm.core.hub.DynamicHub.fromClass(clazz).isLoaded()}.
+     * <p>
+     * Remove this method when DynamicHub and its loaded-state query move to guest staging
+     * (GR-78110).
+     */
+    boolean isClassLoaded(Class<?> clazz);
 
     /**
      * Delegates to {@code com.oracle.svm.core.hub.DynamicHub.fromClass(clazz).isReached()}.

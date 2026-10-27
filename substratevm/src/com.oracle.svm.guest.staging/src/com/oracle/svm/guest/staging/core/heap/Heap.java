@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.guest.staging.core.heap;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
@@ -38,22 +38,15 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.shared.config.ObjectLayout;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.PredefinedClassesSupport;
-import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
-import com.oracle.svm.guest.staging.core.heap.GC;
-import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
-import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
-import com.oracle.svm.guest.staging.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.shared.Uninterruptible;
-
-import jdk.graal.compiler.api.replacements.Fold;
+import com.oracle.svm.shared.meta.GuestFold;
 
 public abstract class Heap {
-    @Fold
+    @GuestFold
     public static Heap getHeap() {
         return ImageSingletons.lookup(Heap.class);
     }
@@ -114,10 +107,10 @@ public abstract class Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract int getClassCount();
 
-    /** Visits all loaded classes in the heap (see {@link PredefinedClassesSupport}). */
+    /** Visits all loaded classes in the heap (see {@code PredefinedClassesSupport}). */
     public void visitLoadedClasses(Consumer<Class<?>> visitor) {
         for (Class<?> clazz : getClassesInImageHeap()) {
-            if (DynamicHub.fromClass(clazz).isLoaded()) {
+            if (GuestStagingDependencyBridge.singleton().isClassLoaded(clazz)) {
                 visitor.accept(clazz);
             }
         }
@@ -125,7 +118,7 @@ public abstract class Heap {
 
     /**
      * Returns all class objects that live in the image heap. Intentionally protected to prevent
-     * access to classes that have not been loaded yet, see {@link PredefinedClassesSupport}.
+     * access to classes that have not been loaded yet, see {@code PredefinedClassesSupport}.
      */
     protected abstract List<Class<?>> getClassesInImageHeap();
 
@@ -155,14 +148,14 @@ public abstract class Heap {
     public abstract void trimRuntimeState(Mode mode);
 
     /** Returns the alignment in bytes that the heap base must adhere to at runtime. */
-    @Fold
+    @GuestFold
     public abstract int getHeapBaseAlignment();
 
     /**
      * Returns the alignment in bytes that each image heap and any auxiliary images must adhere to
      * at runtime.
      */
-    @Fold
+    @GuestFold
     public abstract int getImageHeapAlignment();
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -174,14 +167,14 @@ public abstract class Heap {
      * Returns an offset relative to the heap base, at which the image heap should be mapped into
      * the address space. The offset is a multiple of {@link #getImageHeapAlignment}.
      */
-    @Fold
+    @GuestFold
     public abstract int getImageHeapOffsetInAddressSpace();
 
     /**
      * Returns the maximum supported size of a pure instance object. This limit must cover any
      * growth after allocation, such as adding an optional identity hash code field.
      */
-    @Fold
+    @GuestFold
     public int getMaxInstanceSize() {
         return Integer.MAX_VALUE & -ObjectLayout.singleton().getAlignment();
     }
@@ -210,7 +203,7 @@ public abstract class Heap {
 
     /**
      * If the automatic reference handling is disabled (see
-     * {@link com.oracle.svm.core.SubstrateOptions.ConcealedOptions#AutomaticReferenceHandling}),
+     * {@code com.oracle.svm.core.SubstrateOptions.ConcealedOptions#AutomaticReferenceHandling}),
      * then this method can be called to do the reference handling manually. On execution, the
      * current thread will enqueue pending {@link Reference}s into their corresponding
      * {@link ReferenceQueue}s and it will execute pending cleaners.
@@ -279,7 +272,7 @@ public abstract class Heap {
      * code} of the passed object (and potentially other objects) from its address. The same salt
      * value will be returned for this object at least until the next garbage collection.
      *
-     * Implementations must use {@link IdentityHashCodeSupport#IDENTITY_HASHCODE_SALT_LOCATION}.
+     * Implementations must use {@code IdentityHashCodeSupport#IDENTITY_HASHCODE_SALT_LOCATION}.
      */
     @Uninterruptible(reason = "Ensure that no GC can occur between this call and usage of the salt.", callerMustBe = true)
     public abstract long getIdentityHashSalt(Object obj);

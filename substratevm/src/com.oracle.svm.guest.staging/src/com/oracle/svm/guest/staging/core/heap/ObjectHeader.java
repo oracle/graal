@@ -182,7 +182,7 @@ public abstract class ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean isDynamicHub(Pointer potentialDynamicHub) {
-        if (GuestStagingDependencyBridge.singleton().isInImageHeap(potentialDynamicHub) || Metaspace.singleton().isInAllocatedMemory(potentialDynamicHub)) {
+        if (Heap.getHeap().isInImageHeap(potentialDynamicHub) || Metaspace.singleton().isInAllocatedMemory(potentialDynamicHub)) {
             Pointer potentialHubOfDynamicHub = readPotentialDynamicHubFromPointer(potentialDynamicHub);
             return potentialHubOfDynamicHub.equal(Word.objectToUntrackedPointer(dynamicHubClass()));
         }

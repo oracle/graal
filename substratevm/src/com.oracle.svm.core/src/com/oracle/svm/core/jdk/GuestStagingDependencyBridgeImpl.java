@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues.Origin;
@@ -70,7 +69,6 @@ import com.oracle.svm.core.reflect.RuntimeReflectionSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.reflect.RuntimeConstantPool;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
@@ -118,11 +116,6 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
-    public void heapOptionValueChanged(NotifyGCRuntimeOptionKey<?> key) {
-        Heap.getHeap().optionValueChanged(key);
-    }
-
-    @Override
     public LocationIdentity offHeapLocationIdentity() {
         return NamedLocationIdentity.OFF_HEAP_LOCATION;
     }
@@ -136,12 +129,6 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public Object readHub(Object object) {
         return DynamicHubIntrinsics.readHub(object);
-    }
-
-    @Override
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean isInImageHeap(Pointer pointer) {
-        return Heap.getHeap().isInImageHeap(pointer);
     }
 
     @Override
@@ -255,6 +242,11 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
             return null;
         }
         return new RuntimeConstantPoolImpl(CremaSupport.singleton().getConstantPool(hub));
+    }
+
+    @Override
+    public boolean isClassLoaded(Class<?> clazz) {
+        return DynamicHub.fromClass(clazz).isLoaded();
     }
 
     @Override
