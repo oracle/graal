@@ -452,7 +452,16 @@ public abstract class AbstractPolyglotImpl {
     public abstract Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,
                     Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
                     boolean allowExperimentalOptions, boolean boundEngine, Boolean useIsolatedEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
-                    boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService, Consumer<PolyglotException> exceptionHandler);
+                    boolean hostLanguageOnly, boolean registerInActiveEngines, Object polyglotHostService, Consumer<PolyglotException> exceptionHandler,
+                    Object preinitializedEngine);
+
+    public Engine preinitializeEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,
+                    Map<String, String> options, Map<String, String> systemPropertiesOptions, boolean useSystemProperties,
+                    boolean allowExperimentalOptions, Boolean useIsolatedEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage,
+                    Consumer<PolyglotException> exceptionHandler,
+                    int contextCount, Consumer<Engine> initializer) {
+        throw new UnsupportedOperationException("Preinitialized engines are not supported by this polyglot implementation.");
+    }
 
     public abstract void preInitializeEngine();
 

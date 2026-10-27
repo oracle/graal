@@ -359,10 +359,6 @@ public class TruffleFeature implements InternalFeature {
         var access = (DuringSetupAccessImpl) a;
         access.getHostVM().registerNeverInlineTrivialHandler(this::neverInlineTrivial);
 
-        if (!ImageSingletons.contains(TruffleSupport.class)) {
-            ImageSingletons.add(TruffleSupport.class, new TruffleSupport());
-        }
-
         ImageSingletons.lookup(TruffleBaseFeature.class).setGraalGraphObjectReplacer(RuntimeCompilationFeature.singleton().getObjectReplacer());
     }
 
@@ -438,7 +434,6 @@ public class TruffleFeature implements InternalFeature {
         RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
         SubstrateTruffleCompiler truffleCompiler = truffleRuntime.preinitializeTruffleCompiler();
         truffleRuntime.initializeKnownMethods(config.getMetaAccess());
-        truffleRuntime.initializeHostedKnownMethods(config.getUniverse().getOriginalMetaAccess());
 
         PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
         registerKnownTruffleFields(config, ImageSingletons.lookup(KnownTruffleTypes.class));
@@ -507,6 +502,7 @@ public class TruffleFeature implements InternalFeature {
          */
         TruffleBaseFeature.invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotEngineImpl", "resetFallbackEngine", Collections.emptyList());
         TruffleBaseFeature.preInitializeEngine();
+        TruffleBaseFeature.invokeStaticMethod("com.oracle.truffle.api.impl.ThreadLocalHandshake", "resetNativeImageState", Collections.emptyList());
 
         /* Ensure org.graalvm.polyglot.io.IOHelper.IMPL is initialized. */
         ((BeforeAnalysisAccessImpl) access).ensureInitialized("org.graalvm.polyglot.io.IOHelper");
@@ -1135,9 +1131,7 @@ public class TruffleFeature implements InternalFeature {
             printStaticTruffleBoundaries(treeInfo);
         }
 
-        SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
         AfterAnalysisAccessImpl config = (AfterAnalysisAccessImpl) access;
-        truffleRuntime.initializeHostedKnownMethods(config.getMetaAccess());
 
         runtimeCompiledMethods = new LinkedHashSet<>();
         runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerDirectives.class).getDeclaredMethods(false)));

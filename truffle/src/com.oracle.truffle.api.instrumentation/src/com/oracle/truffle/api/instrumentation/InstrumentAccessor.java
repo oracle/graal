@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -118,6 +118,11 @@ final class InstrumentAccessor extends Accessor {
         @Override
         public void createInstrument(Object instrumentationHandler, Object polyglotInstrument, String[] expectedServices, OptionValues options) {
             ((InstrumentationHandler) instrumentationHandler).createInstrument(polyglotInstrument, expectedServices, options);
+        }
+
+        @Override
+        public boolean onInstrumentPreinitialize(Object instrumentationHandler, Object polyglotInstrument) {
+            return ((InstrumentationHandler) instrumentationHandler).onInstrumentPreinitialize(polyglotInstrument);
         }
 
         @Override

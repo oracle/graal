@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,6 @@ package com.oracle.truffle.polyglot;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessMode;
@@ -79,6 +77,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.polyglot.PolyglotImpl.EmbedderFileSystemContext;
+import com.oracle.truffle.polyglot.PolyglotLanguageContext.PreinitializedFileSystemContext;
 
 import java.nio.charset.Charset;
 import org.graalvm.nativeimage.ImageInfo;
@@ -96,6 +95,13 @@ final class FileSystems {
 
     private FileSystems() {
         throw new IllegalStateException("No instance allowed");
+    }
+
+    static Object prepareForNativeImage(Object object) {
+        if (object instanceof PreInitializeContextFileSystem.PreInitializePath path) {
+            path.prepareForNativeImage();
+        }
+        return object;
     }
 
     static FileSystem newDefaultFileSystem(String hostTmpDirPath) {
@@ -174,41 +180,49 @@ final class FileSystems {
     static String getRelativePathInResourceRoot(TruffleFile file) {
         Object engineObject = EngineAccessor.LANGUAGE.getFileSystemEngineObject(EngineAccessor.LANGUAGE.getFileSystemContext(file));
         if (engineObject instanceof PolyglotLanguageContext languageContext) {
-            Path path = EngineAccessor.LANGUAGE.getPath(file);
-            if (InternalResourceCache.usesInternalResources()) {
-                Path hostPath = toHostPath(path);
-                InternalResourceCache cache = languageContext.context.engine.internalResourceRoots.findInternalResource(hostPath);
-                if (cache != null) {
-                    return cache.getPathOrNull().relativize(hostPath).toString();
-                }
-            }
-            FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(file);
-            String result = relativizeToLanguageHome(fs, path, languageContext.language);
-            if (result != null) {
-                return result;
-            }
-            Map<String, LanguageInfo> accessibleLanguages = languageContext.getAccessibleLanguages(true);
-            /*
-             * The accessibleLanguages is null for a closed context. The
-             * getRelativePathInResourceRoot may be called even for closed context by the compiler
-             * thread.
-             */
-            if (accessibleLanguages != null) {
-                for (LanguageInfo language : accessibleLanguages.values()) {
-                    PolyglotLanguage lang = languageContext.context.engine.idToLanguage.get(language.getId());
-                    result = relativizeToLanguageHome(fs, path, lang);
-                    if (result != null) {
-                        return result;
-                    }
-                }
-            }
-            return null;
+            return getRelativePathInResourceRoot(file, languageContext.getEngine(), languageContext.language,
+                            languageContext.getAccessibleLanguages(true));
+        } else if (engineObject instanceof PreinitializedFileSystemContext preinitializedContext) {
+            return getRelativePathInResourceRoot(file, preinitializedContext.getEngine(), preinitializedContext.language,
+                            preinitializedContext.accessibleLanguages);
         } else if (engineObject instanceof EmbedderFileSystemContext) {
             // embedding sources are never relative to language homes
             return null;
         } else {
             throw new AssertionError();
         }
+    }
+
+    private static String getRelativePathInResourceRoot(TruffleFile file, PolyglotEngineImpl engine, PolyglotLanguage owningLanguage,
+                    Map<String, LanguageInfo> accessibleLanguages) {
+        Path path = EngineAccessor.LANGUAGE.getPath(file);
+        if (InternalResourceCache.usesInternalResources()) {
+            Path hostPath = toHostPath(path);
+            InternalResourceCache cache = engine.internalResourceRoots.findInternalResource(hostPath);
+            if (cache != null) {
+                return cache.getPathOrNull().relativize(hostPath).toString();
+            }
+        }
+        FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(file);
+        String result = relativizeToLanguageHome(fs, path, owningLanguage);
+        if (result != null) {
+            return result;
+        }
+        /*
+         * The accessibleLanguages is null for a closed context. The
+         * getRelativePathInResourceRoot may be called even for closed context by the compiler
+         * thread.
+         */
+        if (accessibleLanguages != null) {
+            for (LanguageInfo language : accessibleLanguages.values()) {
+                PolyglotLanguage lang = engine.idToLanguage.get(language.getId());
+                result = relativizeToLanguageHome(fs, path, lang);
+                if (result != null) {
+                    return result;
+                }
+            }
+        }
+        return null;
     }
 
     private static Path toHostPath(Path path) {
@@ -460,29 +474,35 @@ final class FileSystems {
     static final class PreInitializeContextFileSystem implements PolyglotFileSystem {
 
         private FileSystem delegate; // effectively final after patch context
-        private Function<Path, PreInitializePath> factory;
+        private ImageHeapPathConverter converter = new ImageHeapPathConverter();
 
         PreInitializeContextFileSystem(String tmpDir) {
-            this.delegate = newDefaultFileSystem(tmpDir);
-            this.factory = new ImageBuildTimeFactory();
+            this(newDefaultFileSystem(tmpDir));
+        }
+
+        PreInitializeContextFileSystem(FileSystem delegate) {
+            this.delegate = delegate;
         }
 
         void onPreInitializeContextEnd(InternalResourceRoots internalResourceRoots, Map<String, Path> languageHomes) {
-            if (factory == null) {
+            if (converter == null) {
                 throw new IllegalStateException("Context pre-initialization already finished.");
             }
-            ((ImageBuildTimeFactory) factory).onPreInitializeContextEnd(internalResourceRoots, languageHomes);
-            factory = null;
+            converter.initialize(internalResourceRoots, languageHomes);
+            converter = null;
             delegate = INVALID_FILESYSTEM;
         }
 
         void onLoadPreinitializedContext(FileSystem newDelegate) {
             Objects.requireNonNull(newDelegate, "NewDelegate must be non null.");
-            if (factory != null) {
+            if (delegate != INVALID_FILESYSTEM) {
                 throw new IllegalStateException("Pre-initialized context already loaded.");
             }
             this.delegate = newDelegate;
-            this.factory = new ImageExecutionTimeFactory();
+        }
+
+        private PreInitializePath wrap(Path path) {
+            return path == null ? null : new PreInitializePath(path, converter);
         }
 
         private static void verifyImageState() {
@@ -508,12 +528,12 @@ final class FileSystems {
 
         @Override
         public Path parsePath(URI path) {
-            return factory.apply(delegate.parsePath(path));
+            return wrap(delegate.parsePath(path));
         }
 
         @Override
         public Path parsePath(String path) {
-            return factory.apply(delegate.parsePath(path));
+            return wrap(delegate.parsePath(path));
         }
 
         @Override
@@ -542,7 +562,7 @@ final class FileSystems {
             return new DirectoryStream<>() {
                 @Override
                 public Iterator<Path> iterator() {
-                    return new ForwardingPath.ForwardingPathIterator<>(delegateStream.iterator(), factory);
+                    return new ForwardingPath.ForwardingPathIterator<>(delegateStream.iterator(), PreInitializeContextFileSystem.this::wrap);
                 }
 
                 @Override
@@ -554,12 +574,12 @@ final class FileSystems {
 
         @Override
         public Path toAbsolutePath(Path path) {
-            return factory.apply(delegate.toAbsolutePath(PreInitializePath.unwrap(path)));
+            return wrap(delegate.toAbsolutePath(PreInitializePath.unwrap(path)));
         }
 
         @Override
         public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
-            return factory.apply(delegate.toRealPath(PreInitializePath.unwrap(path), linkOptions));
+            return wrap(delegate.toRealPath(PreInitializePath.unwrap(path), linkOptions));
         }
 
         @Override
@@ -594,7 +614,7 @@ final class FileSystems {
 
         @Override
         public Path readSymbolicLink(Path link) throws IOException {
-            return factory.apply(delegate.readSymbolicLink(PreInitializePath.unwrap(link)));
+            return wrap(delegate.readSymbolicLink(PreInitializePath.unwrap(link)));
         }
 
         @Override
@@ -619,7 +639,7 @@ final class FileSystems {
 
         @Override
         public Path getTempDirectory() {
-            return factory.apply(delegate.getTempDirectory());
+            return wrap(delegate.getTempDirectory());
         }
 
         @Override
@@ -668,50 +688,19 @@ final class FileSystems {
             return delegate.equals(((PreInitializeContextFileSystem) other).delegate);
         }
 
-        private class ImageExecutionTimeFactory implements Function<Path, PreInitializePath> {
-
-            @Override
-            public PreInitializePath apply(Path path) {
-                return path == null ? null : new PreInitializePath(path);
-            }
-        }
-
-        private final class ImageBuildTimeFactory extends ImageExecutionTimeFactory {
-
-            private final Collection<Reference<PreInitializePath>> emittedPaths = new ArrayList<>();
-
-            @Override
-            public PreInitializePath apply(Path path) {
-                if (path == null) {
-                    return null;
-                } else {
-                    PreInitializePath preInitPath = super.apply(path);
-                    emittedPaths.add(new WeakReference<>(preInitPath));
-                    return preInitPath;
-                }
-            }
-
-            void onPreInitializeContextEnd(InternalResourceRoots internalResourceRoots, Map<String, Path> languageHomes) {
-                for (Reference<PreInitializePath> pathRef : emittedPaths) {
-                    PreInitializePath path = pathRef.get();
-                    if (path != null) {
-                        path.onPreInitializeContextEnd(internalResourceRoots, languageHomes);
-                    }
-                }
-            }
-        }
-
         private final class PreInitializePath extends ForwardingPath<PreInitializePath> implements ResetablePath {
 
             private volatile Object delegatePath;
+            private volatile ImageHeapPathConverter converter;
 
-            PreInitializePath(Path delegatePath) {
+            PreInitializePath(Path delegatePath, ImageHeapPathConverter converter) {
                 this.delegatePath = delegatePath;
+                this.converter = converter;
             }
 
             @Override
             PreInitializePath wrap(Path path) {
-                return factory.apply(path);
+                return PreInitializeContextFileSystem.this.wrap(path);
             }
 
             @Override
@@ -722,6 +711,7 @@ final class FileSystems {
             }
 
             private Path resolve(FileSystem fs) {
+                ensureImageHeapPath(false);
                 Object current = delegatePath;
                 if (current instanceof Path) {
                     return (Path) current;
@@ -732,27 +722,32 @@ final class FileSystems {
                 }
             }
 
-            void onPreInitializeContextEnd(InternalResourceRoots resourceRoots, Map<String, Path> languageHomes) {
-                Path internalPath = (Path) delegatePath;
-                ImageHeapPath result = null;
-                InternalResourceCache owner = resourceRoots.findInternalResource(internalPath);
-                if (owner != null) {
-                    String relativePath = owner.getPathOrNull().relativize(internalPath).toString();
-                    result = new InternalResourceImageHeapPath(owner, relativePath);
+            void prepareForNativeImage() {
+                ensureImageHeapPath(true);
+            }
+
+            private void ensureImageHeapPath(boolean required) {
+                ImageHeapPathConverter currentConverter = converter;
+                if (currentConverter == null) {
+                    return;
                 }
-                if (result == null) {
-                    for (Map.Entry<String, Path> e : languageHomes.entrySet()) {
-                        if (internalPath.startsWith(e.getValue())) {
-                            String languageId = e.getKey();
-                            String relativePath = e.getValue().relativize(internalPath).toString();
-                            result = new LanguageHomeImageHeapPath(languageId, relativePath);
-                        }
+                if (ImageInfo.inImageRuntimeCode()) {
+                    throw CompilerDirectives.shouldNotReachHere("Pre-initialized path was not normalized during image generation.");
+                }
+                synchronized (this) {
+                    currentConverter = converter;
+                    if (currentConverter == null) {
+                        return;
                     }
+                    if (!currentConverter.isInitialized()) {
+                        if (required) {
+                            throw new IllegalStateException("Cannot retain a path before context pre-initialization has finished.");
+                        }
+                        return;
+                    }
+                    delegatePath = currentConverter.convert((Path) delegatePath);
+                    converter = null;
                 }
-                if (result == null) {
-                    result = new PathImageHeapPath(internalPath.toString(), internalPath.isAbsolute());
-                }
-                delegatePath = result;
             }
 
             @Override
@@ -761,6 +756,7 @@ final class FileSystems {
                 // form. These methods are used by the TruffleBaseFeature to report the absolute
                 // TruffleFiles created during context pre-initialization.
                 if (delegate == INVALID_FILESYSTEM) {
+                    ensureImageHeapPath(false);
                     return ((ImageHeapPath) delegatePath).absolute;
                 } else {
                     return super.isAbsolute();
@@ -773,6 +769,7 @@ final class FileSystems {
                 // form. These methods are used by the TruffleBaseFeature to report the absolute
                 // TruffleFiles created during context pre-initialization.
                 if (delegate == INVALID_FILESYSTEM) {
+                    ensureImageHeapPath(false);
                     ImageHeapPath imageHeapPath = (ImageHeapPath) delegatePath;
                     assert imageHeapPath instanceof PathImageHeapPath : "ToString can be called only for non internal resource files located outside of language homes.";
                     return imageHeapPath.path;
@@ -783,6 +780,7 @@ final class FileSystems {
 
             @Override
             public String getReinitializedPath() {
+                ensureImageHeapPath(false);
                 if (delegate != INVALID_FILESYSTEM) {
                     return toString();
                 }
@@ -792,6 +790,7 @@ final class FileSystems {
 
             @Override
             public URI getReinitializedURI() {
+                ensureImageHeapPath(false);
                 if (delegate != INVALID_FILESYSTEM) {
                     return toUri();
                 }
@@ -801,6 +800,49 @@ final class FileSystems {
                     throw new IllegalArgumentException("Path must be absolute.");
                 }
                 return resolved.toUri();
+            }
+        }
+
+        private static final class ImageHeapPathConverter {
+
+            private volatile List<InternalResourcePath> internalResources;
+            private Map<String, Path> languageHomes;
+
+            synchronized void initialize(InternalResourceRoots resourceRoots, Map<String, Path> newLanguageHomes) {
+                if (internalResources != null) {
+                    throw new IllegalStateException("Image heap path converter already initialized.");
+                }
+                List<InternalResourcePath> resources = new ArrayList<>();
+                resourceRoots.forEachUsedResource((cache, path) -> resources.add(new InternalResourcePath(cache, path)));
+                languageHomes = newLanguageHomes;
+                internalResources = resources;
+            }
+
+            boolean isInitialized() {
+                return internalResources != null;
+            }
+
+            ImageHeapPath convert(Path path) {
+                List<InternalResourcePath> resources = internalResources;
+                if (resources == null) {
+                    throw new IllegalStateException("Image heap path converter is not initialized.");
+                }
+                for (InternalResourcePath resource : resources) {
+                    if (path.startsWith(resource.path)) {
+                        String relativePath = resource.path.relativize(path).toString();
+                        return new InternalResourceImageHeapPath(resource.cache, relativePath);
+                    }
+                }
+                for (Map.Entry<String, Path> entry : languageHomes.entrySet()) {
+                    if (path.startsWith(entry.getValue())) {
+                        String relativePath = entry.getValue().relativize(path).toString();
+                        return new LanguageHomeImageHeapPath(entry.getKey(), relativePath);
+                    }
+                }
+                return new PathImageHeapPath(path.toString(), path.isAbsolute());
+            }
+
+            private record InternalResourcePath(InternalResourceCache cache, Path path) {
             }
         }
 
@@ -846,7 +888,15 @@ final class FileSystems {
 
             @Override
             Path resolve(FileSystem fileSystem) {
-                return fileSystem.parsePath(cache.getPathOrNull().toString()).resolve(path);
+                Path resourcePath = cache.getPathOrNull();
+                if (resourcePath == null) {
+                    try {
+                        resourcePath = cache.getPathForImageHeap();
+                    } catch (IOException ioe) {
+                        throw new IllegalStateException(ioe);
+                    }
+                }
+                return fileSystem.parsePath(resourcePath.toString()).resolve(path);
             }
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -355,8 +355,7 @@ public final class Debugger {
                 session.clearDisabledSteppingOnCurrentThread(count);
             }
         }
-        count--;
-        disabledSteppingCount.set(count);
+        disabledSteppingCount.set(count - 1);
     }
 
     // returns 0 when stepping is not disabled,

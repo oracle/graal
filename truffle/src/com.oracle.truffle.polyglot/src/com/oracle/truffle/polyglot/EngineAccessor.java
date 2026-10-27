@@ -138,6 +138,7 @@ import com.oracle.truffle.polyglot.PolyglotEngineImpl.FinalizationResult;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.LogConfig;
 import com.oracle.truffle.polyglot.PolyglotImpl.EmbedderFileSystemContext;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
+import com.oracle.truffle.polyglot.PolyglotLanguageContext.PreinitializedFileSystemContext;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
@@ -803,14 +804,36 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean inContextPreInitialization(Object polyglotObject) {
-            if (polyglotObject instanceof PolyglotLanguageContext languageContext) {
+            if (polyglotObject instanceof TruffleFile truffleFile) {
+                return inContextPreInitialization(truffleFile);
+            } else if (polyglotObject instanceof PolyglotLanguageContext languageContext) {
                 PolyglotContextImpl polyglotContext = languageContext.context;
                 return polyglotContext.getEngine().inEnginePreInitialization && polyglotContext.parent == null;
             } else if (polyglotObject instanceof EmbedderFileSystemContext) {
                 return false;
+            }
+            throw shouldNotReachHere();
+        }
+
+        @Override
+        public boolean inContextPreInitialization(TruffleFile truffleFile) {
+            Object fileSystemContext = LANGUAGE.getFileSystemContext(truffleFile);
+            Object engineObject = LANGUAGE.getFileSystemEngineObject(fileSystemContext);
+            PolyglotEngineImpl engine;
+            if (engineObject instanceof PolyglotLanguageContext languageContext) {
+                PolyglotContextImpl polyglotContext = languageContext.context;
+                if (polyglotContext.parent != null) {
+                    return false;
+                }
+                engine = polyglotContext.getEngine();
+            } else if (engineObject instanceof PreinitializedFileSystemContext preinitializedContext) {
+                engine = preinitializedContext.getEngine();
+            } else if (engineObject instanceof EmbedderFileSystemContext) {
+                return false;
             } else {
                 throw shouldNotReachHere();
             }
+            return (engine.inEnginePreInitialization || engine.inExplicitPreinitialization) && LANGUAGE.getPath(truffleFile) instanceof ResetablePath;
         }
 
         @Override
@@ -1382,6 +1405,8 @@ final class EngineAccessor extends Accessor {
         public boolean isSocketIOAllowed(Object engineFileSystemContext) {
             if (engineFileSystemContext instanceof PolyglotLanguageContext languageContext) {
                 return languageContext.getImpl().getIO().hasHostSocketAccess(languageContext.context.config.fileSystemConfig.ioAccess);
+            } else if (engineFileSystemContext instanceof PreinitializedFileSystemContext preinitializedContext) {
+                return preinitializedContext.socketIOAllowed;
             } else if (engineFileSystemContext instanceof EmbedderFileSystemContext) {
                 return true;
             } else {
@@ -1400,6 +1425,8 @@ final class EngineAccessor extends Accessor {
             Object engineObject = EngineAccessor.LANGUAGE.getFileSystemEngineObject(fsContext);
             if (engineObject instanceof PolyglotLanguageContext) {
                 return fsContext == ((PolyglotLanguageContext) engineObject).getInternalFileSystemContext();
+            } else if (engineObject instanceof PreinitializedFileSystemContext preinitializedContext) {
+                return preinitializedContext.internal;
             } else {
                 // embedder sources are never internal
                 return false;
@@ -1668,14 +1695,6 @@ final class EngineAccessor extends Accessor {
         @Override
         public String getRelativePathInResourceRoot(TruffleFile truffleFile) {
             return FileSystems.getRelativePathInResourceRoot(truffleFile);
-        }
-
-        @Override
-        public void onSourceCreated(Source source) {
-            PolyglotContextImpl currentContext = PolyglotFastThreadLocals.getContext(null);
-            if (currentContext != null && currentContext.sourcesToInvalidate != null) {
-                currentContext.sourcesToInvalidate.add(source);
-            }
         }
 
         @Override
@@ -2209,11 +2228,17 @@ final class EngineAccessor extends Accessor {
             if (owner instanceof PolyglotLanguageContext) {
                 languageContext = (PolyglotLanguageContext) owner;
                 LanguageCache cache = languageContext.language.cache;
+                if (ImageInfo.inImageRuntimeCode()) {
+                    cache = LanguageCache.languages().get(cache.getId());
+                }
                 resourceCache = cache.getResourceCache(resourceId);
                 componentId = cache.getId();
                 supportedResourceIds = cache::getResourceIds;
             } else if (owner instanceof PolyglotInstrument polyglotInstrument) {
                 InstrumentCache cache = polyglotInstrument.cache;
+                if (ImageInfo.inImageRuntimeCode()) {
+                    cache = InstrumentCache.load().get(cache.getId());
+                }
                 resourceCache = cache.getResourceCache(resourceId);
                 componentId = cache.getId();
                 supportedResourceIds = cache::getResourceIds;
@@ -2446,6 +2471,15 @@ final class EngineAccessor extends Accessor {
         @Override
         public boolean isUntrustedCodeMitigationPolicySoftware(Enum<?> policy) {
             return policy == PolyglotEngineOptions.UntrustedCodeMitigationPolicy.SOFTWARE;
+        }
+
+        @Override
+        public Object prepareForNativeImage(Object object) {
+            Object normalized = FileSystems.prepareForNativeImage(object);
+            if (normalized instanceof InternalResourceCache resourceCache) {
+                return resourceCache.canonicalizeForNativeImage();
+            }
+            return normalized;
         }
 
         @Override

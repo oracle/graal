@@ -391,6 +391,7 @@ innr protected final static ContextLocalProvider
 innr public abstract interface static !annotation Registration
 innr public final static Env
 meth protected abstract void onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
+meth protected boolean onPreinitialize(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
 meth protected final <%0 extends java.lang.Object> com.oracle.truffle.api.ContextLocal<{%%0}> createContextLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextLocalFactory<{%%0}>)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth protected final <%0 extends java.lang.Object> com.oracle.truffle.api.ContextThreadLocal<{%%0}> createContextThreadLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextThreadLocalFactory<{%%0}>)

@@ -46,6 +46,7 @@ import java.net.URL;
 import java.util.Map;
 import java.util.Objects;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -257,6 +258,15 @@ final class SourceImpl extends Source {
                 return false;
             }
             Key other = (Key) obj;
+            if (ImageInfo.inImageBuildtimeCode() &&
+                            ((this instanceof ReinitializableKey key && key.hasInvalidMetadata()) ||
+                                            (other instanceof ReinitializableKey otherKey && otherKey.hasInvalidMetadata()))) {
+                /*
+                 * A completed preparation can leave sources in the global interning table. They
+                 * must not match new sources until runtime, when their metadata can be restored.
+                 */
+                return false;
+            }
             /*
              * Compare characters last as it is likely the most expensive comparison in the worst
              * case.
@@ -273,9 +283,6 @@ final class SourceImpl extends Source {
                             cached == other.cached &&
                             embedderSource == other.embedderSource &&
                             compareContent(other);
-        }
-
-        void invalidateAfterPreinitialiation() {
         }
 
         private boolean compareContent(Key other) {
@@ -370,10 +377,13 @@ final class SourceImpl extends Source {
 
         private static final Object INVALID = new Object();
 
-        private TruffleFile truffleFile;
-        private Object uri;
-        private Object url;
-        private Object path;
+        private final TruffleFile truffleFile;
+        private final boolean reinitializeURI;
+        private final boolean reinitializeURL;
+        private final boolean reinitializePath;
+        private volatile Object uri;
+        private volatile Object url;
+        private volatile Object path;
 
         /**
          * Creates an {@link ReinitializableKey} for a file under the language home. The hash code
@@ -381,30 +391,41 @@ final class SourceImpl extends Source {
          * {@code uri} as they contain absolute paths.
          */
         ReinitializableKey(TruffleFile truffleFile, Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive,
-                        boolean cached, String relativePathInLanguageHome, boolean embedderSource, Map<String, String> options) {
+                        boolean cached, String relativePathInLanguageHome, boolean embedderSource, Map<String, String> options, boolean reinitializeURI, boolean reinitializeURL,
+                        boolean reinitializePath) {
             super(content, mimeType, languageId, name, internal, interactive, cached, embedderSource, options);
-            Objects.requireNonNull(truffleFile, "TruffleFile must be non null.");
-            this.truffleFile = truffleFile;
+            this.truffleFile = Objects.requireNonNull(truffleFile, "TruffleFile must be non null.");
+            this.reinitializeURI = reinitializeURI;
+            this.reinitializeURL = reinitializeURL;
+            this.reinitializePath = reinitializePath;
             this.uri = uri;
             this.url = url;
             this.path = path;
             this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached, embedderSource, options);
         }
 
-        @Override
-        void invalidateAfterPreinitialiation() {
-            if (path != INVALID && Objects.equals(path, SourceAccessor.getReinitializedPath(truffleFile))) {
+        private boolean hasInvalidMetadata() {
+            return path == INVALID || uri == INVALID || url == INVALID;
+        }
+
+        synchronized void invalidateMetadata() {
+            if (reinitializePath) {
                 path = INVALID;
             }
-            if (uri != INVALID && Objects.equals(uri, SourceAccessor.getReinitializedURI(truffleFile))) {
-                this.uri = INVALID;
+            if (reinitializeURI) {
+                uri = INVALID;
             }
+            if (reinitializeURL) {
+                url = INVALID;
+            }
+        }
+
+        @SuppressWarnings("deprecation")
+        private static URL createReinitializedURL(URI uri) {
             try {
-                if (url != null && url != INVALID && SourceAccessor.getReinitializedURI(truffleFile).toURL().toExternalForm().equals(((URL) url).toExternalForm())) {
-                    this.url = INVALID;
-                }
+                return new URL(uri.getScheme(), uri.getHost(), uri.getPort(), uri.getRawPath());
             } catch (MalformedURLException mue) {
-                // Should never be thrown as the truffleFile.toUri() returns absolute URI
+                // Should never be thrown as the truffleFile.toUri() returns absolute URI.
                 throw new AssertionError(mue);
             }
         }
@@ -412,6 +433,14 @@ final class SourceImpl extends Source {
         @Override
         @CompilerDirectives.TruffleBoundary
         String getPath() {
+            Object currentPath = path;
+            if (currentPath == INVALID) {
+                return reinitializePath();
+            }
+            return (String) currentPath;
+        }
+
+        private synchronized String reinitializePath() {
             if (path == INVALID) {
                 path = SourceAccessor.getReinitializedPath(truffleFile);
             }
@@ -421,24 +450,33 @@ final class SourceImpl extends Source {
         @Override
         @CompilerDirectives.TruffleBoundary
         URI getURI() {
+            Object currentURI = uri;
+            if (currentURI == INVALID) {
+                return reinitializeURI();
+            }
+            return (URI) currentURI;
+        }
+
+        private synchronized URI reinitializeURI() {
             if (uri == INVALID) {
                 uri = SourceAccessor.getReinitializedURI(truffleFile);
             }
             return (URI) uri;
         }
 
-        @SuppressWarnings("deprecation")
         @Override
         @CompilerDirectives.TruffleBoundary
         URL getURL() {
+            Object currentURL = url;
+            if (currentURL == INVALID) {
+                return reinitializeURL();
+            }
+            return (URL) currentURL;
+        }
+
+        private synchronized URL reinitializeURL() {
             if (url == INVALID) {
-                try {
-                    URI localUri = getURI();
-                    url = new URL(localUri.getScheme(), localUri.getHost(), localUri.getPort(), localUri.getRawPath());
-                } catch (MalformedURLException e) {
-                    // Never thrown
-                    throw new AssertionError(e);
-                }
+                url = createReinitializedURL(SourceAccessor.getReinitializedURI(truffleFile));
             }
             return (URL) url;
         }

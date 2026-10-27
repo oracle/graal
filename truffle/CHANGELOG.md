@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 25.6
+
+* GR-79669: Instrument lookup is now supported during context preinitialization. Added `TruffleInstrument.onPreinitialize(Env)` for instruments to support retention during engine preinitialization.
+
 ## Version 25.5
 
 * GR-79534: Added `HostCompilerDirectives.BytecodeInterpreterHandlerConfig.enableTailDuplication()` to opt threaded bytecode handlers into dispatch-tail duplication; disabled by default.

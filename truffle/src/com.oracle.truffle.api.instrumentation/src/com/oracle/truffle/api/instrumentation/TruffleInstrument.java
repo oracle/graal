@@ -347,6 +347,24 @@ public abstract class TruffleInstrument {
     protected abstract void onCreate(Env env);
 
     /**
+     * Invoked once on an initialized {@linkplain TruffleInstrument instrument} when its engine is
+     * preinitialized. This method is called after all contexts have been prepared and without an
+     * entered context. Services of other instruments may be looked up; instruments initialized by
+     * such lookups receive this callback as well. When an explicitly preinitialized engine is
+     * consumed, the instrument's options must match, including which options were explicitly set.
+     * There is no consumption-time patch callback. By default, instruments do not support
+     * preinitialization.
+     *
+     * @param env environment information for the instrument
+     * @return {@code true} if the instrument state can be retained in the preinitialized engine,
+     *         or {@code false} to fail engine preinitialization
+     * @since 25.6
+     */
+    protected boolean onPreinitialize(Env env) {
+        return false;
+    }
+
+    /**
      * Invoked once on an {@linkplain TruffleInstrument instance} just before all instruments and
      * languages are going to be disposed, possibly because the underlying
      * {@linkplain org.graalvm.polyglot.Engine engine} is going to be closed. This method is called

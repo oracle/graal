@@ -2,6 +2,11 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 25.6
+
+* GR-79669: Native Image static initializers configured for build-time initialization can now create and execute Truffle contexts.
+* GR-79669: Added [configurable context preinitialization for explicit engines](https://www.graalvm.org/latest/reference-manual/embed-languages/#preinitialize-an-explicit-engine) using `Engine.Builder.preinitialize(int, Consumer<Engine>)` and `Engine.newBuilder(Engine.Preinitialized)`.
+
 ## Version 25.5
 * GR-79961: [Auxiliary engine caching](https://github.com/oracle/graal/blob/master/truffle/docs/AuxiliaryEngineCaching.md) is now available in both Oracle GraalVM and GraalVM Community Edition.
 * GR-13989: Added `FileChannel`. On JDK 22 and later, its `map` method maps file regions to `MemorySegment` instances whose lifetime is controlled by a caller-provided `Arena`.
