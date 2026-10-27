@@ -66,9 +66,15 @@ public class SecurityProviderAgentVerifierTest {
                                         NamedConfigurationTypeDescriptor.fromReflectionName(SecurityProviderAgentTest.ReflectiveProbe.class.getName())));
         for (Provider provider : Security.getProviders()) {
             String providerClassName = provider.getClass().getName();
-            Assert.assertNotNull("Missing reflection metadata for enumerated provider " + providerClassName,
-                            reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
-                                            NamedConfigurationTypeDescriptor.fromReflectionName(providerClassName)));
+            ConfigurationType providerType = reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
+                            NamedConfigurationTypeDescriptor.fromReflectionName(providerClassName));
+            Assert.assertNotNull("Missing reflection metadata for enumerated provider " + providerClassName, providerType);
+            if (providerClassName.equals("sun.security.provider.Sun")) {
+                ConfigurationMemberInfo constructorInfo = ConfigurationType.TestBackdoor.getMethodInfoIfPresent(
+                                providerType, new ConfigurationMethod("<init>", "()V"));
+                Assert.assertNotNull("Missing constructor metadata for directly constructed provider " + providerClassName, constructorInfo);
+                Assert.assertEquals("ACCESSED", constructorInfo.getAccessibility().toString());
+            }
         }
     }
 
@@ -82,12 +88,9 @@ public class SecurityProviderAgentVerifierTest {
         Assert.assertNull("Provider-list mutation unexpectedly recorded the supplied provider",
                         reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
                                         NamedConfigurationTypeDescriptor.fromReflectionName(SecurityProviderAgentTest.ProgrammaticallyAddedProvider.class.getName())));
-        for (Provider provider : Security.getProviders()) {
-            String providerClassName = provider.getClass().getName();
-            Assert.assertNull("Provider-list mutation unexpectedly recorded configured provider " + providerClassName,
-                            reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
-                                            NamedConfigurationTypeDescriptor.fromReflectionName(providerClassName)));
-        }
+        /* §FS-002-security-providers.5.1: Other security operations performed by the test harness
+         * may legitimately record configured providers. This test isolates the supplied object
+         * passed to the mutation API, which must not be recorded merely because it was inserted. */
     }
 
     @Test
@@ -118,6 +121,10 @@ public class SecurityProviderAgentVerifierTest {
                         kemType, new ConfigurationMethod("<init>", "()V"));
         Assert.assertNotNull("Missing selected KEM service implementation constructor metadata", constructorInfo);
         Assert.assertEquals("ACCESSED", constructorInfo.getAccessibility().toString());
+        Assert.assertNull("Name-based selection unexpectedly recorded an inserted provider class",
+                        reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
+                                        NamedConfigurationTypeDescriptor.fromReflectionName(
+                                                        SecurityProviderAgentTest.ProgrammaticallyAddedDelayedKEMProvider.class.getName())));
     }
 
     @Test
