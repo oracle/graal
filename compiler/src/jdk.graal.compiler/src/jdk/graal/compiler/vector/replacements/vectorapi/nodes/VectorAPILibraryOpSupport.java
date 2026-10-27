@@ -32,6 +32,7 @@ import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.nodes.util.ConstantReflectionUtil;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.vm.ci.meta.JavaKind;
@@ -79,7 +80,7 @@ final class VectorAPILibraryOpSupport {
         if (address.isJavaConstant() && address.asJavaConstant().getJavaKind() == JavaKind.Long && name.isJavaConstant() && vectorStamp != null &&
                         vectorStamp.getComponent(0) instanceof FloatStamp elementStamp) {
             long targetAddress = address.asJavaConstant().asLong();
-            String targetName = providers.getSnippetReflection().asObject(String.class, name.asJavaConstant());
+            String targetName = ConstantReflectionUtil.readString(providers.getMetaAccess(), providers.getConstantReflection(), name.asJavaConstant());
             if (targetName == null) {
                 return null;
             }

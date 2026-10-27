@@ -29,6 +29,7 @@ import java.nio.ByteOrder;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -37,6 +38,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -190,5 +192,46 @@ public final class ConstantReflectionUtil {
             return null;
         }
         return (int) (elementOffset / stride.value);
+    }
+
+    /**
+     * Reads a string's contents through constant reflection, including when the string belongs to
+     * a different runtime, as with libgraal. The JDK stores the contents in {@code String.value}
+     * as Latin-1 bytes or UTF-16 code units in native byte order, selected by {@code String.coder}.
+     * Returns {@code null} for null or non-string constants, or if the fields or array length
+     * cannot be read.
+     */
+    public static String readString(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, JavaConstant string) {
+        if (string == null || string.getJavaKind() != JavaKind.Object || string.isNull()) {
+            return null;
+        }
+        ResolvedJavaType stringType = metaAccess.lookupJavaType(String.class);
+        if (!stringType.equals(metaAccess.lookupJavaType(string))) {
+            return null;
+        }
+        JavaConstant value = null;
+        JavaConstant coder = null;
+        for (ResolvedJavaField field : stringType.getInstanceFields(false)) {
+            switch (field.getName()) {
+                case "value" -> value = constantReflection.readFieldValue(field, string);
+                case "coder" -> coder = constantReflection.readFieldValue(field, string);
+            }
+        }
+        if (value == null || value.isNull() || coder == null) {
+            return null;
+        }
+        Integer byteLength = constantReflection.readArrayLength(value);
+        if (byteLength == null) {
+            return null;
+        }
+        int encoding = coder.asInt();
+        GraalError.guarantee(encoding == 0 || encoding == 1, "unexpected String coder: %s", encoding);
+        GraalError.guarantee((byteLength & encoding) == 0, "invalid String byte length: %s", byteLength);
+        Stride stride = encoding == 0 ? Stride.S1 : Stride.S2;
+        char[] chars = new char[byteLength >> encoding];
+        for (int i = 0; i < chars.length; i++) {
+            chars[i] = (char) readTypePunned(constantReflection, value, JavaKind.Byte, stride, i);
+        }
+        return new String(chars);
     }
 }
