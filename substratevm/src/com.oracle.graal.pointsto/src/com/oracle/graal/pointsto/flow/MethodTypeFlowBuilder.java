@@ -2131,10 +2131,10 @@ public class MethodTypeFlowBuilder {
     private void processOpenWorldField(PointsToAnalysisField field) {
         if (!bb.getExtensionPolicy().isFieldClosed(field)) {
             /*
-             * Open fields can be written from the open world and may contain state not seen by the
-             * analysis. This is equivalent with assuming any of their input is saturated.
+             * External writes may supply arrays whose elements are not covered by analyzed stores
+             * or heap scanning. Summarize these contents as well as the field references.
              */
-            field.getInitialFlow().onInputSaturated(bb, null);
+            field.injectConservativeFieldValues();
         }
     }
 
@@ -2143,9 +2143,9 @@ public class MethodTypeFlowBuilder {
 
         if (!bb.getExtensionPolicy().isFieldClosed(field)) {
             /*
-             * Open fields can be written from the open world and may contain state not seen by the
-             * analysis. We don't track their writes, instead we eagerly saturate their loads (See
-             * processLoadField).
+             * Open fields use conservative summaries for external writes. Instead of tracking
+             * individual field stores, processLoadField installs these summaries when the field is
+             * read.
              */
             return;
         }

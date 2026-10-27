@@ -33,6 +33,7 @@ import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreInstanceFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 
@@ -116,19 +117,69 @@ public class PointsToAnalysisField extends AnalysisField {
     }
 
     @Override
-    public void injectDeclaredType() {
-        var bb = getUniverse().getBigbang();
+    public void injectConservativeFieldValues() {
+        if (getStorageKind().isObject()) {
+            injectConservativeFieldValues(List.of(initialFlow.getDeclaredType()), true);
+        } else {
+            injectFieldValueBound();
+        }
+    }
+
+    @Override
+    public void injectConservativeFieldValues(List<AnalysisType> customBounds, boolean canBeNull) {
+        assert getStorageKind().isObject();
+        var bb = (PointsToAnalysis) getUniverse().getBigbang();
+        var effectiveBound = initialFlow.getDeclaredType();
+        if (canBeNull) {
+            initialFlow.addState(bb, TypeState.forNull());
+        }
+        for (AnalysisType valueBound : customBounds) {
+            assert !valueBound.isPrimitive() && !valueBound.isWordType() : valueBound;
+            assert effectiveBound.isAssignableFrom(valueBound) : "Custom bound must be assignable to the effective field bound: field: " + this +
+                            " | effective bound: " + effectiveBound + " | custom bound: " + valueBound;
+            injectBoundValues(bb, valueBound, initialFlow, false);
+            injectArrayContents(bb, valueBound);
+        }
+    }
+
+    @Override
+    public void injectFieldValueBound() {
+        var bb = (PointsToAnalysis) getUniverse().getBigbang();
         if (!bb.isSupportedJavaKind(getStorageKind())) {
-            /*
-             * If this JavaKind is not tracked by the analysis, there is no point in inserting any
-             * state into the field.
-             */
+            /* There is no point in inserting state for a kind not tracked by the analysis. */
             return;
         }
         if (getStorageKind().isObject()) {
-            bb.injectFieldTypes(this, List.of(initialFlow.getDeclaredType()), true);
+            injectBoundValues(bb, initialFlow.getDeclaredType(), initialFlow, true);
         } else {
             this.saturatePrimitiveField();
+        }
+    }
+
+    private static void injectBoundValues(PointsToAnalysis bb, AnalysisType valueBound, TypeFlow<?> flow, boolean canBeNull) {
+        if (bb.getExtensionPolicy().isTypeClosed(valueBound)) {
+            // A closed bound has a complete assignable-type hierarchy.
+            valueBound.getTypeFlow(bb, canBeNull).addUse(bb, flow);
+        } else {
+            // An open bound must include values whose runtime types are not yet known.
+            bb.getPreSaturatedSourceTypeFlow().addUse(bb, flow);
+        }
+    }
+
+    /**
+     * Summarizes immediate reference-array contents admitted by the bound, using its array type or
+     * Object[] for a supertype such as Object, Cloneable, or Serializable. Further dimensions require
+     * separate coverage (GR-80797).
+     */
+    private static void injectArrayContents(PointsToAnalysis bb, AnalysisType valueBound) {
+        AnalysisType arrayType = valueBound.isArray() ? valueBound : bb.getObjectType().getArrayClass();
+        if (!valueBound.isAssignableFrom(arrayType)) {
+            return;
+        }
+        AnalysisType componentType = arrayType.getComponentType();
+        if (!componentType.isPrimitive() && !componentType.isWordType()) {
+            var elements = arrayType.getContextInsensitiveAnalysisObject().getArrayElementsFlow(bb, true);
+            injectBoundValues(bb, componentType, elements, true);
         }
     }
 
@@ -152,13 +203,7 @@ public class PointsToAnalysisField extends AnalysisField {
                  * classification and the saturation cutoff, so ordinary reads account for unknown
                  * runtime types.
                  */
-                if (getStorageKind().isObject() && !bb.getExtensionPolicy().isTypeClosed(initialFlow.getDeclaredType())) {
-                    // An open reference bound must account for unknown extension types.
-                    bb.getPreSaturatedSourceTypeFlow().addUse(bb, initialFlow);
-                } else {
-                    // Retain declared-type injection for closed reference bounds and primitive values.
-                    injectDeclaredType();
-                }
+                injectConservativeFieldValues();
             }
             if (fieldType.getStorageKind().isPrimitive()) {
                 /*

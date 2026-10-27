@@ -175,7 +175,7 @@ public abstract class ImageHeapScanner {
              *
              * GR-52421: the field state needs to be serialized from the base layer analysis
              */
-            field.injectDeclaredType();
+            field.injectConservativeFieldValues();
         } else if (isValueAvailable(field, null)) {
             JavaConstant fieldValue = readStaticFieldValue(field);
             if (fieldValue instanceof ImageHeapConstant imageHeapConstant && field.isFinal()) {

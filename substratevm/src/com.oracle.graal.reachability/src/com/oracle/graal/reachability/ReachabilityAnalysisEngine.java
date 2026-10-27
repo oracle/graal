@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import java.lang.reflect.Executable;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
-import java.util.List;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicSet;
@@ -154,15 +153,6 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     public AnalysisType addRootField(AnalysisField analysisField) {
         analysisField.registerAsAccessed("root field");
         return analysisField.getType();
-    }
-
-    @Override
-    public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
-        assert aField.getStorageKind().isObject();
-        aField.registerAsAccessed("@UnknownObjectField annotated field.");
-        for (AnalysisType declaredType : customTypes) {
-            declaredType.registerAsReachable("injected field types for unknown annotated field " + aField.format("%H.%n"));
-        }
     }
 
     @Override

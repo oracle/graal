@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -267,7 +267,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @Override
     public void registerAsJNIAccessed(AnalysisField field, boolean writable) {
-        field.injectDeclaredType();
+        field.injectConservativeFieldValues();
     }
 
     /**
@@ -509,7 +509,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             if (addFields) {
                 field.registerAsAccessed("field of root class");
             }
-            field.injectDeclaredType();
+            field.injectConservativeFieldValues();
         }
         if (type.getSuperclass() != null) {
             addRootClass(type.getSuperclass(), addFields, addArrayClass);
@@ -530,7 +530,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     public AnalysisType addRootField(AnalysisField field) {
         field.registerAsAccessed((field.isStatic() ? "static" : "instance") + " root field");
-        field.injectDeclaredType();
+        field.injectConservativeFieldValues();
         return field.getType();
     }
 
@@ -657,58 +657,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             t.instantiatedTypes.addState(this, typeState);
             t.instantiatedTypesNonNull.addState(this, typeStateNonNull);
         });
-    }
-
-    /**
-     * Injects custom types into a reference field's initial flow. This utility is used for:
-     * <ul>
-     * <li>root fields - whose state is forced to be that of the declared type</li>
-     * <li>unsafe accessed fields - whose state is conservatively also the declared type</li>
-     * <li>lazily computed fields - for which writes are not visible during analysis</li>
-     * </ul>
-     * <p>
-     * For instance fields, injection alone does not propagate state to the sink. This requires a
-     * receiver-specific field flow created and connected by analyzing a field load or store, or by
-     * heap scanning. A retained load creates these connections only when its receiver flow contains
-     * an analyzed object. Once connected, the field flow propagates both existing and future
-     * initial-flow values to the sink. Static reference fields share their initial and sink flows.
-     */
-    @Override
-    public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
-        assert aField.getStorageKind().isObject();
-        var ptaField = (PointsToAnalysisField) aField;
-
-        /* Link the field with all declared types. */
-        for (AnalysisType type : customTypes) {
-            if (type.isPrimitive() || type.isWordType()) {
-                continue;
-            }
-            type.getTypeFlow(this, canBeNull).addUse(this, ptaField.getInitialFlow());
-
-            if (type.isArray()) {
-                AnalysisType fieldComponentType = type.getComponentType();
-                if (!(fieldComponentType.isPrimitive() || fieldComponentType.isWordType())) {
-                    /*
-                     * Write the component type abstract object into the field array elements type
-                     * flow, i.e., the array elements type flow of the abstract object of the field
-                     * declared type.
-                     *
-                     * This is required so that the index loads from this array return all the
-                     * possible objects that can be stored in the array.
-                     */
-                    TypeFlow<?> elementsFlow = type.getContextInsensitiveAnalysisObject().getArrayElementsFlow(this, true);
-                    fieldComponentType.getTypeFlow(this, false).addUse(this, elementsFlow);
-
-                    /*
-                     * In the current implementation it is not necessary to do it recursively for
-                     * multidimensional arrays since we don't model individual array elements, so
-                     * from the point of view of the static analysis the field's array elements
-                     * value is non-null (in the case of an n-dimensional array that value is
-                     * another array, n-1 dimensional).
-                     */
-                }
-            }
-        }
     }
 
     public static class ConstantObjectsProfiler {

@@ -1235,18 +1235,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             RuntimeProxyCreation.register(OriginalClassProvider.getJavaClass(type));
             registerClass(unconditional(), ACCESSED, analysisType, false);
         }
-        /*
-         * Exception proxies are stored as-is in the image heap
-         */
         if (GuestAccess.get().lookupType(ExceptionProxy.class).isAssignableFrom(type)) {
             /*
-             * The image heap scanning does not see the actual instances, so we need to be
-             * conservative and assume fields can have any value.
+             * Annotation metadata represents proxy values without exposing their instances to heap
+             * scanning. Summarize their fields for compiled readers.
              */
             analysisType.registerAsInstantiated("Is used by annotation of element registered for reflection.");
             for (var f : analysisType.getInstanceFields(true)) {
                 var aField = (AnalysisField) f;
-                universe.getBigbang().injectFieldTypes(aField, List.of(aField.getType()), true);
+                aField.injectConservativeFieldValues();
             }
         }
     }

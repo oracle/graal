@@ -88,7 +88,7 @@ It can result from a precision cutoff or from the need to represent values suppl
 **Recovering a finite type approximation** means replacing such an incomplete set with an explicit set that covers all permitted runtime types at that point.
 One mechanism uses an **all-instantiated flow**, which collects types registered as instantiated and assignable to a particular bound.
 Recovery based solely on that bound requires both a complete assignable-type hierarchy and registration of every type that may occur, including types allocated only by extensions.
-A successful checked cast can provide the bound, but does not by itself establish either condition.
+A successful checked cast or an explicit guarantee from a value's producer can establish the bound, but does not by itself establish either condition.
 An open bound alone cannot justify enumerating all possible types; a particular value can nevertheless have a precise type established by its analyzed allocation.
 
 ### Array Bounds
