@@ -94,7 +94,7 @@ final class PinnedAllocation extends HeapAllocation {
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
     private Object allocateInstance0(DynamicHub hub, UnsignedWord size) {
-        HeapImpl.exitIfAllocationDisallowed("PinnedAllocation.allocateInstance0", DynamicHub.toClass(hub).getName());
+        HeapImpl.exitIfAllocationDisallowed("PinnedAllocation.allocateInstance0", hub);
         GCImpl.getGCImpl().maybeCollectOnAllocation(size);
         try {
             return allocateInstance1(hub, size);
@@ -153,7 +153,7 @@ final class PinnedAllocation extends HeapAllocation {
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
     private Object newArray0(DynamicHub arrayHub, int length, UnsignedWord size) {
-        HeapImpl.exitIfAllocationDisallowed("PinnedAllocation.newArray0", DynamicHub.toClass(arrayHub).getName());
+        HeapImpl.exitIfAllocationDisallowed("PinnedAllocation.newArray0", arrayHub);
         GCImpl.getGCImpl().maybeCollectOnAllocation(size);
         try {
             return newArray1(arrayHub, length, size);

@@ -56,8 +56,11 @@ public interface CollectionPolicy {
     /**
      * Determines whether a slow-path allocation requires a collection. The result is rechecked
      * before initiating a safepoint and before executing the collection because another GC in the
-     * meanwhile may have made the request unnecessary. This method must not allocate, block, or
-     * modify policy state. It must support calls both before and during a safepoint.
+     * meanwhile may have made the request unnecessary. Collecting policies must not allocate,
+     * block, or modify policy state here. They must support calls both before and during a safepoint.
+     * <p>
+     * A policy that never collects checks the heap limit and throws an {@link OutOfMemoryError}
+     * if it is exceeded. Otherwise, it returns {@code false}.
      */
     boolean shouldCollectOnAllocation();
 

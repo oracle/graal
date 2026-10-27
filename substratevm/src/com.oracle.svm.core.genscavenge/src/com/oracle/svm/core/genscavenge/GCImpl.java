@@ -190,19 +190,18 @@ public final class GCImpl implements GC {
         collect(cause, cause.collectsCompletely());
     }
 
+    @AlwaysInline("Keep the allocation GC check inline in allocation slow paths.")
     public void maybeCollectOnAllocation(UnsignedWord allocationSize) {
-        boolean outOfMemory = false;
-        if (hasNeverCollectPolicy()) {
-            UnsignedWord edenUsed = HeapImpl.getAccounting().getEdenUsedBytes();
-            outOfMemory = edenUsed.aboveThan(GCImpl.getPolicy().getMaximumHeapSize());
-        } else if (getPolicy().shouldCollectOnAllocation()) {
-            AllocationRequiringGCEvent.emit(getCollectionEpoch(), allocationSize);
-            outOfMemory = collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
-            if (outOfMemory) {
-                outOfMemory = getPolicy().isOutOfMemory(HeapImpl.getAccounting().getUsedBytes());
-            }
+        if (getPolicy().shouldCollectOnAllocation()) {
+            collectOnAllocation(allocationSize);
         }
-        if (outOfMemory) {
+    }
+
+    @NeverInline("Keep collection and error reporting out of allocation slow paths.")
+    private void collectOnAllocation(UnsignedWord allocationSize) {
+        AllocationRequiringGCEvent.emit(getCollectionEpoch(), allocationSize);
+        boolean outOfMemory = collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
+        if (outOfMemory && getPolicy().isOutOfMemory(HeapImpl.getAccounting().getUsedBytes())) {
             throw OutOfMemoryUtil.heapSizeExceeded();
         }
     }

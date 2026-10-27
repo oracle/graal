@@ -291,10 +291,16 @@ public final class HeapImpl extends Heap {
     }
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */
-    static void exitIfAllocationDisallowed(String callSite, String typeName) {
+    @AlwaysInline("Keep the allocation validity check inline in allocation slow paths.")
+    static void exitIfAllocationDisallowed(String callSite, DynamicHub hub) {
         if (HeapImpl.getHeapImpl().isAllocationDisallowed()) {
-            throw NoAllocationVerifier.exit(callSite, typeName);
+            throw reportAllocationDisallowed(callSite, hub);
         }
+    }
+
+    @NeverInline("Keep allocation failure diagnostics out of allocation slow paths.")
+    private static RuntimeException reportAllocationDisallowed(String callSite, DynamicHub hub) {
+        return NoAllocationVerifier.exit(callSite, hub.getName());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
