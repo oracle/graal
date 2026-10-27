@@ -186,8 +186,26 @@ public class OptimizeExtendsPhase extends BasePhase<LowTierContext> {
 
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-        // This phase can cause reads to be non-canonicalizable.
-        return NotApplicable.unlessRunAfter(this, mode == Mode.COMBINE ? StageFlag.LOW_TIER_LOWERING : StageFlag.FINAL_CANONICALIZATION, graphState);
+        if (mode == Mode.COMBINE) {
+            /*
+             * COMBINE must run before FOLD_READS because it can introduce NarrowNodes that invalidate
+             * the upper-register-bit proofs computed by FOLD_READS. Final canonicalization separates
+             * the two modes.
+             */
+            return NotApplicable.ifAny(
+                            NotApplicable.unlessRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState),
+                            NotApplicable.unlessRunBefore(this, StageFlag.FINAL_CANONICALIZATION, graphState));
+        }
+        assert mode == Mode.FOLD_READS : "Unexpected extension optimization mode: " + mode;
+        /*
+         * Folding operates on extendable fixed reads, so wait until FixReadsPhase has converted floating
+         * reads. Extended reads are not canonicalizable, so folding must follow final canonicalization.
+         * Upper-register-bit analysis must also follow final canonicalization, since later simplification
+         * could remove arithmetic that guarantees zero upper register bits.
+         */
+        return NotApplicable.ifAny(
+                        NotApplicable.unlessRunAfter(this, StageFlag.FIXED_READS, graphState),
+                        NotApplicable.unlessRunAfter(this, StageFlag.FINAL_CANONICALIZATION, graphState));
     }
 
     @Override
