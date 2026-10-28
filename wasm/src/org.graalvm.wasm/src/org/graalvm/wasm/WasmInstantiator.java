@@ -51,15 +51,12 @@ import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryFactory;
-import org.graalvm.wasm.nodes.WasmCallNode;
-import org.graalvm.wasm.nodes.WasmCallStubNode;
-import org.graalvm.wasm.nodes.WasmDirectCallNode;
 import org.graalvm.wasm.nodes.WasmFixedMemoryImplFunctionNode;
 import org.graalvm.wasm.nodes.WasmFunctionRootNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmMemoryOverheadModeFunctionRootNode;
+import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.parser.bytecode.BytecodeParser;
-import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 import org.graalvm.wasm.types.DefinedType;
 import org.graalvm.wasm.types.ReferenceType;
@@ -77,6 +74,9 @@ import com.oracle.truffle.api.nodes.Node;
  * Creates wasm instances by converting parser nodes into Truffle nodes.
  */
 public class WasmInstantiator {
+    private record CallNodes(WasmFunctionRootNode[] directCallTargets, Node[] nodes) {
+    }
+
     private final WasmLanguage language;
 
     @TruffleBoundary
@@ -482,7 +482,7 @@ public class WasmInstantiator {
             // direct call sites. Call sites that require linking do not need to be resolved.
             for (int entry = 0; entry != codeEntries.length; ++entry) {
                 CodeEntry codeEntry = codeEntries[entry];
-                resolveCallNodes(instance, instance.target(codeEntry.functionIndex()));
+                resolveDirectCallTargets(instance, instance.target(codeEntry.functionIndex()), codeEntry.callFunctionIndices());
             }
             module.setHasBeenInstantiated();
         } finally {
@@ -519,7 +519,7 @@ public class WasmInstantiator {
             assert store.language().isMultiContext();
             return cachedTarget;
         }
-        final WasmFunctionRootNode rootNode = instantiateCodeEntryRootNode(store, module, codeEntry, function);
+        final WasmRootNode rootNode = instantiateCodeEntryRootNode(store, module, codeEntry, function);
         var callTarget = rootNode.getCallTarget();
         if (store.language().isMultiContext()) {
             function.setTarget(callTarget);
@@ -529,14 +529,14 @@ public class WasmInstantiator {
         return callTarget;
     }
 
-    private WasmFunctionRootNode instantiateCodeEntryRootNode(WasmStore store, WasmModule module, CodeEntry codeEntry, WasmFunction function) {
+    private WasmRootNode instantiateCodeEntryRootNode(WasmStore store, WasmModule module, CodeEntry codeEntry, WasmFunction function) {
         final WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, module.bytecode(), codeEntry.localTypes(), codeEntry.resultTypes(), codeEntry.maxLegacyCatchDepth(),
                         codeEntry.usesMemoryZero());
         final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.localTypes(), codeEntry.maxLegacyCatchDepth(), codeEntry.maxStackSize());
-        final Node[] callNodes = setupCallNodes(module, codeEntry);
+        final CallNodes callNodes = setupCallNodes(module, codeEntry);
         final WasmFixedMemoryImplFunctionNode functionNode = WasmFixedMemoryImplFunctionNode.create(module, wasmCodeEntry, codeEntry.bytecodeStartOffset(), codeEntry.bytecodeEndOffset(),
-                        codeEntry.exceptionTableOffset(), callNodes);
-        final WasmFunctionRootNode rootNode;
+                        codeEntry.exceptionTableOffset(), callNodes.directCallTargets(), callNodes.nodes());
+        final WasmRootNode rootNode;
         if (store.getContextOptions().memoryOverheadMode()) {
             rootNode = new WasmMemoryOverheadModeFunctionRootNode(language, frameDescriptor, module, functionNode, wasmCodeEntry);
         } else {
@@ -545,44 +545,43 @@ public class WasmInstantiator {
         return rootNode;
     }
 
-    private static Node[] setupCallNodes(WasmModule module, CodeEntry entry) {
-        List<CallNode> childNodeList = entry.callNodes();
-        Node[] callNodes = new Node[childNodeList.size()];
-        int childIndex = 0;
-        for (CallNode callNode : childNodeList) {
-            final WasmCallNode child;
-            final int bytecodeIndex = callNode.getBytecodeOffset();
-            if (callNode.isIndirectCall()) {
-                child = WasmIndirectCallNode.create(bytecodeIndex);
+    private static CallNodes setupCallNodes(WasmModule module, CodeEntry entry) {
+        int directCallCount = 0;
+        int indirectCallCount = entry.indirectCallCount();
+        boolean needsDirectReturnCallNodes = false;
+        for (int functionIndex : entry.callFunctionIndices()) {
+            final WasmFunction function = module.function(functionIndex);
+            if (function.isImported()) {
+                indirectCallCount++;
             } else {
-                final WasmFunction resolvedFunction = module.function(callNode.getFunctionIndex());
-                if (resolvedFunction.isImported()) {
-                    // The call target is resolved during linking and then passed by the call site.
-                    // No link actions required.
-                    child = WasmIndirectCallNode.create(bytecodeIndex);
-                } else {
-                    // Will be replaced with a direct call node after all the module's code entries
-                    // have been instantiated and their call targets are available. No link actions
-                    // required since the call target resolution happens already before linking.
-                    child = new WasmCallStubNode(bytecodeIndex, resolvedFunction);
+                directCallCount++;
+                needsDirectReturnCallNodes |= function.containsReturnCalls();
+            }
+        }
+
+        WasmFunctionRootNode[] directCallTargets = directCallCount == 0 ? null : new WasmFunctionRootNode[directCallCount];
+        int callNodeCount = indirectCallCount + (needsDirectReturnCallNodes ? directCallCount : 0);
+        Node[] callNodes = callNodeCount == 0 ? null : new Node[callNodeCount];
+        for (int i = 0; i < indirectCallCount; i++) {
+            callNodes[i] = WasmIndirectCallNode.create();
+        }
+        return new CallNodes(directCallTargets, callNodes);
+    }
+
+    private static void resolveDirectCallTargets(WasmInstance instance, CallTarget target, int[] callFunctionIndices) {
+        if (((RootCallTarget) target).getRootNode() instanceof WasmFunctionRootNode rootNode) {
+            WasmFunctionRootNode[] directCallTargets = rootNode.getDirectCallTargets();
+            if (directCallTargets == null) {
+                return;
+            }
+            int directCallIndex = 0;
+            for (int functionIndex : callFunctionIndices) {
+                WasmFunction function = instance.module().function(functionIndex);
+                if (!function.isImported()) {
+                    directCallTargets[directCallIndex++] = (WasmFunctionRootNode) ((RootCallTarget) instance.target(function.index())).getRootNode();
                 }
             }
-            callNodes[childIndex++] = child;
-        }
-        return callNodes;
-    }
-
-    private static void resolveCallNodes(WasmInstance instance, Node[] callNodes) {
-        for (int i = 0; i < callNodes.length; i++) {
-            if (callNodes[i] instanceof WasmCallStubNode callStubNode) {
-                callNodes[i] = WasmDirectCallNode.create(instance.target(callStubNode.function().index()), callStubNode.getBytecodeOffset());
-            }
-        }
-    }
-
-    private static void resolveCallNodes(WasmInstance instance, CallTarget target) {
-        if (((RootCallTarget) target).getRootNode() instanceof WasmFunctionRootNode rootNode) {
-            resolveCallNodes(instance, rootNode.getCallNodes());
+            assert directCallIndex == directCallTargets.length;
         }
     }
 }

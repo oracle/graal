@@ -91,11 +91,11 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
 
     @Child private WasmMemoryLibrary zeroMemoryLib;
 
-    public WasmInstrumentableFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, int exceptionTableOffset, Node[] callNodes,
-                    WasmMemoryLibrary[] memoryLibs) {
+    public WasmInstrumentableFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, int exceptionTableOffset,
+                    WasmFunctionRootNode[] directCallTargets, Node[] callNodes, WasmMemoryLibrary[] memoryLibs) {
         this.module = module;
         this.codeEntry = codeEntry;
-        this.functionNode = new WasmFunctionNode<>(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, exceptionTableOffset, callNodes, memoryLibs);
+        this.functionNode = new WasmFunctionNode<>(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, exceptionTableOffset, directCallTargets, callNodes, memoryLibs);
         this.functionSourceLocation = module.functionSourceCodeStartOffset(codeEntry.functionIndex());
         this.zeroMemoryLib = module.memoryCount() > 0 ? memoryLibs[0] : null;
     }

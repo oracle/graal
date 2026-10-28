@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,6 @@
 
 package org.graalvm.wasm.parser.ir;
 
-import java.util.List;
-
 /**
  * Represents information about the code section of a wasm function.
  */
@@ -52,20 +50,24 @@ public final class CodeEntry {
     private final int maxLegacyCatchDepth;
     private final int[] localTypes;
     private final int[] resultTypes;
-    private final List<CallNode> callNodes;
+    // Ordinary CALL targets, including imports, in instruction order.
+    private final int[] callFunctionIndices;
+    // CALL_INDIRECT and CALL_REF sites; imported CALLs are classified during instantiation.
+    private final int indirectCallCount;
     private final int bytecodeStartOffset;
     private final int bytecodeEndOffset;
     private final boolean usesMemoryZero;
     private final int exceptionTableOffset;
 
-    public CodeEntry(int functionIndex, int maxStackSize, int maxLegacyCatchDepth, int[] localTypes, int[] resultTypes, List<CallNode> callNodes, int startOffset, int endOffset,
-                    boolean usesMemoryZero, int exceptionTableOffset) {
+    public CodeEntry(int functionIndex, int maxStackSize, int maxLegacyCatchDepth, int[] localTypes, int[] resultTypes, int[] callFunctionIndices, int indirectCallCount,
+                    int startOffset, int endOffset, boolean usesMemoryZero, int exceptionTableOffset) {
         this.functionIndex = functionIndex;
         this.maxStackSize = maxStackSize;
         this.maxLegacyCatchDepth = maxLegacyCatchDepth;
         this.localTypes = localTypes;
         this.resultTypes = resultTypes;
-        this.callNodes = callNodes;
+        this.callFunctionIndices = callFunctionIndices;
+        this.indirectCallCount = indirectCallCount;
         this.bytecodeStartOffset = startOffset;
         this.bytecodeEndOffset = endOffset;
         this.usesMemoryZero = usesMemoryZero;
@@ -92,8 +94,12 @@ public final class CodeEntry {
         return resultTypes;
     }
 
-    public List<CallNode> callNodes() {
-        return callNodes;
+    public int[] callFunctionIndices() {
+        return callFunctionIndices;
+    }
+
+    public int indirectCallCount() {
+        return indirectCallCount;
     }
 
     public int bytecodeStartOffset() {
