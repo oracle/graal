@@ -142,6 +142,10 @@ public final class BytecodeSupport {
      * again without further allocations. Call {@link #clear()} at the end of using this buffer if
      * you want to release the object references or down-size the backing arrays.
      *
+     * Constants are deduplicated by {@link Object#equals(Object)}. {@link Float} and
+     * {@link Double} are the exception: they are compared by their raw bits, so distinct NaN
+     * payloads stay distinct. {@code +0.0} and {@code -0.0} stay distinct as well.
+     *
      * <strong>Not thread-safe.</strong>
      *
      * Intended for use in generated code. Do not use directly.
@@ -182,7 +186,8 @@ public final class BytecodeSupport {
 
         /**
          * Inserts {@code constant} (non-{@code null}) and returns its pool index. If an equal
-         * constant is already present, its existing index is returned.
+         * constant is already present, its existing index is returned. {@link Float} and
+         * {@link Double} constants compare by raw bits rather than {@link Object#equals(Object)}.
          *
          * @throws NullPointerException if {@code constant} is {@code null}
          * @since 25.0
@@ -311,7 +316,7 @@ public final class BytecodeSupport {
                 if (d == null) {
                     continue;
                 }
-                if (d == c || d.equals(c)) {
+                if (sameConstant(d, c)) {
                     return i;
                 }
             }
@@ -342,7 +347,7 @@ public final class BytecodeSupport {
                 if (v == EMPTY) {
                     return EMPTY;
                 }
-                if (this.keys[i].equals(key)) {
+                if (sameConstant(this.keys[i], key)) {
                     return v;  // hit
                 }
                 i = (i + 1) & mask;
@@ -371,8 +376,33 @@ public final class BytecodeSupport {
             fillMapFromConsts();
         }
 
+        /*
+         * Float.equals and Double.equals canonicalize every NaN to one payload. Equality and
+         * hashing here use the raw bits so those payloads stay distinct. For every other value,
+         * including +0.0 and -0.0, this matches equals and hashCode.
+         */
+        private static boolean sameConstant(Object a, Object b) {
+            if (a == b) {
+                return true;
+            } else if (a instanceof Double && b instanceof Double) {
+                return Double.doubleToRawLongBits((Double) a) == Double.doubleToRawLongBits((Double) b);
+            } else if (a instanceof Float && b instanceof Float) {
+                return Float.floatToRawIntBits((Float) a) == Float.floatToRawIntBits((Float) b);
+            } else {
+                return a.equals(b);
+            }
+        }
+
         private static int hash(Object o) {
-            int h = o.hashCode();
+            int h;
+            if (o instanceof Double) {
+                long bits = Double.doubleToRawLongBits((Double) o);
+                h = (int) (bits ^ (bits >>> 32));
+            } else if (o instanceof Float) {
+                h = Float.floatToRawIntBits((Float) o);
+            } else {
+                h = o.hashCode();
+            }
             return (h ^ (h >>> 16));
         }
 
