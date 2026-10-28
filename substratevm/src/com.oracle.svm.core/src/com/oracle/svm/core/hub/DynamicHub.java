@@ -150,7 +150,6 @@ import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.guest.staging.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
 import com.oracle.svm.guest.staging.util.LazyFinalReference;
-import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.shared.AlwaysInline;
@@ -977,12 +976,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         throw new NoClassDefFoundError(message);
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setMetaType(SharedType metaType) {
-        assert companion.metaType == null;
-        companion.metaType = metaType;
-    }
-
     public boolean hasDefaultMethods() {
         return isFlagSet(flags, HAS_DEFAULT_METHODS_FLAG_BIT);
     }
@@ -1001,19 +994,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     public void ensureInitialized() {
         EnsureClassInitializedNode.ensureClassInitialized(toClass(this));
-    }
-
-    public SharedType getMetaType() {
-        return companion.metaType;
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public ResolvedJavaType getInterpreterType() {
-        return companion.interpreterType;
-    }
-
-    public void setInterpreterType(ResolvedJavaType interpreterType) {
-        companion.interpreterType = interpreterType;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -1241,6 +1221,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return SubstrateUtil.cast(clazz, DynamicHub.class);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public DynamicHubCompanion getCompanion() {
         return companion;
     }
