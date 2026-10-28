@@ -1785,7 +1785,7 @@ public class CremaSupportImpl implements CremaSupport {
 
     private static int getMethodMemberNameFlags(ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall) {
         InterpreterResolvedJavaMethod resolvedMethod = resolvedCall.getResolvedMethod();
-        int flags = resolvedMethod.getModifiers();
+        int flags = resolvedMethod.getOriginalModifiers();
         if (resolvedMethod.isConstructor() || resolvedMethod.isClassInitializer()) {
             flags |= getExtraMethodMemberNameFlags(resolvedMethod);
             flags |= MN_IS_CONSTRUCTOR;

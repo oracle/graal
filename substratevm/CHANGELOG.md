@@ -2,13 +2,17 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## GraalVM 25.6
+
+* (GR-80731) Added runtime support for `IgnoreUnrecognizedVMOptions`, `UnlockDiagnosticVMOptions`.
+* (GR-80621) Added runtime support for `AbortVMOnCompilationFailure` through the Graal compiler's `CompilationFailureAction` option when runtime compilation is available.
+
 ## GraalVM 25.5 (Internal Version 25.5.5)
 
 * (GR-77774) Added the experimental `-H:JNILibraryLinkage=<library>:{static|dynamic}[?][,...]` option to select static or dynamic linkage for individual Java Native Interface (JNI) libraries.
   When runtime class loading is disabled, the build fails if a configured library is not reachable unless its linkage has a trailing `?`; when runtime class loading is enabled, configured libraries are made reachable and `?` has no effect.
   Built-in JNI method resolution now links the exact short or signature-suffixed long JNI symbol exported by a static library, enabling overloaded native methods that export only long names.
   With class-loader-aware loading, Native Image generates a no-op `JNI_OnLoad_<library>` symbol for a registered static JNI library without an initialization entry point, allowing the JDK to recognize the library as built-in.
-* (GR-80731) Added runtime support for `IgnoreUnrecognizedVMOptions`, `UnlockDiagnosticVMOptions`.
 * (GR-80597) Added the `org.graalvm.nativeimage.graalos` Java system property to identify images built for GraalOS at build time and runtime.
 * (GR-80328) Native Images built with `--enable-monitoring=jvmstat` can attach to file-backed JVMStat performance data from other HotSpot and Native Image processes on Linux and macOS. JDK tools such as `jstack`, `jinfo`, `jps`, and `jstat` can run on Crema to inspect other JVM processes.
 * (GR-80571) Added an unboxed calling convention for compiled Truffle-to-Truffle calls.

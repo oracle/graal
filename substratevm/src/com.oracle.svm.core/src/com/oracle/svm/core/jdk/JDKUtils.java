@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,20 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
 
+import jdk.internal.loader.BuiltinClassLoader;
+
 public final class JDKUtils {
+    /// Suppresses built-in loader names in printed stack traces while retaining their metadata.
+    /// Module version formatting stays unchanged so basic images do not retain the JDK's module layer helpers.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/java.base/share/classes/java/lang/StackTraceElement.java#L466-L492")
+    public static void suppressBuiltinClassLoaderName(StackTraceElement element, ClassLoader classLoader) {
+        if (classLoader instanceof BuiltinClassLoader) {
+            SubstrateUtil.cast(element, Target_java_lang_StackTraceElement.class).format |= Target_java_lang_StackTraceElement.builtinClassLoader;
+        }
+    }
 
     /**
      * Returns the raw error message stored in {@link Throwable} and returned by default from

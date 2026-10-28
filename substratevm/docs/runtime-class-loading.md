@@ -29,8 +29,22 @@ threshold-based mixed execution; and `-Xcomp` compiles before first invocation. 
 of these mode options is present, they are processed in command-line order and the last one wins.
 
 `-Xbatch` is independent of the selected mode. It makes callers wait for scheduled compilation,
-including on-stack replacement compilation. If run-time compilation is disabled or a compilation
-fails, Ristretto continues execution in the interpreter.
+including on-stack replacement compilation.
+If run-time compilation is disabled, execution remains in the interpreter.
+Compiler bailouts normally fall back to the interpreter.
+Unexpected compiler exceptions and bailouts configured as failures through `CompilationBailoutAsFailure` follow the configured compilation-failure policy.
+
+### Compilation Failure Options
+
+In images that include the Graal runtime compiler, `-XX:+AbortVMOnCompilationFailure` sets the compiler's `CompilationFailureAction` option to `ExitVM`, overriding any earlier setting.
+`-XX:-AbortVMOnCompilationFailure` sets it to `Silent` only if the most recent `AbortVMOnCompilationFailure` flag on the same command line was positive and no explicit `CompilationFailureAction` setting followed that flag.
+Otherwise, the negative flag has no effect.
+Explicit settings of `CompilationFailureAction` through
+`-Djdk.graal.CompilationFailureAction=`, `-Dgraal.CompilationFailureAction=`, or
+`-XX:CompilationFailureAction=` take effect in command-line order.
+For example, `-XX:+AbortVMOnCompilationFailure -Dgraal.CompilationFailureAction=Diagnose -XX:-AbortVMOnCompilationFailure` leaves the action as `Diagnose`, while `-Dgraal.CompilationFailureAction=Print -XX:+AbortVMOnCompilationFailure` selects `ExitVM`.
+Images that do not include the Graal runtime compiler handle these flags according to their normal unrecognized-option policy.
+When runtime compilation is present, these options use the existing Graal compiler failure handling, including Ristretto and Truffle compilation.
 
 ### Runtime VM Options
 

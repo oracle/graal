@@ -320,6 +320,10 @@ public final class WhiteBoxEntryPoints {
             case "VMContinuations" -> ContinuationSupport.isSupported();
             case "UseCompiler", "ProfileInterpreter" -> getOption("JITEnableCompilation", Boolean.class, false);
             case "UseJVMCICompiler" -> true;
+            // Account for collector layout differences and any additional header bytes.
+            case "UseCompactObjectHeaders" -> ObjectLayout.singleton().getFirstFieldOffset() <= Long.BYTES;
+            case "UseCompressedOops" -> ObjectLayout.singleton().getReferenceSize() == Integer.BYTES;
+            case "UseCompressedClassPointers" -> ObjectLayout.singleton().getHubSize() == Integer.BYTES;
             default -> null;
         };
         return value != null ? JNIObjectHandles.createLocal(value) : getRuntimeOption(nameHandle, Boolean.class);

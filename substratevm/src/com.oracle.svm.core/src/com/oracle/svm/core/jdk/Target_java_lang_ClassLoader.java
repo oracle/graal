@@ -118,7 +118,12 @@ public final class Target_java_lang_ClassLoader {
     @Alias @RecomputeFieldValue(kind = Kind.Reset)//
     Map<String, Boolean> classAssertionStatus;
 
-    @Delete private static ClassLoader scl;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    @TargetElement(onlyWith = RuntimeClassLoading.WithRuntimeClassLoading.class) //
+    private static ClassLoader scl;
+
+    @Delete @TargetElement(name = "scl", onlyWith = RuntimeClassLoading.NoRuntimeClassLoading.class) //
+    private static ClassLoader deletedSystemClassLoader;
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = ClassRegistries.ClassRegistryComputer.class)//
     public volatile AbstractClassRegistry classRegistry;
@@ -148,15 +153,27 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute
     public static ClassLoader getSystemClassLoader() {
-        /*
-         * Setting custom SystemClassLoader via java.system.class.loader system property currently
-         * not supported for native-images.
-         */
+        if (RuntimeClassLoading.isSupported()) {
+            if (Target_jdk_internal_misc_VM.initLevel == 3) {
+                // Preserve the JDK diagnostic for recursive system loader construction.
+                String message = "getSystemClassLoader cannot be called during the system class loader instantiation";
+                throw new IllegalStateException(message);
+            }
+            if (scl != null) {
+                return scl;
+            }
+        }
+        // Startup uses the built-in loader until the custom loader has been instantiated.
         return getBuiltinAppClassLoader();
     }
 
     @Delete
-    private static native ClassLoader initSystemClassLoader();
+    @TargetElement(name = "initSystemClassLoader", onlyWith = RuntimeClassLoading.NoRuntimeClassLoading.class)
+    private static native ClassLoader deletedInitSystemClassLoader();
+
+    @Alias
+    @TargetElement(onlyWith = RuntimeClassLoading.WithRuntimeClassLoading.class)
+    static native ClassLoader initSystemClassLoader();
 
     @Alias
     public native Enumeration<URL> findResources(String resourceName);
@@ -439,6 +456,19 @@ public final class Target_java_lang_ClassLoader {
 }
 
 final class ClassLoaderHelper {
+    /// Initializes the runtime system loader after the boot module layer has been configured.
+    static void initializeSystemClassLoader() {
+        if (RuntimeClassLoading.isSupported()) {
+            // The JDK implementation checks this level and rejects recursive loader initialization.
+            Target_jdk_internal_misc_VM.initLevel = 3;
+            try {
+                Thread.currentThread().setContextClassLoader(Target_java_lang_ClassLoader.initSystemClassLoader());
+            } finally {
+                Target_jdk_internal_misc_VM.initLevel = 4;
+            }
+        }
+    }
+
     static final int NESTMATE_CLASS;
     static final int HIDDEN_CLASS;
     static final int STRONG_LOADER_LINK;

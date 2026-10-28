@@ -378,13 +378,14 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
                 args.add("allowsNull", node.allowsNull());
                 args.add("exactType", hub);
             } else {
-                args = makeArgumentsForInexactType(replacer, tool, node, type, hub);
+                args = makeArgumentsForInexactType(replacer, tool, node, hub);
             }
             return args;
         }
 
-        protected SnippetTemplate.Arguments makeArgumentsForInexactType(InstanceOfUsageReplacer replacer, LoweringTool tool, InstanceOfNode node, SharedType type, DynamicHub hub) {
-            assert !type.isInterface() || type.getSingleImplementor() == null : "Canonicalization of InstanceOfNode produces exact type for single implementor";
+        /// Builds a general type check. A sole runtime implementor does not imply an exact type when
+        /// hierarchy assumptions are unavailable.
+        protected SnippetTemplate.Arguments makeArgumentsForInexactType(InstanceOfUsageReplacer replacer, LoweringTool tool, InstanceOfNode node, DynamicHub hub) {
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOf, node.graph(), tool.getLoweringStage());
             TypeSnippets.Hints hints = createHints(node);
             args.addVarargs("hints", DynamicHub.class, StampFactory.forKind(JavaKind.Object), hints.hubs());
