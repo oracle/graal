@@ -274,7 +274,7 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        TypedEntrySupport.registerExactEntryPlugin(plugins, providers.getMetaAccess(), ((SubstrateTruffleRuntime) Truffle.getRuntime()).getExactGeneratedProxyEntries());
+        TypedEntrySupport.registerExactEntryPlugin(plugins, ((SubstrateTruffleRuntime) Truffle.getRuntime()).getExactGeneratedProxyEntries());
     }
 
     @Override

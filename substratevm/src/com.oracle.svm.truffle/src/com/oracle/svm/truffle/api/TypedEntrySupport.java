@@ -32,7 +32,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -106,7 +105,6 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -153,7 +151,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.StoreIndexedNode;
@@ -394,46 +391,36 @@ public final class TypedEntrySupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerExactEntryPlugin(GraphBuilderConfiguration.Plugins plugins, MetaAccessProvider metaAccess, Method[] entries) {
-        if (entries.length == 0) {
-            return;
-        }
-        Map<ResolvedJavaMethod, Method> exactEntries = new HashMap<>();
-        for (Method entry : entries) {
-            exactEntries.put(OriginalMethodProvider.getOriginalMethod(metaAccess.lookupJavaMethod(entry)), entry);
-        }
-        /* Generated entries can exceed the fixed arities supported by InvocationPlugin.apply. */
-        plugins.appendNodePlugin(new NodePlugin() {
-            @Override
-            public boolean handleInvoke(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode[] arguments) {
-                Method entryMethod = exactEntries.get(OriginalMethodProvider.getOriginalMethod(targetMethod));
-                if (entryMethod == null) {
-                    return false;
+    public static void registerExactEntryPlugin(GraphBuilderConfiguration.Plugins plugins, Method[] entries) {
+        for (Method entryMethod : entries) {
+            plugins.getInvocationPlugins().register(entryMethod.getDeclaringClass(), new RequiredInvocationPlugin(entryMethod.getName(), entryMethod.getParameterTypes()) {
+                @Override
+                public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode[] arguments) {
+                    TypedEntrySupport support = singleton();
+                    /*
+                     * Select the compiled or AOT fallback address before issuing one indirect call.
+                     */
+                    FunctionPointerHolder fallback = support.generatedEntryFallbacks.get(entryMethod);
+                    VMError.guarantee(fallback != null, "Generated proxy entry fallback was not registered for %s", entryMethod);
+                    assert targetMethod.isStatic();
+                    assert arguments.length >= 3;
+                    ValueNode callTargetNode = arguments[0];
+                    RuntimeConfiguration runtimeConfiguration = RuntimeCompilationSupport.getRuntimeConfig();
+                    JavaConstant fallbackConstant = runtimeConfiguration.getProviders().getSnippetReflection().forObject(fallback);
+                    Computation[] addressComputation = {
+                                    new FieldLoad(support.fromCompiledSpecializedEntryPointField),
+                                    new FieldLoadIfZero(fallbackConstant, support.generatedEntryFallbackAddressField)
+                    };
+                    JavaKind returnKind = targetMethod.getSignature().getReturnKind();
+                    StampPair returnStamp = StampFactory.forDeclaredType(b.getGraph().getAssumptions(), targetMethod.getSignature().getReturnType(targetMethod.getDeclaringClass()), false);
+                    CallTargetNode indirectCallTargetNode = b.add(new ComputedIndirectCallTargetNode(callTargetNode, addressComputation, arguments,
+                                    returnStamp, targetMethod.getSignature().toParameterTypes(null), targetMethod));
+                    /* Preserve the caller's exception handlers, including Java-default fallback. */
+                    b.handleReplacedInvoke(indirectCallTargetNode, returnKind);
+                    return true;
                 }
-                TypedEntrySupport support = singleton();
-                /*
-                 * Select the compiled or AOT fallback address before issuing one indirect call.
-                 */
-                FunctionPointerHolder fallback = support.generatedEntryFallbacks.get(entryMethod);
-                VMError.guarantee(fallback != null, "Generated proxy entry fallback was not registered for %s", entryMethod);
-                assert targetMethod.isStatic();
-                assert arguments.length >= 3;
-                ValueNode callTargetNode = arguments[0];
-                RuntimeConfiguration runtimeConfiguration = RuntimeCompilationSupport.getRuntimeConfig();
-                JavaConstant fallbackConstant = runtimeConfiguration.getProviders().getSnippetReflection().forObject(fallback);
-                Computation[] addressComputation = {
-                                new FieldLoad(support.fromCompiledSpecializedEntryPointField),
-                                new FieldLoadIfZero(fallbackConstant, support.generatedEntryFallbackAddressField)
-                };
-                JavaKind returnKind = targetMethod.getSignature().getReturnKind();
-                StampPair returnStamp = StampFactory.forDeclaredType(b.getGraph().getAssumptions(), targetMethod.getSignature().getReturnType(targetMethod.getDeclaringClass()), false);
-                CallTargetNode indirectCallTargetNode = b.add(new ComputedIndirectCallTargetNode(callTargetNode, addressComputation, arguments,
-                                returnStamp, targetMethod.getSignature().toParameterTypes(null), targetMethod));
-                /* Preserve the caller's exception handlers, including Java-default fallback. */
-                b.handleReplacedInvoke(indirectCallTargetNode, returnKind);
-                return true;
-            }
-        });
+            });
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
