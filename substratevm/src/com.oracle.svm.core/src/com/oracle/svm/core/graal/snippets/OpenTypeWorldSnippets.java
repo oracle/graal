@@ -47,7 +47,6 @@ import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -368,7 +367,7 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
             InstanceOfNode node = (InstanceOfNode) replacer.instanceOf;
             TypeReference typeReference = node.type();
             SharedType type = (SharedType) typeReference.getType();
-            DynamicHub hub = DynamicHubProvider.getHub(type);
+            DynamicHub hub = DynamicHubUtils.getHub(type);
 
             SnippetTemplate.Arguments args;
             if (typeReference.isExact()) {

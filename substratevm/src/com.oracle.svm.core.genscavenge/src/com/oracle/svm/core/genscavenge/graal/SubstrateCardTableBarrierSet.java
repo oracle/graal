@@ -28,7 +28,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.genscavenge.HeapParameters;
-import com.oracle.svm.core.hub.DynamicHubProvider;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
 
@@ -104,7 +104,7 @@ public class SubstrateCardTableBarrierSet extends CardTableBarrierSet {
         IntegerStamp lengthStamp = (IntegerStamp) length.stamp(NodeView.DEFAULT);
         GraalError.guarantee(lengthStamp.getBits() == Integer.SIZE, "unexpected length %s", lengthStamp);
         int lengthBound = NumUtil.safeToInt(lengthStamp.upperBound());
-        int layoutEncoding = DynamicHubProvider.getHub((SharedType) baseType).getLayoutEncoding();
+        int layoutEncoding = DynamicHubUtils.getHub((SharedType) baseType).getLayoutEncoding();
         /*
          * Include optional identity hash storage for image heap arrays. The large array threshold
          * also covers image arrays that do not fit in an aligned chunk.
