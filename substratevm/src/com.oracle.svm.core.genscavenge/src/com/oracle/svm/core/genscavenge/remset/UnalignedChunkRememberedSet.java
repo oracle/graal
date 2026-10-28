@@ -213,16 +213,16 @@ final class UnalignedChunkRememberedSet {
         }
 
         Pointer cardTableStart = getCardTableStart(chunk);
-        boolean age = CardTable.ageImageCards(Word.objectToUntrackedPointer(obj), clean);
+        boolean scanYoungOnly = CardTable.isYoungImageHeapScan(Word.objectToUntrackedPointer(obj), clean);
         assert cardTableStart.unsignedRemainder(wordSize()).equal(0);
 
         switch (objHub.getHubType()) {
             case HubType.STORED_CONTINUATION_INSTANCE:
-                walkStoredContinuationImprecise((StoredContinuation) obj, cardTableStart, refVisitor, clean, age);
+                walkStoredContinuationImprecise((StoredContinuation) obj, cardTableStart, refVisitor, clean, scanYoungOnly);
                 return;
             case HubType.OBJECT_ARRAY:
                 UnsignedWord cardTableLimitIdx = objStartOffset.subtract(sizeOfObjectStartOffsetField()).subtract(getCardTableStartOffset());
-                walkObjectArrayPrecise(obj, cardTableStart, cardTableLimitIdx, refVisitor, clean, age);
+                walkObjectArrayPrecise(obj, cardTableStart, cardTableLimitIdx, refVisitor, clean, scanYoungOnly);
                 return;
             default:
                 throw VMError.shouldNotReachHere("Unexpected hub type.");
@@ -230,7 +230,7 @@ final class UnalignedChunkRememberedSet {
     }
 
     @Uninterruptible(reason = CORE_GC_CODE)
-    private static void walkStoredContinuationImprecise(StoredContinuation s, Pointer cardTableStart, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean, boolean age) {
+    private static void walkStoredContinuationImprecise(StoredContinuation s, Pointer cardTableStart, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean, boolean scanYoungOnly) {
         if (!ContinuationSupport.isSupported()) {
             throw VMError.shouldNotReachHere("Stored continuation objects cannot be in the heap if the continuation support is disabled.");
         } else if (StoredContinuationAccess.shouldWalkContinuation(s)) {
@@ -238,9 +238,9 @@ final class UnalignedChunkRememberedSet {
              * Stored continuations are always marked imprecise, so only the first card needs to be
              * checked.
              */
-            if (CardTable.shouldScan(cardTableStart, Word.zero(), age)) {
-                if (clean || age) {
-                    cardTableStart.writeByte(0, CardTable.scannedValue(clean, age));
+            if (CardTable.shouldScan(cardTableStart, Word.zero(), scanYoungOnly)) {
+                if (clean || scanYoungOnly) {
+                    cardTableStart.writeByte(0, CardTable.scannedValue(clean, scanYoungOnly));
                 }
                 InteriorObjRefWalker.walkObjectInline(s, refVisitor);
             }
@@ -248,7 +248,8 @@ final class UnalignedChunkRememberedSet {
     }
 
     @Uninterruptible(reason = CORE_GC_CODE)
-    private static void walkObjectArrayPrecise(Object obj, Pointer cardTableStart, UnsignedWord cardTableLimitIdx, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean, boolean age) {
+    private static void walkObjectArrayPrecise(Object obj, Pointer cardTableStart, UnsignedWord cardTableLimitIdx, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean,
+                    boolean scanYoungOnly) {
         int referenceSize = ObjectLayout.singleton().getReferenceSize();
 
         DynamicHub objHub = (DynamicHub) ObjectHeader.readDynamicHubFromObject(obj);
@@ -264,8 +265,8 @@ final class UnalignedChunkRememberedSet {
 
         UnsignedWord iOffset = elementStartOffset;
         while (iOffset.belowThan(elementEndOffset)) {
-            UnsignedWord dirtyCardStart = findFirstDirtyCard(cardTableStart, CardTable.memoryOffsetToIndex(iOffset), cardTableLimitIdx, age);
-            UnsignedWord dirtyCardEnd = findFirstCleanCard(cardTableStart, dirtyCardStart, cardTableLimitIdx, clean, age);
+            UnsignedWord dirtyCardStart = findFirstDirtyCard(cardTableStart, CardTable.memoryOffsetToIndex(iOffset), cardTableLimitIdx, scanYoungOnly);
+            UnsignedWord dirtyCardEnd = findFirstCleanCard(cardTableStart, dirtyCardStart, cardTableLimitIdx, clean, scanYoungOnly);
 
             if (dirtyCardStart.equal(dirtyCardEnd)) {
                 break;
@@ -289,14 +290,14 @@ final class UnalignedChunkRememberedSet {
 
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/gc/g1/g1RemSet.cpp#L562-L586")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static UnsignedWord findFirstDirtyCard(Pointer ctAdr, UnsignedWord startIdx, UnsignedWord endIdx, boolean age) {
+    private static UnsignedWord findFirstDirtyCard(Pointer ctAdr, UnsignedWord startIdx, UnsignedWord endIdx, boolean scanYoungOnly) {
         assert UnsignedUtils.isAMultiple(endIdx, Word.unsigned(wordSize()));
 
         UnsignedWord wordSize = Word.unsigned(wordSize());
         UnsignedWord curIdx = startIdx;
 
         while (!UnsignedUtils.isAMultiple(curIdx, wordSize)) {
-            if (CardTable.shouldScan(ctAdr, curIdx, age)) {
+            if (CardTable.shouldScan(ctAdr, curIdx, scanYoungOnly)) {
                 return curIdx;
             }
             curIdx = curIdx.add(1);
@@ -305,9 +306,9 @@ final class UnalignedChunkRememberedSet {
         for (/* empty */; curIdx.belowThan(endIdx); curIdx = curIdx.add(wordSize)) {
             UnsignedWord wordValue = ctAdr.readWord(curIdx);
 
-            if (!CardTable.canSkipWord(wordValue, age)) {
+            if (!CardTable.canSkipWord(wordValue, scanYoungOnly)) {
                 for (int i = 0; i < wordSize(); i++) {
-                    if (CardTable.shouldScan(ctAdr, curIdx, age)) {
+                    if (CardTable.shouldScan(ctAdr, curIdx, scanYoungOnly)) {
                         return curIdx;
                     }
                     curIdx = curIdx.add(1);
@@ -321,18 +322,18 @@ final class UnalignedChunkRememberedSet {
 
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/gc/g1/g1RemSet.cpp#L588-L612")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static UnsignedWord findFirstCleanCard(Pointer ctAdr, UnsignedWord startIdx, UnsignedWord endIdx, boolean clean, boolean age) {
+    private static UnsignedWord findFirstCleanCard(Pointer ctAdr, UnsignedWord startIdx, UnsignedWord endIdx, boolean clean, boolean scanYoungOnly) {
         assert UnsignedUtils.isAMultiple(endIdx, Word.unsigned(wordSize()));
 
         UnsignedWord wordSize = Word.unsigned(wordSize());
         UnsignedWord curIdx = startIdx;
 
         while (!UnsignedUtils.isAMultiple(curIdx, wordSize)) {
-            if (!CardTable.shouldScan(ctAdr, curIdx, age)) {
+            if (!CardTable.shouldScan(ctAdr, curIdx, scanYoungOnly)) {
                 return curIdx;
             }
-            if (clean || age) {
-                ctAdr.writeByte(curIdx, CardTable.scannedValue(clean, age));
+            if (clean || scanYoungOnly) {
+                ctAdr.writeByte(curIdx, CardTable.scannedValue(clean, scanYoungOnly));
             }
             curIdx = curIdx.add(1);
         }
@@ -343,18 +344,18 @@ final class UnalignedChunkRememberedSet {
                 /* Retained and dirty cards may occupy the same word during a full scan. */
                 UnsignedWord wordEnd = curIdx.add(wordSize);
                 while (curIdx.belowThan(wordEnd)) {
-                    if (!CardTable.shouldScan(ctAdr, curIdx, age)) {
+                    if (!CardTable.shouldScan(ctAdr, curIdx, scanYoungOnly)) {
                         return curIdx;
                     }
-                    if (clean || age) {
-                        ctAdr.writeByte(curIdx, CardTable.scannedValue(clean, age));
+                    if (clean || scanYoungOnly) {
+                        ctAdr.writeByte(curIdx, CardTable.scannedValue(clean, scanYoungOnly));
                     }
                     curIdx = curIdx.add(1);
                 }
                 continue;
             }
-            if (clean || age) {
-                ctAdr.writeWord(curIdx, CardTable.CLEAN_WORD.multiply(CardTable.scannedValue(clean, age)));
+            if (clean || scanYoungOnly) {
+                ctAdr.writeWord(curIdx, CardTable.CLEAN_WORD.multiply(CardTable.scannedValue(clean, scanYoungOnly)));
             }
             curIdx = curIdx.add(wordSize);
         }

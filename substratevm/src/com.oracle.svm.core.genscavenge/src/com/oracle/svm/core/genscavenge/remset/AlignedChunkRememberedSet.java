@@ -158,7 +158,7 @@ public final class AlignedChunkRememberedSet {
     @Uninterruptible(reason = CORE_GC_CODE)
     static void walkDirtyObjects(AlignedHeader chunk, UninterruptibleObjectVisitor visitor, boolean clean) {
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
-        boolean age = CardTable.ageImageCards(objectsStart, clean);
+        boolean scanYoungOnly = CardTable.isYoungImageHeapScan(objectsStart, clean);
         Pointer objectsLimit = HeapChunk.getTopPointer(chunk);
         UnsignedWord memorySize = objectsLimit.subtract(objectsStart);
 
@@ -174,9 +174,9 @@ public final class AlignedChunkRememberedSet {
         Pointer heapPos = CardTable.cardToHeapAddress(cardTableStart, cardPos, objectsStart);
 
         while (cardPos.aboveOrEqual(cardTableStart)) {
-            if (CardTable.shouldScan(cardPos, Word.zero(), age)) {
-                if (clean || age) {
-                    cardPos.writeByte(0, CardTable.scannedValue(clean, age));
+            if (CardTable.shouldScan(cardPos, Word.zero(), scanYoungOnly)) {
+                if (clean || scanYoungOnly) {
+                    cardPos.writeByte(0, CardTable.scannedValue(clean, scanYoungOnly));
                 }
                 dirtyHeapStart = heapPos;
             } else {
@@ -188,7 +188,7 @@ public final class AlignedChunkRememberedSet {
                 if (PointerUtils.isAMultiple(cardPos, Word.unsigned(wordSize()))) {
                     /* Fast forward through word-aligned continuous range of clean cards. */
                     cardPos = cardPos.subtract(wordSize());
-                    while (cardPos.aboveOrEqual(cardTableStart) && CardTable.canSkipWord(cardPos.readWord(0), age)) {
+                    while (cardPos.aboveOrEqual(cardTableStart) && CardTable.canSkipWord(cardPos.readWord(0), scanYoungOnly)) {
                         cardPos = cardPos.subtract(wordSize());
                     }
                     cardPos = cardPos.add(wordSize());

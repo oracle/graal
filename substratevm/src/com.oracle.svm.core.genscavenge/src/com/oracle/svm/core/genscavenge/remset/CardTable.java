@@ -128,30 +128,30 @@ public final class CardTable {
         return entry == DIRTY_ENTRY;
     }
 
-    /** Selects card aging only while scanning image roots during a young collection. */
+    /** Selects scans that skip image cards without references to the young generation. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static boolean ageImageCards(Pointer objectsStart, boolean clean) {
+    static boolean isYoungImageHeapScan(Pointer objectsStart, boolean clean) {
         return SerialGCOptions.ImageHeapYoungCards.getValue() && !clean &&
                         !GCImpl.getGCImpl().isCompleteCollection() && HeapImpl.getHeapImpl().isInImageHeap(objectsStart);
     }
 
     /** Full scans include retained cards; young scans revisit cards dirtied by stores or the GC. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static boolean shouldScan(Pointer table, UnsignedWord index, boolean age) {
+    static boolean shouldScan(Pointer table, UnsignedWord index, boolean scanYoungOnly) {
         int entry = readEntry(table, index);
-        return age ? entry == DIRTY_ENTRY : entry != CLEAN_ENTRY;
+        return scanYoungOnly ? entry == DIRTY_ENTRY : entry != CLEAN_ENTRY;
     }
 
     /** Preserves roots for full collections before the visitor remarks surviving young references. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static byte scannedValue(boolean clean, boolean age) {
-        return clean ? CLEAN_ENTRY : age ? OLD_ONLY_ENTRY : DIRTY_ENTRY;
+    static byte scannedValue(boolean clean, boolean scanYoungOnly) {
+        return clean ? CLEAN_ENTRY : scanYoungOnly ? OLD_ONLY_ENTRY : DIRTY_ENTRY;
     }
 
     /** Detects a word without candidate cards, including mixtures of clean and retained cards. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static boolean canSkipWord(UnsignedWord value, boolean age) {
-        if (age) {
+    static boolean canSkipWord(UnsignedWord value, boolean scanYoungOnly) {
+        if (scanYoungOnly) {
             /* A zero byte denotes a candidate. Borrowing between bytes preserves this test. */
             return value.subtract(CLEAN_WORD).and(value.not()).and(Word.unsigned(0x8080808080808080L)).equal(0);
         }
