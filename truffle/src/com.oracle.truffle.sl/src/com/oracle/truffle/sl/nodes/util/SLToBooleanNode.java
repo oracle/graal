@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,17 +70,20 @@ public abstract class SLToBooleanNode extends SLExpressionNode {
     @Specialization(guards = "lib.isBoolean(value)", limit = "3")
     public static boolean doInterop(Object value,
                     @Bind Node node,
+                    @Bind("$bytecodeIndex") int bytecodeIndex,
                     @CachedLibrary("value") InteropLibrary lib) {
         try {
             return lib.asBoolean(value);
         } catch (UnsupportedMessageException e) {
-            return doFallback(value, node);
+            return doFallback(value, node, bytecodeIndex);
         }
     }
 
     @Fallback
-    public static boolean doFallback(Object value, @Bind Node node) {
-        throw SLException.typeError(node, "toBoolean", value);
+    public static boolean doFallback(Object value,
+                    @Bind Node node,
+                    @Bind("$bytecodeIndex") int bytecodeIndex) {
+        throw SLException.typeError(node, bytecodeIndex, "toBoolean", value);
     }
 
 }

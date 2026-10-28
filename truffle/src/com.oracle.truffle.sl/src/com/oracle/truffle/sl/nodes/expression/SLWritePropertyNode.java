@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,12 @@
 package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.bytecode.OperationProxy;
+import com.oracle.truffle.api.bytecode.StoreBytecodeIndex;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -80,38 +82,43 @@ public abstract class SLWritePropertyNode extends SLExpressionNode {
     public static final int LIBRARY_LIMIT = 3;
 
     @Specialization(guards = "arrays.hasArrayElements(receiver)", limit = "LIBRARY_LIMIT")
+    @StoreBytecodeIndex
     public static Object writeArray(Object receiver, Object index, Object value,
                     @Bind Node node,
+                    @Bind("$bytecodeIndex") int bytecodeIndex,
                     @CachedLibrary("receiver") InteropLibrary arrays,
                     @CachedLibrary("index") InteropLibrary numbers) {
         try {
             arrays.writeArrayElement(receiver, numbers.asLong(index), value);
         } catch (UnsupportedMessageException | UnsupportedTypeException | InvalidArrayIndexException e) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLException.undefinedProperty(node, index);
+            throw SLException.undefinedProperty(node, bytecodeIndex, index);
         }
         return value;
     }
 
     @Specialization
-    public static Object writeSLObject(SLObject receiver, Object name, Object value,
+    public static Object writeSLObject(VirtualFrame frame, SLObject receiver, Object name, Object value,
                     @Bind Node node,
+                    @Bind("$bytecodeIndex") int bytecodeIndex,
                     @Cached DynamicObject.PutNode putNode,
                     @Cached SLToTruffleStringNode toTruffleStringNode) {
-        putNode.execute(receiver, toTruffleStringNode.execute(node, name), value);
+        putNode.execute(receiver, toTruffleStringNode.execute(frame, node, bytecodeIndex, name), value);
         return value;
     }
 
     @Specialization(guards = "!isSLObject(receiver)", limit = "LIBRARY_LIMIT")
+    @StoreBytecodeIndex
     public static Object writeObject(Object receiver, Object name, Object value,
                     @Bind Node node,
+                    @Bind("$bytecodeIndex") int bytecodeIndex,
                     @CachedLibrary("receiver") InteropLibrary objectLibrary,
                     @Cached SLToMemberNode asMember) {
         try {
             objectLibrary.writeMember(receiver, asMember.execute(node, name), value);
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
             // write was not successful. In SL we only have basic support for errors.
-            throw SLException.undefinedProperty(node, name);
+            throw SLException.undefinedProperty(node, bytecodeIndex, name);
         }
         return value;
     }

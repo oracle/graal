@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,12 +62,17 @@ public abstract class SLHelloEqualsWorldBuiltin extends SLBuiltinNode {
         return Truffle.getRuntime().iterateFrames((f) -> {
             SLRootNode root = (SLRootNode) ((RootCallTarget) f.getCallTarget()).getRootNode();
             Object[] names = root.getLocalNames(f);
+            if (names == null) {
+                return SLStrings.WORLD;
+            }
             for (int i = 0; i < names.length; i++) {
                 Object slotName = names[i];
                 if (slotName != null && SLStrings.HELLO.equalsUncached((TruffleString) slotName, SLLanguage.STRING_ENCODING)) {
                     Object[] values = root.getLocalValues(f);
-                    values[i] = SLStrings.WORLD;
-                    root.setLocalValues(f, values);
+                    if (values != null) {
+                        values[i] = SLStrings.WORLD;
+                        root.setLocalValues(f, values);
+                    }
                     break;
                 }
             }
