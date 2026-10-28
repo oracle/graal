@@ -1242,26 +1242,25 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     @GenerateCached(false)
     abstract static class ToGuestValuesNode extends Node {
 
-        abstract Object[] execute(Node node, Object[] args);
+        abstract Object[] execute(Node node, Object[] args, int offset);
 
-        @Specialization(guards = "args.length == 0")
-        @SuppressWarnings("unused")
-        static Object[] doZero(Object[] args) {
-            return args;
+        @Specialization(guards = "args.length == offset")
+        static Object[] doZero(Object[] args, int offset) {
+            return offset == 0 ? args : PolyglotObjectProxyHandler.EMPTY;
         }
 
         /*
          * Specialization for constant number of arguments. Uses a profile for each argument.
          */
         @ExplodeLoop
-        @Specialization(replaces = {"doZero"}, guards = "args.length == toGuestValues.length", limit = "1")
-        static Object[] doCached(Node node, Object[] args,
-                        @Cached("createArray(args.length)") ToGuestValueNode[] toGuestValues,
+        @Specialization(replaces = {"doZero"}, guards = "argumentCount(args, offset) == toGuestValues.length", limit = "1")
+        static Object[] doCached(Node node, Object[] args, int offset,
+                        @Cached("createArray(argumentCount(args, offset))") ToGuestValueNode[] toGuestValues,
                         @Shared @Cached InlinedBranchProfile needsCopyProfile) {
-            boolean needsCopy = needsCopyProfile.wasEntered(node);
+            boolean needsCopy = offset != 0 || needsCopyProfile.wasEntered(node);
             Object[] newArgs = needsCopy ? new Object[toGuestValues.length] : args;
             for (int i = 0; i < toGuestValues.length; i++) {
-                Object arg = args[i];
+                Object arg = args[offset + i];
                 Object newArg = toGuestValues[i].execute(toGuestValues[i], arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
@@ -1269,7 +1268,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     needsCopyProfile.enter(node);
                     needsCopy = true;
                     newArgs = new Object[toGuestValues.length];
-                    System.arraycopy(args, 0, newArgs, 0, args.length);
+                    System.arraycopy(args, offset, newArgs, 0, toGuestValues.length);
                     newArgs[i] = newArg;
                 }
             }
@@ -1277,29 +1276,34 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
 
         /*
-         * Specialization for constant number of arguments. Uses a profile for each argument.
+         * Specialization for a varying number of arguments with a shared conversion profile.
          */
         @Specialization(replaces = {"doZero", "doCached"})
-        static Object[] doGeneric(Node node, Object[] args,
+        static Object[] doGeneric(Node node, Object[] args, int offset,
                         @Shared @Cached ToGuestValueNode toGuest,
                         @Shared @Cached InlinedBranchProfile needsCopyProfile) {
 
-            boolean needsCopy = needsCopyProfile.wasEntered(node);
-            Object[] newArgs = needsCopy ? new Object[args.length] : args;
-            for (int i = 0; i < args.length; i++) {
-                Object arg = args[i];
+            int length = args.length - offset;
+            boolean needsCopy = offset != 0 || needsCopyProfile.wasEntered(node);
+            Object[] newArgs = needsCopy ? new Object[length] : args;
+            for (int i = 0; i < length; i++) {
+                Object arg = args[offset + i];
                 Object newArg = toGuest.execute(node, arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {
                     needsCopyProfile.enter(node);
                     needsCopy = true;
-                    newArgs = new Object[args.length];
-                    System.arraycopy(args, 0, newArgs, 0, args.length);
+                    newArgs = new Object[length];
+                    System.arraycopy(args, offset, newArgs, 0, length);
                     newArgs[i] = newArg;
                 }
             }
             return newArgs;
+        }
+
+        static int argumentCount(Object[] args, int offset) {
+            return args.length - offset;
         }
 
         @NeverDefault

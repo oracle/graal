@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle.api;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -119,6 +120,7 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     private static final int PRODUCTION_TEAR_DOWN_TIMEOUT = 10_000;
 
     private KnownMethods hostedCallMethods;
+    @Platforms(HOSTED_ONLY.class) private Method[] exactGeneratedProxyEntries = new Method[0];
     private volatile BackgroundCompileQueue compileQueue;
     private volatile boolean initialized;
     private volatile Boolean profilingEnabled;
@@ -357,6 +359,24 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     @Platforms(HOSTED_ONLY.class)
     public void resetNativeImageState() {
         clearState();
+        exactGeneratedProxyEntries = new Method[0];
+    }
+
+    @Override
+    @Platforms(HOSTED_ONLY.class)
+    protected boolean supportsExactGeneratedProxyCall(Method method) {
+        return TypedEntrySupport.supportsExactGeneratedProxyCall(method);
+    }
+
+    @Override
+    @Platforms(HOSTED_ONLY.class)
+    protected void registerExactGeneratedProxyEntries(Method[] entries) {
+        exactGeneratedProxyEntries = entries;
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    public Method[] getExactGeneratedProxyEntries() {
+        return exactGeneratedProxyEntries;
     }
 
     @Override
