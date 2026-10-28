@@ -271,8 +271,12 @@ import sun.security.x509.OIDMap;
 /// construction both consume eligibility produced by the same catalog-registration chokepoint.
 /// Run-time configured-list construction passes each {@code ProviderConfig} argument to
 /// {@link Provider#configure} and retains the returned instance, preserving independent same-class
-/// entries. A successful factory selection traces both its service construction and the selected
-/// JDK-managed provider construction, without relying on an earlier provider-list observation.
+/// entries. Provider construction metadata comes from the reflective construction operations
+/// performed under tracing. A later lookup or factory selection of a cached provider does not
+/// repeat its construction, and construction completed before tracing began is not reconstructed.
+/// Service tracing records the actual implementation and constructor operations, including cached
+/// constructors and candidates rejected after construction, as required by
+/// §FS-002-security-providers.5.1.
 ///
 /// ### design.6: Service Descriptors
 ///
