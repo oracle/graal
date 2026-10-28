@@ -2391,6 +2391,10 @@ final class BuilderElement extends AbstractElement {
 
                 b.startIf().string("cleanupCount > 0").end().startBlock();
                 b.startIf().string(operationStack.read(operation, operationFields.producedValue)).end().startBlock();
+                if (model.usesBoxingElimination()) {
+                    // store.stackvalue expects object. prevent return-type BE of the producing instruction.
+                    b.tree(operationStack.write(operation, operationFields.childBci, UNINIT));
+                }
                 buildEmitInstruction(b, null, model.storeStackValueInstruction, BytecodeRootNodeElement.safeCastShort("cleanupCount"));
                 b.statement("cleanupCount--");
                 b.end();
@@ -8497,10 +8501,6 @@ final class BuilderElement extends AbstractElement {
         }
 
         CodeTree write(OperationModel operation, OperationField field, String value) {
-            return write(operation, "operation", field, CodeTreeBuilder.singleString(value), false);
-        }
-
-        CodeTree write(Collection<OperationModel> operation, OperationField field, String value) {
             return write(operation, "operation", field, CodeTreeBuilder.singleString(value), false);
         }
 
