@@ -1,0 +1,163 @@
+grund_config_version = 2
+project_name = "native-image"
+
+[schema]
+marker = "§"
+shorthand = "accepted" # short §AR-002 labels in system-overview diagrams
+id_format = "{kind}-{number}-{slug}"
+slug_pattern = "[a-z0-9][a-z0-9-]*"
+number_pattern = "\\d+"
+section_separator = "."
+heading_depth = "must"
+
+[schema.sources]
+languages = ["v1_markdown", "v1_c_family", "v1_plain", "v1_shell"]
+declarations = "any-comment"
+exclude = ["build/", ".gradle/", ".git/", ".idea/", ".agents/", "mxbuild/", "svmbuild/"]
+respect_gitignore = false
+
+[schema.sources.extensions]
+md = "v1_markdown"
+java = "v1_c_family"
+gradle = "v1_plain"
+sh = "v1_shell"
+
+[schema.sources.definitions.v1_markdown]
+class = "document"
+comment_prefixes = ["//", "#", "*", "/*"]
+doc_comments = "none"
+docstrings = "off"
+
+[schema.sources.definitions.v1_c_family]
+class = "source"
+comment_prefixes = ["//", "#", "*", "/*"]
+doc_comments = "c-family"
+docstrings = "off"
+
+[schema.sources.definitions.v1_plain]
+class = "source"
+comment_prefixes = ["//", "#", "*", "/*"]
+doc_comments = "none"
+docstrings = "off"
+
+[schema.sources.definitions.v1_shell]
+class = "source"
+comment_prefixes = ["//", "#", "*", "/*"]
+doc_comments = "shell"
+docstrings = "off"
+
+[schema.notes.lines]
+must = 3
+may = 1
+
+[schema.notes.columns]
+must = 100
+
+[schema.notes.text]
+must = true
+
+[schema.kinds.FS]
+folders = ["docs/functional-spec"]
+index = false
+
+[schema.kinds.FS.fields.terminology]
+title = "Terminology"
+presence = "must"
+position = "first"
+
+[schema.kinds.FS.fields.requirements]
+title = "Requirements"
+presence = "must"
+position = "last"
+
+[schema.kinds.FD]
+folders = ["docs/functional-spec/decisions"]
+
+[schema.kinds.AR]
+folders = ["src", "docs/architecture"]
+index = false
+
+# Every AR places itself in the system first, then states its terms, target, design and obligations.
+[schema.kinds.AR.fields.system-overview]
+title = "System Overview"
+presence = "must"
+position = "first"
+
+[schema.kinds.AR.fields.terminology]
+title = "Terminology"
+presence = "must"
+after = "system-overview"
+
+[schema.kinds.AR.fields.north-star]
+title = "North Star"
+presence = "warn"
+after = "terminology"
+
+[schema.kinds.AR.fields.design]
+title = "Design"
+presence = "must"
+after = "north-star"
+
+[schema.kinds.AR.fields.requirements]
+title = "Requirements"
+presence = "must"
+position = "last"
+
+# Build phases: the builder's subsystems, chained exit -> entry.
+[schema.kinds.PH]
+folders = ["docs/architecture/phases"]
+index = false
+closed = "must"
+
+[schema.kinds.PH.fields.system-overview]
+title = "System Overview"
+presence = "must"
+position = "first"
+
+[schema.kinds.PH.fields.entry]
+title = "Inputs and Entry State"
+presence = "must"
+after = "system-overview"
+
+[schema.kinds.PH.fields.exit]
+title = "Results and Completion States"
+presence = "must"
+after = "entry"
+
+[schema.kinds.PH.fields.components]
+title = "Main Classes"
+presence = "must"
+after = "exit"
+
+[schema.kinds.PH.fields.flow]
+title = "Control Flow"
+presence = "must"
+after = "components"
+
+[schema.kinds.PH.fields.data]
+title = "Key Data Structures"
+presence = "must"
+position = "last"
+
+[schema.kinds.code]
+
+[presentation]
+trigger = "$$"
+rules = "root"
+
+[presentation.kinds.FS]
+title = "Native Image behavior"
+
+[presentation.kinds.FD]
+title = "Native Image functional decisions"
+
+[presentation.kinds.AR]
+title = "Native Image architecture"
+
+[presentation.kinds.PH]
+title = "Native Image build phases"
+
+[presentation.fmt]
+anchors = "github"
+links = "index"
+exclude = []

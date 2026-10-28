@@ -18,8 +18,12 @@ Instructions for building GraalVM from source are in [`vm/README.md`](vm/README.
 
 Native Image security-provider behavior and its implementation are described by:
 
-* [§FS-002-security-providers](substratevm/docs/functional-spec/security-providers.md#fs-002-security-providers-jca-security-provider-registration-and-run-time-access)
-* [§AR-004-security-providers](substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java)
+* [§native-image/FS-002-security-providers](substratevm/docs/functional-spec/security-providers.md#fs-002-security-providers-jca-security-provider-registration-and-run-time-access)
+* [§native-image/AR-004-security-providers](substratevm/src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java)
+
+The repository's [Grund configuration](substratevm/grund.toml) validates these specifications and their citations.
+Run `grund check` and `grund fmt --check` from the _substratevm/_ directory.
+These commands work without an Enterprise Edition checkout or a parent workspace configuration.
 
 ## Get Support
 
