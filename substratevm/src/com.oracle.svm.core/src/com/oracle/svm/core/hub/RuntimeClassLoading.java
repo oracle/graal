@@ -39,6 +39,9 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.espresso.classfile.Constants;
+import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.shared.option.HostedOptionKey;
@@ -148,9 +151,25 @@ public class RuntimeClassLoading {
         return Options.RuntimeClassLoading.getValue();
     }
 
-    /** Fails if the current thread must not load or define a new class. */
-    public static void guaranteeClassLoadingAllowed() {
-        VMError.guarantee(!(Thread.currentThread() instanceof NoClassLoadingThread), "Class loading is prohibited in the current thread");
+    /**
+     * Fails if the current thread must not load or define a new class.
+     *
+     * @param typeOrNull the requested type, or null for an unnamed class definition
+     */
+    public static void guaranteeClassLoadingAllowed(Symbol<Type> typeOrNull) {
+        if (Thread.currentThread() instanceof NoClassLoadingThread) {
+            Log log = Log.log().string("Requested class: ");
+            if (typeOrNull == null) {
+                log.string("<unspecified>");
+            } else {
+                // Print the descriptor bytes without allocating a decoded name.
+                for (int i = 0; i < typeOrNull.length(); i++) {
+                    log.character((char) typeOrNull.unsignedByteAt(i));
+                }
+            }
+            log.newline();
+            throw VMError.shouldNotReachHere("Class loading is prohibited in the current thread");
+        }
     }
 
     public static Class<?> defineClass(ClassLoader loader, String expectedName, byte[] b, int off, int len, ClassDefinitionInfo info) {
