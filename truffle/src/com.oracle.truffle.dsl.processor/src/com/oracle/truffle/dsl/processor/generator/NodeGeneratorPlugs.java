@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.bytecode.parser.BytecodeDSLParser;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ChildExecutionResult;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
@@ -58,6 +59,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
 import com.oracle.truffle.dsl.processor.model.NodeChildData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
@@ -113,6 +115,14 @@ public interface NodeGeneratorPlugs {
                     throw new AssertionError("Expression binds the frame, but the frame is unavailable. This should have been validated already.");
                 }
                 yield CodeTreeBuilder.singleString(TemplateMethod.FRAME_NAME);
+            }
+            case BytecodeDSLParser.SYMBOL_BYTECODE_NODE -> {
+                LocalVariable value = frameState.get(ExecutableTypeData.BYTECODE_NODE_PARAMETER_NAME);
+                yield value == null ? null : value.createReference();
+            }
+            case BytecodeDSLParser.SYMBOL_BYTECODE_INDEX -> {
+                LocalVariable value = frameState.get(ExecutableTypeData.BYTECODE_INDEX_PARAMETER_NAME);
+                yield value == null ? CodeTreeBuilder.singleString("-1") : value.createReference();
             }
             default -> null;
         };

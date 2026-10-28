@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,10 +59,16 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public class ExecutableTypeData extends MessageContainer implements Comparable<ExecutableTypeData> {
 
+    public static final String BYTECODE_NODE_PARAMETER_NAME = "$bytecodeNodeValue";
+    public static final String BYTECODE_INDEX_PARAMETER_NAME = "$bytecodeIndexValue";
+
     private final NodeData node;
     private final ExecutableElement method;
     private final TypeMirror returnType;
     private final TypeMirror frameParameter;
+    private final int metadataParameterCount;
+    private final int bytecodeNodeParameterIndex;
+    private final int bytecodeIndexParameterIndex;
     private final List<TypeMirror> evaluatedParameters;
     private ExecutableTypeData delegatedTo;
     private final List<ExecutableTypeData> delegatedFrom = new ArrayList<>();
@@ -76,6 +82,10 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
         this.node = node;
         this.returnType = returnType;
         this.frameParameter = frameParameter;
+        int parameterIndex = frameParameter != null ? 1 : 0;
+        this.bytecodeNodeParameterIndex = node.isBindBytecodeNode() ? parameterIndex++ : -1;
+        this.bytecodeIndexParameterIndex = node.isBindBytecodeIndex() ? parameterIndex++ : -1;
+        this.metadataParameterCount = parameterIndex;
         this.evaluatedParameters = evaluatedParameters;
         this.uniqueName = uniqueName;
         this.method = null;
@@ -105,6 +115,10 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
                 }
             }
         }
+
+        this.bytecodeNodeParameterIndex = node.isBindBytecodeNode() && parameterIndex < parameters.size() ? parameterIndex++ : -1;
+        this.bytecodeIndexParameterIndex = node.isBindBytecodeIndex() && parameterIndex < parameters.size() ? parameterIndex++ : -1;
+        this.metadataParameterCount = parameterIndex;
 
         int numberParameters = Math.max(parameters.size() - parameterIndex, signatureSize);
         for (int i = 0; i < numberParameters; i++) {
@@ -191,7 +205,27 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
     }
 
     public int getParameterIndex(int signatureIndex) {
-        return frameParameter != null ? signatureIndex + 1 : signatureIndex;
+        return getMetadataParameterCount() + signatureIndex;
+    }
+
+    public int getMetadataParameterCount() {
+        return metadataParameterCount;
+    }
+
+    public int getBytecodeNodeParameterIndex() {
+        return bytecodeNodeParameterIndex;
+    }
+
+    public int getBytecodeIndexParameterIndex() {
+        return bytecodeIndexParameterIndex;
+    }
+
+    public TypeMirror getBytecodeNodeParameter() {
+        return node.isBindBytecodeNode() ? ProcessorContext.types().BytecodeNode : null;
+    }
+
+    public TypeMirror getBytecodeIndexParameter() {
+        return node.isBindBytecodeIndex() ? ProcessorContext.getInstance().getType(int.class) : null;
     }
 
     public TypeMirror getFrameParameter() {

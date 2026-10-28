@@ -286,22 +286,14 @@ public final class BytecodeLocation {
     @TruffleBoundary
     public static BytecodeLocation get(FrameInstance frameInstance) {
         /*
-         * We use two strategies to communicate the current bci.
-         *
-         * For cached interpreters, each operation node corresponds to a unique bci. We can walk the
-         * parent chain of the call node to find the operation node, and then use it to compute a
-         * bci. This incurs no overhead during regular execution.
-         *
-         * For uncached interpreters, we use uncached nodes, so the call node (if any) is not
-         * adopted by an operation node. Instead, the uncached interpreter stores the current bci
-         * into the frame before any operation that might call another node. This incurs a bit of
-         * overhead during regular execution (but just for the uncached interpreter).
+         * Prefer the frame's explicit BCI; otherwise use the interpreter's configured lookup
+         * strategy. Return null if no bytecode node or BCI can be resolved.
          */
         BytecodeNode foundBytecodeNode = BytecodeNode.get(frameInstance);
         if (foundBytecodeNode == null) {
             return null;
         }
-        int bci = foundBytecodeNode.findBytecodeIndex(frameInstance);
+        int bci = foundBytecodeNode.resolveBytecodeIndex(frameInstance);
         if (bci == -1) {
             return null;
         }

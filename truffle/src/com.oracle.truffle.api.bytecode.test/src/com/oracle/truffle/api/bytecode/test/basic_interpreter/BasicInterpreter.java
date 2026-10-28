@@ -54,6 +54,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeIndexMode;
 import com.oracle.truffle.api.bytecode.BytecodeFrame;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -173,7 +174,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 defaultUncachedThreshold = "defaultUncachedThreshold", //
                                 enableSpecializationIntrospection = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}, //
-                                storeBytecodeIndexInFrame = true, //
+                                bytecodeIndexMode = BytecodeIndexMode.FRAME, //
                                 enableTagInstrumentation = true, //
                                 variadicStackLimit = "4")),
                 // A typical "production" configuration with all of the bells and whistles.
@@ -215,6 +216,8 @@ import com.oracle.truffle.api.source.SourceSection;
 })
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE, javadoc = "ScOr returns the first truthy operand value.")
+// Variants without a bci frame slot warn about operations that request explicit bci storage.
+@SuppressWarnings("truffle-interpreted-performance")
 public abstract class BasicInterpreter extends DebugBytecodeRootNode implements BytecodeRootNode {
 
     static int defaultUncachedThreshold = 16;

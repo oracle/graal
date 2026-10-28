@@ -66,6 +66,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.BytecodeIndexMode;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
@@ -1263,7 +1264,8 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), returnType, "transition");
         ex.addParameter(new CodeVariableElement(this.asType(), "bc"));
         ex.addParameter(new CodeVariableElement(type(long.class), "state"));
-        if (parent.model.needsCachedTagsTransition() || parent.model.traceTransition != null) {
+        boolean translateManualBci = parent.model.bytecodeIndexMode == BytecodeIndexMode.MANUAL && parent.model.isBytecodeUpdatable();
+        if (parent.model.needsCachedTagsTransition() || parent.model.traceTransition != null || translateManualBci) {
             ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
         }
         if (parent.model.hasYieldOperation()) {
@@ -1330,6 +1332,14 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             }
             b.end(2);
             b.startAssign("newState").string(BytecodeRootNodeElement.encodeNewBci("newBci", "state")).end();
+            if (translateManualBci) {
+                b.lineComment("Translate the manually stored index independently of the execution index.");
+                b.startIf().string("frame.isLong(BCI_INDEX)").end().startBlock();
+                b.declaration(type(int.class), "storedBci", "(int) frame.getLong(BCI_INDEX)");
+                b.startIf().string("storedBci >= 0").end().startBlock();
+                parent.emitWriteBytecodeIndexToFrame(b, "frame", "translateBytecodeIndex(bc, storedBci)");
+                b.end(2);
+            }
             if (parent.model.overridesBytecodeDebugListenerMethod("onBytecodeStackTransition")) {
                 b.startStatement();
                 b.startCall("getRoot().onBytecodeStackTransition");

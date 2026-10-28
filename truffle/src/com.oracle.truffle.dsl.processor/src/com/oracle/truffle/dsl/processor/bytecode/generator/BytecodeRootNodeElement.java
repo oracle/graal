@@ -675,7 +675,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, nodeConsts, plugs);
 
         boolean forceFrame = false;
-        if (isStoreBciEnabled(model, InterpreterTier.CACHED)) {
+        if (isStoreBciEnabled(model, InterpreterTier.CACHED) || model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.MANUAL) {
             for (SpecializationData s : instr.nodeData.getReachableSpecializations()) {
                 if (isStoreBciBeforeSpecialization(model, InterpreterTier.CACHED, instr, s)) {
                     forceFrame = true;
@@ -935,15 +935,18 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         if (model.captureFramesForTrace) {
             b.lineComment("GenerateBytecode#captureFramesForTrace is true.");
             b.statement("return true");
-        } else if (model.storeBciInFrame) {
-            b.lineComment("GenerateBytecode#storeBytecodeIndexInFrame is true, so the frame is needed for location computations.");
+        } else if (model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.FRAME) {
+            b.lineComment("BytecodeIndexMode.FRAME needs the frame for location computations.");
             b.statement("return true");
-        } else if (model.enableUncachedInterpreter) {
+        } else if (model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.MANUAL) {
+            b.lineComment("BytecodeIndexMode.MANUAL needs the frame for manual location computations.");
+            b.statement("return true");
+        } else if (model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.CACHED_NODE && model.enableUncachedInterpreter) {
             b.lineComment("The uncached interpreter (which is never compiled) needs the frame for location computations.");
             b.lineComment("This may capture the frame in more situations than strictly necessary, but doing so in the interpreter is inexpensive.");
             b.statement("return !compiled");
         } else {
-            b.lineComment("GenerateBytecode#captureFramesForTrace is not true, and the interpreter does not need the frame for location lookups.");
+            b.lineComment("Frame capture is not needed for bytecode index lookup or stack traces.");
             b.statement("return false");
         }
         return ex;
@@ -954,23 +957,25 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         mergeSuppressWarnings(ex, "hiding");
         CodeTreeBuilder b = ex.createBuilder();
         b.startAssert().string("!(node instanceof ").type(types.BytecodeRootNode).string("): ").doubleQuote("A BytecodeRootNode should not be used as a call location.").end();
-        if (model.storeBciInFrame) {
-            b.startIf().string("node == null").end().startBlock();
-            b.statement("return -1");
-            b.end();
-            /*- TODO: GR-62198
-            b.startAssert();
-            b.startStaticCall(types.BytecodeNode, "get").string("node").end().instanceOf(abstractBytecodeNode.asType()).string(" : ").doubleQuote("invalid bytecode node passed");
-            b.end();
-             */
-            b.startIf().string("frame.getTag(BCI_INDEX) == ").staticReference(types.FrameSlotKind, "Illegal").string(".tag").end().startBlock();
-            b.lineComment("The bci index might be illegal if it was never set due to optimizations.");
+        if (model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.FRAME || model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.MANUAL) {
+            if (model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.FRAME) {
+                b.startIf().string("node == null").end().startBlock();
+                b.statement("return -1");
+                b.end();
+                /*- TODO: GR-62198
+                b.startAssert();
+                b.startStaticCall(types.BytecodeNode, "get").string("node").end().instanceOf(abstractBytecodeNode.asType()).string(" : ").doubleQuote("invalid bytecode node passed");
+                b.end();
+                 */
+            }
+            b.startIf().string("frame == null || frame.getTag(BCI_INDEX) == ").staticReference(types.FrameSlotKind, "Illegal").string(".tag").end().startBlock();
+            b.lineComment("The bci index might be illegal if it was never set due to optimizations or manual updates.");
             b.statement("return -1");
             b.end();
             b.startReturn();
             emitReadBytecodeIndexFromFrame(b, "frame", true);
             b.end();
-        } else {
+        } else if (model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.CACHED_NODE) {
             b.declaration(abstractBytecodeNode.asType(), "bytecode", "null");
             b.declaration(types.Node, "prev", "node");
             b.declaration(types.Node, "current", "node");
@@ -986,6 +991,8 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             b.statement("return -1");
             b.end();
             b.statement("return bytecode.findBytecodeIndex(frame, prev)");
+        } else {
+            b.statement("return -1");
         }
         return ex;
     }
@@ -2857,6 +2864,13 @@ public final class BytecodeRootNodeElement extends AbstractElement {
                     }
                     b.startCall("findLocation").tree(castBytecodeIndexToInt(bci)).end();
                 }
+                case BYTECODE_INDEX -> {
+                    if (bci == null) {
+                        b.string("-1");
+                    } else {
+                        b.tree(castBytecodeIndexToInt(bci));
+                    }
+                }
                 case LOCAL_VARIABLE -> {
                     b.startNew("LocalVariableImpl");
                     b.tree(localBytecodeNode);
@@ -2877,14 +2891,18 @@ public final class BytecodeRootNodeElement extends AbstractElement {
      * specializations require it or some other condition requires it.
      */
     public static boolean isStoreBciBeforeExecute(BytecodeDSLModel model, InterpreterTier tier, InstructionModel instr) {
-        if (!isStoreBciEnabled(model, tier)) {
+        // Store before execution only when automatic storage is enabled for this tier,
+        // or in manual mode for tag callbacks and custom operations that request storage.
+        boolean automatic = isStoreBciEnabled(model, tier);
+        if (!automatic && model.bytecodeIndexMode != BytecodeDSLModel.BytecodeIndexMode.MANUAL) {
             return false;
         }
         return switch (instr.kind) {
-            case RETURN, YIELD, TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, TAG_YIELD_NULL -> true;
+            case RETURN, YIELD -> automatic;
+            case TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, TAG_YIELD_NULL -> true;
             case CUSTOM -> {
-                if (instr.operation.kind == OperationKind.CUSTOM_YIELD || instr.operation.kind == OperationKind.CUSTOM_RETURN) {
-                    // custom yield/return always need to set the bci
+                if (automatic && (instr.operation.kind == OperationKind.CUSTOM_YIELD || instr.operation.kind == OperationKind.CUSTOM_RETURN)) {
+                    // custom yield/return always need to set the bci in automatic modes
                     yield true;
                 }
                 CustomOperationModel custom = instr.operation.customModel;
@@ -2916,7 +2934,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
      * Returns <code>true</code> if we should set the bytecode index just before the specialization.
      */
     public static boolean isStoreBciBeforeSpecialization(BytecodeDSLModel model, InterpreterTier tier, InstructionModel instr, SpecializationData specialization) {
-        if (!isStoreBciEnabled(model, tier)) {
+        if (!isStoreBciEnabled(model, tier) && model.bytecodeIndexMode != BytecodeDSLModel.BytecodeIndexMode.MANUAL) {
             return false;
         }
         switch (instr.kind) {
@@ -2943,7 +2961,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
      * <code>false</code>.
      */
     public static boolean isStoreBciEnabled(BytecodeDSLModel model, InterpreterTier tier) {
-        return model.storeBciInFrame || tier == InterpreterTier.UNCACHED;
+        return model.storesBytecodeIndex(tier.isUncached());
     }
 
     /**
