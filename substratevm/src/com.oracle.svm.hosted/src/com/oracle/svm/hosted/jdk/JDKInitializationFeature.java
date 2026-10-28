@@ -91,6 +91,10 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         if (FutureDefaultsOptions.resourceBundlesInitializedAtRunTime()) {
             rci.initializeAtRunTime("java.text.BreakIterator", FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);
             rci.initializeAtRunTime("java.text.BreakIterator$BreakIteratorCache", FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);
+
+            /* PBTI will find its static fields when resource bundles are initialized at run-time */
+            rci.initializeAtRunTime("com.oracle.svm.core.jdk.localization.substitutions.Util_java_text_BreakIterator",
+                            FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);
         }
         rci.initializeAtBuildTime("java.time", JDK_CLASS_REASON);
         // see HijrahChronologyFeature for more details

@@ -18,6 +18,8 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-77491) Bundle format version is now 2.0, with explicit path root kinds, build argument groups that retain their source platform, and persistent markers for unavailable inputs.
   Older bundle formats remain readable.
 * (GR-79366) Add auxiliary images: a mechanism for persisting runtime-allocated objects and runtime-compiled code, and loading them in later executions of the same native image.
+* (GR-51046) Introduced `--future-defaults=predictable-build-time-initialization`, which verifies that the classes of all objects stored in or reachable from static fields of build-time-initialized classes are also initialized at build time, even if those fields are not reachable. It also forbids registration of `FieldValueTransformer`s during analysis or in a reachability handler.
+* (GR-51046) Added `BeforeAnalysis#registerBeforeFieldValueAccessHandler`, which registers a handler that allows field value transformer registration on demand, before field values are accessed.
 
 ## GraalVM 25.4 (Internal Version 25.4.4)
 * (GR-75824) When native executables are built with `-H:+StrictRuntimeJavaOptions`, runtime assertion options (for example, `-ea`, `-da`, `-esa`, and `-dsa`) are supported and configure the assertion status of runtime-loaded classes and runtime-initialized image classes. They do not affect build-time-initialized classes whose assertion status is *only* configured by `native-image -ea ...`.

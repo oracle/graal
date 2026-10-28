@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.HeapObjectReplacer;
 
 import jdk.graal.compiler.debug.Assertions;
 
@@ -159,7 +160,16 @@ class GCCauseFeature implements InternalFeature {
              * In traditional builds we lazily register GCCauses as they become visible to the
              * native-image generator.
              */
-            access.registerObjectReplacer(ImageSingletons.lookup(GCCauseSupport.class)::collectGCCauses);
+            GCCauseSupport support = ImageSingletons.lookup(GCCauseSupport.class);
+            access.registerObjectReplacer(new HeapObjectReplacer() {
+                @Override
+                public Object replaceObject(Object source, boolean reachable) {
+                    if (reachable) {
+                        support.collectGCCauses(source);
+                    }
+                    return source;
+                }
+            });
         } else {
             /*
              * For layered builds we eagerly register all GCCauses in the initial layer. In all

@@ -130,7 +130,8 @@ public class VerifyJavaTypeGetNameUsage extends VerifyPhase<CoreProviders> {
                     "com.oracle.svm.truffle.tck.AbstractMethodListParser$SignaturePredicate",
                     "com.oracle.svm.util.JVMCIReflectionUtil",
                     "com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl",
-                    "com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl$CremaResolvedNativeJavaMethod");
+                    "com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl$CremaResolvedNativeJavaMethod",
+                    "com.oracle.svm.hosted.classinitialization.pbti.PredictableBuildTimeInitializationType");
 
     protected VerifyJavaTypeGetNameUsage(Set<String> additionalExcludes) {
         this.exclude = Stream.concat(DEFAULT_EXCLUDE.stream(), additionalExcludes.stream()).collect(Collectors.toUnmodifiableSet());

@@ -153,6 +153,11 @@ public final class GuestFeatureHandler extends FeatureHandlerBase {
     }
 
     @BuilderInvoked
+    public static void invokeBeforeFieldValueAccessHandler(BiConsumer<Feature.BeforeFieldValueAccess, Class<?>> callback, Feature.BeforeFieldValueAccess beforeFieldValueAccess, Class<?> type) {
+        callback.accept(beforeFieldValueAccess, type);
+    }
+
+    @BuilderInvoked
     public void afterAnalysisForEachFeature(Feature.QueryReachabilityAccess queryReachabilityAccess) {
         GuestFeatureImpl.AfterAnalysisAccessImpl access = new GuestFeatureImpl.AfterAnalysisAccessImpl(queryReachabilityAccess);
         forEachFeature(feature -> feature.afterAnalysis(access));

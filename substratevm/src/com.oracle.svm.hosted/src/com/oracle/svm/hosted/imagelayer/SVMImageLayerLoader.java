@@ -573,6 +573,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
         return id;
     }
 
+    @Override
+    public boolean hasHostedTypeInBaseLayer(ResolvedJavaType type) {
+        String typeDescriptor = imageLayerSnapshotUtil.getTypeDescriptor(type);
+        return typeDescriptorToBaseLayerId.containsKey(typeDescriptor);
+    }
+
     private static int getBaseLayerTypeId(AnalysisType type) {
         VMError.guarantee(type.isInSharedLayer());
         if (type.getWrapped() instanceof BaseLayerType baseLayerType) {

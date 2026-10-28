@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -102,7 +102,11 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
         assert methods instanceof ArrayList<MethodEntry> && compiledMethods instanceof ArrayList<CompiledMethodEntry> &&
                         files instanceof ArrayList<FileEntry> && indexedFiles == null && dirs instanceof ArrayList<DirEntry> &&
                         indexedDirs == null : "ClassEntry should only be sealed once";
-        methods = List.copyOf(methods);
+        methods = methods.stream()
+                        .sorted(Comparator.comparing(MethodEntry::isDeopt)
+                                        .thenComparing(MethodEntry::getMethodName)
+                                        .thenComparing(MethodEntry::getSymbolName))
+                        .toList();
         methods.forEach(MethodEntry::seal);
 
         compiledMethods = compiledMethods.stream().sorted(Comparator.comparing(CompiledMethodEntry::primary)).toList();

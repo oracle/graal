@@ -84,15 +84,11 @@ public final class CustomTypeFieldHandler {
                             " | custom type: " + customType;
             assert declaredType.isAssignableFrom(aCustomType) : "Custom type must be a subtype of the declared type: field: " + field + " | declared type: " + declaredType +
                             " | custom type: " + customType;
-            assert aCustomType.isPrimitive() || isConcreteType(aCustomType) : "Custom type cannot be abstract: field: " + field + " | custom type " + aCustomType;
+            assert aCustomType.isPrimitive() || aCustomType.isConcreteType() : "Custom type cannot be abstract: field: " + field + " | custom type " + aCustomType;
 
             customTypes.add(aCustomType);
         }
         return customTypes;
-    }
-
-    public static boolean isConcreteType(AnalysisType type) {
-        return type.isArray() || (type.isInstanceClass() && !type.isAbstract());
     }
 
     public void cleanupAfterAnalysis() {

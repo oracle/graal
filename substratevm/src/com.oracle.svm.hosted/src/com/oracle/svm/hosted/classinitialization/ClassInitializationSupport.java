@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -215,7 +215,8 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
             ReportUtils.report("class initialization configuration", SubstrateOptions.reportsPath(), "class_initialization_configuration", "csv", writer -> {
                 writer.println("Class or Package Name, Initialization Kind, Reasons");
                 for (ClassOrPackageConfig config : allConfigs) {
-                    writer.append(config.getName()).append(", ").append(config.getKind().toString()).append(", ").append(String.join(" and ", config.getReasons())).append(System.lineSeparator());
+                    writer.append(config.getName()).append(", ").append(config.getKind().toString()).append(", ")
+                                    .append(String.join(" and ", config.getReasons())).append(System.lineSeparator());
                 }
             });
         }
@@ -258,7 +259,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      * Returns the computed init kind for {@code clazz}, which can differ from the configured init
      * kind returned by {@link #specifiedInitKindFor(Class)}.
      */
-    InitKind computedInitKindFor(Class<?> clazz) {
+    public InitKind computedInitKindFor(Class<?> clazz) {
         return classInitKinds.get(clazz);
     }
 
@@ -284,8 +285,11 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
     /**
      * Returns all classes of a single {@link InitKind}.
      */
-    Set<Class<?>> classesWithKind(InitKind kind) {
-        return classInitKinds.entrySet().stream().filter(e -> e.getValue() == kind).map(Map.Entry::getKey).collect(Collectors.toSet());
+    public Set<Class<?>> classesWithKind(InitKind kind) {
+        return classInitKinds.entrySet().stream()
+                        .filter(e -> e.getValue() == kind)
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toSet());
     }
 
     /**
@@ -337,6 +341,15 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      */
     public boolean shouldInitializeAtBuildTime(ResolvedJavaType type) {
         return specifiedInitKindFor(OriginalClassProvider.getJavaClass(type)) == InitKind.BUILD_TIME;
+    }
+
+    /**
+     * Returns {@code true} if the provided type and all of its class-initialization dependencies
+     * can be initialized at image build time. An unsuccessful computation is not memoized, so this
+     * query does not assign run-time initialization to unspecified dependencies.
+     */
+    public boolean canInitializeAtBuildTime(ResolvedJavaType type) {
+        return computeInitKindAndMaybeInitializeClass(OriginalClassProvider.getJavaClass(type), false) == InitKind.BUILD_TIME;
     }
 
     /**
@@ -673,7 +686,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         return result;
     }
 
-    String reasonForClass(Class<?> clazz) {
+    public String reasonForClass(Class<?> clazz) {
         InitKind initKind = classInitKinds.get(clazz);
         String reason = classInitializationConfiguration.lookupReason(clazz.getTypeName());
         if (initKind == InitKind.RUN_TIME) {
