@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -356,7 +356,7 @@ class CFGPrinter extends CompilationPrinter {
             out.print("nr   -1 ").print(COLUMN_END).print(" instruction ").print("<deleted>").print(COLUMN_END);
             out.println(COLUMN_END);
         } else {
-            out.printf("nr %4d ", inst.id()).print(COLUMN_END);
+            out.printf("nr %4s ", inst.id()).print(COLUMN_END);
 
             final StringBuilder stateString = new StringBuilder();
             inst.forEachState(state -> {
