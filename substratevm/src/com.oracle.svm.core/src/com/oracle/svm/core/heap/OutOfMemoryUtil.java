@@ -37,7 +37,7 @@ import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.util.VMError;
 

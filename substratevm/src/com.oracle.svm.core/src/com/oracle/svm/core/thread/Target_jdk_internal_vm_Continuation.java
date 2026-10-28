@@ -38,7 +38,7 @@ import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.shared.util.VMError;
 
 @TargetClass(className = "jdk.internal.vm.Continuation")

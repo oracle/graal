@@ -48,7 +48,7 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.image.DefaultImageHeapObjectSorter;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
