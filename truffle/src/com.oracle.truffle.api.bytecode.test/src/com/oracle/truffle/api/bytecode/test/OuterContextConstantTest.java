@@ -49,6 +49,8 @@ import java.io.DataInput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -76,6 +78,7 @@ public class OuterContextConstantTest {
     private int deserializedTokens;
     private int serializedRoots;
     private int deserializedRoots;
+    private final List<BytecodeRootNode[]> deserializedArrays = new ArrayList<>();
 
     /**
      * Equality is the name, so distinct instances with the same name share one serialized object.
@@ -113,6 +116,12 @@ public class OuterContextConstantTest {
             serializedRoots++;
             buffer.writeByte(3);
             context.writeBytecodeNode(buffer, root);
+        } else if (object instanceof BytecodeRootNode[] roots) {
+            buffer.writeByte(4);
+            buffer.writeInt(roots.length);
+            for (BytecodeRootNode root : roots) {
+                context.writeBytecodeNode(buffer, root);
+            }
         } else {
             throw new AssertionError(object);
         }
@@ -128,6 +137,14 @@ public class OuterContextConstantTest {
         case 3 -> {
             deserializedRoots++;
             yield context.readBytecodeNode(buffer);
+        }
+        case 4 -> {
+            BytecodeRootNode[] roots = new BytecodeRootNode[buffer.readInt()];
+            for (int i = 0; i < roots.length; i++) {
+                roots[i] = context.readBytecodeNode(buffer);
+            }
+            deserializedArrays.add(roots);
+            yield roots;
         }
         default -> throw new AssertionError();
     };
@@ -226,6 +243,72 @@ public class OuterContextConstantTest {
         assertNull(root.getCallTarget().call());
         assertEquals(1, serializedRoots);
         assertTrue(deserializedRoots > 1);
+    }
+
+    @Test
+    public void testConstantReferencingRootsAtDifferentDepths() {
+        OuterContextConstantRootNode root = roundTrip(b -> {
+            b.beginRoot();
+            OuterContextConstantRootNode depth0 = emitReturnRoot(b, 0);
+            b.beginTryFinally(() -> {
+                b.beginBlock();
+                OuterContextConstantRootNode depth1 = emitReturnRoot(b, 1);
+                b.beginTryFinally(() -> {
+                    b.beginBlock();
+                    OuterContextConstantRootNode depth2 = emitReturnRoot(b, 2);
+                    emitTouch(b, new BytecodeRootNode[]{depth0});
+                    emitTouch(b, new BytecodeRootNode[]{depth0, depth1});
+                    emitTouch(b, new BytecodeRootNode[]{depth0, depth1, depth2});
+                    b.endBlock();
+                });
+                emitTouch(b, Boolean.TRUE);
+                b.endTryFinally();
+                b.endBlock();
+            });
+            b.beginBlock();
+            b.beginIfThen();
+            b.emitLoadConstant(Boolean.TRUE);
+            b.beginReturn();
+            b.emitLoadNull();
+            b.endReturn();
+            b.endIfThen();
+            b.beginReturn();
+            b.emitLoadNull();
+            b.endReturn();
+            b.endBlock();
+            b.endTryFinally();
+            b.endRoot();
+        });
+
+        assertNull(root.getCallTarget().call());
+
+        int[] counts = new int[4];
+        for (BytecodeRootNode[] roots : deserializedArrays) {
+            counts[roots.length]++;
+            for (int i = 0; i < roots.length; i++) {
+                assertEquals(i, ((RootNode) roots[i]).getCallTarget().call());
+            }
+        }
+        // Each array is created in the context of its innermost referenced root.
+        int depth1Replays = counts[2];
+        assertEquals(1, counts[1]);
+        assertTrue(depth1Replays > 1);
+        assertTrue(counts[3] > depth1Replays);
+        assertEquals(deserializedArrays.size(), counts[1] + counts[2] + counts[3]);
+    }
+
+    private static OuterContextConstantRootNode emitReturnRoot(OuterContextConstantRootNodeGen.Builder b, int value) {
+        b.beginRoot();
+        b.beginReturn();
+        b.emitLoadConstant(value);
+        b.endReturn();
+        return b.endRoot();
+    }
+
+    private static void emitTouch(OuterContextConstantRootNodeGen.Builder b, Object constant) {
+        b.beginTouch();
+        b.emitLoadConstant(constant);
+        b.endTouch();
     }
 
 }

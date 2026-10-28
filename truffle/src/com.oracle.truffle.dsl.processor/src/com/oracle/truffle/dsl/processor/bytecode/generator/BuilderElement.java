@@ -9314,10 +9314,6 @@ final class BuilderElement extends AbstractElement {
         private final CodeVariableElement codeEndFinallyGenerator = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END_FINALLY_GENERATOR", "-7");
         private final CodeVariableElement codeEndSerialize = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END", "-8");
         private final CodeVariableElement codeCreateOuterObject = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_OUTER_OBJECT", "-9");
-        /**
-         * Reused scratch buffer for object payloads that may be hoisted to an outer context.
-         * Discarded once an object exceeds it, so one large constant does not pin the array.
-         */
         private static final int MAX_OBJECT_BYTES = 65536;
 
         private final CodeVariableElement buffer = addField(this, Set.of(PRIVATE, FINAL), DataOutput.class, "buffer");
@@ -9330,6 +9326,11 @@ final class BuilderElement extends AbstractElement {
         private final CodeVariableElement rootStack = addField(this, Set.of(PRIVATE, FINAL), generic(ArrayDeque.class, serializationRootNode.asType()), "rootStack");
         private final CodeVariableElement labelCount = addField(this, Set.of(PRIVATE), int.class, "labelCount");
         private final CodeVariableElement referencedDepth = addField(this, Set.of(PRIVATE), int.class, "referencedDepth");
+        /**
+         * Reused scratch buffer for object payloads that may be hoisted to an outer context.
+         * Discarded once an object exceeds {@link #MAX_OBJECT_BYTES}, so one large constant does
+         * not pin the array.
+         */
         private final CodeVariableElement objectBytes = addField(this, Set.of(PRIVATE), declaredType(ByteArrayOutputStream.class), "objectBytes");
         private final CodeVariableElement maxObjectBytes = addField(this, Set.of(PRIVATE, STATIC, FINAL), int.class, "MAX_OBJECT_BYTES", String.valueOf(MAX_OBJECT_BYTES));
 
@@ -9412,7 +9413,7 @@ final class BuilderElement extends AbstractElement {
             b.end();
             b.statement("buffer.writeInt(serializationRoot.contextDepth)");
             b.statement("buffer.writeInt(serializationRoot.rootIndex)");
-            b.statement("this.", referencedDepth.getName(), " = Math.max(this.", referencedDepth.getName(), ", serializationRoot.contextDepth)");
+            b.startAssign("this", referencedDepth).startStaticCall(type(Math.class), "max").field("this", referencedDepth).string("serializationRoot.contextDepth").end(2);
 
             return ex;
         }
@@ -9421,13 +9422,7 @@ final class BuilderElement extends AbstractElement {
          * Each serialization context (the root parse and each finally generator) has its own object
          * table, but an object is created only once: in the outermost context whose root nodes it
          * references. Inner contexts refer to that table entry with
-         * {@code CODE_$CREATE_OUTER_OBJECT}. Finally generators are deserialized once per emitted
-         * handler, so this keeps one payload and one deserialized instance across those replays
-         * and the enclosing code. Objects that reference a root node declared in the current
-         * context stay there, because that root is not yet available to an outer decoder.
-         * <p>
-         * Equality is unchanged: the tables are {@link java.util.HashMap}s, so equal constants
-         * still share an entry.
+         * {@code CODE_$CREATE_OUTER_OBJECT}.
          */
         private CodeExecutableElement createSerializeObject() {
             CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "serializeObject");
@@ -9435,59 +9430,59 @@ final class BuilderElement extends AbstractElement {
             method.addThrownType(type(IOException.class));
             CodeTreeBuilder b = method.createBuilder();
 
-            b.startDeclaration(declaredType(Integer.class), "index").startCall("objects.get").string("object").end(2);
+            b.startDeclaration(declaredType(Integer.class), "index").startCall(objects, "get").string("object").end(2);
             b.startIf().string("index != null").end().startBlock();
-            b.statement("return index");
+            b.startReturn().string("index").end();
             b.end();
 
-            b.startFor().type(this.asType()).string(" s = outer; s != null; s = s.outer").end().startBlock();
-            b.startDeclaration(declaredType(Integer.class), "outerIndex").startCall("s.objects.get").string("object").end(2);
+            b.startFor().type(this.asType()).string(" s = ").variable(outer).string("; s != null; s = ").field("s", outer).end().startBlock();
+            b.startDeclaration(declaredType(Integer.class), "outerIndex").startCall("s." + objects.getName(), "get").string("object").end(2);
             b.startIf().string("outerIndex != null").end().startBlock();
-            b.statement("return serializeOuterObject(object, s, outerIndex)");
+            b.startReturn().startCall("serializeOuterObject").string("object").string("s").string("outerIndex").end(2);
             b.end();
             b.end();
 
             b.startIf().string("object == null").end().startBlock();
-            b.statement("index = objects.size()");
-            b.statement("objects.put(null, index)");
-            b.startStatement().string(buffer.getName(), ".").startCall("writeShort").staticReference(codeCreateNull).end().end();
-            b.statement("return index");
+            b.startAssign("index").startCall(objects, "size").end(2);
+            b.startStatement().startCall(objects, "put").string("null").string("index").end(2);
+            b.startStatement().startCall(buffer, "writeShort").staticReference(codeCreateNull).end(2);
+            b.startReturn().string("index").end();
             b.end();
 
-            b.startIf().string("outer == null").end().startBlock();
-            b.statement("index = objects.size()");
-            b.statement("objects.put(object, index)");
-            b.startStatement().string(buffer.getName(), ".").startCall("writeShort").staticReference(codeCreateObject).end().end();
-            b.statement("callback.serialize(this, buffer, object)");
-            b.statement("return index");
+            b.startIf().variable(outer).string(" == null").end().startBlock();
+            b.startAssign("index").startCall(objects, "size").end(2);
+            b.startStatement().startCall(objects, "put").string("object").string("index").end(2);
+            b.startStatement().startCall(buffer, "writeShort").staticReference(codeCreateObject).end(2);
+            b.startStatement().startCall(callback, "serialize").string("this").variable(buffer).string("object").end(2);
+            b.startReturn().string("index").end();
             b.end();
 
-            b.lineComment("Serialize to a reused buffer to find the outermost context that can create the object.");
-            b.startIf().string(objectBytes.getName(), " == null || ", objectBytes.getName(), ".size() > ", maxObjectBytes.getName()).end().startBlock();
-            b.startAssign(objectBytes.getName()).startNew(declaredType(ByteArrayOutputStream.class)).end().end();
+            b.lineComment("Serialize to a reusable buffer, then write bytes to the outermost context that can create the object.");
+            b.startIf().variable(objectBytes).string(" == null || ").startCall(objectBytes, "size").end().string(" > ").staticReference(maxObjectBytes).end().startBlock();
+            b.startAssign(objectBytes).startNew(declaredType(ByteArrayOutputStream.class)).end(2);
             b.end().startElseBlock();
-            b.statement(objectBytes.getName(), ".reset()");
+            b.startStatement().startCall(objectBytes, "reset").end(2);
             b.end();
-            b.statement("this.", referencedDepth.getName(), " = 0");
-            b.startStatement().startCall("callback.serialize").string("this");
-            b.startNew(declaredType(DataOutputStream.class)).string(objectBytes.getName()).end();
+            b.startAssign("this", referencedDepth).string("0").end();
+            b.startStatement().startCall(callback, "serialize").string("this");
+            b.startNew(declaredType(DataOutputStream.class)).variable(objectBytes).end();
             b.string("object");
-            b.end().end();
+            b.end(2);
             b.declaration(this.asType(), "target", "this");
-            b.startWhile().string("target.depth > this.", referencedDepth.getName()).end().startBlock();
-            b.statement("target = target.outer");
+            b.startWhile().field("target", depth).string(" > ").field("this", referencedDepth).end().startBlock();
+            b.startAssign("target").field("target", outer).end();
             b.end();
-            b.statement("int targetIndex = target.objects.size()");
-            b.statement("target.objects.put(object, targetIndex)");
-            b.startStatement().string("target.", buffer.getName(), ".").startCall("writeShort").staticReference(codeCreateObject).end().end();
-            b.statement("target.", buffer.getName(), ".write(", objectBytes.getName(), ".toByteArray())");
-            b.startIf().string(objectBytes.getName(), ".size() > ", maxObjectBytes.getName()).end().startBlock();
-            b.statement(objectBytes.getName(), " = null");
+            b.startDeclaration(type(int.class), "targetIndex").startCall("target." + objects.getName(), "size").end(2);
+            b.startStatement().startCall("target." + objects.getName(), "put").string("object").string("targetIndex").end(2);
+            b.startStatement().startCall("target." + buffer.getName(), "writeShort").staticReference(codeCreateObject).end(2);
+            b.startStatement().startCall("target." + buffer.getName(), "write").startCall(objectBytes, "toByteArray").end(3);
+            b.startIf().startCall(objectBytes, "size").end().string(" > ").staticReference(maxObjectBytes).end().startBlock();
+            b.startAssign(objectBytes).string("null").end();
             b.end();
             b.startIf().string("target == this").end().startBlock();
-            b.statement("return targetIndex");
+            b.startReturn().string("targetIndex").end();
             b.end();
-            b.statement("return serializeOuterObject(object, target, targetIndex)");
+            b.startReturn().startCall("serializeOuterObject").string("object").string("target").string("targetIndex").end(2);
             return method;
         }
 
@@ -9499,12 +9494,12 @@ final class BuilderElement extends AbstractElement {
             method.addThrownType(type(IOException.class));
             CodeTreeBuilder b = method.createBuilder();
 
-            b.statement("int index = objects.size()");
-            b.statement("objects.put(object, index)");
-            b.startStatement().string(buffer.getName(), ".").startCall("writeShort").staticReference(codeCreateOuterObject).end().end();
-            b.startStatement().string(buffer.getName(), ".").startCall("writeShort").string(BytecodeRootNodeElement.safeCastShort("target.depth")).end().end();
-            b.statement(buffer.getName(), ".writeInt(targetIndex)");
-            b.statement("return index");
+            b.startDeclaration(type(int.class), "index").startCall(objects, "size").end(2);
+            b.startStatement().startCall(objects, "put").string("object").string("index").end(2);
+            b.startStatement().startCall(buffer, "writeShort").staticReference(codeCreateOuterObject).end(2);
+            b.startStatement().startCall(buffer, "writeShort").string(BytecodeRootNodeElement.safeCastShort("target." + depth.getName())).end(2);
+            b.startStatement().startCall(buffer, "writeInt").string("targetIndex").end(2);
+            b.startReturn().string("index").end();
             return method;
         }
 
