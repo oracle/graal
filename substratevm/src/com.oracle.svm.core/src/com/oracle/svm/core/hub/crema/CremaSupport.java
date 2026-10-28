@@ -115,6 +115,9 @@ public interface CremaSupport {
 
     Object execute(ResolvedJavaMethod targetMethod, Object[] args, CallKind callKind);
 
+    /** Executes the class initializer of a runtime-loaded class. */
+    void executeClassInitializer(DynamicHub hub);
+
     default Class<?> resolveOrThrow(UnresolvedJavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
         ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
         Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);

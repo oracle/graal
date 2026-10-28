@@ -1666,6 +1666,13 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     @Override
+    public void executeClassInitializer(DynamicHub hub) {
+        ResolvedJavaMethod classInitializer = hub.getInterpreterType().getClassInitializer();
+        VMError.guarantee(classInitializer != null, "Class initializer not found for class that declares `hasClassInitializer`.");
+        execute(classInitializer, new Object[0], CallKind.STATIC);
+    }
+
+    @Override
     public Object allocateInstance(ResolvedJavaType type) throws InstantiationException {
         try {
             return InterpreterToVM.createNewReference((InterpreterResolvedJavaType) type);
