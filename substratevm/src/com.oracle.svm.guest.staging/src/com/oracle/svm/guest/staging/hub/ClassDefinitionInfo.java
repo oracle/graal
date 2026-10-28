@@ -22,11 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub;
+package com.oracle.svm.guest.staging.hub;
 
 import java.security.ProtectionDomain;
-
-import com.oracle.svm.espresso.classfile.Constants;
 
 public final class ClassDefinitionInfo {
     public static final ClassDefinitionInfo EMPTY = new ClassDefinitionInfo(null, null, null, null, false, false, false);
@@ -89,14 +87,6 @@ public final class ClassDefinitionInfo {
 
     public boolean forceAllowVMAnnotations() {
         return forceAllowVMAnnotations;
-    }
-
-    public int patchFlags(int classFlags) {
-        int flags = classFlags;
-        if (isHidden()) {
-            flags |= Constants.ACC_IS_HIDDEN_CLASS;
-        }
-        return flags;
     }
 
     @Override

@@ -40,6 +40,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.hub.ClassDefinitionInfo;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.shared.option.HostedOptionKey;
