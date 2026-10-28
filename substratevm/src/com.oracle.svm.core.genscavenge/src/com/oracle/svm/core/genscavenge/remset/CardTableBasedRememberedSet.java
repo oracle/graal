@@ -52,7 +52,7 @@ import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
@@ -300,8 +300,8 @@ public class CardTableBasedRememberedSet implements RememberedSet {
         DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
         int hubType = hub.getHubType();
         return switch (hubType) {
-            case HubType.INSTANCE -> !DynamicHubSupport.hasEmptyReferenceMap(hub);
-            case HubType.POD_INSTANCE -> !DynamicHubSupport.hasEmptyReferenceMap(hub) || !PodReferenceMapDecoder.hasEmptyReferenceMap(obj);
+            case HubType.INSTANCE -> !DynamicHubUtils.hasEmptyReferenceMap(hub);
+            case HubType.POD_INSTANCE -> !DynamicHubUtils.hasEmptyReferenceMap(hub) || !PodReferenceMapDecoder.hasEmptyReferenceMap(obj);
             case HubType.REFERENCE_INSTANCE, HubType.STORED_CONTINUATION_INSTANCE -> true;
             case HubType.PRIMITIVE_ARRAY -> false;
             case HubType.OBJECT_ARRAY -> ((Object[]) obj).length > 0;

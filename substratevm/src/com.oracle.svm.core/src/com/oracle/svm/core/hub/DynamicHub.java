@@ -451,7 +451,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /**
      * A compressed offset, relative to the heap base, that points to the
      * {@link InstanceReferenceMap} for this hub (see
-     * {@link DynamicHubSupport#getInstanceReferenceMap}).
+     * {@link DynamicHubUtils#getInstanceReferenceMap}).
      */
     @UnknownPrimitiveField(availability = AfterHeapLayout.class)//
     private int referenceMapCompressedOffset = -1;

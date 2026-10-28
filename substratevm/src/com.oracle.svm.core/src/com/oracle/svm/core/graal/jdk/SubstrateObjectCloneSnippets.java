@@ -43,8 +43,8 @@ import com.oracle.svm.guest.staging.core.heap.InstanceReferenceMapDecoder;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.DynamicHubProvider;
-import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
@@ -135,7 +135,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
          * actively groups object references together. So, the loop below will typically be only
          * executed for a very small number of iterations.
          */
-        Pointer refMapPos = (Pointer) DynamicHubSupport.getInstanceReferenceMap(hub);
+        Pointer refMapPos = (Pointer) DynamicHubUtils.getInstanceReferenceMap(hub);
         int entryCount = refMapPos.readInt(0);
         refMapPos = refMapPos.add(4);
 

@@ -44,16 +44,17 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues.Origin;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.configure.config.SignatureUtil;
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.RuntimeStateTrimSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
-import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.headers.LibC;
@@ -94,9 +95,21 @@ import jdk.graal.compiler.nodes.NamedLocationIdentity;
 final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBridge {
 
     @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public <T> T getHostedArray(NonmovableArray<?> array) {
+        return NonmovableArrays.getHostedArray(array);
+    }
+
+    @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public Pointer nonmovableByteArrayPointerTo(NonmovableArray<Byte> array, long index) {
         return NonmovableByteArrayReader.pointerTo(array, index);
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public NonmovableArray<Byte> nonmovableByteArrayFromImageHeap(byte[] array) {
+        return NonmovableArrays.fromImageHeap(array);
     }
 
     @Override

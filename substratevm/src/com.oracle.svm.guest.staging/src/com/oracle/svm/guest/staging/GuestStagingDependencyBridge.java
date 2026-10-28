@@ -61,6 +61,15 @@ public interface GuestStagingDependencyBridge {
     }
 
     /**
+     * During the image build, get the backing array that will be nonmovable in the image heap.
+     * <p>
+     * Delegates to {@code com.oracle.svm.core.c.NonmovableArrays.getHostedArray(array)}.
+     * Remove this method when the hosted array conversion moves to guest staging (GR-78110).
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    <T> T getHostedArray(NonmovableArray<?> array);
+
+    /**
      * Delegates to {@code com.oracle.svm.core.util.NonmovableByteArrayReader.pointerTo}.
      * <p>
      * Remove this method when
@@ -68,6 +77,15 @@ public interface GuestStagingDependencyBridge {
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     Pointer nonmovableByteArrayPointerTo(NonmovableArray<Byte> array, long index);
+
+    /**
+     * Delegates to {@code com.oracle.svm.core.c.NonmovableArrays.fromImageHeap(array)}.
+     * <p>
+     * Remove this method when conversion of image-heap byte arrays to nonmovable arrays moves to
+     * guest staging (GR-78110).
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    NonmovableArray<Byte> nonmovableByteArrayFromImageHeap(byte[] array);
 
     /**
      * Delegates to {@code com.oracle.svm.core.SubstrateOptions.useEpsilonGC()}.

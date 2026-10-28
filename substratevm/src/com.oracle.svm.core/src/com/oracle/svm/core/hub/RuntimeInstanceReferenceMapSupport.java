@@ -89,7 +89,7 @@ public class RuntimeInstanceReferenceMapSupport {
          * except for the monitor field, which is not inherited by subclasses.
          */
         MarkInheritedFieldsInBitmapVisitor markInheritedFields = new MarkInheritedFieldsInBitmapVisitor(map, superHub.getMonitorOffset());
-        InstanceReferenceMap superMap = DynamicHubSupport.getInstanceReferenceMap(superHub);
+        InstanceReferenceMap superMap = DynamicHubUtils.getInstanceReferenceMap(superHub);
         InstanceReferenceMapDecoder.walkReferences(Word.nullPointer(), superMap, markInheritedFields, null);
 
         /* Mark object fields declared in this class. */
