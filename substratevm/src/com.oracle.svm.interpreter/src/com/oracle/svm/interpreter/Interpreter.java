@@ -3346,7 +3346,10 @@ public final class Interpreter {
                         DynamicHub typeHub = opcode == INVOKESPECIAL ? callerFrame.method.getDeclaringClass().getHub() : linkedInvoke.symbolicHolder.getHub();
                         boolean assignable = InterpreterToVM.isAssignableFrom(typeHub, instanceHub, opcode != INVOKEINTERFACE);
                         if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, !assignable)) {
-                            throw incompatibleInvokeReceiver(DynamicHubUtils.getInterpreterType(instanceHub), linkedInvoke.symbolicHolder);
+                            throw incompatibleInvokeReceiver(
+                                            DynamicHubUtils.getInterpreterType(instanceHub),
+                                            DynamicHubUtils.getInterpreterType(typeHub),
+                                            opcode);
                         }
                     }
                 }
