@@ -59,20 +59,24 @@ public final class DynamicHubUtils {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void setMetaType(DynamicHub hub, SharedType metaType) {
         assert hub.getCompanion().metaType == null;
-        hub.getCompanion().metaType = metaType;
+        hub.getCompanion().metaType = (DynamicHubProvider) metaType;
     }
 
     public static SharedType getMetaType(DynamicHub hub) {
-        return hub.getCompanion().metaType;
+        return (SharedType) hub.getCompanion().metaType;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static ResolvedJavaType getInterpreterType(DynamicHub hub) {
-        return hub.getCompanion().interpreterType;
+        return (ResolvedJavaType) hub.getCompanion().interpreterType;
     }
 
     public static void setInterpreterType(DynamicHub hub, ResolvedJavaType interpreterType) {
-        hub.getCompanion().interpreterType = interpreterType;
+        hub.getCompanion().interpreterType = (DynamicHubProvider) interpreterType;
+    }
+
+    public static DynamicHub getHub(SharedType type) {
+        return ((DynamicHubProvider) type).getHub();
     }
 
     /**

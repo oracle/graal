@@ -36,6 +36,7 @@ import org.graalvm.word.WordBase;
 import com.oracle.svm.core.SubstrateMetadata;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
@@ -54,7 +55,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * Represents a primitive or reference resolved Java type, including additional capabilities of the
  * closed world e.g. instantiable, instantiated, effectively final ...
  */
-public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated implements ResolvedJavaType, CremaTypeAccess, SubstrateMetadata {
+public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated implements ResolvedJavaType, CremaTypeAccess, SubstrateMetadata, DynamicHubProvider {
     public static final InterpreterResolvedJavaType[] EMPTY_ARRAY = new InterpreterResolvedJavaType[0];
 
     private final Symbol<Type> type;
@@ -135,6 +136,7 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
         return (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(javaClass));
     }
 
+    @Override
     public final DynamicHub getHub() {
         return DynamicHub.fromClass(getJavaClass());
     }

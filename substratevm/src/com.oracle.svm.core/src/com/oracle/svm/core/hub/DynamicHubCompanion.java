@@ -39,12 +39,10 @@ import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.guest.staging.hub.ClassDefinitionInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.layered.LayeredFieldValue;
-import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
 import com.oracle.svm.shared.BuildPhaseProvider;
 
 import jdk.internal.vm.annotation.Stable;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.generics.repository.ClassRepository;
 
@@ -118,7 +116,7 @@ public final class DynamicHubCompanion {
      * types for which a SubstrateType exists.
      */
     @UnknownObjectField(availability = BuildPhaseProvider.AfterAnalysis.class, fullyQualifiedTypes = "com.oracle.svm.graal.meta.SubstrateType", canBeNull = true) //
-    @Stable SharedType metaType;
+    @Stable DynamicHubProvider metaType;
 
     /**
      * Metadata for running class initializers at run time. Refers to a singleton marker object for
@@ -151,7 +149,7 @@ public final class DynamicHubCompanion {
      * {@link DynamicHub#NO_CLASS_LOADER}.
      */
     Object classLoader;
-    ResolvedJavaType interpreterType;
+    DynamicHubProvider interpreterType;
 
     String packageName;
     ProtectionDomain protectionDomain;
