@@ -170,6 +170,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -309,8 +310,12 @@ public class SVMHost extends HostVM {
         }
         layerId = buildingImageLayer ? DynamicImageLayerInfo.getCurrentLayerNumber() : 0;
 
-        /* In a closed-world analysis all fields are closed, so the set is null. */
-        closedWorldFields = isClosedTypeWorld ? null : getAlwaysClosedFields();
+        /*
+         * Only closed-world builds outside extension layers can omit this set. Extension
+         * layers need it for the shared-field write check.
+         */
+        boolean needsClosedWorldFieldSet = !isClosedTypeWorld || buildingExtensionLayer();
+        closedWorldFields = needsClosedWorldFieldSet ? getAlwaysClosedFields() : null;
         sharedLayerForbiddenModules = buildingSharedLayer ? initializeSharedLayerForbiddenModules() : null;
         layeredStaticFieldSupport = buildingImageLayer ? LayeredStaticFieldSupport.singleton() : null;
 
@@ -770,6 +775,13 @@ public class SVMHost extends HostVM {
         }
     }
 
+    /** Validate writes to always-closed fields from a newly parsed or loaded method graph. */
+    public void checkClosedFieldWrites(AnalysisMethod method, List<AnalysisField> closedFieldWrites) {
+        if (buildingExtensionLayer()) {
+            ExtensionLayerImageFeature.checkNewClosedFieldWrites(method, closedFieldWrites);
+        }
+    }
+
     protected boolean deoptsForbidden(AnalysisMethod method) {
         /*
          * Runtime compiled methods can deoptimize.
@@ -785,6 +797,18 @@ public class SVMHost extends HostVM {
             }
             if (parsingSupport != null) {
                 parsingSupport.afterParsingHook(method, graph);
+            }
+
+            if (buildingExtensionLayer()) {
+                /*
+                 * Conservatively retain writes observed after parsing and the parsing-support hook,
+                 * before static-final-field folding, optimizeAfterParsing, and final canonicalization.
+                 * Later elimination of a store does not discharge its validation obligation. Parsing
+                 * may already have simplified the graph, so this is not a bytecode-level write summary.
+                 */
+                List<AnalysisField> closedFieldWrites = graph.getNodes().filter(StoreFieldNode.class).stream()
+                                .map(store -> (AnalysisField) store.field()).filter(this::isAlwaysClosedField).distinct().toList();
+                checkClosedFieldWrites(method, closedFieldWrites);
             }
 
             if (!SubstrateCompilationDirectives.isRuntimeCompiledMethod(method)) {
