@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,12 +44,14 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -65,6 +67,7 @@ public abstract class BaseBytecodeRootNode extends RootNode implements BytecodeO
     @CompilationFinal(dimensions = 1) protected final int[] branchProfiles;
     @CompilationFinal(dimensions = 1) protected final Object[] constants;
     @CompilationFinal(dimensions = 1) protected final Node[] nodes;
+    @Child private DirectCallNode recursiveCallNode;
 
     protected BaseBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, byte[] bc, int numLocals, int numConditionalBranches, Object[] constants, Node[] nodes) {
         super(language, frameDescriptor);
@@ -95,6 +98,15 @@ public abstract class BaseBytecodeRootNode extends RootNode implements BytecodeO
     }
 
     protected abstract Object executeAt(VirtualFrame osrFrame, int startBci, int startSp) throws UnexpectedResultException;
+
+    protected final int recursiveCall(int value, int delta) {
+        DirectCallNode callNode = recursiveCallNode;
+        if (callNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            recursiveCallNode = callNode = insert(Truffle.getRuntime().createDirectCallNode(getCallTarget()));
+        }
+        return (int) callNode.call(value - delta);
+    }
 
     protected final Object backwardsJumpCheck(VirtualFrame frame, int sp, Counter loopCounter, int nextBci) {
         if (CompilerDirectives.hasNextTier() && ++loopCounter.count >= 256) {
