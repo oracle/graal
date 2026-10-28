@@ -56,7 +56,11 @@ public interface ExtensionPolicy {
     /**
      * Returns whether the field is closed to direct writes from the open world. Closed fields still
      * receive values through analyzed stores, including values originating in the open world.
-     * Unsafe access must be accounted for by the corresponding analysis handling.
+     * Unsafe access must be accounted for by the corresponding analysis handling. A method whose
+     * body is not analyzed at the current boundary may still write fields declared by a closed
+     * component. Every permitted write must be covered by analyzed code or a conservative mutation
+     * summary. The extension mechanism must reject writes for which that coverage cannot be
+     * established.
      */
     boolean isFieldClosed(ResolvedJavaField field);
 
@@ -65,7 +69,8 @@ public interface ExtensionPolicy {
      * open-world entry seeding.
      * <p>
      * This does not close the method's parameter or return types, or the targets of calls made by
-     * its body.
+     * its body. Entry classification does not establish whether the body is analyzed or its effects
+     * are covered by summaries.
      */
     boolean isMethodEntryClosed(AnalysisMethod method);
 
@@ -74,8 +79,9 @@ public interface ExtensionPolicy {
      * kind. This handling covers possible returned values and predicates indicating that the call
      * may return normally, including void calls.
      * <p>
-     * This decision applies independently of the containing method's entry classification. Delayed
-     * callees require additional handling when they are linked.
+     * This decision applies independently of the containing method's entry classification. Callees
+     * whose bodies are not analyzed require additional result and continuation coverage when they
+     * are linked.
      */
     boolean requiresOpenInvokeResult(AnalysisType receiverType, boolean directInvoke);
 }
