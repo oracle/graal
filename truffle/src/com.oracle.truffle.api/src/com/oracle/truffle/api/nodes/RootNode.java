@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.RuntimeCallTarget;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -133,7 +134,7 @@ public abstract class RootNode extends ExecutableNode {
 
     private static final AtomicReferenceFieldUpdater<RootNode, ReentrantLock> LOCK_UPDATER = AtomicReferenceFieldUpdater.newUpdater(RootNode.class, ReentrantLock.class, "lock");
 
-    @CompilationFinal private volatile RootCallTarget callTarget;
+    @CompilationFinal private volatile RuntimeCallTarget callTarget;
     @CompilationFinal private FrameDescriptor frameDescriptor;
     private volatile ReentrantLock lock;
 
@@ -419,7 +420,7 @@ public abstract class RootNode extends ExecutableNode {
             assert clonedRoot.lock == null;
         }
 
-        RootCallTarget clonedTarget = NodeAccessor.RUNTIME.newCallTarget(sourceCallTarget, clonedRoot);
+        RuntimeCallTarget clonedTarget = NodeAccessor.RUNTIME.newCallTarget(sourceCallTarget, clonedRoot);
 
         ReentrantLock l = clonedRoot.getLazyLock();
         l.lock();
@@ -444,7 +445,28 @@ public abstract class RootNode extends ExecutableNode {
 
     /** @since 0.8 or earlier */
     public final RootCallTarget getCallTarget() {
-        RootCallTarget target = this.callTarget;
+        return getCallTargetImpl();
+    }
+
+    /**
+     * Initializes this root node's call target without executing the root node.
+     * <p>
+     * This method has the same initialization effects as {@link #getCallTarget()}, including
+     * invoking {@link #prepareForCall()} when the call target is first created. Repeated calls
+     * reuse the existing call target. Call this method after configuring the root node and before
+     * using it in the application through {@link #call(Node, int, Object[])} or
+     * {@link IndirectCallNode#call(RootNode, int, Object[])}. These root-based call methods require
+     * an initialized call target and do not initialize it implicitly.
+     *
+     * @since 25.6
+     */
+    @TruffleBoundary
+    public final void initializeCallTarget() {
+        getCallTargetImpl();
+    }
+
+    private RuntimeCallTarget getCallTargetImpl() {
+        RuntimeCallTarget target = this.callTarget;
         // Check isLoaded to avoid returning a CallTarget before notifyOnLoad() is done
         if (target == null || !NodeAccessor.RUNTIME.isLoaded(target)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -453,8 +475,8 @@ public abstract class RootNode extends ExecutableNode {
         return target;
     }
 
-    private RootCallTarget initializeTarget() {
-        RootCallTarget target;
+    private RuntimeCallTarget initializeTarget() {
+        RuntimeCallTarget target;
         ReentrantLock l = getLazyLock();
         l.lock();
         try {
@@ -469,7 +491,7 @@ public abstract class RootNode extends ExecutableNode {
         return target;
     }
 
-    private void setupCallTarget(RootCallTarget callTarget, String message) {
+    private void setupCallTarget(RuntimeCallTarget callTarget, String message) {
         assert getLazyLock().isHeldByCurrentThread();
 
         if (this.callTarget != null) {
@@ -485,7 +507,7 @@ public abstract class RootNode extends ExecutableNode {
         NodeAccessor.RUNTIME.notifyOnLoad(callTarget);
     }
 
-    final RootCallTarget getCallTargetWithoutInitialization() {
+    final RuntimeCallTarget getCallTargetWithoutInitialization() {
         return callTarget;
     }
 
@@ -506,10 +528,10 @@ public abstract class RootNode extends ExecutableNode {
 
     /**
      * Prepares this {@link RootNode} to be called with a {@link CallTarget}. This method will be
-     * called exactly once when a {@link #getCallTarget() call target is requested} for the first
-     * time. This method can be used to lazily initialize parts of a root node, or to validate that
-     * a root node can be used as a call target.
-     * 
+     * called exactly once when a call target is first created by {@link #getCallTarget()} or
+     * {@link #initializeCallTarget()}. This method can be used to lazily initialize parts of a root
+     * node, or to validate that a root node can be used as a call target.
+     *
      * @since 25.0
      */
     protected void prepareForCall() {
@@ -818,13 +840,43 @@ public abstract class RootNode extends ExecutableNode {
      * AST size estimate is going to be used. By default this method returns <code>-1</code>.
      * <p>
      * The size estimate is guaranteed to be invoked only once when the {@link CallTarget} is
-     * created. This corresponds to calls to {@link #getCallTarget()} for the first time. This
-     * method will never be invoked after the root node was already executed.
+     * created by {@link #getCallTarget()} or {@link #initializeCallTarget()}. This method will
+     * never be invoked after the root node was already executed.
      *
      * @since 23.0
      */
     protected int computeSize() {
         return -1;
+    }
+
+    /**
+     * Calls this root node with an explicit call location, bytecode index, and arguments.
+     * <p>
+     * Unlike a generic {@link CallTarget} call, a call specialized to a concrete {@link RootNode}
+     * class exposes its {@link #execute} implementation to the host compiler. This may allow the
+     * host compiler to inline further across the call boundary, including into {@code execute}.
+     * Callers that do not have an explicit bytecode index should pass {@code -1}.
+     * <p>
+     * The call target must already be initialized using {@link #initializeCallTarget()} or
+     * {@link #getCallTarget()}. This method does not initialize the call target.
+     *
+     * @param location a {@link Node} that identifies the location of this call. The location may be
+     *            <code>null</code> if no location is available.
+     * @param bytecodeIndex the bytecode index associated with this call, or <code>-1</code> if no
+     *            explicit bytecode index is available.
+     * @param arguments the arguments passed to the call, as an object array.
+     * @return the result of the call.
+     * @throws IllegalStateException if the call target has not been initialized
+     * @see CallTarget#call(Node, int, Object[])
+     * @since 25.6
+     */
+    public final Object call(Node location, int bytecodeIndex, Object[] arguments) {
+        RuntimeCallTarget target = this.callTarget;
+        if (target == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("Call target is not initialized. Call initializeCallTarget() before calling this root.");
+        }
+        return target.callRoot(location, bytecodeIndex, this, arguments);
     }
 
     private static final class Constant extends RootNode {

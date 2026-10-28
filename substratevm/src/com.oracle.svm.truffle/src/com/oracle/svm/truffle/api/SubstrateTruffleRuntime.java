@@ -119,7 +119,7 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     private static final int DEBUG_TEAR_DOWN_TIMEOUT = 2_000;
     private static final int PRODUCTION_TEAR_DOWN_TIMEOUT = 10_000;
 
-    private KnownMethods hostedCallMethods;
+    @Platforms(Platform.HOSTED_ONLY.class) private KnownMethods hostedCallMethods;
     private volatile BackgroundCompileQueue compileQueue;
     private volatile boolean initialized;
     private volatile Boolean profilingEnabled;
@@ -208,7 +208,7 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     }
 
     public ResolvedJavaMethod[] getAnyFrameMethod() {
-        return knownMethods.anyFrameMethod;
+        return knownMethods.getAnyFrameMethods();
     }
 
     @Override

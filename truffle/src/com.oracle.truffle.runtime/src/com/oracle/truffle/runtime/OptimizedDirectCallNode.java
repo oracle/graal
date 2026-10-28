@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * A call node with a constant {@link CallTarget} that can be optimized by Graal.
@@ -84,15 +85,38 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
             target = onInterpreterCall(target);
         }
         try {
-            return target.callDirect(this, arguments);
+            return target.callDirect(this, -1, arguments);
         } catch (Throwable t) {
-            throw handleException(t);
+            throw handleException(t, -1);
         }
     }
 
-    private RuntimeException handleException(Throwable t) {
+    @Override
+    public Object call(int bytecodeIndex, Object[] arguments) {
+        OptimizedCallTarget target = getCurrentCallTarget();
+        if (HostCompilerDirectives.inInterpreterFastPath()) {
+            target = onInterpreterCall(target);
+        }
+        try {
+            return target.callDirect(this, bytecodeIndex, arguments);
+        } catch (Throwable t) {
+            throw handleException(t, bytecodeIndex);
+        }
+    }
+
+    @Override
+    public Object call(Class<? extends RootNode> rootType, int bytecodeIndex, Object[] arguments) {
+        OptimizedCallTarget target = getCurrentCallTarget();
+        if (HostCompilerDirectives.inInterpreterFastPath()) {
+            target = onInterpreterCall(target);
+        }
+        RootNode root = rootType.cast(target.getRootNode());
+        return target.callRoot(this, bytecodeIndex, root, arguments);
+    }
+
+    private RuntimeException handleException(Throwable t, int bytecodeIndex) {
         Throwable profiled = profileExceptionType(t);
-        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(this, null, profiled, null);
+        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(this, null, profiled, null, bytecodeIndex);
         throw OptimizedCallTarget.rethrow(profiled);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -170,6 +170,7 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     private final int stackTraceElementLimit;
     private final Throwable cause;
     private final Node location;
+    private final int bytecodeIndex;
     private Throwable lazyStackTrace;
 
     /**
@@ -209,17 +210,16 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     }
 
     /**
-     * Creates a new AbstractTruffleException initialized from the given prototype. The exception
-     * message, internal cause, stack trace limit, location, suppressed exceptions and Truffle stack
-     * trace of a newly created {@link AbstractTruffleException} are inherited from the given
-     * {@link AbstractTruffleException}.
+     * Copies the prototype's message, cause, stack trace limit, location, BCI, suppressed exceptions,
+     * and Truffle stack trace.
      *
+     * @param prototype the exception to copy
      * @since 20.3
      */
     @SuppressWarnings("this-escape")
     @TruffleBoundary
     protected AbstractTruffleException(AbstractTruffleException prototype) {
-        this(prototype.getMessage(), prototype.getCause(), prototype.getStackTraceElementLimit(), prototype.getLocation());
+        this(prototype.getMessage(), prototype.getCause(), prototype.getStackTraceElementLimit(), prototype.getLocation(), prototype.getBytecodeIndex());
         for (Throwable t : prototype.getSuppressed()) {
             this.addSuppressed(t);
         }
@@ -244,10 +244,27 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * @since 20.3
      */
     protected AbstractTruffleException(String message, Throwable cause, int stackTraceElementLimit, Node location) {
+        this(message, cause, stackTraceElementLimit, location, -1);
+    }
+
+    /**
+     * Creates a new AbstractTruffleException with an explicit bytecode index for the exception
+     * location.
+     *
+     * @param message the exception message or {@code null}
+     * @param cause the cause or {@code null}; internal causes are hidden from interop and the embedder
+     * @param stackTraceElementLimit a stack trace limit. Use {@link #UNLIMITED_STACK_TRACE} for
+     *            unlimited stack trace length.
+     * @param location a location node or {@code null}
+     * @param bytecodeIndex a bytecode index for {@code location}, or {@code -1} if unavailable
+     * @since 25.6
+     */
+    protected AbstractTruffleException(String message, Throwable cause, int stackTraceElementLimit, Node location, int bytecodeIndex) {
         super(message, cause);
         this.stackTraceElementLimit = stackTraceElementLimit;
         this.cause = cause;
         this.location = location;
+        this.bytecodeIndex = bytecodeIndex;
     }
 
     /**
@@ -269,6 +286,16 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      */
     public final Node getLocation() {
         return location;
+    }
+
+    /**
+     * Returns the explicit BCI associated with {@link #getLocation()}.
+     *
+     * @return the BCI, or a negative value if unavailable
+     * @since 25.6
+     */
+    public final int getBytecodeIndex() {
+        return bytecodeIndex;
     }
 
     /**

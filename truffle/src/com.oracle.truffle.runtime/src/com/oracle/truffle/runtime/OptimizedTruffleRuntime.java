@@ -44,6 +44,8 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.CompilerIdleDel
 
 import java.io.PrintStream;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.Buffer;
@@ -594,6 +596,17 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
      */
     private static final class FrameVisitor<T> implements InspectedFrameVisitor<T> {
 
+        private static final MethodHandle GET_LOCAL_INT;
+        static {
+            try {
+                // Keep source builds compatible with stock JDKs; primitive-local support is required
+                // when walking optimized frames.
+                GET_LOCAL_INT = MethodHandles.lookup().findVirtual(InspectedFrame.class, "getLocalInt", MethodType.methodType(int.class, int.class));
+            } catch (NoSuchMethodException | IllegalAccessException e) {
+                throw new ExceptionInInitializerError(e);
+            }
+        }
+
         private final FrameInstanceVisitor<T> visitor;
         private final KnownMethods methods;
 
@@ -609,13 +622,21 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         }
 
         /**
-         * A Truffle {@link FrameInstance} logically consists of three components: a
-         * {@link com.oracle.truffle.api.frame.Frame frame}, a {@link CallTarget call target}, and a
-         * {@link Node call node}. These objects are spread across multiple native
-         * {@link InspectedFrame InspectedFrames}, so this visitor remembers previously-seen native
-         * frames (as necessary) in order to construct Truffle {@link FrameInstance FrameInstances}.
-         *
-         * For example, consider this sample stack trace:
+         * Visits selected native frames from the innermost to the outermost guest call. A Truffle
+         * {@link FrameInstance} combines the executing guest's
+         * {@link com.oracle.truffle.api.frame.Frame frame} and {@link CallTarget call target} with
+         * its call-site {@link Node location} and bytecode index. The call-site metadata describes
+         * where this guest calls the next inner guest, not where this guest was called. Thus,
+         * the innermost guest has no call-site metadata.
+         * <p>
+         * On the regular call-target path, the guest frame and call target come from
+         * {@link OptimizedCallTarget#executeRootNode(VirtualFrame, CompilationState)}. The location
+         * and explicit bytecode index come from a previously visited {@code callDirect},
+         * {@code callIndirect}, or {@code callInlined} frame. The runtime-support
+         * {@link OptimizedRuntimeSupport#callInlined(Node, CallTarget, Object[])} wrapper supplies a
+         * location but no explicit bytecode index. A missing explicit index is represented by
+         * {@code -1}, allowing {@link FrameInstance#getBytecodeIndex()} to ask the guest root for it.
+         * For example:
          *
          * <pre>
          *  ... -> executeRootNode(A) -> callDirect -> executeRootNode(B) -> callDirect -> executeRootNode(C)
@@ -624,18 +645,29 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
          *                  FrameInstance(A)                    FrameInstance(B)           FrameInstance(C)
          * </pre>
          *
-         * Method C is at the top of the stack (it has not called another guest method). Thus, it
-         * does not have a call node. Its call target and frame are the first two parameters of
-         * executeRootNode(C) {@link InspectedFrame}, so we can construct a {@link FrameInstance}
-         * using this frame.
+         * Visiting {@code executeRootNode(C)} emits C without a call node. The next
+         * {@code callDirect} frame supplies B's call-site metadata, remembered in
+         * {@link #callNodeFrame} until {@code executeRootNode(B)} emits B. The same process emits A.
+         * <p>
+         * The interpreter fast path combines both roles in
+         * {@link OptimizedCallTarget#callRoot(Node, int, RootNode, Object[])}. Its non-null frame
+         * local and root parameter identify the executing guest, while its location and bytecode
+         * index describe the call made by the caller. For example:
          *
-         * Down the stack, method B calls C, so it does have a call node. This node is a parameter
-         * to the callDirect {@link InspectedFrame}, so we remember this frame and use it to
-         * construct a {@link FrameInstance} when we reach executeRootNode(B). We construct a
-         * {@link FrameInstance} for A the same way.
+         * <pre>
+         *  ... -> callRoot(A) -> callRoot(B) -> callRoot(C)
+         *         (A's frame)    (B's frame,   (C's frame,
+         *                        A's call)    B's call)
+         * </pre>
          *
-         *
-         * OSR complicates things. Consider this sample stack trace:
+         * Visiting {@code callRoot(C)} emits C, then retains that native frame as B's call site.
+         * Visiting {@code callRoot(B)} uses it to emit B, then retains B's native frame for A. A
+         * {@code callRoot} invocation can have a null frame when it delegates to the regular
+         * call-target path; in this case, the frame was already captured while visiting
+         * {@code executeRootNode}, so only the call-site metadata is retained. This avoids emitting
+         * the guest twice and supports mixed fast-path and regular calls.
+         * <p>
+         * OSR must not appear as an additional guest call. Consider:
          *
          * <pre>
          *  ... -> executeRootNode(A) -> callOSR -> executeRootNode(A_OSR) -> callDirect -> ...
@@ -644,38 +676,72 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
          *                                    FrameInstance(A)
          * </pre>
          *
-         * With OSR, the program state may be inconsistent between OSR and non-OSR frames. The OSR
-         * frame (executeRootNode(A_OSR)) contains the most up-to-date Truffle
-         * {@link com.oracle.truffle.api.frame.Frame}, so we remember it. OSR should be transparent,
-         * so the call target is obtained from the non-OSR frame (executeRootNode(A)).
+         * The first OSR frame encountered is retained in {@link #osrFrame}, without emitting a
+         * guest frame. When the enclosing non-OSR guest is reached, an
+         * {@link OptimizedOSRFrameInstance} combines that guest's call target with the current OSR
+         * execution state. This also applies when the non-OSR guest uses {@code callRoot}.
+         * <p>
+         * {@link #skipFrames} counts logical guest frames, not call-site wrappers or OSR frames.
+         * OSR frames encountered while skipping are ignored. After visiting a guest, pending OSR
+         * and call-site state is cleared. A fast-path {@code callRoot} frame instead retains itself
+         * as the next caller's call site, including when its guest frame is skipped.
          */
         @Override
         public T visitFrame(InspectedFrame frame) {
-            if (frame.isMethod(methods.callDirectMethod) || frame.isMethod(methods.callIndirectMethod) || frame.isMethod(methods.callInlinedMethod) ||
+            boolean callRoot = frame.isMethod(methods.callRootMethod);
+            if (callRoot) {
+                if (frame.getLocal(OptimizedFrameInstance.CALL_ROOT_FRAME_INDEX) == null) {
+                    /* This callRoot invocation took the regular call-target path. */
+                    callNodeFrame = frame;
+                    return null;
+                }
+            } else if (frame.isMethod(methods.callDirectMethod) || frame.isMethod(methods.callIndirectMethod) || frame.isMethod(methods.callInlinedMethod) ||
                             frame.isMethod(methods.callInlinedCallMethod)) {
                 callNodeFrame = frame;
                 return null;
-            }
-            assert frame.isMethod(methods.callTargetMethod);
-            if (isOSRFrame(frame)) {
-                if (skipFrames == 0 && osrFrame == null) {
-                    osrFrame = frame;
-                }
-                return null;
-            } else if (skipFrames > 0) {
-                skipFrames--;
-                return null;
             } else {
-                try {
-                    if (osrFrame != null) {
-                        return visitor.visitFrame(new OptimizedOSRFrameInstance(frame, callNodeFrame, osrFrame));
-                    } else {
-                        return visitor.visitFrame(new OptimizedFrameInstance(frame, callNodeFrame));
+                assert frame.isMethod(methods.callTargetMethod);
+                if (isOSRFrame(frame)) {
+                    if (skipFrames == 0 && osrFrame == null) {
+                        osrFrame = frame;
                     }
-                } finally {
-                    osrFrame = null;
-                    callNodeFrame = null;
+                    return null;
+                } else if (skipFrames > 0) {
+                    skipFrames--;
+                    return null;
                 }
+            }
+            try {
+                if (skipFrames > 0) {
+                    skipFrames--;
+                    return null;
+                }
+                int bytecodeIndex = readBytecodeIndex(callNodeFrame);
+                OptimizedFrameInstance frameInstance;
+                if (osrFrame != null) {
+                    frameInstance = new OptimizedOSRFrameInstance(frame, callNodeFrame, bytecodeIndex, osrFrame);
+                } else {
+                    int frameIndex = callRoot ? OptimizedFrameInstance.CALL_ROOT_FRAME_INDEX : OptimizedFrameInstance.FRAME_INDEX;
+                    frameInstance = new OptimizedFrameInstance(frame, callNodeFrame, bytecodeIndex, frameIndex);
+                }
+                return visitor.visitFrame(frameInstance);
+            } finally {
+                osrFrame = null;
+                callNodeFrame = callRoot ? frame : null;
+            }
+        }
+
+        private int readBytecodeIndex(InspectedFrame inspectedFrame) {
+            if (inspectedFrame == null || inspectedFrame.isMethod(methods.callInlinedCallMethod)) {
+                return -1;
+            }
+            try {
+                return (int) GET_LOCAL_INT.invokeExact(inspectedFrame, OptimizedFrameInstance.CALL_NODE_BYTECODE_INDEX_NOTIFY_INDEX);
+            } catch (StackOverflowError e) {
+                // Stack walking can run while a guest language is handling a stack overflow.
+                throw e;
+            } catch (Throwable t) {
+                throw CompilerDirectives.shouldNotReachHere("Failed to read the call-site bytecode index", t);
             }
         }
 
@@ -687,7 +753,8 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     private <T> T iterateImpl(FrameInstanceVisitor<T> visitor, final int skip) {
         KnownMethods methods = getKnownMethods();
         FrameVisitor<T> jvmciVisitor = new FrameVisitor<>(visitor, methods, skip);
-        return getStackIntrospection().iterateFrames(methods.anyFrameMethod, methods.anyFrameMethod, 0, jvmciVisitor);
+        ResolvedJavaMethod[] anyFrameMethods = methods.getAnyFrameMethods();
+        return getStackIntrospection().iterateFrames(anyFrameMethods, anyFrameMethods, 0, jvmciVisitor);
     }
 
     protected abstract StackIntrospection getStackIntrospection();
@@ -940,12 +1007,15 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     public final class KnownMethods {
+
         public final ResolvedJavaMethod callDirectMethod;
         public final ResolvedJavaMethod callInlinedMethod;
         public final ResolvedJavaMethod callIndirectMethod;
         public final ResolvedJavaMethod callTargetMethod;
         public final ResolvedJavaMethod callInlinedCallMethod;
-        public final ResolvedJavaMethod[] anyFrameMethod;
+        public final ResolvedJavaMethod callRootMethod;
+
+        private final ResolvedJavaMethod[] anyFrameMethods;
 
         public KnownMethods(MetaAccessProvider metaAccess) {
             this.callDirectMethod = metaAccess.lookupJavaMethod(OptimizedFrameInstance.CALL_DIRECT);
@@ -953,7 +1023,12 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
             this.callInlinedMethod = metaAccess.lookupJavaMethod(OptimizedFrameInstance.CALL_INLINED);
             this.callInlinedCallMethod = metaAccess.lookupJavaMethod(OptimizedFrameInstance.CALL_INLINED_CALL);
             this.callTargetMethod = metaAccess.lookupJavaMethod(OptimizedFrameInstance.CALL_TARGET_METHOD);
-            this.anyFrameMethod = new ResolvedJavaMethod[]{callDirectMethod, callIndirectMethod, callInlinedMethod, callTargetMethod, callInlinedCallMethod};
+            this.callRootMethod = metaAccess.lookupJavaMethod(OptimizedFrameInstance.CALL_ROOT);
+            this.anyFrameMethods = new ResolvedJavaMethod[]{callDirectMethod, callIndirectMethod, callInlinedMethod, callTargetMethod, callInlinedCallMethod, callRootMethod};
+        }
+
+        public ResolvedJavaMethod[] getAnyFrameMethods() {
+            return anyFrameMethods;
         }
     }
 
