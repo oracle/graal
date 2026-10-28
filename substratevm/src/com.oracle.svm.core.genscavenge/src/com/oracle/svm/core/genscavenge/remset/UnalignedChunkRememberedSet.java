@@ -240,7 +240,7 @@ final class UnalignedChunkRememberedSet {
              */
             if (CardTable.shouldScan(cardTableStart, Word.zero(), scanYoungOnly)) {
                 if (clean || scanYoungOnly) {
-                    cardTableStart.writeByte(0, CardTable.scannedValue(clean, scanYoungOnly));
+                    cardTableStart.writeByte(0, CardTable.scannedValue(clean));
                 }
                 InteriorObjRefWalker.walkObjectInline(s, refVisitor);
             }
@@ -333,29 +333,28 @@ final class UnalignedChunkRememberedSet {
                 return curIdx;
             }
             if (clean || scanYoungOnly) {
-                ctAdr.writeByte(curIdx, CardTable.scannedValue(clean, scanYoungOnly));
+                ctAdr.writeByte(curIdx, CardTable.scannedValue(clean));
             }
             curIdx = curIdx.add(1);
         }
 
         while (curIdx.belowThan(endIdx)) {
             UnsignedWord wordValue = ctAdr.readWord(curIdx);
-            if (wordValue.notEqual(CardTable.DIRTY_WORD)) {
-                /* Retained and dirty cards may occupy the same word during a full scan. */
+            if (!CardTable.shouldScanAllCards(wordValue, scanYoungOnly)) {
                 UnsignedWord wordEnd = curIdx.add(wordSize);
                 while (curIdx.belowThan(wordEnd)) {
                     if (!CardTable.shouldScan(ctAdr, curIdx, scanYoungOnly)) {
                         return curIdx;
                     }
                     if (clean || scanYoungOnly) {
-                        ctAdr.writeByte(curIdx, CardTable.scannedValue(clean, scanYoungOnly));
+                        ctAdr.writeByte(curIdx, CardTable.scannedValue(clean));
                     }
                     curIdx = curIdx.add(1);
                 }
                 continue;
             }
             if (clean || scanYoungOnly) {
-                ctAdr.writeWord(curIdx, CardTable.CLEAN_WORD.multiply(CardTable.scannedValue(clean, scanYoungOnly)));
+                ctAdr.writeWord(curIdx, CardTable.CLEAN_WORD.multiply(CardTable.scannedValue(clean)));
             }
             curIdx = curIdx.add(wordSize);
         }

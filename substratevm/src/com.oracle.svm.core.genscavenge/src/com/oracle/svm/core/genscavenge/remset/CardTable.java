@@ -45,7 +45,7 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.shared.util.UnsignedUtils;
@@ -118,11 +118,6 @@ public final class CardTable {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setClean(Pointer table, UnsignedWord index) {
-        table.writeByte(index, CLEAN_ENTRY, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isDirty(Pointer table, UnsignedWord index) {
         int entry = readEntry(table, index);
         return entry == DIRTY_ENTRY;
@@ -142,20 +137,30 @@ public final class CardTable {
         return scanYoungOnly ? entry == DIRTY_ENTRY : entry != CLEAN_ENTRY;
     }
 
-    /** Preserves roots for full collections before the visitor remarks surviving young references. */
+    /**
+     * Preserves roots for full collections before the visitor remarks surviving young references.
+     * Expects to be called only when cleaning cards or scanning only references to the young generation.
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static byte scannedValue(boolean clean, boolean scanYoungOnly) {
-        return clean ? CLEAN_ENTRY : scanYoungOnly ? OLD_ONLY_ENTRY : DIRTY_ENTRY;
+    static byte scannedValue(boolean clean) {
+        return clean ? CLEAN_ENTRY : OLD_ONLY_ENTRY;
+    }
+
+    /** Detects a word in which every card needs scanning, including mixtures of dirty and retained cards. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static boolean shouldScanAllCards(UnsignedWord value, boolean scanYoungOnly) {
+        /* Only clean entries have their least significant bit set. */
+        return scanYoungOnly ? value.equal(DIRTY_WORD) : value.and(CLEAN_WORD).equal(0);
     }
 
     /** Detects a word without candidate cards, including mixtures of clean and retained cards. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static boolean canSkipWord(UnsignedWord value, boolean scanYoungOnly) {
-        if (scanYoungOnly) {
-            /* A zero byte denotes a candidate. Borrowing between bytes preserves this test. */
-            return value.subtract(CLEAN_WORD).and(value.not()).and(Word.unsigned(0x8080808080808080L)).equal(0);
+        if (value.equal(CLEAN_WORD)) {
+            return true;
         }
-        return value.equal(CLEAN_WORD);
+        /* A zero byte denotes a candidate. Borrowing between bytes preserves this test. */
+        return scanYoungOnly && value.subtract(CLEAN_WORD).and(value.not()).and(Word.unsigned(0x8080808080808080L)).equal(0);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

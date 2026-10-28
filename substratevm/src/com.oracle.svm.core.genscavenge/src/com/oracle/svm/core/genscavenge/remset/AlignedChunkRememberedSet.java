@@ -176,7 +176,7 @@ public final class AlignedChunkRememberedSet {
         while (cardPos.aboveOrEqual(cardTableStart)) {
             if (CardTable.shouldScan(cardPos, Word.zero(), scanYoungOnly)) {
                 if (clean || scanYoungOnly) {
-                    cardPos.writeByte(0, CardTable.scannedValue(clean, scanYoungOnly));
+                    cardPos.writeByte(0, CardTable.scannedValue(clean));
                 }
                 dirtyHeapStart = heapPos;
             } else {
