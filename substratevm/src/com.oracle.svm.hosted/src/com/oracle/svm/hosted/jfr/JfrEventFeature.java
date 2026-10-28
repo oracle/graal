@@ -40,7 +40,7 @@ import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithA
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.DynamicHubProvider;
-import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.guest.staging.hub.DynamicHubSupport;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;

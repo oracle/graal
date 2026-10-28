@@ -71,7 +71,7 @@ import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
-import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.guest.staging.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;

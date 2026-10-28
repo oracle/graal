@@ -83,7 +83,7 @@ import com.oracle.svm.core.heap.SmallestPossibleObject;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.guest.staging.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
