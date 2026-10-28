@@ -22,17 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.c;
-
-import org.graalvm.word.PointerBase;
+package com.oracle.svm.guest.staging.core.c;
 
 /**
- * An array with a constant memory address, either in unmanaged memory or as an object in the image
- * heap.
+ * A non-moving array of Java objects.
+ *
+ * We use {@link Void} for the type parameter of {@link NonmovableArray} to prevent mistakenly
+ * assigning a {@link NonmovableObjectArray} to a {@link NonmovableArray}.
  *
  * @param <T> the type of stored objects, purely for tagging and compile-time checks.
- * @see NonmovableArrays
- * @see NonmovableObjectArray
+ *
+ * @see "NonmovableArrays"
  */
-public interface NonmovableArray<T> extends PointerBase {
+public interface NonmovableObjectArray<T> extends NonmovableArray<Void> {
 }
