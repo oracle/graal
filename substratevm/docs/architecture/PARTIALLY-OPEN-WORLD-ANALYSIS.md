@@ -18,7 +18,7 @@ An **extension policy** describes what that extension is allowed to introduce or
 An effect is **covered** when an analyzed method graph or a conservative summary represents all of its relevant runtime behavior.
 An **entry summary**, for example, represents the possible arguments of calls whose call sites are unavailable to the analysis.
 
-A method can be known to the builder while analysis of its body is deferred to a later image layer.
+A method can be known to the builder while its body remains outside the current analysis, for example when deferred to a later image layer.
 Conversely, at run time an analyzed method can receive and use a concrete value supplied by an extension.
 The component that declares a class therefore does not, by itself, determine which effects the analysis covers.
 
@@ -147,6 +147,40 @@ If the analysis omits individual indirect stores, its field mutation summary mus
 Enumerating known instantiated types is insufficient when a field can hold values of types introduced by an extension.
 Such a field requires an open value approximation independently of the number of known types.
 A closed value bound permits a finite approximation only under the conditions in [Representing Possible Runtime Types](#representing-possible-runtime-types).
+
+### Effects of Unanalyzed Method Bodies
+
+Whether a method's entry is **open** (callers outside the current analysis may invoke it) or **closed** (all permitted calls are represented by analyzed call sites) is separate from whether its body is analyzed.
+An open entry requires a summary of arguments from callers whose call sites are unavailable to the analysis; when the body is analyzed, its stores propagate those values into fields.
+If a permitted method body is outside the current analysis, its effects require conservative summaries even when its declaring component is closed.
+
+Suppose `ClassX` has a closed type hierarchy, but the extension policy permits the implementation of `ClassX.foo` to remain outside the current analysis.
+Knowing all subtypes of `ClassX` does not account for writes performed by that implementation.
+The extension policy must specify whether `ClassX.foo` may write `ClassX.f`.
+If writes are permitted, compiled readers of the field must account for them through analyzed stores or a conservative mutation summary.
+The extension mechanism must reject writes that are forbidden or whose effects are not covered.
+Summarizing the call's return values and continuation does not establish mutation coverage.
+
+A field summary must represent unknown extension types when the effective field bound is open.
+If the value can be an array, the summary must cover its element values as well as its reference, including values reached through nested arrays.
+These requirements apply independently of how the extension is supplied.
+For example, a method deferred to a later image layer supplies no analyzed stores when the shared layer is compiled.
+Readers retained from that layer must already account for its permitted writes; analyzing the writer later cannot repair their assumptions.
+
+### Conservative Validation of Layered Closed-Field Writes
+
+Layered builds reject uncovered direct writes to fields deliberately excluded from shared-layer mutation summaries.
+The check uses stores observed after parsing and the parsing-support hook, before static-final-field folding, pre-analysis escape analysis, and final canonicalization.
+This is a conservative validation boundary: a recorded write can cause rejection even if a later optimization removes its store or enclosing branch.
+Parsing-time simplifications have already occurred, so the recorded writes are not a complete bytecode-level summary.
+
+An immutable metadata record accompanies each persisted analysis graph and retains these validation obligations even when the optimized graph no longer contains the stores.
+Freshly parsed extension methods and reused graphs validate writes from this same collection boundary, before caller-specific specialization.
+The metadata does not mark fields as written in analysis or add mutation summaries.
+
+Allowing eliminated writes requires distinguishing eliminations justified by facts that remain valid across layers from those relying on closed-world assumptions protected by this check.
+The absence of a store in an optimized graph alone does not establish that distinction.
+Until such a boundary is established, validation conservatively retains all writes observed at the current collection point.
 
 ## Architectural Requirements
 

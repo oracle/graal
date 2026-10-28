@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,12 +32,15 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
@@ -91,6 +94,27 @@ final class ExtensionLayerImageFeature implements InternalFeature {
          * transient errors when writing the heap of the extension image.
          */
         access.registerAsInHeap(ReflectionUtil.lookupClass(false, "java.util.concurrent.ConcurrentHashMap$CounterCell"));
+    }
+
+    /** Validate writes to always-closed fields recorded from a newly parsed or persisted method graph. */
+    static void checkNewClosedFieldWrites(AnalysisMethod method, Iterable<AnalysisField> closedFieldWrites) {
+        if (!method.analyzedInPriorLayer()) {
+            for (AnalysisField field : closedFieldWrites) {
+                /*
+                 * These fields are deliberately excluded from shared-layer mutation summaries to
+                 * retain closed-world optimizations. Reject new writes because their compatibility
+                 * with assumptions used to compile the shared layer is not established. A future
+                 * mechanism could record those assumptions and allow otherwise permitted writes
+                 * after verifying that they preserve all affected assumptions; compatibility with
+                 * the field's type bound alone is insufficient.
+                 */
+                if (field.isInSharedLayer()) {
+                    throw UserError.abort("Method %s writes field %s, which must remain closed across image layers. " +
+                                    "Analyze the write in the initial layer instead of delaying it to an extension layer.",
+                                    method.format("%H.%n(%p)"), field.format("%H.%n"));
+                }
+            }
+        }
     }
 
     @Override
