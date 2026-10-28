@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 
 // §AR-004-security-providers.requirements.1
 /**

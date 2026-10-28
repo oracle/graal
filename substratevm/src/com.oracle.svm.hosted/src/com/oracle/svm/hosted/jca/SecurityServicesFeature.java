@@ -94,7 +94,6 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
@@ -102,6 +101,7 @@ import com.oracle.svm.core.jdk.SecurityProviderRuntimeAccess;
 import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 import com.oracle.svm.core.jdk.SecuritySubstitutions;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
@@ -110,8 +110,8 @@ import com.oracle.svm.hosted.InternalReflectiveAccess;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
-import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
@@ -167,13 +167,13 @@ import sun.security.x509.OIDMap;
 /// ## system-overview: System Overview
 ///
 /// <pre>
-/// reflection metadata ─┐  builder §AR-002, during analysis §PH-004
-/// Provider instances ──┴─► planner ─► catalog registrar ─► run-time manifest
-///                                                              │ build/run §AR-001.design.2.2
-///                                                              ▼
-///          generated image §AR-003:  acquisition filter ◄── JDK-managed lookups
-///                                    JCE verification   ◄── provider-object calls
-/// where: a feature §AR-002.design.4 · behavior §FS-002 · legacy retires per §AR-004.design.8
+/// reflection metadata -+  builder §AR-002, during analysis §PH-004
+/// Provider instances --+-> planner -> catalog registrar -> run-time manifest
+///                                                              | build/run §AR-001.design.2.2
+///                                                              v
+///          generated image §AR-003:  acquisition filter <-- JDK-managed lookups
+///                                    JCE verification   <-- provider-object calls
+/// where: a feature §AR-002.design.4 ; behavior §FS-002 ; legacy retires per §AR-004.design.8
 /// </pre>
 ///
 /// ## terminology: Terminology

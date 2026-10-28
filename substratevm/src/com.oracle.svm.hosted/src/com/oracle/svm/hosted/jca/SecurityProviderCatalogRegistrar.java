@@ -34,9 +34,9 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
-import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 import com.oracle.svm.core.jdk.SecurityProviderRuntimeState.AcquisitionKind;
+import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 
 /**
  * Realizes complete provider plans and writes their service catalog and run-time manifest.
