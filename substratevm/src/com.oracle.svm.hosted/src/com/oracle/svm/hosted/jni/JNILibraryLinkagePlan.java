@@ -352,6 +352,15 @@ public final class JNILibraryLinkagePlan {
 
         @Override
         void prepareAfterAnalysis() {
+            if (!JNIRegistrationSupport.singleton().isCurrentLayerRegisteredLibrary(getLibrary())) {
+                /*
+                 * Libraries inherited from a previous layer already have their shims there.
+                 * Exporting the shim symbols again would pull another copy of the static library
+                 * into this layer. In particular, libjava's platform encoding is initialized in the
+                 * initial layer, so AWT must use that layer's copy of the JNU functions and state.
+                 */
+                return;
+            }
             for (String dependency : getDependencies()) {
                 if (dependency.equals("jvm")) {
                     requireShim(dependency);
