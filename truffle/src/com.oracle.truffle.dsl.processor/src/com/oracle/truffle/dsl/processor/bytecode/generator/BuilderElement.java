@@ -1129,7 +1129,7 @@ final class BuilderElement extends AbstractElement {
         b.startIf().string("reparseReason == null").end().startBlock();
         b.startStatement().string("nodes.setNodes(builtNodes.toArray(new ").type(parent.asType()).string("[0]))").end();
         b.end();
-        b.statement("assert nodes.validate()");
+        b.startAssert().string("!").staticReference(types.TruffleOptions, "DetailedAssertions").string(" || nodes.validate()").end();
 
         b.startStatement().startStaticCall(rootStackElement.asType(), "release").string("state").end().end();
         b.lineComment("make sure its no longer used");
