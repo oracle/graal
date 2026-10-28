@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,12 @@
  */
 package com.oracle.graal.pointsto.flow;
 
+import java.util.List;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -128,18 +131,55 @@ public final class AnalysisParsedGraph {
         HOST_ARCHITECTURE = compiler.getGraalRuntime().getCapability(RuntimeProvider.class).getHostBackend().getTarget().arch;
     }
 
-    private static final AnalysisParsedGraph EMPTY = new AnalysisParsedGraph(null, false);
+    /**
+     * Immutable metadata captured for one parsed graph, retained with its encoding so subsequent
+     * parsing of the same method cannot replace it. Closed-field writes describe stores observed
+     * at the collection boundary, including stores eliminated before encoding. They conservatively
+     * retain validation obligations rather than describing only the encoded graph's remaining effects.
+     *
+     * @param closedFieldWrites always-closed fields written before optimizations can remove their
+     *            stores; this is validation metadata for later layers and does not mark fields as
+     *            written in the analysis
+     */
+    public record GraphMetadata(List<AnalysisField> closedFieldWrites) {
+        private static final GraphMetadata EMPTY = new GraphMetadata(List.of());
+
+        public GraphMetadata {
+            closedFieldWrites = List.copyOf(closedFieldWrites);
+        }
+
+        /** Collects metadata during one parsing operation, before publishing the encoded graph. */
+        public static final class Builder {
+            private List<AnalysisField> closedFieldWrites = List.of();
+
+            public void setClosedFieldWrites(List<AnalysisField> closedFieldWrites) {
+                this.closedFieldWrites = List.copyOf(closedFieldWrites);
+            }
+
+            public GraphMetadata build() {
+                return closedFieldWrites.isEmpty() ? EMPTY : new GraphMetadata(closedFieldWrites);
+            }
+        }
+    }
+
+    private static final AnalysisParsedGraph EMPTY = new AnalysisParsedGraph(null, false, GraphMetadata.EMPTY);
 
     private final EncodedGraph encodedGraph;
     private final boolean isIntrinsic;
+    private final GraphMetadata metadata;
 
-    public AnalysisParsedGraph(EncodedGraph encodedGraph, boolean isIntrinsic) {
+    public AnalysisParsedGraph(EncodedGraph encodedGraph, boolean isIntrinsic, GraphMetadata metadata) {
         this.isIntrinsic = isIntrinsic;
         this.encodedGraph = encodedGraph;
+        this.metadata = metadata;
     }
 
     public EncodedGraph getEncodedGraph() {
         return encodedGraph;
+    }
+
+    public GraphMetadata getMetadata() {
+        return metadata;
     }
 
     public boolean isIntrinsic() {
@@ -251,6 +291,7 @@ public final class AnalysisParsedGraph {
         return optimizeAndEncode(bb, method, decodeParsedGraph(bb, method, stage1Graph), stage1Graph.isIntrinsic, Stage.OPTIMIZATIONS_APPLIED);
     }
 
+    /** Decode a non-empty parsed graph without inlining or applying optimizations. */
     @SuppressWarnings("try")
     private static StructuredGraph decodeParsedGraph(BigBang bb, AnalysisMethod method, AnalysisParsedGraph analysisParsedGraph) {
         // Persisted analysis graphs do not consume the structured optimization log, so avoid
@@ -281,13 +322,14 @@ public final class AnalysisParsedGraph {
              * Must be called before any other thread can access the graph, i.e., before the graph
              * is published.
              */
+            GraphMetadata.Builder metadata = new GraphMetadata.Builder();
             switch (stage) {
                 case BYTECODE_PARSED -> bb.getHostVM().methodAfterBytecodeParsedHook(bb, method, graph);
-                case OPTIMIZATIONS_APPLIED -> bb.getHostVM().methodAfterParsingHook(bb, method, graph);
+                case OPTIMIZATIONS_APPLIED -> bb.getHostVM().methodAfterParsingHook(bb, method, graph, metadata);
             }
 
             EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, HOST_ARCHITECTURE);
-            return new AnalysisParsedGraph(encodedGraph, isIntrinsic);
+            return new AnalysisParsedGraph(encodedGraph, isIntrinsic, metadata.build());
         } catch (Throwable e) {
             throw graph.getDebug().handle(e);
         }

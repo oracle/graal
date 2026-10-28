@@ -60,6 +60,7 @@ import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.GraphMetadata;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -790,7 +791,7 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
+    public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph, GraphMetadata.Builder metadata) {
         if (graph != null) {
             if (deoptsForbidden(method)) {
                 graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
@@ -799,7 +800,7 @@ public class SVMHost extends HostVM {
                 parsingSupport.afterParsingHook(method, graph);
             }
 
-            if (buildingExtensionLayer()) {
+            if (buildingImageLayer()) {
                 /*
                  * Conservatively retain writes observed after parsing and the parsing-support hook,
                  * before static-final-field folding, optimizeAfterParsing, and final canonicalization.
@@ -808,6 +809,7 @@ public class SVMHost extends HostVM {
                  */
                 List<AnalysisField> closedFieldWrites = graph.getNodes().filter(StoreFieldNode.class).stream()
                                 .map(store -> (AnalysisField) store.field()).filter(this::isAlwaysClosedField).distinct().toList();
+                metadata.setClosedFieldWrites(closedFieldWrites);
                 checkClosedFieldWrites(method, closedFieldWrites);
             }
 
@@ -852,7 +854,7 @@ public class SVMHost extends HostVM {
                 }
             }
 
-            super.methodAfterParsingHook(bb, method, graph);
+            super.methodAfterParsingHook(bb, method, graph, metadata);
         }
     }
 

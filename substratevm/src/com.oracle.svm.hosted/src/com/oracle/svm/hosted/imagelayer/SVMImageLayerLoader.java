@@ -57,6 +57,7 @@ import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.api.ImageLayerLoader;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.GraphMetadata;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
@@ -1041,9 +1042,13 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
     @Override
     public AnalysisParsedGraph getAnalysisParsedGraph(AnalysisMethod analysisMethod) {
         PersistedAnalysisMethodData.Loader methodData = getMethodData(analysisMethod);
+        /* Reused graphs bypass the after-parsing hook, even when only inlined in the prior layer. */
+        List<AnalysisField> closedFieldWrites = StreamSupport.stream(methodData.getClosedFieldWrites().spliterator(), false)
+                        .map(this::getAnalysisFieldForBaseLayerId).toList();
+        ((SVMHost) universe.hostVM()).checkClosedFieldWrites(analysisMethod, closedFieldWrites);
         boolean intrinsic = methodData.getAnalysisGraphIsIntrinsic();
         EncodedGraph analyzedGraph = getEncodedGraph(analysisMethod, methodData.getAnalysisGraphLocation());
-        return new AnalysisParsedGraph(analyzedGraph, intrinsic);
+        return new AnalysisParsedGraph(analyzedGraph, intrinsic, new GraphMetadata(closedFieldWrites));
     }
 
     public boolean hasStrengthenedGraph(AnalysisMethod analysisMethod) {
