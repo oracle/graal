@@ -32,7 +32,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.c.CIsolateData;
+import com.oracle.svm.guest.staging.core.c.CIsolateData;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;

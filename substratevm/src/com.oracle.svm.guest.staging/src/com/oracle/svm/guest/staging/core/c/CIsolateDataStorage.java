@@ -22,11 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.c;
+package com.oracle.svm.guest.staging.core.c;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import com.oracle.svm.shared.config.ObjectLayout;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Map;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -34,27 +37,26 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
-import com.oracle.svm.shared.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
-import com.oracle.svm.core.util.PointerUtils;
+import com.oracle.svm.shared.BuilderInvoked;
+import com.oracle.svm.shared.BuildPhaseProvider.AfterHostedUniverse;
+import com.oracle.svm.shared.collections.ConcurrentIdentityHashMap;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-
-import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.vm.ci.meta.JavaKind;
+import com.oracle.svm.shared.util.NumUtil;
+import com.oracle.svm.shared.util.UnsignedUtils;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Defines a section of memory where per-isolate singleton instances of native data structures can
  * be stored.
  */
-@AutomaticallyRegisteredImageSingleton
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
 public final class CIsolateDataStorage {
     /*
@@ -62,6 +64,9 @@ public final class CIsolateDataStorage {
      * pthread_mutex_t rely on this.
      */
     public static final int ALIGNMENT = Long.BYTES;
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private final Map<String, CIsolateData<?>> usedEntries = new ConcurrentIdentityHashMap<>();
 
     /* By using a long[], less code needs to deal with the alignment. */
     @UnknownObjectField(availability = AfterHostedUniverse.class) //
@@ -71,15 +76,44 @@ public final class CIsolateDataStorage {
     public CIsolateDataStorage() {
     }
 
-    @Fold
+    @GuestFold
     public static CIsolateDataStorage singleton() {
         return ImageSingletons.lookup(CIsolateDataStorage.class);
     }
 
+    /**
+     * Records an entry reported by the builder's reachability callback. Calls may be concurrent and
+     * may report the same entry repeatedly. Entry names are compared by object identity.
+     */
+    @BuilderInvoked
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setSize(long size) {
+    public void collect(CIsolateData<?> data) {
+        usedEntries.compute(data.getName(), (key, old) -> {
+            VMError.guarantee(old == null || old == data, "The isolate data section already contains an entry for %s", key);
+            return data;
+        });
+    }
+
+    /**
+     * Assigns aligned offsets in size/name order and allocates the backing storage. The builder
+     * invokes this method once during {@code afterAnalysis}, after all reachable
+     * {@code CIsolateData} entries have been collected.
+     */
+    @BuilderInvoked
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void layout() {
+        CIsolateData<?>[] entries = usedEntries.values().toArray(new CIsolateData<?>[0]);
+        Arrays.sort(entries, Comparator.comparingLong(CIsolateData<?>::getSize).thenComparing(CIsolateData<?>::getName));
+
+        long offset = 0;
+        for (CIsolateData<?> entry : entries) {
+            offset = NumUtil.roundUp(offset, ALIGNMENT);
+            entry.setOffset(offset);
+            offset += entry.getSize();
+        }
+
         assert managedIsolateSectionData == null;
-        long arrayLength = Math.ceilDiv(size, Long.BYTES);
+        long arrayLength = Math.ceilDiv(offset, Long.BYTES);
         managedIsolateSectionData = new long[NumUtil.safeToInt(arrayLength)];
     }
 
@@ -89,12 +123,12 @@ public final class CIsolateDataStorage {
         assert data != null : "invalid isolate data section entry";
         Pointer base = Word.objectToUntrackedPointer(managedIsolateSectionData).add(arrayBaseOffset());
         Pointer result = base.add(Word.unsigned(data.getOffset()));
-        assert PointerUtils.isAMultiple(result, Word.unsigned(ALIGNMENT));
+        assert UnsignedUtils.isAMultiple(result, Word.unsigned(ALIGNMENT));
         return (T) result;
     }
 
-    @Fold
+    @GuestFold
     static int arrayBaseOffset() {
-        return ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.Long);
+        return ObjectLayout.singleton().getArrayBaseOffset(Long.BYTES);
     }
 }
