@@ -32,7 +32,7 @@ import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
 
-import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.util.ByteArrayReader;

@@ -39,6 +39,8 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.SubstrateTarget;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableObjectArray;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.guest.staging.core.heap.Heap;

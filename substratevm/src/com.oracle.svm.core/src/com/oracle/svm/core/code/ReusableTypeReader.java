@@ -29,7 +29,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import jdk.graal.compiler.core.common.util.AbstractTypeReader;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 
-import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 import com.oracle.svm.shared.util.VMError;
