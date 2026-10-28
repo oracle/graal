@@ -249,6 +249,22 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         assertNotInlined(task, deadLeaf);
     }
 
+    @Test
+    public void testBalancedRecursiveInliningDecisions() {
+        OptimizedCallTarget recursive = callTarget(new BinaryRecursiveRootNode());
+        CallTree tree = createAgnosticCallTree(recursive, 3);
+
+        tree.getRoot().getPolicy().run(tree);
+
+        // Each recursive invocation replaces one call with two half-frequency calls. Recursion
+        // alone should not give this balanced, non-leaf subtree an inlining benefit.
+        Assert.assertEquals(2, tree.getRoot().getChildren().size());
+        for (CallNode child : tree.getRoot().getChildren()) {
+            Assert.assertEquals(1, child.getRecursionDepth());
+            Assert.assertEquals(CallNode.State.Expanded, child.getState());
+        }
+    }
+
     private static void warm(OptimizedCallTarget target, Object... arguments) {
         target.call(arguments);
         target.call(arguments);
@@ -374,6 +390,28 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                 return firstCallNode.call();
             }
             return secondCallNode.call();
+        }
+    }
+
+    private static final class BinaryRecursiveRootNode extends RootNode {
+
+        @Child private OptimizedDirectCallNode firstCallNode;
+        @Child private OptimizedDirectCallNode secondCallNode;
+
+        BinaryRecursiveRootNode() {
+            super(null);
+            RootCallTarget target = getCallTarget();
+            this.firstCallNode = insert((OptimizedDirectCallNode) Truffle.getRuntime().createDirectCallNode(target));
+            this.secondCallNode = insert((OptimizedDirectCallNode) Truffle.getRuntime().createDirectCallNode(target));
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            int depth = (int) frame.getArguments()[0];
+            if (CompilerDirectives.injectBranchProbability(0.5D, depth == 0)) {
+                return 1;
+            }
+            return (int) firstCallNode.call(depth - 1) + (int) secondCallNode.call(depth - 1);
         }
     }
 
