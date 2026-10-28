@@ -951,7 +951,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
      */
     @BytecodeInterpreterSwitch
     @ExpectNotInlined(name = {"traceTransferToInterpreter", "callBoundary", "profileExceptionType", "handleException", "addStackFrameInfo",
-                    "profileArgumentsSlow", "<init>", "beforeCall"}, count = {-1, 1, -1, -1, -1, 1, -1, 1})
+                    "profileArgumentsSlow", "<init>"}, count = {-1, 1, -1, -1, -1, 1, -1})
     static int testInterpreterCaller(@SuppressWarnings("unused") int value) {
         return (int) CALL.call();
     }

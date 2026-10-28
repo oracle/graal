@@ -21,30 +21,141 @@ You can find more information on how to correctly report polymorphic specializat
 Detection of suitable splitting candidates relies on the languages reporting polymorphic specializations.
 Once the specialization is reported, you can assume that the polymorphism is coming from somewhere in the caller chain of the call target hosting the newly polymorphic node, and that by splitting the right call target (or call targets) you can return this node to a monomorphic state.
 
-You then identify the call targets for which the splitting could result in monomorphization and mark them as "needs split". During further execution, if the interpreter is about to execute a direct call to a call target that is marked as "needs split", that call target will be split (provided there are no outstanding factors preventing it such as the [root node not being allowed to be split](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#isCloningAllowed),
-the AST being too big, etc.).
-This results in a new call target with a clean profile (i.e., all its nodes are returned to an uninitialized state) to be
-re-profiled specifically for this call site, since it is the only call site calling this new call target.
+The runtime automatically registers standard direct call nodes. Other call-site implementations do not participate in caller tracking or splitting. Caller tracking retains only whether there are zero, one, or multiple known callers; the sole caller is held weakly.
 
-Following recursive algorithm (expressed as pseudo code) is a simplified version of the approach used to decide which call targets need to be marked "needs split".
-This algorithm is applied to every call target once one of its nodes reports a polymorphic specialization.
-The full implementation can be found in `com.oracle.truffle.runtime.OptimizedCallTarget#maybeSetNeedsSplit`.
+Reporting a polymorphic specialization only identifies and marks call targets for which splitting could result in monomorphization. No call target is cloned while the report is processed.
+
+When a root is prepared for compilation and splitting is enabled, it scans its direct call-site nodes. `RootNode.visitCloneableNodes` visits the ordinary AST by default. Roots that store cloneable nodes outside ordinary child fields override this method and also visit those node trees. A call site whose target is marked is split, provided there are no outstanding factors preventing it such as the [root node not being allowed to be split](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#isCloningAllowed), the AST being too big, or insufficient splitting budget. Only direct call sites in the root being prepared are considered. Newly cloned targets are not scanned. After execution, a cloned target's own root compilation preparation can split its outgoing direct calls; inline preparation does not split.
+
+If at least one call site is split, compilation preparation is rejected once. This allows the new targets, whose nodes have been returned to an uninitialized state, to execute and gather call-site-specific profiles before the next compilation attempt.
+
+The following pseudo code summarizes the two phases:
 
 ```java
-setNeedsSplit(callTarget)
+reportPolymorphicSpecialize(callTarget)
     if callTarget.needsSplit
         return false
-    if sizeof(knownCallers(callTarget)) == 0
+    if numberOfKnownCallers(callTarget) == 0
         return false
     if callCount(callTarget) == 1
         return false
 
-    if sizeof(knownCallers(callTarget)) > 1
+    if numberOfKnownCallers(callTarget) > 1
         callTarget.needsSplit = true
     else
-        callTarget.needsSplit = setNeedsSplit(caller(callTarget))
+        callTarget.needsSplit = reportPolymorphicSpecialize(caller(callTarget))
 
     return callTarget.needsSplit
+
+prepareForCompilation(compilationRoot)
+    if splitting is disabled
+        return true
+
+    return !splitMarkedCalls(compilationRoot)
+
+splitMarkedCalls(root)
+    split = false
+    for callSite in directCallSites(root)
+        if callSite.currentTarget.needsSplit
+            clonedTarget = split(callSite)
+            if clonedTarget != null
+                split = true
+                splitMarkedCalls(clonedTarget)
+    return split
+```
+
+## Runtime Implementation Flow
+
+The following flow maps the algorithm to its runtime implementation:
+
+```text
+Node specialization becomes polymorphic
+    ↓
+Node.reportPolymorphicSpecialize()
+    ↓
+OptimizedRuntimeSupport.reportPolymorphicSpecialize(source)
+    ↓
+Find the source node's enclosing RootNode
+    ↓
+Find that root's OptimizedCallTarget
+    ↓
+OptimizedCallTarget.polymorphicSpecialize(source)
+    ↓
+maybeSetNeedsSplit(depth = 0)
+    ↓
+Check:
+  - propagation depth not exceeded
+  - target not already marked
+  - target has known direct callers
+  - target has executed more than once
+    ↓
+Inspect compact incoming-call tracking
+    ↓
+┌──────────────────────────────────────────────────────────┐
+│ Exactly one known OptimizedDirectCallNode caller          │
+│     ↓                                                     │
+│ Find that call node's enclosing caller target             │
+│     ↓                                                     │
+│ Recursively call callerTarget.maybeSetNeedsSplit(depth+1) │
+│     ↓                                                     │
+│ If caller target needs splitting, mark this target too    │
+└──────────────────────────────────────────────────────────┘
+                         or
+┌───────────────────────────────────────────────────────────┐
+│ No unique caller, normally because multiple callers exist │
+│     ↓                                                     │
+│ Mark this target: needsSplit = true                       │
+└───────────────────────────────────────────────────────────┘
+    ↓
+Propagate the result back down the single-caller chain
+    ↓
+Return to normal interpreter execution
+    ↓
+No clone is created yet
+    ↓
+A caller reaches root compilation preparation
+    ↓
+OptimizedCallTarget.prepareForCompilation(rootCompilation=true, ...)
+    ↓
+Enter the compilation root's language without entering a language context
+    ↓
+TruffleSplittingStrategy.splitForCompilation(compilationRoot)
+    ↓
+RootNode.visitCloneableNodes(visitor)
+    ↓
+Collect OptimizedDirectCallNodes, including calls cached by Bytecode DSL operations
+    ↓
+For each direct call node:
+    read callNode.currentCallTarget
+    ↓
+Is currentCallTarget.needsSplit?
+    ├── No  → continue scanning
+    └── Yes
+          ↓
+        Check cloning, recursion, size, source-target, and budget constraints
+          ↓
+        Reserve splitting budget
+          ↓
+        Clone the marked target
+          ↓
+        Outgoing direct calls register as they are copied or reconstructed
+          ↓
+        Atomically verify the outer call node still points to the source
+          ↓
+        Transfer incoming caller registration:
+          sourceTarget.removeDirectCallNode(outerCallNode)
+          clonedTarget.addDirectCallNode(outerCallNode)
+          ↓
+        Publish:
+          outerCallNode.currentCallTarget = clonedTarget
+    ↓
+Did at least one split succeed?
+    ├── No  → continue ordinary compilation preparation
+    └── Yes → return false and abort this preparation
+                  ↓
+              Clones can execute and gather profiles
+                  ↓
+              A later preparation compiles the cloned structure
 ```
 
 At the very beginning of the pseudo code you can have early termination conditions.
@@ -85,7 +196,7 @@ function main() {
 In this example, the node representing `+` in the `add` function will turn polymorphic once `double` is called with the string argument `"foo"` and this will be reported to the runtime and our algorithm will be applied to `add`.
 All of the early return checks will fail (`add` is not marked "needs split", it has known callers and this is not its first execution).
 Observe that `add` has only one caller (`double`), so you apply the algorithm to `double`.
-Early returns all fail, and since `double` has multiple callers, you mark it as "needs split" and on later iterations calls to `double` are split resulting in the following code representation of the run time state:
+Early returns all fail, and since `double` has multiple callers, you mark it as "needs split". When `callsDouble` is prepared for compilation, its calls to `double` are split, resulting in the following code representation of the run time state:
 
 ```
 function add(arg1, arg2) {
@@ -160,8 +271,8 @@ function main() {
 }
 ```
 
-Final note to observe at this point is that the splitting does not remove the original call targets, and that they still have polymorphism in their profiles.
-Thus, even if new calls to these call targets are created, they will also be split.
+Final note to observe at this point is that splitting does not remove the original call targets, and they still have polymorphism in their profiles.
+A new call to one of these targets is split when its enclosing root is prepared for compilation.
 Consider if the `main` of the previous example looked as follows.
 
 ```
@@ -174,5 +285,5 @@ function main() {
 }
 ```
 
-Once the execution reaches the newly added line you do not want it to call the `add` function with the polymorphic `+` since the arguments here do not merit the polymorphism.
-Luckily, since `add` was already marked as "needs split", it will remain so during the entire execution, and this final call to `add` will cause another split of the `add` function.
+If the root containing the newly added line is prepared for compilation, you do not want it to compile a call to the `add` function with the polymorphic `+` since the arguments here do not merit the polymorphism.
+Since `add` remains marked as "needs split", preparation splits the final call site and delays compilation once so the new target can execute first.

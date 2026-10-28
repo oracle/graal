@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -216,6 +216,11 @@ final class NodeAccessor extends Accessor {
         @Override
         public boolean prepareForCompilation(RootNode rootNode, boolean rootCompilation, int compilationTier, boolean lastTier) {
             return rootNode.prepareForCompilation(rootCompilation, compilationTier, lastTier);
+        }
+
+        @Override
+        public void visitCloneableNodes(RootNode rootNode, NodeVisitor visitor) {
+            rootNode.visitCloneableNodes(visitor);
         }
 
         @Override
