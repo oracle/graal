@@ -32,7 +32,7 @@ import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
@@ -106,7 +106,7 @@ public class PLTSupport {
     }
 
     void addMethodPLTStubResolverRelocation(RelocatableBuffer buffer, int offset, RelocationKind relocationKind, SharedMethod target) {
-        buffer.addRelocationWithAddend(offset, relocationKind, generatedPLT.getResolverEntryDisplacement(target), new MethodPointer(target));
+        buffer.addRelocationWithAddend(offset, relocationKind, generatedPLT.getResolverEntryDisplacement(target), MethodRefSupport.createMethodPointer(target));
     }
 
     public int getMethodPLTStubCodeAddressOffset(SharedMethod method) {

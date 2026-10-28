@@ -35,7 +35,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataDirectReference;
 import com.oracle.svm.core.graal.code.CGlobalDataIndirectReference;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
@@ -202,7 +202,7 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
             VMConstant constant = constantRef.getConstant();
             if (constant instanceof SubstrateMethodPointerConstant methodPointerConstant) {
                 MethodPointer pointer = methodPointerConstant.pointer();
-                HostedMethod hMethod = (HostedMethod) pointer.getMethod();
+                HostedMethod hMethod = (HostedMethod) methodPointerConstant.getMethod();
                 VMError.guarantee(!hMethod.isCompiledInPriorLayer(), "Method %s was compiled in a prior layer", hMethod);
                 VMError.guarantee(hMethod.isCompiled(), "Method %s is not compiled although there is a method pointer constant created for it.", hMethod);
                 relocVal = pointer;

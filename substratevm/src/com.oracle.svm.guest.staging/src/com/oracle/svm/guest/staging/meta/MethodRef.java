@@ -22,25 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.meta;
+package com.oracle.svm.guest.staging.meta;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.hub.DynamicHub;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 /**
- * A reference to a {@linkplain ResolvedJavaMethod method}. Subtypes are instantiated for specific
- * target methods during the image build and embedded in image heap objects, for example, in
- * dispatch tables of {@link DynamicHub} objects. For the image, the references are turned into
- * addresses or offsets which can be used to invoke the target method.
+ * A reference to a method target. Subtypes are instantiated for specific target methods during the
+ * image build and embedded in image heap objects, for example, in dispatch tables. For the image,
+ * the references are turned into addresses or offsets which can be used to invoke the target
+ * method.
+ *
+ * Instances are created and their target methods resolved through
+ * {@code com.oracle.svm.core.meta.MethodRefSupport} at image build time.
  */
 public interface MethodRef extends WordBase {
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    ResolvedJavaMethod getMethod();
-
 }

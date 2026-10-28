@@ -48,7 +48,7 @@ import com.oracle.svm.core.graal.snippets.DeoptTestSnippets;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.util.CounterFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
@@ -140,10 +140,10 @@ public final class DeoptimizationFeature implements InternalFeature {
         config.registerAsImmutable(ImageSingletons.lookup(DeoptimizationSupport.class));
         HostedMetaAccess metaAccess = config.getMetaAccess();
         if (ImageLayerBuildingSupport.firstImageBuild()) {
-            DeoptimizationSupport.setEagerDeoptStubPointer(new MethodPointer(metaAccess.lookupJavaMethod(eagerDeoptStubMethod)));
+            DeoptimizationSupport.setEagerDeoptStubPointer(MethodRefSupport.createMethodPointer(metaAccess.lookupJavaMethod(eagerDeoptStubMethod)));
             if (Deoptimizer.Options.LazyDeoptimization.getValue()) {
-                DeoptimizationSupport.setLazyDeoptStubPrimitiveReturnPointer(new MethodPointer(metaAccess.lookupJavaMethod(lazyDeoptStubPrimitiveReturnMethod)));
-                DeoptimizationSupport.setLazyDeoptStubObjectReturnPointer(new MethodPointer(metaAccess.lookupJavaMethod(lazyDeoptStubObjectReturnMethod)));
+                DeoptimizationSupport.setLazyDeoptStubPrimitiveReturnPointer(MethodRefSupport.createMethodPointer(metaAccess.lookupJavaMethod(lazyDeoptStubPrimitiveReturnMethod)));
+                DeoptimizationSupport.setLazyDeoptStubObjectReturnPointer(MethodRefSupport.createMethodPointer(metaAccess.lookupJavaMethod(lazyDeoptStubObjectReturnMethod)));
             }
         }
     }

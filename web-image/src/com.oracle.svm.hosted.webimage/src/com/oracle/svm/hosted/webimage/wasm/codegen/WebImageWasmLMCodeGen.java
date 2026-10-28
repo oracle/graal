@@ -36,7 +36,7 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.graal.code.CGlobalDataDirectReference;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.hosted.image.NativeImageHeap;

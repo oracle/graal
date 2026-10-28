@@ -91,7 +91,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.CompressedNullConstant;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.jvmci.shared.meta.SharedField;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
@@ -1666,7 +1666,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
         private static AArch64LIRInstruction createLoadMethodPointerConstant(AllocatableValue dst, SubstrateMethodPointerConstant constant) {
             if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-                if (constant.pointer().getMethod() instanceof SharedMethod sharedMethod && sharedMethod.forceIndirectCall()) {
+                if (constant.getMethod() instanceof SharedMethod sharedMethod && sharedMethod.forceIndirectCall()) {
                     DynamicImageLayerInfo dynamicImageLayerInfo = DynamicImageLayerInfo.singleton();
                     if (dynamicImageLayerInfo.isMethodCompilationDelayed(sharedMethod)) {
                         return new AArch64CGlobalDataDirectLoadAddressOp(dynamicImageLayerInfo.getSymbolForDelayedMethod(sharedMethod), dst);
@@ -1687,7 +1687,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
         private static AArch64LIRInstruction createLoadMethodOffsetConstant(AllocatableValue dst, SubstrateMethodOffsetConstant constant) {
             if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-                if (constant.offset().getMethod() instanceof SharedMethod sharedMethod && sharedMethod.forceIndirectCall()) {
+                if (MethodRefSupport.getMethod(constant.offset()) instanceof SharedMethod sharedMethod && sharedMethod.forceIndirectCall()) {
                     DynamicImageLayerInfo dynamicImageLayerInfo = DynamicImageLayerInfo.singleton();
                     if (dynamicImageLayerInfo.isMethodCompilationDelayed(sharedMethod)) {
                         return new AArch64LoadLayeredMethodOffsetConstantOp(dynamicImageLayerInfo.getSymbolForDelayedMethod(sharedMethod), dst, 0);
@@ -2056,7 +2056,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
                 Label nonCremaMethodId = new Label();
                 // Negative method IDs encode CremaResolvedJavaMethod instances.
                 asm.tbz(methodIdArg.getRegister(), 63, nonCremaMethodId);
-                result.recordDataPatch(asm.position(), new ConstantReference(new SubstrateMethodPointerConstant(new MethodPointer(cremaData.wrapperMethod()))));
+                result.recordDataPatch(asm.position(), new ConstantReference(new SubstrateMethodPointerConstant(MethodRefSupport.createMethodPointer(cremaData.wrapperMethod()))));
                 asm.adrpAdd(scratchRegister);
                 asm.jmp(scratchRegister);
                 asm.bind(nonCremaMethodId);

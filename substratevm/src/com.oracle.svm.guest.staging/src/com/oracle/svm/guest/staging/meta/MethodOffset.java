@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,63 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.meta;
+package com.oracle.svm.guest.staging.meta;
 
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
-import java.util.Objects;
-
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.word.ComparableWord;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.shared.util.VMError;
 
 /**
- * The absolute address of the compiled code of a method.
+ * The offset of the compiled code of a method from the {@linkplain KnownIntrinsics#codeBase() code
+ * base}.
  *
  * Do not use this concrete class in image runtime code. Use one of its superinterfaces instead.
  */
-public final class MethodPointer implements CFunctionPointer, MethodRef {
+public final class MethodOffset implements MethodRef {
     public static final boolean DEFAULT_PERMIT_REWRITE_TO_PLT = true;
 
-    @Platforms(HOSTED_ONLY.class) //
-    private final ResolvedJavaMethod method;
-
-    @Platforms(HOSTED_ONLY.class) //
-    private final boolean permitsRewriteToPLT;
-
     @Platforms(HOSTED_ONLY.class)
-    public MethodPointer(ResolvedJavaMethod method, boolean permitsRewriteToPLT) {
-        this.method = Objects.requireNonNull(method);
-        this.permitsRewriteToPLT = permitsRewriteToPLT;
+    private MethodOffset() {
+        this(DEFAULT_PERMIT_REWRITE_TO_PLT);
+    }
+
+    /** @see MethodPointer#permitsRewriteToPLT() */
+    @Platforms(HOSTED_ONLY.class)
+    private MethodOffset(boolean permitsRewriteToPLT) {
+        VMError.guarantee(permitsRewriteToPLT == DEFAULT_PERMIT_REWRITE_TO_PLT, "Not implemented: all calls to methods in PLT/GOT are currently redirected");
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public MethodPointer(ResolvedJavaMethod method) {
-        this(method, DEFAULT_PERMIT_REWRITE_TO_PLT);
-    }
-
-    @Override
-    @Platforms(HOSTED_ONLY.class)
-    public ResolvedJavaMethod getMethod() {
-        return method;
-    }
-
-    @Platforms(HOSTED_ONLY.class)
+    @SuppressWarnings("static-method")
     public boolean permitsRewriteToPLT() {
-        return permitsRewriteToPLT;
-    }
-
-    @Override
-    public boolean isNull() {
-        return false;
-    }
-
-    @Override
-    public boolean isNonNull() {
-        return true;
+        return DEFAULT_PERMIT_REWRITE_TO_PLT;
     }
 
     @Override
@@ -86,13 +63,15 @@ public final class MethodPointer implements CFunctionPointer, MethodRef {
         throw shouldNotReachHere("must not be called in hosted mode");
     }
 
+    @SuppressWarnings("deprecation")
+    @Deprecated
     @Override
-    public boolean equal(ComparableWord val) {
-        throw shouldNotReachHere("must not be called in hosted mode");
+    public boolean equals(Object obj) {
+        throw VMError.shouldNotReachHere("equals() not supported on words");
     }
 
     @Override
-    public boolean notEqual(ComparableWord val) {
-        throw shouldNotReachHere("must not be called in hosted mode");
+    public int hashCode() {
+        throw VMError.shouldNotReachHere("hashCode() not supported on words");
     }
 }

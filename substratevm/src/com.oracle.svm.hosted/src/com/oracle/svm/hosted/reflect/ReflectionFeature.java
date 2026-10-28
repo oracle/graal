@@ -61,9 +61,8 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefSupport;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
 import com.oracle.svm.core.reflect.ReflectionIntrospectorImpl;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
@@ -308,9 +307,9 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     private MethodRef asMethodRef(ResolvedJavaMethod method) {
         AnalysisMethod aMethod = (method instanceof AnalysisMethod) ? (AnalysisMethod) method : analysisAccess.getUniverse().lookup(method);
         if (relativeCodePointers) {
-            return new MethodOffset(aMethod);
+            return MethodRefSupport.createMethodOffset(aMethod);
         } else {
-            return new MethodPointer(aMethod);
+            return MethodRefSupport.createMethodPointer(aMethod);
         }
     }
 

@@ -39,7 +39,8 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.GOTAccess;
 import com.oracle.svm.core.pltgot.aarch64.AArch64MethodAddressResolutionDispatcher;
@@ -156,7 +157,7 @@ public class AArch64PLTStubGenerator implements PLTStubGenerator {
         buffer.getByteBuffer().put(code);
 
         HostedMethod resolverMethod = HostedPLTGOTConfiguration.singleton().getArchSpecificResolverAsHostedMethod();
-        MethodPointer resolver = new MethodPointer(resolverMethod, false);
+        MethodPointer resolver = MethodRefSupport.createMethodPointer(resolverMethod, false);
         assert patchState.addressLoadOffset != -1;
         buffer.addRelocationWithoutAddend(patchState.addressLoadOffset, AARCH64_R_AARCH64_ADR_PREL_PG_HI21, resolver);
         buffer.addRelocationWithoutAddend(patchState.addressLoadOffset + 4, AARCH64_R_AARCH64_ADD_ABS_LO12_NC, resolver);

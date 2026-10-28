@@ -79,7 +79,7 @@ import com.oracle.svm.core.jni.access.JNIAccessibleMethodDescriptor;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
 import com.oracle.svm.core.jni.functions.JNIFunctions;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
@@ -669,25 +669,25 @@ public class JNIAccessFeature implements Feature {
                 interfaceTypeID = indirectCallTargetClass.isInterface() ? indirectCallTargetClass.getInterfaceID() : JNIAccessibleMethod.INTERFACE_TYPEID_CLASS_TABLE;
             }
         }
-        CodePointer nonvirtualTarget = new MethodPointer(hTarget);
+        CodePointer nonvirtualTarget = MethodRefSupport.createMethodPointer(hTarget);
         PointerBase newObjectTarget = null;
         if (method.newObjectMethod != null) {
-            newObjectTarget = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.newObjectMethod)));
+            newObjectTarget = MethodRefSupport.createMethodPointer(hUniverse.lookup(aUniverse.lookup(method.newObjectMethod)));
         } else if (method.targetMethod.isConstructor()) {
             assert method.targetMethod.getDeclaringClass().isAbstract();
             newObjectTarget = Word.signed(JNIAccessibleMethod.NEW_OBJECT_TARGET_INVALID_FOR_ABSTRACT_TYPE);
         }
-        CodePointer callWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.callWrapper)));
-        CodePointer varargs = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.variantWrappers.varargs)));
-        CodePointer array = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.variantWrappers.array)));
-        CodePointer valist = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.variantWrappers.valist)));
+        CodePointer callWrapper = MethodRefSupport.createMethodPointer(hUniverse.lookup(aUniverse.lookup(method.callWrapper)));
+        CodePointer varargs = MethodRefSupport.createMethodPointer(hUniverse.lookup(aUniverse.lookup(method.variantWrappers.varargs)));
+        CodePointer array = MethodRefSupport.createMethodPointer(hUniverse.lookup(aUniverse.lookup(method.variantWrappers.array)));
+        CodePointer valist = MethodRefSupport.createMethodPointer(hUniverse.lookup(aUniverse.lookup(method.variantWrappers.valist)));
         CodePointer varargsNonvirtual = null;
         CodePointer arrayNonvirtual = null;
         CodePointer valistNonvirtual = null;
         if (method.nonvirtualVariantWrappers != null) {
-            varargsNonvirtual = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.nonvirtualVariantWrappers.varargs)));
-            arrayNonvirtual = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.nonvirtualVariantWrappers.array)));
-            valistNonvirtual = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.nonvirtualVariantWrappers.valist)));
+            varargsNonvirtual = MethodRefSupport.createMethodPointer(hUniverse.lookup(aUniverse.lookup(method.nonvirtualVariantWrappers.varargs)));
+            arrayNonvirtual = MethodRefSupport.createMethodPointer(hUniverse.lookup(aUniverse.lookup(method.nonvirtualVariantWrappers.array)));
+            valistNonvirtual = MethodRefSupport.createMethodPointer(hUniverse.lookup(aUniverse.lookup(method.nonvirtualVariantWrappers.valist)));
         }
         EconomicSet<Class<?>> hidingSubclasses = findHidingSubclasses(hTarget.getDeclaringClass(), sub -> anyMethodMatchesIgnoreReturnType(sub, method.descriptor));
         method.jniMethod.finishBeforeCompilation(hidingSubclasses, vtableIndex, interfaceTypeID, nonvirtualTarget, newObjectTarget, callWrapper,

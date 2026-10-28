@@ -79,7 +79,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.hosted.FeatureImpl;

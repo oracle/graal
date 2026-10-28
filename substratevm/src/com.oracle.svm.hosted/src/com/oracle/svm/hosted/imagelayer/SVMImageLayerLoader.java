@@ -75,7 +75,8 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -1417,7 +1418,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
         } else {
             assert initInfo.getIsLinked() : "Invalid state";
             int classInitializerId = initInfo.getInitializerMethodId();
-            MethodPointer classInitializer = (classInitializerId == 0) ? null : new MethodPointer(getAnalysisMethodForBaseLayerId(classInitializerId));
+            MethodPointer classInitializer = (classInitializerId == 0) ? null : MethodRefSupport.createMethodPointer(getAnalysisMethodForBaseLayerId(classInitializerId));
             return ClassInitializationInfo.forRuntimeTimeInitializedClass(classInitializer, initInfo.getIsTracked());
         }
     }

@@ -70,9 +70,8 @@ import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.JavaVersion;
@@ -428,7 +427,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static MethodRef createMethodRef(ResolvedJavaMethod method) {
-        return SubstrateOptions.useRelativeCodePointers() ? new MethodOffset(method) : new MethodPointer(method);
+        return SubstrateOptions.useRelativeCodePointers() ? MethodRefSupport.createMethodOffset(method) : MethodRefSupport.createMethodPointer(method);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -931,7 +930,7 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
         if (this.nativeEntryPoint != null && nativeEntryPoint != null) {
             /* already set, verify if it's the same */
             ResolvedJavaMethod setMethod = this.nativeEntryPoint.getReferent().getMethod();
-            VMError.guarantee(setMethod.equals(nativeEntryPoint.getMethod()));
+            VMError.guarantee(setMethod.equals(MethodRefSupport.getMethod(nativeEntryPoint)));
             return;
         }
 

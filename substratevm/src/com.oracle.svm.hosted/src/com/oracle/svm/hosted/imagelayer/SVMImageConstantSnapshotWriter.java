@@ -66,9 +66,10 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
@@ -455,7 +456,7 @@ final class SVMImageConstantSnapshotWriter {
     }
 
     private static AnalysisMethod getRelocatableConstantMethod(MethodRef methodRef) {
-        ResolvedJavaMethod method = methodRef.getMethod();
+        ResolvedJavaMethod method = MethodRefSupport.getMethod(methodRef);
         if (method instanceof HostedMethod hostedMethod) {
             return hostedMethod.wrapped;
         } else {

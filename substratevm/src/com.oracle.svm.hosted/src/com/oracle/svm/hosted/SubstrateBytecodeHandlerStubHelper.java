@@ -34,7 +34,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.debug.GraalError;
@@ -91,7 +92,7 @@ public final class SubstrateBytecodeHandlerStubHelper {
                 BytecodeHandlerStubKey defaultKey = BytecodeHandlerStubKey.createDefaultHandlerKey(key.interpreterHolder(), handlerConfig, key.templateIndex());
                 ResolvedJavaMethod defaultHandler = registeredBytecodeHandlers.get(defaultKey);
                 GraalError.guarantee(defaultHandler != null, "default handler is null");
-                MethodPointer defaultHandlerPointer = new MethodPointer(defaultHandler);
+                MethodPointer defaultHandlerPointer = MethodRefSupport.createMethodPointer(defaultHandler);
 
                 Arrays.fill(handlerTable, defaultHandlerPointer);
                 bytecodeHandlers.put(tableKey, handlerTable);
@@ -106,8 +107,8 @@ public final class SubstrateBytecodeHandlerStubHelper {
             AnnotationValue annotation = BytecodeInterpreterAnnotations.getBytecodeInterpreterHandler(handler);
             GraalError.guarantee(annotation != null, "missing @BytecodeInterpreterHandler on %s", handler.format("%H.%n(%p)"));
             for (Integer opcode : annotation.getList("value", Integer.class)) {
-                GraalError.guarantee(handlerTable[opcode].getMethod().equals(registeredBytecodeHandlers.get(tableKey)), "Method for opcode %d already set.", opcode);
-                handlerTable[opcode] = new MethodPointer(stubWrapper);
+                GraalError.guarantee(MethodRefSupport.getMethod(handlerTable[opcode]).equals(registeredBytecodeHandlers.get(tableKey)), "Method for opcode %d already set.", opcode);
+                handlerTable[opcode] = MethodRefSupport.createMethodPointer(stubWrapper);
             }
         }
 
@@ -131,7 +132,7 @@ public final class SubstrateBytecodeHandlerStubHelper {
                 ResolvedJavaMethod stubWrapper = registeredBytecodeHandlers.get(BytecodeHandlerStubKey.create(key.method(), key.interpreterHolder(), handlerConfig, templateIndex));
                 GraalError.guarantee(stubWrapper != null, "No main-dispatch stub registered for %s with config %s and template index %d",
                                 handler.format("%H.%n(%p)"), handlerConfig, templateIndex);
-                dispatchTargets[templateIndex] = new MethodPointer(stubWrapper);
+                dispatchTargets[templateIndex] = MethodRefSupport.createMethodPointer(stubWrapper);
             }
             mainDispatchHandlers.put(dispatchKey, dispatchTargets);
         }

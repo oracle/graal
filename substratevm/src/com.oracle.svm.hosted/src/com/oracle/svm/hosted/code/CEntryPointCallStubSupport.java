@@ -40,7 +40,7 @@ import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.code.IsolateLeaveStub;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
@@ -120,7 +120,7 @@ public final class CEntryPointCallStubSupport {
             if (value == null) {
                 assert !bb.getUniverse().sealed();
                 AnalysisMethod nativeStub = registerStubForMethod(method, () -> CEntryPointData.create(method));
-                CFunctionPointer nativeStubAddress = new MethodPointer(nativeStub);
+                CFunctionPointer nativeStubAddress = MethodRefSupport.createMethodPointer(nativeStub);
                 String stubName = BuilderUtil.uniqueStubName(method);
                 ResolvedJavaType holderClass = bb.getMetaAccess().lookupJavaType(IsolateLeaveStub.class).getWrapped();
                 CEntryPointJavaCallStubMethod stub = new CEntryPointJavaCallStubMethod(method.getWrapped(), stubName, holderClass, nativeStubAddress);

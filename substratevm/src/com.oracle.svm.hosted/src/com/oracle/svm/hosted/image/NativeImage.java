@@ -93,9 +93,10 @@ import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
@@ -735,7 +736,7 @@ public abstract class NativeImage extends AbstractImage {
             validateNoDirectRelocationsInTextSection(info);
         }
 
-        ResolvedJavaMethod method = ((MethodRef) targetObject).getMethod();
+        ResolvedJavaMethod method = MethodRefSupport.getMethod((MethodRef) targetObject);
         HostedMethod hMethod = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
         boolean injectedNotCompiled = isInjectedNotCompiled(hMethod);
         HostedMethod target = getMethodRefTargetMethod(metaAccess, hMethod);
