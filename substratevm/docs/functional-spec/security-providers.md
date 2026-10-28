@@ -7,8 +7,8 @@ executable would then retain every provider and its complete service catalog, ev
 application never uses them.
 To avoid that executable-size cost, Native Image uses two independent inputs for a JDK-managed
 provider: a `security.provider.<n>` property determines its position in the
-[run-time provider list](#13-run-time-provider-list), and the provider implementation class or a
-supported construction path must be [registered for reflection](#11-registered-providers-and-services)
+[run-time provider list](#terminology3-run-time-provider-list), and the provider implementation class or a
+supported construction path must be [registered for reflection](#terminology1-registered-providers-and-services)
 at build time to include the provider and its services.
 Only providers that satisfy both conditions are constructed and exposed through JDK-managed lookup
 at run time; once included, they behave as they do on HotSpot.
@@ -132,8 +132,9 @@ An ambiguous provider name never falls back to treating that token as a binary c
 Each configured entry is independent, so two entries for the same provider class can produce
 distinct provider instances, names, and service catalogs while retaining their configured relative
 order.
-The run-time provider list contains registered configured providers in configured relative order,
-followed by existing instances inserted through the [`Security`][security] API.
+The run-time provider list contains registered configured providers in configured relative order.
+Existing instances are inserted at the positions specified by the [`Security`][security] API, as
+defined in [§FS-002-security-providers.4.2](security-providers.md#42-programmatic-provider-list-changes).
 Provider registration does not install a provider, and insertion does not register one.
 Provider-list initialization is distinct from class initialization (JLS 12.4).
 A private or parameterized constructor and a class-path `provider()` method do not qualify.
@@ -559,13 +560,19 @@ additional-provider option in each mode.
 
 ### requirements.8: Tracing Round-Trip
 
-**Requirement.** Agent and native tracing metadata must be sufficient to reproduce traced provider
-operations and minimal enough not to register an unused provider or repeat an observed operation.
-Tracing a provider-list mutation must not add provider-class metadata merely because it observes the
-supplied object.
-Tracing must not retain application provider objects, must distinguish transient provider-object
-calls from successful insertion, and must record the constructor actually used on service-cache
-hits.
+**Requirement.** With explicit provider registration enabled, agent and native tracing metadata
+must reproduce observed factory selection when the provider construction occurred under tracing.
+Provider construction completed before tracing began is outside this round-trip guarantee.
+Tracing records the provider and service construction operations that the JDK actually attempts,
+including candidates constructed during traversal or rejected by later initialization or selection.
+It must not construct additional providers or services or repeat an observed operation to generate
+metadata.
+A later lookup or selection of a cached provider must not repeat its reflective construction solely
+to record metadata.
+Tracing a provider-list mutation or later selection of an application-supplied object must not add
+provider-class metadata merely because it observes the supplied object.
+Tracing must not retain application provider objects and must record the constructor actually used
+on service-cache hits.
 Caller attribution must cross every JDK runtime-module intermediary before selecting an application
 condition.
 
