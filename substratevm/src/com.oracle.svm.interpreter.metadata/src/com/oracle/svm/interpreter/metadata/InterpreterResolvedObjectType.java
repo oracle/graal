@@ -42,6 +42,7 @@ import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.espresso.classfile.ParserKlass;
@@ -802,7 +803,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     @Override
     public final InterpreterResolvedObjectType getSuperClass() {
         if (isInterface() || isArray()) {
-            return (InterpreterResolvedObjectType) DynamicHub.fromClass(Object.class).getInterpreterType();
+            return (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(Object.class));
         }
         return this.superclass;
     }

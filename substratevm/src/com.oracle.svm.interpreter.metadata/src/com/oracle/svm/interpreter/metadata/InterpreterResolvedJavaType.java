@@ -36,6 +36,7 @@ import org.graalvm.word.WordBase;
 import com.oracle.svm.core.SubstrateMetadata;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
@@ -131,7 +132,7 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
     }
 
     public static InterpreterResolvedJavaType fromClass(Class<?> javaClass) {
-        return (InterpreterResolvedJavaType) DynamicHub.fromClass(javaClass).getInterpreterType();
+        return (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(javaClass));
     }
 
     public final DynamicHub getHub() {
@@ -385,7 +386,7 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
     @Override
     public final InterpreterResolvedObjectType getArrayClass() {
         DynamicHub arrayHub = DynamicHub.fromClass(clazz).getOrCreateArrayHub();
-        return (InterpreterResolvedObjectType) arrayHub.getInterpreterType();
+        return (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(arrayHub);
     }
 
     @Override

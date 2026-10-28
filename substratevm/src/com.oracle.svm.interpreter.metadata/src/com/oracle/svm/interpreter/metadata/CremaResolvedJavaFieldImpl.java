@@ -29,6 +29,7 @@ import java.util.Set;
 import org.graalvm.nativeimage.impl.ClassLoading;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaSupport;
@@ -91,7 +92,7 @@ public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField imp
                 // Not loaded: return the unresolved type
                 return UnresolvedJavaType.create(getSymbolicType().toString());
             }
-            resolvedType = (InterpreterResolvedJavaType) DynamicHub.fromClass(cls).getInterpreterType();
+            resolvedType = (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(cls));
         }
         return resolvedType;
     }
@@ -101,7 +102,7 @@ public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField imp
         if (resolvedType == null) {
             try (var _ = ClassLoading.allowArbitraryClassLoading()) {
                 Class<?> cls = CremaSupport.singleton().resolveOrThrow(getSymbolicType(), getDeclaringClass());
-                resolvedType = (InterpreterResolvedJavaType) DynamicHub.fromClass(cls).getInterpreterType();
+                resolvedType = (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(cls));
             }
         }
         return resolvedType;

@@ -30,6 +30,7 @@ import java.lang.invoke.MethodType;
 import org.graalvm.nativeimage.impl.ClassLoading;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives;
@@ -192,7 +193,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
 
     private static InterpreterResolvedJavaType resolveSymbolOrThrow(Symbol<Type> type, InterpreterResolvedObjectType accessingClass) {
         DynamicHub hub = DynamicHub.fromClass(CremaSupport.singleton().resolveOrThrow(type, accessingClass));
-        return (InterpreterResolvedJavaType) hub.getInterpreterType();
+        return (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(hub);
     }
 
     private Object resolveClassConstant(int classIndex, InterpreterResolvedObjectType accessingKlass) {

@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter.ristretto.meta;
 
 import com.oracle.svm.core.classinitialization.TypeReachedProvider;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.graal.meta.SubstrateConstantReflectionProvider;
 import com.oracle.svm.graal.meta.SubstrateMetaAccess;
 import com.oracle.svm.graal.meta.SubstrateType;
@@ -65,7 +66,7 @@ public class RistrettoConstantReflectionProvider extends SubstrateConstantReflec
         if (sType == null) {
             return null;
         }
-        return RistrettoType.getOrCreate((InterpreterResolvedJavaType) sType.getHub().getInterpreterType());
+        return RistrettoType.getOrCreate((InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(sType.getHub()));
     }
 
     @Override

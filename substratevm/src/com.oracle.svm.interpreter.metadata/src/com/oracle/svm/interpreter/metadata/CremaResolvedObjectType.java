@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
@@ -401,7 +402,7 @@ public final class CremaResolvedObjectType extends InterpreterResolvedObjectType
                  */
                 continue;
             }
-            ResolvedJavaType memberActualNestHost = DynamicHub.fromClass(memberHub.getNestHost()).getInterpreterType();
+            ResolvedJavaType memberActualNestHost = DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(memberHub.getNestHost()));
             if (host != memberActualNestHost) {
                 // Skip nest members that do not declare 'this' as their host.
                 continue;

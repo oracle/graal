@@ -28,6 +28,7 @@ import java.lang.reflect.InvocationTargetException;
 
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
 
@@ -75,7 +76,7 @@ abstract class AbstractCremaConstructorAccessor extends AbstractCremaAccessor im
         }
         EnsureClassInitializedNode.ensureClassInitialized(instantiatedClass);
 
-        Object newReference = CremaSupport.singleton().allocateInstance(DynamicHub.fromClass(instantiatedClass).getInterpreterType());
+        Object newReference = CremaSupport.singleton().allocateInstance(DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(instantiatedClass)));
         Object[] finalArgs = new Object[args.length + 1];
         finalArgs[0] = newReference;
         System.arraycopy(args, 0, finalArgs, 1, args.length);

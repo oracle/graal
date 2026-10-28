@@ -31,6 +31,7 @@ import java.lang.invoke.MethodType;
 import java.util.Arrays;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives;
 import com.oracle.svm.espresso.classfile.attributes.BootstrapMethodsAttribute;
@@ -180,7 +181,7 @@ public final class ResolvedInvokeDynamicConstant {
     private CallSiteLink createCallSiteLink(RuntimeInterpreterConstantPool pool, Class<?> accessingKlass, InterpreterResolvedJavaMethod method, int bci) {
         // Per-callsite linking
         try {
-            InterpreterResolvedObjectType accessingType = (InterpreterResolvedObjectType) DynamicHub.fromClass(accessingKlass).getInterpreterType();
+            InterpreterResolvedObjectType accessingType = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(accessingKlass));
             MethodHandle bootstrapmethodMethodHandle = pool.resolvedMethodHandleAt(bootstrapMethod.getBootstrapMethodRef(), accessingType);
             Object[] args = pool.getStaticArguments(bootstrapMethod, accessingType);
 

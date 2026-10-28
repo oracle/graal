@@ -29,6 +29,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.graal.meta.SubstrateMetaAccess;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.interpreter.metadata.CremaMethodAccess;
@@ -62,7 +63,7 @@ public final class RistrettoMetaAccess extends SubstrateMetaAccess {
 
     @Override
     public SubstrateType lookupJavaType(Class<?> clazz) {
-        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) DynamicHub.fromClass(clazz).getInterpreterType();
+        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz));
         return RistrettoType.getOrCreate(iType);
     }
 
@@ -74,7 +75,7 @@ public final class RistrettoMetaAccess extends SubstrateMetaAccess {
 
     @Override
     public ResolvedJavaField lookupJavaField(Field reflectionField) {
-        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) DynamicHub.fromClass(reflectionField.getDeclaringClass()).getInterpreterType();
+        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(reflectionField.getDeclaringClass()));
         if (Modifier.isStatic(reflectionField.getModifiers())) {
             for (var iField : iType.getStaticFields()) {
                 if (iField.getName().equals(reflectionField.getName())) {
@@ -100,7 +101,7 @@ public final class RistrettoMetaAccess extends SubstrateMetaAccess {
         assert svmType instanceof SubstrateType : Assertions.errorMessage("Must be a substrate type if it comes out of a meta access", svmType);
         SubstrateType substrateType = (SubstrateType) svmType;
         DynamicHub hub = substrateType.getHub();
-        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) hub.getInterpreterType();
+        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(hub);
         return RistrettoType.getOrCreate(iType);
     }
 

@@ -407,7 +407,7 @@ public class CremaSupportImpl implements CremaSupport {
         long[] metaspaceInterfaceHashTable = canonicalMetaspaceInterfaceHashTableCache.getOrCreate(openTypeWorldInterfaceHashTable);
 
         // Compute fields layout
-        InterpreterResolvedObjectType typeCheckSuperType = (InterpreterResolvedObjectType) typeCheckSuperHub.getInterpreterType();
+        InterpreterResolvedObjectType typeCheckSuperType = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(typeCheckSuperHub);
         FieldLayout fieldLayout = FieldLayout.build(parsed.getFields(), typeCheckSuperType.getAfterFieldsOffset());
 
         int afterFieldsOffset;
@@ -433,7 +433,7 @@ public class CremaSupportImpl implements CremaSupport {
         InterpreterResolvedJavaType componentType = null;
         DynamicHub componentHub = hub.getComponentHub();
         if (componentHub != null) {
-            componentType = (InterpreterResolvedJavaType) componentHub.getInterpreterType();
+            componentType = (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(componentHub);
         }
         CremaResolvedObjectType thisType = InterpreterResolvedObjectType.createForCrema(
                         parsed,
@@ -471,11 +471,11 @@ public class CremaSupportImpl implements CremaSupport {
 
         Class<?> dynamicNestHost = info.dynamicNest;
         if (dynamicNestHost != null) {
-            thisType.setNestHost((InterpreterResolvedObjectType) DynamicHub.fromClass(dynamicNestHost).getInterpreterType());
+            thisType.setNestHost((InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(dynamicNestHost)));
         }
 
         // Done
-        hub.setInterpreterType(thisType);
+        DynamicHubUtils.setInterpreterType(hub, thisType);
 
         hub.getCompanion().setHubMetadata(new RuntimeDynamicHubMetadata(thisType));
         hub.getCompanion().setReflectionMetadata(new RuntimeReflectionMetadata(thisType));
@@ -492,7 +492,7 @@ public class CremaSupportImpl implements CremaSupport {
     private static InterpreterResolvedObjectType[] getInterpreterInterfaces(DynamicHub hub) {
         InterpreterResolvedObjectType[] interfaces = new InterpreterResolvedObjectType[hub.getInterfaces().length];
         for (int i = 0; i < interfaces.length; i++) {
-            interfaces[i] = (InterpreterResolvedObjectType) hub.getInterfaces()[i].getInterpreterType();
+            interfaces[i] = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(hub.getInterfaces()[i]);
         }
         return interfaces;
     }
@@ -646,7 +646,7 @@ public class CremaSupportImpl implements CremaSupport {
 
     @Override
     public DynamicHub getOrCreateArrayHub(DynamicHub componentHub) {
-        InterpreterResolvedJavaType componentType = (InterpreterResolvedJavaType) componentHub.getInterpreterType();
+        InterpreterResolvedJavaType componentType = (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(componentHub);
         synchronized (componentType) {
             DynamicHub existingArrayHub = componentHub.getArrayHub();
             if (existingArrayHub != null) {
@@ -677,7 +677,7 @@ public class CremaSupportImpl implements CremaSupport {
         }
         DynamicHub superHub = DynamicHub.fromClass(Object.class);
         int javaModifiers = (componentHub.getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT;
-        int jvmModifiers = (componentHub.getInterpreterType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT;
+        int jvmModifiers = (DynamicHubUtils.getInterpreterType(componentHub).getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT;
         short flags = DynamicHub.makeFlags(false, false, false, false, false, false, false, false, true, false);
         ClassLoader loader = componentHub.getClassLoader();
         Module module = componentHub.getModule();
@@ -710,7 +710,7 @@ public class CremaSupportImpl implements CremaSupport {
 
         // use Object[] as a prototype for interfaceEncodings and vtables
         DynamicHub objectArrayHub = DynamicHub.fromClass(Object[].class);
-        InterpreterResolvedObjectType objectArrayType = (InterpreterResolvedObjectType) objectArrayHub.getInterpreterType();
+        InterpreterResolvedObjectType objectArrayType = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(objectArrayHub);
         DynamicHub[] interfaceEncodings = (DynamicHub[]) objectArrayHub.getInterfacesEncoding();
 
         int[] typeCheckInterfaceIDs = getTypeCheckInterfaceIDs(transitiveSuperInterfaces, interfaceID);
@@ -732,8 +732,8 @@ public class CremaSupportImpl implements CremaSupport {
                         loader, null, module, null, null, typeID, interfaceID, false, numClassTypes, typeIDDepth,
                         numIterableInterfaces, metaspaceTypeCheckSlots, metaspaceInterfaceHashTable, openTypeWorldInterfaceHashParam,
                         vTableEntries, EMPTY_INT_ARRAY, -1, false, info);
-        InterpreterResolvedJavaType componentType = (InterpreterResolvedJavaType) componentHub.getInterpreterType();
-        InterpreterResolvedObjectType superType = (InterpreterResolvedObjectType) superHub.getInterpreterType();
+        InterpreterResolvedJavaType componentType = (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(componentHub);
+        InterpreterResolvedObjectType superType = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(superHub);
         InterpreterResolvedObjectType[] interfaces = getInterpreterInterfaces(arrayHub);
 
         InterpreterResolvedObjectType thisType = InterpreterResolvedObjectType.createForInterpreter(
@@ -749,7 +749,7 @@ public class CremaSupportImpl implements CremaSupport {
         thisType.setDeclaredFields(InterpreterResolvedJavaField.EMPTY_ARRAY);
         fillVTable(arrayHub, cremaVTable);
 
-        arrayHub.setInterpreterType(thisType);
+        DynamicHubUtils.setInterpreterType(arrayHub, thisType);
 
         // Ensure all metadata is stored before publication
         MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
@@ -1016,11 +1016,11 @@ public class CremaSupportImpl implements CremaSupport {
             this.parserKlass = parsed;
             this.loader = loader;
             this.symbolicRuntimePackage = SymbolsSupport.getNames().getOrCreate(TypeSymbols.getRuntimePackage(parsed.getType()));
-            this.superType = (InterpreterResolvedObjectType) DynamicHub.fromClass(superClass).getInterpreterType();
+            this.superType = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(superClass));
             this.parentTable = computeParentTable(superType);
             for (Class<?> intf : superInterfaces) {
                 DynamicHub intfHub = DynamicHub.fromClass(intf);
-                InterpreterResolvedObjectType interpreterType = (InterpreterResolvedObjectType) intfHub.getInterpreterType();
+                InterpreterResolvedObjectType interpreterType = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(intfHub);
                 // "vtable" contains the interface table prototype for interfaces
                 interfacesData.put(interpreterType, Arrays.asList(interpreterType.getVtable()));
             }
@@ -1443,7 +1443,7 @@ public class CremaSupportImpl implements CremaSupport {
         }
 
         private List<TableEntryRef<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField>> getItableFor(Class<?> iface) {
-            return table.getItables().get((InterpreterResolvedJavaType) DynamicHub.fromClass(iface).getInterpreterType());
+            return table.getItables().get((InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(iface)));
         }
 
     }
@@ -1563,7 +1563,7 @@ public class CremaSupportImpl implements CremaSupport {
 
     @Override
     public Object getStaticStorage(Class<?> cls, boolean primitives, int layerNum) {
-        return ((InterpreterResolvedObjectType) DynamicHub.fromClass(cls).getInterpreterType()).getStaticStorage(primitives, layerNum);
+        return ((InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(cls))).getStaticStorage(primitives, layerNum);
     }
 
     @Override
@@ -1580,7 +1580,7 @@ public class CremaSupportImpl implements CremaSupport {
         if (clazz.isArray()) {
             return null;
         }
-        CremaResolvedObjectType type = (CremaResolvedObjectType) DynamicHub.fromClass(clazz).getInterpreterType();
+        CremaResolvedObjectType type = (CremaResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz));
         Symbol<Name> fieldName = SymbolsSupport.getNames().lookup(ByteSequence.create(name));
         Symbol<Type> fieldType = SymbolsSupport.getTypes().lookupValidType(ByteSequence.create(signature));
         if (fieldName == null || fieldType == null) {
@@ -1615,10 +1615,10 @@ public class CremaSupportImpl implements CremaSupport {
 
         ResolvedJavaField resolvedField = null;
         if (isStatic) {
-            CremaResolvedObjectType type = (CremaResolvedObjectType) CremaJNIFieldIds.getStaticFieldHolder(fieldId).getInterpreterType();
+            CremaResolvedObjectType type = (CremaResolvedObjectType) DynamicHubUtils.getInterpreterType(CremaJNIFieldIds.getStaticFieldHolder(fieldId));
             resolvedField = type.findStaticFieldWithOffset(CremaJNIFieldIds.getStaticFieldOffset(fieldId), null);
         } else {
-            Object interpreterType = DynamicHub.fromClass(clazz).getInterpreterType();
+            Object interpreterType = DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz));
             if (interpreterType instanceof CremaResolvedObjectType type) {
                 resolvedField = type.findInstanceFieldWithOffset(CremaJNIFieldIds.getInstanceFieldOffset(fieldId), null);
             }
@@ -1642,7 +1642,7 @@ public class CremaSupportImpl implements CremaSupport {
             return null;
         }
         try {
-            return ((InterpreterResolvedObjectType) DynamicHub.fromClass(clazz).getInterpreterType()).lookupMethod(symbolicName, symbolicDescriptor);
+            return ((InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz))).lookupMethod(symbolicName, symbolicDescriptor);
         } catch (LookupSuccessInvocationFailure e) {
             return e.getResult();
         }
@@ -1651,7 +1651,7 @@ public class CremaSupportImpl implements CremaSupport {
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public Object getCremaStaticFieldBase(JNIFieldId fieldId, boolean primitive) {
-        InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) CremaJNIFieldIds.getStaticFieldHolder(fieldId).getInterpreterType();
+        InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(CremaJNIFieldIds.getStaticFieldHolder(fieldId));
         return type.getStaticStorage(primitive, DynamicImageLayerInfo.CREMA_LAYER_ID);
     }
 
@@ -1667,7 +1667,7 @@ public class CremaSupportImpl implements CremaSupport {
 
     @Override
     public void executeClassInitializer(DynamicHub hub) {
-        ResolvedJavaMethod classInitializer = hub.getInterpreterType().getClassInitializer();
+        ResolvedJavaMethod classInitializer = DynamicHubUtils.getInterpreterType(hub).getClassInitializer();
         VMError.guarantee(classInitializer != null, "Class initializer not found for class that declares `hasClassInitializer`.");
         execute(classInitializer, new Object[0], CallKind.STATIC);
     }
@@ -1715,9 +1715,9 @@ public class CremaSupportImpl implements CremaSupport {
         }
         InterpreterResolvedObjectType holder;
         if (declaringClass.isArray()) {
-            holder = (InterpreterResolvedObjectType) DynamicHub.fromClass(Object.class).getInterpreterType();
+            holder = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(Object.class));
         } else {
-            holder = (InterpreterResolvedObjectType) DynamicHub.fromClass(declaringClass).getInterpreterType();
+            holder = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(declaringClass));
         }
         ByteSequence desc = asDescriptor(type);
         boolean doAccessChecks = false;
@@ -1725,7 +1725,7 @@ public class CremaSupportImpl implements CremaSupport {
         boolean doConstraintsChecks = false;
         InterpreterResolvedJavaType accessingType = null;
         if (caller != null && !caller.isPrimitive()) {
-            accessingType = (InterpreterResolvedJavaType) DynamicHub.fromClass(caller).getInterpreterType();
+            accessingType = (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(caller));
         }
         int refKind = mn.getReferenceKind();
         if (mn.isField()) {
@@ -1909,7 +1909,7 @@ public class CremaSupportImpl implements CremaSupport {
     }
 
     private static Symbol<Type> typeAsDescriptor(Class<?> c) {
-        return ((InterpreterResolvedJavaType) DynamicHub.fromClass(c).getInterpreterType()).getSymbolicType();
+        return ((InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(c))).getSymbolicType();
     }
 
     private static ByteSequence methodTypeAsSignature(MethodType mt) {
@@ -2046,20 +2046,20 @@ public class CremaSupportImpl implements CremaSupport {
 
     @Override
     public Class<?> computeDeclaringClass(DynamicHub hub) {
-        CremaResolvedObjectType type = (CremaResolvedObjectType) hub.getInterpreterType();
+        CremaResolvedObjectType type = (CremaResolvedObjectType) DynamicHubUtils.getInterpreterType(hub);
         return type.getDeclaringClass();
     }
 
     @Override
     public Object[] computeEnclosingMethod(DynamicHub hub) {
-        CremaResolvedObjectType type = (CremaResolvedObjectType) hub.getInterpreterType();
+        CremaResolvedObjectType type = (CremaResolvedObjectType) DynamicHubUtils.getInterpreterType(hub);
         EnclosingMethodInfo info = type.getEnclosingMethodInfo();
         return info == null ? null : info.toJDKInfo();
     }
 
     @Override
     public void prepareAndVerify(DynamicHub hub) {
-        if (!(hub.getInterpreterType() instanceof CremaResolvedObjectType type)) {
+        if (!(DynamicHubUtils.getInterpreterType(hub) instanceof CremaResolvedObjectType type)) {
             // This hub does not represent a class derived from a classfile.
             return;
         }
@@ -2147,7 +2147,7 @@ public class CremaSupportImpl implements CremaSupport {
     @Override
     @SuppressWarnings("unchecked")
     public <T extends com.oracle.svm.espresso.classfile.ConstantPool & jdk.vm.ci.meta.ConstantPool> T getConstantPool(DynamicHub hub) {
-        InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) hub.getInterpreterType();
+        InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(hub);
         assert type instanceof CremaResolvedObjectType;
         return (T) type.getConstantPool();
     }

@@ -27,6 +27,7 @@ package com.oracle.svm.interpreter.ristretto.meta;
 import java.util.function.Function;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
@@ -216,7 +217,7 @@ public final class RistrettoType extends SubstrateType {
         if (superHub == null) {
             return null;
         }
-        return RistrettoType.getOrCreate((InterpreterResolvedJavaType) superHub.getInterpreterType());
+        return RistrettoType.getOrCreate((InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(superHub));
     }
 
     @Override
@@ -232,7 +233,7 @@ public final class RistrettoType extends SubstrateType {
     @Override
     protected SubstrateType getSuperType() {
         if (isArray() || isInterface()) {
-            return RistrettoType.getOrCreate((InterpreterResolvedJavaType) DynamicHub.fromClass(Object.class).getInterpreterType());
+            return RistrettoType.getOrCreate((InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(Object.class)));
         } else {
             return getSuperclass();
         }
