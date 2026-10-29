@@ -1222,6 +1222,71 @@ public class ContextPreInitializationTest {
     }
 
     @Test
+    @SuppressWarnings("try") // Explicit close calls verify retry after a finalization failure.
+    public void testExplicitEnginePreinitializationStateCloseFailure() {
+        setPatchable(SHARED);
+        for (int failureIndex = 0; failureIndex < 2; failureIndex++) {
+            emittedContexts.clear();
+            try (Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).preinitialize(2, engine -> {
+                try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                    context.initialize(SHARED);
+                }
+            })) {
+                CountingContext failingContext = emittedContexts.get(failureIndex + 1);
+                AtomicBoolean failOnce = new AtomicBoolean(true);
+                BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_FINALIZE_CONTEXT, env -> {
+                    if (env == failingContext.env && failOnce.getAndSet(false)) {
+                        throw new RuntimeException("Transient finalization failure.");
+                    }
+                });
+                AbstractPolyglotTest.assertFails(preinitialized::close, RuntimeException.class);
+                assertFalse(failOnce.get());
+                for (int i = 0; i < 2; i++) {
+                    assertEquals(i < failureIndex ? 1 : 0, emittedContexts.get(i + 1).disposeContextCount);
+                }
+                AbstractPolyglotTest.assertFails(preinitialized::getCachedSources, IllegalStateException.class);
+                AbstractPolyglotTest.assertFails(() -> Engine.newBuilder(preinitialized).build(), IllegalStateException.class);
+                preinitialized.close();
+                for (int i = 0; i < 2; i++) {
+                    assertEquals(1, emittedContexts.get(i + 1).disposeContextCount);
+                }
+            } finally {
+                BaseLanguage.actions.clear();
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try") // Explicit close calls verify cleanup after failed consumption.
+    public void testExplicitEnginePreinitializationFailedConsumptionCleanupFailure() {
+        setPatchable(SHARED);
+        try (Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).preinitialize(1, engine -> {
+            try (Context context = Context.newBuilder(SHARED).engine(engine).build()) {
+                context.initialize(SHARED);
+            }
+        })) {
+            CountingContext pooledContext = emittedContexts.get(1);
+            AtomicBoolean failOnce = new AtomicBoolean(true);
+            BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_FINALIZE_CONTEXT, env -> {
+                if (env == pooledContext.env && failOnce.getAndSet(false)) {
+                    throw new RuntimeException("Transient finalization failure.");
+                }
+            });
+            AbstractPolyglotTest.assertFails(() -> Engine.newBuilder(preinitialized).option("engine.UnknownOption", "true").build(), IllegalArgumentException.class, failure -> {
+                assertEquals(1, failure.getSuppressed().length);
+            });
+            assertFalse(failOnce.get());
+            assertEquals(0, pooledContext.disposeContextCount);
+            AbstractPolyglotTest.assertFails(preinitialized::getCachedSources, IllegalStateException.class);
+            AbstractPolyglotTest.assertFails(() -> Engine.newBuilder(preinitialized).build(), IllegalStateException.class);
+            preinitialized.close();
+            assertEquals(1, pooledContext.disposeContextCount);
+        } finally {
+            BaseLanguage.actions.clear();
+        }
+    }
+
+    @Test
     public void testExplicitEnginePreinitializationStateClose() {
         setPatchable(SHARED);
         Engine.Preinitialized preinitialized = Engine.newBuilder(SHARED).preinitialize(1, (engine) -> {

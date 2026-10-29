@@ -685,6 +685,7 @@ public final class Engine implements AutoCloseable {
         private final String[] permittedLanguages;
         private final SandboxPolicy sandboxPolicy;
         private Engine engine;
+        private boolean available = true;
 
         private Preinitialized(Engine engine, String[] permittedLanguages, SandboxPolicy sandboxPolicy) {
             this.engine = engine;
@@ -705,8 +706,10 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
-         * Releases this prepared state if it has not been consumed. This method is idempotent and
-         * has no effect if the state is already closed or consumed.
+         * Releases this prepared state if it has not been consumed successfully. This method has no
+         * effect after successful closure or consumption. If closure fails, it can be retried, but
+         * the state is no longer available for consumption. This also permits retrying cleanup after
+         * a failed attempt to build an engine from this state.
          *
          * @since 25.6
          */
@@ -714,23 +717,32 @@ public final class Engine implements AutoCloseable {
         public void close() {
             Engine engineToClose;
             synchronized (this) {
+                available = false;
                 engineToClose = engine;
                 engine = null;
             }
             if (engineToClose != null) {
-                engineToClose.close();
+                try {
+                    engineToClose.close();
+                } catch (RuntimeException | Error e) {
+                    synchronized (this) {
+                        engine = engineToClose;
+                    }
+                    throw e;
+                }
             }
         }
 
         private synchronized Engine take() {
             checkAvailable();
+            available = false;
             Engine result = engine;
             engine = null;
             return result;
         }
 
         private void checkAvailable() {
-            if (engine == null) {
+            if (!available) {
                 throw new IllegalStateException("The preinitialized engine state is not available.");
             }
         }
@@ -1229,6 +1241,9 @@ public final class Engine implements AutoCloseable {
                     try {
                         preinitializedEngine.close();
                     } catch (RuntimeException | Error closeFailure) {
+                        synchronized (preinitialized) {
+                            preinitialized.engine = preinitializedEngine;
+                        }
                         e.addSuppressed(closeFailure);
                     }
                 }
