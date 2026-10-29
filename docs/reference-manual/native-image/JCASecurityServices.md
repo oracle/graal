@@ -20,13 +20,14 @@ The automatic registration of security services can be disabled with `-H:-Enable
 Then a custom reflection configuration file or feature can be used to register the security services required by a specific application.
 Note that when automatic registration of security providers is disabled, all providers are, by default, filtered from special JDK caches that are necessary for security functionality.
 To use provider reflection metadata as the complete inclusion signal in this case, also enable `--future-defaults=metadata-security-provider-registration`.
-Register either the provider class or one of its supported construction paths for reflection in _reachability-metadata.json_, for example:
+Register invocation of the construction path selected by the JDK in _reachability-metadata.json_, for example:
 
 ```json
 {
   "reflection": [
     {
-      "type": "com.example.security.CustomProvider"
+      "type": "com.example.security.CustomProvider",
+      "methods": [{ "name": "<init>", "parameterTypes": [] }]
     }
   ]
 }
@@ -55,10 +56,13 @@ To apply this reflection requirement to providers selected by reachable service 
 With this future default, a factory does not make an unregistered provider or its services
 available, except when [`SecureRandom`][secure-random] supplies the registration signal described
 below.
-For a JDK-constructible provider, registering either the provider implementation type or a supported construction path retains the provider's complete service catalog.
+Invocation metadata for the selected construction path of a configured or service-declared provider retains its complete service catalog.
+Type-only and query-only metadata do not enable the provider or expand its services.
+Reflection metadata for an unconfigured provider without a service declaration permits only the requested reflection operations.
 A supported construction path is a public no-argument constructor of a public, concrete provider
 class, or a public static no-argument [`provider()`][service-loader] method on a public
 service-provider class in a named module.
+A module's `provider()` factory takes precedence over its constructor; constructor metadata alone does not register that factory path.
 Provider registration does not install a provider.
 For JDK-managed lookup, the provider must also have a matching `security.provider.<n>` entry;
 alternatively, application code can insert an existing provider instance with the standard
@@ -83,7 +87,7 @@ Run-time initialization of security providers helps reduce image heap size.
 The `native-image` builder captures the configured providers and their preference order from the effective build-time security properties.
 The provider order is specified in the `java.security` file under `<java-home>/conf/security/java.security`.
 In explicit registration mode, a configured provider is available through JDK-managed lookup only
-if its implementation type or supported construction path is registered for reflection, except when
+if invocation of its JDK-selected construction path is registered for reflection, except when
 [`SecureRandom`][secure-random] supplies the registration signal.
 An application can construct a provider directly and pass the existing instance to a provider-object factory overload without provider-class reflection metadata.
 It can also add that instance to the provider list at run time with
@@ -91,6 +95,15 @@ It can also add that instance to the provider list at run time with
 [`Security.insertProviderAt(Provider, int)`][security].
 The provider's service implementations and their required construction metadata must already be retained in the executable, and JCE verification must succeed.
 To supply a custom security properties file when building with run-time provider initialization, use `-Djava.security.properties=<path>` on the `native-image` command line.
+
+When you enable this future default with existing metadata, invocation metadata collected for
+application reflection can make a configured provider available and change algorithm selection.
+Type-only and query-only entries no longer enable its complete catalog.
+Register the selected constructor or factory for providers you intend to use, and remove unwanted
+providers from the effective security configuration.
+Returning to a legacy mode restores its service-reachability inclusion rules.
+With configuration, metadata, and mode fixed, dormant application code does not affect provider
+availability, except for the `SecureRandom` rule documented below.
 
 ## Providers Reordering at Run Time
 
@@ -121,7 +134,7 @@ configured-provider set that declares
 
 By default, Native Image automatically detects only service types specified in the JCA framework.
 The `-H:AdditionalSecurityServiceTypes` option remains accepted for compatibility, but is deprecated.
-To replace it, enable `--future-defaults=metadata-security-provider-registration` and register either the provider implementation type or one of its supported construction paths in _reachability-metadata.json_.
+To replace it, enable `--future-defaults=metadata-security-provider-registration` and register invocation of the construction path selected by the JDK in _reachability-metadata.json_.
 For a JDK-constructible provider, Native Image then retains the complete service catalog, including custom service types.
 Alternatively, collect this metadata with the Tracing Agent.
 For compatibility with automatic service-driven registration, the service interface must have a

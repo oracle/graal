@@ -993,7 +993,9 @@ final class BreakpointInterceptor {
             if (callerMethod.isNull()) {
                 return fallback;
             }
-            if (isSecurityMutationMethod(callerMethod)) {
+            if (isSecurityMutationMethod(callerMethod) || callerMethod.equal(agent.handles().javaSecurityGetProvidersString) ||
+                            callerMethod.equal(agent.handles().javaSecurityGetProvidersMap)) {
+                // Filter evaluation visits providers that are not returned; do not grant them.
                 return null;
             }
             if (isSecurityAcquisitionMethod(callerMethod)) {
@@ -2066,11 +2068,8 @@ final class BreakpointInterceptor {
 
         JNIObjectHandle lastClass = nullHandle();
         String lastClassName = null;
-        BreakpointSpecification[] breakpointSpecifications = BREAKPOINT_SPECIFICATIONS;
-        if (!agent.handles().hasSecurityProviderReflection) {
-            breakpointSpecifications = appendBreakpointSpecifications(breakpointSpecifications,
-                            LEGACY_SECURITY_PROVIDER_BREAKPOINT_SPECIFICATIONS);
-        }
+        BreakpointSpecification[] breakpointSpecifications = appendBreakpointSpecifications(BREAKPOINT_SPECIFICATIONS,
+                        SECURITY_PROVIDER_ACQUISITION_BREAKPOINT_SPECIFICATIONS);
         if (trackReflectionMetadata) {
             breakpointSpecifications = appendBreakpointSpecifications(breakpointSpecifications,
                             REFLECTION_ACCESS_BREAKPOINT_SPECIFICATIONS);
@@ -2424,8 +2423,8 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::upcallStub)
     };
 
-    /** Synthetic provider tracing retained only for JDKs without the ordinary reflection hook. */
-    private static final BreakpointSpecification[] LEGACY_SECURITY_PROVIDER_BREAKPOINT_SPECIFICATIONS = {
+    /** §FS-002-security-providers.5.1: Retain cached acquisition and mutation attribution on every JDK. */
+    private static final BreakpointSpecification[] SECURITY_PROVIDER_ACQUISITION_BREAKPOINT_SPECIFICATIONS = {
                     brk("sun/security/jca/Providers", "setProviderList", "(Lsun/security/jca/ProviderList;)V",
                                     BreakpointInterceptor::publishApplicationSuppliedSecurityProvider),
                     brk("java/security/Provider$Service", "newInstance", "(Ljava/lang/Object;)Ljava/lang/Object;",

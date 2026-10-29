@@ -7,8 +7,8 @@ executable would then retain every provider and its complete service catalog, ev
 application never uses them.
 To avoid that executable-size cost, Native Image uses two independent inputs for a JDK-managed
 provider: a `security.provider.<n>` property determines its position in the
-[run-time provider list](#terminology3-run-time-provider-list), and the provider implementation class or a
-supported construction path must be [registered for reflection](#terminology1-registered-providers-and-services)
+[run-time provider list](#terminology3-run-time-provider-list), and invocation metadata for the JDK-selected
+construction path must be [registered for reflection](#terminology1-registered-providers-and-services)
 at build time to include the provider and its services.
 Only providers that satisfy both conditions are constructed and exposed through JDK-managed lookup
 at run time; once included, they behave as they do on HotSpot.
@@ -26,13 +26,14 @@ configuration contains:
 security.provider.13=org.bouncycastle.jce.provider.BouncyCastleProvider
 ```
 
-Register the provider for reflection in _reachability-metadata.json_:
+Register invocation of the provider constructor in _reachability-metadata.json_:
 
 ```json
 {
   "reflection": [
     {
-      "type": "org.bouncycastle.jce.provider.BouncyCastleProvider"
+      "type": "org.bouncycastle.jce.provider.BouncyCastleProvider",
+      "methods": [{ "name": "<init>", "parameterTypes": [] }]
     }
   ]
 }
@@ -76,8 +77,9 @@ This specification uses the [common notation](README.md#notation) and the defaul
   [`Provider`][provider] subtype, or a public static no-argument [`provider()`][service-loader]
   method of a public service provider class in an explicit module.
 - **JDK-constructible**: produced by a supported construction path.
-- **Registered**: covered, by type or by a supported construction path, by ordinary reflection
-  metadata.
+- **Registered**: invocation of the JDK-selected construction path is covered by ordinary
+  reflection metadata, and that path is discoverable through the effective security-provider
+  configuration or a `java.security.Provider` service declaration.
 
 ### terminology.2: JDK-Managed Providers and Acquisition
 
@@ -103,10 +105,17 @@ This specification uses the [common notation](README.md#notation) and the defaul
 
 ### 1.1 Qualifying Reflection Metadata
 
-Ordinary reflection metadata registers a provider implementation class when it covers either that
-class's type or one of its supported construction paths.
-For a configured, JDK-constructible provider, either form makes
-[`Security.getProvider(String)`][security] return the provider and makes all its retained algorithms
+Ordinary reflection metadata registers a provider only when it permits invocation of the
+construction path selected by the JDK: its public no-argument constructor, or the public static
+`provider()` factory in an explicit module when that factory takes precedence.
+The path must be discoverable through the effective `security.provider.<n>` configuration or a
+`java.security.Provider` service declaration.
+Type-only metadata, query-only metadata, metadata for a constructor displaced by a selected factory,
+and invocation metadata for an unconfigured, undeclared application provider retain their ordinary
+reflection meaning; they do not cause provider construction, full-catalog retention, or JDK-managed
+eligibility.
+For a configured provider, qualifying invocation metadata makes
+[`Security.getProvider(String)`][security] return the provider and makes its retained algorithms
 usable through calls such as [`Signature.getInstance(String, String)`][signature].
 Metadata for only a service implementation class does neither.
 Conditional metadata has the behavior in [§FS-002-security-providers.1.5](security-providers.md#15-conditional-registration-signals).
@@ -141,8 +150,8 @@ A private or parameterized constructor and a class-path `provider()` method do n
 A service descriptor is passive inventory: discovering it does not initialize or instantiate its
 declaration class.
 Native Image invokes a descriptor construction path during image generation only after qualifying
-metadata activates that path or its returned provider implementation.
-A registered provider without a qualifying path is not returned by
+invocation metadata activates that selected path.
+A reflectively accessible provider without a qualifying invocation path is not returned by
 [`Security.getProvider(String)`][security]; application code can still supply an existing instance
 under [§FS-002-security-providers.4](security-providers.md#4-programmatically-supplied-providers).
 If invoking a selected path during the image build fails or returns the wrong provider class, the
@@ -282,7 +291,7 @@ This diagnostic applies only with explicit provider registration enabled. Legacy
 their earlier lookup results and exceptions for providers omitted from the Native Image provider
 list.
 The ordinary reflection diagnostic names the provider implementation class in binary form and tells
-the user to register its type or supported construction path in _reachability-metadata.json_.
+the user to register invocation of the JDK-selected constructor or factory in _reachability-metadata.json_.
 There is no provider-specific metadata format or provider-specific missing-metadata error type.
 The diagnostic lookup is side-effect-free: it does not construct or cache the omitted provider and
 does not change subsequent enumeration, duplicate detection, insertion, or factory behavior.
@@ -348,18 +357,20 @@ The implementation-specific recognition rule is [§AR-004-security-providers.req
 
 ### 5.1 Provider and Service Coverage
 
-When the JDK reflectively constructs a configured provider under tracing, the actual class and
-construction operations record its ordinary reflection metadata once. Provider-list traversal may
-therefore record a provider that it constructs while searching or filtering even when another
-provider is ultimately returned. A later lookup or factory selection of the cached provider does
-not repeat reflection solely to signal that selection. Construction completed before tracing began
-is not reconstructed retroactively.
+Provider construction under tracing records the actual reflection operations.
+Successful JDK-managed acquisition also retains the selected construction invocation for a cached
+provider when the acquisition hook can identify that path, including built-in providers cached
+before tracing starts.
+Acquisition hooks must not grant a provider visited only while searching for a different result.
+Ordinary reflection tracing can still record construction that the JDK actually attempts while
+searching or filtering.
+These hooks remain until cached and selective acquisition round trips have equivalent coverage.
 Tracing a factory call or [`Provider.Service.newInstance(Object)`][provider-service] records the
 actual implementation and constructor operations needed to repeat each service construction that
 the JDK attempts. This includes a candidate that is constructed before a later initialization or
 selection step rejects it.
 Rebuilding with only the generated metadata must reproduce the observed factory selection when
-explicit provider registration is enabled and the provider construction occurred under tracing.
+explicit provider registration is enabled and its construction or supported cached acquisition occurred under tracing.
 Tracing [`Security.addProvider`][security], [`Security.insertProviderAt`][security], or
 [`Security.removeProvider`][security] does not record provider-class metadata merely because the
 call receives an existing object.
@@ -386,6 +397,16 @@ Reflection and resource access performed inside the application's actual call is
 default behavior.
 The following build-time options select it while earlier behaviors remain available.
 Explicit provider registration implies run-time provider-list initialization.
+
+With configuration, metadata, and mode fixed, adding reachable but unexecuted application code
+does not change provider availability or ordering, except for the documented `SecureRandom` rule.
+Switching to metadata-driven registration can change those results with otherwise unchanged metadata:
+constructor or factory invocation metadata collected for application reflection can enable a
+configured provider, while type-only and query-only entries no longer enable its complete catalog.
+When migrating, register the selected constructor or factory for every intended configured provider,
+and remove unwanted providers from the effective security configuration.
+Switching back to a legacy mode restores service-reachability inclusion and can expose providers
+omitted by metadata-driven registration.
 
 ### 6.1 Run-Time Provider-List Initialization
 
@@ -561,14 +582,14 @@ additional-provider option in each mode.
 ### requirements.8: Tracing Round-Trip
 
 **Requirement.** With explicit provider registration enabled, agent and native tracing metadata
-must reproduce observed factory selection when the provider construction occurred under tracing.
-Provider construction completed before tracing began is outside this round-trip guarantee.
+must reproduce observed factory selection when construction or a supported cached acquisition
+occurred under tracing.
 Tracing records the provider and service construction operations that the JDK actually attempts,
 including candidates constructed during traversal or rejected by later initialization or selection.
 It must not construct additional providers or services or repeat an observed operation to generate
 metadata.
-A later lookup or selection of a cached provider must not repeat its reflective construction solely
-to record metadata.
+A cached acquisition may record its selected construction invocation without executing it again.
+A search-only visit must not add an acquisition grant for an unselected provider.
 Tracing a provider-list mutation or later selection of an application-supplied object must not add
 provider-class metadata merely because it observes the supplied object.
 Tracing must not retain application provider objects and must record the constructor actually used

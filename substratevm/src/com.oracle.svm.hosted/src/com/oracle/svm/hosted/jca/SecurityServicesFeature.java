@@ -117,6 +117,7 @@ import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.security.ProviderConstruction;
+import com.oracle.svm.shared.security.SecurityProviderCatalog;
 import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -133,6 +134,7 @@ import jdk.internal.access.SharedSecrets;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.security.jca.ProviderList;
+import sun.security.jca.Providers;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
 
@@ -145,7 +147,7 @@ import sun.security.x509.OIDMap;
 /// ```text
 /// Build-time signal                    Recorded result
 /// -----------------------------------------------------------------------------
-/// qualifying reflection metadata ----> JDK-constructible provider + full catalog
+/// selected construction invocation -> JDK-constructible provider + full catalog
 /// reachable JCA service (legacy) ----> provider + services of the reached type
 /// instantiated Provider subtype -----> application-provider verification only
 /// ```
@@ -192,8 +194,9 @@ import sun.security.x509.OIDMap;
 ///
 /// ## north-star: North Star
 ///
-/// After the transition, the feature has one mode, {@code METADATA_RUN_TIME}: reflection metadata
-/// is the only signal that makes a provider JDK-constructible, and instantiation of a
+/// After the transition, the feature has one mode, {@code METADATA_RUN_TIME}: invocation metadata for
+/// a configured or service-declared provider's JDK-selected construction path makes it
+/// JDK-constructible, and instantiation of a
 /// {@link Provider} subtype is the only signal that records application-supplied verification.
 /// The planner, the catalog registrar, the run-time manifest, and the acquisition filter are the
 /// whole pipeline. {@link SecurityProviderMode}, {@link LegacySecurityProviderCompatibility}, the
@@ -271,9 +274,9 @@ import sun.security.x509.OIDMap;
 /// construction both consume eligibility produced by the same catalog-registration chokepoint.
 /// Run-time configured-list construction passes each {@code ProviderConfig} argument to
 /// {@link Provider#configure} and retains the returned instance, preserving independent same-class
-/// entries. Provider construction metadata comes from the reflective construction operations
-/// performed under tracing. A later lookup or factory selection of a cached provider does not
-/// repeat its construction, and construction completed before tracing began is not reconstructed.
+/// entries. Provider construction metadata comes from reflective construction operations and
+/// supported cached-acquisition hooks. A cached lookup records its selected path without creating
+/// another provider; search-only visits do not receive acquisition grants.
 /// Service tracing records the actual implementation and constructor operations, including cached
 /// constructors and candidates rejected after construction, as required by
 /// §FS-002-security-providers.5.1.
@@ -364,10 +367,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     public static class Options {
         private static final String ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_HELP = "Deprecated. Register the providers that implement the custom service type for reflection instead.";
-        private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_HELP = "Deprecated. With explicit security-provider registration, use the tracing agent, register the provider class " +
-                        "for reflection, or build with -H:Preserve=all.";
-        private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_MESSAGE = "Register each security provider class for reflection in reachability-metadata.json using " +
-                        "{\"reflection\":[{\"type\":\"<fully-qualified-provider-class-name>\"}]} and enable --future-defaults=metadata-security-provider-registration; " +
+        private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_HELP = "Deprecated. With explicit security-provider registration, use the tracing agent, register invocation of the JDK-selected " +
+                        "constructor or provider() factory for reflection, or build with -H:Preserve=all.";
+        private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_MESSAGE = "Register invocation of each provider's JDK-selected constructor or provider() factory in reachability-metadata.json, for example " +
+                        "{\"reflection\":[{\"type\":\"<fully-qualified-provider-class-name>\",\"methods\":[{\"name\":\"<init>\",\"parameterTypes\":[]}]}]} and enable --future-defaults=metadata-security-provider-registration; " +
                         "the Tracing Agent generates this metadata automatically. The deprecated option remains supported in compatibility mode";
         private static final String ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_MESSAGE = "Register each provider that implements the custom service type and its supported construction path " +
                         "in reachability-metadata.json, or collect the metadata with the Tracing Agent.";
@@ -469,6 +472,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + SecurityServicesFeature.class);
 
     private final Map<String, List<Provider>> buildTimeProvidersByClassName = new HashMap<>();
+    /** Configured construction classes, keyed by the implementation returned after configure(). */
+    private final Map<Class<?>, List<Class<?>>> configuredProviderConstructionClasses = new HashMap<>();
     /** ServiceLoader declaration classes, in discovery order, keyed by returned implementation class. */
     private final Map<Class<?>, List<Class<?>>> providerConstructionClasses = new HashMap<>();
     private final Map<Class<?>, Integer> providerConstructionOrder = new HashMap<>();
@@ -867,6 +872,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         getSpiClassMethod = getSpiClassMethod();
         availableServices = computeAvailableServices();
         buildTimeProvidersByClassName.clear();
+        configuredProviderConstructionClasses.clear();
         providerConstructionClasses.clear();
         providerConstructionOrder.clear();
         unresolvedServiceProviderFactories.clear();
@@ -880,6 +886,24 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             // Configured providers can predate the subtype handler.
             // §FS-002-security-providers.1.1: Reflection registration still controls inclusion.
             addCandidateProviderClass(provider.getClass());
+        }
+        // §FS-002-security-providers.1.1, §FS-002-security-providers.1.2:
+        // Inventory the configured acquisition path without constructing another provider instance.
+        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), ProviderList.class);
+        Object[] configurations = ReflectionUtil.readField(ProviderList.class, "configs", Providers.getProviderList());
+        for (Object configuration : configurations) {
+            Provider provider = ReflectionUtil.readField(configuration.getClass(), "provider", configuration);
+            String token = ReflectionUtil.readField(configuration.getClass(), "provName", configuration);
+            String builtInClassName = SecurityProviderCatalog.getProviderClassName(token);
+            String constructionClassName = builtInClassName != null ? builtInClassName : token;
+            loader.findClass(constructionClassName).ifPresent(constructionClass -> {
+                if (ProviderConstruction.isProviderImplementationClass(constructionClass)) {
+                    configuredProviderConstructionClasses.computeIfAbsent(constructionClass, _ -> new ArrayList<>()).add(constructionClass);
+                }
+                if (provider != null && !provider.getClass().equals(constructionClass)) {
+                    configuredProviderConstructionClasses.computeIfAbsent(provider.getClass(), _ -> new ArrayList<>()).add(constructionClass);
+                }
+            });
         }
     }
 
@@ -1234,9 +1258,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private List<Class<?>> getProviderConstructionClasses(Class<?> providerClass) {
-        List<Class<?>> serviceProviderClasses = providerConstructionClasses.get(providerClass);
+        List<Class<?>> serviceProviderClasses = getJdkProviderConstructionClasses(providerClass);
         boolean hasDirectPath = findProviderMethod(providerClass) != null || findNullaryConstructor(providerClass) != null;
-        if (serviceProviderClasses == null) {
+        if (serviceProviderClasses.isEmpty()) {
             return hasDirectPath ? List.of(providerClass) : List.of();
         }
         if (!hasDirectPath || serviceProviderClasses.contains(providerClass)) {
@@ -1247,8 +1271,22 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         return result;
     }
 
+    private List<Class<?>> getJdkProviderConstructionClasses(Class<?> providerClass) {
+        List<Class<?>> result = new ArrayList<>(configuredProviderConstructionClasses.getOrDefault(providerClass, List.of()));
+        for (Class<?> constructionClass : providerConstructionClasses.getOrDefault(providerClass, List.of())) {
+            if (!result.contains(constructionClass)) {
+                result.add(constructionClass);
+            }
+        }
+        return result;
+    }
+
     void registerProviderConstructionPaths(Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
-        for (Class<?> constructionClass : getProviderConstructionClasses(providerClass)) {
+        List<Class<?>> constructionClasses = getJdkProviderConstructionClasses(providerClass);
+        if (!mode.explicitRegistration() || constructionClasses.isEmpty()) {
+            constructionClasses = getProviderConstructionClasses(providerClass);
+        }
+        for (Class<?> constructionClass : constructionClasses) {
             // §FS-002-security-providers.6.1
             // Open non-exported JDK provider packages only to the run-time list loader.
             ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, SecurityProviderRuntimeAccess.class, constructionClass);
@@ -1311,19 +1349,22 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
-    // §FS-002-security-providers.terminology.1 and §FS-002-security-providers.1.1:
-    // Recognize every qualifying reflection-registration signal.
+    // §FS-002-security-providers.1.1: Only invocation of the JDK-selected acquisition path qualifies.
     private RuntimeDynamicAccessMetadata providerConstructionRegistrationMetadata(Class<?> providerClass) {
         RuntimeDynamicAccessMetadata result = null;
         try {
-            for (Class<?> constructionClass : getProviderConstructionClasses(providerClass)) {
-                Constructor<?> constructor = findNullaryConstructor(constructionClass);
-                if (constructor != null) {
-                    result = RuntimeDynamicAccessMetadata.merge(result, reflectionHostedSupport.getMethodRegistrationMetadata(constructor));
-                }
+            List<Class<?>> constructionClasses = getJdkProviderConstructionClasses(providerClass);
+            for (Class<?> constructionClass : constructionClasses) {
                 Method providerMethod = findProviderMethod(constructionClass);
                 if (providerMethod != null) {
+                    SecurityProviderRuntimeState.currentLayer().registerConstructionForDiagnostics(providerClass.getName(), constructionClass.getName(), providerMethod.getName());
                     result = RuntimeDynamicAccessMetadata.merge(result, reflectionHostedSupport.getMethodRegistrationMetadata(providerMethod));
+                } else {
+                    Constructor<?> constructor = findNullaryConstructor(constructionClass);
+                    if (constructor != null) {
+                        SecurityProviderRuntimeState.currentLayer().registerConstructionForDiagnostics(providerClass.getName(), constructionClass.getName(), "<init>");
+                        result = RuntimeDynamicAccessMetadata.merge(result, reflectionHostedSupport.getMethodRegistrationMetadata(constructor));
+                    }
                 }
             }
             return result;
@@ -1333,18 +1374,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private SecurityProviderRegistrationPlanner.RegistrationPlan providerRegistrationPlan(Class<?> providerClass) {
-        RuntimeDynamicAccessMetadata typeMetadata = reflectionHostedSupport.getTypeRegistrationMetadata(providerClass);
         RuntimeDynamicAccessMetadata constructionMetadata = providerConstructionRegistrationMetadata(providerClass);
-        RuntimeDynamicAccessMetadata registrationMetadata = RuntimeDynamicAccessMetadata.merge(typeMetadata, constructionMetadata);
-        if (registrationMetadata == null) {
-            return null;
-        }
         if (preserveAll || mode.explicitRegistration()) {
-            return new SecurityProviderRegistrationPlanner.RegistrationPlan(registrationMetadata, registrationMetadata);
+            return constructionMetadata == null ? null : new SecurityProviderRegistrationPlanner.RegistrationPlan(constructionMetadata, constructionMetadata);
         }
-        // §FS-002-security-providers.6.3: Compatibility type-only metadata identifies application
-        // providers. It preserves JCE verification without construction or service expansion.
-        return new SecurityProviderRegistrationPlanner.RegistrationPlan(registrationMetadata, null);
+        // §FS-002-security-providers.6.3: Compatibility metadata preserves application verification
+        // without construction or service expansion.
+        RuntimeDynamicAccessMetadata typeMetadata = reflectionHostedSupport.getTypeRegistrationMetadata(providerClass);
+        RuntimeDynamicAccessMetadata registrationMetadata = RuntimeDynamicAccessMetadata.merge(typeMetadata, constructionMetadata);
+        return registrationMetadata == null ? null : new SecurityProviderRegistrationPlanner.RegistrationPlan(registrationMetadata, null);
     }
 
     private void registerProviderClassForReflection(Class<?> providerClass) {

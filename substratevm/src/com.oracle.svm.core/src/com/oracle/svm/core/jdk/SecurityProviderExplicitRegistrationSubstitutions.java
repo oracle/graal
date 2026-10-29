@@ -162,14 +162,14 @@ final class Target_sun_security_jca_ProviderConfig_ExplicitRegistration {
     @Alias
     Target_sun_security_jca_ProviderConfig_ExplicitRegistration(@SuppressWarnings("unused") Provider provider) {
     }
-
-    @Alias
-    native Provider getProvider();
 }
 
 @TargetClass(className = "sun.security.jca.ProviderList", onlyWith = ExplicitSecurityProviderRegistration.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_security_jca_ProviderList_ExplicitRegistration {
+    @Alias //
+    private static Provider EMPTY_PROVIDER;
+
     @Alias //
     Target_sun_security_jca_ProviderConfig_ExplicitRegistration[] configs;
 
@@ -223,9 +223,9 @@ final class Target_sun_security_jca_ProviderList_ExplicitRegistration {
     @Substitute
     public Provider[] toArray() {
         ArrayList<Provider> activeProviders = new ArrayList<>(configs.length);
-        for (Target_sun_security_jca_ProviderConfig_ExplicitRegistration config : configs) {
-            Provider activeProvider = config.getProvider();
-            if (activeProvider != null) {
+        for (int index = 0; index < configs.length; index++) {
+            Provider activeProvider = getProvider(index);
+            if (activeProvider != EMPTY_PROVIDER) {
                 activeProviders.add(activeProvider);
             }
         }

@@ -169,7 +169,12 @@ public final class SecurityProviderRuntimeAccess {
         if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
             StackTraceElement responsibleClass = findExactMetadataCaller();
             if (responsibleClass != null) {
-                MissingReflectionRegistrationUtils.reportClassAccess(providerClassName, responsibleClass);
+                SecurityProviderRuntimeState.ConstructionPath path = SecurityProviderRuntimeState.getConstructionForDiagnostics(providerClassName);
+                if (path != null) {
+                    MissingReflectionRegistrationUtils.reportProviderConstructionAccess(providerClassName, path.className(), path.methodName(), responsibleClass);
+                } else {
+                    MissingReflectionRegistrationUtils.reportClassAccess(providerClassName, responsibleClass);
+                }
             }
         }
         throw new SecurityException(
@@ -210,7 +215,7 @@ public final class SecurityProviderRuntimeAccess {
 
     private static String missingRegistrationRemediation() {
         if (FutureDefaultsOptions.metadataSecurityProviderRegistration()) {
-            return "Register the provider type or a supported construction path in reachability-metadata.json and rebuild the image.";
+            return "Register invocation of the JDK-selected provider constructor or provider() factory in reachability-metadata.json and rebuild the image. Type-only and query-only metadata are insufficient.";
         }
         return "Provider reflection metadata does not enable provider construction or services in compatibility mode. " +
                         "Add qualifying metadata and rebuild with --future-defaults=metadata-security-provider-registration.";
