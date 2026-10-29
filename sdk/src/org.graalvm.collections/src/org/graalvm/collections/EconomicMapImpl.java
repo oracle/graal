@@ -801,6 +801,15 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
         protected int current;
 
+        /**
+         * Resume position returned by the last successful {@link #remove()}, adjusted for
+         * compaction. This is where the next scan starts, not the index of the removed entry; it
+         * may be a gap or past the end. A successful {@link Iterator#next()} advances
+         * {@link #current} past this marker, allowing another removal. Initially zero, like
+         * {@code current}, to reject removal before the first successful {@code next()}.
+         */
+        private int lastRemoveCursor;
+
         @Override
         public boolean hasNext() {
             return current < totalEntries;
@@ -808,13 +817,14 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
 
         @Override
         public void remove() {
-            if (current == 0 || current > totalEntries) {
+            if (current == lastRemoveCursor || current > totalEntries) {
                 throw new IllegalStateException();
             }
             if (hasHashArray()) {
                 EconomicMapImpl.this.findAndRemoveHash(getKey(current - 1));
             }
             current = EconomicMapImpl.this.remove(current - 1);
+            lastRemoveCursor = current;
         }
     }
 

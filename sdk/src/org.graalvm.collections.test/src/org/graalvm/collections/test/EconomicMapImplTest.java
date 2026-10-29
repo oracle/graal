@@ -165,6 +165,73 @@ public class EconomicMapImplTest {
     }
 
     @Test
+    public void testRepeatedIteratorRemove() {
+        for (int size : new int[]{2, 4, 8, 32, 256}) {
+            for (boolean values : new boolean[]{false, true}) {
+                EconomicMap<CollidingKey, Integer> map = EconomicMap.create();
+                for (int i = 0; i < size; i++) {
+                    map.put(new CollidingKey(i), i == 1 ? null : i);
+                }
+                Iterator<?> iterator = values ? map.getValues().iterator() : map.getKeys().iterator();
+                assertThrows(IllegalStateException.class, iterator::remove);
+                iterator.next();
+                iterator.next();
+                iterator.remove();
+                assertThrows(IllegalStateException.class, iterator::remove);
+                assertEquals(size - 1, map.size());
+                assertTrue(map.containsKey(new CollidingKey(0)));
+                assertFalse(map.containsKey(new CollidingKey(1)));
+                while (iterator.hasNext()) {
+                    iterator.next();
+                    iterator.remove();
+                    assertThrows(IllegalStateException.class, iterator::remove);
+                }
+                assertEquals(1, map.size());
+                assertEquals((Object) 0, map.get(new CollidingKey(0)));
+            }
+        }
+    }
+
+    @Test
+    public void testIteratorRemoveAfterFailedNext() {
+        for (int size : new int[]{1, 2, 8, 32}) {
+            for (boolean values : new boolean[]{false, true}) {
+                EconomicMap<Integer, Integer> map = EconomicMap.create();
+                for (int i = 0; i < size; i++) {
+                    map.put(i, null);
+                }
+                Iterator<?> iterator = values ? map.getValues().iterator() : map.getKeys().iterator();
+                while (iterator.hasNext()) {
+                    iterator.next();
+                }
+                assertThrows(NoSuchElementException.class, iterator::next);
+                iterator.remove();
+                assertThrows(IllegalStateException.class, iterator::remove);
+                assertEquals(size - 1, map.size());
+                assertFalse(map.containsKey(size - 1));
+            }
+        }
+    }
+
+    @Test
+    public void testRepeatedSetIteratorRemove() {
+        for (int size : new int[]{2, 4, 8, 32, 256}) {
+            EconomicSet<CollidingKey> set = EconomicSet.create();
+            for (int i = 0; i < size; i++) {
+                set.add(new CollidingKey(i));
+            }
+            Iterator<CollidingKey> iterator = set.iterator();
+            assertThrows(IllegalStateException.class, iterator::remove);
+            while (iterator.hasNext()) {
+                iterator.next();
+                iterator.remove();
+                assertThrows(IllegalStateException.class, iterator::remove);
+            }
+            assertTrue(set.isEmpty());
+        }
+    }
+
+    @Test
     public void testKeyIteratorNext() {
         EconomicMap<String, Integer> map = EconomicMap.create();
         map.put("one", 1);
