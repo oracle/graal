@@ -83,6 +83,7 @@ final class ForeignCalls {
         return sign * Integer.compare(first.get(JAVA_INT, 0), second.get(JAVA_INT, 0));
     }
 
+    @SuppressWarnings("unused") // Loaded reflectively by name in runTest.
     private static final class Target {
     }
 }
