@@ -70,6 +70,7 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.GuardNode;
+import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.PhiNode;
@@ -381,8 +382,8 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                      * 3) Invokable implementations (e.g. macro nodes): Such nodes typically
                      * represent intrinics that undergo different lowering strategies which can mean
                      * a node lowers back to an original invoke. Lowering back to an invoke can
-                     * result in problems given an invoke typically kills any. However, we are
-                     * reasoning about well known intrinsics here, thus we allow it.
+                     * result in problems given an invoke typically kills and accesses any. However,
+                     * we are reasoning about well known intrinsics here, thus we allow it.
                      *
                      * 4) Created memory map nodes, they are pure meta-nodes we do not care about
                      *
@@ -447,7 +448,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                         } else {
                             throw GraalError.shouldNotReachHere("Unknown memory kill " + newNodeAfterLowering); // ExcludeFromJacocoGeneratedReport
                         }
-                    } else if (newNodeAfterLowering instanceof MemoryAccess) {
+                    } else if (newNodeAfterLowering instanceof MemoryAccess && !(newNodeAfterLowering instanceof Invoke)) {
                         // lowered to a memory access, verify high level node accesses same
                         // locations
                         MemoryAccess access = (MemoryAccess) newNodeAfterLowering;

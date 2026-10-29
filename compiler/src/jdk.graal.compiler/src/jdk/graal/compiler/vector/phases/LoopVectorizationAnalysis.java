@@ -81,6 +81,7 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopEndNode;
@@ -827,7 +828,8 @@ public final class LoopVectorizationAnalysis {
     }
 
     private static boolean isPotentiallyEscapeAnalyzableWrite(Node node) {
-        return node instanceof UnsafeMemoryStoreNode || node instanceof StoreFieldNode || (MemoryKill.isSingleMemoryKill(node) && node instanceof MemoryAccess) || node instanceof RawStoreNode;
+        return node instanceof UnsafeMemoryStoreNode || node instanceof StoreFieldNode || (MemoryKill.isSingleMemoryKill(node) && node instanceof MemoryAccess && !(node instanceof Invoke)) ||
+                        node instanceof RawStoreNode;
     }
 
     private static boolean isPotentiallyLoopInvariantNode(Node node) {
