@@ -73,10 +73,13 @@ import jdk.graal.compiler.util.json.JsonWriter;
  * To create a custom method address resolver, a user needs to:
  * <ol>
  * <li>Implement the {@link MethodAddressResolutionSupport} resolver support class.</li>
- * <li>Create a feature that enables the {@link PLTGOTOptions#EnablePLTGOT} option and registers
- * their resolver in the {@link ImageSingletons}.</li>
+ * <li>Create a feature that enables the {@link PLTGOTOptions#EnablePLTGOT} option and calls
+ * {@link HostedPLTGOTConfiguration#initializeMethodAddressResolutionSupport} in
+ * {@link #afterRegistration} to initialize the resolver support.</li>
  * </ol>
- * For an example resolver, see {@link com.oracle.svm.core.pltgot.IdentityMethodAddressResolver}.
+ * For an example resolver and feature, see
+ * {@link com.oracle.svm.core.pltgot.IdentityMethodAddressResolver} and
+ * {@link IdentityMethodAddressResolverFeature}.
  *
  * From an implementation point of view, this feature and the supporting classes implement
  * <a href="https://maskray.me/blog/2021-09-19-all-about-procedure-linkage-table">the PLT (Procedure

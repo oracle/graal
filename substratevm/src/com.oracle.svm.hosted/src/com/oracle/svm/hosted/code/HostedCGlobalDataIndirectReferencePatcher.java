@@ -48,7 +48,7 @@ public class HostedCGlobalDataIndirectReferencePatcher extends CompilationResult
     }
 
     @Override
-    public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
+    public void relocate(Reference ref, RelocatableBuffer codeBuffer, int compStart) {
         throw VMError.shouldNotReachHere("Indirect CGlobalData access through image heap should be patched during image generation.");
     }
 

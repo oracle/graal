@@ -231,8 +231,7 @@ public final class NativeImageHeapWriter {
             ObjectInfo targetInfo = heap.getConstantInfo(target);
             verifyTargetDidNotChange(target, reason, targetInfo);
             if (usesHeapBase) {
-                int shift = compressEncoding.getShift();
-                writeReferenceValue(buffer, index, targetInfo.getOffset() >>> shift);
+                writeHeapRelativeReference(buffer, index, targetInfo.getOffset(), compressEncoding);
             } else {
                 addDirectRelocationWithoutAddend(buffer, index, referenceSize(), target);
             }
@@ -380,8 +379,13 @@ public final class NativeImageHeapWriter {
         }
     }
 
-    private void writeReferenceValue(RelocatableBuffer buffer, int index, long value) {
-        writeValue(buffer, index, value, referenceSize());
+    public static void writeHeapRelativeReference(RelocatableBuffer buffer, int index, long heapOffset, CompressEncoding compressEncoding) {
+        int shift = compressEncoding.getShift();
+        long encodedReference = heapOffset >>> shift;
+        if ((encodedReference << shift) != heapOffset) {
+            throw shouldNotReachHere("Reference compression shift discards non-zero bits: " + Long.toHexString(heapOffset));
+        }
+        writeValue(buffer, index, encodedReference, ObjectLayout.singleton().getReferenceSize());
     }
 
     private static void writeValue(RelocatableBuffer buffer, int index, long value, int size) {

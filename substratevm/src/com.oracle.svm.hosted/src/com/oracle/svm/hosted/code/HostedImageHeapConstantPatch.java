@@ -70,7 +70,7 @@ public class HostedImageHeapConstantPatch extends CompilationResult.CodeAnnotati
         }
 
         @Override
-        public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
+        public void relocate(Reference ref, RelocatableBuffer codeBuffer, int compStart) {
             throw new UnsupportedOperationException("We don't support emitting relocations for image heap constants");
         }
 

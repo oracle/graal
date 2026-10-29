@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import static com.oracle.svm.core.posix.headers.Mman.MAP_FAILED;
 import static com.oracle.svm.core.posix.headers.Mman.MAP_SHARED;
 import static com.oracle.svm.core.posix.headers.Mman.PROT_READ;
 import static com.oracle.svm.core.posix.headers.Mman.PROT_WRITE;
@@ -118,7 +119,7 @@ public class LinuxGOTHeapSupport extends GOTHeapSupport {
         }
 
         Pointer gotMemory = mmap(Word.nullPointer(), gotPageAlignedSize, PROT_READ() | PROT_WRITE(), MAP_SHARED(), fd, 0);
-        if (gotMemory.isNull()) {
+        if (gotMemory.equal(MAP_FAILED())) {
             Unistd.NoTransitions.close(fd);
             return CEntryPointErrors.DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_FD_MAP_FAILED;
         }
