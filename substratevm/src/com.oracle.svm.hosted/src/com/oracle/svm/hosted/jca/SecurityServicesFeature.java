@@ -474,6 +474,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private final Map<String, List<Provider>> buildTimeProvidersByClassName = new HashMap<>();
     /** Configured construction classes, keyed by the implementation returned after configure(). */
     private final Map<Class<?>, List<Class<?>>> configuredProviderConstructionClasses = new HashMap<>();
+    private final Map<String, List<String>> configuredProviderArguments = new HashMap<>();
     /** ServiceLoader declaration classes, in discovery order, keyed by returned implementation class. */
     private final Map<Class<?>, List<Class<?>>> providerConstructionClasses = new HashMap<>();
     private final Map<Class<?>, Integer> providerConstructionOrder = new HashMap<>();
@@ -873,6 +874,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         availableServices = computeAvailableServices();
         buildTimeProvidersByClassName.clear();
         configuredProviderConstructionClasses.clear();
+        configuredProviderArguments.clear();
         providerConstructionClasses.clear();
         providerConstructionOrder.clear();
         unresolvedServiceProviderFactories.clear();
@@ -894,6 +896,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         for (Object configuration : configurations) {
             Provider provider = ReflectionUtil.readField(configuration.getClass(), "provider", configuration);
             String token = ReflectionUtil.readField(configuration.getClass(), "provName", configuration);
+            String argument = ReflectionUtil.readField(configuration.getClass(), "argument", configuration);
+            if (!argument.isEmpty()) {
+                configuredProviderArguments.computeIfAbsent(token, _ -> new ArrayList<>()).add(argument);
+            }
             String builtInClassName = SecurityProviderCatalog.getProviderClassName(token);
             String constructionClassName = builtInClassName != null ? builtInClassName : token;
             loader.findClass(constructionClassName).ifPresent(constructionClass -> {
@@ -966,6 +972,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                                 : UserError.abort(result.failure(), message, candidate.constructionClass().getName());
             }
             registerServiceProviderConstructionCandidate(provider.getClass(), candidate.constructionClass(), candidate.descriptorOrder());
+            registerConfiguredProviderConstructionCandidates(provider, candidate.constructionClass());
             unresolvedServiceProviderFactories.remove(index);
             resolvedAny = true;
         }
@@ -1212,6 +1219,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 if (descriptorOrder != null) {
                     SecurityProviderCatalogRegistrar.recordServiceLoadedConfiguredProvider(provider, constructionClass, descriptorOrder);
                 }
+                registerConfiguredProviderConstructionCandidates(provider, constructionClass);
                 return provider;
             }
             lastFailure = result.failure();
@@ -1224,6 +1232,22 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                         "Native Image must construct a registered provider at build time to retain its complete service catalog. " +
                         "Make its supported construction path usable during the build, or register only the services used through an application-supplied provider.";
         throw lastFailure == null ? UserError.abort(message, providerClass.getName()) : UserError.abort(lastFailure, message, providerClass.getName());
+    }
+
+    /** §FS-002-security-providers.1.2: Preserve a selected path across configure() class changes. */
+    private void registerConfiguredProviderConstructionCandidates(Provider provider, Class<?> constructionClass) {
+        for (String token : List.of(provider.getName(), provider.getClass().getName())) {
+            for (String argument : configuredProviderArguments.getOrDefault(token, List.of())) {
+                Provider configuredProvider = provider.configure(argument);
+                Class<?> implementationClass = configuredProvider.getClass();
+                List<Class<?>> constructionClasses = configuredProviderConstructionClasses.computeIfAbsent(implementationClass, _ -> new ArrayList<>());
+                if (!constructionClasses.contains(constructionClass)) {
+                    constructionClasses.add(constructionClass);
+                    buildTimeProvidersByClassName.computeIfAbsent(implementationClass.getName(), _ -> new ArrayList<>()).add(configuredProvider);
+                    addCandidateProviderClass(implementationClass);
+                }
+            }
+        }
     }
 
     private record ProviderInstantiation(Provider provider, Throwable failure) {
