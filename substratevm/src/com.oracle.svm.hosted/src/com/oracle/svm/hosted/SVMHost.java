@@ -168,9 +168,14 @@ import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
 import jdk.graal.compiler.nodes.StaticDeoptimizingNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.FieldOffsetProvider;
+import jdk.graal.compiler.nodes.extended.RawStoreNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.java.AbstractUnsafeCompareAndSwapNode;
+import jdk.graal.compiler.nodes.java.AtomicReadAndAddNode;
+import jdk.graal.compiler.nodes.java.AtomicReadAndWriteNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
@@ -186,6 +191,7 @@ import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -807,8 +813,8 @@ public class SVMHost extends HostVM {
                  * Later elimination of a store does not discharge its validation obligation. Parsing
                  * may already have simplified the graph, so this is not a bytecode-level write summary.
                  */
-                List<AnalysisField> closedFieldWrites = graph.getNodes().filter(StoreFieldNode.class).stream()
-                                .map(store -> (AnalysisField) store.field()).filter(this::isAlwaysClosedField).distinct().toList();
+                List<AnalysisField> closedFieldWrites = graph.getNodes().stream().map(SVMHost::getWrittenField)
+                                .filter(field -> field != null && isAlwaysClosedField(field)).distinct().toList();
                 metadata.setClosedFieldWrites(closedFieldWrites);
                 checkClosedFieldWrites(method, closedFieldWrites);
             }
@@ -856,6 +862,37 @@ public class SVMHost extends HostVM {
 
             super.methodAfterParsingHook(bb, method, graph, metadata);
         }
+    }
+
+    /**
+     * Resolve direct field stores and Unsafe writes whose offset implements
+     * {@link FieldOffsetProvider}, identifying the target field. Plain and volatile Unsafe writes can
+     * still be {@link RawStoreNode}s before canonicalization converts them to {@link StoreFieldNode}s,
+     * while atomic updates retain their own node classes. Opaque offsets and accesses without an
+     * object receiver do not identify a field here.
+     * <p>
+     * Points-to analysis uses the same criterion for precise field accesses. It can model other
+     * Unsafe accesses through indexed or generic unsafe flows, or conservative field summaries,
+     * without identifying a target field here. Such accesses can still be supported: returning
+     * {@code null} does not establish absence of field writes, grant write permission, or provide
+     * memory safety for arbitrary offsets.
+     */
+    private static AnalysisField getWrittenField(Node node) {
+        return (AnalysisField) switch (node) {
+            case StoreFieldNode store -> store.field();
+            case RawStoreNode store -> getFieldFromNode(store.object(), store.offset());
+            case AbstractUnsafeCompareAndSwapNode atomic -> getFieldFromNode(atomic.object(), atomic.offset());
+            case AtomicReadAndWriteNode atomic -> getFieldFromNode(atomic.object(), atomic.offset());
+            case AtomicReadAndAddNode atomic -> getFieldFromNode(atomic.object(), atomic.offset());
+            default -> null;
+        };
+    }
+
+    private static AnalysisField getFieldFromNode(ValueNode object, ValueNode offset) {
+        if (object.getStackKind() == JavaKind.Object && offset instanceof FieldOffsetProvider fieldOffset) {
+            return (AnalysisField) fieldOffset.getField();
+        }
+        return null;
     }
 
     protected void optimizeAfterParsing(BigBang bb, AnalysisMethod method, StructuredGraph graph) {

@@ -133,12 +133,13 @@ public final class AnalysisParsedGraph {
 
     /**
      * Immutable metadata captured for one parsed graph, retained with its encoding so subsequent
-     * parsing of the same method cannot replace it. Closed-field writes describe stores observed
-     * at the collection boundary, including stores eliminated before encoding. They conservatively
-     * retain validation obligations rather than describing only the encoded graph's remaining effects.
+     * parsing of the same method cannot replace it. Closed-field writes describe field write effects
+     * resolved at the collection boundary, including Unsafe stores and atomic updates with symbolic
+     * field offsets, and effects eliminated before encoding. They conservatively retain validation
+     * obligations rather than describing only the encoded graph's remaining effects.
      *
      * @param closedFieldWrites always-closed fields written before optimizations can remove their
-     *            stores; this is validation metadata for later layers and does not mark fields as
+     *            effects; this is validation metadata for later layers and does not mark fields as
      *            written in the analysis
      */
     public record GraphMetadata(List<AnalysisField> closedFieldWrites) {
