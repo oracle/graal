@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,6 +60,8 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
         @Override
         public void printJson(JsonWriter writer) throws IOException {
             writer.appendObjectStart();
+            // FS-002-conditional-foreign-metadata.3
+            AccessConditionPrintable.printConditionAttribute(condition, writer, true);
             desc.printJson(writer);
             if (!linkerOptions.isEmpty()) {
                 writer.appendSeparator().quote("options").appendFieldSeparator().print(linkerOptions);
@@ -72,10 +74,14 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
                     Map<String, Object> linkerOptions) implements JsonPrintable {
         @Override
         public void printJson(JsonWriter writer) throws IOException {
-            writer.appendObjectStart()
-                            .appendKeyValue("class", clazz).appendSeparator()
-                            .appendKeyValue("method", method).appendSeparator();
+            writer.appendObjectStart();
+            // FS-002-conditional-foreign-metadata.3
+            AccessConditionPrintable.printConditionAttribute(condition, writer, true);
+            writer.appendKeyValue("class", clazz).appendSeparator()
+                            .appendKeyValue("method", method);
+            // FS-002-conditional-foreign-metadata.5
             if (desc != null) {
+                writer.appendSeparator();
                 desc.printJson(writer);
             }
             if (!linkerOptions.isEmpty()) {
@@ -118,8 +124,8 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
         /*-
          * First, add all direct upcall stubs from 'other'. Second, remove all stub descs that are
          * subsumed by any other stub desc. A stub desc Desc0 is subsumed by a stub desc Desc1 if
-         * both denote the same method and linker options but Desc0 has a function descriptor and
-         * Desc1 doesn't. In this case, Desc1 already denotes all possible overloads of the method.
+         * both have the same condition, method and linker options but Desc0 has a function
+         * descriptor and Desc1 doesn't. Desc1 already denotes all possible overloads of the method.
          * 
          * Example:
          * directUpcallStubs={
@@ -195,9 +201,9 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
 
     @Override
     protected void removeIf(Predicate predicate) {
-        downcallStubs.removeIf(element -> predicate.testDowncall(element.desc, element.linkerOptions));
-        upcallStubs.removeIf(element -> predicate.testUpcall(element.desc, element.linkerOptions));
-        directUpcallStubs.removeIf(element -> predicate.testDirectUpcall(element.clazz, element.method, element.desc, element.linkerOptions));
+        downcallStubs.removeIf(element -> predicate.testDowncall(element.condition, element.desc, element.linkerOptions));
+        upcallStubs.removeIf(element -> predicate.testUpcall(element.condition, element.desc, element.linkerOptions));
+        directUpcallStubs.removeIf(element -> predicate.testDirectUpcall(element.condition, element.clazz, element.method, element.desc, element.linkerOptions));
     }
 
     @Override
@@ -209,8 +215,21 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
 
     @Override
     public void mergeConditional(UnresolvedAccessCondition condition, ForeignConfiguration other) {
-        // GR-64144: Not implemented with conditions yet
-        merge(other);
+        // FS-002-conditional-foreign-metadata.1
+        for (StubDesc stub : other.downcallStubs) {
+            addDowncall(condition, stub.desc, stub.linkerOptions);
+        }
+        for (StubDesc stub : other.upcallStubs) {
+            addUpcall(condition, stub.desc, stub.linkerOptions);
+        }
+        // Preserve descriptorless subsumption: FS-002-conditional-foreign-metadata.5
+        for (DirectStubDesc stub : other.directUpcallStubs) {
+            if (stub.desc == null) {
+                addDirectUpcall(condition, stub.linkerOptions, stub.clazz, stub.method);
+            } else {
+                addDirectUpcall(condition, stub.desc, stub.linkerOptions, stub.clazz, stub.method);
+            }
+        }
     }
 
     public void addDowncall(String returnType, List<String> parameterTypes, Map<String, Object> linkerOptions) {
@@ -317,12 +336,13 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
         return true;
     }
 
+    /** Removal predicates: FS-002-conditional-foreign-metadata.4. */
     public interface Predicate {
-        boolean testDowncall(ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions);
+        boolean testDowncall(UnresolvedAccessCondition condition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions);
 
-        boolean testUpcall(ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions);
+        boolean testUpcall(UnresolvedAccessCondition condition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions);
 
-        boolean testDirectUpcall(String clazz, String method, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions);
+        boolean testDirectUpcall(UnresolvedAccessCondition condition, String clazz, String method, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions);
     }
 
     /**

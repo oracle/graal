@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -250,7 +250,8 @@ public class ConfigurationSet {
     }
 
     public boolean isEmpty() {
+        // Retain foreign-only partial nodes and propagation: FS-002-conditional-foreign-metadata.2
         return reflectionConfiguration.isEmpty() && resourceConfiguration.isEmpty() && proxyConfiguration.isEmpty() && serializationConfiguration.isEmpty() &&
-                        predefinedClassesConfiguration.isEmpty();
+                        predefinedClassesConfiguration.isEmpty() && foreignConfiguration.isEmpty();
     }
 }

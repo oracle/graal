@@ -498,11 +498,20 @@ You can specify the configuration file to `native-image` in two ways:
 
 Please also refer to the general description of [Reachability Metadata](ReachabilityMetadata.md) and to [Specify Configuration Files as Argument](AutomaticMetadataCollection.md#specify-configuration-files-as-arguments) for more information.
 
+<!-- §FS-002-conditional-foreign-metadata.3 -->
+Entries in `downcalls`, `upcalls`, and `directUpcalls` can include a `condition` with a `typeReached` class name, as described in [Conditional Metadata Entries](ReachabilityMetadata.md#conditional-metadata-entries).
+When you use `native-image-utils generate` to process or merge configuration files, it preserves these conditions, function descriptors, target methods, and linker options.
+
 #### Automatic Metadata Collection Using the Tracing Agent
 
 The FFM API configuration can be collected automatically using the [Tracing Agent](AutomaticMetadataCollection.md) that is part of GraalVM.
 The agent tracks all usages of FFM API that creates upcalls or downcalls during application execution on a regular Java VM.
 When the application completes and the JVM exits, the agent writes configuration to the _reachability-metadata.json_ file in the specified output directory.
+
+<!-- §FS-002-conditional-foreign-metadata.1 -->
+When you enable [conditional configuration](ExperimentalAgentOptions.md#generating-conditional-configuration-using-the-agent), the agent records downcalls, upcalls, and direct upcalls with the `typeReached` conditions inferred from their calling contexts.
+<!-- §FS-002-conditional-foreign-metadata.2 -->
+This applies both to a single agent run and to partial runs combined with `native-image-utils generate-conditional`.
 
 #### Register Stubs in a Custom Feature
 
