@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import java.util.Objects;
 import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
+import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
@@ -88,6 +89,13 @@ public class ResourcesHelper {
         Objects.requireNonNull(resourceName);
         ResourceStorageEntryBase entry = Resources.getAtRuntime(loader, resourceName, true);
         return entry != null && entry != Resources.NEGATIVE_QUERY_MARKER && entry != Resources.MISSING_METADATA_MARKER;
+    }
+
+    /** Trace a final classpath miss after both embedded and run-time resources were searched. */
+    static void traceMissingEmbeddedResourceMetadata(ClassLoader loader, String resourceName) {
+        if (MetadataTracer.enabled() && Resources.getAtRuntime(loader, resourceName, true) == Resources.MISSING_METADATA_MARKER) {
+            MetadataTracer.singleton().traceResource(resourceName, null);
+        }
     }
 
     static void reportMissingEmbeddedResourceMetadata(ClassLoader loader, String resourceName) {

@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -95,6 +96,9 @@ final class Target_sun_security_jca_ProviderConfig {
     @Alias//
     private Provider provider;
 
+    /** The descriptor selected for a cached JDK-managed provider, before configure(). */
+    @Inject private SecurityProviderRuntimeState.ConfiguredProviderInfo selectedProvider;
+
     @Alias//
     private boolean isLoading;
 
@@ -115,14 +119,18 @@ final class Target_sun_security_jca_ProviderConfig {
     @Substitute
     @SuppressFBWarnings(value = "DC_DOUBLECHECK", justification = "This double-check is implemented correctly and is intentional.")
     Provider getProvider() {
-        if (provider != null) {
+        if (provider != null && selectedProvider == null) {
             return provider;
         }
         synchronized (this) {
-            if (provider != null) {
-                return provider;
-            }
             SecurityProviderRuntimeState.ConfiguredProviderInfo configuredProvider = SecurityProviderRuntimeState.getConfiguredProvider(provName);
+            if (provider != null) {
+                if (selectedProvider == null || configuredProvider != null && selectedProvider == configuredProvider) {
+                    return provider;
+                }
+                // §FS-002-security-providers.1.5: Reevaluate a cached name after activation.
+                provider = null;
+            }
             String configuredProviderClassName = configuredProvider != null ? configuredProvider.providerClassName() : null;
             String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(provName);
             String providerClassName = configuredProviderClassName != null ? configuredProviderClassName
@@ -158,6 +166,7 @@ final class Target_sun_security_jca_ProviderConfig {
                         /* §FS-002-security-providers.1.2, §FS-002-security-providers.6.1:
                          * ordered retained descriptors, with the JDK ServiceLoader recursion and
                          * retry state machine. */
+                        selectedProvider = configuredProvider;
                         provider = SecurityProviderRuntimeAccess.loadRegisteredConfiguredProvider(provName, configuredProviderClassName,
                                         configuredProvider.effectiveConstructionClassName(), argument);
                     } else {
