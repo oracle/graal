@@ -32,7 +32,8 @@ import com.oracle.svm.shared.util.VMError;
  * Describes a facet of a singleton's behavior. See {@link SingletonTraits} and
  * {@link SingletonTraitKind} for more details.
  */
-public abstract sealed class SingletonTrait<T> permits AccessSingletonTrait, DisallowLayeredSingletonTrait, LayeredCallbacksSingletonTrait, LayeredInstallationKindSingletonTrait, PartiallyLayerAwareSingletonTrait {
+public abstract sealed class SingletonTrait<T> permits AccessSingletonTrait, DisallowLayeredSingletonTrait, LayeredCallbacksSingletonTrait, LayeredInstallationKindSingletonTrait,
+                PartiallyLayerAwareSingletonTrait {
 
     public static final SingletonTrait<?>[] EMPTY_ARRAY = new SingletonTrait<?>[0];
 

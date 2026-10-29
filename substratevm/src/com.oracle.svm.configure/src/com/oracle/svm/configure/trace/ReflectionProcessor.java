@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,11 +64,15 @@ class ReflectionProcessor extends AbstractProcessor {
     public void processEntry(EconomicMap<String, Object> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         UnresolvedAccessCondition condition = UnresolvedAccessCondition.unconditional();
-        if (invalidResult) {
+        String function = (String) entry.get("function");
+        boolean memberQuery = switch (function) {
+            case "getField", "getDeclaredField", "getMethod", "getDeclaredMethod", "getConstructor", "getDeclaredConstructor" -> true;
+            default -> false;
+        };
+        if (invalidResult && !memberQuery) {
             return;
         }
 
-        String function = (String) entry.get("function");
         List<?> args = (List<?>) entry.get("args");
         ResourceConfiguration resourceConfiguration = configurationSet.getResourceConfiguration();
         switch (function) {
@@ -121,6 +125,13 @@ class ReflectionProcessor extends AbstractProcessor {
                     return;
                 }
             }
+        }
+        if (invalidResult) {
+            /* A failed member query still needs type metadata to reproduce NoSuchMethod/Field. */
+            if (clazz != null) {
+                configuration.getOrCreateType(condition, clazz);
+            }
+            return;
         }
         ConfigurationMemberDeclaration declaration = ConfigurationMemberDeclaration.PUBLIC;
         ConfigurationMemberAccessibility accessibility = ConfigurationMemberAccessibility.QUERIED;
