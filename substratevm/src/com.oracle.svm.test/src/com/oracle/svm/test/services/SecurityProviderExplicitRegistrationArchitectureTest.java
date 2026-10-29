@@ -43,13 +43,13 @@ public class SecurityProviderExplicitRegistrationArchitectureTest {
 
     /** Tests §AR-004-security-providers.requirements.3 and §AR-004-security-providers.design.4. */
     @Test
-    public void instantiatedProvidersHaveClassKeyedAcquisitionKinds() {
+    public void unconfiguredInstantiatedProvidersRemainApplicationSupplied() {
         Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
 
         SecurityProviderRuntimeState.ProviderInfo registered = SecurityProviderRuntimeState.getProviderInfo(new SecurityServiceTest.ReflectionMetadataProvider());
         Assert.assertNotNull(registered);
         Assert.assertNull(registered.verificationFailure());
-        Assert.assertEquals(SecurityProviderRuntimeState.AcquisitionKind.JDK_CONSTRUCTIBLE, registered.acquisitionKind());
+        Assert.assertEquals(SecurityProviderRuntimeState.AcquisitionKind.APPLICATION_SUPPLIED_ONLY, registered.acquisitionKind());
 
         SecurityProviderRuntimeState.ProviderInfo supplied = SecurityProviderRuntimeState.getProviderInfo(new SameNameApplicationSuppliedProvider());
         Assert.assertNotNull(supplied);

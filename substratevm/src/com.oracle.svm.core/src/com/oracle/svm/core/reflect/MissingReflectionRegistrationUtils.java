@@ -61,6 +61,17 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
         }
     }
 
+    /** §FS-002-security-providers.3.3: Report the selected path without loading or constructing it. */
+    public static void reportProviderConstructionAccess(String providerClassName, String constructionClassName, String methodName, StackTraceElement responsibleClass) {
+        ConfigurationType type = namedConfigurationType(constructionClassName);
+        addMethod(type, methodName, new Class<?>[0]);
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
+                        reflectionError("invoke the construction path for security provider", quote(providerClassName) + " (" + constructionClassName + "#" + methodName + ")",
+                                        elementToJSON(type)),
+                        "<init>".equals(methodName) ? Constructor.class : Method.class, null, methodName, new Class<?>[0]);
+        MissingRegistrationUtils.report(exception, responsibleClass);
+    }
+
     public static MissingReflectionRegistrationError reportUnsafeAllocation(Class<?> clazz) {
         ConfigurationType type = getConfigurationType(clazz);
         type.setUnsafeAllocated();

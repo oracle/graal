@@ -79,7 +79,6 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaSecurityInsertProviderAt;
     final JNIMethodId javaSecurityRemoveProvider;
     final JNIFieldId sunSecurityJcaProviderConfigProvider;
-    final boolean hasSecurityProviderReflection;
 
     final JNIObjectHandle javaLangStackOverflowError;
 
@@ -219,11 +218,6 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         sunSecurityJcaProviderConfigProvider = sunSecurityJcaProviderConfig.equal(nullHandle())
                         ? WordFactory.nullPointer()
                         : getFieldIdOptional(env, sunSecurityJcaProviderConfig, "provider", "Ljava/security/Provider;", false);
-
-        JNIObjectHandle sunSecurityJcaProviderReflection = findClassOptional(env, "sun/security/jca/ProviderReflection");
-        hasSecurityProviderReflection = sunSecurityJcaProviderReflection.notEqual(nullHandle()) &&
-                        getMethodIdOptional(env, sunSecurityJcaProviderReflection, "trace",
-                                        "(Ljava/security/Provider;Ljava/lang/Class;Z)V", true).isNonNull();
 
         javaLangStackOverflowError = newClassGlobalRef(env, "java/lang/StackOverflowError");
 
