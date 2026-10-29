@@ -68,6 +68,12 @@ public final class SecurityProviderRuntimeState {
         }
     }
 
+    public record ConstructionPath(String className, String methodName) {
+    }
+
+    /** §FS-002-security-providers.3.3: Diagnostic paths grant no eligibility and retain no classes. */
+    private final EconomicMap<String, ConstructionPath> constructionPathsForDiagnostics = ImageHeapMap.createNonLayeredMap();
+
     private final EconomicMap<String, ConditionalProviderInfo> providerInfos = ImageHeapMap.createNonLayeredMap();
     private final EconomicMap<String, List<ConfiguredProviderInfo>> configuredProviders = ImageHeapMap.createNonLayeredMap();
 
@@ -104,6 +110,23 @@ public final class SecurityProviderRuntimeState {
     @Platforms(Platform.HOSTED_ONLY.class)
     private void registerConfiguredProviderKey(String configuredValue, String providerClassName) {
         registerConfiguredProviderCandidate(configuredValue, new ConfiguredProviderInfo(providerClassName, null, -1));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public synchronized void registerConstructionForDiagnostics(String providerClassName, String constructionClassName, String methodName) {
+        if (!constructionPathsForDiagnostics.containsKey(providerClassName)) {
+            constructionPathsForDiagnostics.put(providerClassName, new ConstructionPath(constructionClassName, methodName));
+        }
+    }
+
+    public static ConstructionPath getConstructionForDiagnostics(String providerClassName) {
+        for (SecurityProviderRuntimeState state : singletons()) {
+            ConstructionPath path = state.constructionPathsForDiagnostics.get(providerClassName);
+            if (path != null) {
+                return path;
+            }
+        }
+        return null;
     }
 
     /** Records the first ServiceLoader declaration that resolves a provider name. */
