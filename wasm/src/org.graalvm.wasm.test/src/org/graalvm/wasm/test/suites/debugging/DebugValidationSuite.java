@@ -798,6 +798,96 @@ public class DebugValidationSuite extends AbstractBinarySuite {
         runTest(data);
     }
 
+    @Test
+    public void testLineSectionHeaderZeroMaxOpsPerInstr() throws IOException {
+        // .debug_info
+        // unit_length: 12
+        // version: 4.0
+        // debug_abbrev_offset: 0
+        // address_size: 4
+        // abbrev index: 1
+        // language: c (2)
+        // stmt_list: 0
+        // comp_dir: /
+        //
+        // .debug_abbrev:
+        // index: 1
+        // tag: compilation unit (0x11)
+        // children: false
+        // attribute name: language (0x13)
+        // attribute form: 0x0F
+        // attribute name: stmt_list (0x10)
+        // attribute form: 0x0F
+        // attribute name: comp_dir (0x1B)
+        // attribute form: 0x08
+        //
+        // .debug_line:
+        // unit_length: 38
+        // version: 4.0
+        // header_length: 27
+        // min_instr_length: 1
+        // max_ops_per_instr: 0
+        // default_instr_stmt: 1
+        // line_base: -5
+        // line_range: 14
+        // opcodeBase: 13
+        // standard_opcode_lengths: 0 1 1 1 1 0 0 0 1 0 0 1
+        // include_directories: empty
+        // file_names: a.c
+        // special opcode: 0x20 (divides by max_ops_per_instr)
+        // special opcode: 0x20
+        // DW_LNE_end_sequence
+        final byte[] data = getDefaultDebugBuilder().addCustomSection(".debug_info", hexStringToByteArray("0C 00 00 00 04 00 00 00 00 00 04 01 02 00 2F 00")).addCustomSection(".debug_abbrev",
+                        hexStringToByteArray("01 11 00 13 0F 10 0F 1B 08 00 00 00")).addCustomSection(".debug_line",
+                                        hexStringToByteArray("26 00 00 00 04 00 1B 00 00 00 01 00 01 FB 0E 0D 00 01 01 01 01 00 00 00 01 00 00 01 00 61 2E 63 00 00 00 00 00 20 20 00 01 01")).build();
+        runTest(data);
+    }
+
+    @Test
+    public void testLineSectionHeaderZeroLineRange() throws IOException {
+        // .debug_info
+        // unit_length: 12
+        // version: 4.0
+        // debug_abbrev_offset: 0
+        // address_size: 4
+        // abbrev index: 1
+        // language: c (2)
+        // stmt_list: 0
+        // comp_dir: /
+        //
+        // .debug_abbrev:
+        // index: 1
+        // tag: compilation unit (0x11)
+        // children: false
+        // attribute name: language (0x13)
+        // attribute form: 0x0F
+        // attribute name: stmt_list (0x10)
+        // attribute form: 0x0F
+        // attribute name: comp_dir (0x1B)
+        // attribute form: 0x08
+        //
+        // .debug_line:
+        // unit_length: 38
+        // version: 4.0
+        // header_length: 27
+        // min_instr_length: 1
+        // max_ops_per_instr: 1
+        // default_instr_stmt: 1
+        // line_base: -5
+        // line_range: 0
+        // opcodeBase: 13
+        // standard_opcode_lengths: 0 1 1 1 1 0 0 0 1 0 0 1
+        // include_directories: empty
+        // file_names: a.c
+        // special opcode: 0x20 (divides by line_range)
+        // special opcode: 0x20
+        // DW_LNE_end_sequence
+        final byte[] data = getDefaultDebugBuilder().addCustomSection(".debug_info", hexStringToByteArray("0C 00 00 00 04 00 00 00 00 00 04 01 02 00 2F 00")).addCustomSection(".debug_abbrev",
+                        hexStringToByteArray("01 11 00 13 0F 10 0F 1B 08 00 00 00")).addCustomSection(".debug_line",
+                                        hexStringToByteArray("26 00 00 00 04 00 1B 00 00 00 01 01 01 FB 00 0D 00 01 01 01 01 00 00 00 01 00 00 01 00 61 2E 63 00 00 00 00 00 20 20 00 01 01")).build();
+        runTest(data);
+    }
+
     private static void runTest(byte[] data) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), "test_main").build();

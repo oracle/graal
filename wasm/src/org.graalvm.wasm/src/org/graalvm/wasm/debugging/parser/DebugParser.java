@@ -600,6 +600,10 @@ public class DebugParser {
         final int lineRange = readUnsigned1();
         final int opcodeBase = readUnsigned1();
 
+        if (minInstrLength < 1 || maxOpsPerInstr < 1 || lineRange < 1) {
+            throw new WasmDebugException("Invalid .debug_line header: min_instruction_length, max_ops_per_instruction, and line_range must be >= 1");
+        }
+
         // read standard opcode lengths
         for (byte i = 0; i < opcodeBase - 1; i++) {
             read1();
