@@ -878,32 +878,17 @@ public class SVMHost extends HostVM {
      * memory safety for arbitrary offsets.
      */
     private static AnalysisField getWrittenField(Node node) {
-        if (node instanceof StoreFieldNode store) {
-            return (AnalysisField) store.field();
-        }
-        ValueNode object;
-        ValueNode offset;
-        switch (node) {
-            case RawStoreNode store -> {
-                object = store.object();
-                offset = store.offset();
-            }
-            case AbstractUnsafeCompareAndSwapNode atomic -> {
-                object = atomic.object();
-                offset = atomic.offset();
-            }
-            case AtomicReadAndWriteNode atomic -> {
-                object = atomic.object();
-                offset = atomic.offset();
-            }
-            case AtomicReadAndAddNode atomic -> {
-                object = atomic.object();
-                offset = atomic.offset();
-            }
-            default -> {
-                return null;
-            }
-        }
+        return (AnalysisField) switch (node) {
+            case StoreFieldNode store -> store.field();
+            case RawStoreNode store -> getFieldFromNode(store.object(), store.offset());
+            case AbstractUnsafeCompareAndSwapNode atomic -> getFieldFromNode(atomic.object(), atomic.offset());
+            case AtomicReadAndWriteNode atomic -> getFieldFromNode(atomic.object(), atomic.offset());
+            case AtomicReadAndAddNode atomic -> getFieldFromNode(atomic.object(), atomic.offset());
+            default -> null;
+        };
+    }
+
+    private static AnalysisField getFieldFromNode(ValueNode object, ValueNode offset) {
         if (object.getStackKind() == JavaKind.Object && offset instanceof FieldOffsetProvider fieldOffset) {
             return (AnalysisField) fieldOffset.getField();
         }
