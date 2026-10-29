@@ -81,6 +81,7 @@ import com.oracle.svm.core.jdk.SignalHandlerSupport;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -371,6 +372,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         CodeInfoTable.prepareImageCodeInfo();
+        if (PLTGOTConfiguration.isEnabled()) {
+            int error = PLTGOTConfiguration.singleton().getMethodAddressResolver().initialize();
+            if (error != CEntryPointErrors.NO_ERROR) {
+                return error;
+            }
+        }
         if (!VMThreads.initialize()) {
             return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
         }
