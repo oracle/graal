@@ -4283,7 +4283,7 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
         return _awfyConfig.copy()
 
     def awfyIterations(self):
-        return 100 # Iterations for a "Slow VM" from AWFY rebench.conf
+        return 1000
 
     def awfyPath(self):
         lib = mx.library(self.awfyLibraryName())
