@@ -1434,7 +1434,7 @@ def unmask(args):
     return [arg.replace(_mask_str, '-') for arg in args]
 
 
-def _native_unittest(native_image, cmdline_args, custom_batch=None):
+def _parse_native_unittest_args(cmdline_args):
     parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image.')
     all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image', '--test-classes-per-run', '--all', '--custom-only']
     cmdline_args = [_mask(arg, all_args) for arg in cmdline_args]
@@ -1447,8 +1447,11 @@ def _native_unittest(native_image, cmdline_args, custom_batch=None):
     parser.add_argument('--all', help='include tests that require custom @NativeImageBuildArgs and build one image per effective build-arg group', action='store_true')
     parser.add_argument('--custom-only', help='exclude the default test group and include all custom build-argument groups (i.e., implies --all)', action='store_true')
     parser.add_argument('unittest_args', metavar='TEST_ARG', nargs='*')
-    pargs = parser.parse_args(cmdline_args)
+    return parser.parse_args(cmdline_args)
 
+
+def _native_unittest(native_image, cmdline_args, custom_batch=None):
+    pargs = _parse_native_unittest_args(cmdline_args)
     if pargs.custom_only:
         pargs.all = True
 
@@ -4116,7 +4119,8 @@ def native_unittest(args):
     # If no selectors were provided, native-unittest will default to SVM tests, so include features.
     def _is_svm_selector(a: str) -> bool:
         return a.startswith('com.oracle.svm.test')
-    include_svm_test_features = True if not arg_list else any(_is_svm_selector(a) for a in arg_list)
+    unittest_args = unmask(_parse_native_unittest_args(arg_list).unittest_args)
+    include_svm_test_features = not unittest_args or any(_is_svm_selector(a) for a in unittest_args)
     computed = _compute_native_unittest_args(include_svm_test_features=include_svm_test_features)
     # Merge computed build args into an existing --build-args block if present, otherwise append.
     if '--build-args' in arg_list:
