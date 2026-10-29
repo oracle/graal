@@ -27,11 +27,12 @@ package com.oracle.svm.core.g1;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
 import com.oracle.svm.core.g1.nativelib.G1Library;
+import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -62,5 +63,30 @@ public final class G1PinnedObjectSupport extends AbstractPinnedObjectSupport {
     @Uninterruptible(reason = "Use untracked pointers. Ensure that pinned object counts and PinnedObjects are consistent.", callerMustBe = true)
     protected void unpinObject(Object object) {
         G1Library.unpinObject(Word.objectToUntrackedWord(object));
+    }
+
+    @Override
+    public boolean supportsPinnedAllocation() {
+        return false;
+    }
+
+    @Override
+    public <T> T allocateInstance(Class<T> clazz) throws InstantiationException {
+        throw new UnsupportedOperationException("Pinned allocation is not supported with the G1 garbage collector.");
+    }
+
+    @Override
+    public Pointer addressOfPinnedObject(Object object) {
+        throw new UnsupportedOperationException("Pinned allocation is not supported with the G1 garbage collector.");
+    }
+
+    @Override
+    public Object newArray(Class<?> componentType, int length) {
+        throw new UnsupportedOperationException("Pinned allocation is not supported with the G1 garbage collector.");
+    }
+
+    @Override
+    public Pointer addressOfPinnedArrayElement(Object array, int index) {
+        throw new UnsupportedOperationException("Pinned allocation is not supported with the G1 garbage collector.");
     }
 }

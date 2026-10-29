@@ -26,8 +26,6 @@ package com.oracle.svm.core.heap;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.lang.ref.Reference;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
@@ -59,69 +57,6 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
     @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static AbstractPinnedObjectSupport singleton() {
         return (AbstractPinnedObjectSupport) ImageSingletons.lookup(PinnedObjectSupport.class);
-    }
-
-    @Override
-    public boolean supportsPinnedAllocation() {
-        return false;
-    }
-
-    /**
-     * Allocates and returns an instance of the given class without calling any constructor. The
-     * class is initialized if it is uninitialized. The allocated instance remains at its initial
-     * memory address throughout its lifetime. The instance will be collected after it is no longer
-     * referenced, and it is the caller's responsibility to keep it strongly reachable until it is
-     * not needed any more.
-     *
-     * @see #addressOfPinnedObject
-     */
-    @Override
-    public <T> T allocateInstance(Class<T> clazz) throws InstantiationException {
-        assert !supportsPinnedAllocation();
-        throw new UnsupportedOperationException("Pinned allocation is not supported in the current configuration.");
-    }
-
-    /**
-      * Returns the memory address of an object allocated with {@link #allocateInstance} or
-      * {@link #newArray}. The caller must ensure that the object remains strongly reachable so that
-      * it cannot be collected while it might still be accessed by address, possibly by using
-      * {@link Reference#reachabilityFence}.
-      *
-      * @see #addressOfPinnedArrayElement
-      */
-    @Override
-    public Pointer addressOfPinnedObject(Object object) {
-        assert !supportsPinnedAllocation();
-        throw new UnsupportedOperationException("Pinned allocation is not supported in the current configuration.");
-    }
-
-    /**
-     * Allocates and returns an array of the given component type and size. The allocated array
-     * remains at its initial memory address throughout its lifetime. The array will be collected
-     * after it is no longer referenced, and it is the caller's responsibility to keep it strongly
-     * reachable until it is not needed any more.
-     *
-     * @see java.lang.reflect.Array#newInstance(Class, int)
-     * @see #addressOfPinnedArrayElement
-     */
-    @Override
-    public Object newArray(Class<?> componentType, int length) {
-        assert !supportsPinnedAllocation();
-        throw new UnsupportedOperationException("Pinned allocation is not supported in the current configuration.");
-    }
-
-    /**
-     * Returns the memory address of an element of an array allocated with {@link #newArray}. The
-     * caller must ensure that the array remains strongly reachable so that it cannot be collected
-     * while it might still be accessed by address, possibly by using
-     * {@link Reference#reachabilityFence}.
-     *
-     * @see #addressOfPinnedObject
-     */
-    @Override
-    public Pointer addressOfPinnedArrayElement(Object array, int index) {
-        assert !supportsPinnedAllocation();
-        throw new UnsupportedOperationException("Pinned allocation is not supported in the current configuration.");
     }
 
     @Override
