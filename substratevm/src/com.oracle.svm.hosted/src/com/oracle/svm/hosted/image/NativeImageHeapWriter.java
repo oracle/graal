@@ -215,7 +215,7 @@ public final class NativeImageHeapWriter {
         if (pltgotConfig != null) {
             GOTEntryAllocator gotAllocator = pltgotConfig.getGOTEntryAllocator();
             if (gotAllocator.queryGOTEntry(target) != GOTEntryAllocator.GOT_NO_ENTRY) {
-                return pltgotConfig.getPLTSupport().getMethodPLTStubCodeAddressOffset(target);
+                return pltgotConfig.getPLTSupport().getMethodPLTStubEntryOffset(target);
             }
         }
         return target.getCodeAddressOffset();
