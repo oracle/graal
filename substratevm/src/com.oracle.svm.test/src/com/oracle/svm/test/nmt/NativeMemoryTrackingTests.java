@@ -33,6 +33,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 import org.junit.Test;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
@@ -124,10 +125,16 @@ public class NativeMemoryTrackingTests {
         assertTrue(NativeMemoryTracking.singleton().getReservedVirtualMemory(NmtCategory.ImageHeap) > 0);
         assertTrue(NativeMemoryTracking.singleton().getReservedVirtualMemory(NmtCategory.JavaHeap) > 0);
 
-        assertTrue(NativeMemoryTracking.singleton().getCommittedVirtualMemory(NmtCategory.JavaHeap) > 0);
+        /* GR-57361: G1 does not report committed Java heap memory to NMT yet. */
+        if (!SubstrateOptions.useG1GC()) {
+            assertTrue(NativeMemoryTracking.singleton().getCommittedVirtualMemory(NmtCategory.JavaHeap) > 0);
+        }
         assertTrue(NativeMemoryTracking.singleton().getCommittedVirtualMemory(NmtCategory.ImageHeap) > 0);
 
-        assertTrue(NativeMemoryTracking.singleton().getPeakCommittedVirtualMemory(NmtCategory.JavaHeap) > 0);
+        /* GR-57361: G1 does not report committed Java heap memory to NMT yet. */
+        if (!SubstrateOptions.useG1GC()) {
+            assertTrue(NativeMemoryTracking.singleton().getPeakCommittedVirtualMemory(NmtCategory.JavaHeap) > 0);
+        }
         assertTrue(NativeMemoryTracking.singleton().getPeakCommittedVirtualMemory(NmtCategory.ImageHeap) > 0);
 
         assertTrue(NativeMemoryTracking.singleton().getPeakReservedVirtualMemory(NmtCategory.JavaHeap) > 0);
