@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -53,6 +51,7 @@ final class Target_sun_util_locale_provider_JRELocaleProviderAdapter {
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     protected Set<String> createLanguageTagSet(String category) {
-        return ImageSingletons.lookup(LocalizationSupport.class).supportedLanguageTags.toHashSet();
+        /* Use the same layered locale registrations as LocaleServiceProviderPool. */
+        return LocalizationSupport.getSupportedLanguageTags();
     }
 }

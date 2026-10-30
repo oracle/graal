@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jdk.localization;
 
 import java.lang.reflect.Method;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListResourceBundle;
@@ -40,10 +39,12 @@ import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.localization.bundles.DelayedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
@@ -56,14 +57,15 @@ import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.debug.GraalError;
 import sun.util.resources.OpenListResourceBundle;
 import sun.util.resources.ParallelListResourceBundle;
@@ -82,7 +84,7 @@ import sun.util.resources.ParallelListResourceBundle;
  * @see BundleSerializationUtils
  * @see SubstituteLoadLookup
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
 public class BundleContentSubstitutedLocalizationSupport extends LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)//
@@ -103,14 +105,19 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private final Set<String> existingBundles = ConcurrentHashMap.newKeySet();
 
-    public BundleContentSubstitutedLocalizationSupport(EconomicSet<Locale> locales, Charset defaultCharset, ForkJoinPool pool) {
-        super(locales, defaultCharset);
+    public BundleContentSubstitutedLocalizationSupport(EconomicSet<Locale> locales, ForkJoinPool pool) {
+        super(locales);
         this.pool = pool;
     }
 
-    @Override
-    public boolean substituteLoadLookup() {
-        return true;
+    @Fold
+    static boolean substituteLoadLookupEnabled() {
+        /* The mode is invariant across layers, including when the extraction key is absent. */
+        return ImageSingletons.contains(BundleContentSubstitutedLocalizationSupport.class);
+    }
+
+    protected static BundleContentSubstitutedLocalizationSupport[] getAllLayers() {
+        return MultiLayeredImageSingleton.getAllLayers(BundleContentSubstitutedLocalizationSupport.class);
     }
 
     @Override
@@ -147,20 +154,45 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         storedBundles.put(bundle.getClass(), new ExtractedBundle(content));
     }
 
-    @Override
-    public Map<String, Object> getBundleContentOf(Object bundle) {
-        StoredBundle storedBundle = storedBundles.get(bundle.getClass());
-        if (storedBundle != null) {
-            return storedBundle.getContent(bundle);
+    public static Map<String, Object> getBundleContentOf(Object bundle) {
+        BundleContentSubstitutedLocalizationSupport[] localizationSupports = BundleContentSubstitutedLocalizationSupport.getAllLayers();
+        /* Prefer prepared contents from the most recent layer. */
+        for (int i = localizationSupports.length - 1; i >= 0; i--) {
+            StoredBundle storedBundle = localizationSupports[i].storedBundles.get(bundle.getClass());
+            if (storedBundle != null) {
+                return storedBundle.getContent(bundle);
+            }
         }
-        return getUnpreparedBundleContentOf(bundle);
+        if (!ImageLayerBuildingSupport.buildingImageLayer()) {
+            /*
+             * In non-layered images, pass the singleton directly so analysis can propagate a
+             * constant receiver into the non-inlined helper. An indexed load from the layer array
+             * can lose that constant even with one entry. This preserves folding of an empty
+             * getter array, avoiding the WasmGC object/word-array mismatch on the unreachable
+             * getter path.
+             */
+            var support = ImageSingletons.lookup(BundleContentSubstitutedLocalizationSupport.class);
+            var unpreparedBundleContentOf = support.getUnpreparedBundleContentOf(bundle);
+            if (unpreparedBundleContentOf != null) {
+                return unpreparedBundleContentOf;
+            }
+        } else {
+            /* Prepared contents in any layer take precedence over lazy runtime initialization. */
+            for (int i = localizationSupports.length - 1; i >= 0; i--) {
+                var unpreparedBundleContentOf = localizationSupports[i].getUnpreparedBundleContentOf(bundle);
+                if (unpreparedBundleContentOf != null) {
+                    return unpreparedBundleContentOf;
+                }
+            }
+        }
+        throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + bundle.getClass());
     }
 
     @NeverInline("Keep lazy initialization out of the prepared-bundle fast path")
     private Map<String, Object> getUnpreparedBundleContentOf(Object bundle) {
         Integer getterIndex = unpreparedBundleGetterIndices.get(bundle.getClass());
         if (getterIndex == null) {
-            return super.getBundleContentOf(bundle);
+            return null;
         }
         synchronized (bundle) {
             var target = SubstrateUtil.cast(bundle, Target_java_util_ListResourceBundle_SubstituteLoadLookup.class);
@@ -198,9 +230,21 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean isPreparedBundle(Class<?> clazz) {
+        return preparedBundleClasses.contains(clazz);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean hasUnpreparedBundleGetter(Class<?> clazz) {
+        synchronized (unpreparedBundleGetterIndices) {
+            return unpreparedBundleGetterIndices.containsKey(clazz);
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareUnpreparedBundle(Class<?> clazz, Function<Method, MethodRef> createGetter) throws ReflectiveOperationException {
         // Prepared bundles use extracted contents or a DelayedBundle; no additional getter is needed.
-        if (!preparedBundleClasses.contains(clazz)) {
+        if (!isPreparedBundle(clazz)) {
             synchronized (unpreparedBundleGetterIndices) {
                 if (!unpreparedBundleGetterIndices.containsKey(clazz)) {
                     MethodRef getter = createGetter.apply(DelayedBundle.findGetContentsMethod(clazz));
@@ -219,9 +263,16 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         return unpreparedBundleGetters;
     }
 
-    @Override
-    public boolean isNotIncluded(String bundleName) {
-        return !existingBundles.contains(bundleName);
+    public static boolean isNotIncluded(String bundleName) {
+        if (!substituteLoadLookupEnabled()) {
+            return false;
+        }
+        for (BundleContentSubstitutedLocalizationSupport localizationSupport : BundleContentSubstitutedLocalizationSupport.getAllLayers()) {
+            if (localizationSupport.existingBundles.contains(bundleName)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
