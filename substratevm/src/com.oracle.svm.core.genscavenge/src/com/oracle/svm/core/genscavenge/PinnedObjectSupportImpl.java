@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.lang.ref.Cleaner;
 import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 
@@ -109,6 +110,14 @@ public final class PinnedObjectSupportImpl extends AbstractPinnedObjectSupport {
      * memory address throughout its lifetime. The instance will be collected after it is no longer
      * referenced, and it is the caller's responsibility to keep it strongly reachable until it is
      * not needed any more.
+     * <p>
+     * This is intended for applications which frequently allocate objects that need to be pinned
+     * for nearly all of their lifetime. Allocation can be less efficient than regular allocation
+     * and involve thread synchronization. However, unlike {@link PinnedObject#create} or off-heap
+     * memory, no additional objects or code are needed to track the memory. GC can reclaim the
+     * memory of unreachable objects directly, without requiring a second, deferred step like with
+     * {@link Cleaner}. In order to limit heap fragmentation, objects that are allocated around the
+     * same time should have similar lifetimes.
      *
      * @see #addressOfPinnedObject
      */
@@ -127,6 +136,8 @@ public final class PinnedObjectSupportImpl extends AbstractPinnedObjectSupport {
      * remains at its initial memory address throughout its lifetime. The array will be collected
      * after it is no longer referenced, and it is the caller's responsibility to keep it strongly
      * reachable until it is not needed any more.
+     * <p>
+     * For the tradeoffs of pinned allocation, see {@link #allocateInstance}.
      *
      * @see java.lang.reflect.Array#newInstance(Class, int)
      * @see #addressOfPinnedArrayElement
