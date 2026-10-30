@@ -676,8 +676,12 @@ final class AnalysisInferenceHelper {
                     if (!flood.isMarked(u) && !recursiveTransitiveCheck(domMap, flood, u, analysis, logBuilder, usage, value, targetBranch)) {
                         return false;
                     }
-                    GraalError.guarantee(domMap.containsKey(u), "Dominated nodes should always land in the block cache");
-                    myDom = myDom == null ? domMap.get(u) : (HIRBlock) AbstractControlFlowGraph.commonDominator(myDom, domMap.get(u));
+                    if (domMap.containsKey(u)) {
+                        myDom = myDom == null ? domMap.get(u) : (HIRBlock) AbstractControlFlowGraph.commonDominator(myDom, domMap.get(u));
+                    } else {
+                        // u is not dominated
+                        return false;
+                    }
                 }
                 usageCnt++;
             }
