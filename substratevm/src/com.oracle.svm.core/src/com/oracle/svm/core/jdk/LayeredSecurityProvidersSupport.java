@@ -25,39 +25,46 @@
 
 package com.oracle.svm.core.jdk;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.security.Provider;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
-import jdk.graal.compiler.api.replacements.Fold;
-import sun.security.util.Debug;
-
 /**
- * The class that holds various build-time and run-time structures necessary for security providers,
- * but only in case they are initialized at run time (see the <a href=
+ * Holds the security-provider state contributed by one image layer. Runtime queries aggregate the
+ * state from all layers. This support is only used when security providers are initialized at run
+ * time (see the <a href=
  * "../../../../../../../../../../../../docs/reference-manual/native-image/JCASecurityServices.md">
  * JCA Security Services documentation</a> for details).
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = DisallowLayered.class)
-public final class SecurityProvidersSupport {
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = LayeredSecurityProvidersSupport.LayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
+public final class LayeredSecurityProvidersSupport {
     /**
      * A set of providers to be loaded using the service-loading technique at runtime, but not
      * discoverable at build-time when processing services in the feature (see
@@ -78,20 +85,46 @@ public final class SecurityProvidersSupport {
      * structure is used instead of the (see javax.crypto.JceSecurity#verifyingProviders) map to
      * avoid keeping provider objects in the image heap.
      */
-    private final EconomicMap<String, Object> verifiedSecurityProviders = ImageHeapMap.create("verifiedSecurityProviders");
+    private final EconomicMap<String, Object> verifiedSecurityProviders = ImageHeapMap.createNonLayeredMap();
 
-    private Properties savedInitialSecurityProperties;
+    /** Build-time configuration used to validate extension layers. */
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    private final Map<String, String> initialProperties = new TreeMap<>();
 
-    private Constructor<?> sunECConstructor;
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    private final Set<String> serviceProviders = new ConcurrentSkipListSet<>();
+
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    private Set<String> previousServiceProviders = Set.of();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SecurityProvidersSupport(List<String> userRequestedSecurityProviders) {
+    public LayeredSecurityProvidersSupport(List<String> userRequestedSecurityProviders, Properties properties) {
         this.userRequestedSecurityProviders.addAll(userRequestedSecurityProviders);
+        for (String key : properties.stringPropertyNames()) {
+            initialProperties.put(key, properties.getProperty(key));
+        }
     }
 
-    @Fold
-    public static SecurityProvidersSupport singleton() {
-        return ImageSingletons.lookup(SecurityProvidersSupport.class);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static LayeredSecurityProvidersSupport currentLayer() {
+        return LayeredImageSingletonSupport.singleton().lookup(LayeredSecurityProvidersSupport.class, false, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerServiceProviders(Set<String> providers) {
+        if (!previousServiceProviders.isEmpty()) {
+            Set<String> additionalProviders = new TreeSet<>(providers);
+            additionalProviders.removeAll(previousServiceProviders);
+            /* GR-66387: Resources cannot extend a positive service-file entry from a base layer. */
+            UserError.guarantee(additionalProviders.isEmpty(),
+                            "Cannot add security providers to the service file in an extension layer: %s. Register these providers in the base layer instead. Security provider service files cannot yet be extended across layers (GR-66387).",
+                            String.join(", ", additionalProviders));
+        }
+        serviceProviders.addAll(providers);
+    }
+
+    private static LayeredSecurityProvidersSupport[] layeredSingletons() {
+        return MultiLayeredImageSingleton.getAllLayers(LayeredSecurityProvidersSupport.class);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -99,8 +132,16 @@ public final class SecurityProvidersSupport {
         verifiedSecurityProviders.put(key, verificationResult);
     }
 
-    public Object getSecurityProviderVerificationResult(String key) {
-        return verifiedSecurityProviders.get(key);
+    public static Object getSecurityProviderVerificationResult(String key) {
+        LayeredSecurityProvidersSupport[] singletons = layeredSingletons();
+        /* Prefer the result from the latest layer that verified this provider. */
+        for (int i = singletons.length - 1; i >= 0; i--) {
+            Object result = singletons[i].verifiedSecurityProviders.get(key);
+            if (result != null) {
+                return result;
+            }
+        }
+        return null;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -123,30 +164,13 @@ public final class SecurityProvidersSupport {
      * qualified name (e.g., sun.security.provider.Sun), is either user-requested or reachable via a
      * security service.
      */
-    public boolean isSecurityProviderRequested(String providerName, String providerFQName) {
-        return verifiedSecurityProviders.containsKey(providerName) || userRequestedSecurityProviders.contains(providerFQName);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setSunECConstructor(Constructor<?> sunECConstructor) {
-        this.sunECConstructor = sunECConstructor;
-    }
-
-    public Provider allocateSunECProvider() {
-        try {
-            return (Provider) sunECConstructor.newInstance();
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            throw VMError.shouldNotReachHere("The SunEC constructor is not present.");
+    public static boolean isSecurityProviderRequested(String providerName, String providerFQName) {
+        for (LayeredSecurityProvidersSupport singleton : layeredSingletons()) {
+            if (singleton.verifiedSecurityProviders.containsKey(providerName) || singleton.userRequestedSecurityProviders.contains(providerFQName)) {
+                return true;
+            }
         }
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setSavedInitialSecurityProperties(Properties savedSecurityProperties) {
-        this.savedInitialSecurityProperties = savedSecurityProperties;
-    }
-
-    public Properties getSavedInitialSecurityProperties() {
-        return savedInitialSecurityProperties;
+        return false;
     }
 
     public static String getBuiltInProviderName(String provName) {
@@ -173,7 +197,7 @@ public final class SecurityProvidersSupport {
         };
     }
 
-    public boolean isMissingBuiltInProvider(String provName) {
+    public static boolean isMissingBuiltInProvider(String provName) {
         String providerName = getBuiltInProviderName(provName);
         String providerFQName = getBuiltInProviderClassName(provName);
         return providerName != null && !isSecurityProviderRequested(providerName, providerFQName);
@@ -191,38 +215,6 @@ public final class SecurityProvidersSupport {
                                         "Add the option -H:AdditionalSecurityProviders=" + providerFQName + " to the native-image build and rebuild the image.");
     }
 
-    public Provider loadBuiltInProvider(String provName, Debug debug) {
-        return switch (provName) {
-            case "SUN", "sun.security.provider.Sun" ->
-                isSecurityProviderRequested("SUN", "sun.security.provider.Sun") ? new sun.security.provider.Sun() : null;
-            case "SunRsaSign", "sun.security.rsa.SunRsaSign" ->
-                isSecurityProviderRequested("SunRsaSign", "sun.security.rsa.SunRsaSign") ? new sun.security.rsa.SunRsaSign() : null;
-            case "SunJCE", "com.sun.crypto.provider.SunJCE" ->
-                isSecurityProviderRequested("SunJCE", "com.sun.crypto.provider.SunJCE") ? new com.sun.crypto.provider.SunJCE() : null;
-            case "SunJSSE", "sun.security.ssl.SunJSSE" ->
-                isSecurityProviderRequested("SunJSSE", "sun.security.ssl.SunJSSE") ? new sun.security.ssl.SunJSSE() : null;
-            case "SunEC", "sun.security.ec.SunEC" ->
-                isSecurityProviderRequested("SunEC", "sun.security.ec.SunEC") ? allocateSunECProvider() : null;
-            case "Apple", "apple.security.AppleProvider" -> {
-                try {
-                    Class<?> c = Class.forName("apple.security.AppleProvider");
-                    if (Provider.class.isAssignableFrom(c)) {
-                        yield (Provider) c.getDeclaredConstructor().newInstance();
-                    }
-                } catch (Exception ex) {
-                    if (debug != null) {
-                        debug.println("Error loading provider Apple");
-                        // Checkstyle: allow System.err (for JDK compatibility)
-                        ex.printStackTrace(System.err);
-                        // Checkstyle: disallow System.err
-                    }
-                }
-                yield null;
-            }
-            default -> null;
-        };
-    }
-
     public static boolean isBuiltInProvider(String provName) {
         return switch (provName) {
             case "SUN", "sun.security.provider.Sun",
@@ -234,5 +226,44 @@ public final class SecurityProvidersSupport {
                 true;
             default -> false;
         };
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        private static final String PROPERTY_KEYS = "securityPropertyKeys";
+        private static final String PROPERTY_VALUES = "securityPropertyValues";
+        private static final String SERVICE_PROVIDERS = "securityServiceProviders";
+
+        @Override
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+            return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<LayeredSecurityProvidersSupport>() {
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LayeredSecurityProvidersSupport singleton) {
+                    writer.writeStringList(PROPERTY_KEYS, List.copyOf(singleton.initialProperties.keySet()));
+                    writer.writeStringList(PROPERTY_VALUES, List.copyOf(singleton.initialProperties.values()));
+                    writer.writeStringList(SERVICE_PROVIDERS, List.copyOf(singleton.serviceProviders));
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
+                }
+
+                @Override
+                public void onSingletonRegistration(ImageSingletonLoader loader, LayeredSecurityProvidersSupport singleton) {
+                    List<String> keys = loader.readStringList(PROPERTY_KEYS);
+                    List<String> values = loader.readStringList(PROPERTY_VALUES);
+                    Map<String, String> previousProperties = new TreeMap<>();
+                    for (int i = 0; i < keys.size(); i++) {
+                        previousProperties.put(keys.get(i), values.get(i));
+                    }
+                    Set<String> changedKeys = new TreeSet<>(keys);
+                    changedKeys.addAll(singleton.initialProperties.keySet());
+                    changedKeys.removeIf(key -> Objects.equals(previousProperties.get(key), singleton.initialProperties.get(key)));
+                    /* Static-final JDK fields can retain security-property values from the base. */
+                    UserError.guarantee(changedKeys.isEmpty(),
+                                    "Security properties differ between image layers: %s. Use the same java.security configuration when building every layer.",
+                                    String.join(", ", changedKeys));
+                    singleton.previousServiceProviders = Set.copyOf(loader.readStringList(SERVICE_PROVIDERS));
+                    singleton.serviceProviders.addAll(singleton.previousServiceProviders);
+                }
+            });
+        }
     }
 }
