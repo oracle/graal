@@ -64,6 +64,8 @@ import com.oracle.svm.core.jvmstat.PerfUnit;
 import com.oracle.svm.core.jvmstat.PerfVariability;
 import com.oracle.svm.core.log.DebugLog;
 import com.oracle.svm.core.os.RawFileOperationSupport;
+import com.oracle.svm.core.stringformat.StringFormat;
+import com.oracle.svm.core.stringformat.StringFormatPhase;
 import com.oracle.svm.core.thread.SafepointCheckCounter;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
@@ -168,6 +170,19 @@ public class InitialLayerFeature implements InternalFeature {
         registerAllTypes(metaAccess.lookupJavaType(CEntryPointOptions.class), t -> t.registerAsReachable("Core type"));
 
         pinDeclaredMethodsToInitialLayer(metaAccess.lookupJavaType(CEntryPointSetup.class));
+        if (StringFormatPhase.Options.IntrinsifyStringFormat.getValue()) {
+            /*
+             * Compile the four methods called by StringFormatPhase in the initial layer.
+             * Register them as analysis roots so their parameter analysis uses the declared
+             * types instead of only the inputs supplied by initial-layer callers. Later
+             * layers reuse these methods and can introduce calls with different inputs.
+             */
+            for (AnalysisMethod method : metaAccess.lookupJavaType(StringFormat.class).getDeclaredMethods(false)) {
+                if (!method.isPrivate() && (method.getName().equals("format") || method.getName().equals("formatWithFormatterFallback"))) {
+                    method.setPinnedToInitialLayer();
+                }
+            }
+        }
     }
 
     private static ResolvedJavaType getProxyClass(ResolvedJavaType uninterruptibleType) {
