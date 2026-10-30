@@ -48,7 +48,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
-import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
@@ -175,7 +174,7 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
         if (hasClassPath()) {
             URL classPathResource = ucp.findResource(name);
             if (classPathResource == null) {
-                ResourcesHelper.traceMissingEmbeddedResourceMetadata(loader, name);
+                ResourcesHelper.reportMissingEmbeddedResourceMetadata(loader, name);
             }
             return classPathResource;
         }
@@ -195,8 +194,8 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
         if (embeddedResources.isEmpty()) {
             if (hasClassPath()) {
                 Enumeration<URL> classPathResources = ucp.findResources(name);
-                if (MetadataTracer.enabled() && !classPathResources.hasMoreElements()) {
-                    ResourcesHelper.traceMissingEmbeddedResourceMetadata(loader, name);
+                if (!classPathResources.hasMoreElements()) {
+                    ResourcesHelper.reportMissingEmbeddedResourceMetadata(loader, name);
                 }
                 return classPathResources;
             }

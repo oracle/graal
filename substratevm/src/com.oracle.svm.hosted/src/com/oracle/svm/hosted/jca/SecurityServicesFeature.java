@@ -1373,7 +1373,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
-    // §FS-002-security-providers.1.1: Only invocation of the JDK-selected acquisition path qualifies.
+    // §FS-002-security-providers.1.1: Invocation must cover the selected JDK acquisition path.
     private RuntimeDynamicAccessMetadata providerConstructionRegistrationMetadata(Class<?> providerClass) {
         RuntimeDynamicAccessMetadata result = null;
         try {

@@ -36,7 +36,6 @@ import java.util.Objects;
 import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
-import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
@@ -91,13 +90,7 @@ public class ResourcesHelper {
         return entry != null && entry != Resources.NEGATIVE_QUERY_MARKER && entry != Resources.MISSING_METADATA_MARKER;
     }
 
-    /** Trace a final classpath miss after both embedded and run-time resources were searched. */
-    static void traceMissingEmbeddedResourceMetadata(ClassLoader loader, String resourceName) {
-        if (MetadataTracer.enabled() && Resources.getAtRuntime(loader, resourceName, true) == Resources.MISSING_METADATA_MARKER) {
-            MetadataTracer.singleton().traceResource(resourceName, null);
-        }
-    }
-
+    /** Report and trace a final miss after both embedded and run-time resources were searched. */
     static void reportMissingEmbeddedResourceMetadata(ClassLoader loader, String resourceName) {
         Objects.requireNonNull(resourceName);
         Resources.getAtRuntime(loader, resourceName, false);

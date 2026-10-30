@@ -54,16 +54,6 @@ public final class SecurityProviderRuntimeAccess {
         return passesJdkAcquisitionFilter(SecurityProviderRuntimeState.isJdkConstructible(providerClassName));
     }
 
-    /** Determine whether a provider-list configuration can be loaded without probing it. */
-    static boolean isConfiguredProviderAcquirable(String providerName) {
-        SecurityProviderRuntimeState.ConfiguredProviderInfo configuredProvider = SecurityProviderRuntimeState.getConfiguredProvider(providerName);
-        String configuredProviderClassName = configuredProvider != null ? configuredProvider.providerClassName() : null;
-        String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(providerName);
-        String providerClassName = configuredProviderClassName != null ? configuredProviderClassName
-                        : builtInProviderClassName != null ? builtInProviderClassName : providerName;
-        return isJdkAcquirable(providerClassName);
-    }
-
     /** §FS-002-security-providers.3.1 and §FS-002-security-providers.4.1. */
     public static void requireRegisteredProvider(Provider provider) {
         Class<?> providerClass = provider.getClass();
