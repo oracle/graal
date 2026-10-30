@@ -87,7 +87,6 @@ import javax.security.auth.login.Configuration;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
@@ -267,7 +266,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
+        JVMCIRuntimeClassInitializationSupport.singleton().initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
                         "Force initialization of sun.security.krb5.KerberosSecrets.javaxSecurityAuthKerberosAccess");
     }
 
@@ -307,9 +306,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          * The SecureRandom implementations open the /dev/random and /dev/urandom files which are
          * used as sources for entropy. These files are opened in the static initializers.
          */
-        rci.initializeAtRunTime(NativePRNG.class, "for substitutions");
-        rci.initializeAtRunTime(NativePRNG.Blocking.class, "for substitutions");
-        rci.initializeAtRunTime(NativePRNG.NonBlocking.class, "for substitutions");
+        rci.initializeAtRunTime(GuestAccess.get().lookupType(NativePRNG.class), "for substitutions");
+        rci.initializeAtRunTime(GuestAccess.get().lookupType(NativePRNG.Blocking.class), "for substitutions");
+        rci.initializeAtRunTime(GuestAccess.get().lookupType(NativePRNG.NonBlocking.class), "for substitutions");
 
         rci.initializeAtRunTime(type(access, "sun.security.provider.SeedGenerator"), "for substitutions");
         rci.initializeAtRunTime(type(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");

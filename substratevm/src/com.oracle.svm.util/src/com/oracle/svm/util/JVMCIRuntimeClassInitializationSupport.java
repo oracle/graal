@@ -25,17 +25,60 @@
 package com.oracle.svm.util;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public interface JVMCIRuntimeClassInitializationSupport extends RuntimeClassInitializationSupport {
+/** Builder-context class-initialization policy using guest JVMCI type identity. */
+public interface JVMCIRuntimeClassInitializationSupport {
 
+    /** Returns the builder-context class-initialization policy. */
     static JVMCIRuntimeClassInitializationSupport singleton() {
-        return (JVMCIRuntimeClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        return ImageSingletons.lookup(JVMCIRuntimeClassInitializationSupport.class);
     }
 
-    void initializeAtRunTime(ResolvedJavaType aType, String reason);
+    /** Registers a class or package name for run-time initialization. */
+    default void initializeAtRunTime(String name) {
+        StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
+        initializeAtRunTime(name, classReason(stacktrace, name));
+    }
 
-    void initializeAtBuildTime(ResolvedJavaType aType, String reason);
+    /** Registers a class or package name for run-time initialization with an explicit reason. */
+    void initializeAtRunTime(String name, String reason);
+
+    /** Registers a guest type for run-time initialization. */
+    default void initializeAtRunTime(ResolvedJavaType type) {
+        StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
+        initializeAtRunTime(type, classReason(stacktrace, getUnqualifiedName(type) + ".class"));
+    }
+
+    /** Registers a guest type for run-time initialization with an explicit reason. */
+    void initializeAtRunTime(ResolvedJavaType type, String reason);
+
+    /** Registers a class or package name for build-time initialization. */
+    default void initializeAtBuildTime(String name) {
+        StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
+        initializeAtBuildTime(name, classReason(stacktrace, name));
+    }
+
+    /** Registers a class or package name for build-time initialization with an explicit reason. */
+    void initializeAtBuildTime(String name, String reason);
+
+    /** Registers a guest type for build-time initialization. */
+    default void initializeAtBuildTime(ResolvedJavaType type) {
+        StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
+        initializeAtBuildTime(type, classReason(stacktrace, getUnqualifiedName(type) + ".class"));
+    }
+
+    /** Registers a guest type for build-time initialization with an explicit reason. */
+    void initializeAtBuildTime(ResolvedJavaType type, String reason);
+
+    private static String classReason(StackTraceElement[] stacktrace, String simpleName) {
+        StackTraceElement caller = stacktrace[2];
+        return "from feature " + caller.getClassName() + "." + caller.getMethodName() + " with '" + simpleName + "'";
+    }
+
+    private static String getUnqualifiedName(ResolvedJavaType type) {
+        String name = JVMCIReflectionUtil.getTypeName(type);
+        return name.substring(name.lastIndexOf('.') + 1);
+    }
 }

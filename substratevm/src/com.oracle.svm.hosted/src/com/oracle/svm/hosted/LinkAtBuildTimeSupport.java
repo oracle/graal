@@ -78,6 +78,7 @@ public final class LinkAtBuildTimeSupport {
     }
 
     public boolean linkAtBuildTime(ResolvedJavaType type) {
+        // GR-80101: This hosted-class conversion remains until this support is Terminus-compatible.
         return linkAtBuildTime(OriginalClassProvider.getJavaClass(type));
     }
 

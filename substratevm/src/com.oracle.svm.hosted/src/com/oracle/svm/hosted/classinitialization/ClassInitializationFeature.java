@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -63,11 +62,15 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticallyRegisteredFeature
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
@@ -159,14 +162,19 @@ public class ClassInitializationFeature implements InternalFeature {
          * Note that initializeAtBuildTime also memoizes the class as InitKind.BUILD_TIME, which
          * means that the user cannot later manually register it as RERUN or RUN_TIME.
          */
-        if (obj != null && !classInitializationSupport.maybeInitializeAtBuildTime(obj.getClass())) {
+        /*
+         * GR-73164: Reachable-object validation still materializes the guest constant as a builder
+         * object. Remove this conversion when that path becomes constant-native.
+         */
+        ResolvedJavaType guestType = obj == null ? null : GuestAccess.get().lookupType(obj.getClass());
+        if (guestType != null && !classInitializationSupport.maybeInitializeAtBuildTime(guestType)) {
             String typeName = obj.getClass().getTypeName();
             String proxyLambdaInterfaceCSV = null;
             String proxyLambdaInterfaceList = null;
             boolean proxyOrLambda = ClassInitializationSupport.isProxyOrLambda(obj);
             if (proxyOrLambda) {
-                proxyLambdaInterfaceCSV = StreamSupport.stream(ClassInitializationSupport.allInterfaces(obj.getClass()).spliterator(), false)
-                                .map(Class::getTypeName)
+                proxyLambdaInterfaceCSV = StreamSupport.stream(ClassInitializationSupport.allInterfaces(guestType).spliterator(), false)
+                                .map(JVMCIReflectionUtil::getTypeName)
                                 .collect(Collectors.joining(","));
                 proxyLambdaInterfaceList = "[" + proxyLambdaInterfaceCSV.replaceAll(",", ", ") + "]";
             }
@@ -184,7 +192,7 @@ public class ClassInitializationFeature implements InternalFeature {
                             """
                             .replace("\n", System.lineSeparator()).formatted(
                                             typeName,
-                                            classInitializationSupport.reasonForClass(obj.getClass()),
+                                            classInitializationSupport.reasonForClass(guestType),
                                             typeName,
                                             SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, proxyOrLambda ? proxyLambdaInterfaceCSV : typeName,
                                                             "initialize-at-build-time", true, true),
@@ -266,7 +274,7 @@ public class ClassInitializationFeature implements InternalFeature {
                 List<String> unspecifiedClasses = classInitializationSupport.classesWithKind(RUN_TIME).stream()
                                 .filter(ClassInitializationFeature::shouldCheckInitializationPolicy)
                                 .filter(c -> classInitializationSupport.specifiedInitKindFor(c) == null)
-                                .map(Class::getTypeName)
+                                .map(JVMCIReflectionUtil::getTypeName)
                                 .filter(name -> !name.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING))
                                 .collect(Collectors.toList());
                 if (!unspecifiedClasses.isEmpty()) {
@@ -278,7 +286,15 @@ public class ClassInitializationFeature implements InternalFeature {
         }
     }
 
-    private static boolean shouldCheckInitializationPolicy(Class<?> clazz) {
+    private static boolean shouldCheckInitializationPolicy(ResolvedJavaType type) {
+        /*
+         * GR-71192: Since this is an after-analysis diagnostic, unwrap the guest type to preserve
+         * the existing class-loader check until JVMCI exposes class-loader metadata.
+         * GuestTypes.isUserType instead classifies types by the path container from which they were
+         * discovered, which is not equivalent to distinguishing application class loaders from
+         * bootstrap and platform class loaders.
+         */
+        Class<?> clazz = OriginalClassProvider.getJavaClass(type);
         ClassLoader classLoader = clazz.getClassLoader();
         if (classLoader == null || classLoader == ClassLoader.getPlatformClassLoader()) {
             return false;
@@ -312,15 +328,15 @@ public class ClassInitializationFeature implements InternalFeature {
     }
 
     private void reportKind(AfterAnalysisAccessImpl access, PrintWriter writer, InitKind kind) {
-        List<Class<?>> allClasses = new ArrayList<>(classInitializationSupport.classesWithKind(kind));
-        allClasses.sort(Comparator.comparing(Class::getTypeName));
+        List<ResolvedJavaType> allClasses = new ArrayList<>(classInitializationSupport.classesWithKind(kind));
+        allClasses.sort(Comparator.comparing(JVMCIReflectionUtil::getTypeName));
         allClasses.forEach(clazz -> {
-            writer.print(clazz.getTypeName() + ", ");
+            writer.print(JVMCIReflectionUtil.getTypeName(clazz) + ", ");
             boolean simulated = false;
             if (kind != BUILD_TIME) {
-                Optional<AnalysisType> type = access.getMetaAccess().optionalLookupJavaType(clazz);
-                if (type.isPresent()) {
-                    simulated = SimulateClassInitializerSupport.singleton().isSimulatedOrInitializedAtBuildTime(type.get());
+                AnalysisType type = access.getUniverse().optionalLookup(clazz);
+                if (type != null) {
+                    simulated = SimulateClassInitializerSupport.singleton().isSimulatedOrInitializedAtBuildTime(type);
                 }
             }
             if (simulated) {
@@ -333,6 +349,10 @@ public class ClassInitializationFeature implements InternalFeature {
     }
 
     private static void reportTrackedClassInitializationTraces(String path) {
+        /*
+         * GR-80277: This map is populated by a JVMTI agent in the image-builder VM. Migrate trace
+         * collection and reporting for class initializers executed in the Terminus guest context.
+         */
         Map<Class<?>, StackTraceElement[]> initializedClasses = ClassInitializationTracking.initializedClasses;
         int size = initializedClasses.size();
         if (size > 0) {

@@ -96,6 +96,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.ReflectionUtil.ReflectionUtilError;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 
@@ -628,7 +629,7 @@ public final class NativeLibraries {
             }
 
             if (classInitializationSupport != null) {
-                classInitializationSupport.initializeAtBuildTime(unit.getClass(), "CContext.Directives must be eagerly initialized");
+                classInitializationSupport.initializeAtBuildTime(GuestAccess.get().lookupType(unit.getClass()), "CContext.Directives must be eagerly initialized");
             }
             result = new NativeCodeContext(unit);
             compilationUnitToContext.put(compilationUnit, result);

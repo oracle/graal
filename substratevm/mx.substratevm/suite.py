@@ -2428,6 +2428,11 @@ suite = {
                     "transitive org.graalvm.nativeimage",
                     "transitive org.graalvm.nativeimage.guest.staging",
                 ],
+                "requiresConcealed": {
+                    "java.base": [
+                        "jdk.internal.misc",
+                    ],
+                },
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
                 ],
