@@ -38,6 +38,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
@@ -167,8 +168,8 @@ final class Target_sun_security_jca_ProviderConfig_ExplicitRegistration {
 @TargetClass(className = "sun.security.jca.ProviderList", onlyWith = ExplicitSecurityProviderRegistration.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_security_jca_ProviderList_ExplicitRegistration {
-    @Alias //
-    private static Provider EMPTY_PROVIDER;
+    @Alias @TargetElement(name = "EMPTY_PROVIDER") //
+    private static Provider emptyProvider;
 
     @Alias //
     Target_sun_security_jca_ProviderConfig_ExplicitRegistration[] configs;
@@ -225,7 +226,7 @@ final class Target_sun_security_jca_ProviderList_ExplicitRegistration {
         ArrayList<Provider> activeProviders = new ArrayList<>(configs.length);
         for (int index = 0; index < configs.length; index++) {
             Provider activeProvider = getProvider(index);
-            if (activeProvider != EMPTY_PROVIDER) {
+            if (activeProvider != emptyProvider) {
                 activeProviders.add(activeProvider);
             }
         }
@@ -250,7 +251,8 @@ final class SecurityProviderListSupport {
         int currentVisibleIndex = 0;
         int lastActiveRawIndex = -1;
         for (int rawIndex = 0; rawIndex < targetProviderList.configs.length && currentVisibleIndex < activeProviders.length; rawIndex++) {
-            if (configurationMatchesProvider(targetProviderList.configs[rawIndex], activeProviders[currentVisibleIndex])) {
+            // §FS-002-security-providers.4.2: Match only a successfully loaded configuration.
+            if (targetProviderList.configs[rawIndex].provider == activeProviders[currentVisibleIndex]) {
                 if (currentVisibleIndex == visibleIndex) {
                     rawInsertionIndex = rawIndex;
                     break;
@@ -281,19 +283,6 @@ final class SecurityProviderListSupport {
             }
         }
         return -1;
-    }
-
-    private static boolean configurationMatchesProvider(Target_sun_security_jca_ProviderConfig_ExplicitRegistration config, Provider provider) {
-        if (config.provider == provider || config.provName.equals(provider.getName()) || config.provName.equals(provider.getClass().getName())) {
-            return true;
-        }
-        SecurityProviderRuntimeState.ConfiguredProviderInfo configuredProvider = SecurityProviderRuntimeState.getConfiguredProviderForDiagnostics(config.provName);
-        if (configuredProvider != null && configuredProvider.providerClassName().equals(provider.getClass().getName())) {
-            return true;
-        }
-        String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(config.provName);
-        return provider.getClass().getName().equals(builtInProviderClassName) ||
-                        SecurityProviderRuntimeAccess.isConfiguredProviderAcquirable(config.provName);
     }
 
     private SecurityProviderListSupport() {
