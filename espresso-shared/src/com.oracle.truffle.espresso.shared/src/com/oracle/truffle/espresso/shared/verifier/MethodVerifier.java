@@ -311,11 +311,25 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     private final byte[] handlerStatus;
     private boolean stackMapInitialized = false;
 
-    // <init> method validation
-    private boolean calledConstructor = false;
+    // Mappings from BCI to the opcode index.
+    /** Entry at index {@code i} is the BCI for the {@code i}-th valid opcode in the bytecodes. */
+    private int[] opcodeIndexesToBCI;
+    /** For any valid BCI {@code bci}, the entry at index {@code bci} is such that {@code opcodeIndexesToBCI[bciToOpcodeIndex[bci]] == bci}. */
+    private int[] bciToOpcodeIndex;
 
     // Instruction stack to visit
     private final WorkingQueue<R, C, M, F> queue = new WorkingQueue<>();
+
+    // Current verification iteration state
+
+    private static final int MOD_COUNT_RESET = 1;
+
+    // <init> method validation
+    private boolean calledConstructor = false;
+    // The number of times locals were modified
+    private int modCount;
+    // For each exception handler, remember the last modcount a merge into was successful.
+    private int[] handlerMergeModCount = null;
 
     Symbol<Type>[] getSig() {
         return sig;
@@ -459,49 +473,48 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     // Declaring Klass of the method (already loaded)
     private final Operand<R, C, M, F> thisOperand;
 
-    // Regular BCI states
-
-    // Indicates that a particular BCI should never be reached by normal control flow (e.g.: the
-    // bytecode of a WIDE instruction, or any BCI between two successive instructions)
-    private static final int UNREACHABLE = 0;
-    // Indicates a BCI that has not yet been reached by control flow. After verification, if such a
-    // BCI still exists, it means that this BCI will never be reached during execution.
-    private static final int UNSEEN = 1;
-    // Indicates previous iteration of a verification successfully verified this particular BCI.
-    // Further verification can therefore stop their execution if merging its state into the state
-    // of this BCI is successful.
-    private static final int DONE = 2;
-    // Indicates that a particular BCI is the target of a jump, therefore requiring a stack map to
-    // be provided fo this BCI.
-    private static final int JUMP_TARGET = 4;
-
-    // Exception handler target states
-    private static final byte UNENCOUNTERED = 1;
-    private static final byte NONVERIFIED = 2;
-    private static final byte VERIFIED = 4;
-    private static final byte CALLEDCONSTRUCTOR = 8;
-    private static final byte NOCONSTRUCTORCALLED = 16;
-
-    // JSR BCI states
-    // This state is accompanied by the BCI of the RET instruction that caused it.
-    // It is of the form (ret_bci << 16) | RETURNED_TO
-    private static final byte RETURNED_TO = 64;
-
-    private static final int RETURN_MASK = 0xFFFF0000;
-
-    private static boolean checkStatus(int status, int toCheck) {
-        return (status & toCheck) != 0;
+    private boolean checkBciStatus(int bci, BCIState status) {
+        return status.check(bciStates[bci]);
     }
 
-    private static int setStatus(int status, int toSet) {
-        return (status & RETURN_MASK) | toSet;
+    private boolean checkHandlerStatus(int handler, HandlerState status) {
+        return status.check(handlerStatus[handler]);
     }
 
-    private void checkAndSetReturnedTo(int target, int retBCI) {
-        if ((bciStates[target] & RETURNED_TO) == RETURNED_TO) {
-            verifyGuarantee((bciStates[target] >>> 16) == retBCI, "Multiple returns to single jsr ");
+    private boolean isValid(int bci) {
+        return bciStates[bci] != BCIState.DEFAULT_STATE;
+    }
+
+    private int getRetBCI(int bci) {
+        return (bciStates[bci] >>> 16);
+    }
+
+    private void setBciStatus(int bci, BCIState status) {
+        bciStates[bci] = status.set(bciStates[bci]);
+    }
+
+    private void setHandlerStatus(int handler, HandlerState status) {
+        handlerStatus[handler] = (byte) status.set(handlerStatus[handler]);
+    }
+
+    private void checkAndSetRetTarget(int targetBCI, int retBCI) {
+        if (checkBciStatus(targetBCI, BCIState.IS_RET_TARGET)) {
+            verifyGuarantee(getRetBCI(targetBCI) == retBCI, "Multiple returns to single jsr ");
         }
-        bciStates[target] = RETURNED_TO | (retBCI << 16);
+        bciStates[targetBCI] = StateConstants.cat(retBCI, BCIState.IS_RET_TARGET.set(bciStates[targetBCI]) & StateConstants.LO_MASK);
+    }
+
+    private void updateConstructorStatus(int handler, HandlerState constructorStatus) {
+        // If there is a path to the handler that has not called a constructor, consider the handler
+        // to have an uninitialized this.
+        if (checkHandlerStatus(handler, HandlerState.NO_CONSTRUCTOR_CALLED)) {
+            return;
+        }
+        setHandlerStatus(handler, constructorStatus);
+    }
+
+    private int nextBCI(int curBci) {
+        return opcodeIndexesToBCI[bciToOpcodeIndex[curBci] + 1];
     }
 
     /**
@@ -540,7 +553,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         this.exceptionHandlers = m.getSymbolicExceptionHandlers();
 
         this.handlerStatus = new byte[exceptionHandlers.length];
-        Arrays.fill(handlerStatus, UNENCOUNTERED);
+        Arrays.fill(handlerStatus, HandlerState.DEFAULT_STATE);
 
         booleanOperand = runtime.getJavaVersion().java9OrLater() ? new PrimitiveOperand<>(JavaKind.Boolean) : byteOp;
 
@@ -564,6 +577,8 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         return majorVersion >= ClassfileParser.JAVA_6_VERSION;
     }
 
+    // Guarantees and failures
+
     static void formatGuarantee(boolean guarantee, String s) {
         if (!guarantee) {
             throw failFormat(s);
@@ -576,16 +591,63 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         }
     }
 
-    static RuntimeException failFormat(String s) {
-        throw sneakyThrow(new VerificationException(s, VerificationException.Kind.ClassFormat));
+    // Performance overloads
+    /*
+     * Note: These overloads bring two distinct optimization:
+     *
+     * - Defers concatenation of the error message until after the guarantee is checked,
+     * removing the computation of the message from the hot path.
+     *
+     * - Defers implicit primitive boxing of the arguments until after the guarantee is checked,
+     * removing the boxing from the hot path.
+     */
+
+    static void formatGuarantee(boolean guarantee, String formatString, Object arg1) {
+        if (!guarantee) {
+            throw failFormat(String.format(formatString, arg1));
+        }
     }
 
-    static RuntimeException failFormatNoFallback(String s) {
-        throw sneakyThrow(new VerificationException(s, VerificationException.Kind.ClassFormat, false));
+    static void formatGuarantee(boolean guarantee, String formatString, int arg1) {
+        if (!guarantee) {
+            throw failFormat(String.format(formatString, arg1));
+        }
     }
 
-    static RuntimeException failVerify(String s) {
-        throw sneakyThrow(new VerificationException(s, VerificationException.Kind.Verify));
+    static void verifyGuarantee(boolean guarantee, String formatString, Object arg1) {
+        if (!guarantee) {
+            throw failVerify(String.format(formatString, arg1));
+        }
+    }
+
+    static void verifyGuarantee(boolean guarantee, String formatString, Object arg1, Object arg2) {
+        if (!guarantee) {
+            throw failVerify(String.format(formatString, arg1, arg2));
+        }
+    }
+
+    static void verifyGuarantee(boolean guarantee, String formatString, int arg1) {
+        if (!guarantee) {
+            throw failVerify(String.format(formatString, arg1));
+        }
+    }
+
+    static void verifyGuarantee(boolean guarantee, String formatString, int arg1, int arg2) {
+        if (!guarantee) {
+            throw failVerify(String.format(formatString, arg1, arg2));
+        }
+    }
+
+    static RuntimeException failFormat(String message) {
+        throw sneakyThrow(new VerificationException(message, VerificationException.Kind.ClassFormat));
+    }
+
+    static RuntimeException failFormatNoFallback(String message) {
+        throw sneakyThrow(new VerificationException(message, VerificationException.Kind.ClassFormat, false));
+    }
+
+    static RuntimeException failVerify(String message) {
+        throw sneakyThrow(new VerificationException(message, VerificationException.Kind.Verify));
     }
 
     @SuppressWarnings("unchecked")
@@ -639,38 +701,58 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         return false;
     }
 
-    private void initVerifier() {
-        Arrays.fill(bciStates, UNREACHABLE);
-        // Mark all reachable code
+    private void initOpcodeIndexes() {
+        int count = 0;
+        int[] indexes = new int[code.endBCI()];
+        int[] bciToIndex = new int[code.endBCI()];
+
         int bci = 0;
-        int opcode;
         while (bci < code.endBCI()) {
-            opcode = code.currentBC(bci);
-            verifyGuarantee(opcode < QUICK, "invalid bytecode: " + opcode);
-            verifyEnoughBytecodes(opcode, bci);
-            bciStates[bci] = setStatus(bciStates[bci], UNSEEN);
+            indexes[count] = bci;
+            bciToIndex[bci] = count;
+            count++;
             bci = code.nextBCI(bci);
-            // Check instruction has enough bytes after it
-            verifyGuarantee(bci <= code.endBCI(), "Incomplete bytecode");
         }
-        bci = 0;
+        bciToOpcodeIndex = bciToIndex;
+        // Truncate as needed
+        opcodeIndexesToBCI = Arrays.copyOf(indexes, count);
+    }
+
+    private void initVerifier() {
+        Arrays.fill(bciStates, BCIState.DEFAULT_STATE);
+        // Record all BCIs that correspond to an actual opcode.
+        initOpcodeIndexes();
+        // Mark all reachable code
+        int opcode;
+        for (int bci : opcodeIndexesToBCI) {
+            opcode = code.currentBC(bci);
+            verifyGuarantee(opcode < QUICK, "invalid bytecode: %s", opcode);
+            verifyEnoughBytecodes(opcode, bci);
+            setBciStatus(bci, BCIState.TO_VERIFY);
+        }
+
+        // Check last instruction has enough bytes after it
+        int lastBCI = opcodeIndexesToBCI[opcodeIndexesToBCI.length - 1];
+        verifyGuarantee(code.nextBCI(lastBCI) <= code.endBCI(), "Incomplete bytecode");
+
         if (!useStackMaps) {
             // Mark all jump targets. We do not need to if method has stack frames, since all jump
             // targets have one stack frame declared in the attribute, and if it doesn't, we will
             // see it later.
-            while (bci < code.endBCI()) {
+            for (int opcodeIdx = 0; opcodeIdx < opcodeIndexesToBCI.length; opcodeIdx++) {
+                int bci = opcodeIndexesToBCI[opcodeIdx];
                 opcode = code.currentBC(bci);
                 if (Bytecodes.isBranch(opcode)) {
                     int target = code.readBranchDest(bci);
                     validateBCI(target);
-                    bciStates[target] = setStatus(bciStates[bci], JUMP_TARGET);
+                    setBciStatus(target, BCIState.MERGE_TARGET);
                 }
                 if (opcode == TABLESWITCH || opcode == LOOKUPSWITCH) {
                     initSwitch(bci, opcode);
                 }
-                bci = code.nextBCI(bci);
                 if (opcode == JSR || opcode == JSR_W) {
-                    bciStates[bci] = JUMP_TARGET;
+                    verifyGuarantee(opcodeIdx + 1 < opcodeIndexesToBCI.length, "No instruction after JSR: %s", bci);
+                    setBciStatus(opcodeIndexesToBCI[opcodeIdx + 1], BCIState.MERGE_TARGET);
                 }
             }
         }
@@ -720,11 +802,11 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 oldKey = newKey;
                 target = switchHelper.targetAt(code, bci, i - low);
                 validateBCI(target);
-                bciStates[target] = setStatus(bciStates[bci], JUMP_TARGET);
+                setBciStatus(target, BCIState.MERGE_TARGET);
             }
             target = switchHelper.defaultTarget(code, bci);
             validateBCI(target);
-            bciStates[target] = setStatus(bciStates[bci], JUMP_TARGET);
+            setBciStatus(target, BCIState.MERGE_TARGET);
         } else if (opCode == TABLESWITCH) {
             BytecodeTableSwitch switchHelper = BytecodeTableSwitch.INSTANCE;
             int low = switchHelper.lowKey(code, bci);
@@ -737,10 +819,11 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             for (int i = low; i != high + 1; i++) {
                 target = switchHelper.targetAt(code, bci, i - low);
                 validateBCI(target);
-                bciStates[target] = setStatus(bciStates[bci], JUMP_TARGET);
+                setBciStatus(target, BCIState.MERGE_TARGET);
             }
             target = switchHelper.defaultTarget(code, bci);
             validateBCI(target);
+            setBciStatus(target, BCIState.MERGE_TARGET);
         } else {
             throw VerifierError.fatal("Unrecognized switch bytecode: " + opCode);
         }
@@ -780,8 +863,10 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     /**
      * Registers a stack frame from the stack map frame parser to the given BCI.
      */
+    @Override
     public void registerStackMapFrame(int bci, StackFrame<R, C, M, F> frame) {
         validateFrameBCI(bci);
+        setBciStatus(bci, BCIState.MERGE_TARGET);
         stackFrames[bci] = frame;
     }
 
@@ -811,8 +896,12 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         return new StackMapFrameParser.FrameAndLocalEffect<>(new StackFrame<>(this, fullStack, newLocals), pos - lastLocal);
     }
 
+    void incLocalModcount() {
+        modCount++;
+    }
+
     void setLocal(Operand<R, C, M, F>[] locals, Operand<R, C, M, F> op, int pos, String message) {
-        formatGuarantee(pos >= 0 && pos < locals.length, message);
+        formatGuarantee(pos >= 0 && pos < locals.length, "%s", message);
         locals[pos] = op;
     }
 
@@ -839,7 +928,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             case ITEM_NewObject:
                 int newOffset = vti.getNewOffset();
                 validateFormatBCI(newOffset);
-                formatGuarantee(code.currentBC(newOffset) == NEW, "NewObject in stack map not referencing a NEW instruction! " + Bytecodes.nameOf(code.currentBC(newOffset)));
+                formatGuarantee(code.currentBC(newOffset) == NEW, "NewObject in stack map not referencing a NEW instruction! %s", Bytecodes.nameOf(code.currentBC(newOffset)));
                 assert vti.hasType();
                 return new UninitReferenceOperand<>(vti.getType(pool, getTypes(), code), newOffset);
             default:
@@ -950,21 +1039,19 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
         // Force verification of unreachable stack maps.
         verifyUnreachableStackMaps();
-
     }
 
     private void validateUnconditionalJumps() {
-        if (useStackMaps) {
-            int bci = 0;
-            int nextBCI;
-            while (bci < code.endBCI()) {
-                nextBCI = code.nextBCI(bci);
-                if (Bytecodes.isStop(code.currentBC(bci))) {
-                    if (nextBCI < code.endBCI()) {
-                        verifyGuarantee(stackFrames[nextBCI] != null, "Control flow stop does not have a stack map at next instruction!");
-                    }
+        if (!useStackMaps) {
+            return;
+        }
+        for (int idx = 0; idx < opcodeIndexesToBCI.length; idx++) {
+            int bci = opcodeIndexesToBCI[idx];
+            if (Bytecodes.isStop(code.opcode(bci))) {
+                if (idx + 1 < opcodeIndexesToBCI.length) {
+                    int nextBCI = opcodeIndexesToBCI[idx + 1];
+                    verifyGuarantee(stackFrames[nextBCI] != null, "Control flow stop does not have a stack map at next instruction!");
                 }
-                bci = nextBCI;
             }
         }
     }
@@ -977,17 +1064,17 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             validateFormatBCI(startBCI);
             int endBCI = handler.getEndBCI();
             formatGuarantee(endBCI > startBCI, "End BCI of handler is before start BCI");
-            formatGuarantee(endBCI >= 0, "negative branch target: " + endBCI);
+            formatGuarantee(endBCI >= 0, "negative branch target: %s", endBCI);
             // handler end BCI can be equal to code end.
             formatGuarantee(endBCI <= code.endBCI(), "Control flow falls through code end");
             if (handler.catchTypeCPI() != 0) {
                 C catchType = thisKlass.resolveClassConstantInPool(handler.catchTypeCPI());
                 ReferenceOperand<R, C, M, F> catchTypeOperand = new ReferenceOperand<>(catchType);
-                verifyGuarantee(catchTypeOperand.compliesWith(jlThrowable, this), "Illegal exception handler catch type: " + catchType);
+                verifyGuarantee(catchTypeOperand.compliesWith(jlThrowable, this), "Illegal exception handler catch type: %s", catchType);
             }
 
             if (endBCI != code.endBCI()) {
-                formatGuarantee(bciStates[endBCI] != UNREACHABLE, "Jump to the middle of an instruction: " + endBCI);
+                formatGuarantee(isValid(endBCI), "Jump to the middle of an instruction: %s", endBCI);
             }
         }
     }
@@ -1015,8 +1102,11 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     private void verifyUnreachableStackMaps() {
+        if (!useStackMaps) {
+            return;
+        }
         for (int stackBCI = 0; stackBCI < stackFrames.length; stackBCI++) {
-            if (stackFrames[stackBCI] != null && checkStatus(bciStates[stackBCI], UNSEEN)) {
+            if (checkBciStatus(stackBCI, BCIState.MERGE_TARGET) && checkBciStatus(stackBCI, BCIState.TO_VERIFY)) {
                 queue.push(stackBCI, new QueueElement<>(stackBCI, stackFrames[stackBCI], true));
             }
         }
@@ -1024,28 +1114,6 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             processQueue();
             verifyExceptionHandlers();
         }
-    }
-
-    // Exception handler status management
-    private static byte setStatus(byte oldStatus, byte newStatus) {
-        return (byte) (newStatus | (oldStatus & (CALLEDCONSTRUCTOR | NOCONSTRUCTORCALLED)));
-    }
-
-    private static boolean isStatus(byte status, byte toCheck) {
-        return (status & toCheck) != 0;
-    }
-
-    private static byte setConstructorStatus(byte oldStatus, byte constructorStatus) {
-        // If there is a path to the handler that has not called a constructor, consider the handler
-        // to have an uninitialized this.
-        if ((oldStatus & NOCONSTRUCTORCALLED) > 0) {
-            return oldStatus;
-        }
-        return (byte) (oldStatus | constructorStatus);
-    }
-
-    private static boolean isCalledConstructor(byte status) {
-        return (status & CALLEDCONSTRUCTOR) > 0;
     }
 
     /**
@@ -1063,16 +1131,16 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             updated = false;
             for (int i = 0; i < exceptionHandlers.length; i++) {
                 ExceptionHandler handler = exceptionHandlers[i];
-                if (isStatus(handlerStatus[i], NONVERIFIED)) {
+                if (checkHandlerStatus(i, HandlerState.TO_VERIFY)) {
                     updated = redo;
                     boolean constructorStatus = calledConstructor;
-                    if (isCalledConstructor(handlerStatus[i])) {
+                    if (checkHandlerStatus(i, HandlerState.CONSTRUCTOR_CALLED)) {
                         calledConstructor = true;
                     }
                     verifyHandler(handler);
                     calledConstructor = constructorStatus;
-                    handlerStatus[i] = setStatus(handlerStatus[i], VERIFIED);
-                } else if (isStatus(handlerStatus[i], UNENCOUNTERED)) {
+                    setHandlerStatus(i, HandlerState.VERIFIED);
+                } else if (checkHandlerStatus(i, HandlerState.UNPROCESSED)) {
                     redo = true;
                 }
             }
@@ -1101,13 +1169,14 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     private void branch(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
+        assert checkBciStatus(bci, BCIState.MERGE_TARGET);
         validateBCI(bci);
         // Try merge
         StackFrame<R, C, M, F> frame = mergeFrames(stack, locals, stackFrames[bci]);
-        if (frame != stackFrames[bci] || !checkStatus(bciStates[bci], DONE)) {
+        if (frame != stackFrames[bci] || !checkBciStatus(bci, BCIState.VERIFIED)) {
             // merge failed or not yet verified bci. mark the bci as not yet verified since
             // state can change.
-            bciStates[bci] = setStatus(bciStates[bci], JUMP_TARGET);
+            setBciStatus(bci, BCIState.TO_VERIFY);
             stackFrames[bci] = frame;
             QueueElement<R, C, M, F> toPush = new QueueElement<>(bci, frame, calledConstructor);
             queue.push(bci, toPush);
@@ -1116,24 +1185,24 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private void validateBCI(int bci) {
         verifyGuarantee(bci < code.endBCI(), "Control flow falls through code end");
-        verifyGuarantee(bci >= 0, "negative branch target: " + bci);
-        verifyGuarantee(bciStates[bci] != UNREACHABLE, "Jump to the middle of an instruction: " + bci);
+        verifyGuarantee(bci >= 0, "negative branch target: %s", bci);
+        verifyGuarantee(isValid(bci), "Jump to the middle of an instruction: %s", bci);
     }
 
     private void validateFormatBCI(int bci) {
         formatGuarantee(bci < code.endBCI(), "Control flow falls through code end");
-        formatGuarantee(bci >= 0, "negative branch target: " + bci);
-        formatGuarantee(bciStates[bci] != UNREACHABLE, "Jump to the middle of an instruction: " + bci);
+        formatGuarantee(bci >= 0, "negative branch target: %s", bci);
+        formatGuarantee(isValid(bci), "Jump to the middle of an instruction: %s", bci);
     }
 
     private void validateFrameBCI(int bci) {
         verifyGuarantee(bci < code.endBCI(), "StackFrame offset falls outside of method");
-        verifyGuarantee(bci >= 0, "negative stack frame offset: " + bci);
-        verifyGuarantee(bciStates[bci] != UNREACHABLE, "StackFrame offset falls to the middle of an instruction: " + bci);
+        verifyGuarantee(bci >= 0, "negative stack frame offset: %s", bci);
+        verifyGuarantee(isValid(bci), "StackFrame offset falls to the middle of an instruction: %s", bci);
     }
 
     /**
-     * Performs the verification loop, starting from bci.
+     * Performs the verification loop for a single control flow block, starting from bci.
      * <p>
      * for each verified bytecode, three verifications are performed:
      * <p>
@@ -1154,36 +1223,49 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         int nextBCI = bci;
         int previousBCI;
 
+        int opcodeIndex = bciToOpcodeIndex[bci];
+
+        // Initialize iteration status
+        modCount = MOD_COUNT_RESET;
+        handlerMergeModCount = null;
+
         // Check if constructor was called prior to this branch.
         boolean constructorCalledStatus = calledConstructor;
-        do {
-            previousBCI = nextBCI;
-            if (stackFrames[nextBCI] != null || checkStatus(bciStates[nextBCI], JUMP_TARGET)) {
-                // Try merge
-                StackFrame<R, C, M, F> frame = mergeFrames(stack, locals, stackFrames[nextBCI]);
-                if (!(frame == stackFrames[nextBCI])) {
-                    // merge failed, mark the bci as not yet verified as state changed
-                    bciStates[nextBCI] = setStatus(bciStates[bci], JUMP_TARGET);
-                    stackFrames[nextBCI] = frame;
+        try {
+            do {
+                previousBCI = nextBCI;
+                if (checkBciStatus(nextBCI, BCIState.MERGE_TARGET)) {
+                    // Try merge
+                    StackFrame<R, C, M, F> frame = mergeFrames(stack, locals, stackFrames[nextBCI]);
+                    if (!(frame == stackFrames[nextBCI])) {
+                        // merge failed, mark the bci as not yet verified as state changed
+                        setBciStatus(nextBCI, BCIState.TO_VERIFY);
+                        stackFrames[nextBCI] = frame;
+                    }
+                    // Always use the stack frame state
+                    stack = frame.extractStack(maxStack);
+                    locals = frame.extractLocals();
+                    // Propagate subroutine modifications (here, arrays are shared).
+                    locals.subRoutineModifications = seedLocals.subRoutineModifications;
                 }
-                // Always use the stack frame state
-                stack = frame.extractStack(maxStack);
-                locals = frame.extractLocals();
-                // Propagate subroutine modifications (here, arrays are shared).
-                locals.subRoutineModifications = seedLocals.subRoutineModifications;
-            }
-            // Return condition: a successful merge into an already verified branch target.
-            if (stackFrames[nextBCI] != null && checkStatus(bciStates[nextBCI], DONE)) {
-                // Reset constructor status.
-                calledConstructor = constructorCalledStatus;
-                return;
-            }
-            checkExceptionHandlers(nextBCI, locals);
-            nextBCI = verifySafe(nextBCI, stack, locals);
-            validateBCI(nextBCI);
-        } while (previousBCI != nextBCI);
-        // Reset constructor status.
-        calledConstructor = constructorCalledStatus;
+                // Return condition: a successful merge into an already verified branch target.
+                if (checkBciStatus(nextBCI, BCIState.MERGE_TARGET) && checkBciStatus(nextBCI, BCIState.VERIFIED)) {
+                    return;
+                }
+                checkExceptionHandlers(nextBCI, locals);
+                nextBCI = verifySafe(nextBCI, opcodeIndex, stack, locals);
+                assert nextBCI == previousBCI || nextBCI == nextBCI(previousBCI);
+                opcodeIndex++;
+                validateBCI(nextBCI);
+            } while (previousBCI != nextBCI);
+        } finally {
+            // Restore constructor status.
+            calledConstructor = constructorCalledStatus;
+            // Clear current local modCount
+            modCount = MOD_COUNT_RESET;
+            // Clear current exception handler merge helper
+            handlerMergeModCount = null;
+        }
     }
 
     static void validateOrFailVerification(int cpi, ConstantPool pool) {
@@ -1194,34 +1276,59 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         }
     }
 
+    boolean canSkipHandlerMerge(int handler) {
+        if (handlerMergeModCount == null) {
+            handlerMergeModCount = new int[exceptionHandlers.length];
+            return false;
+        }
+        return handlerMergeModCount[handler] == modCount;
+    }
+
     /**
      * Checks that an instruction can merge into all its handlers.
+     *
+     * <p>
+     * What a handler is merged with is the locals, the constructor status, and the same one-element
+     * stack every time, so a check that finds all of them as the previous check of that handler left
+     * them would merge the same state into the same frame again, and is skipped. Most instructions
+     * of a covered region do not change a local. Subroutines are not tracked, and are always
+     * checked.
      */
     private void checkExceptionHandlers(int nextBCI, Locals<R, C, M, F> locals) {
-        for (int i = 0; i < exceptionHandlers.length; i++) {
-            ExceptionHandler handler = exceptionHandlers[i];
+        for (int handlerID = 0; handlerID < exceptionHandlers.length; handlerID++) {
+            ExceptionHandler handler = exceptionHandlers[handlerID];
             if (handler.covers(nextBCI)) {
+
+                // Note: this next check initializes the 'handlerMergeModCount' array
+                if (canSkipHandlerMerge(handlerID)) {
+                    // A previous merge operation for this handler was successful in the current
+                    // verification iteration, and the locals are unchanged since.
+                    continue;
+                }
                 OperandStack<R, C, M, F> stack = new OperandStack<>(this, 1);
                 Symbol<Type> catchType = handler.getCatchType();
                 stack.push(catchType == null ? jlThrowable : new ReferenceOperand<>(catchType, handler.catchTypeCPI()));
                 StackFrame<R, C, M, F> oldFrame = stackFrames[handler.getHandlerBCI()];
                 StackFrame<R, C, M, F> newFrame = mergeFrames(stack, locals, oldFrame);
-                if (isStatus(handlerStatus[i], UNENCOUNTERED) || oldFrame != newFrame) {
-                    handlerStatus[i] = setStatus(handlerStatus[i], NONVERIFIED);
+                if (checkHandlerStatus(handlerID, HandlerState.UNPROCESSED) || oldFrame != newFrame) {
+                    setHandlerStatus(handlerID, HandlerState.TO_VERIFY);
                 }
                 if (calledConstructor) {
-                    handlerStatus[i] = setConstructorStatus(handlerStatus[i], CALLEDCONSTRUCTOR);
+                    updateConstructorStatus(handlerID, HandlerState.CONSTRUCTOR_CALLED);
                 } else {
-                    handlerStatus[i] = setConstructorStatus(handlerStatus[i], NOCONSTRUCTORCALLED);
+                    updateConstructorStatus(handlerID, HandlerState.NO_CONSTRUCTOR_CALLED);
                 }
                 stackFrames[handler.getHandlerBCI()] = newFrame;
+
+                assert handlerMergeModCount != null;
+                handlerMergeModCount[handlerID] = modCount;
             }
         }
     }
 
-    private int verifySafe(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
+    private int verifySafe(int bci, int opcodeIndex, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
         try {
-            return verify(bci, stack, locals);
+            return verify(bci, opcodeIndex, stack, locals);
         } catch (IndexOutOfBoundsException e) {
             // At this point, the only appearance of an IndexOutOfBounds should be from stack and
             // locals access (bci bound checks are done beforehand).
@@ -1265,12 +1372,12 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
      * @return The index of the next opcode to verify, or bci if there is no next opcode to verify
      *         (in case of a return bytecode, for example).
      */
-    private int verify(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
-        verifyGuarantee(bciStates[bci] != UNREACHABLE, "Jump to the middle of an instruction: " + bci);
-        bciStates[bci] = setStatus(bciStates[bci], DONE);
+    private int verify(int bci, int opcodeIndex, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
+        verifyGuarantee(isValid(bci), "Jump to the middle of an instruction: %s", bci);
+        setBciStatus(bci, BCIState.VERIFIED);
         int curOpcode;
         curOpcode = code.opcode(bci);
-        verifyGuarantee(curOpcode < SLIM_QUICK, "invalid bytecode: " + code.readUByte(bci));
+        verifyGuarantee(curOpcode <= BREAKPOINT, "invalid opcode: %s", code.readUByte(bci));
         // @formatter:off
         // Checkstyle: stop
 
@@ -1366,7 +1473,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 case AALOAD: {
                     stack.popInt();
                     Operand<R, C, M, F> op = stack.popArray();
-                    verifyGuarantee(op == nullOp || op.getComponent().isReference(), "Loading reference from " + op + " array.");
+                    verifyGuarantee(op == nullOp || op.getComponent().isReference(), "Loading reference from %s array.", op);
                     stack.push(op.getComponent());
                     break;
                 }
@@ -1416,7 +1523,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                     Operand<R, C, M, F> toStore = stack.popRef();
                     stack.popInt();
                     Operand<R, C, M, F> array = stack.popArray();
-                    verifyGuarantee(array == nullOp || array.getComponent().isReference(), "Trying to store " + toStore + " in " + array);
+                    verifyGuarantee(array == nullOp || array.getComponent().isReference(), "Trying to store %s in %s", toStore, array);
                     // Other checks are done at runtime
                     break;
                 }
@@ -1540,12 +1647,12 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
                 case RET: verifyRET(bci, stack, locals); return bci;
 
-                case TABLESWITCH:  return verifyTableSwitch(bci, stack, locals);
-                case LOOKUPSWITCH: return verifyLookupSwitch(bci, stack, locals);
+                case TABLESWITCH:  verifyTableSwitch(bci, stack, locals); return bci;
+                case LOOKUPSWITCH: verifyLookupSwitch(bci, stack, locals); return bci;
 
                 case IRETURN: {
                     stack.pop(intOp);
-                    verifyGuarantee(returnOperand.getKind().isStackInt(), "Found an IRETURN when return type is " + returnOperand);
+                    verifyGuarantee(returnOperand.getKind().isStackInt(), "Found an IRETURN when return type is %s", returnOperand);
                     return bci;
                 }
                 case LRETURN: doReturn(stack, longOp);       return bci;
@@ -1553,10 +1660,10 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 case DRETURN: doReturn(stack, doubleOp);     return bci;
                 case ARETURN: stack.popRef(returnOperand); return bci;
                 case RETURN:
-                    verifyGuarantee(returnOperand == voidOp, "Encountered RETURN, but method return type is not void: " + returnOperand);
+                    verifyGuarantee(returnOperand == voidOp, "Encountered RETURN, but method return type is not void: %s", returnOperand);
                     // Only j.l.Object.<init> can omit calling another initializer.
                     if (isInstanceInit(methodName) && thisKlass.getSymbolicType() != ParserTypes.java_lang_Object) {
-                        verifyGuarantee(calledConstructor, "Did not call super() or this() in constructor " + thisKlass.getJavaName() + "." + methodName);
+                        verifyGuarantee(calledConstructor, "Did not call super() or this() in constructor %s.%s", thisKlass.getJavaName(), methodName);
                     }
                     return bci;
 
@@ -1587,7 +1694,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
                 case WIDE:
                     curOpcode = code.currentBC(bci);
-                    verifyGuarantee(wideOpcodes(curOpcode), "invalid widened opcode: " + Bytecodes.nameOf(curOpcode));
+                    verifyGuarantee(wideOpcodes(curOpcode), "invalid widened opcode: %s", Bytecodes.nameOf(curOpcode));
                     continue wideEscape;
 
                 case MULTIANEWARRAY: verifyMultiNewArray(bci, stack); break;
@@ -1600,7 +1707,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 case SLIM_QUICK: break;
                 default:
             }
-            return code.nextBCI(bci);
+            return opcodeIndexesToBCI[opcodeIndex + 1];
         }
         // Checkstyle: resume
         // @formatter:on
@@ -1613,14 +1720,14 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         ConstantPool.Tag tag = tagAt(indyIndex);
 
         // Check CP validity
-        verifyGuarantee(tag == ConstantPool.Tag.INVOKEDYNAMIC, "Invalid CP constant for INVOKEDYNAMIC: " + tag);
+        verifyGuarantee(tag == ConstantPool.Tag.INVOKEDYNAMIC, "Invalid CP constant for INVOKEDYNAMIC: %s", tag);
         validateOrFailVerification(indyIndex, pool);
 
         Symbol<Name> indyName = pool.invokeDynamicName(indyIndex);
         Symbol<Signature> indySignature = pool.invokeDynamicSignature(indyIndex);
 
         // Check invokedynamic does not call initializers
-        verifyGuarantee(!isInstanceInit(indyName) && !isClassInit(indyName), "Invalid bootstrap method name: " + indyName);
+        verifyGuarantee(!isInstanceInit(indyName) && !isClassInit(indyName), "Invalid bootstrap method name: %s", indyName);
 
         // Check and pop arguments
         Operand<R, C, M, F>[] parsedSig = getOperandSig(indySignature);
@@ -1638,7 +1745,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private Symbol<Type> getTypeFromPool(int classIndex, String s) {
         ConstantPool.Tag tag = tagAt(classIndex);
-        verifyGuarantee(tag == CLASS, s + tag);
+        verifyGuarantee(tag == CLASS, "%s%s", s, tag);
         validateOrFailVerification(classIndex, pool);
         Symbol<Name> className = pool.className(classIndex);
         assert Validation.validClassNameEntry(className);
@@ -1648,12 +1755,12 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     private void verifyMultiNewArray(int bci, OperandStack<R, C, M, F> stack) {
         // Check CP validity
         Symbol<Type> type = getTypeFromPool(code.readCPI(bci), "Invalid CP constant for MULTIANEWARRAY: ");
-        verifyGuarantee(TypeSymbols.isArray(type), "Class " + type + " for MULTINEWARRAY is not an array type.");
+        verifyGuarantee(TypeSymbols.isArray(type), "Class %s for MULTINEWARRAY is not an array type.", type);
 
         // Check dimensions
         int dim = code.readUByte(bci + 3);
-        verifyGuarantee(dim > 0, "Negative or 0 dimension for MULTIANEWARRAY: " + dim);
-        verifyGuarantee(TypeSymbols.getArrayDimensions(type) >= dim, "Incompatible dimensions from constant pool: " + TypeSymbols.getArrayDimensions(type) + " and instruction: " + dim);
+        verifyGuarantee(dim > 0, "Negative or 0 dimension for MULTIANEWARRAY: %s", dim);
+        verifyGuarantee(TypeSymbols.getArrayDimensions(type) >= dim, "Incompatible dimensions from constant pool: %s and instruction: %s", TypeSymbols.getArrayDimensions(type), dim);
 
         // Pop lengths
         for (int i = 0; i < dim; i++) {
@@ -1670,7 +1777,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
         // Check CP validity
         Symbol<Type> type = getTypeFromPool(code.readCPI(bci), "Invalid CP constant for INSTANCEOF: ");
-        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for INSTANCEOF: " + type);
+        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for INSTANCEOF: %s", type);
 
         // push result
         stack.pushInt();
@@ -1683,7 +1790,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // Check CP validity
         int cpi = code.readCPI(bci);
         Symbol<Type> type = getTypeFromPool(cpi, "Invalid CP constant for CHECKCAST: ");
-        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for CHECKCAST: " + type);
+        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for CHECKCAST: %s", type);
 
         // push new type
         Operand<R, C, M, F> castOp = spawnFromType(type, cpi);
@@ -1698,7 +1805,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // Check CP validity
         int cpi = code.readCPI(bci);
         Symbol<Type> type = getTypeFromPool(cpi, "Invalid CP constant for ANEWARRAY: ");
-        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for ANEWARRAY: " + type);
+        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for ANEWARRAY: %s", type);
 
         // Pop length
         stack.popInt();
@@ -1713,13 +1820,13 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     private ConstantPool.Tag tagAt(int cpi) {
-        verifyGuarantee(cpi < pool.length() && cpi > 0, "Invalid constant pool access at " + cpi + ", pool length: " + pool.length());
+        verifyGuarantee(cpi < pool.length() && cpi > 0, "Invalid constant pool access at %s, pool length: %s", cpi, pool.length());
         return pool.tagAt(cpi);
     }
 
     private void verifyNewPrimitiveArray(int bci, OperandStack<R, C, M, F> stack) {
         byte jvmType = code.readByte(bci);
-        verifyGuarantee(jvmType >= 4 && jvmType <= 11, "invalid jvmPrimitiveType for NEWARRAY: " + jvmType);
+        verifyGuarantee(jvmType >= 4 && jvmType <= 11, "invalid jvmPrimitiveType for NEWARRAY: %s", jvmType);
         stack.popInt();
         stack.push(fromJVMType(jvmType));
     }
@@ -1727,7 +1834,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     private void verifyNew(int bci, OperandStack<R, C, M, F> stack) {
         // Check CP validity
         Symbol<Type> type = getTypeFromPool(code.readCPI(bci), "Invalid CP constant for NEW: ");
-        verifyGuarantee(!TypeSymbols.isPrimitive(type) && !TypeSymbols.isArray(type), "use NEWARRAY for creating array or primitive type: " + type);
+        verifyGuarantee(!TypeSymbols.isPrimitive(type) && !TypeSymbols.isArray(type), "use NEWARRAY for creating array or primitive type: %s", type);
 
         // push result
         Operand<R, C, M, F> op = new UninitReferenceOperand<>(type, bci);
@@ -1738,7 +1845,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // Check CP validity
         int fieldIndex = code.readCPI(bci);
         ConstantPool.Tag tag = tagAt(fieldIndex);
-        verifyGuarantee(tag == ConstantPool.Tag.FIELD_REF, "Invalid CP constant for PUTFIELD: " + tag);
+        verifyGuarantee(tag == ConstantPool.Tag.FIELD_REF, "Invalid CP constant for PUTFIELD: %s", tag);
         validateOrFailVerification(fieldIndex, pool);
 
         // Obtain field info
@@ -1754,7 +1861,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             Symbol<Type> fieldHolderType = runtime.getSymbolPool().getTypes().fromClassNameEntry(holderClassName);
             Operand<R, C, M, F> fieldHolder = kindToOperand(fieldHolderType);
             Operand<R, C, M, F> receiver = checkInitAccess(stack.popRef(fieldHolder), fieldHolder);
-            verifyGuarantee(!receiver.isArrayType(), "Trying to access field of an array type: " + receiver);
+            verifyGuarantee(!receiver.isArrayType(), "Trying to access field of an array type: %s", receiver);
             if (!receiver.isUninitThis()) {
                 checkProtectedMember(receiver, fieldHolderType, fieldIndex, false);
             }
@@ -1765,7 +1872,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // Check CP validity
         int fieldIndex = code.readCPI(bci);
         ConstantPool.Tag tag = tagAt(fieldIndex);
-        verifyGuarantee(tag == ConstantPool.Tag.FIELD_REF, "Invalid CP constant for GETFIELD: " + tag);
+        verifyGuarantee(tag == ConstantPool.Tag.FIELD_REF, "Invalid CP constant for GETFIELD: %s", tag);
         validateOrFailVerification(fieldIndex, pool);
 
         // Obtain field info
@@ -1780,7 +1887,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             Operand<R, C, M, F> fieldHolder = kindToOperand(fieldHolderType);
             Operand<R, C, M, F> receiver = checkInitAccess(stack.popRef(fieldHolder), fieldHolder);
             checkProtectedMember(receiver, fieldHolderType, fieldIndex, false);
-            verifyGuarantee(!receiver.isArrayType(), "Trying to access field of an array type: " + receiver);
+            verifyGuarantee(!receiver.isArrayType(), "Trying to access field of an array type: %s", receiver);
         }
 
         // push result
@@ -1788,7 +1895,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         stack.push(op);
     }
 
-    private int verifyLookupSwitch(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
+    private void verifyLookupSwitch(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
         stack.popInt();
         BytecodeLookupSwitch switchHelper = BytecodeLookupSwitch.INSTANCE;
         // Padding checks
@@ -1813,12 +1920,11 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             branch(bci + switchHelper.offsetAt(code, bci, i), stack, locals);
             previousKey = thisKey;
         }
-
         // Verify default branch
-        return switchHelper.defaultTarget(code, bci);
+        branch(switchHelper.defaultTarget(code, bci), stack, locals);
     }
 
-    private int verifyTableSwitch(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
+    private void verifyTableSwitch(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
         stack.popInt();
         BytecodeTableSwitch switchHelper = BytecodeTableSwitch.INSTANCE;
         // Padding checks
@@ -1836,7 +1942,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         }
 
         // Verify default branch
-        return switchHelper.defaultTarget(code, bci);
+        branch(switchHelper.defaultTarget(code, bci), stack, locals);
     }
 
     private void verifyJSR(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
@@ -1849,7 +1955,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         stack.push(new ReturnAddressOperand<>(bci, targetBCI));
         locals.subRoutineModifications = new SubroutineModificationStack(locals.subRoutineModifications, new boolean[maxLocals], bci);
         branch(targetBCI, stack, locals);
-        bciStates[bci] = setStatus(bciStates[bci], DONE);
+        setBciStatus(bci, BCIState.VERIFIED);
     }
 
     private void verifyRET(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
@@ -1860,9 +1966,9 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         while (pos < ra.targetBCIs.size()) {
             prev = ra;
             int target = ra.targetBCIs.get(pos++);
-            checkAndSetReturnedTo(target, bci);
+            checkAndSetRetTarget(target, bci);
             Locals<R, C, M, F> toMerge = getSubroutineReturnLocals(target, locals);
-            branch(code.nextBCI(target), stack, toMerge);
+            branch(nextBCI(target), stack, toMerge);
             // Sanity check: branching did not overwrite the return address being
             // verified
             ra = locals.loadReturnAddress(code.readLocalIndex(bci));
@@ -1874,7 +1980,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private void validateMethodRefIndex(int methodIndex) {
         ConstantPool.Tag tag = tagAt(methodIndex);
-        verifyGuarantee(tag == ConstantPool.Tag.METHOD_REF || tag == INTERFACE_METHOD_REF, "Invalid CP constant for a MethodRef: " + tag);
+        verifyGuarantee(tag == ConstantPool.Tag.METHOD_REF || tag == INTERFACE_METHOD_REF, "Invalid CP constant for a MethodRef: %s", tag);
         validateOrFailVerification(methodIndex, pool);
     }
 
@@ -1925,7 +2031,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // Pop arguments
         // Check signature conforms with count argument
         int count = code.readUByte(bci + 3);
-        verifyGuarantee(count > 0, "Invalid count argument for INVOKEINTERFACE: " + count);
+        verifyGuarantee(count > 0, "Invalid count argument for INVOKEINTERFACE: %s", count);
         int descCount = 1; // Has a receiver.
         for (int i = parsedSig.length - 2; i >= 0; i--) {
             descCount++;
@@ -1957,7 +2063,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
         // Checks versioning
         if (version51OrEarlier()) {
-            verifyGuarantee(pool.tagAt(methodIndex) != INTERFACE_METHOD_REF, "invokeStatic refers to an interface method with classfile version " + majorVersion);
+            verifyGuarantee(pool.tagAt(methodIndex) != INTERFACE_METHOD_REF, "invokeStatic refers to an interface method with classfile version %s", majorVersion);
         }
         Symbol<Name> calledMethodName = pool.methodName(methodIndex);
 
@@ -1984,7 +2090,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         boolean isInterfaceMethodTarget = pool.tagAt(methodIndex) == INTERFACE_METHOD_REF;
         // Checks versioning
         if (version51OrEarlier()) {
-            verifyGuarantee(!isInterfaceMethodTarget, "invokeSpecial refers to an interface method with classfile version " + majorVersion);
+            verifyGuarantee(!isInterfaceMethodTarget, "invokeSpecial refers to an interface method with classfile version %s", majorVersion);
         }
         Symbol<Name> calledMethodName = pool.methodName(methodIndex);
 
@@ -2001,7 +2107,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         if (isInstanceInit(calledMethodName)) {
             UninitReferenceOperand<R, C, M, F> toInit = (UninitReferenceOperand<R, C, M, F>) stack.popUninitRef(methodHolderOp);
             if (toInit.isUninitThis()) {
-                verifyGuarantee(ParserNames._init_.equals(methodName), "Encountered UninitializedThis outside of Constructor: " + toInit);
+                verifyGuarantee(ParserNames._init_.equals(methodName), "Encountered UninitializedThis outside of Constructor: %s", toInit);
                 boolean isValidInitThis = toInit.getType() == methodHolder ||
                                 // Here, the superKlass cannot be null, as the j.l.Object case would
                                 // have been handled by the previous check.
@@ -2009,7 +2115,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 verifyGuarantee(isValidInitThis, "<init> method must call this.<init> or super.<init>");
                 calledConstructor = true;
             } else {
-                verifyGuarantee(code.opcode(toInit.newBCI) == NEW, "There is no NEW bytecode at bci: " + toInit.newBCI);
+                verifyGuarantee(code.opcode(toInit.newBCI) == NEW, "There is no NEW bytecode at bci: %s", toInit.newBCI);
                 // according to JCK's "vm/classfmt/ins/instr_03608m1" :
                 //
                 // Calling parent's initializer of uninitialized new object is
@@ -2286,7 +2392,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private void doReturn(OperandStack<R, C, M, F> stack, Operand<R, C, M, F> toReturn) {
         Operand<R, C, M, F> op = stack.pop(toReturn);
-        verifyGuarantee(op.compliesWith(returnOperand, this), "Invalid return: " + op + ", expected: " + returnOperand);
+        verifyGuarantee(op.compliesWith(returnOperand, this), "Invalid return: %s, expected: %s", op, returnOperand);
     }
 
     /**
@@ -2371,7 +2477,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     private void xaload(OperandStack<R, C, M, F> stack, PrimitiveOperand<R, C, M, F> kind) {
         stack.popInt();
         Operand<R, C, M, F> op = stack.popArray();
-        verifyGuarantee(op == nullOp || kind.compliesWith(op.getComponent(), this), "Loading " + kind + " from " + op + " array.");
+        verifyGuarantee(op == nullOp || kind.compliesWith(op.getComponent(), this), "Trying to load %s from %s array.", kind, op);
         stack.push(kind.toStack());
     }
 
@@ -2379,7 +2485,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         stack.pop(kind);
         stack.popInt();
         Operand<R, C, M, F> array = stack.popArray();
-        verifyGuarantee(array == nullOp || kind.compliesWith(array.getComponent(), this), "got array of type: " + array + ", while storing a " + kind);
+        verifyGuarantee(array == nullOp || kind.compliesWith(array.getComponent(), this), "got array of type: %s, while storing a %s", array, kind);
     }
 
     private static boolean wideOpcodes(int op) {
@@ -2411,7 +2517,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 Operand<R, C, M, F> frameOp = stackMap.stack[i];
                 if (!stackOp.compliesWithInMerge(frameOp, this)) {
                     Operand<R, C, M, F> result = stackOp.mergeWith(frameOp, this);
-                    verifyGuarantee(result != null, "Cannot merge " + stackOp + " with " + frameOp);
+                    verifyGuarantee(result != null, "Cannot merge %s with %s", stackOp, frameOp);
                     mergedStack[i] = result;
                 } else {
                     mergedStack[i] = frameOp;
@@ -2422,7 +2528,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         Operand<R, C, M, F>[] mergedLocals = null;
         mergeIndex = locals.mergeInto(stackMap);
         if (mergeIndex != -1) {
-            verifyGuarantee(!useStackMaps, "Wrong local map frames in class file: " + thisKlass + '.' + methodName);
+            verifyGuarantee(!useStackMaps, "Wrong local map frames in class file: %s.%s", thisKlass, methodName);
 
             mergedLocals = new Operand[maxLocals];
             Operand<R, C, M, F>[] frameLocals = stackMap.locals;
@@ -2467,5 +2573,114 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private SignatureSymbols getSignatures() {
         return runtime.getSymbolPool().getSignatures();
+    }
+
+    private enum BCIState {
+        /**
+         * Indicates that a particular BCI should never be reached by normal control flow (e.g.: the
+         * bytecode of a WIDE instruction, or any BCI between two successive instructions).
+         */
+        INVALID(0, 0xFFFF_FFFF),
+        /**
+         * Indicates a BCI that has not yet been reached by control flow. After verification, if such a
+         * BCI still exists, it means that this BCI will never be reached during execution.
+         */
+        TO_VERIFY(StateConstants.TO_VERIFY_BIT, StateConstants.VERIFICATION_STATUS_MASK),
+        /**
+         * Indicates previous iteration of a verification successfully verified this particular BCI.
+         * Further verification can therefore stop their execution if merging its state into the state
+         * of this BCI is successful.
+         */
+        VERIFIED(StateConstants.VERIFIED_BIT, StateConstants.VERIFICATION_STATUS_MASK),
+        /**
+         * Indicates that a particular BCI is the target of a jump, therefore requiring a stack map to
+         * be provided fo this BCI.
+         */
+        MERGE_TARGET(StateConstants.MERGE_TARGET, StateConstants.MERGE_TARGET),
+        /**
+         * JSR BCI states
+         * This state is accompanied by the BCI of the RET instruction that caused it.
+         * It is of the form (ret_bci << 16) | RETURNED_TO
+         */
+        IS_RET_TARGET(StateConstants.IS_RET_TARGET_BIT, StateConstants.IS_RET_TARGET_BIT),
+        ;
+
+        private static final int DEFAULT_STATE = 0;
+
+        // Regular BCI states
+
+        private final int bit;
+        private final int clearBits;
+
+        BCIState(int bit, int exclusiveMask) {
+            this.bit = bit;
+            this.clearBits = ~exclusiveMask;
+        }
+
+        public int set(int value) {
+            return (value & clearBits) | bit;
+        }
+
+        public boolean check(int value) {
+            return (value & bit) != 0;
+        }
+    }
+
+    private enum HandlerState {
+        INVALID(0, 0xFFFF_FFFF),
+        UNPROCESSED(StateConstants.HANDLER_UNPROCESSED_BIT, StateConstants.HANDLER_STATUS_MASK),
+        TO_VERIFY(StateConstants.HANDLER_TO_VERIFY_BIT, StateConstants.HANDLER_STATUS_MASK),
+        VERIFIED(StateConstants.HANDLER_VERIFIED_BIT, StateConstants.HANDLER_STATUS_MASK),
+        CONSTRUCTOR_CALLED(StateConstants.HANDLER_CONSTRUCTOR_CALLED_BIT, StateConstants.HANDLER_CONSTRUCTOR_STATUS_MASK),
+        NO_CONSTRUCTOR_CALLED(StateConstants.HANDLER_NO_CONSTRUCTOR_CALLED_BIT, StateConstants.HANDLER_CONSTRUCTOR_STATUS_MASK),
+        ;
+
+        private static final byte DEFAULT_STATE = (byte) UNPROCESSED.bit;
+
+        // Regular BCI states
+
+        private final int bit;
+        private final int clearBits;
+
+        HandlerState(int bit, int exclusiveMask) {
+            this.bit = bit;
+            this.clearBits = ~exclusiveMask;
+        }
+
+        public int set(int value) {
+            return (value & clearBits) | bit;
+        }
+
+        public boolean check(int value) {
+            return (value & bit) != 0;
+        }
+    }
+
+    private static final class StateConstants {
+        private static final int VERIFICATION_STATUS_MASK = 0b0000_0011;
+        private static final int TO_VERIFY_BIT = 0b0000_0001;
+        private static final int VERIFIED_BIT = 0b0000_0010;
+
+        private static final int MERGE_TARGET = 0b0000_0100;
+
+        private static final int IS_RET_TARGET_BIT = 0b0000_1000;
+
+        // Exception handler target states
+        private static final byte HANDLER_STATUS_MASK = 0b0000_0111;
+        private static final byte HANDLER_UNPROCESSED_BIT = 0b0000_0001;
+        private static final byte HANDLER_TO_VERIFY_BIT = 0b0000_0010;
+        private static final byte HANDLER_VERIFIED_BIT = 0b0000_0100;
+
+        private static final byte HANDLER_CONSTRUCTOR_STATUS_MASK = 0b0011_0000;
+        private static final byte HANDLER_CONSTRUCTOR_CALLED_BIT = 0b0001_0000;
+        private static final byte HANDLER_NO_CONSTRUCTOR_CALLED_BIT = 0b0010_0000;
+
+        private static final int LO_MASK = 0x0000_FFFF;
+
+        static int cat(int hi, int lo) {
+            assert hi == (char) hi;
+            assert lo == (char) lo;
+            return ((hi << 16) | lo);
+        }
     }
 }
