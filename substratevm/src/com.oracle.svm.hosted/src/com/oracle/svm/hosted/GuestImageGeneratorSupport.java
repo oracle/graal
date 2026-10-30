@@ -26,10 +26,12 @@ package com.oracle.svm.hosted;
 
 import java.lang.reflect.Method;
 import java.nio.ByteOrder;
+import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.GuestImageSingletonSupport;
 import com.oracle.svm.core.SubstrateTarget;
@@ -39,6 +41,7 @@ import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.shared.ImageLayerBuildingSupportProvider;
 import com.oracle.svm.shared.config.ObjectLayout;
@@ -179,6 +182,22 @@ final class GuestImageGeneratorSupport {
         GuestAccess access = GuestAccess.get();
         ResolvedJavaType key = access.lookupType(ImageLayerBuildingSupportProvider.class);
         JavaConstant hostProxy = access.createHostProxy(imageLayerSupport, key);
+        GuestImageSingletonSupport.add(key, hostProxy);
+    }
+
+    /** Installs a guest host proxy backed by the builder's class-initialization policy. */
+    static void installClassInitializationSupport(ClassInitializationSupport builderSupport) {
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType key = access.lookupType(RuntimeClassInitializationSupport.class);
+        /*
+         * Resolve the deprecated aliases eagerly instead of requiring the host proxy implementation
+         * to invoke default methods from a concealed guest interface package.
+         */
+        ResolvedJavaType stringType = access.elements.java_lang_String;
+        Map<ResolvedJavaMethod, String> methodNameMappings = Map.of(
+                        JVMCIReflectionUtil.getUniqueDeclaredMethod(key, "rerunInitialization", stringType, stringType), "initializeAtRunTime",
+                        JVMCIReflectionUtil.getUniqueDeclaredMethod(key, "rerunInitialization", access.elements.java_lang_Class, stringType), "initializeAtRunTime");
+        JavaConstant hostProxy = access.createHostProxy(builderSupport, key, methodNameMappings);
         GuestImageSingletonSupport.add(key, hostProxy);
     }
 

@@ -74,7 +74,7 @@ import org.graalvm.home.impl.DefaultHomeFinder;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.polyglot.Engine;
@@ -398,7 +398,7 @@ public final class TruffleBaseFeature implements InternalFeature {
                         "Unsupported TruffleRuntime %s (only SubstrateTruffleRuntime or DefaultTruffleRuntime allowed)",
                         runtime.getClass().getName());
 
-        RuntimeClassInitialization.initializeAtBuildTime("com.oracle.graalvm.locator",
+        JVMCIRuntimeClassInitializationSupport.singleton().initializeAtBuildTime("com.oracle.graalvm.locator",
                         "Truffle classes are always initialized at build time");
 
         initializeTruffleReflectively(imageClassLoader);

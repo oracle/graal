@@ -30,7 +30,7 @@ import java.security.cert.X509Certificate;
 import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.annotate.Alias;
@@ -123,7 +123,7 @@ final class TrustStoreManagerFeature implements InternalFeature {
          * Note when a runtime certificate file is specified, we still honor/use the build time
          * lib/security/blacklisted.certs file
          */
-        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
         rci.initializeAtBuildTime("sun.security.util.UntrustedCertificates", "Required for TrustStoreManager");
         if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
             /*

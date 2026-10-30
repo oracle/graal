@@ -209,7 +209,6 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.hosted.c.CGlobalDataFeature"),
                     clazz("com.oracle.svm.hosted.c.NativeLibraries"),
                     clazz("com.oracle.svm.hosted.classinitialization.ClassInitializationFeature"),
-                    clazz("com.oracle.svm.hosted.classinitialization.ClassInitializationSupport"),
                     clazz("com.oracle.svm.hosted.ClassLoaderSupportImpl"),
                     clazz("com.oracle.svm.hosted.classloading.ClassRegistryFeature"),
                     clazz("com.oracle.svm.hosted.ClassNewInstanceFeature"),

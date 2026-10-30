@@ -73,7 +73,6 @@ import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
 import org.graalvm.nativeimage.impl.APIDeprecationSupport;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.RuntimeStateSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
@@ -290,7 +289,7 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.util.OriginalClassProvider;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.bytecode.BytecodeProvider;
@@ -1085,8 +1084,9 @@ public class NativeImageGenerator {
                 ImageSingletons.add(LinkAtBuildTimeSupport.class, new LinkAtBuildTimeSupport(loader, classLoaderSupport));
                 ImageSingletons.add(ObservableImageHeapMapProvider.class, new ObservableImageHeapMapProviderImpl());
 
-                ClassInitializationSupport classInitializationSupport = new ClassInitializationSupport(originalMetaAccess, loader);
-                ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
+                ClassInitializationSupport classInitializationSupport = new ClassInitializationSupport(loader);
+                ImageSingletons.add(JVMCIRuntimeClassInitializationSupport.class, classInitializationSupport);
+                GuestImageGeneratorSupport.installClassInitializationSupport(classInitializationSupport);
                 ClassInitializationFeature.processClassInitializationOptions(classInitializationSupport);
 
                 OptionClassFilter missingRegistrationClassFilter = OptionClassFilterBuilder.createFilter(loader, SubstrateOptions.ThrowMissingRegistrationErrors,
@@ -2115,7 +2115,7 @@ public class NativeImageGenerator {
     protected static void initializeAtBuildTime(ResolvedJavaType type, ClassInitializationSupport classInitializationSupport, Class<? extends Annotation> annotationForMessage) {
         String message = "classes annotated with " + ClassUtil.getUnqualifiedName(annotationForMessage) + " are always initialized at image build time";
         classInitializationSupport.initializeAtBuildTime(type, message);
-        classInitializationSupport.forceInitializeHosted(OriginalClassProvider.getJavaClass(type), message, false);
+        classInitializationSupport.forceInitializeAtBuildTime(type, message, false);
     }
 
     public AbstractImage getBuiltImage() {

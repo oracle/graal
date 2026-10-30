@@ -26,8 +26,6 @@ package com.oracle.svm.hosted.scala;
 
 import java.util.Arrays;
 
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
-
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -36,6 +34,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -55,12 +54,13 @@ public class ScalaFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         initializeScalaEnumerations(access);
-        RuntimeClassInitialization.initializeAtBuildTime("scala.Symbol");
-        RuntimeClassInitialization.initializeAtBuildTime("scala.Symbol$");
+        JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
+        rci.initializeAtBuildTime("scala.Symbol");
+        rci.initializeAtBuildTime("scala.Symbol$");
         /* Initialized through an invokedynamic in `scala.Option` */
-        RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.LambdaDeserialize");
-        RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.StructuralCallSite");
-        RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.EmptyMethodCache");
+        rci.initializeAtBuildTime("scala.runtime.LambdaDeserialize");
+        rci.initializeAtBuildTime("scala.runtime.StructuralCallSite");
+        rci.initializeAtBuildTime("scala.runtime.EmptyMethodCache");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ScalaFeature.class, false, "jdk.graal.compiler", "jdk.graal.compiler.nodes");
     }
 

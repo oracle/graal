@@ -39,9 +39,14 @@ import com.oracle.svm.shared.option.OptionOrigin;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.HostedModuleSupport;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
@@ -78,11 +83,8 @@ public final class LinkAtBuildTimeSupport {
     }
 
     public boolean linkAtBuildTime(ResolvedJavaType type) {
-        return linkAtBuildTime(OriginalClassProvider.getJavaClass(type));
-    }
-
-    public boolean linkAtBuildTime(Class<?> clazz) {
-        return isIncluded(clazz) != null;
+        ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(type);
+        return isIncluded(originalType) != null;
     }
 
     public boolean moduleLinkAtBuildTime(String module) {
@@ -93,26 +95,84 @@ public final class LinkAtBuildTimeSupport {
         return classFilter.isPackageOrClassIncluded(packageName) != null;
     }
 
-    private Object isIncluded(Class<?> clazz) {
-        if (clazz.isArray() || !classLoaderSupport.isNativeImageClassLoader(clazz.getClassLoader())) {
+    /**
+     * Returns the reason why the canonical guest {@code type} is included for linking at image
+     * build time, or {@code null} if it is not included.
+     */
+    private Object isIncluded(ResolvedJavaType type) {
+        if (type.isArray()) {
             return "system default";
         }
-        assert !clazz.isPrimitive() : "Primitive classes are not loaded via NativeImageClassLoader";
-        return classFilter.isIncluded(clazz);
+        ResolvedJavaModule module = applicationModuleOrNull(type);
+        if (module == null) {
+            return "system default";
+        }
+        assert !type.isPrimitive() : "Primitive classes are not loaded via NativeImageClassLoader";
+        return classFilter.isIncluded(module.getName(), JVMCIReflectionUtil.getPackageName(type), type.toClassName());
+    }
+
+    /**
+     * Returns the module of the canonical guest {@code type} if it belongs to the application, or
+     * {@code null} if it belongs to Native Image or JDK runtime infrastructure. The host path
+     * preserves the existing builder loader check. Fully isolated mode excludes configured Native
+     * Image guest modules, named JDK runtime modules, and classes defined by the bootstrap or
+     * platform loaders, while keeping the class and its loader exclusively as guest constants.
+     */
+    private ResolvedJavaModule applicationModuleOrNull(ResolvedJavaType type) {
+        GuestAccess guestAccess = GuestAccess.get();
+        if (!guestAccess.isFullyIsolated()) {
+            Class<?> clazz = OriginalClassProvider.getJavaClass(type);
+            if (!classLoaderSupport.isNativeImageClassLoader(clazz.getClassLoader())) {
+                return null;
+            }
+            return guestAccess.getModule(type);
+        }
+
+        /*
+         * ImageClassLoader initializes its resolved core-module set only after feature registration,
+         * but link-at-build-time policy can be queried earlier while class initialization options are
+         * processed. Use the hosted guest-module configuration instead. New Native Image guest
+         * runtime modules must be added to GUEST_MODULES to receive system-default treatment.
+         */
+        ResolvedJavaModule module = guestAccess.getModule(type);
+        String moduleName = module.getName();
+        if (moduleName != null && HostedModuleSupport.GUEST_MODULES.contains(moduleName)) {
+            return null;
+        }
+
+        JavaConstant javaClass = guestAccess.getProviders().getConstantReflection().asJavaClass(type);
+        JavaConstant loader = guestAccess.invoke(guestAccess.elements.java_lang_Class_getClassLoader, javaClass);
+        if (loader.isNull()) {
+            return null;
+        }
+
+        JavaConstant platformLoader = guestAccess.invokeStatic(guestAccess.elements.java_lang_ClassLoader_getPlatformClassLoader);
+        if (loader.equals(platformLoader)) {
+            return null;
+        }
+
+        /*
+         * Some JDK tool modules are defined to the application loader, but they still belong to the
+         * guest boot layer. Application modules belong to a child layer, while dynamic proxy modules
+         * with jdk.proxyN names do not belong to a module layer.
+         */
+        if (moduleName != null && (moduleName.startsWith("java.") || moduleName.startsWith("jdk.")) &&
+                        guestAccess.bootModuleLayer().equals(module.getLayer())) {
+            return null;
+        }
+        return module;
     }
 
     public String errorMessageFor(ResolvedJavaType type) {
-        return errorMessageFor(OriginalClassProvider.getJavaClass(type));
-    }
-
-    public String errorMessageFor(Class<?> clazz) {
-        assert linkAtBuildTime(clazz);
-        return "This error is reported at image build time because class " + clazz.getTypeName() + " is registered for linking at image build time by " + linkAtBuildTimeReason(clazz) + ".";
+        ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(type);
+        Object reason = isIncluded(originalType);
+        assert reason != null;
+        return "This error is reported at image build time because class " + JVMCIReflectionUtil.getTypeName(originalType) + " is registered for linking at image build time by " +
+                        linkAtBuildTimeReason(reason) + ".";
     }
 
     @SuppressWarnings("unchecked")
-    private String linkAtBuildTimeReason(Class<?> clazz) {
-        Object reason = isIncluded(clazz);
+    private static String linkAtBuildTimeReason(Object reason) {
         if (reason == null) {
             return null;
         }
