@@ -292,25 +292,26 @@ public abstract class ImageHeapScanner {
         ScanReason nonNullReason = Objects.requireNonNull(reason);
         Object existingTask = imageHeap.getSnapshot(javaConstant);
         if (existingTask == null) {
-            AnalysisFuture<ImageHeapConstant> newTask;
             ImageLayerLoader imageLayerLoader = universe.getImageLayerLoader();
             if (hostVM.buildingExtensionLayer() && imageLayerLoader.hasValueForConstant(javaConstant)) {
                 ImageHeapConstant value = imageLayerLoader.getValueForConstant(javaConstant);
                 ensureFieldPositionsComputed(value, nonNullReason);
                 AnalysisError.guarantee(value.getHostedObject().equals(javaConstant));
-                newTask = new AnalysisFuture<>(() -> {
-                    imageHeap.setValue(javaConstant, value);
-                    return value;
-                });
-            } else {
-                checkSealed(reason, "Trying to create a new ImageHeapConstant for %s after the ImageHeapScanner is sealed.", javaConstant);
-                newTask = new AnalysisFuture<>(() -> {
-                    ImageHeapConstant imageHeapConstant = createImageHeapObject(javaConstant, nonNullReason);
-                    /* When the image heap object is created replace the future in the map. */
-                    imageHeap.setValue(javaConstant, imageHeapConstant);
-                    return imageHeapConstant;
-                });
+                /*
+                 * The layer loader already provides the canonical constant. Publish it directly:
+                 * a future would expose an unfinished task to concurrent heap verification even
+                 * though the value is already available.
+                 */
+                imageHeap.setValue(javaConstant, value);
+                return value;
             }
+            checkSealed(reason, "Trying to create a new ImageHeapConstant for %s after the ImageHeapScanner is sealed.", javaConstant);
+            AnalysisFuture<ImageHeapConstant> newTask = new AnalysisFuture<>(() -> {
+                ImageHeapConstant imageHeapConstant = createImageHeapObject(javaConstant, nonNullReason);
+                /* When the image heap object is created replace the future in the map. */
+                imageHeap.setValue(javaConstant, imageHeapConstant);
+                return imageHeapConstant;
+            });
             existingTask = imageHeap.setTask(javaConstant, newTask);
             if (existingTask == null) {
                 return newTask.ensureDone();
