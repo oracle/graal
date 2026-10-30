@@ -254,7 +254,12 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
         return new SubstrateOptimizedCallTarget(engine);
     }
 
-    private void ensureInitializedAtRuntime(OptimizedCallTarget callTarget) {
+    /**
+     * Initializes process-local runtime services before a fresh or restored call target is used.
+     *
+     * @param callTarget a call target whose engine has current runtime options and logging
+     */
+    public void ensureInitializedAtRuntime(OptimizedCallTarget callTarget) {
         if (!SubstrateUtil.HOSTED && !initialized) {
             synchronized (this) {
                 if (!initialized) {
