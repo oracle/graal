@@ -646,6 +646,9 @@ public class DebugParser {
             readUnsignedInt();
             readUnsignedInt();
             lastByte = peek1();
+            if (Integer.compareUnsigned(pathIndex, paths.size()) >= 0) {
+                throw new WasmDebugException("invalid directory index");
+            }
             try {
                 final Path filePath = Paths.get(name);
                 if (filePath.isAbsolute()) {
