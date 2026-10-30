@@ -398,7 +398,11 @@ public final class TypedEntrySupport {
                 public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode[] arguments) {
                     TypedEntrySupport support = singleton();
                     /*
-                     * Select the compiled or AOT fallback address before issuing one indirect call.
+                     * Unlike runtime-compiled direct callers, AOT exact callers do not arrange a
+                     * matching C2I adapter. The specialized entry can therefore be zero when neither
+                     * compatible compiled code nor an adapter is available. In that case, select
+                     * the generated fallback, which accepts the same exact signature and boxes
+                     * arguments for ordinary CallTarget.call dispatch.
                      */
                     FunctionPointerHolder fallback = support.generatedEntryFallbacks.get(entryMethod);
                     VMError.guarantee(fallback != null, "Generated proxy entry fallback was not registered for %s", entryMethod);
