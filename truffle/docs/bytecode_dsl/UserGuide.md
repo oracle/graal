@@ -20,6 +20,7 @@ This guide presents the conceptual details of the Bytecode DSL; for more concret
 - [Locals](#locals)
   - [Accessing locals](#accessing-locals)
   - [Scoping](#scoping)
+  - [Uninitialized and cleared locals](#uninitialized-and-cleared-locals)
   - [Materialized local accesses](#materialized-local-accesses)
 - [Control flow](#control-flow)
   - [Unstructured control flow](#unstructured-control-flow)
@@ -33,6 +34,7 @@ This guide presents the conceptual details of the Bytecode DSL; for more concret
   - [Reparsing](#reparsing)
   - [Tracing](#tracing)
   - [Bytecode introspection](#bytecode-introspection)
+  - [Bytecode frames in stack traces](#bytecode-frames-in-stack-traces)
   - [Reachability analysis](#reachability-analysis)
   - [Interpreter optimizations](#interpreter-optimizations)
   - [Runtime compilation](#runtime-compilation)
@@ -165,6 +167,7 @@ The built-in operations are:
 - Local variable operations (see [Locals](#locals))
   - `LoadLocal`
   - `StoreLocal`
+  - `ClearLocal`
   - `LoadLocalMaterialized`
   - `StoreLocalMaterialized`
 - Control flow operations (see [Control flow](#control-flow))
@@ -178,6 +181,10 @@ The built-in operations are:
   - `TryFinally`
   - `TryCatchOtherwise`
   - `LoadException`
+- Temporary stack value operations
+  - `BindStackValue`
+  - `LoadStackValue`
+  - `StoreStackValue`
 - Source operations (see [Source information](#source-information))
   - `Source`
   - `SourceSection`
@@ -312,10 +319,6 @@ These helpers often have extra indirection, so the built-in operations and acces
 
 Local reads/writes should always use these abstractions; **you should not directly read from or write to the frame**.
 
-Loading a local before a value is stored into it throws a [`FrameSlotTypeException`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api/src/com/oracle/truffle/api/frame/FrameSlotTypeException.java).
-You can specify a `defaultLocalValue` in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java) to instead give uninitialized locals a default value.
-
-
 ### Scoping
 
 By default, interpreters use _block scoping_, in which locals are scoped to the enclosing `Block`/`Root` operation.
@@ -324,6 +327,17 @@ Since the set of live locals depends on the location in the code, most of the lo
 
 Interpreters can alternatively opt to use _root scoping_, in which all locals get a unique position in the frame and live for the entire extent of the root.
 The setting is controlled by the `enableBlockScoping` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
+
+### Uninitialized and cleared locals
+
+A local is uninitialized until a value is stored into it, and can be cleared (by `ClearLocal` or on `Block` exit for [block-scoped locals](#scoping)).
+The behaviour when loading an uninitialized or cleared local is configurable:
+
+- By default, the load throws a [`FrameSlotTypeException`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api/src/com/oracle/truffle/api/frame/FrameSlotTypeException.java).
+- Set `@GenerateBytecode(illegalLocalException=...)` to throw a custom exception instead.
+- Set `@GenerateBytecode(defaultLocalValue=...)` to make the load produce a default value instead of throwing.
+  - Note: When a default value is used, loading a cleared local can sometimes inhibit [boxing elimination](Optimization.md#boxing-elimination).
+
 
 ### Materialized local accesses
 
@@ -541,7 +555,7 @@ After a predefined number of calls or loop iterations (see the `defaultUncachedT
 
 It is strongly recommended to enable uncached execution, because it can reduce the footprint of your language and improve start-up times.
 
-To support uncached execution, all operations must support [uncached execution](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/GenerateUncached.html).
+To support uncached execution, all operations must support [uncached execution](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl/src/com/oracle/truffle/api/dsl/GenerateUncached.java).
 When `enableUncachedInterpreter` is set to `true`, the Bytecode DSL processor will verify that each operation supports uncached, and it will emit descriptive error messages if there are changes that need to be made.
 If an operation cannot easily support uncached execution, it can instead force the interpreter to transition to cached before it executes (see the `forceCached` field of [`@Operation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Operation.java) and the other operation annotations).
 Bear in mind that declaring an operation with `forceCached` may limit the usefulness of the uncached interpreter, depending on how common the operation is.
@@ -559,6 +573,10 @@ The generated root node will override `Node#getSourceSection` to return this inf
 
 Source information is designed to have no performance overhead until it is requested (see [Reparsing metadata](#reparsing)).
 Take extra care if accessing source information in [compiled code](RuntimeCompilation.md#source-information).
+
+If a language needs source locations but does not usually need the source content, it can provide `@GenerateBytecode(sourceContentSupplier=...)` to lazily load source content upon request.
+
+Source information tables are compressed by default to reduce memory footprint; compression is controlled by `@GenerateBytecode(enableCompressedSources=...)`.
 
 ### Instrumentation
 
@@ -737,6 +755,18 @@ These methods, defined on the [`BytecodeNode`](https://github.com/oracle/graal/b
 
 Note that the bytecode encoding is an implementation detail, so the APIs and their outputs are subject to change, and introspection should only be used for debugging purposes.
 
+
+### Bytecode frames in stack traces
+
+By default, Bytecode DSL frames are not captured in [`TruffleStackTraceElement`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api/src/com/oracle/truffle/api/TruffleStackTraceElement.java) instances.
+Set `@GenerateBytecode(captureFramesForTrace = true)` to enable frame capturing.
+
+A frame captured in a `TruffleStackTraceElement` is read-only and should not be directly accessed through `TruffleStackTraceElement.getFrame()`.
+Instead, use [`BytecodeFrame.get`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeFrame.java) to access the captured frame and its local values.
+`BytecodeFrame` captures the necessary metadata for accessing the local variables in the frame.
+
+To inspect the current call stack, use `BytecodeFrame.getTop` or `BytecodeFrame.iterateBytecodeFrames`.
+These helpers walk bytecode frames and skip frames from other kinds of roots.
 
 ### Reachability analysis
 The Bytecode DSL performs some basic reachability analysis to avoid emitting bytecode when it can guarantee a location is not reachable, for example, after an explicit `Return` operation. The reachability analysis is confounded by features like branching, exception handling, and instrumentation, so reachability cannot always be precisely determined; in such cases, the builder conservatively assumes a given point in the program is reachable.

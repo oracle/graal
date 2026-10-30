@@ -3,17 +3,52 @@
 Bytecode interpreters commonly employ a variety of optimizations to achieve better performance.
 This section discusses how to employ these optimizations in Bytecode DSL interpreters.
 
+## Quickening
+
+[Quickening](https://dl.acm.org/doi/10.1145/1869631.1869633) is a technique that rewrites an instruction with a specialized version that requires less work.
+The Bytecode DSL supports quickened instructions that handle a subset of the specializations defined by an operation.
+At the moment, these operation quickenings can only be specified manually using [`@ForceQuickening`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/ForceQuickening.java).
+In the future, [tracing](#tracing) will be used to automatically infer useful quickenings.
+
+Consider the `Add` operation below as an example.
+```java
+@Operation
+static final class Add {
+    @Specialization
+    @ForceQuickening("numeric")
+    public static long addInts(int lhs, int rhs) {
+        return lhs + rhs;
+    }
+    @Specialization
+    @ForceQuickening("numeric")
+    public static long addLongs(long lhs, long rhs) {
+        return lhs + rhs;
+    }
+    @Specialization
+    @TruffleBoundary
+    public static String addStrings(String lhs, String rhs) {
+        return lhs + rhs;
+    }
+}
+```
+As usual, the operation generates a base instruction that handles all three specializations.
+However, the `@ForceQuickening` annotation directs the DSL to generate a quickened instruction that supports only `addInts` and `addLongs`.
+The quickened instruction may perform fewer type checks and specialization state checks, have a smaller handler method, and may avoid primitive boxing (discussed [below](#boxing-elimination)).
+
+During execution, if the operation specializes to `addInts` or `addLongs`, it can optimistically rewrite the instruction to the quickened instruction, and then the interpreter will execute the quickened instruction instead.
+If later the operation re-specializes and activates a specialization not handled by the quickening, it can rewrite back to the generic instruction.
+
 ## Boxing elimination
 
 A major source of overhead in interpreted code (for both Truffle AST and bytecode interpreters) is boxing.
 By default, values are passed between operations as objects, which forces primitive values to be boxed up.
 Often, the boxed value is subsequently unboxed when it gets consumed.
 
-Boxing elimination avoids these unnecessary boxing steps.
+Boxing elimination (BE) avoids these unnecessary boxing steps.
 The interpreter can speculatively rewrite bytecode instructions to specialized instructions that pass primitive values whenever possible.
 Boxing elimination can also improve compiled performance, because Graal is not always able to remove box-unbox sequences during compilation.
 
-To enable boxing elimination, specify a set of `boxingEliminationTypes` on the [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java) annotation. For example, the following configuration
+To enable BE, specify a set of `boxingEliminationTypes` on the [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java) annotation. For example, the following configuration
 
 ```java
 @GenerateBytecode(
@@ -22,21 +57,41 @@ To enable boxing elimination, specify a set of `boxingEliminationTypes` on the [
 )
 ```
 
-will instruct the interpreter to automatically avoid boxing for `int` and `long` values. (Note that `boolean` boxing elimination is supported, but is generally not worth the overhead of the additional instructions it produces.)
+will generate an interpreter that attempts to avoid boxing for `int` and `long` values.
 
-Boxing elimination is implemented using quickening, which is described below.
+### How it works
 
-## Quickening
+*This section describes implementation details that are subject to change.*
 
-[Quickening](https://dl.acm.org/doi/10.1145/1869631.1869633) is a general technique to rewrite an instruction with a specialized version that (typically) requires less work.
-The Bytecode DSL supports quickened operations, which handle a subset of the specializations defined by an operation.
+Boxing elimination is implemented using quickening.
+When BE is enabled, the code generator creates quickenings for instructions that may consume or produce values of the `boxingEliminationTypes`.
+For example, a `load.constant$int` will push a primitive `int` value instead of an `Object`.
 
-Quickened operations can be introduced to reduce the work required to evaluate an operation.
-For example, a quickened operation that only accepts `int` inputs might avoid operand boxing and the additional type checks required by the general operation.
-Additionally, a custom operation that has only one active specialization could be quickened to an operation that only supports that single specialization, avoiding extra specialization state checks.
+Simply quickening an instruction when it supports an unboxed representation is insufficient: if an instruction can arbitrarily change its output representation, the instruction that consumes its result must handle arbitrary representations, which would not optimize well.
+Instead, BE relies on coordination between the _producing_ and _consuming_ instructions.
+When a consuming instruction specializes itself, if it has the option to accept an unboxed input, it checks whether the producing instruction can also be quickened to produce an unboxed output.
+Only when both instructions can agree on the representation will BE quickening take place.
+To support this coordination, consuming instructions are encoded with indices that track BE-able producing instructions.
 
-At the moment, quickened instructions can only be specified manually using [`@ForceQuickening`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/ForceQuickening.java).
-In the future, [tracing](#tracing) will be able to automatically infer useful quickenings.
+Since quickenings are speculative, they are carefully written to handle unexpected behaviour.
+For example, if a quickening assumes its input will be `int`, it must still handle the case where it encounters a different type, usually by re-quickening itself to a more general implementation.
+Importantly, an instruction should not transition indefinitely between different quickenings to avoid deoptimization cycles, so BE quickening will typically fall back on a generic `Object` representation.
+
+#### Local boxing elimination
+
+Because locals support multiple stores and loads, they do not share the same consumer-producer relationship described above.
+Instead, a local's type is tracked using a _tag_ profile, which is updated whenever a different type is stored into it.
+The cached tag should eventually stabilize, and all store/load instructions should converge on quickenings that use that representation.
+
+For example, suppose we have a fresh unprofiled local.
+If `store.local` encounters an integer value, it will update the local tag to `int` and quicken itself to store `int`.
+Each subsequent store checks the tag before writing; if the value is incompatible with the tag (say, a `float`), it generalizes the tag to `Object` (giving up on BE) and quickens itself to store `Object.`
+Each `load.local` instruction uses the tag to rewrite itself to a quickening that speculatively reads the given representation.
+
+Usually only local stores affect the tag profile for a local.
+However, if a [default local value or illegal local exception](UserGuide.md#uninitialized-and-cleared-locals) is declared, loading an uninitialized or cleared local can implicitly generalize the tag to `Object`.
+This disables BE for the local, but it is necessary to prevent speculative load instructions from causing deoptimization cycles.
+Note that a clear itself does not force an `Object` tag; it is only a subsequent load that can generalize the tag to `Object`.
 
 
 ## Superinstructions
