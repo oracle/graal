@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,39 +28,21 @@ package com.oracle.svm.core.jdk.runtimeinit;
 import java.net.URL;
 import java.security.Provider;
 import java.util.Map;
-import java.util.Properties;
 import java.util.WeakHashMap;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.BuiltInSecurityProviderLoader;
+import com.oracle.svm.core.jdk.JceProviderVerificationSupport;
+import com.oracle.svm.core.jdk.SecurityProviderRuntimeAccess;
+import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 import com.oracle.svm.core.jdk.SecurityProvidersInitializedAtRunTime;
-import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-
-@TargetClass(value = java.security.Security.class, onlyWith = SecurityProvidersInitializedAtRunTime.class)
-final class Target_java_security_Security {
-    @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
-    static Properties props;
-}
-
-@TargetClass(value = java.security.Security.class, innerClass = "SecPropLoader", onlyWith = SecurityProvidersInitializedAtRunTime.class)
-final class Target_java_security_Security_SecPropLoader {
-
-    /**
-     * On HotSpot, this method loads the properties from the JDK's default location. Since we do not
-     * have a full JDK at run time, we use a snapshot of these values captured at build time from
-     * the host JVM.
-     */
-    @Substitute
-    private static void loadMaster() {
-        Target_java_security_Security.props = SecurityProvidersSupport.singleton().getSavedInitialSecurityProperties();
-    }
-}
 
 /**
  * The {@code javax.crypto.JceSecurity#verificationResults} cache is initialized by the
@@ -93,27 +75,11 @@ final class Target_javax_crypto_JceSecurity {
 
     @Substitute
     static Exception getVerificationResult(Provider p) {
-        /* The verification results map key is an identity wrapper object. */
-        Object o = SecurityProvidersSupport.singleton().getSecurityProviderVerificationResult(p.getName());
-        if (o == Boolean.TRUE) {
-            return null;
-        } else if (o != null) {
-            return (Exception) o;
-        }
-        /*
-         * If the verification result is not found in the verificationResults map, HotSpot will
-         * attempt to verify the provider. This requires accessing the code base, which isn't
-         * supported in Native Image, so we need to fail. We could either fail here or substitute
-         * getCodeBase() and fail there, but handling it here is a cleaner approach.
-         */
-        String providerFQN = p.getClass().getName();
-        throw new SecurityException(
-                        "Attempted to verify a provider that was not registered at build time: " + providerFQN + ". " +
-                                        "All security providers must be registered and verified during native image generation. " +
-                                        "Try adding the option: -H:AdditionalSecurityProviders=" + providerFQN + " and rebuild the image.");
+        return JceProviderVerificationSupport.getVerificationResult(p);
     }
 }
 
+/* The provider-construction path is identical in explicit and legacy run-time initialization. */
 @TargetClass(className = "sun.security.jca.ProviderConfig", onlyWith = SecurityProvidersInitializedAtRunTime.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_security_jca_ProviderConfig {
@@ -121,11 +87,17 @@ final class Target_sun_security_jca_ProviderConfig {
     @Alias //
     String provName;
 
+    @Alias //
+    String argument;
+
     @Alias//
     private static sun.security.util.Debug debug;
 
     @Alias//
     private Provider provider;
+
+    /** The descriptor selected for a cached JDK-managed provider, before configure(). */
+    @Inject private SecurityProviderRuntimeState.ConfiguredProviderInfo selectedProvider;
 
     @Alias//
     private boolean isLoading;
@@ -147,19 +119,33 @@ final class Target_sun_security_jca_ProviderConfig {
     @Substitute
     @SuppressFBWarnings(value = "DC_DOUBLECHECK", justification = "This double-check is implemented correctly and is intentional.")
     Provider getProvider() {
-        if (provider != null) {
+        if (provider != null && selectedProvider == null) {
             return provider;
         }
         synchronized (this) {
+            SecurityProviderRuntimeState.ConfiguredProviderInfo configuredProvider = SecurityProviderRuntimeState.getConfiguredProvider(provName);
             if (provider != null) {
-                return provider;
+                if (selectedProvider == null || configuredProvider != null && selectedProvider == configuredProvider) {
+                    return provider;
+                }
+                // §FS-002-security-providers.1.5: Reevaluate a cached name after activation.
+                provider = null;
+            }
+            String configuredProviderClassName = configuredProvider != null ? configuredProvider.providerClassName() : null;
+            String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(provName);
+            String providerClassName = configuredProviderClassName != null ? configuredProviderClassName
+                            : builtInProviderClassName != null ? builtInProviderClassName : provName;
+            // §FS-002-security-providers.6.1
+            // Omit unregistered providers from the run-time list.
+            if (!SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName)) {
+                return null;
             }
             if (!shouldLoad()) {
                 return null;
             }
             // Create providers which are in java.base directly
-            if (SecurityProvidersSupport.isBuiltInProvider(provName)) {
-                provider = SecurityProvidersSupport.singleton().loadBuiltInProvider(provName, debug);
+            if (BuiltInSecurityProviderLoader.isBuiltIn(provName)) {
+                provider = BuiltInSecurityProviderLoader.load(provName, debug);
             } else {
                 if (isLoading) {
                     /*
@@ -176,7 +162,16 @@ final class Target_sun_security_jca_ProviderConfig {
                 try {
                     isLoading = true;
                     tries++;
-                    provider = doLoadProvider();
+                    if (configuredProviderClassName != null) {
+                        /* §FS-002-security-providers.1.2, §FS-002-security-providers.6.1:
+                         * ordered retained descriptors, with the JDK ServiceLoader recursion and
+                         * retry state machine. */
+                        selectedProvider = configuredProvider;
+                        provider = SecurityProviderRuntimeAccess.loadRegisteredConfiguredProvider(provName, configuredProviderClassName,
+                                        configuredProvider.effectiveConstructionClassName(), argument);
+                    } else {
+                        provider = doLoadProvider();
+                    }
                 } finally {
                     isLoading = false;
                 }
@@ -184,41 +179,7 @@ final class Target_sun_security_jca_ProviderConfig {
         }
         return provider;
     }
-}
 
-@TargetClass(className = "sun.security.jca.ProviderList", onlyWith = SecurityProvidersInitializedAtRunTime.class)
-@SuppressWarnings({"unused", "static-method"})
-final class Target_sun_security_jca_ProviderList {
-
-    @Alias //
-    private Target_sun_security_jca_ProviderConfig[] configs;
-
-    @Alias
-    private native Provider getProvider(int index);
-
-    @Alias
-    private native int getIndex(String name);
-
-    @Substitute
-    public Provider getProvider(String name) {
-        int index = getIndex(name);
-        if (index >= 0) {
-            return getProvider(index);
-        }
-        for (Target_sun_security_jca_ProviderConfig config : configs) {
-            String configuredProviderName = config.provName;
-            String providerName = SecurityProvidersSupport.getBuiltInProviderName(configuredProviderName);
-            String providerFQName = SecurityProvidersSupport.getBuiltInProviderClassName(configuredProviderName);
-            boolean matches = configuredProviderName.equals(name) || (providerName != null && providerName.equals(name)) || (providerFQName != null && providerFQName.equals(name));
-            if (matches) {
-                if (SecurityProvidersSupport.singleton().isMissingBuiltInProvider(configuredProviderName)) {
-                    throw SecurityProvidersSupport.missingBuiltInProvider(configuredProviderName);
-                }
-                return config.getProvider();
-            }
-        }
-        return null;
-    }
 }
 
 @SuppressWarnings("unused")

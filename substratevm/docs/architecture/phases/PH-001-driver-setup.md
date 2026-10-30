@@ -1,6 +1,4 @@
-# Driver Setup
-
-## Purpose
+# PH-001-driver-setup: Driver Setup
 
 The driver functionality is realized via the `native-image` tool executable. This setup allows the
 driver to compute the builder module path, JVM flags, system properties, and environment before the
@@ -21,12 +19,24 @@ This phase is responsible for:
   bundle-root directory;
 - starting the builder JVM with a compact argument file and an image-builder argument file.
 
-## Inputs and Entry State
+## system-overview: System Overview
+
+<!-- grund:fmt off -->
+<pre>
+ arguments, native-image.properties ──► ┌──────────────┐ ──► §PH-002.entry
+                                        │ Driver Setup │
+                                        │ §PH-001      │
+                                        └──────────────┘
+ where: driver process §AR-001.design.1.1 · launches the builder §AR-001.design.2.1
+</pre>
+<!-- grund:fmt on -->
+
+## entry: Inputs and Entry State
 
 The driver receives:
 
 - command-line arguments passed to `native-image`;
-- the GraalVM installation layout, from which [`BuildConfiguration`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java)
+- the GraalVM installation layout, from which [`BuildConfiguration`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java)
   derives the Java executable, builder module path, upgrade module path, and C-library paths;
 - application classpath and module-path entries (as part of the command-line arguments);
 - Native Image configuration metadata discovered under `META-INF/native-image` in class- and module-path entries,
@@ -43,7 +53,7 @@ At entry, command-line arguments, embedded configuration, macro options, environ
 and manifest attributes are still raw inputs.
 No hosted builder classes, application classes, or image classes have been loaded by the builder JVM.
 
-## Results and Completion States
+## exit: Results and Completion States
 
 The phase produces:
 
@@ -65,37 +75,37 @@ The phase produces:
 Driver-only commands and options are handled locally or translated into builder arguments.
 The launched builder JVM performs the subsequent hosted phases; that work is outside driver setup.
 
-## Main Classes
+## components: Main Classes
 
 Core anchors:
 
-- [`NativeImage`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java) owns the external
+- [`NativeImage`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java) owns the external
   `native-image` launcher, option processing, builder JVM command creation, and process execution.
-- [`APIOptionHandler`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/APIOptionHandler.java) maps public
+- [`APIOptionHandler`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/APIOptionHandler.java) maps public
   `native-image` options to builder arguments and validates option scope.
-- [`DefaultOptionHandler`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/DefaultOptionHandler.java) handles
+- [`DefaultOptionHandler`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/DefaultOptionHandler.java) handles
   built-in command-line options such as classpath, module path, module exports, and Java arguments.
-- [`MacroOptionHandler`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/MacroOptionHandler.java) expands macro
+- [`MacroOptionHandler`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/MacroOptionHandler.java) expands macro
   options and their associated property files into builder arguments.
-- [`BundleSupport`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/BundleSupport.java) orchestrates
+- [`BundleSupport`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/BundleSupport.java) orchestrates
   `--bundle-create` and `--bundle-apply`, staging, argument and environment capture/replay,
   input/output substitution, archive creation, and post-builder finalization.
 
-## Control Flow
+## flow: Control Flow
 
 The normal driver flow is:
 
-1. [`NativeImage.main(...)`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java) creates a [`BuildConfiguration`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java) from raw command-line arguments and calls
+1. [`NativeImage.main(...)`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java) creates a [`BuildConfiguration`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java) from raw command-line arguments and calls
    `performBuild(...)`.
 
 2. `build(...)` handles immediate tool commands such as `--help`, `--help-extra`, and `--version`.
-   If the invocation is a real image build, it creates a [`NativeImage`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java) instance.
+   If the invocation is a real image build, it creates a [`NativeImage`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java) instance.
 
 3. `prepareImageBuildArgs(...)` appends the default builder JVM arguments and initial image classpath entries to the
    driver’s argument lists. These are later used to construct the `java` invocation that starts the image builder:
    - stack size and default memory flags;
    - GraalVM vendor/version properties;
-   - build-time [`ImageInfo`](../../../sdk/src/org.graalvm.nativeimage/src/org/graalvm/nativeimage/ImageInfo.java) property;
+   - build-time [`ImageInfo`](../../../../sdk/src/org.graalvm.nativeimage/src/org/graalvm/nativeimage/ImageInfo.java) property;
    - custom system class loader and common-pool handler/thread factory;
    - `-Xshare:off`;
    - image classpath entries from the build configuration.
@@ -104,13 +114,13 @@ The normal driver flow is:
 
 4. `completeImageBuild(...)` completes driver-side preparation and calls `buildImage(...)`:
    1. It processes user and property-file arguments through `processNativeImageArgs(...)` and
-      [`NativeImageArgsProcessor`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java).
+      [`NativeImageArgsProcessor`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java).
       `processNativeImageArgs(...)` creates the argument processor and invokes `apply(false)`.
       Argument processing occurs in two stages:
-      - [`CmdLineOptionHandler`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/CmdLineOptionHandler.java)
+      - [`CmdLineOptionHandler`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/CmdLineOptionHandler.java)
         consumes command-line options that affect driver state, including bundle options, and
         delegates to
-        [`BundleSupport.create(...)`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/BundleSupport.java).
+        [`BundleSupport.create(...)`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/BundleSupport.java).
         - `--bundle-apply` expands the archive, restores arguments, environment variables, and path
           mappings, rewrites paths for the current host, and injects the stored arguments back into
           the argument queue.
@@ -145,33 +155,33 @@ The normal driver flow is:
     completion.
 
 7. Afterwards,
-    [`BundleSupport.complete()`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/BundleSupport.java)
+    [`BundleSupport.complete()`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/BundleSupport.java)
     copies staged outputs to their external destination and writes or updates the bundle archive,
     including the launcher, metadata, arguments, environment, path maps, and container
     configuration.
 
 8. The driver interprets the builder exit status.
-    [`REBUILD_AFTER_ANALYSIS`](../../src/com.oracle.svm.core/src/com/oracle/svm/core/util/ExitStatus.java)
+    [`REBUILD_AFTER_ANALYSIS`](../../../src/com.oracle.svm.core/src/com/oracle/svm/core/util/ExitStatus.java)
     recursively starts a second build with the rebuild marker set.
     Builder errors, out-of-memory status, and unexpected status values are reported by the driver.
 
-## Key Data Structures
+## data: Key Data Structures
 
-- [`BuildConfiguration`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java): immutable configuration view for the launcher, including raw build
+- [`BuildConfiguration`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java): immutable configuration view for the launcher, including raw build
   arguments, Java home/executable, builder module paths, C-library paths, temporary directories, and
   host flag policy.
-- [`NativeImageArgsProcessor`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java): two-stage argument queue that lets command-line handlers consume
+- [`NativeImageArgsProcessor`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java): two-stage argument queue that lets command-line handlers consume
   driver options first, then lets registered option handlers translate remaining arguments into
   builder arguments.
-- [`ArgumentQueue`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java) and [`ArgumentEntry`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java): preserve argument order and option origin while handlers
+- [`ArgumentQueue`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java) and [`ArgumentEntry`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/NativeImage.java): preserve argument order and option origin while handlers
   consume, requeue, or transform options.
-- [`APIOptionHandler.OptionInfo`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/APIOptionHandler.java): metadata for public API options extracted from hosted option
+- [`APIOptionHandler.OptionInfo`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/APIOptionHandler.java): metadata for public API options extracted from hosted option
   descriptors and used to transform user-facing options into builder arguments.
 - `imageBuilderJavaArgs`: JVM arguments for the builder process.
 - `imageBuilderArgs`: hosted/runtime image-builder arguments passed to
-  [`NativeImageGeneratorRunner`](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGeneratorRunner.java).
+  [`NativeImageGeneratorRunner`](../../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/NativeImageGeneratorRunner.java).
 - `imageClasspath` and `imageModulePath`: application inputs that the builder will load through the
   Native Image class loader.
-- [`BundlePathMap`](../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/BundlePathMap.java): optional path
+- [`BundlePathMap`](../../../src/com.oracle.svm.driver/src/com/oracle/svm/driver/BundlePathMap.java): optional path
   rewriting and container support used when a build is recorded or replayed as a bundle.
 - `ProcessBuilder`: final process launch model for the builder JVM.

@@ -385,7 +385,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 }
                 expectedConfigModifiedBefore = getMostRecentlyModified(configOutputDirPath, getMostRecentlyModified(configOutputLockFilePath, null));
             } catch (Throwable t) {
-                return error(AGENT_ERROR, t.toString());
+                return error(AGENT_ERROR, "configuration writer initialization failed: " + t);
             }
         } else {
             try {
@@ -394,7 +394,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 tracer = writer;
                 tracingResultWriter = writer;
             } catch (Throwable t) {
-                return error(AGENT_ERROR, t.toString());
+                return error(AGENT_ERROR, "trace writer initialization failed: " + t);
             }
         }
 
@@ -406,12 +406,12 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             BreakpointInterceptor.onLoad(jvmti, callbacks, tracer, this, interceptedStateSupplier,
                             experimentalClassLoaderSupport, experimentalClassDefineSupport, experimentalUnsafeAllocationSupport, trackReflectionMetadata);
         } catch (Throwable t) {
-            return error(AGENT_ERROR, t.toString());
+            return error(AGENT_ERROR, "breakpoint interceptor initialization failed: " + t);
         }
         try {
             JniCallInterceptor.onLoad(tracer, this, interceptedStateSupplier);
         } catch (Throwable t) {
-            return error(AGENT_ERROR, t.toString());
+            return error(AGENT_ERROR, "JNI call interceptor initialization failed: " + t);
         }
 
         setupExecutorServiceForPeriodicConfigurationCapture(configWritePeriod, configWritePeriodInitialDelay);

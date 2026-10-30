@@ -45,11 +45,31 @@ import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 public final class MissingReflectionRegistrationUtils extends MissingRegistrationUtils {
 
     public static void reportClassAccess(String className) {
+        reportClassAccess(className, null);
+    }
+
+    /** Reports missing class access using an explicitly identified dynamic-access caller. */
+    public static void reportClassAccess(String className, StackTraceElement responsibleClass) {
         String json = elementToJSON(namedConfigurationType(className));
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
                         reflectionError("access the class", quote(className), json),
                         Class.class, null, className, null);
-        report(exception);
+        if (responsibleClass == null) {
+            report(exception);
+        } else {
+            MissingRegistrationUtils.report(exception, responsibleClass);
+        }
+    }
+
+    /** §FS-002-security-providers.3.3: Report the selected path without loading or constructing it. */
+    public static void reportProviderConstructionAccess(String providerClassName, String constructionClassName, String methodName, StackTraceElement responsibleClass) {
+        ConfigurationType type = namedConfigurationType(constructionClassName);
+        addMethod(type, methodName, new Class<?>[0]);
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
+                        reflectionError("invoke the construction path for security provider", quote(providerClassName) + " (" + constructionClassName + "#" + methodName + ")",
+                                        elementToJSON(type)),
+                        "<init>".equals(methodName) ? Constructor.class : Method.class, null, methodName, new Class<?>[0]);
+        MissingRegistrationUtils.report(exception, responsibleClass);
     }
 
     public static MissingReflectionRegistrationError reportUnsafeAllocation(Class<?> clazz) {

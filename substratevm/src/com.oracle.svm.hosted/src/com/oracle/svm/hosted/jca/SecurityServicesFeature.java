@@ -1,0 +1,1723 @@
+/*
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.svm.hosted.jca;
+
+import static com.oracle.graal.pointsto.ObjectScanner.OtherReason;
+import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+import static com.oracle.svm.hosted.jca.SecurityServicesFeature.SecurityServicesPrinter.dedent;
+import static com.oracle.svm.hosted.jca.SecurityServicesFeature.SecurityServicesPrinter.indent;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.security.AlgorithmParameterGenerator;
+import java.security.AlgorithmParameters;
+import java.security.KeyFactory;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.MessageDigest;
+import java.security.Provider;
+import java.security.Provider.Service;
+import java.security.SecureRandom;
+import java.security.Security;
+import java.security.Signature;
+import java.security.cert.CertPathBuilder;
+import java.security.cert.CertPathValidator;
+import java.security.cert.CertStore;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
+import java.util.ServiceConfigurationError;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+import javax.crypto.Cipher;
+import javax.crypto.KEM;
+import javax.crypto.KeyAgreement;
+import javax.crypto.KeyGenerator;
+import javax.crypto.Mac;
+import javax.crypto.SecretKeyFactory;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import javax.security.auth.callback.CallbackHandler;
+import javax.security.auth.login.Configuration;
+
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+
+import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.FutureDefaultsOptions;
+import com.oracle.svm.core.OS;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.core.jdk.SecurityProviderRuntimeAccess;
+import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
+import com.oracle.svm.core.jdk.SecuritySubstitutions;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.InternalReflectiveAccess;
+import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.hosted.substitute.DeletedElementException;
+import com.oracle.svm.shared.BuildPhaseProvider;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.security.ProviderConstruction;
+import com.oracle.svm.shared.security.SecurityProviderCatalog;
+import com.oracle.svm.shared.util.ModuleSupport;
+import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
+import com.oracle.svm.util.OriginalMethodProvider;
+import com.oracle.svm.util.TypeResult;
+import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
+
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.options.Option;
+import jdk.internal.access.SharedSecrets;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.security.jca.ProviderList;
+import sun.security.jca.Providers;
+import sun.security.provider.NativePRNG;
+import sun.security.x509.OIDMap;
+
+/// AR-004-security-providers: Security Provider Architecture
+///
+/// The feature records at image build time which security providers the JDK may construct, which
+/// provider services reflection may instantiate, and which application-created providers JCE may
+/// accept. Three analysis signals produce those results:
+///
+/// ```text
+/// Build-time signal                    Recorded result
+/// -----------------------------------------------------------------------------
+/// selected construction invocation -> JDK-constructible provider + full catalog
+/// reachable JCA service (legacy) ----> provider + services of the reached type
+/// instantiated Provider subtype -----> application-provider verification only
+/// ```
+///
+/// At image build time, {@link SecurityServicesFeature#providerRegistrationPlan} interprets
+/// reflection metadata, and {@link SecurityProviderRegistrationPlanner#processNewProviders}
+/// combines it with instantiation signals. Complete plans go to
+/// {@link SecurityProviderCatalogRegistrar#includeProviderClass}; verification-only plans go to
+/// {@link SecurityProviderCatalogRegistrar#registerApplicationSuppliedProviderClass}. Legacy
+/// {@link SecurityServicesFeature#registerService} inclusion bypasses the planner and goes directly
+/// to {@link SecurityProviderCatalogRegistrar#includeProviderForLegacyService}.
+///
+/// At run time, {@link SecurityProviderRuntimeAccess#isJdkAcquirable} gates JDK-managed provider
+/// construction. Application-supplied provider objects instead use
+/// {@link com.oracle.svm.core.jdk.JceProviderVerificationSupport#getVerificationResult
+/// getVerificationResult} for JCE verification; they do not require reflective construction.
+/// This architecture implements §FS-002-security-providers.
+///
+/// ## system-overview: System Overview
+///
+/// <pre>
+/// reflection metadata -+  builder §AR-002, during analysis §PH-004
+/// Provider instances --+-> planner -> catalog registrar -> run-time manifest
+///                                                              | build/run §AR-001.design.2.2
+///                                                              v
+///          generated image §AR-003:  acquisition filter <-- JDK-managed lookups
+///                                    JCE verification   <-- provider-object calls
+/// where: a feature §AR-002.design.4 ; behavior §FS-002 ; legacy retires per §AR-004.design.8
+/// </pre>
+///
+/// ## terminology: Terminology
+///
+/// Provider terms follow §FS-002-security-providers.terminology.
+///
+/// - **Complete plan**: makes a provider JDK-constructible and registers its full service catalog.
+/// - **Verification-only plan**: records only the JCE verification outcome of an
+///   application-supplied provider.
+/// - **Run-time manifest**: the layered, class-keyed record of plan outcomes.
+/// - **Acquisition kind**: {@code JDK_CONSTRUCTIBLE} or {@code APPLICATION_SUPPLIED_ONLY}.
+/// - **Registration chokepoint**: the single production writer of the manifest.
+/// - **Acquisition filter**: the single run-time gate for JDK-managed acquisition.
+/// - **Provider mode**: a {@link SecurityProviderMode}; the {@code LEGACY_*} modes exist only for
+///   §FS-002-security-providers.6.
+///
+/// ## north-star: North Star
+///
+/// After the transition, the feature has one mode, {@code METADATA_RUN_TIME}: invocation metadata for
+/// a configured or service-declared provider's JDK-selected construction path makes it
+/// JDK-constructible, and instantiation of a
+/// {@link Provider} subtype is the only signal that records application-supplied verification.
+/// The planner, the catalog registrar, the run-time manifest, and the acquisition filter are the
+/// whole pipeline. {@link SecurityProviderMode}, {@link LegacySecurityProviderCompatibility}, the
+/// deprecated provider options, service-reachability inclusion, and the legacy substitution files
+/// are removed without editing any of those four components;
+/// §AR-004-security-providers.design.8 keeps that boundary.
+///
+/// ## design: Design
+///
+/// The implemented design, including the transition modes that the north star retires.
+///
+/// ### design.1: Supported Transition Modes
+///
+/// {@link SecurityProviderMode} represents the three supported combinations of provider inclusion
+/// and provider-list initialization. Explicit registration depends on run-time provider-list
+/// initialization. Hosted components query this mode instead of reading future-default options
+/// independently. Substitutions whose implementation differs by mode use build-time predicates, so
+/// an application cannot change image-build policy through a run-time system property. This
+/// realizes §FS-002-security-providers.6.
+///
+/// ### design.2: Registration Chokepoint and Acquisition Filter
+///
+/// {@link SecurityProviderRegistrationPlanner} converts reflection registrations and the
+/// transition-only compatibility signal into either a complete or verification-only plan.
+/// The deprecated additional-provider option registers reflection metadata in every mode. In
+/// explicit registration mode, it also requests the same complete plan directly. In legacy modes,
+/// the compatibility signal preserves JDK construction eligibility without requiring successful
+/// provider construction during the image build solely because the option names the provider. That
+/// bridge is confined to {@link LegacySecurityProviderCompatibility} and realizes
+/// §FS-002-security-providers.6.5.
+/// {@link SecurityProviderCatalogRegistrar#writeProviderManifest} is the sole production chokepoint
+/// that writes JDK-managed provider eligibility or an application-supplied verification outcome to
+/// {@link SecurityProviderRuntimeState}. Registration metadata emitted while realizing a complete
+/// plan is an output and is not reinterpreted as a new application signal. A feature that adds a
+/// permanent JDK-managed acquisition signal must register reflective access and must not write the
+/// manifest directly. This structurally discharges §AR-004-security-providers.requirements.1.
+///
+/// Every hosted-list filter, run-time-list decision, and direct JDK construction passes through
+/// {@link SecurityProviderRuntimeAccess#passesJdkAcquisitionFilter}. Run-time callers resolve
+/// eligibility from the layered manifest through
+/// {@link SecurityProviderRuntimeAccess#isJdkAcquirable}; the hosted list supplies the completed
+/// catalog plan. In explicit registration mode, the boundary rejects every provider for which the
+/// chokepoint did not record a complete, JDK-constructible plan. A transition-only legacy entry may
+/// instead expose the independently retained services of a provider named by the deprecated option.
+/// This structurally discharges
+/// §AR-004-security-providers.requirements.2.
+///
+/// ### design.3: Hosted Registration Components
+///
+/// {@link SecurityServicesFeature} coordinates the feature lifecycle. The registration planner owns
+/// provider intent and iteration-safe candidate processing. The catalog registrar constructs
+/// eligible providers, registers their service catalogs, and owns every production manifest write.
+/// {@link LegacySecurityProviderCompatibility} owns deprecated options and service-driven inclusion.
+/// Provider code accesses reflection registrations through a narrow query rather than the concrete
+/// metadata builder.
+///
+/// ### design.4: Run-Time Manifest
+///
+/// {@link SecurityProviderRuntimeState} owns the layered, typed manifest written by hosted
+/// registration. Its read operations merge all layer singletons, and reflection-registration queries
+/// likewise include metadata persisted by earlier layers. Each entry combines whether the JDK may
+/// construct the provider with the preserved JCE verification outcome. An application-supplied
+/// provider carries verification information derived from instantiation reachability without being
+/// marked as JDK-constructible or reflection-registered. The manifest is keyed by provider class
+/// name, as required by §FS-002-security-providers.4.3.
+///
+/// ### design.5: Run-Time Access Services
+///
+/// {@link SecurityProviderRuntimeState} owns manifest storage,
+/// {@link com.oracle.svm.core.jdk.BuiltInSecurityProviderLoader BuiltInSecurityProviderLoader} owns
+/// JDK aliases and construction, {@link SecurityProviderRuntimeAccess} owns the acquisition filter,
+/// tracing, and missing-registration diagnostics, and
+/// {@link com.oracle.svm.core.jdk.JceProviderVerificationSupport JceProviderVerificationSupport}
+/// translates manifest outcomes to the JDK contract. Build-time-list filtering and run-time-list
+/// construction both consume eligibility produced by the same catalog-registration chokepoint.
+/// Run-time configured-list construction passes each {@code ProviderConfig} argument to
+/// {@link Provider#configure} and retains the returned instance, preserving independent same-class
+/// entries. Provider construction metadata comes from reflective construction operations and
+/// supported cached-acquisition hooks. A cached lookup records its selected path without creating
+/// another provider; search-only visits do not receive acquisition grants.
+/// Service tracing records the actual implementation and constructor operations, including cached
+/// constructors and candidates rejected after construction, as required by
+/// §FS-002-security-providers.5.1.
+///
+/// ### design.6: Service Descriptors
+///
+/// Explicit provider registration preserves {@link Provider} descriptors without treating them as
+/// provider-registration signals. Legacy suppression remains part of the compatibility policy. This
+/// realizes §FS-002-security-providers.6.2.
+///
+/// ### design.7: Concurrent Analysis
+///
+/// Provider subtype callbacks collect reflection-registration candidates and attach an analysis
+/// instantiation callback to each candidate. The instantiation callback covers both reachable
+/// allocations and image-heap instances. A serialized feature pass realizes plans or
+/// verification-only outcomes and requests additional analysis iterations. Callbacks do not
+/// schedule iterations directly.
+///
+/// ### design.8: Retirement Boundary
+///
+/// Deprecated provider options and service-reachability inclusion are confined to
+/// {@link LegacySecurityProviderCompatibility}. Removing compatibility behavior does not change the
+/// planner, catalog registrar, run-time manifest, or planned-default substitutions. At run time,
+/// planned-default substitutions are grouped behind
+/// {@link com.oracle.svm.core.jdk.ExplicitSecurityProviderRegistration}; substitutions that preserve
+/// earlier build-time or run-time provider behavior use complementary legacy predicates. Mechanics
+/// whose bodies are identical in both run-time initialization modes remain shared. Targets used
+/// only for compatibility are isolated in legacy substitution files, so removing either mode does
+/// not require editing the planned-default or shared substitution bodies. The successful-selection
+/// substitution is also shared because tracing and provider-object validation apply independently
+/// of provider-list initialization mode.
+///
+/// <p>
+/// This feature automatically registers security providers and their services for reflection and
+/// JNI access, ensuring they are available at run time.
+///
+/// <p>
+/// The feature distinguishes between providers that are initialized at build time and those that
+/// are initialized at run time. This distinction is essential because certain providers may
+/// perform sensitive operations. Right now, all providers are initialized build-time by default,
+/// but that can be changed using
+/// <code>--future-defaults=run-time-initialize-security-providers</code>
+///
+/// <p>
+/// The initialization strategy is:
+/// <ul>
+/// <li>Build-time Initialization: Most cryptographic infrastructure is initialized at build-time.
+/// This includes reflection metadata and service registration.</li>
+/// <li>Run-time Initialization: Classes that rely on system resources (e.g., {@code /dev/urandom},
+/// keystore passwords, or native Windows libraries) are marked for runtime initialization or the
+/// providers (if --future-defaults is used).</li>
+/// </ul>
+///
+/// <p>
+/// This feature is automatically registered. Legacy reachability-based service registration can be
+/// controlled via the deprecated {@link Options#EnableSecurityServicesFeature} option. For
+/// debugging or detailed inspection, tracing can be enabled via the
+/// {@link Options#TraceSecurityServices} option.
+///
+/// ## requirements: Requirements
+///
+/// The following obligations apply universally to the implementation.
+///
+/// ### requirements.1: Closure of Registration Signals
+///
+/// Every signal that grants JDK-managed provider eligibility must pass through one registration
+/// chokepoint. A new path must update this architecture record.
+///
+/// ### requirements.2: The Acquisition Boundary
+///
+/// Every configured-list construction, provider lookup, and direct JDK construction path must pass
+/// through one acquisition filter. With explicit registration, the filter must reject any provider
+/// for which the registration chokepoint did not record a complete, JDK-constructible plan. In a
+/// legacy mode, the filter may also admit a provider named by the deprecated additional-provider
+/// option under §FS-002-security-providers.6.5; that provider exposes only services retained by the
+/// applicable legacy rules.
+///
+/// ### requirements.3: Application-Supplied Verification
+///
+/// For every concrete {@link Provider} subtype that analysis marks instantiated, whether through
+/// reachable allocation or an image-heap instance, the feature must record successful JCE
+/// recognition by provider class. The resulting manifest entry with the
+/// {@code APPLICATION_SUPPLIED_ONLY} acquisition kind must not register reflective construction,
+/// make the provider JDK-constructible, retain services that no independent signal retains, or
+/// inherit the verification outcome of a configured-list instance of the same class.
+@AutomaticallyRegisteredFeature
+public class SecurityServicesFeature extends JNIRegistrationUtil implements InternalFeature {
+
+    public static class Options {
+        private static final String ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_HELP = "Deprecated. Register the providers that implement the custom service type for reflection instead.";
+        private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_HELP = "Deprecated. With explicit security-provider registration, use the tracing agent, register invocation of the JDK-selected " +
+                        "constructor or provider() factory for reflection, or build with -H:Preserve=all.";
+        private static final String ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_MESSAGE = "Register invocation of each provider's JDK-selected constructor or provider() factory in reachability-metadata.json, for example " +
+                        "{\"reflection\":[{\"type\":\"<fully-qualified-provider-class-name>\",\"methods\":[{\"name\":\"<init>\",\"parameterTypes\":[]}]}]} and enable --future-defaults=metadata-security-provider-registration; " +
+                        "the Tracing Agent generates this metadata automatically. The deprecated option remains supported in compatibility mode";
+        private static final String ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_MESSAGE = "Register each provider that implements the custom service type and its supported construction path " +
+                        "in reachability-metadata.json, or collect the metadata with the Tracing Agent.";
+
+        @Option(help = "Enable legacy reachability-based registration of security services.", deprecated = true, deprecationMessage = "Use security-provider reflection metadata instead.")//
+        public static final HostedOptionKey<Boolean> EnableSecurityServicesFeature = new HostedOptionKey<>(true);
+
+        @Option(help = "Enable tracing of security services automatic registration.")//
+        public static final HostedOptionKey<Boolean> TraceSecurityServices = new HostedOptionKey<>(false);
+
+        @Option(help = ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_HELP, deprecated = true, deprecationMessage = ADDITIONAL_SECURITY_SERVICE_TYPES_DEPRECATION_MESSAGE)//
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AdditionalSecurityServiceTypes = new HostedOptionKey<>(
+                        AccumulatingLocatableMultiOptionValue.Strings.build());
+
+        @Option(help = ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_HELP, deprecated = true, deprecationMessage = ADDITIONAL_SECURITY_PROVIDERS_DEPRECATION_MESSAGE)//
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AdditionalSecurityProviders = new HostedOptionKey<>(
+                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+    }
+
+    /*
+     * The providers names are defined in Java Cryptography Architecture Oracle Providers
+     * Documentation:
+     * https://docs.oracle.com/javase/8/docs/technotes/guides/security/SunProviders.html
+     * https://docs.oracle.com/en/java/javase/11/security/oracle-providers.html
+     *
+     * The security services names are defined in Java Cryptography Architecture Standard Algorithm
+     * Name Documentation:
+     * https://docs.oracle.com/javase/8/docs/technotes/guides/security/StandardNames.html.
+     * https://docs.oracle.com/en/java/javase/11/docs/specs/security/standard-names.html
+     */
+    private static final String SECURE_RANDOM_SERVICE = "SecureRandom";
+    private static final String GSS_API_MECHANISM_SERVICE = "GssApiMechanism";
+    private static final String SIGNATURE_SERVICE = "Signature";
+    private static final String CIPHER_SERVICE = "Cipher";
+    private static final String KEY_AGREEMENT_SERVICE = "KeyAgreement";
+    private static final String KEY_STORE = "KeyStore";
+    private static final String CERTIFICATE_FACTORY = "CertificateFactory";
+    private static final String JKS = "JKS";
+    private static final String X509 = "X.509";
+    private static final String[] emptyStringArray = new String[0];
+
+    /** The list of known service classes defined by the JCA. */
+    private static final List<Class<?>> knownServices;
+
+    private static final boolean isMscapiModulePresent;
+
+    static {
+        List<Class<?>> classList = new ArrayList<>(List.of(
+                        AlgorithmParameterGenerator.class, AlgorithmParameters.class,
+                        CertPathBuilder.class, CertPathValidator.class, CertStore.class, CertificateFactory.class,
+                        Cipher.class, Configuration.class, KEM.class, KeyAgreement.class, KeyFactory.class,
+                        KeyGenerator.class, KeyManagerFactory.class, KeyPairGenerator.class,
+                        KeyStore.class, Mac.class, MessageDigest.class, SSLContext.class,
+                        SecretKeyFactory.class, SecureRandom.class, Signature.class, TrustManagerFactory.class));
+
+        if (JVMCIReflectionUtil.bootModuleLayer().findModule("java.security.sasl").isPresent()) {
+            classList.add(ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslClientFactory"));
+            classList.add(ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslServerFactory"));
+        }
+        if (JVMCIReflectionUtil.bootModuleLayer().findModule("java.xml.crypto").isPresent()) {
+            classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.TransformService"));
+            classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.XMLSignatureFactory"));
+            classList.add(ReflectionUtil.lookupClass(false, "javax.xml.crypto.dsig.keyinfo.KeyInfoFactory"));
+        }
+        if (JVMCIReflectionUtil.bootModuleLayer().findModule("java.smartcardio").isPresent()) {
+            classList.add(ReflectionUtil.lookupClass(false, "javax.smartcardio.TerminalFactory"));
+        }
+
+        isMscapiModulePresent = JVMCIReflectionUtil.bootModuleLayer().findModule("jdk.crypto.mscapi").isPresent();
+
+        knownServices = Collections.unmodifiableList(classList);
+    }
+
+    private ImageClassLoader loader;
+    /** Given a service type will return its constructor parameters, if any. */
+    private Function<String, Class<?>> ctrParamClassAccessor;
+    /** Access Security.getSpiClass. */
+    private Method getSpiClassMethod;
+    /** All available services, organized by service type. */
+    private Map<String, EconomicSet<Service>> availableServices;
+
+    private final SecurityProviderRegistrationPlanner providerPlanner = new SecurityProviderRegistrationPlanner();
+    private SecurityProviderMode mode;
+
+    private Field verificationResultsField;
+    private Field providerListField;
+    private Field oidTableField;
+    private Field oidMapField;
+    private Field classCacheField;
+    private Field constructorCacheField;
+
+    private final ConcurrentHashMap<Object, Object> cachedVerificationCache = emptyVerificationCache();
+    private ProviderList cachedProviders;
+
+    private Class<?> jceSecurityClass;
+
+    private AnnotationSubstitutionProcessor substitutionProcessor;
+
+    private final ScanReason scanReason = new OtherReason("Manual rescan triggered from " + SecurityServicesFeature.class);
+
+    private final Map<String, List<Provider>> buildTimeProvidersByClassName = new HashMap<>();
+    /** Configured construction classes, keyed by the implementation returned after configure(). */
+    private final Map<Class<?>, List<Class<?>>> configuredProviderConstructionClasses = new HashMap<>();
+    private final Map<String, List<String>> configuredProviderArguments = new HashMap<>();
+    /** ServiceLoader declaration classes, in discovery order, keyed by returned implementation class. */
+    private final Map<Class<?>, List<Class<?>>> providerConstructionClasses = new HashMap<>();
+    private final Map<Class<?>, Integer> providerConstructionOrder = new HashMap<>();
+    private final List<ServiceProviderFactoryCandidate> unresolvedServiceProviderFactories = new ArrayList<>();
+    private SecurityProviderCatalogRegistrar catalogRegistrar;
+    private ReflectionHostedSupport reflectionHostedSupport;
+    private boolean preserveAll;
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess a) {
+        mode = SecurityProviderMode.current();
+        catalogRegistrar = new SecurityProviderCatalogRegistrar(this, buildTimeProvidersByClassName);
+        ImageSingletons.add(SecurityProviderRuntimeState.class, new SecurityProviderRuntimeState());
+
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
+        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
+                        "Force initialization of sun.security.krb5.KerberosSecrets.javaxSecurityAuthKerberosAccess");
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess a) {
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
+        JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
+        oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
+        oidMapField = access.findField(OIDMap.class, "oidMap");
+        if (mode.legacyBuildTime()) {
+            verificationResultsField = access.findField("javax.crypto.JceSecurity", "verificationResults");
+            providerListField = access.findField("sun.security.jca.Providers", "providerList");
+            classCacheField = access.findField(Service.class, "classCache");
+            constructorCacheField = access.findField(Service.class, "constructorCache");
+        } else {
+            SecurityProviderRuntimeState support = SecurityProviderRuntimeState.currentLayer();
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SecuritySubstitutions.class, false, "java.base", "sun.security.ec");
+            ResolvedJavaMethod sunECConstructor = constructor(a, "sun.security.ec.SunEC");
+            support.setSunECConstructor((Constructor<?>) OriginalMethodProvider.getJavaMethod(sunECConstructor));
+
+            Properties securityProperties = SharedSecrets.getJavaSecurityPropertiesAccess().getInitialProperties();
+            support.setSavedInitialSecurityProperties(securityProperties);
+
+            /*
+             * For the three providers below, their packages are explicitly initialized at build
+             * time in JdkInitializationFeature#afterRegistration. This unnecessarily includes them
+             * in the build-time initialization, so we need to mark them explicitly for run-time
+             * initialization instead.
+             */
+            rci.initializeAtRunTime("java.security.Security", FutureDefaultsOptions.RUN_TIME_INITIALIZE_SECURITY_PROVIDERS_REASON);
+            rci.initializeAtRunTime("sun.security.jca.Providers", FutureDefaultsOptions.RUN_TIME_INITIALIZE_SECURITY_PROVIDERS_REASON);
+            rci.initializeAtRunTime("sun.security.provider.certpath.ldap.JdkLDAP", FutureDefaultsOptions.RUN_TIME_INITIALIZE_SECURITY_PROVIDERS_REASON);
+        }
+
+        /*
+         * The SecureRandom implementations open the /dev/random and /dev/urandom files which are
+         * used as sources for entropy. These files are opened in the static initializers.
+         */
+        rci.initializeAtRunTime(NativePRNG.class, "for substitutions");
+        rci.initializeAtRunTime(NativePRNG.Blocking.class, "for substitutions");
+        rci.initializeAtRunTime(NativePRNG.NonBlocking.class, "for substitutions");
+
+        rci.initializeAtRunTime(type(access, "sun.security.provider.SeedGenerator"), "for substitutions");
+        rci.initializeAtRunTime(type(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
+
+        /*
+         * sun.security.provider.AbstractDrbg$SeederHolder has a static final EntropySource seeder
+         * field that needs to be initialized at run time because it captures the result of
+         * SeedGenerator.getSystemEntropy().
+         */
+        rci.initializeAtRunTime(type(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
+        if (isMscapiModulePresent) {
+            /* PRNG.<clinit> creates a Cleaner (see JDK-8210476), which starts its thread. */
+            rci.initializeAtRunTime(type(access, "sun.security.mscapi.PRNG"), "for substitutions");
+        }
+        rci.initializeAtRunTime(type(access, "sun.security.provider.FileInputStreamPool"), "for substitutions");
+        /* java.util.UUID$Holder has a static final SecureRandom field. */
+        rci.initializeAtRunTime(type(access, "java.util.UUID$Holder"), "for substitutions");
+
+        /* The classes below have a static final SecureRandom field. */
+        rci.initializeAtRunTime(type(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
+        rci.initializeAtRunTime(type(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
+        optionalType(access, "sun.security.krb5.Confounder").ifPresent(clazz -> rci.initializeAtRunTime(clazz, "for substitutions"));
+        optionalType(access, "sun.security.krb5.Config").ifPresent(clazz -> rci.initializeAtRunTime(clazz, "Reset the value of lazily initialized field sun.security.krb5.Config#singleton"));
+        if (OS.DARWIN.isCurrent()) {
+            optionalType(access, "sun.security.krb5.SCDynamicStoreConfig").ifPresent(clazz -> rci.initializeAtRunTime(clazz, "Loads a dynamic library and installs a native callback"));
+        }
+
+        rci.initializeAtRunTime(type(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
+
+        /*
+         * When SSLContextImpl$DefaultManagersHolder sets-up the TrustManager in its initializer it
+         * gets the value of the -Djavax.net.ssl.trustStore and -Djavax.net.ssl.trustStorePassword
+         * properties from the build machine. Running its initialization at run time is required to
+         * use the run time provided values.
+         */
+        rci.initializeAtRunTime(type(access, "sun.security.ssl.SSLContextImpl$DefaultManagersHolder"), "for reading properties at run time");
+
+        /*
+         * SSL debug logging enabled by javax.net.debug system property is set up during the class
+         * initialization.
+         */
+        rci.initializeAtRunTime(type(access, "sun.security.ssl.SSLLogger"), "for reading properties at run time");
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
+        loader = access.getImageClassLoader();
+        jceSecurityClass = loader.findClassOrFail("javax.crypto.JceSecurity");
+        substitutionProcessor = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
+
+        /* Ensure sun.security.provider.certpath.CertPathHelper.instance is initialized. */
+        access.ensureInitialized("java.security.cert.TrustAnchor");
+        /*
+         * Ensure jdk.internal.access.SharedSecrets.javaxCryptoSpecAccess is initialized before
+         * scanning.
+         */
+        access.ensureInitialized("javax.crypto.spec.SecretKeySpec");
+        /*
+         * Ensure jdk.internal.access.SharedSecrets.javaxCryptoSealedObjectAccess is initialized
+         * before scanning.
+         */
+        access.ensureInitialized("javax.crypto.SealedObject");
+
+        /*
+         * Ensure jdk.internal.access.SharedSecrets.javaSecuritySignatureAccess is initialized
+         * before scanning.
+         */
+        access.ensureInitialized("java.security.Signature");
+
+        /*
+         * Ensure all X509Certificate caches are initialized.
+         */
+        access.ensureInitialized("sun.security.util.AnchorCertificates");
+
+        initializeServiceRegistrationData();
+        preserveAll = access.getImageClassLoader().classLoaderSupport.isPreserveAll();
+        reflectionHostedSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
+        access.registerSubtypeReachabilityHandler((duringAccess, providerClass) -> {
+            addCandidateProviderClass(providerClass);
+            DuringAnalysisAccessImpl duringAccessImpl = (DuringAnalysisAccessImpl) duringAccess;
+            duringAccessImpl.getMetaAccess().lookupJavaType(providerClass).registerInstantiatedCallback(_ -> addInstantiatedProviderClass(providerClass));
+        }, Provider.class);
+        registerServiceProviderCandidates(access);
+        LegacySecurityProviderCompatibility.registerAdditionalProviders(access, providerClass -> {
+            if (shouldRegisterProviderClassForReflection(access, providerClass)) {
+                registerProviderClassForReflection(providerClass);
+                // §FS-002-security-providers.6.5: The deprecated option remains a complete
+                // registration signal in every transition mode.
+                providerPlanner.requestCompleteProvider(providerClass);
+            }
+        });
+        if (Options.EnableSecurityServicesFeature.getValue()) {
+            registerServiceReachabilityHandlers(access);
+        }
+
+        if (isPosix()) {
+            Optional<ResolvedJavaMethod> optMethodGetUnixInfo = optionalMethod(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo");
+            optMethodGetUnixInfo.ifPresent(m -> {
+                access.registerReachabilityHandler(analysisAccess -> linkJaas(analysisAccess), m);
+            });
+        }
+
+        if (isMscapiModulePresent) {
+            access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig,
+                            type(access, "sun.security.mscapi.SunMSCAPI"));
+        }
+
+        if (mode.legacyBuildTime()) {
+            access.registerFieldValueTransformer(providerListField, new FieldValueTransformerWithAvailability() {
+                // JVMCI migration blocked by GR-72131: Refactor security service code for project
+                // Terminus.
+                /*
+                 * We must wait until all providers have been registered before filtering the list.
+                 */
+                @Override
+                public boolean isAvailable() {
+                    return BuildPhaseProvider.isHostedUniverseBuilt();
+                }
+
+                @Override
+                public Object transform(Object receiver, Object originalValue) {
+                    if (cachedProviders != null) {
+                        if (SubstrateUtil.assertionsEnabled()) {
+                            var filteredProviders = filterProviderList(originalValue);
+                            assert cachedProviders.providers().equals(filteredProviders) : Assertions.errorMessage(cachedProviders.providers(), filteredProviders);
+                        }
+                        if (Options.TraceSecurityServices.getValue()) {
+                            ProviderList providerList = (ProviderList) originalValue;
+                            List<Provider> removedProviders = providerList.providers().stream().filter(p -> shouldRemoveProvider(p)).toList();
+                            traceRemovedProviders(removedProviders);
+                        }
+                    }
+                    /*
+                     * This object is manually rescanned during analysis to ensure its entire type
+                     * structure is part of the analysis universe.
+                     */
+                    return cachedProviders;
+                }
+            });
+
+            /*
+             * Verification outcomes are preserved separately by provider class, so this JDK cache
+             * is always empty. Keep one stable, immediately available object: application-layer
+             * constant relinking reads static-final fields before the hosted universe is built.
+             * The object is manually rescanned during analysis to ensure its entire type structure
+             * is part of the analysis universe.
+             */
+            access.registerFieldValueTransformer(verificationResultsField, (_, _) -> cachedVerificationCache);
+        }
+    }
+
+    private static ConcurrentHashMap<Object, Object> emptyVerificationCache() {
+        /*
+         * Verification outcomes used by the image live in SecurityProviderRuntimeState, keyed by
+         * provider class. The JDK's weak, provider-instance-keyed cache must not retain build-time
+         * provider objects in the image heap.
+         */
+        return new ConcurrentHashMap<>();
+    }
+
+    private List<Provider> filterProviderList(Object originalValue) {
+        // §FS-002-security-providers.6.4: The build-time list must not expose omitted providers.
+        return ((ProviderList) originalValue).providers().stream().filter(p -> !shouldRemoveProvider(p)).toList();
+    }
+
+    private boolean shouldRegisterProviderClassForReflection(BeforeAnalysisAccessImpl access, Class<?> providerClass) {
+        if (!Provider.class.isAssignableFrom(providerClass)) {
+            return false;
+        }
+        ResolvedJavaType providerType;
+        try {
+            providerType = access.findTypeByName(providerClass.getName());
+        } catch (UnsupportedPlatformException | DeletedElementException e) {
+            return false;
+        }
+        return providerType != null && access.getHostVM().platformSupported(providerType) && !substitutionProcessor.isDeleted(providerType);
+    }
+
+    public boolean shouldRemoveProvider(Provider p) {
+        return p == null || !SecurityProviderRuntimeAccess.passesJdkAcquisitionFilter(catalogRegistrar.isUsed(p));
+    }
+
+    private static void traceRemovedProviders(List<Provider> removedProviders) {
+        if (removedProviders == null || removedProviders.isEmpty()) {
+            trace("No security providers have been removed.");
+        } else {
+            trace("The following security providers were deemed to be unused and removed:");
+            SecurityServicesPrinter.indent();
+            trace("ProviderName - ProviderClass");
+            for (Provider p : removedProviders) {
+                trace("%s - %s", p.getName(), p.getClass().getName());
+            }
+            SecurityServicesPrinter.dedent();
+        }
+    }
+
+    private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
+        NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) a).getNativeLibraries();
+        /* Library sunmscapi depends on ncrypt and crypt32 */
+        nativeLibraries.addDynamicLibrary("ncrypt");
+        nativeLibraries.addDynamicLibrary("crypt32");
+
+        registerForThrowNew(a, "java.security.cert.CertificateParsingException", "java.security.InvalidKeyException",
+                        "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
+                        "java.security.SignatureException", "java.lang.OutOfMemoryError");
+
+        if (isMscapiModulePresent) {
+            /*
+             * JDK-6782021 changed the `loadKeysOrCertificateChains` method signature, so we try the
+             * new signature first and fall back to the old one in case we're on a JDK without the
+             * change.
+             */
+            a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
+                            optionalMethod(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class).orElseGet(() -> method(a, "sun.security.mscapi.CKeyStore",
+                                            "loadKeysOrCertificateChains", String.class)));
+            a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
+                            method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
+            a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,
+                            method(a, "sun.security.mscapi.CKeyStore", "storePrivateKey", String.class, byte[].class, String.class, int.class));
+            a.registerReachabilityHandler(SecurityServicesFeature::registerCPublicKeyOf,
+                            method(a, "sun.security.mscapi.CSignature", "importECPublicKey", String.class, byte[].class, int.class),
+                            method(a, "sun.security.mscapi.CSignature", "importPublicKey", String.class, byte[].class, int.class));
+        }
+    }
+
+    private static void registerLoadKeysOrCertificateChains(DuringAnalysisAccess a) {
+        JVMCIRuntimeJNIAccess.register(constructor(a, "java.util.ArrayList"));
+        JVMCIRuntimeJNIAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificate", byte[].class, Collection.class));
+        JVMCIRuntimeJNIAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificateChain", String.class, Collection.class));
+        JVMCIRuntimeJNIAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateKeyAndCertificateChain", boolean.class, String.class, long.class, long.class, int.class, Collection.class));
+    }
+
+    private static void registerGenerateCKeyPair(DuringAnalysisAccess a) {
+        JVMCIRuntimeJNIAccess.register(constructor(a, "sun.security.mscapi.CKeyPair", String.class, long.class, long.class, int.class));
+    }
+
+    private static void registerCPrivateKeyOf(DuringAnalysisAccess a) {
+        JVMCIRuntimeJNIAccess.register(method(a, "sun.security.mscapi.CPrivateKey", "of", String.class, long.class, long.class, int.class));
+    }
+
+    private static void registerCPublicKeyOf(DuringAnalysisAccess a) {
+        JVMCIRuntimeJNIAccess.register(method(a, "sun.security.mscapi.CPublicKey", "of", String.class, long.class, long.class, int.class));
+    }
+
+    private static void linkJaas(DuringAnalysisAccess a) {
+        JVMCIRuntimeJNIAccess.register(fields(a, "com.sun.security.auth.module.UnixSystem", "username", "uid", "gid", "groups"));
+    }
+
+    private static Iterable<Class<?>> computeKnownServices(BeforeAnalysisAccess access) {
+        return LegacySecurityProviderCompatibility.additionalServiceTypes(access, knownServices);
+    }
+
+    private Class<?> classSaslClient;
+    private Class<?> classSaslServer;
+
+    private void registerSASLReachabilityHandlers(BeforeAnalysisAccess access) {
+        /*
+         * Sasl does not conform to the JCA - the service has no getInstance method. We instead use
+         * the Sasl facade class for our reachability handlers.
+         */
+        String saslRegistrationFailureMessage = "Failed to enable automatic SASL provider registration: %s";
+        String saslClassName = "javax.security.sasl.Sasl";
+        try {
+            TypeResult<Class<?>> saslClassLookup = loader.findClass(saslClassName);
+            if (!saslClassLookup.isPresent()) {
+                trace(saslRegistrationFailureMessage, saslClassName);
+                return;
+            }
+
+            Class<?> saslClass = saslClassLookup.getOrFail();
+
+            classSaslClient = ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslClient");
+            classSaslServer = ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslServer");
+
+            Method createSaslClient = ReflectionUtil.lookupMethod(saslClass, "createSaslClient", String[].class, String.class, String.class, String.class, Map.class, CallbackHandler.class);
+            access.registerReachabilityHandler(a -> registerServices(a, createSaslClient, classSaslClient), createSaslClient);
+            Method createSaslServer = ReflectionUtil.lookupMethod(saslClass, "createSaslServer", String.class, String.class, String.class, Map.class, CallbackHandler.class);
+            access.registerReachabilityHandler(a -> registerServices(a, createSaslServer, classSaslServer), createSaslServer);
+        } catch (ReflectionUtil.ReflectionUtilError e) {
+            trace(saslRegistrationFailureMessage, e);
+        }
+    }
+
+    private void registerServiceReachabilityHandlers(BeforeAnalysisAccess access) {
+        /*
+         * The JCA defines the list of standard service classes available in the JDK. Each service
+         * class implements a series of getInstance() factory methods which return concrete service
+         * implementations, retrieved from the installed Provider objects. When a specific algorithm
+         * type is requested at run time, by calling one of the getInstance() methods, the JCA finds
+         * the corresponding implementation class by searching each provider's database and uses
+         * reflection to instantiate the concrete service class. This API is the recommended
+         * mechanism for requesting cryptographic services.
+         *
+         * The logic below registers reachability handlers for getInstance() methods of all service
+         * classes. When one of the getInstance() methods becomes reachable all concrete
+         * implementation classes corresponding to that service type are registered for reflection.
+         *
+         * See: https://docs.oracle.com/en/java/javase/11/security/index.html for more details.
+         */
+
+        for (Class<?> serviceClass : computeKnownServices(access)) {
+            for (Method method : serviceClass.getMethods()) {
+                if (method.getName().equals("getInstance")) {
+                    checkGetInstanceMethod(method);
+                    /* The handler will be executed only once if any of the methods is triggered. */
+                    access.registerMethodOverrideReachabilityHandler((a, t) -> registerServices(a, t, serviceClass), method);
+                }
+            }
+        }
+
+        if (ModuleLayer.boot().findModule("java.security.sasl").isPresent()) {
+            registerSASLReachabilityHandlers(access);
+        }
+        registerGSSReachabilityHandler(access);
+
+        /*
+         * Default SecureRandom acquisition does not use SecureRandom.getInstance(). Register its
+         * private common path directly: on Oracle JDK the SUN fast path also bypasses
+         * Provider.getDefaultSecureRandomService().
+         */
+        Method getDefaultPRNG = ReflectionUtil.lookupMethod(SecureRandom.class, "getDefaultPRNG", boolean.class, byte[].class);
+        access.registerReachabilityHandler(a -> registerServices(a, getDefaultPRNG, SecureRandom.class), getDefaultPRNG);
+    }
+
+    private void registerGSSReachabilityHandler(BeforeAnalysisAccess access) {
+        Class<?> gssManager = access.findClassByName("org.ietf.jgss.GSSManager");
+        if (gssManager == null) {
+            return;
+        }
+        Method getInstance = ReflectionUtil.lookupMethod(gssManager, "getInstance");
+        // The GSS facade uses Provider services but does not follow the JCA getInstance convention.
+        access.registerReachabilityHandler(a -> registerServices(a, getInstance, GSS_API_MECHANISM_SERVICE), getInstance);
+    }
+
+    private void initializeServiceRegistrationData() {
+        ctrParamClassAccessor = getConstructorParameterClassAccessor(loader);
+        getSpiClassMethod = getSpiClassMethod();
+        availableServices = computeAvailableServices();
+        buildTimeProvidersByClassName.clear();
+        configuredProviderConstructionClasses.clear();
+        configuredProviderArguments.clear();
+        providerConstructionClasses.clear();
+        providerConstructionOrder.clear();
+        unresolvedServiceProviderFactories.clear();
+        for (Provider provider : Security.getProviders()) {
+            String providerClassName = provider.getClass().getName();
+            buildTimeProvidersByClassName.computeIfAbsent(providerClassName, _ -> new ArrayList<>()).add(provider);
+            /* §FS-002-security-providers.6.1:
+             * Resolve configured names independently because a token may be a provider name or a
+             * ServiceLoader descriptor. */
+            SecurityProviderCatalogRegistrar.recordConfiguredProvider(provider);
+            // Configured providers can predate the subtype handler.
+            // §FS-002-security-providers.1.1: Reflection registration still controls inclusion.
+            addCandidateProviderClass(provider.getClass());
+        }
+        // §FS-002-security-providers.1.1, §FS-002-security-providers.1.2:
+        // Inventory the configured acquisition path without constructing another provider instance.
+        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), ProviderList.class);
+        Object[] configurations = ReflectionUtil.readField(ProviderList.class, "configs", Providers.getProviderList());
+        for (Object configuration : configurations) {
+            Provider provider = ReflectionUtil.readField(configuration.getClass(), "provider", configuration);
+            String token = ReflectionUtil.readField(configuration.getClass(), "provName", configuration);
+            String argument = ReflectionUtil.readField(configuration.getClass(), "argument", configuration);
+            if (!argument.isEmpty()) {
+                configuredProviderArguments.computeIfAbsent(token, _ -> new ArrayList<>()).add(argument);
+            }
+            String builtInClassName = SecurityProviderCatalog.getProviderClassName(token);
+            String constructionClassName = builtInClassName != null ? builtInClassName : token;
+            loader.findClass(constructionClassName).ifPresent(constructionClass -> {
+                if (ProviderConstruction.isProviderImplementationClass(constructionClass)) {
+                    configuredProviderConstructionClasses.computeIfAbsent(constructionClass, _ -> new ArrayList<>()).add(constructionClass);
+                }
+                if (provider != null && !provider.getClass().equals(constructionClass)) {
+                    configuredProviderConstructionClasses.computeIfAbsent(provider.getClass(), _ -> new ArrayList<>()).add(constructionClass);
+                }
+            });
+        }
+    }
+
+    private void registerServiceProviderCandidates(BeforeAnalysisAccess access) {
+        BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) access;
+        accessImpl.getImageClassLoader().classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
+            if (serviceName.equals(Provider.class.getName())) {
+                // §FS-002-security-providers.6.2:
+                // Inventory descriptors without executing provider code.
+                int descriptorOrder = 0;
+                for (String serviceProviderClassName : providers) {
+                    Class<?> serviceProviderClass = access.findClassByName(serviceProviderClassName);
+                    if (serviceProviderClass == null || !Modifier.isPublic(serviceProviderClass.getModifiers())) {
+                        descriptorOrder++;
+                        continue;
+                    }
+                    Method providerMethod = findProviderMethod(serviceProviderClass);
+                    if (providerMethod != null) {
+                        Class<?> returnType = providerMethod.getReturnType();
+                        if (ProviderConstruction.isProviderImplementationClass(returnType)) {
+                            registerServiceProviderConstructionCandidate(returnType, serviceProviderClass, descriptorOrder);
+                        } else {
+                            unresolvedServiceProviderFactories.add(new ServiceProviderFactoryCandidate(serviceProviderClass, providerMethod, descriptorOrder));
+                        }
+                    } else if (ProviderConstruction.isProviderImplementationClass(serviceProviderClass) && findNullaryConstructor(serviceProviderClass) != null) {
+                        registerServiceProviderConstructionCandidate(serviceProviderClass, serviceProviderClass, descriptorOrder);
+                    }
+                    descriptorOrder++;
+                }
+            }
+        });
+    }
+
+    private record ServiceProviderFactoryCandidate(Class<?> constructionClass, Method providerMethod, int descriptorOrder) {
+    }
+
+    private void registerServiceProviderConstructionCandidate(Class<?> providerClass, Class<?> constructionClass, int descriptorOrder) {
+        List<Class<?>> constructionClasses = providerConstructionClasses.computeIfAbsent(providerClass, _ -> new ArrayList<>());
+        if (!constructionClasses.contains(constructionClass)) {
+            constructionClasses.add(constructionClass);
+        }
+        providerConstructionOrder.merge(constructionClass, descriptorOrder, Math::min);
+        addCandidateProviderClass(providerClass);
+    }
+
+    /** Resolve a provider() declaration only after its construction path has qualifying metadata. */
+    private boolean resolveActiveServiceProviderFactories() {
+        boolean resolvedAny = false;
+        for (int index = 0; index < unresolvedServiceProviderFactories.size();) {
+            ServiceProviderFactoryCandidate candidate = unresolvedServiceProviderFactories.get(index);
+            if (reflectionHostedSupport.getMethodRegistrationMetadata(candidate.providerMethod()) == null) {
+                index++;
+                continue;
+            }
+            ProviderInstantiation result = instantiateServiceProvider(candidate.constructionClass());
+            Provider provider = result.provider();
+            if (provider == null || !ProviderConstruction.isProviderImplementationClass(provider.getClass())) {
+                String message = "Registered security provider factory %s could not produce a valid Provider during image generation.";
+                throw result.failure() == null ? UserError.abort(message, candidate.constructionClass().getName())
+                                : UserError.abort(result.failure(), message, candidate.constructionClass().getName());
+            }
+            registerServiceProviderConstructionCandidate(provider.getClass(), candidate.constructionClass(), candidate.descriptorOrder());
+            registerConfiguredProviderConstructionCandidates(provider, candidate.constructionClass());
+            unresolvedServiceProviderFactories.remove(index);
+            resolvedAny = true;
+        }
+        return resolvedAny;
+    }
+
+    private void addCandidateProviderClass(Class<?> providerClass) {
+        providerPlanner.addCandidate(providerClass);
+    }
+
+    private void addInstantiatedProviderClass(Class<?> providerClass) {
+        providerPlanner.addInstantiatedCandidate(providerClass);
+    }
+
+    private void registerServices(DuringAnalysisAccess access, Object trigger, Class<?> serviceClass) {
+        /*
+         * SPI classes, i.e., base classes for concrete service implementations, such as
+         * java.security.MessageDigestSpi, can be dynamically loaded to double-check the base type
+         * of newly allocated SPI object. This only applies to SPIs in the java.security package,
+         * but not any of its sub-packages. See java.security.Security.getSpiClass().
+         */
+        String serviceType = getServiceType(serviceClass);
+
+        if (serviceClass.getPackage().getName().equals("java.security")) {
+            registerSpiClass(getSpiClassMethod, serviceType);
+        }
+        registerServices(access, trigger, serviceType);
+    }
+
+    private String getServiceType(Class<?> serviceClass) {
+        Objects.requireNonNull(serviceClass);
+        // Checkstyle: allow Class.getSimpleName
+        if (serviceClass == classSaslClient || serviceClass == classSaslServer) {
+            return serviceClass.getSimpleName() + "Factory";
+        }
+        return serviceClass.getSimpleName();
+        // Checkstyle: disallow Class.getSimpleName
+    }
+
+    private final Set<String> processedServiceTypes = ConcurrentHashMap.newKeySet();
+
+    private void registerServices(DuringAnalysisAccess access, Object trigger, String serviceType) {
+        /*
+         * registerMethodOverrideReachabilityHandler() invokes the callback "once during analysis
+         * for each time a method that overrides the specified param baseMethod is determined to be
+         * reachable at run time", therefore we need to make sure that each serviceClass is
+         * processed only once.
+         */
+        if (processedServiceTypes.add(serviceType)) {
+            if (mode.explicitRegistration() && serviceType.equals(SECURE_RANDOM_SERVICE)) {
+                registerSecureRandomProvidersFromPlatformSignal();
+            }
+            // §FS-002-security-providers.6.3:
+            // Service reachability is a compatibility inclusion signal.
+            doRegisterServices(access, trigger, serviceType);
+        }
+    }
+
+    /**
+     * SecureRandom acquisition supplies a platform-owned conditional registration signal. The
+     * registered providers follow the ordinary complete-provider processing path.
+     */
+    private void registerSecureRandomProvidersFromPlatformSignal() {
+        // §FS-002-security-providers.1.4
+        EconomicSet<Service> services = availableServices.get(SECURE_RANDOM_SERVICE);
+        VMError.guarantee(services != null);
+        EconomicSet<Class<?>> providerClasses = EconomicSet.create();
+        for (Service service : services) {
+            providerClasses.add(service.getProvider().getClass());
+        }
+        for (Class<?> providerClass : providerClasses) {
+            registerProviderClassForReflection(providerClass);
+        }
+    }
+
+    private void doRegisterServices(DuringAnalysisAccess access, Object trigger, String serviceType) {
+        try (TracingAutoCloseable _ = trace(access, trigger, serviceType)) {
+            EconomicSet<Service> services = availableServices.get(serviceType);
+            if (services == null) {
+                trace("No provider supplies service type %s.", serviceType);
+                return;
+            }
+            for (Service service : services) {
+                registerService(access, service);
+            }
+        }
+    }
+
+    /** Service.getInstance() methods must be public static and should return the service type. */
+    private static void checkGetInstanceMethod(Method method) {
+        VMError.guarantee(Modifier.isPublic(method.getModifiers()));
+        VMError.guarantee(Modifier.isStatic(method.getModifiers()));
+        VMError.guarantee(method.getReturnType().equals(method.getDeclaringClass()));
+    }
+
+    /**
+     * Collect available services, organized by service type. JDK doesn't have a way to iterate
+     * services by type so we need to build our own structure.
+     */
+    private static Map<String, EconomicSet<Service>> computeAvailableServices() {
+        Map<String, EconomicSet<Service>> availableServices = new HashMap<>();
+        for (Provider provider : Security.getProviders()) {
+            for (Service s : provider.getServices()) {
+                if (isValid(s)) {
+                    availableServices.computeIfAbsent(s.getType(), _ -> EconomicSet.create()).add(s);
+                }
+            }
+        }
+        return availableServices;
+    }
+
+    /**
+     * Check is service is valid. See {@code java.security.Provider.Service#isValid()}.
+     *
+     * Presumably, this is only needed due to an upstream bug introduced in JDK 19 [GR-40544].
+     */
+    static boolean isValid(Service s) {
+        return (s.getType() != null) && (s.getAlgorithm() != null) && (s.getClassName() != null);
+    }
+
+    /**
+     * Return a Function which given the serviceType as a String will return the corresponding
+     * constructor parameter Class, or null.
+     */
+    private static Function<String, Class<?>> getConstructorParameterClassAccessor(ImageClassLoader loader) {
+        Map<String, /* EngineDescription */ Object> knownEngines = ReflectionUtil.readStaticField(Provider.class, "knownEngines");
+        Class<?> clazz = loader.findClassOrFail("java.security.Provider$EngineDescription");
+        Field consParamClassField = ReflectionUtil.lookupField(clazz, "constructorParameterClass");
+
+        /*
+         * The returned lambda captures the value of the Provider.knownEngines map retrieved above,
+         * and it uses it to find the parameterClass corresponding to the serviceType parameter.
+         */
+        return (serviceType) -> {
+            try {
+                /*
+                 * Access the Provider.knownEngines map and extract the EngineDescription
+                 * corresponding to the serviceType. Note that the map holds EngineDescription(s) of
+                 * only those service types that are shipped in the JDK. From the EngineDescription
+                 * object extract the value of the constructorParameterClassName field then, if the
+                 * class name is not null, get the corresponding Class<?> object and return it.
+                 */
+                /* EngineDescription */
+                Object engineDescription = knownEngines.get(serviceType);
+                /*
+                 * This isn't an engine known to the Provider (which actually means that it isn't
+                 * one that's shipped in the JDK), so we don't have the predetermined knowledge of
+                 * the constructor param class.
+                 */
+                if (engineDescription == null) {
+                    return null;
+                }
+                return (Class<?>) consParamClassField.get(engineDescription);
+            } catch (IllegalAccessException e) {
+                VMError.shouldNotReachHere(e);
+            }
+            return null;
+        };
+    }
+
+    private static Method getSpiClassMethod() {
+        try {
+            Method method = Security.class.getDeclaredMethod("getSpiClass", String.class);
+            method.setAccessible(true);
+            return method;
+        } catch (NoSuchMethodException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
+    /**
+     * Given a service class, e.g., MessageDigest, returns the corresponding SPI class, e.g.,
+     * MessageDigestSpi. Only available for SPIs in the java.security package, but not any of its
+     * sub-packages.
+     */
+    private static void registerSpiClass(Method getSpiClassMethod, String serviceType) {
+        try {
+            Class<?> spiClass = (Class<?>) getSpiClassMethod.invoke(null, serviceType);
+            /* The constructor doesn't need to be registered, objects are not allocated. */
+            InternalReflectiveAccess.singleton().register(AccessCondition.unconditional(), spiClass);
+        } catch (IllegalAccessException | InvocationTargetException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
+    Object getProviderVerificationResult(Provider provider) {
+        // §FS-002-security-providers.4.3
+        // Class registration establishes successful verification for an application provider.
+        if (!buildTimeProvidersByClassName.containsKey(provider.getClass().getName())) {
+            return Boolean.TRUE;
+        }
+        // Preserve the build-time outcome of configured providers by provider class.
+        try {
+            Method getVerificationResult = ReflectionUtil.lookupMethod(jceSecurityClass, "getVerificationResult", Provider.class);
+            /*
+             * Trigger initialization of JceSecurity.verificationResults used by
+             * JceSecurity.canUseProvider() at runtime to check whether a provider is properly
+             * signed and can be used by JCE. It does that via jar verification which we cannot
+             * support. See also Target_javax_crypto_JceSecurity.
+             */
+            Object result = getVerificationResult.invoke(null, provider);
+            /*
+             * Note that after verification, we move the result to a separate structure since we
+             * don't want to keep provider objects that were only instantiated for verification in
+             * the image heap.
+             *
+             * The verification result can be either null, in case of success, or an Exception, in
+             * case of failure. Null is interpreted as Boolean.TRUE at runtime, signifying successful
+             * verification.
+             */
+            return result instanceof Exception ? result : Boolean.TRUE;
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
+    // §FS-002-security-providers.1.2 and §FS-002-security-providers.1.3:
+    // Use the preferred construction path and retain the complete valid, resolvable catalog.
+    boolean isLoadableProviderClass(DuringAnalysisAccess access, Class<?> providerClass) {
+        if (!ProviderConstruction.isProviderImplementationClass(providerClass)) {
+            return false;
+        }
+
+        DuringAnalysisAccessImpl accessImpl = (DuringAnalysisAccessImpl) access;
+        ResolvedJavaType providerType;
+        try {
+            providerType = accessImpl.findTypeByName(providerClass.getName());
+        } catch (UnsupportedPlatformException | DeletedElementException e) {
+            return false;
+        }
+        if (providerType == null || !accessImpl.getHostVM().platformSupported(providerType) || substitutionProcessor.isDeleted(providerType)) {
+            return false;
+        }
+        return !getProviderConstructionClasses(providerClass).isEmpty();
+    }
+
+    Provider instantiateProviderImplementation(Class<?> providerClass) {
+        Throwable lastFailure = null;
+        for (Class<?> constructionClass : getProviderConstructionClasses(providerClass)) {
+            ProviderInstantiation result = instantiateServiceProvider(constructionClass);
+            Provider provider = result.provider();
+            if (provider != null && provider.getClass().equals(providerClass)) {
+                Integer descriptorOrder = providerConstructionOrder.get(constructionClass);
+                if (descriptorOrder != null) {
+                    SecurityProviderCatalogRegistrar.recordServiceLoadedConfiguredProvider(provider, constructionClass, descriptorOrder);
+                }
+                registerConfiguredProviderConstructionCandidates(provider, constructionClass);
+                return provider;
+            }
+            lastFailure = result.failure();
+            if (provider != null) {
+                lastFailure = new IllegalStateException("Construction returned " + provider.getClass().getName() +
+                                " instead of " + providerClass.getName());
+            }
+        }
+        String message = "Security provider class %s was registered for reflection but could not be instantiated on the image build machine. " +
+                        "Native Image must construct a registered provider at build time to retain its complete service catalog. " +
+                        "Make its supported construction path usable during the build, or register only the services used through an application-supplied provider.";
+        throw lastFailure == null ? UserError.abort(message, providerClass.getName()) : UserError.abort(lastFailure, message, providerClass.getName());
+    }
+
+    /** §FS-002-security-providers.1.2: Preserve a selected path across configure() class changes. */
+    private void registerConfiguredProviderConstructionCandidates(Provider provider, Class<?> constructionClass) {
+        for (String token : List.of(provider.getName(), provider.getClass().getName())) {
+            for (String argument : configuredProviderArguments.getOrDefault(token, List.of())) {
+                Provider configuredProvider = provider.configure(argument);
+                Class<?> implementationClass = configuredProvider.getClass();
+                List<Class<?>> constructionClasses = configuredProviderConstructionClasses.computeIfAbsent(implementationClass, _ -> new ArrayList<>());
+                if (!constructionClasses.contains(constructionClass)) {
+                    constructionClasses.add(constructionClass);
+                    buildTimeProvidersByClassName.computeIfAbsent(implementationClass.getName(), _ -> new ArrayList<>()).add(configuredProvider);
+                    addCandidateProviderClass(implementationClass);
+                }
+            }
+        }
+    }
+
+    private record ProviderInstantiation(Provider provider, Throwable failure) {
+    }
+
+    private static ProviderInstantiation instantiateServiceProvider(Class<?> serviceProviderClass) {
+        if (serviceProviderClass == null) {
+            return new ProviderInstantiation(null, null);
+        }
+        try {
+            // §FS-002-security-providers.1.2
+            // A qualifying provider() method precedes the constructor.
+            Method providerMethod = findProviderMethod(serviceProviderClass);
+            if (providerMethod != null) {
+                Object value = providerMethod.invoke(null);
+                return value instanceof Provider provider ? new ProviderInstantiation(provider, null)
+                                : new ProviderInstantiation(null, new ServiceConfigurationError(
+                                                serviceProviderClass.getName() + ".provider() did not return a Provider"));
+            }
+            Constructor<?> constructor = findNullaryConstructor(serviceProviderClass);
+            if (constructor == null) {
+                return new ProviderInstantiation(null, null);
+            }
+            Object value = constructor.newInstance();
+            return value instanceof Provider provider ? new ProviderInstantiation(provider, null)
+                            : new ProviderInstantiation(null, new ServiceConfigurationError(
+                                            serviceProviderClass.getName() + " is not a Provider"));
+        } catch (ReflectiveOperationException | SecurityException | LinkageError ex) {
+            /* ProviderConfig ignores a broken ServiceLoader entry and continues with the next. */
+            return new ProviderInstantiation(null, ex);
+        }
+    }
+
+    private List<Class<?>> getProviderConstructionClasses(Class<?> providerClass) {
+        List<Class<?>> serviceProviderClasses = getJdkProviderConstructionClasses(providerClass);
+        boolean hasDirectPath = findProviderMethod(providerClass) != null || findNullaryConstructor(providerClass) != null;
+        if (serviceProviderClasses.isEmpty()) {
+            return hasDirectPath ? List.of(providerClass) : List.of();
+        }
+        if (!hasDirectPath || serviceProviderClasses.contains(providerClass)) {
+            return serviceProviderClasses;
+        }
+        List<Class<?>> result = new ArrayList<>(serviceProviderClasses);
+        result.add(providerClass);
+        return result;
+    }
+
+    private List<Class<?>> getJdkProviderConstructionClasses(Class<?> providerClass) {
+        List<Class<?>> result = new ArrayList<>(configuredProviderConstructionClasses.getOrDefault(providerClass, List.of()));
+        for (Class<?> constructionClass : providerConstructionClasses.getOrDefault(providerClass, List.of())) {
+            if (!result.contains(constructionClass)) {
+                result.add(constructionClass);
+            }
+        }
+        return result;
+    }
+
+    void registerProviderConstructionPaths(Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
+        List<Class<?>> constructionClasses = getJdkProviderConstructionClasses(providerClass);
+        if (!mode.explicitRegistration() || constructionClasses.isEmpty()) {
+            constructionClasses = getProviderConstructionClasses(providerClass);
+        }
+        for (Class<?> constructionClass : constructionClasses) {
+            // §FS-002-security-providers.6.1
+            // Open non-exported JDK provider packages only to the run-time list loader.
+            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, SecurityProviderRuntimeAccess.class, constructionClass);
+            if (mode.explicitRegistration() || !constructionClass.equals(providerClass)) {
+                registerSelectedConstructionPath(constructionClass, metadata);
+            } else {
+                // §FS-002-security-providers.6.3
+                // Legacy inclusion registers every public constructor.
+                InternalReflectiveAccess.singleton().register(AccessCondition.unconditional(), providerClass.getConstructors());
+            }
+        }
+    }
+
+    void registerService(DuringAnalysisAccess a, Service service) {
+        // §FS-002-security-providers.6.3
+        // Explicit mode disables service-driven provider inclusion.
+        RuntimeDynamicAccessMetadata metadata = RuntimeDynamicAccessMetadata.alwaysAvailable(false);
+        if (mode.explicitRegistration()) {
+            SecurityProviderRegistrationPlanner.RegistrationPlan plan = providerRegistrationPlan(service.getProvider().getClass());
+            if (plan == null || plan.completeMetadata() == null) {
+                trace("Skipped service %s because provider %s was not registered for reflection.", asString(service), service.getProvider().getClass().getName());
+                return;
+            }
+            metadata = plan.completeMetadata();
+        }
+        registerService(a, service, metadata);
+        if (!mode.explicitRegistration()) {
+            // §FS-002-security-providers.6.3: Retain the selected service and its provider, not
+            // unrelated services from the same provider catalog.
+            catalogRegistrar.includeProviderForLegacyService(a, service.getProvider(), metadata);
+        }
+    }
+
+    void registerService(DuringAnalysisAccess a, Service service, RuntimeDynamicAccessMetadata metadata) {
+        TypeResult<Class<?>> serviceClassResult = loader.findClass(service.getClassName());
+        if (serviceClassResult.isPresent()) {
+            try (TracingAutoCloseable _ = trace(service)) {
+                registerForReflection(serviceClassResult.get(), metadata);
+
+                Class<?> ctrParamClass = ctrParamClassAccessor.apply(service.getType());
+                if (ctrParamClass != null) {
+                    registerForReflection(ctrParamClass, metadata);
+                    trace("Registered service constructor parameter class: %s", ctrParamClass.getName());
+                }
+
+                if (isSignature(service) || isCipher(service) || isKeyAgreement(service)) {
+                    for (String keyClassName : getSupportedKeyClasses(service)) {
+                        loader.findClass(keyClassName).ifPresent(keyClass -> registerForReflection(keyClass, metadata));
+                    }
+                }
+                if (isKeyStore(service) && service.getAlgorithm().equals(JKS)) {
+                    registerJks(loader, metadata);
+                }
+                if (isCertificateFactory(service) && service.getAlgorithm().equals(X509)) {
+                    registerX509Extensions(a, metadata);
+                }
+            }
+        } else {
+            trace("Cannot register service %s. Reason: %s.", asString(service), serviceClassResult.getException());
+        }
+    }
+
+    // §FS-002-security-providers.1.1: Invocation must cover the selected JDK acquisition path.
+    private RuntimeDynamicAccessMetadata providerConstructionRegistrationMetadata(Class<?> providerClass) {
+        RuntimeDynamicAccessMetadata result = null;
+        try {
+            List<Class<?>> constructionClasses = getJdkProviderConstructionClasses(providerClass);
+            for (Class<?> constructionClass : constructionClasses) {
+                Method providerMethod = findProviderMethod(constructionClass);
+                if (providerMethod != null) {
+                    SecurityProviderRuntimeState.currentLayer().registerConstructionForDiagnostics(providerClass.getName(), constructionClass.getName(), providerMethod.getName());
+                    result = RuntimeDynamicAccessMetadata.merge(result, reflectionHostedSupport.getMethodRegistrationMetadata(providerMethod));
+                } else {
+                    Constructor<?> constructor = findNullaryConstructor(constructionClass);
+                    if (constructor != null) {
+                        SecurityProviderRuntimeState.currentLayer().registerConstructionForDiagnostics(providerClass.getName(), constructionClass.getName(), "<init>");
+                        result = RuntimeDynamicAccessMetadata.merge(result, reflectionHostedSupport.getMethodRegistrationMetadata(constructor));
+                    }
+                }
+            }
+            return result;
+        } catch (UnsupportedPlatformException | DeletedElementException e) {
+            return null;
+        }
+    }
+
+    private SecurityProviderRegistrationPlanner.RegistrationPlan providerRegistrationPlan(Class<?> providerClass) {
+        RuntimeDynamicAccessMetadata constructionMetadata = providerConstructionRegistrationMetadata(providerClass);
+        if (preserveAll || mode.explicitRegistration()) {
+            return constructionMetadata == null ? null : new SecurityProviderRegistrationPlanner.RegistrationPlan(constructionMetadata, constructionMetadata);
+        }
+        // §FS-002-security-providers.6.3: Compatibility metadata preserves application verification
+        // without construction or service expansion.
+        RuntimeDynamicAccessMetadata typeMetadata = reflectionHostedSupport.getTypeRegistrationMetadata(providerClass);
+        RuntimeDynamicAccessMetadata registrationMetadata = RuntimeDynamicAccessMetadata.merge(typeMetadata, constructionMetadata);
+        return registrationMetadata == null ? null : new SecurityProviderRegistrationPlanner.RegistrationPlan(registrationMetadata, null);
+    }
+
+    private void registerProviderClassForReflection(Class<?> providerClass) {
+        InternalReflectiveAccess reflectiveAccess = InternalReflectiveAccess.singleton();
+        AccessCondition unconditional = AccessCondition.unconditional();
+        reflectiveAccess.register(unconditional, providerClass);
+        for (Class<?> constructionClass : getProviderConstructionClasses(providerClass)) {
+            Method providerMethod = findProviderMethod(constructionClass);
+            if (providerMethod != null) {
+                reflectiveAccess.register(unconditional, providerMethod);
+                continue;
+            }
+            Constructor<?> constructor = findNullaryConstructor(constructionClass);
+            if (constructor != null) {
+                reflectiveAccess.register(unconditional, constructor);
+                if (ProviderConstruction.isInExplicitModule(constructionClass)) {
+                    /* The run-time loader probes provider() first; answer that lookup negatively. */
+                    RuntimeReflection.registerMethodLookup(constructionClass, ProviderConstruction.PROVIDER_METHOD_NAME);
+                }
+            }
+        }
+        trace("Registered provider %s for reflection", providerClass.getName());
+    }
+
+    private static void registerSelectedConstructionPath(Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
+        // §FS-002-security-providers.1.2: A qualifying provider() method precedes the constructor.
+        Method providerMethod = findProviderMethod(providerClass);
+        if (providerMethod != null) {
+            forEachCondition(metadata, condition -> InternalReflectiveAccess.singleton().register(condition, providerMethod));
+            return;
+        }
+        Constructor<?> constructor = findNullaryConstructor(providerClass);
+        if (constructor != null) {
+            forEachCondition(metadata, condition -> InternalReflectiveAccess.singleton().register(condition, constructor));
+        }
+    }
+
+    // §FS-002-security-providers.1.2
+    /** Only a public nullary constructor is a construction path. */
+    private static Constructor<?> findNullaryConstructor(Class<?> providerClass) {
+        Constructor<?> constructor = ReflectionUtil.lookupConstructor(true, providerClass);
+        return ProviderConstruction.isQualifyingConstructor(constructor) ? constructor : null;
+    }
+
+    /** §FS-002-security-providers.1.2: Only an explicit module contributes a provider() path. */
+    private static Method findProviderMethod(Class<?> providerClass) {
+        if (!ProviderConstruction.isInExplicitModule(providerClass)) {
+            return null;
+        }
+        Method nullaryProviderMethod = null;
+        try {
+            for (Method method : providerClass.getDeclaredMethods()) {
+                if (ProviderConstruction.isQualifyingProviderMethod(method)) {
+                    if (nullaryProviderMethod == null) {
+                        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, SecurityServicesFeature.class, providerClass);
+                        method.setAccessible(true);
+                        nullaryProviderMethod = method;
+                    } else {
+                        return null;
+                    }
+                }
+            }
+        } catch (SecurityException | LinkageError e) {
+            return null;
+        }
+        return nullaryProviderMethod;
+    }
+
+    /**
+     * Register the default JavaKeyStore, JKS, for reflection. It is not registered as a key store
+     * implementation in any provider, but it is registered as a primary key store for
+     * JavaKeyStore$DualFormatJKS, i.e., the KeyStore.JKS implementation class in the SUN provider,
+     * and dynamically allocated by sun.security.provider.KeyStoreDelegator.engineLoad().
+     */
+    private void registerJks(ImageClassLoader imageClassLoader, RuntimeDynamicAccessMetadata metadata) {
+        Class<?> javaKeyStoreJks = imageClassLoader.findClassOrFail("sun.security.provider.JavaKeyStore$JKS");
+        registerForReflection(javaKeyStoreJks, metadata);
+        trace("Registered KeyStore.JKS implementation class: %s", javaKeyStoreJks.getName());
+    }
+
+    /**
+     * Register the x509 certificate extension classes for reflection.
+     */
+    private void registerX509Extensions(DuringAnalysisAccess a, RuntimeDynamicAccessMetadata metadata) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        /*
+         * The OIDInfo class which represents the values in the map is not visible. Get the list of
+         * extension names through reflection, i.e., the keys in the map, and use the
+         * OIDMap.getClass(name) API to get the extension classes.
+         */
+        Map<String, Object> map = ReflectionUtil.readStaticField(OIDMap.class, "nameMap");
+        for (String name : map.keySet()) {
+            try {
+                Class<?> extensionClass = OIDMap.getClass(name);
+                assert sun.security.x509.Extension.class.isAssignableFrom(extensionClass);
+                registerForReflection(extensionClass, metadata);
+                trace("Registered X.509 extension class: %s", extensionClass.getName());
+            } catch (CertificateException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
+        access.rescanRoot(oidMapField, scanReason);
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        boolean resolvedServiceProviderFactory = resolveActiveServiceProviderFactories();
+        // Consume concurrent plans in the serialized feature pass.
+        if (providerPlanner.processNewProviders(
+                        this::providerRegistrationPlan,
+                        (providerClass, metadata) -> catalogRegistrar.includeProviderClass(access, providerClass, metadata),
+                        SecurityProviderCatalogRegistrar::registerApplicationSuppliedProviderClass) || resolvedServiceProviderFactory) {
+            // Request the extra pass here, not from the concurrent reachability callback.
+            access.requireAnalysisIteration();
+        }
+        access.rescanRoot(oidTableField, scanReason);
+        if (mode.legacyBuildTime()) {
+            maybeScanVerificationResultsField(access);
+            maybeScanProvidersField(access);
+            if (cachedProviders != null) {
+                for (Provider provider : cachedProviders.providers()) {
+                    for (Service service : provider.getServices()) {
+                        access.rescanField(service, classCacheField, scanReason);
+                        access.rescanField(service, constructorCacheField, scanReason);
+                    }
+                }
+            }
+        }
+    }
+
+    private void maybeScanVerificationResultsField(DuringAnalysisAccessImpl access) {
+        if (access.getMetaAccess().lookupJavaField(verificationResultsField).isRead()) {
+            access.rescanObject(cachedVerificationCache, scanReason);
+        }
+    }
+
+    private void maybeScanProvidersField(DuringAnalysisAccessImpl access) {
+        if (access.getMetaAccess().lookupJavaField(providerListField).isRead()) {
+            try {
+                List<Provider> filteredProviders = filterProviderList(providerListField.get(null));
+                if (cachedProviders == null || !cachedProviders.providers().equals(filteredProviders)) {
+                    cachedProviders = ProviderList.newList(filteredProviders.toArray(new Provider[0]));
+                    access.rescanObject(cachedProviders, scanReason);
+                }
+            } catch (IllegalAccessException ex) {
+                throw VMError.shouldNotReachHere("Cannot access field: " + providerListField.getName(), ex);
+            }
+        }
+    }
+
+    @Override
+    public void afterHeapLayout(AfterHeapLayoutAccess access) {
+        SecurityServicesPrinter.endTracing();
+    }
+
+    void registerForReflection(Class<?> clazz, RuntimeDynamicAccessMetadata metadata) {
+        forEachCondition(metadata, condition -> {
+            InternalReflectiveAccess.singleton().register(condition, clazz);
+            InternalReflectiveAccess.singleton().register(condition, clazz.getConstructors());
+        });
+    }
+
+    private static void forEachCondition(RuntimeDynamicAccessMetadata metadata, Consumer<AccessCondition> action) {
+        if (metadata.isAlwaysAvailable()) {
+            action.accept(AccessCondition.unconditional());
+            return;
+        }
+        for (Class<?> conditionType : metadata.getTypesForEncoding()) {
+            action.accept(AccessCondition.typeReached(conditionType));
+        }
+    }
+
+    private static boolean isSignature(Service s) {
+        return s.getType().equals(SIGNATURE_SERVICE);
+    }
+
+    private static boolean isCipher(Service s) {
+        return s.getType().equals(CIPHER_SERVICE);
+    }
+
+    private static boolean isKeyAgreement(Service s) {
+        return s.getType().equals(KEY_AGREEMENT_SERVICE);
+    }
+
+    private static boolean isKeyStore(Service s) {
+        return s.getType().equals(KEY_STORE);
+    }
+
+    private static boolean isCertificateFactory(Service s) {
+        return s.getType().equals(CERTIFICATE_FACTORY);
+    }
+
+    private static String[] getSupportedKeyClasses(Service s) {
+        assert isSignature(s) || isCipher(s) || isKeyAgreement(s);
+        String supportedKeyClasses = s.getAttribute("SupportedKeyClasses");
+        if (supportedKeyClasses != null) {
+            return supportedKeyClasses.split("\\|");
+        }
+        return emptyStringArray;
+    }
+
+    private static void trace(String format, Object... args) {
+        SecurityServicesPrinter.trace((indent) -> indent + String.format(format + "%n", args));
+    }
+
+    abstract static class TracingAutoCloseable implements AutoCloseable {
+        /** Without declaring close() javac complains that the try-with-resource needs a catch. */
+        @Override
+        public abstract void close();
+    }
+
+    private static TracingAutoCloseable trace(Service service) {
+        return new TracingAutoCloseable() {
+            {
+                SecurityServicesPrinter.trace((indent) -> String.format("%s%s%n", indent, asString(service)));
+                indent();
+            }
+
+            @Override
+            public void close() {
+                dedent();
+            }
+        };
+    }
+
+    private static TracingAutoCloseable trace(DuringAnalysisAccess a, Object trigger, String serviceType) {
+        return new TracingAutoCloseable() {
+            {
+                indent();
+                SecurityServicesPrinter.trace((indent) -> {
+                    Method method = (Method) trigger;
+                    DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+                    AnalysisMethod analysisMethod = access.getMetaAccess().lookupJavaMethod(method);
+                    String msg = String.format("Service factory method %s is reachable.%n", analysisMethod.asStackTraceElement(0));
+                    msg += String.format("%sAnalysis parsing context: %s", indent, ReportUtils.parsingContext(analysisMethod, indent + "    "));
+                    msg += String.format("%sReachability of %s service type API triggers registration of following services:%n", indent, serviceType);
+                    return msg;
+                });
+                indent();
+            }
+
+            @Override
+            public void close() {
+                dedent();
+                dedent();
+                trace("");
+            }
+        };
+    }
+
+    private static String asString(Service s) {
+        String str = "";
+        str += "Type: " + s.getType() + ", ";
+        str += "Provider: " + s.getProvider().getName() + ", ";
+        str += "Algorithm: " + s.getAlgorithm() + ", ";
+        str += "Class: " + s.getClassName();
+        if (isSignature(s) || isCipher(s) || isKeyAgreement(s)) {
+            str += ", " + "SupportedKeyClasses: " + Arrays.toString(getSupportedKeyClasses(s));
+        }
+        return str;
+    }
+
+    static class SecurityServicesPrinter {
+        private static final int INDENT = 4;
+        private static final boolean enabled = Options.TraceSecurityServices.getValue();
+        private static final SecurityServicesPrinter instance = enabled ? new SecurityServicesPrinter() : null;
+
+        private final PrintWriter writer;
+        private int indent = 0;
+
+        SecurityServicesPrinter() {
+            File reportFile = reportFile(SubstrateOptions.reportsPath());
+            System.out.println("# Printing security services automatic registration to: " + reportFile);
+            try {
+                writer = new PrintWriter(new FileWriter(reportFile));
+            } catch (IOException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
+
+        static void trace(Function<String, String> strFunction) {
+            if (enabled) {
+                String indent = "";
+                if (instance.indent > 0) {
+                    indent = String.format("%" + instance.indent + "s", " ");
+                }
+                instance.writer.print(strFunction.apply(indent));
+            }
+        }
+
+        static void indent() {
+            if (enabled) {
+                instance.indent += INDENT;
+            }
+        }
+
+        static void dedent() {
+            if (enabled) {
+                instance.indent -= INDENT;
+            }
+        }
+
+        static void endTracing() {
+            if (enabled) {
+                instance.writer.close();
+            }
+        }
+
+        private static File reportFile(String reportsPath) {
+            return ReportUtils.reportFile(reportsPath, "security_services", "txt");
+        }
+    }
+}

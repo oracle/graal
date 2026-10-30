@@ -172,7 +172,11 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
             return url;
         }
         if (hasClassPath()) {
-            return ucp.findResource(name);
+            URL classPathResource = ucp.findResource(name);
+            if (classPathResource == null) {
+                ResourcesHelper.reportMissingEmbeddedResourceMetadata(loader, name);
+            }
+            return classPathResource;
         }
         if (ResourcesHelper.isBootLoader(loader)) {
             return null;
@@ -189,7 +193,11 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
         List<URL> embeddedResources = ResourcesHelper.findEmbeddedResourceEntry(loader, name) ? ResourcesHelper.nameToResourceListURLs(loader, name) : List.of();
         if (embeddedResources.isEmpty()) {
             if (hasClassPath()) {
-                return ucp.findResources(name);
+                Enumeration<URL> classPathResources = ucp.findResources(name);
+                if (!classPathResources.hasMoreElements()) {
+                    ResourcesHelper.reportMissingEmbeddedResourceMetadata(loader, name);
+                }
+                return classPathResources;
             }
             if (ResourcesHelper.isBootLoader(loader)) {
                 return Collections.emptyEnumeration();
