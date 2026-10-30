@@ -6,6 +6,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 * GR-80770: Added `TruffleOptions.DetailedAssertions` to opt into expensive assertions with `-Dtruffle.DetailedAssertions=true`, independently of inexpensive Java assertions.
 * GR-80881: Bytecode DSL: `Float` and `Double` constants are now compared by their raw bits, so distinct NaN payloads no longer share a constant-pool slot.
+* GR-80881: Bytecode DSL: `Float` and `Double` constants are now compared by their raw bits, so distinct NaN payloads no longer share a constant-pool slot.
+* GR-80844: Bytecode DSL: Constants used inside a `finally` handler are now serialized once, in the outermost context that can decode them, and the handler refers to that entry. Replays of the handler and the enclosing code therefore share one deserialized instance. A constant that references a root node declared inside the handler stays in the handler's own table. Equality-based deduplication is unchanged. Previously serialized bytecode still deserializes.
 
 ## Version 25.5
 
