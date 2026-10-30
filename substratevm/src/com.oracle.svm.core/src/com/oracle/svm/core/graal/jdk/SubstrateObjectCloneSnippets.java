@@ -39,7 +39,7 @@ import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
-import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
+import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -142,7 +142,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         int referenceSize = ObjectLayout.singleton().getReferenceSize();
 
         assert entryCount >= 0;
-        UnsignedWord sizeOfEntries = Word.unsigned(InstanceReferenceMapEncoder.MAP_ENTRY_SIZE).multiply(entryCount);
+        UnsignedWord sizeOfEntries = Word.unsigned(InstanceReferenceMapDecoder.MAP_ENTRY_SIZE).multiply(entryCount);
         Pointer refMapEnd = refMapPos.add(sizeOfEntries);
 
         long curOffset = ObjectLayout.singleton().getFirstFieldOffset();

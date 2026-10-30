@@ -74,7 +74,7 @@ import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.guest.staging.core.heap.GC;
 import com.oracle.svm.guest.staging.core.heap.GCCause;
 import com.oracle.svm.guest.staging.core.heap.Heap;
-import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
+import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
 import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
@@ -202,7 +202,7 @@ public final class G1Heap extends Heap {
         Word vmOperationThread = Word.objectToUntrackedWord(VMOperationControl.getDedicatedVMOperationThread());
         Word safepointMaster = Word.objectToUntrackedWord(Safepoint.singleton());
         Word runtimeCodeInfoMemory = Word.objectToUntrackedWord(RuntimeCodeInfoMemory.singleton());
-        int referenceMapCompressedOffsetShift = InstanceReferenceMapEncoder.REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT;
+        int referenceMapCompressedOffsetShift = InstanceReferenceMapDecoder.REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT;
         Word threadLocalsReferenceMap = NonmovableArrays.addressOf(threadLocalSupport.getThreadLocalsReferenceMap(), threadLocalSupport.getThreadLocalsReferenceMapIndex());
         Word classesAssumedReachableForCodeUnloading = getClassesAssumedReachableForCodeUnloading();
         Word performanceData = Word.objectToUntrackedWord(perfData);
