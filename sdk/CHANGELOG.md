@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 25.6
+* Added `@Value.Optimized` to improve Java-to-guest invocation performance with generated `Value.as` proxies, enabling Native Image runtime compilation to eliminate argument boxing and arrays across the transition.
+
 ## Version 25.5
 * GR-79961: [Auxiliary engine caching](https://github.com/oracle/graal/blob/master/truffle/docs/AuxiliaryEngineCaching.md) is now available in both Oracle GraalVM and GraalVM Community Edition.
 * GR-13989: Added `FileChannel`. On JDK 22 and later, its `map` method maps file regions to `MemorySegment` instances whose lifetime is controlled by a caller-provided `Arena`.

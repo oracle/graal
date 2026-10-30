@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,7 +90,7 @@ abstract class PolyglotExecuteNode extends Node {
             }
         }
 
-        return executeImpl(languageContext, function, argsArray, resultClass, resultType);
+        return executeImpl(languageContext, function, argsArray, 0, resultClass, resultType);
     }
 
     @TruffleBoundary
@@ -104,11 +104,11 @@ abstract class PolyglotExecuteNode extends Node {
         return copy;
     }
 
-    protected abstract Object executeImpl(PolyglotLanguageContext languageContext, Object function, Object[] argsArray,
+    protected abstract Object executeImpl(PolyglotLanguageContext languageContext, Object function, Object[] argsArray, int offset,
                     Class<?> resultClass, Type resultType);
 
     @Specialization(limit = "5")
-    static Object doCached(PolyglotLanguageContext languageContext, Object function, Object[] argsArray,
+    static Object doCached(PolyglotLanguageContext languageContext, Object function, Object[] argsArray, int offset,
                     Class<?> resultClass, Type resultType,
                     @Bind Node node,
                     @CachedLibrary("function") InteropLibrary interop,
@@ -119,7 +119,7 @@ abstract class PolyglotExecuteNode extends Node {
                     @Cached InlinedBranchProfile unsupportedError,
                     @Cached InlinedBranchProfile arityError,
                     @Cached InlinedBranchProfile unsupportedArgumentError) {
-        Object[] functionArgs = toGuests.execute(node, argsArray);
+        Object[] functionArgs = toGuests.execute(node, argsArray, offset);
         Object result;
         boolean executable = executableCondition.profile(node, interop.isExecutable(function));
         try {
