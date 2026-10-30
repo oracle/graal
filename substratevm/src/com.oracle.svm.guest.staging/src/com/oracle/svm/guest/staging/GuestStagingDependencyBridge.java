@@ -38,8 +38,10 @@ import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.reflect.RuntimeConstantPool;
 import com.oracle.svm.shared.Uninterruptible;
@@ -57,6 +59,15 @@ public interface GuestStagingDependencyBridge {
     static GuestStagingDependencyBridge singleton() {
         return ImageSingletons.lookup(GuestStagingDependencyBridge.class);
     }
+
+    /**
+     * Delegates to {@code com.oracle.svm.core.util.NonmovableByteArrayReader.pointerTo}.
+     * <p>
+     * Remove this method when
+     * {@code com.oracle.svm.core.util.NonmovableByteArrayReader.pointerTo} moves to guest/staging.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    Pointer nonmovableByteArrayPointerTo(NonmovableArray<Byte> array, long index);
 
     /**
      * Delegates to {@code com.oracle.svm.core.SubstrateOptions.useEpsilonGC()}.

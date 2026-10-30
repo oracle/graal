@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues.Origin;
@@ -47,6 +48,8 @@ import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.RuntimeStateTrimSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.util.NonmovableByteArrayReader;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -89,6 +92,12 @@ import jdk.graal.compiler.nodes.NamedLocationIdentity;
 @AutomaticallyRegisteredImageSingleton(GuestStagingDependencyBridge.class)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBridge {
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public Pointer nonmovableByteArrayPointerTo(NonmovableArray<Byte> array, long index) {
+        return NonmovableByteArrayReader.pointerTo(array, index);
+    }
 
     @Override
     public boolean useEpsilonGC() {

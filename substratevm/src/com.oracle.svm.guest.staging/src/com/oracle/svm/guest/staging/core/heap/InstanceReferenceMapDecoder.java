@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.guest.staging.core.heap;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
@@ -35,13 +35,10 @@ import org.graalvm.word.WordBase;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.guest.staging.core.heap.ReferenceMapIndex;
 import com.oracle.svm.guest.staging.core.c.NonmovableArray;
-import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneSnippets;
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
-import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
 @DuplicatedInNativeCode
 public class InstanceReferenceMapDecoder {
@@ -57,7 +54,7 @@ public class InstanceReferenceMapDecoder {
         walkReferencesInline(baseAddress, referenceMap, visitor, holderObject);
     }
 
-    /** This code is duplicated in {@link SubstrateObjectCloneSnippets}. */
+    /** This code is duplicated in {@code SubstrateObjectCloneSnippets}. */
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void walkReferencesInline(Pointer baseAddress, InstanceReferenceMap referenceMap, ObjectReferenceVisitor visitor, Object holderObject) {
@@ -88,7 +85,7 @@ public class InstanceReferenceMapDecoder {
     public static InstanceReferenceMap getReferenceMap(NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex) {
         assert ReferenceMapIndex.denotesValidReferenceMap(referenceMapIndex);
         assert referenceMapEncoding.isNonNull();
-        return (InstanceReferenceMap) NonmovableByteArrayReader.pointerTo(referenceMapEncoding, referenceMapIndex);
+        return (InstanceReferenceMap) GuestStagingDependencyBridge.singleton().nonmovableByteArrayPointerTo(referenceMapEncoding, referenceMapIndex);
     }
 
     @AlwaysInline("GC performance")
