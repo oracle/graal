@@ -2549,10 +2549,9 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             return stackMap;
         }
         // Merge failed
-        if (mergedStack == null) {
-            return new StackFrame<>(this, stack, mergedLocals, stackMap.subroutineModificationStack);
-        }
-        return new StackFrame<>(this, mergedStack, stack.size, stack.top, mergedLocals == null ? locals.registers : mergedLocals, stackMap.subroutineModificationStack);
+        mergedStack = mergedStack == null ? stackMap.stack : mergedStack;
+        mergedLocals = mergedLocals == null ? stackMap.locals : mergedLocals;
+        return new StackFrame<>(this, mergedStack, stack.size, stack.top, mergedLocals, stackMap.subroutineModificationStack);
     }
 
     private StackFrame<R, C, M, F> spawnStackFrame(OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
