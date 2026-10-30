@@ -2044,7 +2044,7 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
+                    RegisterValue threadArg, int threadIsolateOffset, int threadCodeBaseOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
 
         CompilationResult result = new CompilationResult(identifier);
         AArch64MacroAssembler asm = new SubstrateAArch64MacroAssembler(getTarget());
@@ -2070,6 +2070,13 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
              */
             asm.add(64, scratchRegister, scratchRegister, methodIdArg.getRegister());
             asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_UNSIGNED_SCALED, scratchRegister, methodObjEntryPointOffset));
+            if (threadCodeBaseOffset >= 0) {
+                try (ScratchRegister codeBaseScratch = asm.getScratchRegister()) {
+                    Register codeBaseRegister = codeBaseScratch.getRegister();
+                    asm.ldr(64, codeBaseRegister, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_UNSIGNED_SCALED, threadArg.getRegister(), threadCodeBaseOffset));
+                    asm.add(64, scratchRegister, scratchRegister, codeBaseRegister);
+                }
+            }
             asm.jmp(scratchRegister);
         }
         result.recordMark(asm.position(), PROLOGUE_DECD_RSP);

@@ -2535,7 +2535,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
+                    RegisterValue threadArg, int threadIsolateOffset, int threadCodeBaseOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
         CompilationResult result = new CompilationResult(identifier);
         AMD64MacroAssembler asm = createAssembler(HostedOptionValues.singleton().get());
         PatchConsumerFactory patchConsumerFactory = PatchConsumerFactory.HostedPatchConsumerFactory.factory();
@@ -2563,6 +2563,9 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
          */
         asm.addq(rax, methodIdArg.getRegister()); // address of JNIAccessibleMethod
         asm.movq(jumpTargetRegister, new AMD64Address(rax, methodObjEntryPointOffset));
+        if (threadCodeBaseOffset >= 0) {
+            asm.addq(jumpTargetRegister, new AMD64Address(threadArg.getRegister(), threadCodeBaseOffset));
+        }
         asm.jmp(jumpTargetRegister);
         result.recordMark(asm.position(), PROLOGUE_DECD_RSP);
         result.recordMark(asm.position(), PROLOGUE_END);

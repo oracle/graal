@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackend.CremaJNITrampolineData;
 import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
@@ -77,10 +78,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <p>
  * The {@code jmethodID} values that we pass out are the image heap offsets (or addresses) of
  * {@link JNIAccessibleMethod} objects, which are immutable so they are never moved by the garbage
- * collector. The trampoline simply jumps to the address of a specific call wrapper that is stored
- * in a {@link #jumpAddressField field} of the object. The wrappers then take care of spilling
- * callee-saved registers, transitioning from native to Java and back, obtaining the arguments in a
- * particular form (varargs, array, va_list) and boxing/unboxing object handles as necessary.
+ * collector. The trampoline loads the call wrapper entry from a {@link #jumpAddressField field} of
+ * the object, adds the thread's code base when the entry is relative, and jumps to it. The wrappers
+ * then take care of spilling callee-saved registers, transitioning from native to Java and back,
+ * obtaining the arguments in a particular form (varargs, array, va_list) and boxing/unboxing object
+ * handles as necessary.
  */
 public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
     private final ResolvedJavaField jumpAddressField;
@@ -129,6 +131,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
                             SubstrateCallingConventionKind.Native.toType(true), returnType, parameters.toArray(new JavaType[0]), backend);
             RegisterValue threadArg = (RegisterValue) callingConvention.getArgument(0); // JNIEnv
             int threadIsolateOffset = ImageSingletons.lookup(VMThreadLocalOffsetProvider.class).offsetOf(VMThreads.IsolateTL);
+            int threadCodeBaseOffset = SubstrateOptions.useRelativeCodePointers() ? ImageSingletons.lookup(VMThreadLocalOffsetProvider.class).offsetOf(VMThreads.CodeBaseTL) : -1;
             RegisterValue methodIdArg = (RegisterValue) callingConvention.getArgument(parameters.size() - 1);
 
             CremaJNITrampolineData cremaData = null;
@@ -138,7 +141,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
                 ResolvedJavaMethod wrapperMethod = MethodRefSupport.getMethod((MethodPointer) cremaJNIUpcallWrapperEntryPoint);
                 cremaData = new CremaJNITrampolineData(wrapperMethod, variant);
             }
-            return backend.createJNITrampolineMethod(method, identifier, threadArg, threadIsolateOffset, methodIdArg, getFieldOffset(providers), cremaData);
+            return backend.createJNITrampolineMethod(method, identifier, threadArg, threadIsolateOffset, threadCodeBaseOffset, methodIdArg, getFieldOffset(providers), cremaData);
         };
     }
 

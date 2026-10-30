@@ -35,10 +35,10 @@ import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.MethodRefHolder;
 import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
+import com.oracle.svm.core.meta.MethodRefUtils;
 import com.oracle.svm.espresso.shared.meta.ErrorType;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedPrimitiveType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
@@ -84,7 +84,7 @@ public class InterpreterKnownCompiledEntryPoints {
     @Platforms(Platform.HOSTED_ONLY.class)
     InterpreterKnownCompiledEntryPoints(FeatureImpl.BeforeAnalysisAccessImpl access, AnalysisMetaAccess metaAccess) {
         AnalysisMethod notCompiledHandler = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
-        methodNotCompiledFtnPtr = new MethodRefHolder(InterpreterResolvedJavaMethod.createMethodRef(notCompiledHandler));
+        methodNotCompiledFtnPtr = new MethodRefHolder(MethodRefUtils.create(notCompiledHandler));
 
         AnalysisMethod iaeStub = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(InterpreterKnownCompiledEntryPoints.class, "throwIllegalAccessErrorStub"));
         AnalysisMethod icceStub = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(InterpreterKnownCompiledEntryPoints.class, "throwIncompatibleClassChangeErrorStub"));
@@ -92,11 +92,11 @@ public class InterpreterKnownCompiledEntryPoints {
         AnalysisMethod trueStub = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(InterpreterKnownCompiledEntryPoints.class, "returnsTrueStub"));
         AnalysisMethod falseStub = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(InterpreterKnownCompiledEntryPoints.class, "returnsFalseStub"));
 
-        throwIllegalAccessError = new MethodRefHolder(InterpreterResolvedJavaMethod.createMethodRef(iaeStub));
-        throwIncompatibleClassChangeError = new MethodRefHolder(InterpreterResolvedJavaMethod.createMethodRef(icceStub));
-        throwAbstractMethodError = new MethodRefHolder(InterpreterResolvedJavaMethod.createMethodRef(ameStub));
-        returnsTrue = new MethodRefHolder(InterpreterResolvedJavaMethod.createMethodRef(trueStub));
-        returnsFalse = new MethodRefHolder(InterpreterResolvedJavaMethod.createMethodRef(falseStub));
+        throwIllegalAccessError = new MethodRefHolder(MethodRefUtils.create(iaeStub));
+        throwIncompatibleClassChangeError = new MethodRefHolder(MethodRefUtils.create(icceStub));
+        throwAbstractMethodError = new MethodRefHolder(MethodRefUtils.create(ameStub));
+        returnsTrue = new MethodRefHolder(MethodRefUtils.create(trueStub));
+        returnsFalse = new MethodRefHolder(MethodRefUtils.create(falseStub));
 
         access.registerAsRoot(iaeStub, false, "Needed for interpreting non-public method selection for invokeinterface");
         access.registerAsRoot(icceStub, false, "Needed for interpreting resolution failure");

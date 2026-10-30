@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,12 +33,13 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.graal.nodes.LoadMethodByIndexNode;
+import com.oracle.svm.guest.staging.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefUtils;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.shared.util.VMError;
@@ -56,10 +57,11 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember implements Pr
     public static final int INTERFACE_TYPEID_CLASS_TABLE = -1;
     public static final int INTERFACE_TYPEID_NOT_YET_COMPUTED = -2;
     public static final int INTERFACE_TYPEID_UNNEEDED = -3;
-    public static final int NEW_OBJECT_TARGET_INVALID_FOR_ABSTRACT_TYPE = -1;
+    // Below the runtime metadata flags and above the Java modifiers.
+    private static final int CONSTRUCTOR_FLAG_MASK = 1 << 26;
 
     public static JNIAccessibleMethod negativeMethodQuery(JNIAccessibleClass jniClass) {
-        return new JNIAccessibleMethod(jniClass, NEGATIVE_FLAG_MASK, false);
+        return new JNIAccessibleMethod(jniClass, NEGATIVE_FLAG_MASK, false, false);
     }
 
     @Platforms(HOSTED_ONLY.class)
@@ -87,29 +89,29 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember implements Pr
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     private int interfaceTypeID = INTERFACE_TYPEID_NOT_YET_COMPUTED;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
-    private CodePointer nonvirtualTarget;
+    private MethodRef nonvirtualTarget;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
-    private PointerBase newObjectTarget; // for constructors
+    private MethodRef newObjectTarget; // for constructors
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
-    private CodePointer callWrapper;
+    private MethodRef callWrapper;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
-    @SuppressWarnings("unused") private CodePointer varargsWrapper;
+    @SuppressWarnings("unused") private MethodRef varargsWrapper;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
-    @SuppressWarnings("unused") private CodePointer arrayWrapper;
+    @SuppressWarnings("unused") private MethodRef arrayWrapper;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
-    @SuppressWarnings("unused") private CodePointer valistWrapper;
+    @SuppressWarnings("unused") private MethodRef valistWrapper;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
-    @SuppressWarnings("unused") private CodePointer varargsNonvirtualWrapper;
+    @SuppressWarnings("unused") private MethodRef varargsNonvirtualWrapper;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
-    @SuppressWarnings("unused") private CodePointer arrayNonvirtualWrapper;
+    @SuppressWarnings("unused") private MethodRef arrayNonvirtualWrapper;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
-    @SuppressWarnings("unused") private CodePointer valistNonvirtualWrapper;
+    @SuppressWarnings("unused") private MethodRef valistNonvirtualWrapper;
 
     @Platforms(HOSTED_ONLY.class)
-    public JNIAccessibleMethod(JNIAccessibleClass declaringClass, int modifiers, boolean preserved) {
+    public JNIAccessibleMethod(JNIAccessibleClass declaringClass, int modifiers, boolean isConstructor, boolean preserved) {
         super(declaringClass);
-        assert (modifiers & PRESERVED_FLAG_MASK) == 0;
-        this.modifiers = modifiers | (preserved ? PRESERVED_FLAG_MASK : 0);
+        assert (modifiers & (PRESERVED_FLAG_MASK | CONSTRUCTOR_FLAG_MASK)) == 0;
+        this.modifiers = modifiers | (isConstructor ? CONSTRUCTOR_FLAG_MASK : 0) | (preserved ? PRESERVED_FLAG_MASK : 0);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -120,7 +122,7 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember implements Pr
     @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
     @Uninterruptible(reason = "Must not throw any exceptions.", callerMustBe = true)
     CodePointer getCallWrapperAddress() {
-        return callWrapper;
+        return MethodRefUtils.asCodePointer(callWrapper);
     }
 
     @AlwaysInline("Work around an issue with the LLVM backend with which the return value was accessed incorrectly.")
@@ -132,11 +134,11 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember implements Pr
                 return LoadMethodByIndexNode.loadMethodByIndex(instance.getClass(), vtableIndex, interfaceTypeID);
             }
         }
-        return nonvirtualTarget;
+        return MethodRefUtils.asCodePointer(nonvirtualTarget);
     }
 
-    PointerBase getNewObjectAddress() {
-        return newObjectTarget;
+    CodePointer getNewObjectAddress() {
+        return MethodRefUtils.asCodePointer(newObjectTarget);
     }
 
     public Class<?> getDeclaringClassObject() {
@@ -151,18 +153,22 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember implements Pr
         return Modifier.isNative(modifiers);
     }
 
+    boolean isConstructor() {
+        return (modifiers & CONSTRUCTOR_FLAG_MASK) != 0;
+    }
+
     boolean isStatic() {
         return Modifier.isStatic(modifiers);
     }
 
     public int getModifiers() {
-        return modifiers;
+        return modifiers & ~CONSTRUCTOR_FLAG_MASK;
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public void finishBeforeCompilation(EconomicSet<Class<?>> hidingSubclasses, int vtableIndexEntry, int interfaceTypeIDEntry, CodePointer nonvirtualEntry, PointerBase newObjectEntry,
-                    CodePointer callWrapperEntry, CodePointer varargs, CodePointer array, CodePointer valist, CodePointer varargsNonvirtual, CodePointer arrayNonvirtual,
-                    CodePointer valistNonvirtual) {
+    public void finishBeforeCompilation(EconomicSet<Class<?>> hidingSubclasses, int vtableIndexEntry, int interfaceTypeIDEntry, MethodRef nonvirtualEntry, MethodRef newObjectEntry,
+                    MethodRef callWrapperEntry, MethodRef varargs, MethodRef array, MethodRef valist, MethodRef varargsNonvirtual, MethodRef arrayNonvirtual,
+                    MethodRef valistNonvirtual) {
         assert this.vtableIndex == VTABLE_INDEX_NOT_YET_COMPUTED && (vtableIndexEntry == VTABLE_INDEX_STATICALLY_BOUND_METHOD || vtableIndexEntry >= 0);
         assert this.interfaceTypeID == INTERFACE_TYPEID_NOT_YET_COMPUTED && interfaceTypeIDEntry != INTERFACE_TYPEID_NOT_YET_COMPUTED;
 

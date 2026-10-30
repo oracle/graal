@@ -104,6 +104,7 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
@@ -259,6 +260,16 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         setHeapBase(heapBase);
         if (SubstrateOptions.useRelativeCodePointers()) {
             runtimeCallInitCodeBase(INIT_CODE_BASE);
+        }
+    }
+
+    /** Initializes the reserved registers from an initialized isolate thread without a foreign call. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void initReservedRegisters(IsolateThread thread) {
+        writeCurrentVMThread(thread);
+        setHeapBase(Isolates.getHeapBase(VMThreads.IsolateTL.get(thread)));
+        if (SubstrateOptions.useRelativeCodePointers()) {
+            writeCurrentVMCodeBase(VMThreads.CodeBaseTL.get(thread));
         }
     }
 
@@ -690,8 +701,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return error;
         }
 
-        initBaseRegisters(Isolates.getHeapBase(isolate));
-        writeCurrentVMThread(thread);
+        initReservedRegisters(thread);
         return enterAttachNewlyStartedThread1();
     }
 
@@ -741,6 +751,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private static void initializeIsolateThreadForCrashHandler0(Isolate isolate, IsolateThread thread) {
         VMThreads.StatusSupport.setStatusNative();
         VMThreads.IsolateTL.set(thread, isolate);
+        if (SubstrateOptions.useRelativeCodePointers()) {
+            VMThreads.CodeBaseTL.set(thread, KnownIntrinsics.codeBase());
+        }
         SubstrateDiagnostics.setOnlyAttachedForCrashHandler(thread);
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
     }
@@ -911,9 +924,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return CEntryPointErrors.NULL_ARGUMENT;
         }
 
-        writeCurrentVMThread(thread);
-        Isolate isolate = VMThreads.IsolateTL.get(thread);
-        initBaseRegisters(Isolates.getHeapBase(isolate));
+        initReservedRegisters(thread);
 
         if (runtimeAssertionsEnabled() || SubstrateOptions.CheckIsolateThreadAtEntry.getValue()) {
             /*

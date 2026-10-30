@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,7 +62,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.meta.MethodRefSupport;
+import com.oracle.svm.core.meta.MethodRefUtils;
 import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
 import com.oracle.svm.core.reflect.ReflectionIntrospectorImpl;
@@ -139,7 +139,6 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     private ImageClassLoader loader;
     private AnalysisUniverse aUniverse;
     private UniverseMetaAccess metaAccess;
-    private Boolean relativeCodePointers;
 
     private record AccessorKey(ResolvedJavaMethod member, ResolvedJavaType targetClass) {
     }
@@ -307,11 +306,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     private MethodRef asMethodRef(ResolvedJavaMethod method) {
         AnalysisMethod aMethod = (method instanceof AnalysisMethod) ? (AnalysisMethod) method : analysisAccess.getUniverse().lookup(method);
-        if (relativeCodePointers) {
-            return MethodRefSupport.createMethodOffset(aMethod);
-        } else {
-            return MethodRefSupport.createMethodPointer(aMethod);
-        }
+        return MethodRefUtils.create(aMethod);
     }
 
     @Override
@@ -372,9 +367,6 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
         loader = access.getImageClassLoader();
         annotationSubstitutions = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
-
-        assert relativeCodePointers == null;
-        relativeCodePointers = SubstrateOptions.useRelativeCodePointers();
 
         /* Primitive classes cannot be accessed through Class.forName() */
         for (Class<?> primitiveClass : PRIMITIVE_CLASSES) {
