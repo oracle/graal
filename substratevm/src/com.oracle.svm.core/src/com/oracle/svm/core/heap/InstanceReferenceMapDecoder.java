@@ -25,7 +25,6 @@
 package com.oracle.svm.core.heap;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-import static com.oracle.svm.core.heap.InstanceReferenceMapEncoder.REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT;
 
 import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.word.Pointer;
@@ -46,6 +45,12 @@ import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
 @DuplicatedInNativeCode
 public class InstanceReferenceMapDecoder {
+    @DuplicatedInNativeCode //
+    public static final int REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT = 2;
+
+    public static final int MAP_HEADER_SIZE = 4;
+    public static final int MAP_ENTRY_SIZE = 8;
+
     @NeverInline("Non-performance critical version.")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE)
     public static void walkReferences(Pointer baseAddress, InstanceReferenceMap referenceMap, ObjectReferenceVisitor visitor, Object holderObject) {
@@ -65,7 +70,7 @@ public class InstanceReferenceMapDecoder {
         position = position.add(4);
 
         assert entryCount >= 0;
-        UnsignedWord sizeOfEntries = Word.unsigned(InstanceReferenceMapEncoder.MAP_ENTRY_SIZE).multiply(entryCount);
+        UnsignedWord sizeOfEntries = Word.unsigned(MAP_ENTRY_SIZE).multiply(entryCount);
         Pointer end = position.add(sizeOfEntries);
         while (position.belowThan(end)) {
             int offset = position.readInt(0);
