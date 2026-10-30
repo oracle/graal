@@ -911,9 +911,7 @@ final class BytecodeNodeElement extends AbstractElement {
             b.staticReference(types.FrameInstance_FrameAccess, "READ_ONLY");
             b.end();
             b.end(); // frame declaration
-            b.startReturn();
-            parent.emitReadBytecodeIndexFromFrame(b, "frame", true);
-            b.end();
+            parent.emitReturnBytecodeIndexFromFrame(b, "frame");
         } else {
             b.startReturn().string("-1").end();
         }
@@ -932,9 +930,7 @@ final class BytecodeNodeElement extends AbstractElement {
             b.end();
             b.startReturn().string("-1").end();
         } else if (useFrameForBytecodeIndex()) {
-            b.startReturn();
-            parent.emitReadBytecodeIndexFromFrame(b, "frame", true);
-            b.end();
+            parent.emitReturnBytecodeIndexFromFrame(b, "frame");
         } else {
             b.startReturn().string("-1").end();
         }
@@ -945,9 +941,7 @@ final class BytecodeNodeElement extends AbstractElement {
     private CodeExecutableElement createGetBytecodeIndex() {
         CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "getBytecodeIndex", new String[]{"frame"}, new TypeMirror[]{types.Frame});
         CodeTreeBuilder b = ex.createBuilder();
-        b.startReturn();
-        parent.emitReadBytecodeIndexFromFrame(b, "frame", true);
-        b.end();
+        parent.emitReturnBytecodeIndexFromFrame(b, "frame");
         return ex;
     }
 
