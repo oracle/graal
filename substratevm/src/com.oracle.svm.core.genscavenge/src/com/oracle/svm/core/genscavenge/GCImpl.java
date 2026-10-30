@@ -73,7 +73,7 @@ import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
-import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.guest.staging.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.heap.SuspendSerialGCMaxHeapSize;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;

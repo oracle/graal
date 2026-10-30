@@ -73,7 +73,7 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.guest.staging.core.heap.ReferenceMapIndex;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata.ClassInfo;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata.ClassInfoAccess;

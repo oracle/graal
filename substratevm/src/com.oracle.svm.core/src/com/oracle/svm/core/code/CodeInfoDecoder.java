@@ -40,7 +40,7 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.guest.staging.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
-import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.guest.staging.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;

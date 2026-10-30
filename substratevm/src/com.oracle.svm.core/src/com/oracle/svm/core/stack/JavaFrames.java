@@ -39,7 +39,7 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.guest.staging.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.guest.staging.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.shared.Uninterruptible;
 

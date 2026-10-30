@@ -46,6 +46,7 @@ import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.guest.staging.core.code.UntetheredCodeInfo;
 import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.guest.staging.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
