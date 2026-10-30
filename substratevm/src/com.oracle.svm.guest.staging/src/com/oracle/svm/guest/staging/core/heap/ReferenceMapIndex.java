@@ -22,23 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.guest.staging.core.heap;
 
 import com.oracle.svm.shared.Uninterruptible;
 
 public class ReferenceMapIndex {
     /**
      * Marker value returned by
-     * {@link com.oracle.svm.core.code.CodeInfoQueryResult#getReferenceMapIndex()} when the
-     * reference map is empty for the {@link com.oracle.svm.core.code.CodeInfoQueryResult#getIP()
-     * IP}.
+     * {@code com.oracle.svm.core.code.CodeInfoQueryResult#getReferenceMapIndex()} when the
+     * reference map is empty for the
+     * {@code com.oracle.svm.core.code.CodeInfoQueryResult#getIP() IP}.
      */
     public static final int EMPTY_REFERENCE_MAP = 0;
 
     /**
      * Marker value returned by
-     * {@link com.oracle.svm.core.code.CodeInfoQueryResult#getReferenceMapIndex()} when no reference
-     * map is registered for the {@link com.oracle.svm.core.code.CodeInfoQueryResult#getIP() IP}.
+     * {@code com.oracle.svm.core.code.CodeInfoQueryResult#getReferenceMapIndex()} when no reference
+     * map is registered for the {@code com.oracle.svm.core.code.CodeInfoQueryResult#getIP() IP}.
      */
     public static final int NO_REFERENCE_MAP = -1;
 
