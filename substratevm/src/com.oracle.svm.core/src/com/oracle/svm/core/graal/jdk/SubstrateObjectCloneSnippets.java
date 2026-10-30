@@ -39,7 +39,7 @@ import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
-import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
+import com.oracle.svm.guest.staging.core.heap.InstanceReferenceMapDecoder;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.hub.DynamicHub;

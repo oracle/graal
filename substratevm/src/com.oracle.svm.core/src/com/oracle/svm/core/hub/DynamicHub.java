@@ -118,7 +118,7 @@ import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.guest.staging.core.graal.meta.DynamicHubOffsets;
 import com.oracle.svm.guest.staging.core.heap.Heap;
-import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
+import com.oracle.svm.guest.staging.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.guest.staging.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;

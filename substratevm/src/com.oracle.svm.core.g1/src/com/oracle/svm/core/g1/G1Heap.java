@@ -74,7 +74,7 @@ import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.guest.staging.core.heap.GC;
 import com.oracle.svm.guest.staging.core.heap.GCCause;
 import com.oracle.svm.guest.staging.core.heap.Heap;
-import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
+import com.oracle.svm.guest.staging.core.heap.InstanceReferenceMapDecoder;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
 import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
