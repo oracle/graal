@@ -297,7 +297,8 @@ public final class ClassRegistries implements ParsingContext {
      */
     private Object checkResult(DynamicHub result, String name) {
         Object knownClassName = shouldFollowReflectionConfiguration() ? knownClassNames.get(name) : null;
-        if (MetadataTracer.enabled() && shouldTraceClassLookup(result, knownClassName)) {
+        // JNI-only lookups have their own tracing (§FS-001-native-image-semantics.3.1).
+        if (MetadataTracer.enabled() && shouldFollowReflectionConfiguration() && shouldTraceClassLookup(result, knownClassName)) {
             MetadataTracer.singleton().traceReflectionType(name);
         }
         if (result == null && shouldFollowReflectionConfiguration()) {
