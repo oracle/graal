@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -303,6 +303,8 @@ public class ServiceLoaderFeature implements InternalFeature {
     private static ResolvedJavaMethod findNullaryConstructor(ResolvedJavaType providerClass) {
         ResolvedJavaMethod nullaryConstructor = null;
         try {
+            // Match Java reflection's linking without initializing the provider.
+            providerClass.link();
             ResolvedJavaMethod constructor = JVMCIReflectionUtil.getDeclaredConstructor(false, providerClass);
             if (Modifier.isPublic(constructor.getModifiers())) {
                 nullaryConstructor = constructor;
@@ -319,6 +321,8 @@ public class ServiceLoaderFeature implements InternalFeature {
         try {
             /* Only look for a provider() method if provider class is in an explicit module. */
             if (JVMCIReflectionUtil.getModule(providerClass).isNamed() && !JVMCIReflectionUtil.getModule(providerClass).isAutomatic()) {
+                // Match Java reflection's linking without initializing the provider.
+                providerClass.link();
                 for (ResolvedJavaMethod method : providerClass.getDeclaredMethods(false)) {
                     if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
                                     method.getSignature().getParameterCount(false) == 0 && method.getName().equals("provider")) {
