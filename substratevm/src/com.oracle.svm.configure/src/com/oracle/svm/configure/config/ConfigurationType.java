@@ -118,7 +118,7 @@ public class ConfigurationType implements JsonPrintable {
         synchronized (other) {
             typeDescriptor = other.typeDescriptor;
             this.condition = condition;
-            // Copy members under the inferred condition: FS-002-conditional-foreign-metadata.1
+            // Copy members under the inferred condition.
             mergeFlagsFrom(other);
             mergeFieldsFrom(other);
             mergeMethodsFrom(other);

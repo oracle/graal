@@ -68,7 +68,6 @@ public class ConfigurationVerifier {
             System.err.println("The following configuration was not expected: ");
             System.err.println(getConfigurationJSON(extraConfig));
         }
-        // FS-002-conditional-foreign-metadata.1
         Assert.assertTrue("Missing foreign registrations: " + getConfigurationJSON(missingConfig), missingConfig.getForeignConfiguration().isEmpty());
         Assert.assertTrue("Unexpected foreign registrations: " + getConfigurationJSON(extraConfig), extraConfig.getForeignConfiguration().isEmpty());
         Assert.assertTrue(missingConfig.isEmpty() && extraConfig.isEmpty());

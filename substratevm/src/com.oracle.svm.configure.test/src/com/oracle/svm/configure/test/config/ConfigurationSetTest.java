@@ -38,7 +38,6 @@ import com.oracle.svm.configure.test.AddExports;
 @AddExports({"org.graalvm.nativeimage/org.graalvm.nativeimage.impl", "jdk.graal.compiler/jdk.graal.compiler.util", "jdk.graal.compiler/jdk.graal.compiler.util.json"})
 public class ConfigurationSetTest {
 
-    /** Regression for FS-002-conditional-foreign-metadata.2. */
     @Test
     public void foreignOnlyDowncallIsNonempty() {
         ConfigurationSet set = new ConfigurationSet();
@@ -46,7 +45,6 @@ public class ConfigurationSetTest {
         Assert.assertFalse("A foreign-only downcall configuration is nonempty", set.isEmpty());
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.2. */
     @Test
     public void foreignOnlyUpcallIsNonempty() {
         ConfigurationSet set = new ConfigurationSet();
@@ -54,7 +52,6 @@ public class ConfigurationSetTest {
         Assert.assertFalse("A foreign-only upcall configuration is nonempty", set.isEmpty());
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.2. */
     @Test
     public void foreignOnlyDirectUpcallIsNonempty() {
         ConfigurationSet set = new ConfigurationSet();

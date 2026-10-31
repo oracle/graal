@@ -166,7 +166,6 @@ public class ForeignConfigurationTest {
         return Files.readString(output.resolve(ConfigurationFile.REACHABILITY_METADATA.getFileName()));
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.3. */
     @Test
     public void generatePreservesConditionsDescriptorsAndOptions() throws IOException {
         String reflection = "\"reflection\":[{\"condition\":{\"typeReached\":\"lib.Native\"},\"type\":\"lib.Target\"}],";
@@ -176,7 +175,6 @@ public class ForeignConfigurationTest {
         assertForeignJson(foreignPart(expected), foreignPart(actual));
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.3. */
     @Test
     public void generateDoesNotEraseConditionalEntriesWhenMergingPlainInput() throws IOException {
         String actual = foreignPart(generate(metadata("lib.Native"), metadata(null)));
@@ -189,20 +187,17 @@ public class ForeignConfigurationTest {
         assertEquivalent(expected, parseForeign("{\"foreign\":" + actual + "}"));
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.3. */
     @Test
     public void generateKeepsDifferentConditionTypes() throws IOException {
         ForeignConfiguration expected = parseForeign(metadata("lib.First")).copyAndMerge(parseForeign(metadata("lib.Second")));
         assertEquivalent(expected, parseForeign(generate(metadata("lib.First"), metadata("lib.Second"))));
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.3. */
     @Test
     public void generatePreservesUnconditionalControl() throws IOException {
         assertForeignJson(foreignPart(metadata(null)), foreignPart(generate(metadata(null))));
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.1. */
     @Test
     public void inferredConditionAppliesToEveryForeignCategory() throws IOException {
         ForeignConfiguration actual = new ForeignConfiguration();
@@ -219,7 +214,6 @@ public class ForeignConfigurationTest {
         return new ComplexFilter(root);
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.4. */
     @Test
     public void filteringUsesConditionTypesForEveryForeignCategory() throws IOException {
         ForeignConfiguration included = parseForeign(metadata("lib.Native"));
@@ -228,7 +222,6 @@ public class ForeignConfigurationTest {
         assertEquivalent(included, actual);
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.4. */
     @Test
     public void directUpcallFilteringAlsoUsesTargetClass() {
         ForeignConfiguration all = new ForeignConfiguration();
@@ -255,25 +248,21 @@ public class ForeignConfigurationTest {
         assertEquivalent(expected, parseForeign("{\"foreign\":" + print(expected) + "}"));
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.5. */
     @Test
     public void descriptorfulDirectUpcallWithOptionsRoundTrips() throws IOException {
         assertDirectRoundTrip(true, OPTIONS);
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.5. */
     @Test
     public void descriptorlessDirectUpcallWithOptionsRoundTrips() throws IOException {
         assertDirectRoundTrip(false, OPTIONS);
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.5. */
     @Test
     public void descriptorlessDirectUpcallWithoutOptionsRoundTrips() throws IOException {
         assertDirectRoundTrip(false, Map.of());
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.5. */
     @Test
     public void conditionalMergePreservesDescriptorlessDirectUpcall() {
         ForeignConfiguration input = new ForeignConfiguration();
@@ -283,7 +272,6 @@ public class ForeignConfigurationTest {
         assertEquivalent(direct(false, OPTIONS), actual);
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.5. */
     @Test
     public void directUpcallSubsumptionIsScopedToConditionAndOptions() {
         ForeignConfiguration specific = direct(true, Map.of());
@@ -305,7 +293,6 @@ public class ForeignConfigurationTest {
         return new ConditionalConfigurationComputer(root, filter("lib.**"), new ConditionalConfigurationPredicate(filter("**"))).computeConditionalConfiguration();
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.1. */
     @Test
     public void singleRunInferenceRetainsForeignAlongsideReflection() throws IOException {
         MethodCallNode root = MethodCallNode.createRoot();
@@ -327,7 +314,6 @@ public class ForeignConfigurationTest {
         assertEquivalent(parseForeign(metadata("lib.Native")), actual.getForeignConfiguration());
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.2. */
     @Test
     public void foreignOnlyPartialSerializationRetainsEachCategory() throws IOException {
         for (String category : List.of("downcalls", "upcalls", "directUpcalls")) {
@@ -345,7 +331,6 @@ public class ForeignConfigurationTest {
         }
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.2. */
     @Test
     public void foreignOnlyDifferencesPropagateToCallingClasses() {
         MethodCallNode root = MethodCallNode.createRoot();
@@ -365,13 +350,11 @@ public class ForeignConfigurationTest {
         Assert.assertTrue("No foreign-only difference may remain on the shared method", second.getConfiguration().getForeignConfiguration().isEmpty());
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.2. */
     @Test
     public void commonForeignConfigurationRemainsOnDistinctCallNodes() {
         assertCommonForeignConfiguration(false);
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.2. */
     @Test
     public void commonForeignConfigurationRemainsAfterDifferencesPropagate() {
         assertCommonForeignConfiguration(true);
@@ -409,7 +392,6 @@ public class ForeignConfigurationTest {
         assertEquivalent(expected, actual.getForeignConfiguration());
     }
 
-    /** Regression for FS-002-conditional-foreign-metadata.2. */
     @Test
     public void generateConditionalRetainsForeignOnlyPartialData() throws IOException {
         MethodCallNode root = MethodCallNode.createRoot();

@@ -206,7 +206,7 @@ public class ConditionalConfigurationComputer {
          */
         for (List<MethodCallNode> list : methodCallNodes.values()) {
             ConfigurationSet configurationToAdd = list.getFirst().configuration;
-            // Compare propagated contents: FS-002-conditional-foreign-metadata.2
+            // Compare propagated contents.
             assert list.stream().allMatch(node -> node.configuration.copyAndSubtract(configurationToAdd).isEmpty() &&
                             configurationToAdd.copyAndSubtract(node.configuration).isEmpty()) : "Call nodes of the same method must have equivalent configurations";
             for (MethodCallNode node : list) {

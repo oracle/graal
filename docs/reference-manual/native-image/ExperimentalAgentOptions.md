@@ -54,24 +54,16 @@ Currently, this feature supports two modes:
  1. Generating conditional configuration in a single run with the agent.
  2. Generating conditional configuration from multiple runs with the agent and finally merging the collected data.
 
-<!-- §FS-002-conditional-foreign-metadata.1 -->
-Both modes include [Foreign Function and Memory API metadata](FFM-API.md): downcalls, upcalls, and direct upcalls receive the conditions inferred from their calling contexts.
-
 ### Generating Conditional Configuration During an Agent Run
 
 To enable this mode, add `experimental-conditional-config-filter-file=<path>` to the agent's command line, where `<path>` points to an agent filter file.
 Classes that are considered included by this filter will be designated as user code classes.
 To further filter the generated configuration, you can use `conditional-config-class-filter-file=<path>`, where `<path>` is a path to an agent filter file.
 
-<!-- §FS-002-conditional-foreign-metadata.4 -->
-For foreign registrations, this additional filter must include the condition class and, for direct upcalls, the target class.
-The same rule applies to `--class-name-filter` when generating conditional configuration from multiple runs.
-
 ### Generating Conditional Configuration From Multiple Agent Runs
 
 Conditional configuration can be generated from multiple agent runs that reach different code paths in the application.
-<!-- §FS-002-conditional-foreign-metadata.2 -->
-Add `experimental-conditional-config-part` to the agent options for each run to retain configuration with calling contexts, including contexts that contain only foreign registrations.
+Add `experimental-conditional-config-part` to the agent options for each run to retain configuration with calling contexts.
 After all agent runs have finished, use `native-image-utils` to merge the collected data and produce conditional configuration.
 To generate a conditional configuration, invoke:
 ```shell

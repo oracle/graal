@@ -38,7 +38,7 @@ import java.lang.invoke.MethodType;
 
 import org.junit.Assert;
 
-/** Foreign-call tracing fixture: FS-002-conditional-foreign-metadata.1. */
+/** Foreign-call tracing fixture. */
 @SuppressWarnings("restricted") // Intentional restricted FFM calls for agent tracing.
 final class ForeignCalls {
     private static final Linker LINKER = Linker.nativeLinker();

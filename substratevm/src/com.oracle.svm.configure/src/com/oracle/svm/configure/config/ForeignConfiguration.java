@@ -60,7 +60,6 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
         @Override
         public void printJson(JsonWriter writer) throws IOException {
             writer.appendObjectStart();
-            // FS-002-conditional-foreign-metadata.3
             AccessConditionPrintable.printConditionAttribute(condition, writer, true);
             desc.printJson(writer);
             if (!linkerOptions.isEmpty()) {
@@ -75,11 +74,9 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
         @Override
         public void printJson(JsonWriter writer) throws IOException {
             writer.appendObjectStart();
-            // FS-002-conditional-foreign-metadata.3
             AccessConditionPrintable.printConditionAttribute(condition, writer, true);
             writer.appendKeyValue("class", clazz).appendSeparator()
                             .appendKeyValue("method", method);
-            // FS-002-conditional-foreign-metadata.5
             if (desc != null) {
                 writer.appendSeparator();
                 desc.printJson(writer);
@@ -215,14 +212,13 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
 
     @Override
     public void mergeConditional(UnresolvedAccessCondition condition, ForeignConfiguration other) {
-        // FS-002-conditional-foreign-metadata.1
         for (StubDesc stub : other.downcallStubs) {
             addDowncall(condition, stub.desc, stub.linkerOptions);
         }
         for (StubDesc stub : other.upcallStubs) {
             addUpcall(condition, stub.desc, stub.linkerOptions);
         }
-        // Preserve descriptorless subsumption: FS-002-conditional-foreign-metadata.5
+        // Preserve descriptorless subsumption.
         for (DirectStubDesc stub : other.directUpcallStubs) {
             if (stub.desc == null) {
                 addDirectUpcall(condition, stub.linkerOptions, stub.clazz, stub.method);
@@ -336,7 +332,7 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
         return true;
     }
 
-    /** Removal predicates: FS-002-conditional-foreign-metadata.4. */
+    /** Removal predicates. */
     public interface Predicate {
         boolean testDowncall(UnresolvedAccessCondition condition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions);
 

@@ -106,7 +106,6 @@ public class ConditionalConfigurationPredicate implements TypeConfiguration.Pred
 
     @Override
     public boolean testDowncall(UnresolvedAccessCondition condition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) {
-        // FS-002-conditional-foreign-metadata.4
         return !filter.includes(condition.getTypeName());
     }
 

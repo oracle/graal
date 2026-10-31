@@ -250,7 +250,6 @@ public class ConfigurationSet {
     }
 
     public boolean isEmpty() {
-        // Retain foreign-only partial nodes and propagation: FS-002-conditional-foreign-metadata.2
         return reflectionConfiguration.isEmpty() && resourceConfiguration.isEmpty() && proxyConfiguration.isEmpty() && serializationConfiguration.isEmpty() &&
                         predefinedClassesConfiguration.isEmpty() && foreignConfiguration.isEmpty();
     }
