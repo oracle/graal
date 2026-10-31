@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -118,7 +118,10 @@ public class ConfigurationType implements JsonPrintable {
         synchronized (other) {
             typeDescriptor = other.typeDescriptor;
             this.condition = condition;
-            mergeFrom(other);
+            // Copy members under the inferred condition: FS-002-conditional-foreign-metadata.1
+            mergeFlagsFrom(other);
+            mergeFieldsFrom(other);
+            mergeMethodsFrom(other);
         }
     }
 

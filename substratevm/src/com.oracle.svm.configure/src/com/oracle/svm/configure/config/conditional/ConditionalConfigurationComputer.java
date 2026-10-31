@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -206,7 +206,9 @@ public class ConditionalConfigurationComputer {
          */
         for (List<MethodCallNode> list : methodCallNodes.values()) {
             ConfigurationSet configurationToAdd = list.getFirst().configuration;
-            assert list.stream().allMatch(node -> node.configuration.equals(configurationToAdd)) : "The ";
+            // Compare propagated contents: FS-002-conditional-foreign-metadata.2
+            assert list.stream().allMatch(node -> node.configuration.copyAndSubtract(configurationToAdd).isEmpty() &&
+                            configurationToAdd.copyAndSubtract(node.configuration).isEmpty()) : "Call nodes of the same method must have equivalent configurations";
             for (MethodCallNode node : list) {
                 String className = node.methodInfo.getJavaDeclaringClassName();
                 UnresolvedAccessCondition condition = UnresolvedAccessCondition.create(NamedConfigurationTypeDescriptor.fromJSONName(className));

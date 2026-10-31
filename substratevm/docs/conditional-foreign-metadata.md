@@ -7,6 +7,7 @@ This applies to `foreign.downcalls`, `foreign.upcalls`, and `foreign.directUpcal
 
 When you enable conditional configuration, each observed foreign registration remains in the output with the `typeReached` condition inferred from its calling context.
 The same inference rules apply to foreign and other metadata recorded under that context.
+Applying an inferred condition to reflection metadata preserves its type, members, and access flags without changing the source metadata.
 For a library class `lib.Native` that records two downcalls, an adapted upcall, a direct upcall, and reflection, conditional output retains all four foreign registrations under `lib.Native`, alongside the reflection metadata.
 Plain mode continues to record those registrations unconditionally.
 
@@ -15,6 +16,7 @@ Plain mode continues to record those registrations unconditionally.
 A configuration containing only foreign registrations is nonempty, including when it contains only one of the three foreign categories.
 Serializing and parsing partial configuration with origins preserves foreign-only method nodes and their registrations.
 Foreign-only differences between calling contexts propagate through method nodes using the same inference rules as other metadata.
+After propagation, call nodes for the same method have no remaining configuration differences in either direction, even when their configuration objects are distinct.
 Partial runs followed by `native-image-utils generate-conditional` produce the same foreign registrations and inferred conditions as a single conditional run over those observations, without repairing the partial trace by hand.
 
 ## 3. Generation and Merging

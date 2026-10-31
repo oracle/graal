@@ -311,10 +311,19 @@ public class ForeignConfigurationTest {
         MethodCallNode root = MethodCallNode.createRoot();
         MethodCallNode library = child(root, new MethodInfoRepository(), "lib.Native");
         library.getConfiguration().getForeignConfiguration().mergeConditional(UnresolvedAccessCondition.unconditional(), parseForeign(metadata(null)));
+        String reflectionEntry = """
+                        "type":"lib.Target","unsafeAllocated":true,
+                        "fields":[{"name":"value"}],"methods":[{"name":"hello","parameterTypes":[]}]
+                        """;
         library.getConfiguration().getReflectionConfiguration().createParser(true, EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION)).parseAndRegister(
-                        new StringReader("{\"reflection\":[{\"type\":\"lib.Target\"}]}"));
+                        new StringReader("{\"reflection\":[{" + reflectionEntry + "}]}"));
+        String originalReflection = print(library.getConfiguration().getReflectionConfiguration());
+        ConfigurationSet expected = new ConfigurationSet();
+        expected.getReflectionConfiguration().createParser(true, EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION)).parseAndRegister(
+                        new StringReader("{\"reflection\":[{\"condition\":{\"typeReached\":\"lib.Native\"}," + reflectionEntry + "}]}"));
         ConfigurationSet actual = infer(root);
-        Assert.assertFalse("Reflection control", actual.getReflectionConfiguration().isEmpty());
+        Assert.assertEquals("Reflection condition, members, and flags", print(expected.getReflectionConfiguration()), print(actual.getReflectionConfiguration()));
+        Assert.assertEquals("Source reflection is unchanged", originalReflection, print(library.getConfiguration().getReflectionConfiguration()));
         assertEquivalent(parseForeign(metadata("lib.Native")), actual.getForeignConfiguration());
     }
 
@@ -354,6 +363,50 @@ public class ForeignConfigurationTest {
         assertEquivalent(secondExpected, parentB.getConfiguration().getForeignConfiguration());
         Assert.assertTrue("No foreign-only difference may remain on the shared method", first.getConfiguration().getForeignConfiguration().isEmpty());
         Assert.assertTrue("No foreign-only difference may remain on the shared method", second.getConfiguration().getForeignConfiguration().isEmpty());
+    }
+
+    /** Regression for FS-002-conditional-foreign-metadata.2. */
+    @Test
+    public void commonForeignConfigurationRemainsOnDistinctCallNodes() {
+        assertCommonForeignConfiguration(false);
+    }
+
+    /** Regression for FS-002-conditional-foreign-metadata.2. */
+    @Test
+    public void commonForeignConfigurationRemainsAfterDifferencesPropagate() {
+        assertCommonForeignConfiguration(true);
+    }
+
+    private static void assertCommonForeignConfiguration(boolean includeDifferences) {
+        MethodCallNode root = MethodCallNode.createRoot();
+        MethodInfoRepository methods = new MethodInfoRepository();
+        MethodCallNode parentA = child(root, methods, "lib.ParentA");
+        MethodCallNode parentB = child(root, methods, "lib.ParentB");
+        MethodCallNode first = child(parentA, methods, "lib.Shared");
+        MethodCallNode second = child(parentB, methods, "lib.Shared");
+        ForeignConfiguration common = new ForeignConfiguration();
+        common.addDowncall("jlong", List.of("void*"), Map.of());
+        first.getConfiguration().getForeignConfiguration().mergeConditional(UnresolvedAccessCondition.unconditional(), common);
+        second.getConfiguration().getForeignConfiguration().mergeConditional(UnresolvedAccessCondition.unconditional(), common);
+        ForeignConfiguration firstDifference = new ForeignConfiguration();
+        ForeignConfiguration secondDifference = new ForeignConfiguration();
+        if (includeDifferences) {
+            firstDifference.addUpcall("jint", List.of("void*"), Map.of());
+            secondDifference.addDirectUpcall("jint", List.of("void*"), Map.of(), "lib.Native", "compare");
+            first.getConfiguration().getForeignConfiguration().mergeConditional(UnresolvedAccessCondition.unconditional(), firstDifference);
+            second.getConfiguration().getForeignConfiguration().mergeConditional(UnresolvedAccessCondition.unconditional(), secondDifference);
+        }
+        ForeignConfiguration expected = new ForeignConfiguration();
+        expected.mergeConditional(condition("lib.Shared"), common);
+        expected.mergeConditional(condition("lib.ParentA"), firstDifference);
+        expected.mergeConditional(condition("lib.ParentB"), secondDifference);
+        ConfigurationSet actual = infer(root);
+        Assert.assertNotSame("Call-node configuration copies are distinct", first.getConfiguration(), second.getConfiguration());
+        assertEquivalent(common, first.getConfiguration().getForeignConfiguration());
+        assertEquivalent(common, second.getConfiguration().getForeignConfiguration());
+        assertEquivalent(firstDifference, parentA.getConfiguration().getForeignConfiguration());
+        assertEquivalent(secondDifference, parentB.getConfiguration().getForeignConfiguration());
+        assertEquivalent(expected, actual.getForeignConfiguration());
     }
 
     /** Regression for FS-002-conditional-foreign-metadata.2. */
