@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -548,10 +548,16 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         private static final Pattern UNRESOLVED_EXTERNAL_SYMBOL_PATTERN = Pattern.compile("\\bLNK(?:2001|2019): unresolved external symbol (\\S+)");
 
         private final String imageName;
+        private final boolean staticVCRuntime;
 
         WindowsCCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> symbols, String imageName) {
             super(imageKind, nativeLibs, symbols);
             this.imageName = imageName;
+            this.staticVCRuntime = SubstrateOptions.StaticVCRuntime.getValue() && imageKind.isExecutable;
+            if (staticVCRuntime && ImageLayerBuildingSupport.buildingImageLayer()) {
+                /* Image layer DLLs are linked with the DLL runtime, so the image would still need it. */
+                throw UserError.abort("Option StaticVCRuntime is not supported when building image layers.");
+            }
         }
 
         @Override
@@ -618,7 +624,20 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             /* Add linker options. */
             cmd.add("/link");
             cmd.add("/INCREMENTAL:NO");
-            cmd.add("/NODEFAULTLIB:LIBCMT");
+            if (staticVCRuntime) {
+                /*
+                 * Hybrid CRT: replace the DLL startup code and the vcruntime import library with
+                 * their static counterparts, and use the UCRT import library instead of the static
+                 * UCRT. The objects compiled with /MD still resolve their CRT imports against
+                 * ucrtbase.dll, which ships with Windows, so the image shares one CRT heap with
+                 * JDK libraries loaded at run time and does not need vcruntime140.dll.
+                 */
+                cmd.add("/NODEFAULTLIB:msvcrt.lib");
+                cmd.add("/NODEFAULTLIB:vcruntime.lib");
+                cmd.add("/NODEFAULTLIB:libucrt.lib");
+            } else {
+                cmd.add("/NODEFAULTLIB:LIBCMT");
+            }
 
             if (imageKind == AbstractImage.NativeImageKind.IMAGE_LAYER) {
                 /*
@@ -672,6 +691,12 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                  * explicitly for mainCRTStartup.
                  */
                 cmd.add("msvcrt.lib");
+            }
+
+            if (staticVCRuntime) {
+                cmd.add("libcmt.lib");
+                cmd.add("libvcruntime.lib");
+                cmd.add("ucrt.lib");
             }
 
             // Add required Windows Libraries
