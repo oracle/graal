@@ -1,0 +1,73 @@
+{
+  "reflection": [
+    {
+      "type": {
+        "proxy": [
+          "org.graalvm.truffle.benchmark.interop.FunctionProxyBenchmark$StringAndInt"
+        ]
+      }
+    },
+    {
+      "type": {
+        "proxy": [
+          "org.graalvm.truffle.benchmark.interop.FunctionProxyBenchmark$NoArguments"
+        ]
+      }
+    },
+    {
+      "type": {
+        "proxy": [
+          "org.graalvm.truffle.benchmark.interop.FunctionProxyBenchmark$HostAndInt"
+        ]
+      }
+    },
+    {
+      "type": "org.graalvm.truffle.benchmark.interop.FunctionProxyBenchmark$HostPayload",
+      "fields": [
+        { "name": "number" }
+      ]
+    },
+    {
+      "type": {
+        "proxy": [
+          "org.graalvm.truffle.benchmark.interop.FunctionProxyBenchmark$Doubles"
+        ]
+      }
+    },
+    {
+      "type": {
+        "proxy": [
+          "org.graalvm.truffle.benchmark.interop.FunctionProxyBenchmark$MixedPrimitives"
+        ]
+      }
+    },
+    {
+      "type": {
+        "proxy": [
+          "org.graalvm.truffle.benchmark.interop.FunctionProxyBenchmark$AllPrimitives"
+        ]
+      }
+    },
+    {
+      "type": {
+        "proxy": [
+          "org.graalvm.truffle.benchmark.interop.FunctionProxyBenchmark$SeventeenArguments"
+        ]
+      }
+    },
+    {
+      "type": {
+        "proxy": [
+          "org.graalvm.truffle.benchmark.interop.FunctionProxyBenchmark$EighteenArguments"
+        ]
+      }
+    },
+    {
+      "type": {
+        "proxy": [
+          "org.graalvm.truffle.benchmark.interop.FunctionProxyBenchmark$ObjectMethods"
+        ]
+      }
+    }
+  ]
+}

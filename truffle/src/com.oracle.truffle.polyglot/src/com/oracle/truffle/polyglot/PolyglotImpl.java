@@ -866,11 +866,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         } else if (isGuestPrimitive(hostValue)) {
             return getAPIAccess().newValue(primitiveValues.get(hostValue.getClass()), null, hostValue, null);
         } else if (PolyglotWrapper.isInstance(hostValue)) {
-            PolyglotWrapper hostWrapper = PolyglotWrapper.asInstance(hostValue);
             // host wrappers can nicely reuse the associated context
-            PolyglotLanguageContext languageContext = hostWrapper.getLanguageContext();
+            PolyglotLanguageContext languageContext = PolyglotWrapper.getLanguageContext(hostValue);
             assert languageContext != null : "HostWrappers must be guaranteed to have non-null language context.";
-            guestValue = hostWrapper.getGuestObject();
+            guestValue = PolyglotWrapper.getGuestObject(hostValue);
             return languageContext.asValue(guestValue);
         } else {
             /*

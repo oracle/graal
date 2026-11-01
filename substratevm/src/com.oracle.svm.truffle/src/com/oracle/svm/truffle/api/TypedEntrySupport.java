@@ -50,6 +50,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.guest.staging.c.function.FunctionPointerHolder;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.auximage.AuxiliaryImageCodeObserver;
 import com.oracle.svm.core.code.ImageCodeInfo;
@@ -104,6 +105,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.compiler.TruffleCompilable;
@@ -242,6 +244,16 @@ public final class TypedEntrySupport {
         ImageSingletons.add(TypedEntrySupport.class, support);
         support.initializeBeforeAnalysis(access);
         support.registerInterpreterEntryMethodsAsCompiled(access);
+        Method[] entries = ((SubstrateTruffleRuntime) Truffle.getRuntime()).getExactGeneratedProxyEntries();
+        if (entries.length != 0) {
+            /* The fallback constant may only become reachable during AOT compilation. */
+            access.registerAsInHeap(FunctionPointerHolder.class, "generated proxy entry fallback");
+            for (Method entryMethod : entries) {
+                AnalysisMethod entry = access.getMetaAccess().lookupJavaMethod(entryMethod);
+                support.generatedEntryFallbacks.put(entryMethod, new FunctionPointerHolder(MethodRefSupport.createMethodPointer(entry)));
+                access.registerAsRoot(entry, true, "generated proxy entry fallback");
+            }
+        }
         RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
         for (ResolvedJavaMethod method : support.compiledEntryMethods.values()) {
             runtimeCompilationFeature.prepareMethodForRuntimeCompilation(method, access);
@@ -290,24 +302,23 @@ public final class TypedEntrySupport {
      * The primitive types for which return type specialization is supported. Adding a type here
      * also requires additions in many places in {@link SubstrateOptimizedCallTarget}.
      */
-    private static final EnumSet<JavaKind> TYPED_RETURN_KINDS = EnumSet.of(JavaKind.Int, JavaKind.Long, JavaKind.Double, JavaKind.Boolean, JavaKind.Object);
+    private static final EnumSet<JavaKind> TYPED_RETURN_KINDS = EnumSet.of(JavaKind.Boolean, JavaKind.Byte, JavaKind.Short, JavaKind.Char, JavaKind.Int, JavaKind.Long,
+                    JavaKind.Float, JavaKind.Double, JavaKind.Object);
 
     private ResolvedJavaField fromCompiledSpecializedEntryPointField;
     private ResolvedJavaField fromCompiledUnspecializedEntryPointField;
     private ResolvedJavaField compiledIndirectEntryAddressField;
+    private ResolvedJavaField generatedEntryFallbackAddressField;
 
     private final Map<JavaKind, ResolvedJavaMethod> compiledEntryMethods;
     private final Map<JavaKind, ResolvedJavaMethod> interpreterEntryMethods;
 
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     @ReflectivelyAccessed //
-    private CFunctionPointer unspecializedInterpreterEntryAddress;
-
-    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
-    @ReflectivelyAccessed //
     private CFunctionPointer compiledIndirectEntryAddress;
 
     private final ConcurrentMap<String, SubstrateInstalledCode> adapters = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Method, FunctionPointerHolder> generatedEntryFallbacks = new ConcurrentHashMap<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     TypedEntrySupport(MetaAccessProvider metaAccess) {
@@ -363,6 +374,7 @@ public final class TypedEntrySupport {
         fromCompiledSpecializedEntryPointField = registerAsAccessed(access, SubstrateOptimizedCallTarget.class, "fromCompiledSpecializedEntryPoint");
         fromCompiledUnspecializedEntryPointField = registerAsAccessed(access, SubstrateOptimizedCallTarget.class, "fromCompiledUnspecializedEntryPoint");
         compiledIndirectEntryAddressField = registerAsAccessed(access, TypedEntrySupport.class, "compiledIndirectEntryAddress");
+        generatedEntryFallbackAddressField = registerAsAccessed(access, FunctionPointerHolder.class, "functionPointer");
     }
 
     private static AnalysisField registerAsAccessed(BeforeAnalysisAccessImpl access, Class<?> declaringClass, String fieldName) {
@@ -375,8 +387,64 @@ public final class TypedEntrySupport {
     private void initializeBeforeCompilation(Feature.CompilationAccess a) {
         CompilationAccessImpl access = (CompilationAccessImpl) a;
 
-        unspecializedInterpreterEntryAddress = MethodRefSupport.createMethodPointer(access.getMetaAccess().lookupJavaMethod(interpreterEntryMethod(JavaKind.Object)));
         compiledIndirectEntryAddress = MethodRefSupport.createMethodPointer(access.getMetaAccess().lookupJavaMethod(compiledIndirectEntryMethod()));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerExactEntryPlugin(GraphBuilderConfiguration.Plugins plugins, Method[] entries) {
+        for (Method entryMethod : entries) {
+            plugins.getInvocationPlugins().register(entryMethod.getDeclaringClass(), new RequiredInvocationPlugin(entryMethod.getName(), entryMethod.getParameterTypes()) {
+                @Override
+                public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode[] arguments) {
+                    TypedEntrySupport support = singleton();
+                    /*
+                     * Unlike runtime-compiled direct callers, AOT exact callers do not arrange a
+                     * matching C2I adapter. The specialized entry can therefore be zero when neither
+                     * compatible compiled code nor an adapter is available. In that case, select
+                     * the generated fallback, which accepts the same exact signature and boxes
+                     * arguments for ordinary CallTarget.call dispatch.
+                     */
+                    FunctionPointerHolder fallback = support.generatedEntryFallbacks.get(entryMethod);
+                    VMError.guarantee(fallback != null, "Generated proxy entry fallback was not registered for %s", entryMethod);
+                    assert targetMethod.isStatic();
+                    assert arguments.length >= 3;
+                    ValueNode callTargetNode = arguments[0];
+                    RuntimeConfiguration runtimeConfiguration = RuntimeCompilationSupport.getRuntimeConfig();
+                    JavaConstant fallbackConstant = runtimeConfiguration.getProviders().getSnippetReflection().forObject(fallback);
+                    Computation[] addressComputation = {
+                                    new FieldLoad(support.fromCompiledSpecializedEntryPointField),
+                                    new FieldLoadIfZero(fallbackConstant, support.generatedEntryFallbackAddressField)
+                    };
+                    JavaKind returnKind = targetMethod.getSignature().getReturnKind();
+                    StampPair returnStamp = StampFactory.forDeclaredType(b.getGraph().getAssumptions(), targetMethod.getSignature().getReturnType(targetMethod.getDeclaringClass()), false);
+                    CallTargetNode indirectCallTargetNode = b.add(new ComputedIndirectCallTargetNode(callTargetNode, addressComputation, arguments,
+                                    returnStamp, targetMethod.getSignature().toParameterTypes(null), targetMethod));
+                    /* Preserve the caller's exception handlers, including Java-default fallback. */
+                    b.handleReplacedInvoke(indirectCallTargetNode, returnKind);
+                    return true;
+                }
+            });
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static boolean supportsExactGeneratedProxyCall(Method method) {
+        /* Generated roots prepend the language context and receiver. */
+        if (!(Modifier.isAbstract(method.getModifiers()) || method.isDefault()) || !supportsTypedArgumentCount(method.getParameterCount() + 2)) {
+            return false;
+        }
+        Class<?> returnType = method.getReturnType();
+        return returnType == void.class || !returnType.isPrimitive() ||
+                        Options.UseTypedResult.getValue() && TYPED_RETURN_KINDS.contains(JavaKind.fromJavaClass(returnType));
+    }
+
+    /*
+     * Specialized signatures must remain below escape analysis's array virtualization limit. A
+     * lower limit also avoids passing many arguments on the stack instead of in a heap array.
+     * The count must be constant during partial evaluation so this check can constant fold.
+     */
+    static boolean supportsTypedArgumentCount(int count) {
+        return Options.UseTypedArguments.getValue() && count < 20;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -732,10 +800,6 @@ public final class TypedEntrySupport {
                                 return compileC2IAdapter(callTarget, name, signature, signatureInCompiler);
                             }
                         });
-    }
-
-    long lookupInterpreterEntryAddress() {
-        return unspecializedInterpreterEntryAddress.rawValue();
     }
 
     private SubstrateInstalledCode getOrCompileI2CAdapter(OptimizedCallTarget callTarget, SubstrateSignature signature,

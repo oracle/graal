@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -467,6 +467,22 @@ public abstract class RootNode extends ExecutableNode {
             l.unlock();
         }
         return target;
+    }
+
+    final RootCallTarget initializeTarget(ExecutionSignature signature) {
+        Objects.requireNonNull(signature);
+        ReentrantLock l = getLazyLock();
+        l.lock();
+        try {
+            if (callTarget != null) {
+                throw CompilerDirectives.shouldNotReachHere("Call target already initialized");
+            }
+            RootCallTarget target = NodeAccessor.RUNTIME.newCallTarget(null, this, signature);
+            setupCallTarget(target, "callTarget was set by newCallTarget but should not");
+            return target;
+        } finally {
+            l.unlock();
+        }
     }
 
     private void setupCallTarget(RootCallTarget callTarget, String message) {

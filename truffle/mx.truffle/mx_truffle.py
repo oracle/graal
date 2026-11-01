@@ -1163,6 +1163,8 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, build_args=None):
             "-H:+AddAllCharsets",
             "--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED",
             "--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl.asm=ALL-UNNAMED",
+            # Generated proxy tests subclass the internal proxy base, including during JUnit discovery.
+            "--add-exports=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED",
             "--enable-native-access=org.graalvm.truffle",
         ]
         + (
