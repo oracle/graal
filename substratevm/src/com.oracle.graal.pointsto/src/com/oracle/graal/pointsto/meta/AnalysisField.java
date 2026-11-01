@@ -275,9 +275,10 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      * type to be registered as instantiated; injection does not perform that registration. Tracked
      * primitive fields receive unconstrained values.
      * <p>
-     * Also summarizes immediate reference-array elements, permitting null independently of the
-     * array reference, including arrays held through an effective Object bound. Further array
-     * dimensions require separate coverage. Injection does not change write permissions.
+     * Also summarizes reference-array elements along the bound's declared dimensions, permitting
+     * null independently of the array reference, including immediate array contents under an
+     * effective Object bound. When array flow aliasing is disabled, concrete arrays admitted by generic
+     * or covariant bounds require separate coverage (GR-80697). Injection does not change write permissions.
      * <p>
      * Reference values enter the initial flow. Propagation to an instance field's sink requires a
      * receiver-specific field flow created and connected by analyzing a field load or store, or by

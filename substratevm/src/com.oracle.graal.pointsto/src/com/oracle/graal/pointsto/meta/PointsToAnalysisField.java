@@ -167,20 +167,25 @@ public class PointsToAnalysisField extends AnalysisField {
     }
 
     /**
-     * Summarizes immediate reference-array contents admitted by the bound, using its array type or
-     * Object[] for a supertype such as Object, Cloneable, or Serializable. Further dimensions require
-     * separate coverage (GR-80797).
+     * Summarizes reference-array contents along the bound's declared dimensions, using Object[] for
+     * a supertype such as Object, Cloneable, or Serializable. When array flow aliasing is disabled,
+     * concrete arrays admitted by generic or covariant bounds require separate coverage (GR-80697).
      */
     private static void injectArrayContents(PointsToAnalysis bb, AnalysisType valueBound) {
         AnalysisType arrayType = valueBound.isArray() ? valueBound : bb.getObjectType().getArrayClass();
         if (!valueBound.isAssignableFrom(arrayType)) {
             return;
         }
-        AnalysisType componentType = arrayType.getComponentType();
-        if (!componentType.isPrimitive() && !componentType.isWordType()) {
+        do {
+            AnalysisType componentType = arrayType.getComponentType();
+            if (componentType.isPrimitive() || componentType.isWordType()) {
+                break;
+            }
             var elements = arrayType.getContextInsensitiveAnalysisObject().getArrayElementsFlow(bb, true);
             injectBoundValues(bb, componentType, elements, true);
-        }
+            // Each nested array dimension needs its component values.
+            arrayType = componentType;
+        } while (arrayType.isArray());
     }
 
     @Override
