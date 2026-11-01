@@ -685,6 +685,15 @@ The Bytecode DSL supports two forms of instrumentation:
 
 Override [`BytecodeRootNode.interceptOutgoingValue`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNode.java) to convert every guest-language value before it is exposed to tag instrumentation, for example to replace an internal representation with an interop-capable value. Override [`BytecodeRootNode.interceptIncomingValue`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNode.java) to convert values supplied by tag instrumentation to representations supported by the guest language. The hooks add no generated calls unless they are overridden and do not apply to `@Instrumentation` operations.
 
+Override `BytecodeRootNode.getInstrumentationNodeObject(TagTreeNode)` to provide metadata for tagged regions.
+The generated instrumentation nodes delegate `InstrumentableNode.getNodeObject()` to this hook; its default returns `null`, preserving the empty node object behavior.
+Use the supplied region's tags and source sections to look up immutable semantic metadata retained by your language.
+For example, a region tagged with `ReadVariableTag` must return a read-only interop object with a `readVariableName` member; `WriteVariableTag` requires `writeVariableName`.
+Each member can contain a string name or a string-compatible descriptor with its source location, as specified by `StandardTags`.
+The hook must work before execution and without an entered context or runtime variable values, and metadata must support concurrent reads.
+Do not retain bytecode indices across reparsing: enabling instrumentation can change them.
+This hook supplies metadata only; your parser must still emit the appropriate tags and source sections.
+
 Instrumentation nodes and inline parsing locations do not themselves identify the current BCI: a tag can span multiple instructions, and its enter and return BCIs are not interchangeable.
 In `FRAME` and `MANUAL` modes, use `BytecodeNode.getBytecodeIndex(frame)` to read the BCI stored at the tagged boundary, including from inline code executed with that frame.
 Do not infer the current BCI from a tag's enter or return location; outside a callback boundary, no current BCI is guaranteed unless the language has stored or passed it explicitly.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,8 +52,9 @@ import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Class that implements tag tree {@link NodeLibrary} dispatch for tag tree items. This class is
- * only intended to be used when implementing a custom {@link GenerateBytecode#tagTreeNodeLibrary()
- * tag tree node library}.
+ * intended to be used when implementing a custom {@link GenerateBytecode#tagTreeNodeLibrary()
+ * tag tree node library} or {@link BytecodeRootNode#getInstrumentationNodeObject(TagTreeNode)
+ * instrumentation node objects}.
  *
  * <p>
  * All implementations of this class are intended to be generated and are not supposed to be
