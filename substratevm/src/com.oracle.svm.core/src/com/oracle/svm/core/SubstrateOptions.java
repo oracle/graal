@@ -87,7 +87,6 @@ import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.util.VMError;
@@ -1228,7 +1227,7 @@ public class SubstrateOptions {
     @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
     @APIOption(name = ENABLE_DEBUGINFO_OPTION, fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
-    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
+    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
             if (OS.WINDOWS.isCurrent()) {
@@ -1237,12 +1236,6 @@ public class SubstrateOptions {
             }
         }
     };
-
-    private static void validateGenerateDebugInfo(HostedOptionKey<Integer> optionKey) {
-        if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue() > 0) {
-            LogUtils.warning("Using %s is not supported on macOS", SubstrateOptionsParser.commandArgument(optionKey, optionKey.getValue().toString()));
-        }
-    }
 
     public static boolean useDebugInfoGeneration() {
         return useLIRBackend() && GenerateDebugInfo.getValue() > 0;
@@ -1274,13 +1267,10 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Use a separate file for debug info.")//
-    public static final HostedOptionKey<Boolean> StripDebugInfo = new HostedOptionKey<>(OS.getCurrent() != OS.DARWIN, SubstrateOptions::validateStripDebugInfo);
+    public static final HostedOptionKey<Boolean> StripDebugInfo = new HostedOptionKey<>(true, SubstrateOptions::validateStripDebugInfo);
 
     private static void validateStripDebugInfo(HostedOptionKey<Boolean> optionKey) {
         Boolean optionValue = optionKey.getValue();
-        if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue()) {
-            throw UserError.invalidOptionValue(optionKey, optionValue, "The option is not supported on macOS");
-        }
         if (OS.getCurrent() == OS.WINDOWS && optionKey.hasBeenSet() && !optionKey.getValue()) {
             throw UserError.invalidOptionValue(optionKey, optionValue, "The option is not supported on Windows (debug info is always generated in a separate file)");
         }
