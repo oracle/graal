@@ -673,6 +673,15 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         }
     }
 
+    @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used for crash log")
+    public boolean logRistrettoFrame(Log log, FrameInfoQueryResult frameInfo) {
+        if (!SubstrateOptions.useRistretto()) {
+            return false;
+        }
+        return RistrettoInterpreterSupport.singleton().logRistrettoFrame(log, frameInfo);
+    }
+
     private void logInterpreterBytecodeFrame(Log log, FrameInfoQueryResult frameInfo, Pointer sp, int threadedHandlerBCI) {
         if (!frameInfo.hasLocalValueInfo()) {
             log.string("  missing local value info (bytecode)");
