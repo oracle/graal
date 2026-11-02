@@ -94,4 +94,31 @@ public class LoopInversionRegressionTest extends GraalCompilerTest {
         Assert.assertTrue(loop.counted().isInverted());
     }
 
+    public static int lagDiffEarlyExit(int init, int limit, int p, int x) {
+        int prev = p;
+        int cur = p;
+        int i = init;
+        while (true) {
+            int d = cur - prev;
+            if (i >= limit) {
+                return d;
+            }
+            if (i == x) {
+                return -1;
+            }
+            prev = cur;
+            cur = cur + 3;
+            i++;
+        }
+    }
+
+    @Test
+    public void testLagDiffEarlyExit() {
+        test("lagDiffEarlyExit", 0, 1, 5, 99);
+        test("lagDiffEarlyExit", 0, 4, 5, 99);
+        test("lagDiffEarlyExit", 0, 0, 5, 99);
+        test("lagDiffEarlyExit", 0, 4, 5, 2);
+        test("lagDiffEarlyExit", 0, 10, 5, 7);
+    }
+
 }

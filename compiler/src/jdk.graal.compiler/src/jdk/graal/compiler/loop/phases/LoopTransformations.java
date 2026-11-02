@@ -1111,31 +1111,38 @@ public abstract class LoopTransformations {
                     EconomicMap<ProxyNode, Stamp> originalProxyStamps) {
         final StructuredGraph graph = lex.graph();
         /*
-         * Every phi that is used in the rotation condition (that is now post dominating the loop
-         * body) or in the loop proxies (where the exit is dominated by the new rotated test [which
-         * in return post dominates the loop body]) needs to be replaced to point to the value on
-         * the loop end.
+         * After inversion, references to loop phis and induction variables in the rotated
+         * exit condition and duplicated proxy expressions must use their loop-end values.
          *
-         * We are tempted to just go over all phis and do
-         * phi.replaceAtMatchingUsages(phiValueNextIteration, x -> x == rotatedTest.condition() ||
-         * exitProxies.contains(x));
+         * These substitutions must behave as simultaneous assignments. Collecting the
+         * replacements before applying them is not sufficient: replaceAllInputs searches
+         * the usage's current inputs, so a later replacement can also rewrite an input
+         * inserted by an earlier replacement.
          *
-         * However, if there are cycles in phi assignments we can get into trouble e.g
-         * LoopInversionTest#snippetTestLoopCarried.
+         * For example, with prev -> cur and cur -> cur + 3, the expression cur - prev
+         * must become (cur + 3) - cur. Replacing by value sequentially could instead
+         * produce (cur + 3) - (cur + 3), because the second replacement also matches
+         * the cur inserted by the first.
          *
-         * In such a scenario we cannot simply take the value from the prev iteration and set it to
-         * the next iteration, but we have to remember the nodes which we already replaced and avoid
-         * replacing them with new values.
+         * Therefore, record all matching input positions before applying any replacement,
+         * then update those positions directly. Each replacement affects only its original
+         * input occurrences, preserving the intended simultaneous substitution.
          */
         class ReplacementPair {
             ValueNode input;
             ValueNode usage;
             ValueNode newNode;
+            List<Position> positions = new ArrayList<>();
 
             ReplacementPair(ValueNode input, ValueNode usage, ValueNode newNode) {
                 this.input = input;
                 this.usage = usage;
                 this.newNode = newNode;
+                for (Position position : usage.inputPositions()) {
+                    if (position.get(usage) == input) {
+                        positions.add(position);
+                    }
+                }
             }
 
         }
@@ -1209,7 +1216,9 @@ public abstract class LoopTransformations {
         for (ReplacementPair replacement : flatReplacements) {
             graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "Before replacing old input %s with new input %s at usage %s", replacement.input, replacement.newNode,
                             replacement.usage);
-            replacement.usage.replaceAllInputs(replacement.input, replacement.newNode);
+            for (Position position : replacement.positions) {
+                position.set(replacement.usage, replacement.newNode);
+            }
         }
         /*
          * Rebuild new proxies to avoid canonicalizations of them if they have been loop proxies
