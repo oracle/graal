@@ -699,11 +699,12 @@ public class SVMHost extends HostVM {
     }
 
     private LinkageError handleLinkageError(Class<?> javaClass, String methodName, LinkageError linkageError) {
-        if (!linkAtBuildTimeSupport.linkAtBuildTime(javaClass)) {
+        ResolvedJavaType type = originalMetaAccess.lookupJavaType(javaClass);
+        if (!linkAtBuildTimeSupport.linkAtBuildTime(type)) {
             return linkageError; /* It's rethrown at run time. */
         }
         String message = "Discovered a type for which " + methodName + " cannot be called: " + javaClass.getTypeName() + ". " +
-                        linkAtBuildTimeSupport.errorMessageFor(javaClass);
+                        linkAtBuildTimeSupport.errorMessageFor(type);
         throw new UnsupportedFeatureException(message, linkageError);
     }
 
