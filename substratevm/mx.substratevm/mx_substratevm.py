@@ -2721,7 +2721,6 @@ lib_jvm_preserved_modules = [
     'java.xml',
     'java.xml.crypto',
     'jdk.charsets',
-    'jdk.net',
 ]
 
 lib_jvm_experimental_build_args = (['-H:Preserve=module=' + module for module in lib_jvm_preserved_modules] +
@@ -2733,7 +2732,7 @@ if mx.is_linux():
 
 # Resolve JVMStat provider modules so their preserved protocol packages are available for runtime loading.
 lib_jvm_build_args = (
-    ['--add-modules=jdk.net,jdk.internal.jvmstat,jdk.jstatd'] +
+    ['--add-modules=jdk.internal.jvmstat,jdk.jstatd'] +
     svm_experimental_options(lib_jvm_experimental_build_args)
 )
 if mx.is_linux():
