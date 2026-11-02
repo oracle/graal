@@ -2696,6 +2696,7 @@ lib_jvm_preserved_packages = [
     'sun.jvmstat.perfdata.monitor.protocol.rmi',
     'sun.jvmstat.perfdata.monitor.v1_0',
     'sun.jvmstat.perfdata.monitor.v2_0',
+    'sun.misc',
     'sun.nio.cs.ext',
     'sun.security.util',
     'sun.util',
