@@ -263,8 +263,7 @@ public final class GCImpl implements GC {
     /** The body of the VMOperation to do the collection. */
     private void collectOperation(CollectionVMOperationData data) {
         assert VMOperation.isGCInProgress();
-        assert getCollectionEpoch().equal(data.getRequestingEpoch()) ||
-                        data.getForceFullGC() && GCImpl.getAccounting().getCompleteCollectionCount() == data.getCompleteCollectionCount() : "unnecessary GC?";
+        assert collectOperation.hasWork(data) : "unnecessary GC?";
 
         /*
          * We use the time of the GC request as the beginning of the collection because it includes
@@ -1301,9 +1300,18 @@ public final class GCImpl implements GC {
             if (d.getForceFullGC()) {
                 /* Skip if another full GC happened in the meanwhile. */
                 return GCImpl.getAccounting().getCompleteCollectionCount() == d.getCompleteCollectionCount();
+            } else if (d.getCauseId() == GenScavengeGCCause.OnAllocation.getId()) {
+                /*
+                 * The requesting thread may be stopped for another GC after the allocation check
+                 * but before capturing the collection epoch. It then records the new epoch, so an
+                 * epoch comparison would not detect the stale allocation decision. Recheck whether
+                 * Eden currently requires collection, since it may have been emptied or filled again.
+                 */
+                return GCImpl.getPolicy().shouldCollectOnAllocation();
+            } else {
+                /* Skip if another GC happened after this request captured the collection epoch. */
+                return GCImpl.getGCImpl().getCollectionEpoch().equal(d.getRequestingEpoch());
             }
-            /* Skip if any other GC happened in the meanwhile. */
-            return GCImpl.getGCImpl().getCollectionEpoch().equal(d.getRequestingEpoch());
         }
     }
 
