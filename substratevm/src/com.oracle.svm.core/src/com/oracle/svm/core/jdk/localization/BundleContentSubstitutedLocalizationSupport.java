@@ -26,6 +26,8 @@ package com.oracle.svm.core.jdk.localization;
 
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ListResourceBundle;
 import java.util.Locale;
 import java.util.Map;
@@ -40,20 +42,25 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.jdk.localization.bundles.DelayedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
 import com.oracle.svm.core.jdk.localization.substitutions.Target_java_util_ListResourceBundle_SubstituteLoadLookup;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLookup;
+import com.oracle.svm.core.meta.MethodRefUtils;
+import com.oracle.svm.guest.staging.c.function.InvokeJavaFunctionPointer;
+import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
+import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
@@ -63,7 +70,7 @@ import sun.util.resources.ParallelListResourceBundle;
 
 /**
  * This version of LocalizationSupport stores the content of resource bundles in a map to make the
- * (Open)ListResourceBundle.getContents() methods of individual resource bundle subclasses
+ * (Open)ListResourceBundle.getContents() methods of prepared resource bundle subclasses
  * unreachable. To do this, we substitute the lookup methods that would call the getContents methods
  * and provide the content for resource bundles ourselves. For this to work, we have to extract the
  * content of the bundles at build time via {@link BundleSerializationUtils#extractContent}.
@@ -86,7 +93,11 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private final Map<Class<?>, StoredBundle> storedBundles = new ConcurrentHashMap<>();
 
-    private final EconomicMap<Class<?>, Method> unpreparedBundleGetters = ImageHeapMap.createNonLayeredMap();
+    private final EconomicMap<Class<?>, Integer> unpreparedBundleGetterIndices = ImageHeapMap.createNonLayeredMap();
+
+    @Platforms(Platform.HOSTED_ONLY.class) private final List<MethodRef> hostedBundleGetters = new ArrayList<>();
+
+    @UnknownObjectField(availability = ReadyForCompilation.class) private MethodRef[] unpreparedBundleGetters;
 
     @Platforms(Platform.HOSTED_ONLY.class) private final Set<Class<?>> preparedBundleClasses = ConcurrentHashMap.newKeySet();
 
@@ -106,6 +117,8 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     @Platforms(Platform.HOSTED_ONLY.class)
     protected void onBundlePrepared(ResourceBundle bundle) {
         if (isBundleSupported(bundle)) {
+            // Record the class before scheduling extraction in the pool. Analysis must not register
+            // a runtime getter while extraction is pending.
             preparedBundleClasses.add(bundle.getClass());
             if (pool != null) {
                 pool.execute(() -> storeBundleContentOf(bundle));
@@ -145,19 +158,26 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     @NeverInline("Keep lazy initialization out of the prepared-bundle fast path")
     private Map<String, Object> getUnpreparedBundleContentOf(Object bundle) {
-        Method getContents = unpreparedBundleGetters.get(bundle.getClass());
-        if (getContents == null) {
+        Integer getterIndex = unpreparedBundleGetterIndices.get(bundle.getClass());
+        if (getterIndex == null) {
             return super.getBundleContentOf(bundle);
         }
         synchronized (bundle) {
             var target = SubstrateUtil.cast(bundle, Target_java_util_ListResourceBundle_SubstituteLoadLookup.class);
             if (target.lookup == null) {
-                Object[][] content = ReflectionUtil.invokeMethod(getContents, bundle);
+                // The class lookup already selected the implementation; do not dispatch to prepared overrides.
+                BundleContentsGetter getter = MethodRefUtils.asCodePointer(unpreparedBundleGetters[getterIndex]);
+                Object[][] content = getter.invoke(bundle);
                 // Keep the lookup map type shared with prepared bundles for compiled lookup performance.
                 target.lookup = new ExtractedBundle(content);
             }
             return target.lookup;
         }
+    }
+
+    private interface BundleContentsGetter extends CFunctionPointer {
+        @InvokeJavaFunctionPointer
+        Object[][] invoke(Object bundle);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -172,15 +192,31 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     @Override
     public void prepareNonCompliant(Class<?> clazz) throws ReflectiveOperationException {
-        storedBundles.put(clazz, new DelayedBundle(clazz));
+        DelayedBundle bundle = new DelayedBundle(clazz);
+        preparedBundleClasses.add(clazz);
+        storedBundles.put(clazz, bundle);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void prepareUnpreparedBundle(Class<?> clazz) throws ReflectiveOperationException {
-        /* Extraction may still be running in the pool; do not make prepared getters reachable. */
-        if (!preparedBundleClasses.contains(clazz) && !storedBundles.containsKey(clazz)) {
-            unpreparedBundleGetters.putIfAbsent(clazz, DelayedBundle.findGetContentsMethod(clazz));
+    public void prepareUnpreparedBundle(Class<?> clazz, Function<Method, MethodRef> createGetter) throws ReflectiveOperationException {
+        // Prepared bundles use extracted contents or a DelayedBundle; no additional getter is needed.
+        if (!preparedBundleClasses.contains(clazz)) {
+            synchronized (unpreparedBundleGetterIndices) {
+                if (!unpreparedBundleGetterIndices.containsKey(clazz)) {
+                    MethodRef getter = createGetter.apply(DelayedBundle.findGetContentsMethod(clazz));
+                    int index = hostedBundleGetters.size();
+                    hostedBundleGetters.add(getter);
+                    unpreparedBundleGetterIndices.put(clazz, index);
+                }
+            }
         }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public MethodRef[] finishBundleGetters() {
+        // Convert the hosted list to a typed word array for runtime lookup.
+        unpreparedBundleGetters = hostedBundleGetters.toArray(new MethodRef[0]);
+        return unpreparedBundleGetters;
     }
 
     @Override
