@@ -42,7 +42,6 @@ package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -76,7 +75,7 @@ public class ReportPolymorphismTest {
         assertEquals(42L, root.getCallTarget().call(40L, 2L));
         assertEquals(42.0, root.getCallTarget().call(40.0, 2.0));
         assertEquals("hello world", root.getCallTarget().call("hello ", "world"));
-        assertReportingNode(root);
+        assertOperationNode(root, false);
     }
 
     @Test
@@ -94,7 +93,7 @@ public class ReportPolymorphismTest {
         assertEquals(42L, root.getCallTarget().call(40L, 2L));
         assertEquals(42.0, root.getCallTarget().call(40.0, 2.0));
         assertEquals("hello world", root.getCallTarget().call("hello ", "world"));
-        assertReportingNode(root);
+        assertOperationNode(root, false);
     }
 
     @Test
@@ -110,7 +109,7 @@ public class ReportPolymorphismTest {
         });
         assertEquals(42L, root.getCallTarget().call(42L));
         assertEquals("generic", root.getCallTarget().call("generic"));
-        assertReportingNode(root);
+        assertOperationNode(root, false);
     }
 
     @Test
@@ -128,15 +127,17 @@ public class ReportPolymorphismTest {
         assertEquals(43L, root.getCallTarget().call(43L));
         assertEquals(44L, root.getCallTarget().call(44L));
         assertEquals(45L, root.getCallTarget().call(45L));
-        assertReportingNode(root);
+        assertOperationNode(root, true);
     }
 
-    private static void assertReportingNode(ReportPolymorphismRootNode root) {
+    private static void assertOperationNode(ReportPolymorphismRootNode root, boolean adoptable) {
         for (var instruction : root.getBytecodeNode().getInstructions()) {
             if (instruction.getName().startsWith("c.")) {
                 Node node = AbstractInstructionTest.findNodeArgument(instruction).asCachedNode();
-                assertTrue(node.isAdoptable());
-                assertSame(root, node.getRootNode());
+                assertEquals(adoptable, node.isAdoptable());
+                if (adoptable) {
+                    assertSame(root, node.getRootNode());
+                }
                 return;
             }
         }

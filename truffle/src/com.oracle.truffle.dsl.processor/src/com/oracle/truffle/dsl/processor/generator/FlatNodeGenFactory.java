@@ -3021,11 +3021,14 @@ public class FlatNodeGenFactory {
         if (requiresCacheCheck) {
             executable.addParameter(new CodeVariableElement(getType(int.class), OLD_CACHE_COUNT));
         }
+        for (VariableElement arg : plugs.additionalArguments()) {
+            executable.addParameter(arg);
+        }
 
         CodeTreeBuilder builder = executable.createBuilder();
 
+        builder.tree(multiState.createLoad(frameState, specializationActive, specializationExcluded));
         if (reportPolymorphismAction.polymorphism) {
-            builder.tree(multiState.createLoad(frameState, specializationActive, specializationExcluded));
             for (BitSet s : relevantSets) {
                 builder.declaration(s.getType(), getSetNewName(s), s.createMaskedReference(frameState, specializationActive, specializationExcluded));
             }
@@ -3067,11 +3070,7 @@ public class FlatNodeGenFactory {
         }
         builder.end(); // if
         builder.startBlock().startStatement();
-        if (inlined) {
-            builder.tree(frameState.getValue(INLINED_NODE_INDEX).createReference());
-        } else {
-            builder.string("this");
-        }
+        builder.tree(plugs.createPolymorphismReportingNode(this, frameState));
         builder.string(".");
         builder.startCall(REPORT_POLYMORPHIC_SPECIALIZE).end();
 
@@ -3148,6 +3147,7 @@ public class FlatNodeGenFactory {
         if (requiresCacheCheck(reportPolymorphismAction)) {
             builder.string(OLD_CACHE_COUNT);
         }
+        builder.variables(plugs.additionalArguments());
         builder.end().end().end(); // call, statement, block
     }
 

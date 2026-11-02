@@ -1031,17 +1031,7 @@ public final class InstructionModel implements PrettyPrintable {
             return false;
         }
 
-        /*
-         * Polymorphism reporting reads state outside the execute methods and requires an adopted
-         * node to notify the owning root. Keep the state in the node rather than the bytecode array.
-         */
-        if (node.isReportPolymorphism()) {
-            return false;
-        }
         for (SpecializationData specialization : node.getReachableSpecializations()) {
-            if (specialization.isReportMegamorphism()) {
-                return false;
-            }
             for (CacheExpression cache : specialization.getCaches()) {
                 InlinedNodeData inlinedNode = cache.getInlinedNode();
                 if (inlinedNode != null) {

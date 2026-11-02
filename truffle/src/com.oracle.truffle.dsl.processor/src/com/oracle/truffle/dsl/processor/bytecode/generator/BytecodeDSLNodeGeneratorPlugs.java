@@ -398,6 +398,15 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         return NodeGeneratorPlugs.super.createStateField(factory, bitSet);
     }
 
+    @Override
+    public CodeTree createPolymorphismReportingNode(FlatNodeGenFactory factory, FrameState frameState) {
+        if (instruction.canUseNodeSingleton()) {
+            // Singleton operation nodes are not adopted and cannot find the owning root.
+            return CodeTreeBuilder.singleString("$bytecode");
+        }
+        return NodeGeneratorPlugs.super.createPolymorphismReportingNode(factory, frameState);
+    }
+
     public CodeTree createStateLoad(FlatNodeGenFactory factory, FrameState frameState, BitSet bitSet) {
         if (instruction.canInlineState()) {
             InstructionImmediate imm = instruction.findImmediate(ImmediateKind.STATE_PROFILE, bitSet.getName());
