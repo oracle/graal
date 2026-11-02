@@ -42,7 +42,6 @@ package com.oracle.truffle.api.bytecode;
 
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
@@ -145,6 +144,9 @@ public final class BytecodeSupport {
      * Constants are deduplicated by {@link Object#equals(Object)}. {@link Float} and
      * {@link Double} are the exception: they are compared by their raw bits, so distinct NaN
      * payloads stay distinct. {@code +0.0} and {@code -0.0} stay distinct as well.
+     * {@link #add(Object) add(null)} stores {@code null} in one shared slot. {@link #addNull()}
+     * does not: each call reserves a distinct empty slot that is meant to be patched after
+     * {@link #materialize() materialization}.
      *
      * <strong>Not thread-safe.</strong>
      *
@@ -169,12 +171,19 @@ public final class BytecodeSupport {
         private int[] values;
         private int maxSize;
 
+        /**
+         * Index of the single shared {@code null} constant, or {@code -1} when this pool has none.
+         * Reset by {@link #materialize()}. Distinct from slots reserved by {@link #addNull()}.
+         */
+        private int nullIndex = EMPTY;
+
         public ConstantsBuffer() {
             initialize(INITIAL_CAPACITY);
         }
 
         private void initialize(int capacity) {
             assert this.size == 0;
+            this.nullIndex = EMPTY;
             this.constants = new Object[capacity];
             initializeMap(capacity);
         }
@@ -185,15 +194,19 @@ public final class BytecodeSupport {
         }
 
         /**
-         * Inserts {@code constant} (non-{@code null}) and returns its pool index. If an equal
-         * constant is already present, its existing index is returned. {@link Float} and
-         * {@link Double} constants compare by raw bits rather than {@link Object#equals(Object)}.
+         * Inserts {@code constant} and returns its pool index. If an equal constant is already
+         * present, its existing index is returned. {@link Float} and {@link Double} constants
+         * compare by raw bits rather than {@link Object#equals(Object)}.
+         * <p>
+         * {@code null} is stored in a single shared slot, so repeated {@code add(null)} calls
+         * return the same index. Use {@link #addNull()} to reserve a distinct empty slot.
          *
-         * @throws NullPointerException if {@code constant} is {@code null}
          * @since 25.0
          */
         public int add(Object c) {
-            Objects.requireNonNull(c);
+            if (c == null) {
+                return addSharedNull();
+            }
 
             int s = this.size;
             int result = fastAdd(c, s);
@@ -217,14 +230,31 @@ public final class BytecodeSupport {
         }
 
         /**
-         * Inserts a constant without value and returns its index. The added null values are
-         * intended to be later patched after {@link #materialize() materialization}. The client
-         * must ensure that the reserved null slots do not contain duplicates already contained in
-         * the materialized constants array.
+         * Reserves a distinct empty slot and returns its index. Each call allocates a new slot,
+         * including repeated calls, so this method must not be used to intern a {@code null}
+         * constant. The reserved slots are intended to be patched after {@link #materialize()
+         * materialization}. The client must ensure that the patched values do not duplicate
+         * constants already contained in the materialized constants array.
+         * <p>
+         * To store {@code null} as a constant value, use {@link #add(Object) add(null)}.
          *
          * @since 25.0
          */
         public int addNull() {
+            return appendNull();
+        }
+
+        private int addSharedNull() {
+            int existing = this.nullIndex;
+            if (existing != EMPTY) {
+                return existing;
+            }
+            int index = appendNull();
+            this.nullIndex = index;
+            return index;
+        }
+
+        private int appendNull() {
             int index = size++;
             Object[] consts = this.constants;
             if (index >= consts.length) {
@@ -254,6 +284,7 @@ public final class BytecodeSupport {
          * @since 25.0
          */
         public Object[] materialize() {
+            this.nullIndex = EMPTY;
             if (this.size == 0) {
                 return EMPTY_ARRAY;
             }
@@ -301,6 +332,7 @@ public final class BytecodeSupport {
             } else {
                 Arrays.fill(this.constants, 0, this.maxSize, null);
             }
+            this.nullIndex = EMPTY;
             this.maxSize = 0;
         }
 
