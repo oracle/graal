@@ -167,8 +167,9 @@ public class StampFactory {
 
     /**
      * Creates an IntegerStamp from the given unsigned bounds and bit masks. This method returns an
-     * empty stamp if the unsigned lower bound is larger than the unsigned upper bound. If the sign
-     * of lower and upper bound differs after sign extension to the specified length ({@code bits}),
+     * empty stamp if the unsigned lower bound is larger than the unsigned upper bound. The bounds
+     * are intersected with the unsigned range representable in {@code bits} before conversion. If the
+     * sign of lower and upper bound differs after sign extension to the specified length ({@code bits}),
      * this method returns an unrestricted stamp with respect to the bounds. {@code mayBeSet} or
      * {@code mustBeSet} can restrict the bounds nevertheless. A non-zero unsigned lower bound is
      * preserved through the zero-exclusion flag. Take the following example when inverting a zero
@@ -191,6 +192,8 @@ public class StampFactory {
      * bound. Thus, we have to return an unrestricted stamp, with respect to the bounds.
      */
     public static IntegerStamp forUnsignedInteger(int bits, long unsignedLowerBound, long unsignedUpperBound, long mustBeSet, long mayBeSet) {
+        long mask = CodeUtil.mask(bits);
+        unsignedUpperBound = NumUtil.minUnsigned(unsignedUpperBound, mask);
         if (Long.compareUnsigned(unsignedLowerBound, unsignedUpperBound) > 0) {
             return IntegerStamp.createEmptyStamp(bits);
         }
@@ -200,7 +203,6 @@ public class StampFactory {
             lowerBound = CodeUtil.minValue(bits);
             upperBound = CodeUtil.maxValue(bits);
         }
-        long mask = CodeUtil.mask(bits);
         return IntegerStamp.create(bits, lowerBound, upperBound, mustBeSet & mask, mayBeSet & mask, unsignedLowerBound == 0);
     }
 
