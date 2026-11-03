@@ -119,6 +119,52 @@ public class DebugValidationSuite extends AbstractBinarySuite {
     }
 
     @Test
+    public void testLineSectionInvalidFileIndex() throws IOException {
+        // .debug_line:
+        // unit_length: 35
+        // version: 4.0
+        // header_length: 23
+        // min_instr_length: 1
+        // max_ops_per_instr: 1
+        // default_instr_stmt: 1
+        // line_base: 0
+        // line_range: 1
+        // opcodeBase: 2
+        // paths: dir
+        // file: test.c, directory index 0
+        // line program: DW_LNS_set_file 12
+        //
+        // The file index 12 is out of bounds for the two file paths.
+        final byte[] data = getDefaultDebugBuilder().addCustomSection(".debug_info", hexStringToByteArray("0C 00 00 00 04 00 00 00 00 00 04 01 02 00 2F 00")).addCustomSection(".debug_abbrev",
+                        hexStringToByteArray("01 11 00 13 0F 10 0F 1B 08 00 00 00")).addCustomSection(".debug_line",
+                                        hexStringToByteArray("23 00 00 00 04 00 17 00 00 00 01 01 01 00 01 02 00 64 69 72 00 00 74 65 73 74 2E 63 00 00 00 00 00 04 0C")).build();
+        runTest(data);
+    }
+
+    @Test
+    public void testLineSectionInvalidDirectoryIndex() throws IOException {
+        // .debug_line:
+        // unit_length: 33
+        // version: 4.0
+        // header_length: 23
+        // min_instr_length: 1
+        // max_ops_per_instr: 1
+        // default_instr_stmt: 1
+        // line_base: 0
+        // line_range: 1
+        // opcodeBase: 2
+        // paths: dir
+        // file: test.c, directory index 2
+        //
+        // Directory index 2 is out of bounds because index 0 is the compilation path and
+        // only one directory is included.
+        final byte[] data = getDefaultDebugBuilder().addCustomSection(".debug_info", hexStringToByteArray("0C 00 00 00 04 00 00 00 00 00 04 01 02 00 2F 00")).addCustomSection(".debug_abbrev",
+                        hexStringToByteArray("01 11 00 13 0F 10 0F 1B 08 00 00 00")).addCustomSection(".debug_line",
+                                        hexStringToByteArray("21 00 00 00 04 00 17 00 00 00 01 01 01 00 01 02 00 64 69 72 00 00 74 65 73 74 2E 63 00 02 00 00 00")).build();
+        runTest(data);
+    }
+
+    @Test
     public void testDebugInfoUnitLengthTooSmall() throws IOException {
         // .debug_info
         // unit_length: 1
