@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
  * questions.
  */
 package jdk.graal.compiler.nodes.test;
+
+import java.io.Serializable;
 
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -178,6 +180,38 @@ public class ObjectStampJoinTest extends AbstractObjectStampTest {
         Stamp i = StampFactory.object(TypeReference.createWithoutAssumptions(getType(typeI).getType()));
         Stamp join = join(i, bExact);
         Assert.assertEquals(bExact, join);
+    }
+
+    /// Checks array interface intersections after the concrete array type is lost in a merge.
+    @Test
+    public void testArrayInterfaces() {
+        for (boolean arrayNonNull : new boolean[]{false, true}) {
+            ObjectStamp intArray = StampFactory.object(getType(int[].class), arrayNonNull);
+            ObjectStamp longArray = StampFactory.object(getType(long[].class), arrayNonNull);
+            Stamp arrays = meet(intArray, longArray);
+            Assert.assertTrue(((ObjectStamp) arrays).isAlwaysArray());
+            Assert.assertNull(((ObjectStamp) arrays).type());
+            for (boolean interfaceNonNull : new boolean[]{false, true}) {
+                for (Class<?> arrayInterface : new Class<?>[]{Cloneable.class, Serializable.class}) {
+                    ObjectStamp interfaceStamp = StampFactory.object(getType(arrayInterface), interfaceNonNull);
+                    Stamp expected = StampFactory.object(getType(arrayInterface), arrayNonNull || interfaceNonNull).asAlwaysArray();
+                    Assert.assertEquals(expected, join(arrays, interfaceStamp));
+                    Assert.assertEquals(expected, arrays.improveWith(interfaceStamp));
+                    Assert.assertEquals(expected, interfaceStamp.improveWith(arrays));
+
+                    // The intersection must still contain each of the original array types.
+                    Assert.assertEquals(intArray.asNonNull(), join(expected, intArray.asNonNull()));
+                    Assert.assertEquals(longArray.asNonNull(), join(expected, longArray.asNonNull()));
+                }
+
+                // Arrays cannot implement an unrelated interface.
+                Stamp unrelated = StampFactory.object(getType(I.class), interfaceNonNull);
+                Stamp expected = arrayNonNull || interfaceNonNull ? StampFactory.empty(JavaKind.Object) : StampFactory.alwaysNull();
+                Assert.assertEquals(expected, join(arrays, unrelated));
+                Assert.assertEquals(expected, arrays.improveWith(unrelated));
+                Assert.assertEquals(expected, unrelated.improveWith(arrays));
+            }
+        }
     }
 
     @Test
