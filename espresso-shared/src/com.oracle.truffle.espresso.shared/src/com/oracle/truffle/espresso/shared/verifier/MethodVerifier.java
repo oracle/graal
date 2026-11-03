@@ -230,13 +230,11 @@ import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.POP;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.POP2;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.PUTSTATIC;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.QUICK;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.RET;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SALOAD;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SASTORE;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SIPUSH;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SLIM_QUICK;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.WIDE;
@@ -1375,7 +1373,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         setBciStatus(bci, BCIState.VERIFIED);
         int curOpcode;
         curOpcode = code.opcode(bci);
-        verifyGuarantee(curOpcode <= BREAKPOINT, "invalid opcode: %s", code.readUByte(bci));
+        verifyGuarantee(curOpcode < BREAKPOINT, "invalid opcode: %s", code.readUByte(bci));
         // @formatter:off
         // Checkstyle: stop
 
@@ -1656,7 +1654,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 case LRETURN: doReturn(stack, longOp);       return bci;
                 case FRETURN: doReturn(stack, floatOp);      return bci;
                 case DRETURN: doReturn(stack, doubleOp);     return bci;
-                case ARETURN: stack.popRef(returnOperand); return bci;
+                case ARETURN: stack.popRef(returnOperand);   return bci;
                 case RETURN:
                     verifyGuarantee(returnOperand == voidOp, "Encountered RETURN, but method return type is not void: %s", returnOperand);
                     // Only j.l.Object.<init> can omit calling another initializer.
@@ -1696,14 +1694,9 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                     continue wideEscape;
 
                 case MULTIANEWARRAY: verifyMultiNewArray(bci, stack); break;
-
-                case BREAKPOINT: break;
-
                 case INVOKEDYNAMIC: verifyInvokeDynamic(bci, stack); break;
-
-                case QUICK: break;
-                case SLIM_QUICK: break;
                 default:
+                    throw VerifierError.fatal("Unknown bytecode should have been guarded before: " + curOpcode);
             }
             return code.nextBCI(bci);
         }
