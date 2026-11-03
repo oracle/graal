@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -356,18 +356,21 @@ public abstract class SwitchStrategy {
             registerDefaultEffort(++depth);
             int rangeStart = 0;
             int rangeEnd = getSliceEnd(closure, rangeStart);
+            boolean needsLowerBoundCheck = false;
             while (rangeEnd != keyConstants.length - 1) {
                 if (rangeStart == rangeEnd) {
                     closure.conditionalJump(rangeStart, Condition.EQ, false);
                     registerEffort(rangeStart, rangeEnd, ++depth);
                 } else {
-                    if (rangeStart == 0 || keyConstants[rangeStart - 1].asLong() + 1 != keyConstants[rangeStart].asLong()) {
+                    if (needsLowerBoundCheck) {
                         closure.conditionalJump(rangeStart, Condition.LT, true);
                         registerDefaultEffort(++depth);
                     }
                     closure.conditionalJump(rangeEnd, Condition.LE, false);
                     registerEffort(rangeStart, rangeEnd, ++depth);
                 }
+                // A failed equality check does not exclude values below the current key.
+                needsLowerBoundCheck = rangeStart == rangeEnd || keyConstants[rangeEnd].asLong() + 1 != keyConstants[rangeEnd + 1].asLong();
                 rangeStart = rangeEnd + 1;
                 rangeEnd = getSliceEnd(closure, rangeStart);
             }
@@ -376,7 +379,7 @@ public abstract class SwitchStrategy {
                 registerEffort(rangeStart, rangeEnd, ++depth);
                 registerDefaultEffort(depth);
             } else {
-                if (rangeStart == 0 || keyConstants[rangeStart - 1].asLong() + 1 != keyConstants[rangeStart].asLong()) {
+                if (needsLowerBoundCheck) {
                     closure.conditionalJump(rangeStart, Condition.LT, true);
                     registerDefaultEffort(++depth);
                 }
