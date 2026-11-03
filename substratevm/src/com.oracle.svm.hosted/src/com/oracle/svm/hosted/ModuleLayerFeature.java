@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,7 +76,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
-import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.LayeredModuleSingleton;
@@ -84,6 +83,7 @@ import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.RuntimeClassLoaderValueSupport;
 import com.oracle.svm.core.jdk.RuntimeModuleSupport;
 import com.oracle.svm.core.util.HostedSubstrateUtil;
+import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AnalysisAccessBase;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -413,6 +413,17 @@ public class ModuleLayerFeature implements InternalFeature {
         }
         bootLayer = runtimeBootLayer;
         RuntimeClassLoaderValueSupport.instance().update(runtimeModuleLayers);
+
+        if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
+            /*
+             * Shared-layer types are excluded from runtimeImageModules above. Their modules still
+             * need to acquire visibility changes made while building the application layer, such
+             * as opening a JDK package to an application module.
+             */
+            for (String moduleName : SharedLayerBootLayerModulesSingleton.singleton().getSharedBootLayerModules()) {
+                accessImpl.imageClassLoader.findModule(moduleName).ifPresent(runtimeImageNamedModules::add);
+            }
+        }
 
         /*
          * Ensure that runtime modules have the same relations (i.e., reads, opens and exports) as
