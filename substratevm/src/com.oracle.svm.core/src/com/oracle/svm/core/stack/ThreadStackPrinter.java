@@ -293,7 +293,6 @@ public class ThreadStackPrinter {
             if (runtimeMethodInfoName != null) {
                 log.string("[").string(runtimeMethodInfoName).string("] ");
             }
-            frameInfo.log(log);
             if (InterpreterSupport.isEnabled() && invocationCount == 1) {
                 InterpreterSupport interpreterSupport = InterpreterSupport.singleton();
                 int currentThreadedHandlerBCI = interpreterSupport.getThreadedHandlerBCIForCrashLog(frameInfo, sp);
@@ -301,10 +300,16 @@ public class ThreadStackPrinter {
                     threadedHandlerBCI = currentThreadedHandlerBCI;
                 }
                 if (interpreterSupport.isInterpreterRoot(frameInfo)) {
+                    frameInfo.log(log);
                     interpreterSupport.logInterpreterFrame(log, frameInfo, sp, threadedHandlerBCI);
                     threadedHandlerBCI = BytecodeFrame.UNKNOWN_BCI;
+                    return;
+                }
+                if (interpreterSupport.logRistrettoFrame(log, frameInfo)) {
+                    return;
                 }
             }
+            frameInfo.log(log);
         }
 
         private static void printFrameIdentifier(Log log, CodeInfo codeInfo, DeoptimizedFrame deoptFrame, boolean isCompilationRoot, boolean isNative) {

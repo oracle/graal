@@ -443,6 +443,17 @@ public abstract class InterpreterSupport {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used for crash log")
     public abstract void logInterpreterFrame(Log log, FrameInfoQueryResult frameInfo, Pointer sp, int threadedHandlerBCI);
 
+    /// Prints source information for a Ristretto frame whose encoded source fields are missing.
+    /// Like [#getSyntheticMethodFrameInfo(FrameInfoQueryResult)], this recovers the real source location
+    /// from the retained interpreter method. It writes directly to `log` instead of allocating a
+    /// synthetic [FrameSourceInfo] wrapper.
+    ///
+    /// @param log the diagnostic log
+    /// @param frameInfo metadata for the frame being printed
+    /// @return `true` if source information was printed
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used for crash log")
+    public abstract boolean logRistrettoFrame(Log log, FrameInfoQueryResult frameInfo);
+
     /**
      * Constructs an interpreter-target deoptimized frame for {@code installedCode}.
      */

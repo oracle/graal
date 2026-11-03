@@ -36,6 +36,8 @@ import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.profile.MethodProfile;
 
@@ -158,6 +160,17 @@ public interface RistrettoInterpreterSupport {
      * @return reconstructed source information, or {@code null} when none is applicable
      */
     FrameSourceInfo getSyntheticMethodFrameInfo(FrameInfoQueryResult frameInfo);
+
+    /// Prints source information for a Ristretto frame whose encoded source fields are missing.
+    /// Like [#getSyntheticMethodFrameInfo(FrameInfoQueryResult)], this recovers the real source location
+    /// from the retained interpreter method. It writes directly to `log` instead of allocating a
+    /// synthetic [FrameSourceInfo] wrapper.
+    ///
+    /// @param log the diagnostic log
+    /// @param frameInfo metadata for the frame being printed
+    /// @return `true` if source information was printed
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used for crash log")
+    boolean logRistrettoFrame(Log log, FrameInfoQueryResult frameInfo);
 
     /**
      * Returns whether the {@code -Xcomp} mode is enabled for Ristretto.
