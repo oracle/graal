@@ -46,13 +46,7 @@ public abstract class UnaryMath extends JTTTest {
         Object receiver = null;
         long testIteration = 0;
 
-        long step = STEP;
-        if (Boolean.getBoolean(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY)) {
-            // Limit input sampling in the phase-plan fuzzing gate.
-            step *= 20;
-        }
-
-        for (long l = Long.MIN_VALUE;; l += step) {
+        for (long l = Long.MIN_VALUE;; l += STEP) {
             double d = Double.longBitsToDouble(l);
             Result expect = executeExpected(method, receiver, d);
             try {
