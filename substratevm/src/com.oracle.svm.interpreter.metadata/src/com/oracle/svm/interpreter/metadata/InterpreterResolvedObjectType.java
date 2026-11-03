@@ -639,6 +639,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         return declaredMethods;
     }
 
+    /// Returns declared fields, ordered by offset after field initialization is complete.
     public InterpreterResolvedJavaField[] getDeclaredFields() {
         return declaredFields;
     }
@@ -651,6 +652,18 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         this.declaredFields = declaredFields;
     }
 
+    /// Sorts declared fields by offset after their offsets have been assigned. Fields without
+    /// storage retain their negative sentinel offsets and remain in the metadata. Fields with
+    /// equal offsets retain their relative order.
+    ///
+    /// Hosted types are populated before offsets are available, so sorting is separate from
+    /// `setDeclaredFields`. Runtime-loaded types are sorted before publication.
+    public final void sortDeclaredFields() {
+        if (declaredFields != null) {
+            Arrays.sort(declaredFields, (a, b) -> Integer.compare(a.getOffset(), b.getOffset()));
+        }
+    }
+
     public final void setAfterFieldsOffset(int afterFieldsOffset) {
         this.afterFieldsOffset = afterFieldsOffset;
     }
@@ -659,6 +672,9 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         return afterFieldsOffset;
     }
 
+    /// Returns instance fields in ascending offset order once declared fields have been sorted.
+    /// Inherited fields are merged by offset because a subclass can fill gaps in its superclass's
+    /// layout.
     @Override
     public InterpreterResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
         // Collect non-static fields declared in this class
@@ -687,7 +703,6 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
             return thisClazzFields;
         }
 
-        // Merge with superclass instance fields: superclass first, preserving declared order
         InterpreterResolvedJavaField[] parent = superclass.getInstanceFields(true);
         if (parent.length == 0) {
             return thisClazzFields;
@@ -695,11 +710,23 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         if (thisClazzFields.length == 0) {
             return parent;
         }
-        InterpreterResolvedJavaField[] result = Arrays.copyOf(parent, parent.length + thisClazzFields.length);
-        System.arraycopy(thisClazzFields, 0, result, parent.length, thisClazzFields.length);
+        InterpreterResolvedJavaField[] result = new InterpreterResolvedJavaField[parent.length + thisClazzFields.length];
+        int parentIndex = 0;
+        int declaredIndex = 0;
+        int resultIndex = 0;
+        while (parentIndex < parent.length && declaredIndex < thisClazzFields.length) {
+            if (parent[parentIndex].getOffset() <= thisClazzFields[declaredIndex].getOffset()) {
+                result[resultIndex++] = parent[parentIndex++];
+            } else {
+                result[resultIndex++] = thisClazzFields[declaredIndex++];
+            }
+        }
+        System.arraycopy(parent, parentIndex, result, resultIndex, parent.length - parentIndex);
+        System.arraycopy(thisClazzFields, declaredIndex, result, resultIndex, thisClazzFields.length - declaredIndex);
         return result;
     }
 
+    /// Returns declared static fields in offset order once declared fields have been sorted.
     @Override
     public InterpreterResolvedJavaField[] getStaticFields() {
         InterpreterResolvedJavaField[] declared = this.declaredFields;
