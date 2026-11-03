@@ -39,9 +39,14 @@ import com.oracle.svm.shared.option.OptionOrigin;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.HostedModuleSupport;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
@@ -78,12 +83,8 @@ public final class LinkAtBuildTimeSupport {
     }
 
     public boolean linkAtBuildTime(ResolvedJavaType type) {
-        // GR-80101: This hosted-class conversion remains until this support is Terminus-compatible.
-        return linkAtBuildTime(OriginalClassProvider.getJavaClass(type));
-    }
-
-    public boolean linkAtBuildTime(Class<?> clazz) {
-        return isIncluded(clazz) != null;
+        ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(type);
+        return isIncluded(originalType) != null;
     }
 
     public boolean moduleLinkAtBuildTime(String module) {
@@ -94,26 +95,62 @@ public final class LinkAtBuildTimeSupport {
         return classFilter.isPackageOrClassIncluded(packageName) != null;
     }
 
-    private Object isIncluded(Class<?> clazz) {
-        if (clazz.isArray() || !classLoaderSupport.isNativeImageClassLoader(clazz.getClassLoader())) {
+    /**
+     * Returns the reason why the canonical guest {@code type} is included for linking at image
+     * build time, or {@code null} if it is not included.
+     */
+    private Object isIncluded(ResolvedJavaType type) {
+        GuestAccess guestAccess = GuestAccess.get();
+        if (!guestAccess.isFullyIsolated()) {
+            Class<?> clazz = OriginalClassProvider.getJavaClass(type);
+            if (clazz.isArray() || !classLoaderSupport.isNativeImageClassLoader(clazz.getClassLoader())) {
+                return "system default";
+            }
+            assert !clazz.isPrimitive() : "Primitive classes are not loaded via NativeImageClassLoader";
+            return classFilter.isIncluded(clazz);
+        }
+
+        if (type.isArray()) {
             return "system default";
         }
-        assert !clazz.isPrimitive() : "Primitive classes are not loaded via NativeImageClassLoader";
-        return classFilter.isIncluded(clazz);
+
+        /*
+         * GR-79838: Espresso currently loads application classes and Native Image guest runtime
+         * modules through the same system class loader. Keep the configured guest modules outside
+         * the application class space until Espresso provides separate runtime and application
+         * loader hierarchies. Once all application classes and modules are loaded by a dedicated
+         * application loader or one of its children, replace this exception and the system-loader
+         * approximation below with that loader.
+         */
+        ResolvedJavaModule module = guestAccess.getModule(type);
+        String moduleName = module.getName();
+        if (moduleName != null && HostedModuleSupport.GUEST_MODULES.contains(moduleName)) {
+            return "system default";
+        }
+
+        JavaConstant javaClass = guestAccess.getProviders().getConstantReflection().asJavaClass(type);
+        JavaConstant loader = guestAccess.invoke(guestAccess.elements.java_lang_Class_getClassLoader, javaClass);
+        JavaConstant applicationLoader = guestAccess.invokeStatic(guestAccess.elements.java_lang_ClassLoader_getSystemClassLoader);
+        while (!loader.isNull()) {
+            if (loader.equals(applicationLoader)) {
+                assert !type.isPrimitive() : "Primitive classes are not loaded via NativeImageClassLoader";
+                return classFilter.isIncluded(module.getName(), JVMCIReflectionUtil.getPackageName(type), type.toClassName());
+            }
+            loader = guestAccess.invoke(guestAccess.elements.java_lang_ClassLoader_getParent, loader);
+        }
+        return "system default";
     }
 
     public String errorMessageFor(ResolvedJavaType type) {
-        return errorMessageFor(OriginalClassProvider.getJavaClass(type));
-    }
-
-    public String errorMessageFor(Class<?> clazz) {
-        assert linkAtBuildTime(clazz);
-        return "This error is reported at image build time because class " + clazz.getTypeName() + " is registered for linking at image build time by " + linkAtBuildTimeReason(clazz) + ".";
+        ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(type);
+        Object reason = isIncluded(originalType);
+        assert reason != null;
+        return "This error is reported at image build time because class " + JVMCIReflectionUtil.getTypeName(originalType) + " is registered for linking at image build time by " +
+                        linkAtBuildTimeReason(reason) + ".";
     }
 
     @SuppressWarnings("unchecked")
-    private String linkAtBuildTimeReason(Class<?> clazz) {
-        Object reason = isIncluded(clazz);
+    private static String linkAtBuildTimeReason(Object reason) {
         if (reason == null) {
             return null;
         }

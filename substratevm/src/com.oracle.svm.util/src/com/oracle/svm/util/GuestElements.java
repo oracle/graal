@@ -142,6 +142,7 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType java_lang_ClassLoader = lookupType(ClassLoader.class);
     public final ResolvedJavaMethod java_lang_ClassLoader_getName = lookupMethod(java_lang_ClassLoader, "getName");
+    public final ResolvedJavaMethod java_lang_ClassLoader_getParent = lookupMethod(java_lang_ClassLoader, "getParent");
     public final ResolvedJavaMethod java_lang_ClassLoader_getPlatformClassLoader = lookupMethod(java_lang_ClassLoader, "getPlatformClassLoader");
     public final ResolvedJavaMethod java_lang_ClassLoader_getSystemClassLoader = lookupMethod(java_lang_ClassLoader, "getSystemClassLoader");
 
