@@ -39,6 +39,7 @@ import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.SwitchStrategy;
+import jdk.graal.compiler.lir.SwitchStrategy.BaseSwitchClosure;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.NodeView;
@@ -171,38 +172,95 @@ public class SwitchStrategyTest extends GraalCompilerTest {
         }
     }
 
-    /// Interprets comparisons directly so that keys can share targets independently of LIR labels.
+    /// Interprets the forward branches emitted by a strategy for one input value.
+    private static final class TestClosure extends BaseSwitchClosure {
+        /// Sorted keys used by the generated comparisons.
+        private final int[] keys;
+
+        /// Target identities corresponding to `keys`.
+        private final int[] targets;
+
+        /// Input value whose path is interpreted.
+        private final int value;
+
+        /// Selected target, or `null` until a terminal branch is taken.
+        private Integer result;
+
+        /// Forward destination whose intervening instructions are skipped.
+        private Label pendingLabel;
+
+        /// Creates an interpreter without assembler state, since all callbacks are overridden.
+        TestClosure(int[] keys, int[] targets, int value) {
+            super(null, null, null, null);
+            this.keys = keys;
+            this.targets = targets;
+            this.value = value;
+        }
+
+        /// Evaluates a comparison only while the simulated execution is active.
+        private boolean matches(int index, Condition condition) {
+            if (result != null || pendingLabel != null) {
+                return false;
+            }
+            return condition == null || switch (condition) {
+                case EQ -> value == keys[index];
+                case LT -> value < keys[index];
+                case LE -> value <= keys[index];
+                case GT -> value > keys[index];
+                case GE -> value >= keys[index];
+                default -> throw new AssertionError(condition);
+            };
+        }
+
+        @Override
+        public void conditionalJump(int index, Condition condition, boolean defaultTarget) {
+            if (matches(index, condition)) {
+                result = defaultTarget ? -1 : targets[index];
+            }
+        }
+
+        @Override
+        public void conditionalJumpOrDefault(int index, Condition condition, boolean canFallThrough) {
+            if (result == null && pendingLabel == null) {
+                result = matches(index, condition) ? targets[index] : -1;
+            }
+        }
+
+        @Override
+        public Label conditionalJump(int index, Condition condition) {
+            Label label = new Label();
+            if (matches(index, condition)) {
+                pendingLabel = label;
+            }
+            return label;
+        }
+
+        @Override
+        protected void conditionalJump(int index, Condition condition, Label target) {
+            throw new AssertionError("Unexpected assembler callback");
+        }
+
+        @Override
+        public void bind(Label label) {
+            if (pendingLabel == label) {
+                pendingLabel = null;
+            }
+        }
+
+        @Override
+        public boolean isSameTarget(int index1, int index2) {
+            return targets[index1] == targets[index2];
+        }
+    }
+
+    /// Interprets branches so that keys can share targets independently of LIR labels.
     private static void assertDispatch(SwitchStrategy strategy, int[] keys, int[] targets, int value) {
         int keyIndex = Arrays.binarySearch(keys, value);
         int expected = keyIndex < 0 ? -1 : targets[keyIndex];
-        // -2 means no jump was taken; -1 denotes the default target.
-        int[] actual = {-2};
-        strategy.run(new SwitchStrategy.BaseSwitchClosure(null, null, null, null) {
-            @Override
-            public void conditionalJump(int index, Condition condition, boolean defaultTarget) {
-                if (actual[0] == -2 && (condition == null || condition.check(value, keys[index]))) {
-                    actual[0] = defaultTarget ? -1 : targets[index];
-                }
-            }
-
-            @Override
-            public void conditionalJumpOrDefault(int index, Condition condition, boolean canFallThrough) {
-                if (actual[0] == -2) {
-                    actual[0] = condition.check(value, keys[index]) ? targets[index] : -1;
-                }
-            }
-
-            @Override
-            protected void conditionalJump(int index, Condition condition, Label target) {
-                throw new AssertionError("RangesStrategy does not use internal labels");
-            }
-
-            @Override
-            public boolean isSameTarget(int index1, int index2) {
-                return targets[index1] == targets[index2];
-            }
-        });
-        Assert.assertEquals("dispatch for " + value + " with keys " + Arrays.toString(keys), expected, actual[0]);
+        TestClosure closure = new TestClosure(keys, targets, value);
+        strategy.run(closure);
+        Assert.assertNotNull("No target for " + value, closure.result);
+        Assert.assertEquals("dispatch for " + value + " with keys " + Arrays.toString(keys), expected, closure.result.intValue());
     }
 
     /// Covers a final shared range after single keys whose failed equality checks leave a gap.
@@ -226,5 +284,53 @@ public class SwitchStrategyTest extends GraalCompilerTest {
         assertRangeDispatch(new int[]{-3, -2, 1}, new int[]{0, 0, 1});
         assertRangeDispatch(new int[]{-3, -2, -1}, new int[]{0, 1, 2});
         assertRangeDispatch(new int[]{Integer.MAX_VALUE - 1, Integer.MAX_VALUE}, new int[]{0, 0});
+    }
+
+    /// Checks every key and its neighbors against a direct lookup, including the default target.
+    private static void checkBinaryStrategy(int[] keys, int[] targets, double[] probabilities) {
+        JavaConstant[] constants = new JavaConstant[keys.length];
+        for (int i = 0; i < keys.length; i++) {
+            constants[i] = JavaConstant.forInt(keys[i]);
+        }
+        SwitchStrategy strategy = new SwitchStrategy.BinaryStrategy(probabilities, constants);
+        for (int key : keys) {
+            for (long value = (long) key - 1; value <= (long) key + 1; value++) {
+                if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
+                    continue;
+                }
+                assertDispatch(strategy, keys, targets, (int) value);
+            }
+        }
+    }
+
+    /// Checks a single shared range, including ranges at the integer limits.
+    @Test
+    public void singleSharedSlice() {
+        checkBinaryStrategy(new int[]{-3, -2, -1}, new int[]{0, 0, 0}, new double[]{0.3, 0.3, 0.3});
+        checkBinaryStrategy(new int[]{Integer.MIN_VALUE, Integer.MIN_VALUE + 1, Integer.MIN_VALUE + 2}, new int[]{0, 0, 0}, new double[]{0.1, 0.2, 0.6});
+        checkBinaryStrategy(new int[]{Integer.MAX_VALUE - 2, Integer.MAX_VALUE - 1, Integer.MAX_VALUE}, new int[]{0, 0, 0}, new double[]{0.6, 0.2, 0.1});
+    }
+
+    /// Checks shared ranges under balanced and skewed key probabilities.
+    @Test
+    public void multipleSlices() {
+        int[] keys = {-10, -9, -8, -3, -2, -1, 0, 1, 2, 5, 6, 7};
+        int[] targets = {0, 0, 0, 1, 1, 1, 2, 2, 2, 0, 0, 0};
+        checkBinaryStrategy(keys, targets, new double[]{0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05});
+        checkBinaryStrategy(keys, targets, new double[]{0.01, 0.01, 0.5, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01});
+        checkBinaryStrategy(keys, targets, new double[]{0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.5});
+    }
+
+    /// Checks that independent targets still dispatch correctly.
+    @Test
+    public void distinctTargets() {
+        checkBinaryStrategy(new int[]{-3, -2, -1}, new int[]{0, 1, 2}, new double[]{0.3, 0.3, 0.3});
+        checkBinaryStrategy(new int[]{-10, -3, 5, 10, 20}, new int[]{0, 1, 2, 3, 4}, new double[]{0.1, 0.1, 0.1, 0.1, 0.1});
+    }
+
+    /// Checks that gaps between keys sharing a target still dispatch to the default.
+    @Test
+    public void sharedTargetWithGaps() {
+        checkBinaryStrategy(new int[]{-3, -1, 1}, new int[]{0, 0, 0}, new double[]{0.3, 0.3, 0.3});
     }
 }

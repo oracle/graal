@@ -453,6 +453,17 @@ public abstract class SwitchStrategy {
                 middle = getSliceEnd(closure, middle + 1);
             }
             middle = getSliceEnd(closure, middle);
+            if (middle == right) {
+                // A single slice needs bounds checks rather than another binary split.
+                if (leftBorder) {
+                    closure.conditionalJump(left, Condition.LT, true);
+                    registerDefaultEffort(++depth);
+                }
+                closure.conditionalJumpOrDefault(right, Condition.LE, rightBorder);
+                registerEffort(left, right, ++depth);
+                registerDefaultEffort(depth);
+                return;
+            }
             assert middle < keyConstants.length - 1 : Assertions.errorMessage(middle, keyConstants);
 
             if (getSliceEnd(closure, left) == middle) {
