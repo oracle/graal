@@ -82,15 +82,68 @@ public class InjectLoopCounterStampsPhase extends BasePhase<CoreProviders> {
         return stamp;
     }
 
+    // @formatter:off
+    /// Computes a candidate stamp for the root IV's phi. Both `initStampBaseIV` and
+    /// `extremumStamp` must describe the root IV, even when `iv` is a derived IV.
+    ///
+    /// For example, consider this signed loop:
+    ///
+    /// ```java
+    /// int i = 3;
+    /// int sum = 0;
+    /// while (true) {
+    ///     int j = 10 - i;
+    ///     if (j >= 10) {
+    ///         break;
+    ///     }
+    ///     sum += j;
+    ///     i--;
+    /// }
+    /// ```
+    ///
+    /// When the loop test is represented using `j`, the IVs are:
+    ///
+    /// ```text
+    /// root: BasicInductionVariable for i
+    ///       valueNode = ValuePhiNode(3, i - 1)
+    ///       stride = -1, direction = Down
+    ///
+    /// iv:   DerivedOffsetInductionVariable for j = 10 - i
+    ///       valueNode = SubNode(10, root.valueNode())
+    ///       stride = +1, direction = Up
+    ///       iv.getRootIV() == root
+    ///
+    ///                         i       j
+    /// first body iteration    3       7
+    /// second body iteration   2       8
+    /// last body iteration     1       9
+    /// exit check              0      10
+    /// ```
+    ///
+    /// Here, `initStampBaseIV` describes 3 and `extremumStamp` describes 1. These are values of
+    /// `i`, so extending the extremum must use `i`'s stride: `1 + (-1) = 0`. The resulting bound
+    /// `[0, 3]` is intended for `i`'s phi. Using `j`'s stride in this calculation instead would
+    /// give `[2, 3]`, excluding valid values of `i`.
+    ///
+    /// The bound `[0, 3]` is not assigned to `j`. After refining `i`'s phi, the subtraction node
+    /// can infer `j`'s own stamp `[7, 10]`.
+    ///
+    /// The supplied `iv` also determines which signedness and fallback rules apply. The
+    /// limit-checked IV is known not to overflow and is bounded using its signed or unsigned
+    /// comparison, with signed fallbacks when the root's range requires them. Other IVs are not
+    /// constrained by that comparison and always use signed bounds derived from the loop's trip
+    /// count. An unsigned check with opposite derived and root directions causes this method to
+    /// return an unrestricted stamp.
+    // @formatter:on
     private static Stamp getBetterBoundStamp(CountedLoopInfo counted, InductionVariable iv, IntegerStamp initStampBaseIV, IntegerStamp extremumStamp) {
-        /*
-         * We need to make a conceptual differentiation between the limit checked IV here and the
-         * rest of the IVs. For the limit checked IV we calculate the stamp that is later used for
-         * the max trip count. We know the counter IV never overflows and is subject to a limit in
-         * unsigned or signed range. For the rest of the IVs we know nothing, they are not compared
-         * against anything. We must not calculate their range in unsigned range - they are always
-         * treated as signed since they are evaluated using the trip counted itself.
-         */
+        InductionVariable rootIV = iv.getRootIV();
+        if (counted.isUnsignedCheck() && iv.direction() != rootIV.direction()) {
+            /*
+             * Negating an unsigned counter does not preserve its ordering. The root IV can cross
+             * zero even when the checked IV cannot, so retain its existing stamp.
+             */
+            return initStampBaseIV.unrestricted();
+        }
         IntegerHelper helper;
         final int bits = initStampBaseIV.getBits();
         final boolean isLimitCheckedIV = (iv == counted.getLimitCheckedIV());
@@ -111,7 +164,8 @@ public class InjectLoopCounterStampsPhase extends BasePhase<CoreProviders> {
         } else {
             helper = new SignedIntegerHelper(bits);
         }
-        Stamp boundStamp = getBoundStamp(iv, initStampBaseIV, extremumStamp, helper);
+        // The bounds describe the root IV, whose stride may differ from the checked IV.
+        Stamp boundStamp = getBoundStamp(rootIV, initStampBaseIV, extremumStamp, helper);
         return boundStamp;
 
     }
@@ -155,6 +209,25 @@ public class InjectLoopCounterStampsPhase extends BasePhase<CoreProviders> {
         return false;
     }
 
+    // @formatter:off
+    /// Computes a bound for `currentIV` using `initStamp`, `extremumStamp`, its constant stride,
+    /// and its direction, with the ordering supplied by `helper`. All of these must describe the
+    /// same IV.
+    ///
+    /// The bound includes one update beyond the extremum, clamped to the range supported by
+    /// `helper` if that update could overflow. For the signed loop in [#getBetterBoundStamp]:
+    ///
+    /// ```text
+    /// IV being bounded    init    extremum    stride    resulting bound
+    /// root i                 3           1        -1             [0, 3]
+    /// checked j = 10 - i      7           9        +1            [7, 10]
+    /// ```
+    ///
+    /// Root-phi refinement uses the first row. Loop-frequency refinement uses the second row.
+    /// Passing `j` together with `i`'s initialization and extremum would mix two different IVs and
+    /// compute an incorrect bound. This method does not translate between root and derived IV
+    /// ranges.
+    // @formatter:on
     private static Stamp getBoundStamp(InductionVariable currentIV, IntegerStamp initStamp, IntegerStamp extremumStamp, IntegerHelper helper) {
         long lowerBound;
         long upperBound;
@@ -163,7 +236,7 @@ public class InjectLoopCounterStampsPhase extends BasePhase<CoreProviders> {
         final long upperBoundExtremum = helper.upperBound(extremumStamp);
         final long lowerBoundInit = helper.lowerBound(initStamp);
         final long upperBoundInit = helper.upperBound(initStamp);
-        final Direction direction = currentIV.getRootIV().direction();
+        final Direction direction = currentIV.direction();
         if (direction == InductionVariable.Direction.Up) {
             // i in [init..extremum+stride]
             lowerBound = lowerBoundInit;
