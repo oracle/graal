@@ -863,6 +863,14 @@ public abstract class LoopTransformations {
         }
         assert loop.counted().getDirection() != null;
         LoopBeginNode loopBegin = loop.loopBegin();
+        // Splitting a simple loop creates pre/main/post loops whose pre/post parts omit safepoint polls.
+        // For example, the pre-loop of
+        // for (int i = Integer.MAX_VALUE - 1; (long) i < limit; i += 3) { ... }
+        // may not terminate when limit exceeds every int. Keep its poll unless both the limit-checked IV
+        // and its native-width root are known not to overflow.
+        if (loopBegin.isSimpleLoop() && !loop.counted().loopAndRootCanNeverOverflow()) {
+            return false;
+        }
         LogicNode condition = loop.counted().getLimitTest().condition();
         if (!(condition instanceof CompareNode)) {
             return false;
