@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix;
 
-import java.io.File;
 import java.nio.ByteOrder;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -72,10 +71,9 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     }
 
     @Override
-    public RawFileDescriptor create(File file, FileCreationMode creationMode, FileAccessMode accessMode) {
-        String path = file.getPath();
+    public RawFileDescriptor create(String filename, FileCreationMode creationMode, FileAccessMode accessMode) {
         int flags = parseMode(creationMode) | parseMode(accessMode);
-        return open0(path, flags);
+        return open0(filename, flags);
     }
 
     @Override
@@ -91,10 +89,9 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     }
 
     @Override
-    public RawFileDescriptor open(File file, FileAccessMode mode) {
-        String path = file.getPath();
+    public RawFileDescriptor open(String filename, FileAccessMode mode) {
         int flags = parseMode(mode);
-        return open0(path, flags);
+        return open0(filename, flags);
     }
 
     @Override

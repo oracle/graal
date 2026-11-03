@@ -79,7 +79,7 @@ import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ResourceLoaderKeys;
 import com.oracle.svm.core.jdk.Resources;
@@ -114,6 +114,7 @@ import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GlobUtils;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.NativeImageResourcePathRepresentation;
 
 import jdk.graal.compiler.nodes.ValueNode;
@@ -257,7 +258,7 @@ public class ResourcesFeature implements InternalFeature {
                 return;
             }
             if (!typeReachabilityCondition.isAlwaysTrue()) {
-                classInitializationSupport.addForTypeReachedTracking(typeReachabilityCondition.getType());
+                classInitializationSupport.addForTypeReachedTracking(GuestAccess.get().lookupType(typeReachabilityCondition.getType()));
             }
 
             Resources.currentLayer().addResourceCondition(module, resourcePath, condition, preserved);

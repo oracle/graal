@@ -249,9 +249,9 @@ public class WebImageFeature implements InternalFeature {
         // "systemProvider", which is necessary to compile some reflective accesses to the object.
         rci.initializeAtBuildTime("org.graalvm.shadowed.com.google.common.jimfs.Jimfs", "looks for service provider");
 
-        rci.initializeAtRunTime(WebImageTempFileHelper.class, "instances of Random are not allowed in the image heap");
-        rci.initializeAtRunTime(WebImageFileSystem.class, "Static fields need to read system properties at runtime");
-        rci.initializeAtRunTime(FileSystemInitializer.class, "Static fields need to read system properties at runtime");
+        rci.initializeAtRunTime(GuestAccess.get().lookupType(WebImageTempFileHelper.class), "instances of Random are not allowed in the image heap");
+        rci.initializeAtRunTime(GuestAccess.get().lookupType(WebImageFileSystem.class), "Static fields need to read system properties at runtime");
+        rci.initializeAtRunTime(GuestAccess.get().lookupType(FileSystemInitializer.class), "Static fields need to read system properties at runtime");
         rci.initializeAtRunTime("java.nio.file.FileSystems$DefaultFileSystemHolder", "Parts of static initializer is substituted to inject custom FileSystemProvider");
         rci.initializeAtRunTime("java.util.zip.ZipFile$Source", "avoid initializing wrong file system");
 

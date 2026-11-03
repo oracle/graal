@@ -45,7 +45,7 @@ import javax.management.openmbean.OpenType;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -161,14 +161,15 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
             });
         }
 
-        RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory");
-        RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory$Mappings");
-        RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory$IdentityMapping");
-        RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DescriptorCache");
-        RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.remote.util.ClassLogger");
+        JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
+        rci.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory");
+        rci.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory$Mappings");
+        rci.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory$IdentityMapping");
+        rci.initializeAtBuildTime("com.sun.jmx.mbeanserver.DescriptorCache");
+        rci.initializeAtBuildTime("com.sun.jmx.remote.util.ClassLogger");
 
-        RuntimeClassInitialization.initializeAtRunTime("sun.management.MemoryImpl");
-        RuntimeClassInitialization.initializeAtRunTime("com.sun.management.internal.PlatformMBeanProviderImpl");
+        rci.initializeAtRunTime("sun.management.MemoryImpl");
+        rci.initializeAtRunTime("com.sun.management.internal.PlatformMBeanProviderImpl");
     }
 
     @Override

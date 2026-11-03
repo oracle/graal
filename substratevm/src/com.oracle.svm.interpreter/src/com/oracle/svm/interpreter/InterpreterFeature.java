@@ -53,7 +53,7 @@ import com.oracle.svm.core.graal.amd64.AMD64InterpreterStubs;
 import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.espresso.shared.meta.SignaturePolymorphicIntrinsic;
@@ -338,12 +338,12 @@ public class InterpreterFeature implements InternalFeature {
         HostedMethod hLeaveStub = accessImpl.getUniverse().lookup(leaveStub);
         int leaveStubLength = accessImpl.getCompilations().get(hLeaveStub).result.getTargetCodeSize();
 
-        InterpreterSupport.setLeaveStubPointer(new MethodPointer(hLeaveStub), leaveStubLength);
+        InterpreterSupport.setLeaveStubPointer(MethodRefSupport.createMethodPointer(hLeaveStub), leaveStubLength);
 
         HostedMethod hNativeDowncallStub = accessImpl.getUniverse().lookup(nativeDowncallStub);
         int nativeDowncallStubLength = accessImpl.getCompilations().get(hNativeDowncallStub).result.getTargetCodeSize();
 
-        InterpreterSupport.setNativeDowncallStubPointer(new MethodPointer(hNativeDowncallStub), nativeDowncallStubLength);
+        InterpreterSupport.setNativeDowncallStubPointer(MethodRefSupport.createMethodPointer(hNativeDowncallStub), nativeDowncallStubLength);
     }
 
     private static ResolvedJavaMethod getExecuteBodyFromBCIMethod(MetaAccessProvider metaAccess) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,10 @@ public @interface LayeredCompilationBehavior {
          * is prevented. A call to the method in a shared layer will be replaced by an indirect
          * call. The compilation of those methods is then forced in the application layer and the
          * corresponding symbol is declared as global.
+         *
+         * Field writes in the delayed body must be covered by shared-layer field summaries when
+         * earlier compiled code can observe them. A later layer rejects new stores to fields
+         * deliberately excluded from those summaries.
          *
          * A delayed method that is not referenced in any shared layer is treated as a
          * {@link Behavior#DEFAULT} method in the application layer and does not have to be

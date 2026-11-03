@@ -108,6 +108,7 @@ import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.meta.MethodRefUtils;
 import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.Constants;
@@ -268,7 +269,7 @@ public class CremaSupportImpl implements CremaSupport {
             if (substitution != null) {
                 method.setNativeEntryPoint(substitution);
             } else {
-                method.setNativeEntryPoint(InterpreterResolvedJavaMethod.createMethodRef(analysisMethod));
+                method.setNativeEntryPoint(MethodRefUtils.create(analysisMethod));
             }
         } else {
             method.setNativeEntryPoint(InterpreterKnownCompiledEntryPoints.getThrowAbstractMethodErrorStub());
@@ -1785,7 +1786,7 @@ public class CremaSupportImpl implements CremaSupport {
 
     private static int getMethodMemberNameFlags(ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall) {
         InterpreterResolvedJavaMethod resolvedMethod = resolvedCall.getResolvedMethod();
-        int flags = resolvedMethod.getModifiers();
+        int flags = resolvedMethod.getOriginalModifiers();
         if (resolvedMethod.isConstructor() || resolvedMethod.isClassInitializer()) {
             flags |= getExtraMethodMemberNameFlags(resolvedMethod);
             flags |= MN_IS_CONSTRUCTOR;

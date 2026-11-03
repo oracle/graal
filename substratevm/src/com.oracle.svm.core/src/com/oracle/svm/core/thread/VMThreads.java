@@ -134,6 +134,8 @@ public abstract class VMThreads {
     public static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadIdTL");
     public static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadHandleTL");
     public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord("VMThreads.IsolateTL");
+    /** Cached for native entry paths that have not restored the code base register yet. */
+    public static final FastThreadLocalWord<Pointer> CodeBaseTL = FastThreadLocalFactory.createWord("VMThreads.CodeBaseTL");
     /** The highest stack address. 0 if not available on this platform. */
     public static final FastThreadLocalWord<UnsignedWord> StackBase = FastThreadLocalFactory.createWord("VMThreads.StackBase");
     /**
@@ -207,8 +209,8 @@ public abstract class VMThreads {
     private static final FastThreadLocalWord<Pointer> unalignedIsolateThreadMemoryTL = FastThreadLocalFactory.createWord("VMThreads.unalignedIsolateThreadMemoryTL");
 
     /**
-     * Allocate native memory for a {@link IsolateThread}. The returned memory must be initialized
-     * to 0.
+     * Allocate zeroed native memory for a {@link IsolateThread} and initialize its metadata. The
+     * current isolate's base registers must already be initialized.
      */
     @Uninterruptible(reason = "Thread state not set up.")
     public IsolateThread allocateIsolateThread() {
@@ -229,6 +231,9 @@ public abstract class VMThreads {
 
         IsolateThread isolateThread = (IsolateThread) UnsignedUtils.roundUp(memory, alignment);
         unalignedIsolateThreadMemoryTL.set(isolateThread, memory);
+        if (SubstrateOptions.useRelativeCodePointers()) {
+            CodeBaseTL.set(isolateThread, KnownIntrinsics.codeBase());
+        }
 
         /* Initialize the data structures for thread-local handshakes. */
         if (!ThreadLocalHandshake.initializeThreadLocalData(isolateThread)) {

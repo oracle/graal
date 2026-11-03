@@ -203,12 +203,9 @@ public final class Vector128OpsFallback implements Vector128Ops<byte[]> {
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public byte[] v128_load8x8(long value, int vectorOpcode) {
-        byte[] bytes = new byte[8];
-        CompilerDirectives.ensureVirtualized(bytes);
-        byteArraySupport.putLong(bytes, 0, value);
         byte[] resultBytes = new byte[Vector128.BYTES];
         for (int i = 0; i < 8; i++) {
-            byte x = bytes[i];
+            byte x = (byte) (value >>> (i * Byte.SIZE));
             short result = (short) switch (vectorOpcode) {
                 case Bytecode.VECTOR_V128_LOAD8X8_S -> x;
                 case Bytecode.VECTOR_V128_LOAD8X8_U -> Byte.toUnsignedInt(x);
@@ -222,12 +219,9 @@ public final class Vector128OpsFallback implements Vector128Ops<byte[]> {
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public byte[] v128_load16x4(long value, int vectorOpcode) {
-        byte[] bytes = new byte[8];
-        CompilerDirectives.ensureVirtualized(bytes);
-        byteArraySupport.putLong(bytes, 0, value);
         byte[] resultBytes = new byte[Vector128.BYTES];
         for (int i = 0; i < 4; i++) {
-            short x = byteArraySupport.getShort(bytes, i * Short.BYTES);
+            short x = (short) (value >>> (i * Short.SIZE));
             int result = switch (vectorOpcode) {
                 case Bytecode.VECTOR_V128_LOAD16X4_S -> x;
                 case Bytecode.VECTOR_V128_LOAD16X4_U -> Short.toUnsignedInt(x);
@@ -241,12 +235,9 @@ public final class Vector128OpsFallback implements Vector128Ops<byte[]> {
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     public byte[] v128_load32x2(long value, int vectorOpcode) {
-        byte[] bytes = new byte[8];
-        CompilerDirectives.ensureVirtualized(bytes);
-        byteArraySupport.putLong(bytes, 0, value);
         byte[] resultBytes = new byte[Vector128.BYTES];
         for (int i = 0; i < 2; i++) {
-            int x = byteArraySupport.getInt(bytes, i * Integer.BYTES);
+            int x = (int) (value >>> (i * Integer.SIZE));
             long result = switch (vectorOpcode) {
                 case Bytecode.VECTOR_V128_LOAD32X2_S -> x;
                 case Bytecode.VECTOR_V128_LOAD32X2_U -> Integer.toUnsignedLong(x);

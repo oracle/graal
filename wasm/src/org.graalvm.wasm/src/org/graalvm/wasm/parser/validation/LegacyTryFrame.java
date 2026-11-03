@@ -95,7 +95,7 @@ public final class LegacyTryFrame extends ControlFrame {
 
         if (!branchLabelFixups.isEmpty()) {
             // bytecode label reached by branches targeting the try label
-            int exitLabelLocation = bytecode.addLabel(resultTypeLength(), initialStackSize(), commonResultType(), legacyCatchDepth());
+            int exitLabelLocation = addBranchLabel(bytecode);
             for (BytecodeFixup labelFixup : branchLabelFixups) {
                 labelFixup.patch(exitLabelLocation);
             }
@@ -119,7 +119,7 @@ public final class LegacyTryFrame extends ControlFrame {
         assert protectedRegionEnd == -1 : "legacy try protected region already closed";
         if (hasMoreClauses) {
             state.checkStackAfterFrameExit(this);
-            addLabelFixup(state.createBranchFixup(RuntimeBytecodeGen.BranchOp.BR));
+            registerForwardBranch(bytecode.addForwardBranch(RuntimeBytecodeGen.BranchOp.BR), super.legacyCatchDepth());
         }
         protectedRegionEnd = bytecode.location();
     }
@@ -133,7 +133,7 @@ public final class LegacyTryFrame extends ControlFrame {
         }
         initializedLocals = (BitSet) parentFrame.initializedLocals.clone();
         inCatchClause = true;
-        final int catchLabel = bytecode.addLabel(paramTypes.length, initialStackSize(), WasmType.getCommonValueType(paramTypes), legacyCatchDepth());
+        final int catchLabel = bytecode.addLabel(paramTypes.length, initialStackSize(), WasmType.getCommonValueType(paramTypes), legacyCatchDepth(), true);
         final ExceptionHandler handler = new ExceptionHandler(opcode, tag, catchLabel);
         addProtectedRegionHandler(handler);
         // Since catch is a separate block the unreachable state has to be reset.
@@ -148,7 +148,7 @@ public final class LegacyTryFrame extends ControlFrame {
         bytecode.addOp(Bytecode.MISC);
         bytecode.addOp(Bytecode.LEGACY_CATCH_DROP);
         if (hasMoreClauses) {
-            addLabelFixup(state.createBranchFixup(RuntimeBytecodeGen.BranchOp.BR));
+            registerForwardBranch(bytecode.addForwardBranch(RuntimeBytecodeGen.BranchOp.BR), super.legacyCatchDepth());
         }
         inCatchClause = false;
     }

@@ -141,8 +141,14 @@ public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
         return heapBase.add(getImageHeapEndOffsetInAddressSpace());
     }
 
+    /**
+     * Returns the space to reserve before the heap base for dynamic method address resolution.
+     * The size is rounded up so the heap base remains aligned after the pre-heap region is placed before it.
+     * @see DynamicMethodAddressResolutionHeapSupport
+     *
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected static UnsignedWord getPreHeapAlignedSizeForDynamicMethodAddressResolver() {
+    public static UnsignedWord getPreHeapAlignedSizeForDynamicMethodAddressResolver() {
         UnsignedWord requiredPreHeapMemoryInBytes = DynamicMethodAddressResolutionHeapSupport.get().getRequiredPreHeapMemoryInBytes();
         /* Ensure there is enough space to properly align the heap base. */
         UnsignedWord heapBaseAlignment = Word.unsigned(Heap.getHeap().getHeapBaseAlignment());

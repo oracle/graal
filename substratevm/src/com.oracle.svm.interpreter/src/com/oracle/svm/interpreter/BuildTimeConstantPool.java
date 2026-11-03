@@ -53,6 +53,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.meta.MethodRefUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl;
@@ -640,7 +641,7 @@ final class BuildTimeConstantPool {
                  * pool targets can resolve to the same interpreter method.
                  */
                 if (iMethod.getNativeEntryPointHolderConstant() == null) {
-                    iMethod.setNativeEntryPoint(InterpreterResolvedJavaMethod.createMethodRef(iMethod.getOriginalMethod()));
+                    iMethod.setNativeEntryPoint(MethodRefUtils.create(iMethod.getOriginalMethod()));
                 }
                 InterpreterUtil.log("[hydrate] setting method ref for %s", interpreterMethod);
             }

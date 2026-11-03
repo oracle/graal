@@ -43,7 +43,8 @@ import java.util.TreeMap;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.image.AbstractImage;
@@ -217,7 +218,7 @@ public abstract class WebImageWasmCodeGen extends WebImageCodeGen {
      * @see #getFunctionTableIndex(WasmId.Func)
      */
     protected int getFunctionTableIndex(MethodPointer methodPointer) {
-        ResolvedJavaMethod method = methodPointer.getMethod();
+        ResolvedJavaMethod method = MethodRefSupport.getMethod(methodPointer);
         HostedMethod target = (method instanceof HostedMethod hostedMethod) ? hostedMethod : hUniverse.lookup(method);
         if (!target.isCompiled()) {
             target = hMetaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);

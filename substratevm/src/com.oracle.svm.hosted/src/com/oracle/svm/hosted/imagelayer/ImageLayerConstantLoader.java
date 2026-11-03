@@ -26,17 +26,22 @@ package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.graal.pointsto.util.AnalysisError.guarantee;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.ENUM;
+import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.METHOD_TYPE;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.PERSISTED;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.STRING;
 
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
@@ -60,9 +65,8 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefSupport;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.snapshot.c.CEntryPointLiteralReferenceData;
@@ -70,11 +74,13 @@ import com.oracle.svm.hosted.snapshot.constant.ConstantReferenceData;
 import com.oracle.svm.hosted.snapshot.constant.PersistedConstantData;
 import com.oracle.svm.hosted.snapshot.constant.RelinkingData;
 import com.oracle.svm.hosted.snapshot.constant.RelinkingData.EnumConstant;
+import com.oracle.svm.hosted.snapshot.constant.RelinkingData.MethodTypeConstant;
 import com.oracle.svm.hosted.snapshot.constant.RelinkingData.StringConstant;
 import com.oracle.svm.hosted.snapshot.elements.PersistedAnalysisTypeData;
 import com.oracle.svm.hosted.snapshot.layer.SharedLayerSnapshotData;
 import com.oracle.svm.hosted.snapshot.util.PrimitiveValueData;
 import com.oracle.svm.hosted.snapshot.util.SnapshotAdapters;
+import com.oracle.svm.hosted.snapshot.util.SnapshotPrimitiveList;
 import com.oracle.svm.hosted.snapshot.util.SnapshotStructList;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
@@ -104,8 +110,15 @@ final class ImageLayerConstantLoader {
     private final Map<Integer, ImageHeapConstant> constants = new ConcurrentHashMap<>();
     private final Map<Integer, Integer> typeToConstant = new ConcurrentHashMap<>();
     private final Map<JavaConstant, Integer> stringToConstant = new ConcurrentHashMap<>();
+    private final Map<MethodTypeInfo, Integer> methodTypeToConstant = new ConcurrentHashMap<>();
     private final Map<JavaConstant, Integer> enumToConstant = new ConcurrentHashMap<>();
     private final Map<Integer, Long> objectOffsets = new ConcurrentHashMap<>();
+
+    private record MethodTypeInfo(int returnTypeId, List<Integer> parameterTypeIds) {
+        MethodTypeInfo {
+            parameterTypeIds = List.copyOf(parameterTypeIds);
+        }
+    }
 
     ImageLayerConstantLoader(SVMImageLayerLoader loader, SVMImageLayerSnapshotUtil imageLayerSnapshotUtil, HostedImageLayerBuildingSupport imageLayerBuildingSupport,
                     SharedLayerSnapshotData.Loader snapshot) {
@@ -232,6 +245,8 @@ final class ImageLayerConstantLoader {
             constant = GuestAccess.get().invoke(INTERN_METHOD, constant);
             injectIdentityHashCode(constant, identityHashCode);
             stringToConstant.put(constant, id);
+        } else if (relinking.isMethodTypeConstant()) {
+            methodTypeToConstant.put(getMethodTypeInfo(relinking.getMethodTypeConstant()), id);
         } else if (relinking.isEnumConstant()) {
             EnumConstant.Loader enumConstant = relinking.getEnumConstant();
             JavaConstant enumValue = getEnumValue(enumConstant.getEnumClass(), enumConstant.getEnumName());
@@ -283,6 +298,10 @@ final class ImageLayerConstantLoader {
             return hasValueForType((AnalysisType) constantReflectionProvider.asJavaType(javaConstant));
         } else if (STRING.isInstance(javaConstant)) {
             return stringToConstant.containsKey(javaConstant) && GuestAccess.get().invoke(CHECK_STRING_METHOD, null, javaConstant).asBoolean();
+        } else if (METHOD_TYPE.isInstance(javaConstant)) {
+            MethodType methodType = GuestAccess.get().getSnippetReflection().asObject(MethodType.class, javaConstant);
+            MethodTypeInfo methodTypeInfo = getMethodTypeInfo(methodType);
+            return methodTypeToConstant.containsKey(methodTypeInfo);
         } else if (ENUM.isInstance(javaConstant)) {
             return enumToConstant.containsKey(javaConstant);
         } else {
@@ -304,6 +323,39 @@ final class ImageLayerConstantLoader {
         return hasValueForType(hubToType(hub));
     }
 
+    PersistedHubLayout getPersistedHubLayout(AnalysisType type) {
+        Integer constantId = typeToConstant.get(type.getId());
+        if (constantId == null) {
+            return null;
+        }
+        PersistedConstantData.Loader hub = findConstant(constantId);
+        if (hub.getObjectOffset() == -1) {
+            return null;
+        }
+        /* Read the persisted values because the hosted hub is populated again in each layer. */
+        AnalysisType hubType = loader.getAnalysisTypeForBaseLayerId(hub.getTypeId());
+        int layoutEncoding = readPersistedHubIntField(hub, hubType, "layoutEncoding");
+        int monitorOffset = readPersistedHubIntField(hub, hubType, "monitorOffset");
+        int identityHashOffset = readPersistedHubIntField(hub, hubType, "identityHashOffset");
+        return new PersistedHubLayout(layoutEncoding, monitorOffset, identityHashOffset);
+    }
+
+    private static int readPersistedHubIntField(PersistedConstantData.Loader hub, AnalysisType hubType, String name) {
+        for (var field : hubType.getInstanceFields(true)) {
+            if (!field.getName().equals(name)) {
+                continue;
+            }
+
+            int position = ((AnalysisField) field).getPosition();
+            var value = hub.getObject().getData().get(position);
+            VMError.guarantee(value.kind() == ConstantReferenceData.Kind.PRIMITIVE_VALUE, "Persisted hub field %s must be a primitive value.", name);
+            var primitiveValue = value.getPrimitiveValue();
+            VMError.guarantee(primitiveValue.getTypeChar() == 'I', "Persisted hub field %s must be an int.", name);
+            return (int) primitiveValue.getRawValue();
+        }
+        throw VMError.shouldNotReachHere("Missing persisted hub field: " + name);
+    }
+
     ImageHeapConstant getValueForConstant(JavaConstant javaConstant) {
         int constantId;
         if (SVMImageLayerSnapshotUtil.DYNAMIC_HUB.isInstance(javaConstant)) {
@@ -311,6 +363,9 @@ final class ImageLayerConstantLoader {
             constantId = getConstantIdForType((AnalysisType) constantReflectionProvider.asJavaType(javaConstant));
         } else if (STRING.isInstance(javaConstant)) {
             constantId = stringToConstant.get(javaConstant);
+        } else if (METHOD_TYPE.isInstance(javaConstant)) {
+            MethodType methodType = GuestAccess.get().getSnippetReflection().asObject(MethodType.class, javaConstant);
+            constantId = methodTypeToConstant.get(getMethodTypeInfo(methodType));
         } else if (ENUM.isInstance(javaConstant)) {
             constantId = enumToConstant.get(javaConstant);
         } else {
@@ -341,6 +396,14 @@ final class ImageLayerConstantLoader {
 
     ImageHeapConstant getOrCreateConstant(int id) {
         return getOrCreateConstant(id, null);
+    }
+
+    void forEachPersistedMethodType(Consumer<MethodType> consumer) {
+        for (int id : methodTypeToConstant.values()) {
+            JavaConstant hostedObject = getOrCreateConstant(id).getHostedObject();
+            guarantee(hostedObject != null, "A persisted MethodType must have a hosted object");
+            consumer.accept(GuestAccess.get().getSnippetReflection().asObject(MethodType.class, hostedObject));
+        }
     }
 
     /* Retrieves the given constant iff it has already been relinked. */
@@ -518,10 +581,10 @@ final class ImageLayerConstantLoader {
                 if (constantRef.isMethodPointer()) {
                     ConstantReferenceData.MethodPointer.Loader r = constantRef.getMethodPointer();
                     AnalysisMethod method = loader.getAnalysisMethodForBaseLayerId(r.getMethodId());
-                    ref = new MethodPointer(method, r.getPermitsRewriteToPLT());
+                    ref = MethodRefSupport.createMethodPointer(method, r.getPermitsRewriteToPLT());
                 } else {
                     int mid = constantRef.getMethodOffset().getMethodId();
-                    ref = new MethodOffset(loader.getAnalysisMethodForBaseLayerId(mid));
+                    ref = MethodRefSupport.createMethodOffset(loader.getAnalysisMethodForBaseLayerId(mid));
                 }
                 AnalysisType refType = loader.metaAccess.lookupJavaType(ref.getClass());
                 PatchedWordConstant constant = new PatchedWordConstant(ref, refType);
@@ -656,12 +719,42 @@ final class ImageLayerConstantLoader {
                 JavaConstant stringValue = getStringConstant(value);
                 return GuestAccess.get().invoke(INTERN_METHOD, stringValue);
             }
+        } else if (loader.universe.getBigbang().getMetaAccess().lookupJavaType(MethodType.class).equals(analysisType)) {
+            assert relinking.isMethodTypeConstant();
+            JavaConstant methodTypeConstant = getMethodTypeConstant(relinking.getMethodTypeConstant());
+            injectIdentityHashCode(methodTypeConstant, baseLayerConstant.getIdentityHashCode());
+            return methodTypeConstant;
         } else if (loader.universe.getBigbang().getMetaAccess().lookupJavaType(Enum.class).isAssignableFrom(analysisType)) {
             assert relinking.isEnumConstant();
             EnumConstant.Loader enumConstant = relinking.getEnumConstant();
             return getEnumValue(enumConstant.getEnumClass(), enumConstant.getEnumName());
         }
         return null;
+    }
+
+    private JavaConstant getMethodTypeConstant(MethodTypeConstant.Loader methodTypeConstant) {
+        Class<?> returnType = getMethodTypeComponentClass(methodTypeConstant.getReturnTypeId());
+        SnapshotPrimitiveList.Int.Loader parameterTypeIds = methodTypeConstant.getParameterTypeIds();
+        Class<?>[] parameterTypes = SnapshotAdapters.toArray(parameterTypeIds, this::getMethodTypeComponentClass, Class<?>[]::new);
+        MethodType value = MethodType.methodType(returnType, parameterTypes);
+        return GuestAccess.get().getSnippetReflection().forObject(value);
+    }
+
+    private Class<?> getMethodTypeComponentClass(int typeId) {
+        AnalysisType type = loader.getAnalysisTypeForBaseLayerId(typeId);
+        return OriginalClassProvider.getJavaClass(type.getWrapped());
+    }
+
+    private MethodTypeInfo getMethodTypeInfo(MethodType methodType) {
+        AnalysisType returnType = loader.universe.getBigbang().getMetaAccess().lookupJavaType(methodType.returnType());
+        List<Integer> parameterTypeIds = methodType.parameterList().stream().map(type -> loader.universe.getBigbang().getMetaAccess().lookupJavaType(type).getId()).toList();
+        return new MethodTypeInfo(returnType.getId(), parameterTypeIds);
+    }
+
+    private static MethodTypeInfo getMethodTypeInfo(MethodTypeConstant.Loader methodTypeConstant) {
+        SnapshotPrimitiveList.Int.Loader parameterTypeIds = methodTypeConstant.getParameterTypeIds();
+        List<Integer> parameterTypeIdArray = SnapshotAdapters.toCollection(parameterTypeIds, Integer::valueOf, ArrayList::new);
+        return new MethodTypeInfo(methodTypeConstant.getReturnTypeId(), parameterTypeIdArray);
     }
 
     private static boolean shouldRelinkField(AnalysisField field) {
@@ -772,5 +865,8 @@ final class ImageLayerConstantLoader {
             }
             default -> throw GraalError.shouldNotReachHere("Unexpected constant reference: " + constantReference.kind());
         };
+    }
+
+    record PersistedHubLayout(int layoutEncoding, int monitorOffset, int identityHashOffset) {
     }
 }

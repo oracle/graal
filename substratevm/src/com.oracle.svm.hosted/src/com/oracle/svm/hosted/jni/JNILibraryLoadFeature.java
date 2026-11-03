@@ -26,9 +26,13 @@ package com.oracle.svm.hosted.jni;
 
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.SequencedSet;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -38,8 +42,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
+import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNILibraryInitializer;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
@@ -48,6 +52,7 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.codegen.CSourceCodeWriter;
+import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
@@ -67,13 +72,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = JNILibraryLoadFeature.LayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class JNILibraryLoadFeature implements Feature {
 
-    private static final String WINDOWS_EXTNET_ONLOAD_SYMBOL = JNILibraryInitializer.getOnLoadName("extnet", true);
     private static final String AOT_OWNED_NATIVE_SYMBOLS = "aotOwnedNativeSymbols";
 
     private final JNILibraryInitializer jniLibraryInitializer = new JNILibraryInitializer();
-    private final Set<String> aotOwnedNativeSymbols = new LinkedHashSet<>();
-
-    private boolean emitNopExtnetOnLoad = false;
+    private JNILibraryLinkagePlan linkagePlan;
+    private final Set<String> aotOwnedNativeSymbols = new HashSet<>();
+    private final SortedSet<String> missingBuiltinOnLoadSymbols = new TreeSet<>();
 
     public static JNILibraryLoadFeature singleton() {
         return ImageSingletons.lookup(JNILibraryLoadFeature.class);
@@ -82,23 +86,54 @@ public class JNILibraryLoadFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         NativeLibrarySupport.singleton().registerLibraryInitializer(jniLibraryInitializer);
+        linkagePlan = new JNILibraryLinkagePlan();
+        ImageSingletons.add(JNILibraryLinkagePlan.class, linkagePlan);
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        JNIPlatformNativeLibrarySupport platformNativeLibrarySupport = JNIPlatformNativeLibrarySupport.singleton();
+        linkagePlan.prepareBeforeAnalysis();
+        platformNativeLibrarySupport.setLibjavaSymbols(linkagePlan.getBuiltinSymbols("java"));
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
-        NativeLibraries nativeLibraries = NativeLibraries.singleton();
-        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(nativeLibraries.getJniStaticLibraries());
+        List<String> reachableStaticLibraries = linkagePlan.getReachableStaticLibraryNames();
+        boolean isChanged = jniLibraryInitializer.fillCGlobalDataMap(reachableStaticLibraries, this::shouldReferenceBuiltinOnLoad);
         if (isChanged) {
             access.requireAnalysisIteration();
         }
     }
 
+    private boolean shouldReferenceBuiltinOnLoad(String library) {
+        String onLoadSymbol = JNILibraryInitializer.getOnLoadName(library, true);
+        if (linkagePlan.getBuiltinSymbols(library).contains(onLoadSymbol)) {
+            return true;
+        }
+        if (ClassRegistries.respectClassLoader()) {
+            /*
+             * The JDK identifies a built-in library by its OnLoad symbol. Generate a no-op
+             * implementation when an explicitly registered static JNI library does not provide
+             * one itself.
+             */
+            missingBuiltinOnLoadSymbols.add(onLoadSymbol);
+            return true;
+        }
+        return false;
+    }
+
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
+        JNIRegistrationSupport registrationSupport = JNIRegistrationSupport.singleton();
+        registrationSupport.markPreviousLayerLibrariesReachable();
+        linkagePlan.prepareAfterAnalysis();
+
         if (!ClassRegistries.respectClassLoader()) {
             return;
         }
 
+        JNIPlatformNativeLibrarySupport platformNativeLibrarySupport = JNIPlatformNativeLibrarySupport.singleton();
         AfterAnalysisAccessImpl accessImpl = (AfterAnalysisAccessImpl) access;
         AnnotationSubstitutionProcessor substitutions = ((Inflation) accessImpl.getBigBang()).getAnnotationSubstitutionProcessor();
         /*
@@ -110,17 +145,17 @@ public class JNILibraryLoadFeature implements Feature {
             if (!type.isReachable()) {
                 continue;
             }
-            collectAOTOwnedNativeSymbols(type.getWrapped());
+            collectAOTOwnedNativeSymbols(type.getWrapped(), platformNativeLibrarySupport);
         }
 
         /* Deleted types need not be present in the analysis universe. */
         for (ResolvedJavaType type : substitutions.getDeletedTypes()) {
-            collectAOTOwnedNativeSymbols(type);
+            collectAOTOwnedNativeSymbols(type, platformNativeLibrarySupport);
         }
 
         /* Deleted methods can belong to types that are not present in the analysis universe. */
         for (ResolvedJavaMethod method : substitutions.getDeletedMethods()) {
-            collectAOTOwnedNativeSymbol(method);
+            collectAOTOwnedNativeSymbol(method, platformNativeLibrarySupport);
         }
     }
 
@@ -131,12 +166,16 @@ public class JNILibraryLoadFeature implements Feature {
         }
 
         NativeLibraries nativeLibraries = NativeLibraries.singleton();
-        Set<String> staticBuiltinSymbols = collectBuiltinSymbolsForRuntimeLookup(nativeLibraries, nativeLibraries.getJniStaticLibrariesAndDependencies());
+        SequencedSet<String> staticBuiltinSymbols = collectBuiltinSymbolsForRuntimeLookup(linkagePlan.getReachableStaticLibraryNames());
+
+        if (staticBuiltinSymbols.isEmpty() && missingBuiltinOnLoadSymbols.isEmpty()) {
+            return;
+        }
 
         ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
             Path sourceFile = writeStaticBuiltinSymbolTable(linkerInvocation.getTempDirectory(), staticBuiltinSymbols);
             Path objectFile = compileStaticBuiltinSymbolTable(sourceFile, linkerInvocation.getTempDirectory());
-            linkerInvocation.addInputFile(firstStaticLibraryIndex(linkerInvocation.getInputFiles(), NativeLibraries.singleton().getStaticLibraries()), objectFile);
+            linkerInvocation.addInputFile(firstStaticLibraryIndex(linkerInvocation.getInputFiles(), nativeLibraries.getStaticLibraries()), objectFile);
             return linkerInvocation;
         });
     }
@@ -150,18 +189,18 @@ public class JNILibraryLoadFeature implements Feature {
         return inputFiles.size();
     }
 
-    private void collectAOTOwnedNativeSymbols(ResolvedJavaType type) {
+    private void collectAOTOwnedNativeSymbols(ResolvedJavaType type, JNIPlatformNativeLibrarySupport platformNativeLibrarySupport) {
         ResolvedJavaType originalType = type;
         if (originalType instanceof SubstitutionType substitutionType) {
             originalType = substitutionType.getOriginal();
         }
 
         for (ResolvedJavaMethod method : originalType.getDeclaredMethods(false)) {
-            collectAOTOwnedNativeSymbol(method);
+            collectAOTOwnedNativeSymbol(method, platformNativeLibrarySupport);
         }
     }
 
-    private void collectAOTOwnedNativeSymbol(ResolvedJavaMethod method) {
+    private void collectAOTOwnedNativeSymbol(ResolvedJavaMethod method, JNIPlatformNativeLibrarySupport platformNativeLibrarySupport) {
         ResolvedJavaMethod originalMethod = method;
         if (originalMethod instanceof SubstitutionMethod substitutionMethod) {
             originalMethod = substitutionMethod.getOriginal();
@@ -176,19 +215,19 @@ public class JNILibraryLoadFeature implements Feature {
         String descriptor = originalMethod.getSignature().toMethodDescriptor();
 
         String shortName = JNINativeLinkage.getShortSymbol(declaringClass, name);
-        if (PlatformNativeLibrarySupport.singleton().isBuiltinNative(shortName)) {
+        if (platformNativeLibrarySupport.isBuiltinNative(shortName)) {
             aotOwnedNativeSymbols.add(shortName);
-            aotOwnedNativeSymbols.add(JNINativeLinkage.getLongSymbol(declaringClass, name, descriptor));
+        }
+        String longName = JNINativeLinkage.getLongSymbol(declaringClass, name, descriptor);
+        if (platformNativeLibrarySupport.isBuiltinNative(longName)) {
+            aotOwnedNativeSymbols.add(longName);
         }
     }
 
-    private Set<String> collectBuiltinSymbolsForRuntimeLookup(NativeLibraries nativeLibraries, Collection<String> staticLibNames) {
-        Set<String> staticBuiltinSymbols = new LinkedHashSet<>();
+    private SequencedSet<String> collectBuiltinSymbolsForRuntimeLookup(Collection<String> staticLibNames) {
+        SequencedSet<String> staticBuiltinSymbols = new LinkedHashSet<>();
         for (String libName : staticLibNames) {
-            staticBuiltinSymbols.addAll(nativeLibraries.getStaticLibrarySymbols(libName));
-            if (Platform.includedIn(Platform.WINDOWS.class) && libName.equals("extnet")) {
-                emitNopExtnetOnLoad = true;
-            }
+            staticBuiltinSymbols.addAll(linkagePlan.getBuiltinSymbols(libName));
         }
         if (RuntimeClassLoading.isSupported()) {
             // Remove function symbols whose declaring classes are owned by the AOT image layers.
@@ -222,7 +261,7 @@ public class JNILibraryLoadFeature implements Feature {
         }
     }
 
-    private Path writeStaticBuiltinSymbolTable(Path tempDirectory, Set<String> staticBuiltinSymbols) {
+    private Path writeStaticBuiltinSymbolTable(Path tempDirectory, SequencedSet<String> staticBuiltinSymbols) {
         CSourceCodeWriter writer = new CSourceCodeWriter(tempDirectory);
         writer.includeFiles(List.of("<stddef.h>", "<string.h>"));
         writer.appendln();
@@ -231,15 +270,15 @@ public class JNILibraryLoadFeature implements Feature {
             writer.appendln("extern void " + symbolName + "(void);");
         }
 
-        if (emitNopExtnetOnLoad) {
+        for (String symbolName : missingBuiltinOnLoadSymbols) {
             writer.appendln();
-            writer.appendln("int " + WINDOWS_EXTNET_ONLOAD_SYMBOL + "(void *vm, void *reserved) {");
+            writer.appendln("int " + symbolName + "(void *vm, void *reserved) {");
             writer.appendln("    (void) vm;");
             writer.appendln("    (void) reserved;");
             writer.appendln("    return 0x00010008;");
             writer.appendln("}");
-            staticBuiltinSymbols.add(WINDOWS_EXTNET_ONLOAD_SYMBOL);
         }
+        staticBuiltinSymbols.addAll(missingBuiltinOnLoadSymbols);
 
         writer.appendln();
         writer.appendln("typedef struct {");

@@ -25,19 +25,19 @@
 package com.oracle.svm.hosted.code;
 
 import com.oracle.svm.hosted.DeleteGuestValue;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_FLAGS_MASK;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_NEST_MEMBERS_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FLAG;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.CLASS_ACCESS_FLAGS_MASK;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.COMPLETE_FLAG_MASK;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.FIRST_ERROR_INDEX;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.HIDING_FLAG_MASK;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.IN_HEAP_FLAG_MASK;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.NEGATIVE_FLAG_MASK;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.NULL_OBJECT;
-import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.PRESERVED_FLAG_MASK;
-import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_FLAGS_MASK;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_NEST_MEMBERS_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_PERMITTED_SUBCLASSES_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_SIGNERS_FLAG;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.CLASS_ACCESS_FLAGS_MASK;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.COMPLETE_FLAG_MASK;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.HIDING_FLAG_MASK;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.IN_HEAP_FLAG_MASK;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.NEGATIVE_FLAG_MASK;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.NO_DATA;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.PRESERVED_FLAG_MASK;
 import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.AccessibleObjectMetadata;
 import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.ClassMetadata;
 import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.ConstructorMetadata;
@@ -90,13 +90,12 @@ import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.RuntimeMetadataDecoderImpl;
 import com.oracle.svm.core.code.RuntimeMetadataEncoding;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.jvmci.shared.meta.SharedField;
-import com.oracle.svm.core.reflect.target.EncodedRuntimeMetadataSupplier;
-import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPool;
+import com.oracle.svm.guest.staging.reflect.target.EncodedRuntimeMetadataSupplier;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.ReflectionMetadataEncoderFactory;
 import com.oracle.svm.hosted.image.NativeImageCodeCache.RuntimeMetadataEncoder;
@@ -243,8 +242,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return sortElements(jdkFields, fieldMetadata).toArray(new FieldMetadata[0]);
     }
 
-    private void registerMethod(HostedType declaringType, Object method, MethodMetadata metadata) {
-        if (buildingImageLayer() && !layeredRuntimeMetadataSingleton.shouldRegisterMethod(method, (AnalysisMetaAccess) metaAccess.getWrapped(), metadata)) {
+    /* Reflection keys preserve declaration order, while analysis methods identify substituted executables across layers. */
+    private void registerMethod(HostedType declaringType, Object method, AnalysisMethod analysisMethod, MethodMetadata metadata) {
+        if (buildingImageLayer() && !layeredRuntimeMetadataSingleton.shouldRegisterMethod(analysisMethod, metadata)) {
             return;
         }
         addType(declaringType);
@@ -258,8 +258,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         return sortElements(jdkMethods, methodMetadata).toArray(new MethodMetadata[0]);
     }
 
-    private void registerConstructor(HostedType declaringType, Object constructor, ConstructorMetadata metadata) {
-        if (buildingImageLayer() && !layeredRuntimeMetadataSingleton.shouldRegisterMethod(constructor, (AnalysisMetaAccess) metaAccess.getWrapped(), metadata)) {
+    private void registerConstructor(HostedType declaringType, Object constructor, AnalysisMethod analysisMethod, ConstructorMetadata metadata) {
+        if (buildingImageLayer() && !layeredRuntimeMetadataSingleton.shouldRegisterMethod(analysisMethod, metadata)) {
             return;
         }
         addType(declaringType);
@@ -508,11 +508,11 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         }
 
         if (isMethod) {
-            registerMethod(declaringType, reflectMethod,
+            registerMethod(declaringType, reflectMethod, analysisMethod,
                             new MethodMetadata(dynamicAccessMetadata, declaringType, name, parameterTypes, modifiers, returnType, exceptionTypes, signature, annotations, parameterAnnotations,
                                             annotationDefault, typeAnnotations, reflectParameters, accessorConstant));
         } else {
-            registerConstructor(declaringType, reflectMethod,
+            registerConstructor(declaringType, reflectMethod, analysisMethod,
                             new ConstructorMetadata(dynamicAccessMetadata, declaringType, parameterTypes, modifiers, exceptionTypes, signature, annotations, parameterAnnotations,
                                             typeAnnotations, reflectParameters, accessorConstant));
         }
@@ -549,10 +549,10 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         RuntimeDynamicAccessMetadata alwaysSatisfied = RuntimeDynamicAccessMetadata.unmodifiableEmptyMetadata();
         if (isMethod) {
             metadata = new MethodMetadata(alwaysSatisfied, registered, heapObjectConstant, annotations, parameterAnnotations, annotationDefault, typeAnnotations, reflectParameters);
-            registerMethod(metaAccess.lookupJavaType(((Method) object).getDeclaringClass()), holder, (MethodMetadata) metadata);
+            registerMethod(metaAccess.lookupJavaType(((Method) object).getDeclaringClass()), holder, (AnalysisMethod) analysisObject, (MethodMetadata) metadata);
         } else if (isExecutable) {
             metadata = new ConstructorMetadata(alwaysSatisfied, registered, heapObjectConstant, annotations, parameterAnnotations, typeAnnotations, reflectParameters);
-            registerConstructor(metaAccess.lookupJavaType(((Constructor<?>) object).getDeclaringClass()), holder, (ConstructorMetadata) metadata);
+            registerConstructor(metaAccess.lookupJavaType(((Constructor<?>) object).getDeclaringClass()), holder, (AnalysisMethod) analysisObject, (ConstructorMetadata) metadata);
         } else {
             metadata = new FieldMetadata(alwaysSatisfied, registered, heapObjectConstant, annotations, typeAnnotations);
             registerField(metaAccess.lookupJavaType(((Field) object).getDeclaringClass()), holder, (FieldMetadata) metadata);
@@ -646,7 +646,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         encoders.classes.addObject(returnType.getJavaClass());
 
         addType(declaringType);
-        registerMethod(declaringType, analysisMethod, new MethodMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringType, name, parameterTypes, modifiers, returnType));
+        registerMethod(declaringType, analysisMethod, analysisMethod, new MethodMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringType, name, parameterTypes, modifiers,
+                        returnType));
     }
 
     @Override
@@ -676,9 +677,9 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         }
 
         if (isMethod) {
-            registerMethod(declaringType, executable, new MethodMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringType, name, parameterTypeNames));
+            registerMethod(declaringType, executable, executable.getWrapped(), new MethodMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringType, name, parameterTypeNames));
         } else {
-            registerConstructor(declaringType, executable, new ConstructorMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringType, parameterTypeNames));
+            registerConstructor(declaringType, executable, executable.getWrapped(), new ConstructorMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringType, parameterTypeNames));
         }
     }
 
@@ -694,7 +695,8 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         for (HostedType parameterType : parameterTypes) {
             encoders.classes.addObject(parameterType.getJavaClass());
         }
-        registerMethod(declaringClass, Pair.create(methodName, parameterTypes), new MethodMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringClass, methodName, parameterTypes));
+        registerMethod(declaringClass, Pair.create(methodName, parameterTypes), null, new MethodMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringClass, methodName,
+                        parameterTypes));
     }
 
     @Override
@@ -702,7 +704,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         for (HostedType parameterType : parameterTypes) {
             encoders.classes.addObject(parameterType.getJavaClass());
         }
-        registerConstructor(declaringClass, parameterTypes, new ConstructorMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringClass, parameterTypes));
+        registerConstructor(declaringClass, parameterTypes, null, new ConstructorMetadata(RuntimeDynamicAccessMetadata.alwaysAvailable(false), declaringClass, parameterTypes));
     }
 
     @Override
@@ -1235,7 +1237,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
      *
      * We use a modified version of the ConstantPool and AnnotationParser classes to decode the
      * data, since those are not used in their original functions at runtime. (see
-     * {@link Target_jdk_internal_reflect_ConstantPool} and
+     * {@link com.oracle.svm.guest.staging.reflect.target.Target_jdk_internal_reflect_ConstantPool} and
      * {@code Target_sun_reflect_annotation_AnnotationParser})
      */
     private byte[] encodeAnnotations(AnnotationValue[] annotations) {
@@ -1391,18 +1393,12 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             return ImageSingletons.lookup(LayeredRuntimeMetadataSingleton.class);
         }
 
-        public boolean shouldRegisterMethod(Object method, AnalysisMetaAccess metaAccess, ExecutableMetadata metadata) {
-            int methodId = switch (method) {
-                case AnalysisMethod analysisMethod -> analysisMethod.getId();
-                case HostedMethod hostedMethod -> hostedMethod.getWrapped().getId();
-                case Method m -> metaAccess.lookupJavaMethod(m).getId();
-                case Constructor<?> c -> metaAccess.lookupJavaMethod(c).getId();
-                case null, default -> -1;
-            };
-            if (methodId == -1) {
+        public boolean shouldRegisterMethod(AnalysisMethod method, ExecutableMetadata metadata) {
+            if (method == null) {
                 return true;
             }
 
+            int methodId = method.getId();
             Boolean methodData = previousLayerRegisteredMethods.get(methodId);
             boolean isComplete = metadata.complete && metadata.accessor != null;
             if (methodData == null || (!methodData && isComplete)) {

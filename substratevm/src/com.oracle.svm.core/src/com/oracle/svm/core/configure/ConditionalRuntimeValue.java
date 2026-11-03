@@ -28,6 +28,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
+
 /**
  * A image-heap stored {@link ConditionalRuntimeValue#value} that is guarded by run-time computed
  * conditions.

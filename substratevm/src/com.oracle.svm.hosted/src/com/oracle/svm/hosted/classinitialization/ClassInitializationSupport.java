@@ -28,14 +28,8 @@ import static com.oracle.svm.core.SubstrateOptions.TraceObjectInstantiation;
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TrackTypeReachedOnInterfaces;
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllUserSpaceTypesAsTrackedForTypeReached;
 
-import java.io.Serializable;
-import java.lang.ref.Reference;
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.SoftReference;
 import java.lang.reflect.Proxy;
-import java.util.Collection;
 import java.util.Comparator;
-import java.util.Formattable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,7 +40,6 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -59,6 +52,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
+import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
@@ -73,16 +67,21 @@ import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.OriginalClassProvider;
 
-import jdk.graal.compiler.core.common.ContextClassLoaderScope;
 import jdk.graal.compiler.java.LambdaUtils;
-import jdk.internal.misc.Unsafe;
-import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.graal.compiler.vmaccess.InvocationException;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * The core class for deciding whether a class should be initialized during image building or class
  * initialization should be delayed to runtime.
+ * <p>
+ * Policy and bookkeeping are builder-owned, but represented classes use canonical guest-owned
+ * {@link ResolvedJavaType} identity; builder {@code Class<?>} mirrors must not enter this state.
+ * Builder-context callers use {@link JVMCIRuntimeClassInitializationSupport}; guest-context requests
+ * are proxied to this policy, while class initialization itself executes in the guest context.
  * <p>
  * The initialization kind for all classes is encoded in the two registries:
  * {@link #classInitializationConfiguration}, the user-configured initialization state, and
@@ -90,10 +89,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <p>
  * If for example the configured initialization kind, as registered in
  * {@link #classInitializationConfiguration}, is {@link InitKind#BUILD_TIME} but invoking
- * {@link #ensureClassInitialized(Class, boolean)} results in an error, e.g., a
+ * {@link #ensureClassInitialized(ResolvedJavaType, boolean)} results in an error, e.g., a
  * {@link NoClassDefFoundError}, then the actual initialization kind registered in
  * {@link #classInitKinds} may be {@link InitKind#RUN_TIME} depending on the error resolution policy
- * dictated by {@link LinkAtBuildTimeSupport#linkAtBuildTime(Class)}.
+ * dictated by {@link LinkAtBuildTimeSupport#linkAtBuildTime(ResolvedJavaType)}.
  * <p>
  * Classes with a simulated class initializer are neither registered as initialized at
  * {@link InitKind#RUN_TIME} nor {@link InitKind#BUILD_TIME}. Instead
@@ -108,16 +107,18 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * There are some similarities and differences between simulated and build-time initialized classes.
  * At image execution time they both start out as initialized: there are no run-time class
  * initialization checks and the class initializer itself is not even present, it was not AOT
- * compiled. However, for a simulated class its initialization status in the hosting VM that runs
+ * compiled. However, for a simulated class its initialization status in the guest context used by
  * the image generator does not matter; it may or may not have been initialized. Whereas, a
- * build-time initialized class is by definition initialized in the hosting VM. Consequently, the
- * static fields of a simulated class reference image heap values computed by the class initializer
- * simulation, but they do not correspond to hosted objects. In contrast, static fields of a
- * build-time initialized class reference image heap values that were copied from the corresponding
- * fields in the hosting VM.
+ * build-time initialized class is by definition initialized in the guest context. Consequently,
+ * the static fields of a simulated class reference image heap values computed by the class
+ * initializer simulation, but they do not correspond to values read from initialized guest static
+ * fields. In contrast, static fields of a build-time initialized class reference image heap values
+ * copied from the corresponding fields in the guest context.
  */
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class ClassInitializationSupport implements JVMCIRuntimeClassInitializationSupport {
+
+    private static final String GUEST_CLASS_INITIALIZATION_UTIL_CLASS_NAME = "com.oracle.svm.guest.hosted.classinitialization.ClassInitializationUtil";
 
     /**
      * Setup for class initialization: configured through features and command line input. It
@@ -131,7 +132,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      * this map the first time information was queried and used during image building. This is the
      * ground truth about what got initialized during image building.
      */
-    final ConcurrentMap<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
+    final ConcurrentMap<ResolvedJavaType, InitKind> classInitKinds = new ConcurrentHashMap<>();
 
     /**
      * Store classes that were configured with --initialize-at-build-time but for which
@@ -139,23 +140,16 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      * initialization errors during registration were allowed or they were not configured with
      * --link-at-build-time.
      */
-    final Set<Class<?>> requestedAtBuildTimeButFailedInit = ConcurrentHashMap.newKeySet();
+    final Set<ResolvedJavaType> requestedAtBuildTimeButFailedInit = ConcurrentHashMap.newKeySet();
 
     /**
      * We need always-reached types to avoid users injecting class initialization checks in our VM
      * implementation and hot paths and to prevent users from making the whole class hierarchy
      * require initialization nodes.
      */
-    @SuppressWarnings("DataFlowIssue")//
-    private static final Set<Class<?>> alwaysReachedTypes = Set.of(
-                    Object.class, Class.class, String.class,
-                    Character.class, Byte.class, Short.class, Integer.class, Long.class, Float.class, Double.class, Boolean.class,
-                    Enum.class, Cloneable.class, Formattable.class, Throwable.class, Serializable.class, AutoCloseable.class, Runnable.class,
-                    Iterable.class, Collection.class, Set.class, List.class, Map.class,
-                    System.class, Thread.class,
-                    Reference.class, SoftReference.class, StackWalker.class, ReferenceQueue.class);
+    private final Set<ResolvedJavaType> alwaysReachedTypes;
 
-    final Set<Class<?>> typesRequiringReachability = ConcurrentHashMap.newKeySet();
+    final Set<ResolvedJavaType> typesRequiringReachability = ConcurrentHashMap.newKeySet();
 
     boolean configurationSealed;
 
@@ -169,19 +163,42 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
 
     final ImageClassLoader loader;
 
-    /**
-     * Non-null while the static analysis is running to allow reporting of class initialization
-     * errors without immediately aborting image building.
-     */
-    final MetaAccessProvider metaAccess;
+    /* Guest methods and exception types used by builder-side class-initialization policy. */
+    private final ResolvedJavaMethod guestEnsureClassInitialized;
+    private final ResolvedJavaMethod guestFormatExceptionInInitializerError;
+    private final ResolvedJavaType guestNoClassDefFoundError;
+    private final ResolvedJavaType guestExceptionInInitializerError;
+    private final ResolvedJavaType guestThrowable;
 
     public static ClassInitializationSupport singleton() {
-        return (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        return (ClassInitializationSupport) ImageSingletons.lookup(JVMCIRuntimeClassInitializationSupport.class);
     }
 
-    public ClassInitializationSupport(MetaAccessProvider metaAccess, ImageClassLoader loader) {
-        this.metaAccess = metaAccess;
+    public ClassInitializationSupport(ImageClassLoader loader) {
         this.loader = loader;
+        GuestAccess access = GuestAccess.get();
+        this.alwaysReachedTypes = createAlwaysReachedTypes(access);
+
+        /* Resolve the class-initialization helpers in the active guest context. */
+        ResolvedJavaType guestUtilType = access.lookupType(GUEST_CLASS_INITIALIZATION_UTIL_CLASS_NAME);
+        this.guestEnsureClassInitialized = access.lookupMethod(guestUtilType, "ensureClassInitialized", Class.class, ClassLoader.class);
+        this.guestFormatExceptionInInitializerError = access.lookupMethod(guestUtilType, "formatExceptionInInitializerError", ExceptionInInitializerError.class);
+        this.guestNoClassDefFoundError = access.elements.java_lang_NoClassDefFoundError;
+        this.guestExceptionInInitializerError = access.elements.java_lang_ExceptionInInitializerError;
+        this.guestThrowable = access.elements.java_lang_Throwable;
+    }
+
+    /** Creates the guest types that are always reachable in every image. */
+    private static Set<ResolvedJavaType> createAlwaysReachedTypes(GuestAccess access) {
+        var elements = access.elements;
+        return Set.of(
+                        elements.java_lang_Object, elements.java_lang_Class, elements.java_lang_String,
+                        elements.java_lang_Character, elements.java_lang_Byte, elements.java_lang_Short, elements.java_lang_Integer, elements.java_lang_Long,
+                        elements.java_lang_Float, elements.java_lang_Double, elements.java_lang_Boolean,
+                        elements.java_lang_Enum, elements.java_lang_Cloneable, elements.java_util_Formattable, elements.java_lang_Throwable, elements.java_io_Serializable,
+                        elements.java_lang_AutoCloseable, elements.java_lang_Runnable, elements.java_lang_Iterable, elements.java_util_Collection, elements.java_util_Set,
+                        elements.java_util_List, elements.java_util_Map, elements.java_lang_System, elements.java_lang_Thread, elements.java_lang_ref_Reference,
+                        elements.java_lang_ref_SoftReference, elements.java_lang_StackWalker, elements.java_lang_ref_ReferenceQueue);
     }
 
     /// Gets the assertion status for the declaring class of `field` if `field` is the synthetic field
@@ -193,8 +210,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
     public static Boolean foldedAssertionStatus(ResolvedJavaField field) {
         if (field.isFinal() && field.isStatic() && field.isSynthetic() && field.getName().startsWith(AssertionsSupport.SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME)) {
             if (singleton().shouldFoldAssertionStatus(field.getDeclaringClass())) {
-                Class<?> javaClass = OriginalClassProvider.getJavaClass(field.getDeclaringClass());
-                return AssertionsSupport.singleton().desiredAssertionStatus(javaClass);
+                return AssertionsSupport.singleton().desiredAssertionStatus(field.getDeclaringClass());
             }
         }
         return null;
@@ -242,49 +258,47 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         configurationSealed = sealed;
     }
 
-    /**
-     * Returns the configured init kind for {@code clazz}.
-     */
-    InitKind specifiedInitKindFor(Class<?> clazz) {
-        return classInitializationConfiguration.lookupKind(clazz.getTypeName()).getLeft();
+    /** Returns the canonical guest-owned type represented by {@code type}. */
+    private static ResolvedJavaType normalizeType(ResolvedJavaType type) {
+        VMError.guarantee(!(type instanceof BaseLayerType) && !(type instanceof AnalysisType analysisType && analysisType.getWrapped() instanceof BaseLayerType),
+                        "Class initialization policy cannot use incomplete base-layer type %s", type);
+        ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(type);
+        VMError.guarantee(GuestAccess.get().owns(originalType), "Class initialization policy requires a guest-owned type: %s", type);
+        return originalType;
     }
 
-    /* Class-initialization configuration is keyed by the original Class#getTypeName(). */
+    /** Returns the configured init kind for {@code type}. */
     InitKind specifiedInitKindFor(ResolvedJavaType type) {
-        return classInitializationConfiguration.lookupKind(JVMCIReflectionUtil.getTypeName(OriginalClassProvider.getOriginalType(type))).getLeft();
+        return specifiedInitKindFor0(normalizeType(type));
+    }
+
+    /** Returns configured policy for an already canonical guest type. */
+    private InitKind specifiedInitKindFor0(ResolvedJavaType type) {
+        /* Class-initialization configuration is keyed by the equivalent of Class#getTypeName(). */
+        return classInitializationConfiguration.lookupKind(JVMCIReflectionUtil.getTypeName(type)).getLeft();
     }
 
     /**
-     * Returns the computed init kind for {@code clazz}, which can differ from the configured init
-     * kind returned by {@link #specifiedInitKindFor(Class)}.
+     * Returns the computed init kind for {@code type}, which can differ from the configured init
+     * kind returned by {@link #specifiedInitKindFor(ResolvedJavaType)}.
      */
-    InitKind computedInitKindFor(Class<?> clazz) {
-        return classInitKinds.get(clazz);
+    InitKind computedInitKindFor(ResolvedJavaType type) {
+        return classInitKinds.get(normalizeType(type));
     }
 
     public boolean isFailedInitialization(ResolvedJavaType type) {
-        // GR-71807: reverse this so that the Class variant calls the ResolvedJavaType version
-        return isFailedInitialization(OriginalClassProvider.getJavaClass(type));
-    }
-
-    public boolean isFailedInitialization(Class<?> clazz) {
-        boolean failedInit = requestedAtBuildTimeButFailedInit.contains(clazz);
-        VMError.guarantee(!failedInit || specifiedInitKindFor(clazz) == InitKind.BUILD_TIME && computedInitKindFor(clazz) == InitKind.RUN_TIME);
+        ResolvedJavaType guestType = normalizeType(type);
+        boolean failedInit = requestedAtBuildTimeButFailedInit.contains(guestType);
+        VMError.guarantee(!failedInit || specifiedInitKindFor0(guestType) == InitKind.BUILD_TIME && classInitKinds.get(guestType) == InitKind.RUN_TIME);
         return failedInit;
     }
 
-    Boolean isStrictlyDefined(Class<?> clazz) {
-        return classInitializationConfiguration.lookupKind(clazz.getTypeName()).getRight();
-    }
-
     Boolean isStrictlyDefined(ResolvedJavaType type) {
-        return classInitializationConfiguration.lookupKind(JVMCIReflectionUtil.getTypeName(OriginalClassProvider.getOriginalType(type))).getRight();
+        return classInitializationConfiguration.lookupKind(JVMCIReflectionUtil.getTypeName(normalizeType(type))).getRight();
     }
 
-    /**
-     * Returns all classes of a single {@link InitKind}.
-     */
-    Set<Class<?>> classesWithKind(InitKind kind) {
+    /** Returns all types of a single {@link InitKind}. */
+    Set<ResolvedJavaType> classesWithKind(InitKind kind) {
         return classInitKinds.entrySet().stream().filter(e -> e.getValue() == kind).map(Map.Entry::getKey).collect(Collectors.toSet());
     }
 
@@ -299,18 +313,7 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         if (type instanceof AnalysisType analysisType && analysisType.getWrapped() instanceof BaseLayerType baseLayerType) {
             return baseLayerType.isInitialized();
         }
-        return maybeInitializeAtBuildTime(OriginalClassProvider.getJavaClass(type));
-    }
-
-    /**
-     * Returns true if the provided type is initialized at image build time.
-     * <p>
-     * If the return value is true, then the class is also guaranteed to be initialized already.
-     * This means that calling this method might trigger class initialization, i.e., execute
-     * arbitrary user code.
-     */
-    public boolean maybeInitializeAtBuildTime(Class<?> clazz) {
-        return computeInitKindAndMaybeInitializeClass(clazz) == InitKind.BUILD_TIME;
+        return computeInitKindAndMaybeInitializeClass(normalizeType(type)) == InitKind.BUILD_TIME;
     }
 
     /// Returns whether the assertion status for `type` can be fixed during image building.
@@ -323,11 +326,6 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         return !SubstrateOptions.StrictRuntimeJavaOptions.getValue() || maybeInitializeAtBuildTime(type);
     }
 
-    /// Returns whether the assertion status for `clazz` can be fixed during image building.
-    public boolean shouldFoldAssertionStatus(Class<?> clazz) {
-        return !SubstrateOptions.StrictRuntimeJavaOptions.getValue() || maybeInitializeAtBuildTime(clazz);
-    }
-
     /**
      * Returns {@code true} if the provided type is registered to be initialized at build time.
      * <p>
@@ -336,25 +334,18 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      * check the configuration without performing the actual initialization.
      */
     public boolean shouldInitializeAtBuildTime(ResolvedJavaType type) {
-        return specifiedInitKindFor(OriginalClassProvider.getJavaClass(type)) == InitKind.BUILD_TIME;
+        return specifiedInitKindFor(type) == InitKind.BUILD_TIME;
     }
 
     /**
      * Ensure class is initialized. Report class initialization errors in a user-friendly way if
      * class initialization fails.
      */
-    InitKind ensureClassInitialized(Class<?> clazz, boolean allowErrors) {
-        /*
-         * GR-76456: This converts a guest class-loader constant back to a builder-hosted object.
-         * Terminus must perform class initialization and context-loader handling in the guest
-         * context instead.
-         */
-        ClassLoader libGraalLoader = GuestAccess.get().getSnippetReflection().asObject(ClassLoader.class, loader.classLoaderSupport.getLibGraalLoader());
-        ClassLoader cl = clazz.getClassLoader();
-        // Graal and JVMCI make use of ServiceLoader which uses the
-        // context class loader so it needs to be the libgraal loader.
-        ClassLoader libGraalCCL = libGraalLoader == cl ? cl : null;
-        try (var _ = new ContextClassLoaderScope(libGraalCCL)) {
+    InitKind ensureClassInitialized(ResolvedJavaType type, boolean allowErrors) {
+        GuestAccess access = GuestAccess.get();
+        JavaConstant clazz = access.getProviders().getConstantReflection().asJavaClass(type);
+        VMError.guarantee(clazz != null && !clazz.isNull(), "Cannot obtain the guest Class object for %s", type);
+        try {
             loader.watchdog.recordActivity();
             /*
              * This can run arbitrary user code, i.e., it can deadlock or get stuck in an endless
@@ -362,59 +353,46 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
              * reports such cases. To make that as deterministic as possible, we record watchdog
              * activity just before and after the initialization.
              */
-            Unsafe.getUnsafe().ensureClassInitialized(clazz);
+            access.invokeStatic(guestEnsureClassInitialized, clazz, loader.classLoaderSupport.getLibGraalLoader());
             loader.watchdog.recordActivity();
             return InitKind.BUILD_TIME;
-        } catch (NoClassDefFoundError ex) {
-            if (allowErrors || !LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz)) {
-                return InitKind.RUN_TIME;
-            } else {
-                String msg = "Class initialization of " + clazz.getTypeName() + " failed. " +
-                                LinkAtBuildTimeSupport.singleton().errorMessageFor(clazz) + " " +
-                                instructionsToInitializeAtRuntime(clazz);
+        } catch (InvocationException ex) {
+            JavaConstant exception = ex.getExceptionObject();
+            VMError.guarantee(exception != null && !exception.isNull(), "Guest class initialization of %s failed without a guest exception object", type);
+            ResolvedJavaType exceptionType = access.getProviders().getMetaAccess().lookupJavaType(exception);
+            VMError.guarantee(exceptionType != null && guestThrowable.isAssignableFrom(exceptionType), "Guest class initialization of %s failed with invalid exception object %s", type,
+                            exception);
+
+            if (guestNoClassDefFoundError.isAssignableFrom(exceptionType)) {
+                if (allowErrors || !LinkAtBuildTimeSupport.singleton().linkAtBuildTime(type)) {
+                    return InitKind.RUN_TIME;
+                }
+                String msg = "Class initialization of " + JVMCIReflectionUtil.getTypeName(type) + " failed. " +
+                                LinkAtBuildTimeSupport.singleton().errorMessageFor(type) + " " +
+                                instructionsToInitializeAtRuntime(type);
                 throw UserError.abort(ex, "%s", msg);
             }
-        } catch (Throwable t) {
+
             if (allowErrors) {
                 return InitKind.RUN_TIME;
-            } else {
-                String msg = "Class initialization of " + clazz.getTypeName() + " failed. " +
-                                instructionsToInitializeAtRuntime(clazz);
-
-                if (t instanceof ExceptionInInitializerError) {
-                    Throwable cause = t;
-                    while (cause.getCause() != null) {
-                        cause = cause.getCause();
-                    }
-                    msg = msg + " Exception thrown by the class initializer:" + System.lineSeparator() + System.lineSeparator() + cause + System.lineSeparator();
-                    for (var element : cause.getStackTrace()) {
-                        if (getClass().getName().equals(element.getClassName())) {
-                            msg = msg + "\t(internal stack frames of the image generator are omitted)" + System.lineSeparator();
-                            break;
-                        }
-                        msg = msg + "\tat " + element + System.lineSeparator();
-                    }
-                    msg = msg + System.lineSeparator();
-                }
-
-                throw UserError.abort(t, "%s", msg);
             }
+            String msg = "Class initialization of " + JVMCIReflectionUtil.getTypeName(type) + " failed. " + instructionsToInitializeAtRuntime(type);
+            if (guestExceptionInInitializerError.isAssignableFrom(exceptionType)) {
+                JavaConstant details = access.invokeStatic(guestFormatExceptionInInitializerError, exception);
+                msg += access.asHostString(details);
+            }
+            throw UserError.abort(ex, "%s", msg);
         }
     }
 
-    private static String instructionsToInitializeAtRuntime(Class<?> clazz) {
-        return "Use the option " + SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, clazz.getTypeName(), "initialize-at-run-time", true, true) +
+    private static String instructionsToInitializeAtRuntime(ResolvedJavaType type) {
+        return "Use the option " + SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, JVMCIReflectionUtil.getTypeName(type), "initialize-at-run-time", true, true) +
                         " to explicitly request initialization of this class at run time.";
     }
 
     @Override
-    public void initializeAtRunTime(Class<?> clazz, String reason) {
-        initializeAtRunTime(clazz.getTypeName(), reason, true);
-    }
-
-    @Override
-    public void initializeAtRunTime(ResolvedJavaType aType, String reason) {
-        initializeAtRunTime(aType.toClassName(), reason, true);
+    public void initializeAtRunTime(ResolvedJavaType type, String reason) {
+        initializeAtRunTime(JVMCIReflectionUtil.getTypeName(normalizeType(type)), reason, true);
     }
 
     @Override
@@ -428,27 +406,19 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
     }
 
     @Override
-    public void initializeAtBuildTime(ResolvedJavaType aType, String reason) {
-        // GR-71807: reverse this so that the Class variant calls the ResolvedJavaType version
-        initializeAtBuildTime(OriginalClassProvider.getJavaClass(aType), reason);
-    }
-
-    @Override
-    public void initializeAtBuildTime(Class<?> aClass, String reason) {
+    public void initializeAtBuildTime(ResolvedJavaType type, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        forceInitializeHosted(aClass, reason, false);
+        forceInitializeAtBuildTime(normalizeType(type), reason, false);
     }
 
     @Override
     public void initializeAtBuildTime(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
 
-        Class<?> clazz = loader.findClass(name).get();
-        if (clazz != null) {
-            classInitializationConfiguration.insert(name, InitKind.BUILD_TIME, reason, true);
-            initializeAtBuildTime(clazz, reason);
-        } else {
-            classInitializationConfiguration.insert(name, InitKind.BUILD_TIME, reason, false);
+        ResolvedJavaType type = loader.guestTypes.findType(name).get();
+        classInitializationConfiguration.insert(name, InitKind.BUILD_TIME, reason, type != null);
+        if (type != null) {
+            forceInitializeAtBuildTime(type, reason, false);
         }
     }
 
@@ -511,27 +481,20 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      * Initializes the class during image building, and reports an error if the user requested to
      * delay initialization to runtime.
      */
-    public void forceInitializeHosted(ResolvedJavaType type, String reason, boolean allowInitializationErrors) {
-        /*
-         * GR-76456: This converts a guest JVMCI type back to a builder-hosted Class. Terminus must
-         * perform class initialization in the guest context instead.
-         */
-        forceInitializeHosted(OriginalClassProvider.getJavaClass(type), reason, allowInitializationErrors);
+    public void forceInitializeAtBuildTime(ResolvedJavaType type, String reason, boolean allowInitializationErrors) {
+        forceInitializeAtBuildTime0(normalizeType(type), reason, allowInitializationErrors);
     }
 
-    /**
-     * Initializes the class during image building, and reports an error if the user requested to
-     * delay initialization to runtime.
-     */
-    public void forceInitializeHosted(Class<?> clazz, String reason, boolean allowInitializationErrors) {
-        if (clazz == null) {
+    /** Recursively forces initialization of an already canonical guest type. */
+    private void forceInitializeAtBuildTime0(ResolvedJavaType type, String reason, boolean allowInitializationErrors) {
+        if (type == null) {
             return;
         }
 
-        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.BUILD_TIME, reason, true);
-        InitKind initKind = ensureClassInitialized(clazz, allowInitializationErrors);
+        classInitializationConfiguration.insert(JVMCIReflectionUtil.getTypeName(type), InitKind.BUILD_TIME, reason, true);
+        InitKind initKind = ensureClassInitialized(type, allowInitializationErrors);
         if (initKind == InitKind.RUN_TIME) {
-            assert allowInitializationErrors || !LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz);
+            assert allowInitializationErrors || !LinkAtBuildTimeSupport.singleton().linkAtBuildTime(type);
             if (ImageLayerBuildingSupport.buildingImageLayer()) {
                 /*
                  * Record class configured with --initialize-at-build-time but for which
@@ -540,36 +503,37 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
                  * we'll attempt to init it again in the next layer and verify that it fails. Class
                  * initialization in layered images will be further refined by (GR-65405).
                  */
-                requestedAtBuildTimeButFailedInit.add(clazz);
+                requestedAtBuildTimeButFailedInit.add(type);
             }
         }
-        classInitKinds.put(clazz, initKind);
+        classInitKinds.put(type, initKind);
 
-        forceInitializeHosted(clazz.getSuperclass(), "super type of " + clazz.getTypeName(), allowInitializationErrors);
-        if (!clazz.isInterface()) {
+        forceInitializeAtBuildTime0(type.getSuperclass(), "super type of " + JVMCIReflectionUtil.getTypeName(type), allowInitializationErrors);
+        if (!type.isInterface()) {
             /*
              * Initialization of an interface does not trigger initialization of superinterfaces.
              * Regardless whether any of the involved interfaces declare default methods.
              */
-            forceInitializeInterfaces(clazz.getInterfaces(), "super type of " + clazz.getTypeName());
+            forceInitializeInterfaces(type.getInterfaces(), "super type of " + JVMCIReflectionUtil.getTypeName(type));
         }
     }
 
-    private void forceInitializeInterfaces(Class<?>[] interfaces, String reason) {
-        for (Class<?> iface : interfaces) {
-            if (metaAccess.lookupJavaType(iface).declaresDefaultMethods()) {
-                classInitializationConfiguration.insert(iface.getTypeName(), InitKind.BUILD_TIME, reason, true);
+    private void forceInitializeInterfaces(ResolvedJavaType[] interfaces, String reason) {
+        for (ResolvedJavaType iface : interfaces) {
+            if (iface.declaresDefaultMethods()) {
+                classInitializationConfiguration.insert(JVMCIReflectionUtil.getTypeName(iface), InitKind.BUILD_TIME, reason, true);
 
                 InitKind initKind = ensureClassInitialized(iface, false);
-                VMError.guarantee(initKind == InitKind.BUILD_TIME, "Initialization of %s failed so all interfaces with default methods must be already initialized.", iface.getTypeName());
+                VMError.guarantee(initKind == InitKind.BUILD_TIME, "Initialization of %s failed so all interfaces with default methods must be already initialized.",
+                                JVMCIReflectionUtil.getTypeName(iface));
                 classInitKinds.put(iface, InitKind.BUILD_TIME);
             }
-            forceInitializeInterfaces(iface.getInterfaces(), "super type of " + iface.getTypeName());
+            forceInitializeInterfaces(iface.getInterfaces(), "super type of " + JVMCIReflectionUtil.getTypeName(iface));
         }
     }
 
-    InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz) {
-        return computeInitKindAndMaybeInitializeClass(clazz, true);
+    InitKind computeInitKindAndMaybeInitializeClass(ResolvedJavaType type) {
+        return computeInitKindAndMaybeInitializeClass(type, true);
     }
 
     /**
@@ -579,32 +543,32 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      * <p>
      * Also defines class initialization based on a policy of the subclass.
      */
-    InitKind computeInitKindAndMaybeInitializeClass(Class<?> clazz, boolean memoize) {
-        InitKind existing = classInitKinds.get(clazz);
+    InitKind computeInitKindAndMaybeInitializeClass(ResolvedJavaType type, boolean memoize) {
+        InitKind existing = classInitKinds.get(type);
         if (existing != null) {
             return existing;
         }
 
-        if (clazz.isPrimitive()) {
-            forceInitializeHosted(clazz, "primitive types are initialized at build time", false);
+        if (type.isPrimitive()) {
+            forceInitializeAtBuildTime0(type, "primitive types are initialized at build time", false);
             return InitKind.BUILD_TIME;
         }
 
-        if (clazz.isArray()) {
-            forceInitializeHosted(clazz, "arrays are initialized at build time", false);
+        if (type.isArray()) {
+            forceInitializeAtBuildTime0(type, "arrays are initialized at build time", false);
             return InitKind.BUILD_TIME;
         }
 
-        InitKind specifiedInitKind = specifiedInitKindFor(clazz);
+        InitKind specifiedInitKind = specifiedInitKindFor0(type);
         InitKind clazzResult = specifiedInitKind != null ? specifiedInitKind : InitKind.RUN_TIME;
 
         InitKind superResult = InitKind.BUILD_TIME;
-        if (clazz.getSuperclass() != null) {
-            superResult = superResult.max(computeInitKindAndMaybeInitializeClass(clazz.getSuperclass(), memoize));
+        if (type.getSuperclass() != null) {
+            superResult = superResult.max(computeInitKindAndMaybeInitializeClass(type.getSuperclass(), memoize));
         }
-        superResult = superResult.max(processInterfaces(clazz, memoize));
+        superResult = superResult.max(processInterfaces(type, memoize));
 
-        if (superResult == InitKind.BUILD_TIME && (Proxy.isProxyClass(clazz) || LambdaUtils.isLambdaType(metaAccess.lookupJavaType(clazz)))) {
+        if (superResult == InitKind.BUILD_TIME && (ProxyRenamingSubstitutionProcessor.isProxyType(type) || LambdaUtils.isLambdaType(type))) {
             /*
              * To simplify class initialization configuration for proxy and lambda types,
              * registering all of their implemented interfaces as "initialize at build time" is
@@ -615,14 +579,14 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
              * Note that we must look at all interfaces, including transitive dependencies.
              */
             boolean allInterfacesSpecifiedAsBuildTime = true;
-            for (Class<?> iface : allInterfaces(clazz)) {
-                if (specifiedInitKindFor(iface) != InitKind.BUILD_TIME) {
+            for (ResolvedJavaType iface : allInterfaces0(type)) {
+                if (specifiedInitKindFor0(iface) != InitKind.BUILD_TIME) {
                     allInterfacesSpecifiedAsBuildTime = false;
                     break;
                 }
             }
             if (allInterfacesSpecifiedAsBuildTime) {
-                forceInitializeHosted(clazz, "proxy/lambda classes with all interfaces explicitly marked as --initialize-at-build-time are also initialized at build time", false);
+                forceInitializeAtBuildTime0(type, "proxy/lambda classes with all interfaces explicitly marked as --initialize-at-build-time are also initialized at build time", false);
                 return InitKind.BUILD_TIME;
             }
         }
@@ -630,19 +594,19 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         InitKind result = superResult.max(clazzResult);
 
         if (memoize) {
-            if (!(result == InitKind.RUN_TIME)) {
-                result = result.max(ensureClassInitialized(clazz, false));
+            if (result != InitKind.RUN_TIME) {
+                result = result.max(ensureClassInitialized(type, false));
             }
 
-            InitKind previous = classInitKinds.putIfAbsent(clazz, result);
+            InitKind previous = classInitKinds.putIfAbsent(type, result);
             if (previous != null && previous != result) {
-                throw VMError.shouldNotReachHere("Conflicting class initialization kind: " + previous + " != " + result + " for " + clazz);
+                throw VMError.shouldNotReachHere("Conflicting class initialization kind: " + previous + " != " + result + " for " + type);
             }
         }
         return result;
     }
 
-    private InitKind processInterfaces(Class<?> clazz, boolean memoizeEager) {
+    private InitKind processInterfaces(ResolvedJavaType type, boolean memoizeEager) {
         /*
          * Note that we do not call computeInitKindForClass(clazz) on purpose: if clazz is the root
          * class or an interface declaring default methods, then
@@ -653,8 +617,8 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
          */
         InitKind result = InitKind.BUILD_TIME;
 
-        for (Class<?> iface : clazz.getInterfaces()) {
-            if (metaAccess.lookupJavaType(iface).declaresDefaultMethods()) {
+        for (ResolvedJavaType iface : type.getInterfaces()) {
+            if (iface.declaresDefaultMethods()) {
                 /*
                  * An interface that declares default methods is initialized when a class
                  * implementing it is initialized. So we need to inherit the InitKind from such an
@@ -673,9 +637,10 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         return result;
     }
 
-    String reasonForClass(Class<?> clazz) {
-        InitKind initKind = classInitKinds.get(clazz);
-        String reason = classInitializationConfiguration.lookupReason(clazz.getTypeName());
+    String reasonForClass(ResolvedJavaType type) {
+        ResolvedJavaType guestType = normalizeType(type);
+        InitKind initKind = classInitKinds.get(guestType);
+        String reason = classInitializationConfiguration.lookupReason(JVMCIReflectionUtil.getTypeName(guestType));
         if (initKind == InitKind.RUN_TIME) {
             return "classes are initialized at run time by default";
         } else if (reason != null) {
@@ -685,42 +650,52 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         }
     }
 
-    public static EconomicSet<Class<?>> allInterfaces(Class<?> clazz) {
-        EconomicSet<Class<?>> result = EconomicSet.create();
-        addAllInterfaces(clazz, result);
+    public static EconomicSet<ResolvedJavaType> allInterfaces(ResolvedJavaType type) {
+        return allInterfaces0(normalizeType(type));
+    }
+
+    /** Collects interfaces from an already canonical guest type. */
+    private static EconomicSet<ResolvedJavaType> allInterfaces0(ResolvedJavaType type) {
+        EconomicSet<ResolvedJavaType> result = EconomicSet.create();
+        addAllInterfaces(type, result);
         return result;
     }
 
-    private static void addAllInterfaces(Class<?> clazz, EconomicSet<Class<?>> result) {
-        for (var interf : clazz.getInterfaces()) {
+    private static void addAllInterfaces(ResolvedJavaType type, EconomicSet<ResolvedJavaType> result) {
+        for (ResolvedJavaType interf : type.getInterfaces()) {
             if (result.add(interf)) {
                 addAllInterfaces(interf, result);
             }
         }
     }
 
-    public synchronized void addForTypeReachedTracking(Class<?> clazz) {
-        if (TrackTypeReachedOnInterfaces.getValue() && clazz.isInterface() && !metaAccess.lookupJavaType(clazz).declaresDefaultMethods()) {
-            LogUtils.info("Detected 'typeReached' on interface type without default methods: %s", clazz.getName());
+    public synchronized void addForTypeReachedTracking(ResolvedJavaType type) {
+        ResolvedJavaType guestType = normalizeType(type);
+        if (TrackTypeReachedOnInterfaces.getValue() && guestType.isInterface() && !guestType.declaresDefaultMethods()) {
+            LogUtils.info("Detected 'typeReached' on interface type without default methods: %s", guestType.toClassName());
         }
 
-        if (!isAlwaysReached(clazz)) {
-            UserError.guarantee(!typeReachedTrackingSealed || typesRequiringReachability.contains(clazz),
+        if (!isAlwaysReached0(guestType)) {
+            UserError.guarantee(!typeReachedTrackingSealed || typesRequiringReachability.contains(guestType),
                             "It is not possible to register types for reachability tracking after the analysis has started if they were not registered before analysis started. Trying to register: %s",
-                            clazz.getName());
-            typesRequiringReachability.add(clazz);
+                            guestType.toClassName());
+            typesRequiringReachability.add(guestType);
         }
     }
 
-    public boolean isAlwaysReached(Class<?> jClass) {
-        Set<String> jdkModules = Set.of("java.base", "jdk.management", "java.management", "org.graalvm.collections");
+    public boolean isAlwaysReached(ResolvedJavaType type) {
+        return isAlwaysReached0(normalizeType(type));
+    }
 
-        String classModuleName = jClass.getModule().getName();
-        boolean alwaysReachedModule = classModuleName != null && (HostedModuleSupport.SYSTEM_MODULES.contains(classModuleName) || jdkModules.contains(classModuleName));
-        return jClass.isPrimitive() ||
-                        jClass.isArray() ||
-                        alwaysReachedModule ||
-                        alwaysReachedTypes.contains(jClass);
+    /** Tests always-reached policy for an already canonical guest type. */
+    private boolean isAlwaysReached0(ResolvedJavaType type) {
+        if (type.isPrimitive() || type.isArray() || alwaysReachedTypes.contains(type)) {
+            return true;
+        }
+
+        Set<String> jdkModules = Set.of("java.base", "jdk.management", "java.management", "org.graalvm.collections");
+        String moduleName = GuestAccess.get().getModule(type).getName();
+        return moduleName != null && (HostedModuleSupport.SYSTEM_MODULES.contains(moduleName) || jdkModules.contains(moduleName));
     }
 
     /**
@@ -729,11 +704,12 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
      * missed when the initializer of the subtype is computed at build time.
      */
     public boolean requiresInitializationNodeForTypeReached(ResolvedJavaType type) {
-        if (type == null) {
-            return false;
-        }
-        var jClass = OriginalClassProvider.getJavaClass(type);
-        if (isAlwaysReached(jClass)) {
+        return type != null && requiresInitializationNodeForTypeReached0(normalizeType(type));
+    }
+
+    /** Traverses an already canonical guest type without repeating ownership checks. */
+    private boolean requiresInitializationNodeForTypeReached0(ResolvedJavaType type) {
+        if (isAlwaysReached0(type)) {
             return false;
         }
 
@@ -741,13 +717,13 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
             return true;
         }
 
-        if (typesRequiringReachability.contains(jClass) ||
-                        requiresInitializationNodeForTypeReached(type.getSuperclass())) {
+        if (typesRequiringReachability.contains(type) ||
+                        type.getSuperclass() != null && requiresInitializationNodeForTypeReached0(type.getSuperclass())) {
             return true;
         }
 
         for (ResolvedJavaType anInterface : type.getInterfaces()) {
-            if (requiresInitializationNodeForTypeReached(anInterface)) {
+            if (requiresInitializationNodeForTypeReached0(anInterface)) {
                 return true;
             }
         }

@@ -50,6 +50,15 @@ The provider order is specified in the `java.security` file under `<java-home>/c
 New security providers cannot be registered at run time by default (see the section above); all providers must be statically configured at executable build time.
 If the user specifies `--future-defaults=run-time-initialize-security-providers`, `--future-defaults=all`, or `--future-defaults=run-time-initialize-jdk` to move providers initialization to run time, then a specific properties file can be used via the command line option `-Djava.security.properties=<path>`.
 
+When you initialize security providers at run time in a layered image, use the same `java.security` configuration when building every layer.
+Some JDK classes retain security-property values in fields initialized in the initial layer.
+The builder rejects an extension layer if its initial security properties differ, and reports the affected keys.
+
+Register classpath security providers that use _META-INF/services/java.security.Provider_ in the initial layer.
+An extension layer cannot add providers to a service file already included in a previous layer.
+The builder rejects these additions instead of silently omitting them at run time.
+This restriction also applies to providers registered through `-H:AdditionalSecurityProviders` or a build-time feature when their registration requires extending that service file.
+
 ## Providers Reordering at Run Time
 
 It is possible to reorder security providers at run time, however only existing provider instances can be used.

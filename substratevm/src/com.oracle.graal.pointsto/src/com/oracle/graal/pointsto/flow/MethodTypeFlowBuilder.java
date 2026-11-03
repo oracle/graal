@@ -561,7 +561,7 @@ public class MethodTypeFlowBuilder {
     private void handleOpaqueReturn() {
         AnalysisError.guarantee(flowsGraph.getReturnFlow() == null, "Expected null return flow");
 
-        AnalysisType returnType = TypeFlow.filterUncheckedInterface(method.getSignature().getReturnType());
+        AnalysisType returnType = TypeFlow.dropUncheckedInterfaceBound(method.getSignature().getReturnType());
 
         BytecodePosition position = AbstractAnalysisEngine.syntheticSourcePosition(null, method);
         var returnFlow = new FormalReturnTypeFlow(position, returnType);
@@ -2109,7 +2109,7 @@ public class MethodTypeFlowBuilder {
                 loadFieldBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, LoadInstanceFieldTypeFlow.class, () -> {
                     LoadInstanceFieldTypeFlow loadFieldFlow = new LoadInstanceFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, objectBuilder.get());
                     processOpenWorldField(field);
-                    if (!bb.isClosed(loadFieldFlow.field().getDeclaringClass())) {
+                    if (!bb.getExtensionPolicy().isTypeClosed(loadFieldFlow.field().getDeclaringClass())) {
                         /*
                          * If the field declaring type is open then the receiver object state of a
                          * load may be empty/incomplete. Saturate the load, assuming there are
@@ -2129,23 +2129,23 @@ public class MethodTypeFlowBuilder {
     }
 
     private void processOpenWorldField(PointsToAnalysisField field) {
-        if (!bb.isClosed(field)) {
+        if (!bb.getExtensionPolicy().isFieldClosed(field)) {
             /*
-             * Open fields can be written from the open world and may contain state not seen by the
-             * analysis. This is equivalent with assuming any of their input is saturated.
+             * External writes may supply arrays whose elements are not covered by analyzed stores
+             * or heap scanning. Summarize these contents as well as the field references.
              */
-            field.getInitialFlow().onInputSaturated(bb, null);
+            field.injectConservativeFieldValues();
         }
     }
 
     protected void processStoreField(ValueNode node, PointsToAnalysisField field, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
         field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
 
-        if (!bb.isClosed(field)) {
+        if (!bb.getExtensionPolicy().isFieldClosed(field)) {
             /*
-             * Open fields can be written from the open world and may contain state not seen by the
-             * analysis. We don't track their writes, instead we eagerly saturate their loads (See
-             * processLoadField).
+             * Open fields use conservative summaries for external writes. Instead of tracking
+             * individual field stores, processLoadField installs these summaries when the field is
+             * read.
              */
             return;
         }
@@ -2254,8 +2254,9 @@ public class MethodTypeFlowBuilder {
     protected void processUnsafeStore(ValueNode node, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
         if (bb.analysisPolicy().useConservativeUnsafeAccess()) {
             /*
-             * When unsafe writes are modeled conservatively all unsafe accessed fields contain all
-             * instantiated subtypes of their declared type, so no need to model the unsafe store.
+             * Conservative unsafe registration accounts for any value under the field's declared
+             * bound, including extension values when that bound is open. The store needs no value
+             * flow; ordinary field reads receive the state or saturation from the registered field.
              */
             return;
         }

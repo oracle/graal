@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafeLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafeStoreTypeFlow;
+import com.oracle.graal.pointsto.flow.PreSaturatedTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -90,6 +91,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     /** The type of {@link Object}. */
     private final AnalysisType objectType;
+    private final ExtensionPolicy extensionPolicy;
     /**
      * Enables propagating primitive values interproceduraly using the typeflow graph. Only simple
      * constants are propagated. Arithmetic operations and merges of different constants result in a
@@ -107,6 +109,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     private final boolean usePredicates;
     private AnyPrimitiveSourceTypeFlow anyPrimitiveSourceTypeFlow;
     private AlwaysEnabledPredicateFlow alwaysEnabledPredicateFlow;
+    private PreSaturatedTypeFlow preSaturatedSourceTypeFlow;
 
     protected final boolean trackTypeFlowInputs;
     protected final boolean reportAnalysisStatistics;
@@ -125,6 +128,11 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext, TimerCollection timerCollection,
                     ClassInclusionPolicy classInclusionPolicy) {
         super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection, classInclusionPolicy);
+        AnalysisError.guarantee(!analysisPolicy.removeSaturatedTypeFlows() || analysisPolicy.aliasArrayTypeFlows(),
+                        "RemoveSaturatedTypeFlows requires AliasArrayTypeFlows.");
+        AnalysisError.guarantee(!analysisPolicy.useConservativeUnsafeAccess() || analysisPolicy.removeSaturatedTypeFlows(),
+                        "Conservative unsafe access requires RemoveSaturatedTypeFlows.");
+        this.extensionPolicy = createExtensionPolicy(hostVM);
         this.typeFlowTimer = timerCollection.createTimer("(typeflow)");
 
         this.objectType = metaAccess.lookupJavaType(Object.class);
@@ -154,54 +162,24 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
         timing = PointstoOptions.ProfileAnalysisOperations.getValue(options) ? new AnalysisTiming() : null;
         executor.init(timing);
+
+        if (analysisPolicy.removeSaturatedTypeFlows()) {
+            preSaturatedSourceTypeFlow = new PreSaturatedTypeFlow(null);
+            preSaturatedSourceTypeFlow.enableFlow(this);
+        }
+    }
+
+    private static ExtensionPolicy createExtensionPolicy(HostVM hostVM) {
+        return hostVM.isClosedTypeWorld() ? new ClosedWorldExtensionPolicy() : new PartiallyOpenWorldExtensionPolicy(hostVM);
     }
 
     /**
-     * Returns true if the type's hierarchy is complete in the observable universe.
-     * <ul>
-     * <li>In <b>open type world</b> this means that all the subtypes of this type are known and
-     * this type cannot be extended outside the observable universe.</li>
-     * <li>In <b>closed type world</b> all types are considered closed.</li>
-     * </ul>
-     *
-     * This method is conservative, it returns false in cases where we are not sure, and further
-     * refining when a type is closed will improve analysis. For example GR-59311 will also define
-     * when a sealed type can be treated as a closed type.
+     * Returns the extension policy selected at construction from {@link HostVM#isClosedTypeWorld()}.
+     * The policy remains fixed for this analysis. Its queries supply extension assumptions to flow
+     * construction, propagation, and graph strengthening.
      */
-    public boolean isClosed(AnalysisType type) {
-        if (hostVM.isClosedTypeWorld()) {
-            /* In a closed type world all subtypes known. */
-            return true;
-        }
-        /*
-         * Array and leaf types are by definition closed. Core types are considered as closed to
-         * allow optimizations to be applied on them.
-         */
-        return type.isArray() || type.isLeaf() || hostVM.isCoreType(type);
-    }
-
-    /**
-     * Determine if the field is by default closed in an open-world analysis. A field is considered
-     * closed if it cannot be written *directly* from the open world. This applies for example to
-     * core VM fields whose writes should only come from code included in the base image.
-     * <p>
-     * Note that flows of closed fields can still contain values coming from the open world. For
-     * example the field could be the target of a field-store that is reached directly from a
-     * parameter of an entry point method. Similarly, the field could be unsafe accessed.
-     */
-    public boolean isClosed(ResolvedJavaField field) {
-        if (hostVM.isClosedTypeWorld()) {
-            /* In a closed type world all fields are closed. */
-            return true;
-        }
-        if (hostVM.isAlwaysClosedField(field)) {
-            return true;
-        }
-        if (hostVM.isCoreType(field.getDeclaringClass())) {
-            /* All the other svm.core fields are by default closed. */
-            return true;
-        }
-        return false;
+    public ExtensionPolicy getExtensionPolicy() {
+        return extensionPolicy;
     }
 
     @Override
@@ -289,7 +267,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @Override
     public void registerAsJNIAccessed(AnalysisField field, boolean writable) {
-        field.injectDeclaredType();
+        field.injectConservativeFieldValues();
     }
 
     /**
@@ -306,6 +284,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         super.cleanupAfterAnalysis();
         anyPrimitiveSourceTypeFlow = null;
         alwaysEnabledPredicateFlow = null;
+        preSaturatedSourceTypeFlow = null;
         unsafeLoads = null;
         unsafeStores = null;
 
@@ -340,6 +319,16 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     public AnyPrimitiveSourceTypeFlow getAnyPrimitiveSourceTypeFlow() {
         return anyPrimitiveSourceTypeFlow;
+    }
+
+    /**
+     * Returns the shared, unconditionally enabled saturation source for this analysis. Requires
+     * saturation to be enabled. Flows whose saturation depends on an operation's predicate must use
+     * a separate source.
+     */
+    public PreSaturatedTypeFlow getPreSaturatedSourceTypeFlow() {
+        assert preSaturatedSourceTypeFlow != null : "Saturation source is unavailable when saturation is disabled.";
+        return preSaturatedSourceTypeFlow;
     }
 
     public AlwaysEnabledPredicateFlow getAlwaysEnabledPredicateFlow() {
@@ -520,7 +509,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             if (addFields) {
                 field.registerAsAccessed("field of root class");
             }
-            field.injectDeclaredType();
+            field.injectConservativeFieldValues();
         }
         if (type.getSuperclass() != null) {
             addRootClass(type.getSuperclass(), addFields, addArrayClass);
@@ -541,7 +530,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     public AnalysisType addRootField(AnalysisField field) {
         field.registerAsAccessed((field.isStatic() ? "static" : "instance") + " root field");
-        field.injectDeclaredType();
+        field.injectConservativeFieldValues();
         return field.getType();
     }
 
@@ -668,53 +657,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             t.instantiatedTypes.addState(this, typeState);
             t.instantiatedTypesNonNull.addState(this, typeStateNonNull);
         });
-    }
-
-    /**
-     * Inject custom types in the analysis field type state. This utility is used for:
-     * <ul>
-     * <li>root fields - whose state is forced to be that of the declared type</li>
-     * <li>unsafe accessed fields - whose state is conservatively also the declared type</li>
-     * <li>lazily computed fields - for which writes are not visible during analysis</li>
-     * <ul/>
-     */
-    @Override
-    public void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
-        assert aField.getStorageKind().isObject();
-        var ptaField = (PointsToAnalysisField) aField;
-
-        /* Link the field with all declared types. */
-        for (AnalysisType type : customTypes) {
-            if (type.isPrimitive() || type.isWordType()) {
-                continue;
-            }
-            type.getTypeFlow(this, canBeNull).addUse(this, ptaField.getInitialFlow());
-
-            if (type.isArray()) {
-                AnalysisType fieldComponentType = type.getComponentType();
-                ptaField.getInitialFlow().addUse(this, ptaField.getSinkFlow());
-                if (!(fieldComponentType.isPrimitive() || fieldComponentType.isWordType())) {
-                    /*
-                     * Write the component type abstract object into the field array elements type
-                     * flow, i.e., the array elements type flow of the abstract object of the field
-                     * declared type.
-                     *
-                     * This is required so that the index loads from this array return all the
-                     * possible objects that can be stored in the array.
-                     */
-                    TypeFlow<?> elementsFlow = type.getContextInsensitiveAnalysisObject().getArrayElementsFlow(this, true);
-                    fieldComponentType.getTypeFlow(this, false).addUse(this, elementsFlow);
-
-                    /*
-                     * In the current implementation it is not necessary to do it recursively for
-                     * multidimensional arrays since we don't model individual array elements, so
-                     * from the point of view of the static analysis the field's array elements
-                     * value is non-null (in the case of an n-dimensional array that value is
-                     * another array, n-1 dimensional).
-                     */
-                }
-            }
-        }
     }
 
     public static class ConstantObjectsProfiler {

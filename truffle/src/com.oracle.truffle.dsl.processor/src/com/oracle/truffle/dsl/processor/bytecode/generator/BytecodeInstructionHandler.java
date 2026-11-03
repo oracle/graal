@@ -86,6 +86,12 @@ import com.oracle.truffle.dsl.processor.model.SpecializationData;
  */
 final class BytecodeInstructionHandler extends CodeExecutableElement implements ElementHelpers {
 
+    /*
+     * Source text for a slow-path call that did not catch UnexpectedResultException. The handler
+     * parameter is that exception; null means the operand is still on the stack.
+     */
+    private static final String NO_UNEXPECTED_EXCEPTION = "null";
+
     private final ProcessorContext context;
     private final BytecodeNodeElement parent;
     private final InstructionModel instruction;
@@ -214,7 +220,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         }
 
         if (callsSlowPath) {
-            emitSlowPath(b, name -> name, "null");
+            emitSlowPath(b, name -> name, NO_UNEXPECTED_EXCEPTION);
         } else {
             if (isEarlyDeclareUnexpectedOperands()) {
                 Signature customSignature = instruction.signature;
@@ -251,7 +257,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
             if (hasUnexpectedOperand) {
                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
-                emitSlowPath(b, (name) -> name + "_", "ex.getResult()");
+                emitSlowPath(b, (name) -> name + "_", "ex");
                 b.end();
             }
         }
@@ -652,7 +658,8 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
     private void emitSlowPath(CodeTreeBuilder b, Function<String, String> nameFunction, String unexpectedResult) {
         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
         if (handlerKind.isBranch()) {
-            if (unexpectedResult.equals("null")) {
+            // No caught exception: condition_ has not been declared yet.
+            if (unexpectedResult.equals(NO_UNEXPECTED_EXCEPTION)) {
                 b.startDeclaration(type(boolean.class), "condition_");
             } else {
                 b.startAssign("condition_");
@@ -701,7 +708,12 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
             String unexpectedResult = null;
             if (findSingleUnexpectedOperand() != null) {
-                method.addParameter(new CodeVariableElement(type(Object.class), "unexpectedResult"));
+                /*
+                 * The fast path may clear the operand before throwing UnexpectedResultException.
+                 * Pass the exception itself: null means the operand is still on the stack, and
+                 * getResult() is the guest value when an exception was thrown (it may be null).
+                 */
+                method.addParameter(new CodeVariableElement(types.UnexpectedResultException, "unexpectedResult"));
                 unexpectedResult = "unexpectedResult";
             }
 
@@ -1726,7 +1738,7 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 emitClearStackValue(b, "sp - 1", valueOperand.type(), mode);
             } else {
                 b.startIf().string("FRAMES.getTag(frame, sp - 1) != ").staticReference(parent.parent.frameTagsElement.get(valueOperand.type())).end().startBlock();
-                emitSlowPath(b, name -> name, "null");
+                emitSlowPath(b, name -> name, NO_UNEXPECTED_EXCEPTION);
                 b.end().startElseBlock();
                 emitClearStackValue(b, "sp - 1", valueOperand.type(), mode);
                 b.end();
@@ -2746,9 +2758,14 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
 
             String stackIndex = createOperandStackIndex(useInstruction, operand);
             Operand singleUnexpected = findSingleUnexpectedOperand();
+            /*
+             * unexpectedResult == null means this slow path takes no exception parameter. Otherwise
+             * a null exception means the operand is still on the stack, and getResult() is the
+             * guest value (which may itself be null). Re-reading a cleared frame slot would drop it.
+             */
             boolean hasUnexpected = unexpectedResult != null && singleUnexpected.dynamicIndex() == operand.dynamicIndex();
             if (hasUnexpected) {
-                b.string("(", unexpectedResult, " != null ? ", unexpectedResult, " : (");
+                b.string("(", unexpectedResult, " != null ? ", unexpectedResult, ".getResult() : (");
             }
             if (!expectOtherTypes) {
                 // FRAMES.uncheckedGetObject

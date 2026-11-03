@@ -45,6 +45,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
 public class Bytecode {
+    // Primary opcodes (free: none).
     public static final int UNREACHABLE = 0x00;
     public static final int NOP = 0x01;
 
@@ -345,7 +346,7 @@ public class Bytecode {
     public static final int ATOMIC = 0xFE;
     public static final int NOTIFY = 0xFF;
 
-    // Aggregate opcodes
+    // Aggregate opcodes (free: 0x1A-0x1B, 0x1F-0xFF).
     public static final int STRUCT_NEW = 0x00;
     public static final int STRUCT_NEW_DEFAULT = 0x01;
     public static final int STRUCT_GET = 0x02;
@@ -376,7 +377,7 @@ public class Bytecode {
     public static final int I31_GET_S = 0x1D;
     public static final int I31_GET_U = 0x1E;
 
-    // Misc opcodes
+    // Misc opcodes (free: 0x34-0xFF).
     public static final int I32_TRUNC_SAT_F32_S = 0x00;
     public static final int I32_TRUNC_SAT_F32_U = 0x01;
     public static final int I32_TRUNC_SAT_F64_S = 0x02;
@@ -446,7 +447,7 @@ public class Bytecode {
     // Misc - Tail calls
     public static final int BR_RETURN_CALL = 0x33;
 
-    // Atomic opcodes
+    // Atomic opcodes (free: 0x43-0xFF).
     public static final int ATOMIC_I32_LOAD = 0x00;
     public static final int ATOMIC_I64_LOAD = 0x01;
     public static final int ATOMIC_I32_LOAD8_U = 0x02;
@@ -518,7 +519,7 @@ public class Bytecode {
     public static final int ATOMIC_WAIT32 = 0x41;
     public static final int ATOMIC_WAIT64 = 0x42;
 
-    // Vector opcodes
+    // Vector opcodes (includes relaxed SIMD; free: none).
     public static final int VECTOR_V128_LOAD = 0x00;
     public static final int VECTOR_V128_LOAD8X8_S = 0x01;
     public static final int VECTOR_V128_LOAD8X8_U = 0x02;

@@ -32,13 +32,15 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues.Origin;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.options.OptionDescriptors;
 
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
@@ -160,7 +162,7 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
             compileQueue = TruffleSupport.singleton().createBackgroundCompileQueue(this);
         }
         if (callTarget.engine.traceTransferToInterpreter) {
-            Deoptimizer.Options.TraceDeoptimization.update(true);
+            Deoptimizer.Options.TraceDeoptimization.update(true, Origin.Runtime);
         }
         installDefaultListeners();
         RuntimeSupport.getRuntimeSupport().addTearDownHook(_ -> teardownCompilerIsolate());
@@ -253,7 +255,12 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
         return new SubstrateOptimizedCallTarget(engine);
     }
 
-    private void ensureInitializedAtRuntime(OptimizedCallTarget callTarget) {
+    /**
+     * Initializes process-local runtime services before a fresh or restored call target is used.
+     *
+     * @param callTarget a call target whose engine has current runtime options and logging
+     */
+    public void ensureInitializedAtRuntime(OptimizedCallTarget callTarget) {
         if (!SubstrateUtil.HOSTED && !initialized) {
             synchronized (this) {
                 if (!initialized) {
@@ -413,12 +420,12 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
 
     @Override
     protected int getArrayBaseOffset(Class<?> componentType) {
-        return ObjectLayout.singleton().getArrayBaseOffset(JavaKind.fromJavaClass(componentType));
+        return ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.fromJavaClass(componentType));
     }
 
     @Override
     protected int getArrayIndexScale(Class<?> componentType) {
-        return ObjectLayout.singleton().getArrayIndexScale(JavaKind.fromJavaClass(componentType));
+        return ObjectLayoutCompilerSupport.getArrayIndexScale(ObjectLayout.singleton(), JavaKind.fromJavaClass(componentType));
     }
 
     @Override

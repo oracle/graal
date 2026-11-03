@@ -107,6 +107,8 @@ struct PersistedAnalysisMethod {
   strengthenedGraphLocation @26 :Text;
   hostedMethodIndex @27 :HostedMethodIndex;
   compilationBehaviorOrdinal @28 :Int8;
+  # IDs of always-closed fields written by the unspecialized graph, captured before caller-specific inlining and graph optimizations.
+  closedFieldWrites @43 :List(FieldId);
   wrappedMethod :union {
     none @29 :Void; # default
     factoryMethod :group {
@@ -215,6 +217,10 @@ struct PersistedConstant {
         fieldConstant :group {
           originFieldId @13 :FieldId;
           requiresLateLoading @14 :Bool;
+        }
+        methodTypeConstant :group {
+          returnTypeId @19 :TypeId;
+          parameterTypeIds @20 :List(TypeId);
         }
       }
     }

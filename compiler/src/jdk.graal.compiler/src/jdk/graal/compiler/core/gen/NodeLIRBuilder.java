@@ -521,6 +521,11 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         }
     }
 
+    @Override
+    public boolean narrowsUseCastValue() {
+        return gen.getProviders().getLowerer().narrowsUseCastValue();
+    }
+
     protected void emitPrologue(StructuredGraph graph) {
         CallingConvention incomingArguments = gen.getResult().getCallingConvention();
 

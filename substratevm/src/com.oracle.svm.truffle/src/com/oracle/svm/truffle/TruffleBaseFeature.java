@@ -74,7 +74,7 @@ import org.graalvm.home.impl.DefaultHomeFinder;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.polyglot.Engine;
@@ -93,7 +93,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
@@ -204,7 +205,7 @@ public final class TruffleBaseFeature implements InternalFeature {
      * When modifying the version values defined below, ensure that the corresponding version fields
      * in {@code TruffleVersions} are also updated accordingly to maintain consistency.
      */
-    private static final Version NEXT_POLYGLOT_VERSION_UPDATE = Version.create(25, 6);
+    private static final Version NEXT_POLYGLOT_VERSION_UPDATE = Version.create(25, 7);
     private static final int MAX_JDK_VERSION = 26;
 
     @Override
@@ -397,7 +398,7 @@ public final class TruffleBaseFeature implements InternalFeature {
                         "Unsupported TruffleRuntime %s (only SubstrateTruffleRuntime or DefaultTruffleRuntime allowed)",
                         runtime.getClass().getName());
 
-        RuntimeClassInitialization.initializeAtBuildTime("com.oracle.graalvm.locator",
+        JVMCIRuntimeClassInitializationSupport.singleton().initializeAtBuildTime("com.oracle.graalvm.locator",
                         "Truffle classes are always initialized at build time");
 
         initializeTruffleReflectively(imageClassLoader);
@@ -1154,8 +1155,8 @@ public final class TruffleBaseFeature implements InternalFeature {
                 // correct for the base JDK but might differ from those of Native Image. When this
                 // happens, we allocate a larger byte[] and copy over the contents of the original
                 // one at a base offset that keeps the other offsets long-aligned.
-                int longIndexScale = ObjectLayout.singleton().getArrayIndexScale(JavaKind.Long);
-                int misalignment = ObjectLayout.singleton().getArrayBaseOffset(JavaKind.Byte) % longIndexScale;
+                int longIndexScale = ObjectLayoutCompilerSupport.getArrayIndexScale(ObjectLayout.singleton(), JavaKind.Long);
+                int misalignment = ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.Byte) % longIndexScale;
                 ALIGNMENT_CORRECTION = misalignment == 0 ? 0 : longIndexScale - misalignment;
 
                 if (ALIGNMENT_CORRECTION != 0) {
@@ -1579,8 +1580,8 @@ final class StaticPropertyOffsetTransformer implements FieldValueTransformerWith
         /*
          * Find SVM array base offset and array index scale for this JavaKind
          */
-        long svmArrayBaseOffset = ObjectLayout.singleton().getArrayBaseOffset(javaKind);
-        long svmArrayIndexScaleOffset = ObjectLayout.singleton().getArrayIndexScale(javaKind);
+        long svmArrayBaseOffset = ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), javaKind);
+        long svmArrayIndexScaleOffset = ObjectLayoutCompilerSupport.getArrayIndexScale(ObjectLayout.singleton(), javaKind);
 
         /*
          * Redo the offset computation with the SVM array base offset and array index scale

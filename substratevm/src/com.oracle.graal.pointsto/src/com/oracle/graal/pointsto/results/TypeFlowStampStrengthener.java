@@ -216,7 +216,7 @@ final class TypeFlowStampStrengthener {
     /** Returns whether an open-world all-instantiated flow carries incomplete type information. */
     private boolean openWorldOpenAllInstantiated(TypeFlow<?> flow) {
         AnalysisType declaredType = flow.getDeclaredType();
-        return !strengthenGraphs.isClosedTypeWorld && flow.isAllInstantiated() && declaredType != null && !bb.isClosed(declaredType);
+        return !strengthenGraphs.isClosedTypeWorld && flow.isAllInstantiated() && declaredType != null && !bb.getExtensionPolicy().isTypeClosed(declaredType);
     }
 
     /** Converts a primitive flow state into an integer stamp or unreachable control. */

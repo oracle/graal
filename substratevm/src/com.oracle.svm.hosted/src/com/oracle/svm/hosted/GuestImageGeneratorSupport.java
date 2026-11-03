@@ -26,10 +26,12 @@ package com.oracle.svm.hosted;
 
 import java.lang.reflect.Method;
 import java.nio.ByteOrder;
+import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.GuestImageSingletonSupport;
 import com.oracle.svm.core.SubstrateTarget;
@@ -39,15 +41,17 @@ import com.oracle.svm.guest.staging.ArgsSupport;
 import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.shared.ImageLayerBuildingSupportProvider;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout.IdentityHashMode;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -181,6 +185,22 @@ final class GuestImageGeneratorSupport {
         GuestImageSingletonSupport.add(key, hostProxy);
     }
 
+    /** Installs a guest host proxy backed by the builder's class-initialization policy. */
+    static void installClassInitializationSupport(ClassInitializationSupport builderSupport) {
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType key = access.lookupType(RuntimeClassInitializationSupport.class);
+        /*
+         * Resolve the deprecated aliases eagerly instead of requiring the host proxy implementation
+         * to invoke default methods from a concealed guest interface package.
+         */
+        ResolvedJavaType stringType = access.elements.java_lang_String;
+        Map<ResolvedJavaMethod, String> methodNameMappings = Map.of(
+                        JVMCIReflectionUtil.getUniqueDeclaredMethod(key, "rerunInitialization", stringType, stringType), "initializeAtRunTime",
+                        JVMCIReflectionUtil.getUniqueDeclaredMethod(key, "rerunInitialization", access.elements.java_lang_Class, stringType), "initializeAtRunTime");
+        JavaConstant hostProxy = access.createHostProxy(builderSupport, key, methodNameMappings);
+        GuestImageSingletonSupport.add(key, hostProxy);
+    }
+
     /** Registers the guest-context annotation extractor. */
     static void registerAnnotationExtractor() {
         GuestAccess access = GuestAccess.get();
@@ -192,23 +212,67 @@ final class GuestImageGeneratorSupport {
     /** Creates and registers the target description in the guest context. */
     static void setupTargetDescription(SubstrateTarget target) {
         GuestAccess access = GuestAccess.get();
-        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(access.getProviders().getMetaAccess(), SubstrateGuestTarget.class, JavaKind.class, int.class, ByteOrder.class);
+        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(access.getProviders().getMetaAccess(), SubstrateGuestTarget.class, int.class, ByteOrder.class);
 
-        JavaConstant wordKind = asGuestEnum(target.wordJavaKind);
         JavaConstant wordSize = JavaConstant.forInt(target.wordSize);
         JavaConstant byteOrder = JVMCIReflectionUtil.readStaticField(access.elements.java_nio_ByteOrder, target.arch.getByteOrder().toString());
-        JavaConstant guestTargetDescription = access.invoke(ctor, null, wordKind, wordSize, byteOrder);
+        JavaConstant guestTargetDescription = access.invoke(ctor, null, wordSize, byteOrder);
 
         GuestImageSingletonSupport.add(SubstrateGuestTarget.class, guestTargetDescription);
     }
 
-    /** Converts a builder enum constant to its corresponding guest enum constant. */
-    private static JavaConstant asGuestEnum(Enum<?> kind) {
+    /**
+     * Installs a guest copy of the builder-selected object layout for fully isolated builds.
+     * Non-isolated builds already share the builder's singleton registry.
+     */
+    static void setupObjectLayout() {
         GuestAccess access = GuestAccess.get();
-        ResolvedJavaType enumType = access.getProviders().getMetaAccess().lookupJavaType(kind.getDeclaringClass());
-        JavaConstant enumName = access.asGuestString(kind.name());
-        ResolvedJavaMethod valueOf = JVMCIReflectionUtil.getUniqueDeclaredMethod(access.getProviders().getMetaAccess(), enumType, "valueOf", String.class);
-        JavaKind.valueOf(kind.name());
-        return access.invoke(valueOf, null, enumName);
+        if (!access.isFullyIsolated()) {
+            return;
+        }
+        ObjectLayout layout = ObjectLayout.singleton();
+        ResolvedJavaType guestLayoutType = access.lookupType(ObjectLayout.class);
+        ResolvedJavaType guestIdentityHashModeType = access.lookupType(IdentityHashMode.class);
+        ResolvedJavaType guestIntType = access.lookupType(int.class);
+        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(guestLayoutType,
+                        guestIntType, guestIntType, guestIntType, guestIntType,
+                        guestIntType, guestIntType, guestIntType, guestIntType,
+                        guestIdentityHashModeType, guestIntType, guestIntType);
+        IdentityHashMode identityHashMode;
+        if (layout.isIdentityHashFieldInObjectHeader()) {
+            identityHashMode = IdentityHashMode.OBJECT_HEADER;
+        } else if (layout.isIdentityHashFieldAtTypeSpecificOffset()) {
+            identityHashMode = IdentityHashMode.TYPE_SPECIFIC;
+        } else {
+            VMError.guarantee(layout.isIdentityHashFieldOptional());
+            identityHashMode = IdentityHashMode.OPTIONAL;
+        }
+        int headerIdentityHashOffset = layout.isIdentityHashFieldOptional()
+                        ? -1
+                        : layout.getObjectHeaderIdentityHashOffset();
+        ResolvedJavaMethod valueOf = JVMCIReflectionUtil.getUniqueDeclaredMethod(
+                        access.getProviders().getMetaAccess(), guestIdentityHashModeType,
+                        "valueOf", String.class);
+        JavaConstant guestLayout;
+        try {
+            JavaConstant guestIdentityHashMode = access.invoke(valueOf, null,
+                            access.asGuestString(identityHashMode.name()));
+            guestLayout = access.invoke(ctor, null,
+                            JavaConstant.forInt(layout.getReferenceSize()),
+                            JavaConstant.forInt(layout.getAlignment()),
+                            JavaConstant.forInt(layout.getHubSize()),
+                            JavaConstant.forInt(layout.getHubOffset()),
+                            JavaConstant.forInt(layout.getFirstFieldOffset()),
+                            JavaConstant.forInt(layout.getArrayLengthOffset()),
+                            JavaConstant.forInt(layout.getArrayBaseOffset(Byte.BYTES)),
+                            JavaConstant.forInt(headerIdentityHashOffset),
+                            guestIdentityHashMode,
+                            JavaConstant.forInt(layout.getIdentityHashCodeNumBits()),
+                            JavaConstant.forInt(layout.getIdentityHashCodeShift()));
+        } catch (InvocationException ex) {
+            throw VMError.shouldNotReachHere("Error creating the object layout in the guest context", ex);
+        }
+        GuestImageSingletonSupport.add(guestLayoutType, guestLayout);
     }
+
 }

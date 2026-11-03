@@ -765,7 +765,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
 
         AddressNode address = graph.unique(new OffsetAddressNode(n.object(), n.offset()));
         BarrierType barrierType = barrierSet.readWriteBarrier(n.object(), newValue);
-        LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(address, n.getKilledLocationIdentity(), newValue, barrierType));
+        LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(address, n.getLocationIdentity(), newValue, barrierType));
         memoryRead.setStateAfter(n.stateAfter());
 
         ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead);
@@ -781,7 +781,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         ValueNode delta = implicitStoreConvert(graph, valueKind, n.delta());
 
         AddressNode address = graph.unique(new OffsetAddressNode(n.object(), n.offset()));
-        LoweredAtomicReadAndAddNode memoryRead = graph.add(new LoweredAtomicReadAndAddNode(address, n.getKilledLocationIdentity(), delta));
+        LoweredAtomicReadAndAddNode memoryRead = graph.add(new LoweredAtomicReadAndAddNode(address, n.getLocationIdentity(), delta));
         memoryRead.setStateAfter(n.stateAfter());
 
         ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead);

@@ -45,7 +45,7 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
+import com.oracle.svm.core.reflect.RuntimeMetadataDecoderSupport;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
@@ -108,7 +108,7 @@ public class WebImageCodeCache extends NativeImageCodeCache {
         Class<?>[] classes = encoders.classes.encodeAll(new Class<?>[encoders.classes.getLength()]);
         String[] memberNames = encoders.memberNames.encodeAll(new String[encoders.memberNames.getLength()]);
         String[] otherStrings = encoders.otherStrings.encodeAll(new String[encoders.otherStrings.getLength()]);
-        var metadataAccessor = (WebImageMetadataAccessor) RuntimeMetadataDecoder.MetadataAccessor.singleton();
+        var metadataAccessor = (WebImageMetadataAccessor) RuntimeMetadataDecoderSupport.metadataAccessor();
         metadataAccessor.installMetadata(constants, classes, memberNames, otherStrings, codeInfoEncoder);
         runtimeMetadataEncoder.encodeAllAndInstall();
 

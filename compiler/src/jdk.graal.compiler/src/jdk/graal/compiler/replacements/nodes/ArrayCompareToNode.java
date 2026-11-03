@@ -47,6 +47,8 @@ import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import org.graalvm.word.Pointer;
 
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 // JaCoCo Exclude
@@ -167,6 +169,11 @@ public class ArrayCompareToNode extends PureFunctionStubIntrinsicNode implements
     @Override
     public ValueNode[] getForeignCallArguments() {
         return new ValueNode[]{arrayA, lengthA, arrayB, lengthB};
+    }
+
+    @Override
+    public boolean needsExplicitZeroExtension(Architecture arch) {
+        return !(arch instanceof AMD64);
     }
 
     @Override

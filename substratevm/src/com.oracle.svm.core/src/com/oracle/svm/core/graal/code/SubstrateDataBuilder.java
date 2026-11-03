@@ -30,7 +30,7 @@ import java.nio.ByteBuffer;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
 import jdk.graal.compiler.code.DataSection.Data;

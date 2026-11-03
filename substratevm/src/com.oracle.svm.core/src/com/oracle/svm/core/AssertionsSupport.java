@@ -51,9 +51,11 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /// Records independent build-time and runtime assertion settings.
 ///
@@ -280,6 +282,15 @@ public final class AssertionsSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public boolean desiredAssertionStatus(Class<?> clazz) {
         return desiredAssertionStatus(clazz.getName(), clazz.getClassLoader());
+    }
+
+    /**
+     * Determines whether assertions should be enabled for {@code type}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean desiredAssertionStatus(ResolvedJavaType type) {
+        // GR-73390: Remove this temporary conversion once VMAccess provides assertion status.
+        return desiredAssertionStatus(OriginalClassProvider.getJavaClass(type));
     }
 
     /**

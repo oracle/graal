@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,7 +66,8 @@ public class WebImageBackend extends SubstrateBackend {
     }
 
     @Override
-    public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier, RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg,
+    public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier, RegisterValue threadArg, int threadIsolateOffset, int threadCodeBaseOffset,
+                    RegisterValue methodIdArg,
                     int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
         throw VMError.shouldNotReachHereAtRuntime();
     }

@@ -288,6 +288,7 @@ public class NativeImage {
     final String oHClass = oH(SubstrateOptions.Class);
     final String oHName = oH(SubstrateOptions.Name);
     final String oHPath = oH(SubstrateOptions.ConcealedOptions.Path);
+    final String oHOptimize = oH(SubstrateOptions.Optimize);
     final String oHUseLibC = oH(SubstrateOptions.UseLibC);
     final String oHEnableStaticExecutable = oHEnabled(SubstrateOptions.StaticExecutable);
     final String oHEnableSharedLibraryFlagPrefix = oHEnabled + SubstrateOptions.SharedLibrary.getName();
@@ -1125,6 +1126,11 @@ public class NativeImage {
         processNativeImageArgs();
         apiOptionHandler.validateExperimentalOptions();
 
+        if (getHostedOptionArgument(imageBuilderArgs, oHOptimize).isEmpty()) {
+            // Ensure fallback -H:Optimize comes before any option that could implicitly modify the optimization level.
+            imageBuilderArgs.add(0, oH(SubstrateOptions.Optimize, OptionOrigin.originDriver) + SubstrateOptions.OPTIMIZE_DEFAULT_VALUE);
+        }
+
         if (config.getBuilderInspectServerPath() != null) {
             addPlainImageBuilderArg(oHInspectServerContentPath + config.getBuilderInspectServerPath());
         }
@@ -1793,12 +1799,13 @@ public class NativeImage {
         arguments.addAll(config.getGeneratorMainClass());
 
         Path keepAliveFile;
-        if (OS.getCurrent().hasProcFS) {
+        Path procPIDCommPath = Path.of("/proc/" + ProcessHandle.current().pid() + "/comm");
+        if (OS.getCurrent().hasProcFS && Files.isReadable(procPIDCommPath)) {
             /*
              * On Linux we use the procfs entry of the driver itself. This guarantees builder
              * shutdown even if the driver is terminated via SIGKILL.
              */
-            keepAliveFile = Path.of("/proc/" + ProcessHandle.current().pid() + "/comm");
+            keepAliveFile = procPIDCommPath;
         } else {
             keepAliveFile = createFileInTempDir(".native_image.alive");
         }

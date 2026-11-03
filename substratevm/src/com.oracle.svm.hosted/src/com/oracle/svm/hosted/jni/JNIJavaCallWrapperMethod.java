@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,6 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.jni.JNIJavaCallWrapperHolder;
-import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.nodes.SubstrateIndirectCallTargetNode;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
@@ -46,7 +45,6 @@ import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.CallTargetNode;
-import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
@@ -175,11 +173,12 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
             return createRegularMethodCall(kit, invokeSignature, methodId, receiverOrClass, nonVirtual, args);
         }
 
-        ValueNode newObjectAddress = kit.invokeGetNewObjectAddress(methodId);
-        kit.startIf(IntegerEqualsNode.create(newObjectAddress, kit.createWord(0), NodeView.DEFAULT), BranchProbabilityData.unknown());
+        ValueNode isConstructor = kit.invokeIsConstructor(methodId);
+        kit.startIf(IntegerEqualsNode.create(isConstructor, kit.createInt(0), NodeView.DEFAULT), BranchProbabilityData.unknown());
         kit.thenPart();
         ValueNode methodReturnValue = createRegularMethodCall(kit, invokeSignature, methodId, receiverOrClass, nonVirtual, args);
         kit.elsePart();
+        ValueNode newObjectAddress = kit.invokeGetNewObjectAddress(methodId);
         ValueNode receiverOrCreatedObject = createNewObjectOrConstructorCall(kit, invokeSignature, methodId, declaringClass, newObjectAddress, receiverOrClass, args);
         AbstractMergeNode merge = kit.endIf();
         return mergeValues(kit, merge, kit.bci(), methodReturnValue, receiverOrCreatedObject);
@@ -235,8 +234,8 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
     }
 
     private static ValueNode createNewObjectCall(JNIGraphKit kit, ResolvedSignature<AnalysisType> invokeSignature, ValueNode newObjectAddress, ValueNode[] args) {
-        ConstantNode abstractTypeSentinel = kit.createWord(JNIAccessibleMethod.NEW_OBJECT_TARGET_INVALID_FOR_ABSTRACT_TYPE);
-        kit.startIf(IntegerEqualsNode.create(newObjectAddress, abstractTypeSentinel, NodeView.DEFAULT), BranchProbabilityNode.SLOW_PATH_PROFILE);
+        // Abstract constructors have no allocation factory.
+        kit.startIf(IntegerEqualsNode.create(newObjectAddress, kit.createWord(0), NodeView.DEFAULT), BranchProbabilityNode.SLOW_PATH_PROFILE);
         kit.thenPart();
         var exceptionCtor = kit.getMetaAccess().lookupJavaMethod(INSTANTIATION_EXCEPTION_CONSTRUCTOR);
         var throwMethod = FactoryMethodSupport.singleton().lookup(kit.getMetaAccess(), exceptionCtor, true);

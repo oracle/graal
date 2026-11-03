@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,6 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.pltgot.GOTAccess;
-import com.oracle.svm.core.pltgot.GOTHeapSupport;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
@@ -86,15 +85,9 @@ final class InterpreterDirectivesSupportImpl implements InterpreterDirectivesSup
 
         WordBase previousEntry = GOTAccess.readFromGOTEntry(interpreterMethod.getGOTOffset());
         rememberCompiledEntry.put(interpreterMethod, previousEntry.rawValue());
-        writeGOTHelper(interpreterMethod, estEntry);
+        GOTAccess.writeToGOTEntry(interpreterMethod.getGOTOffset(), estEntry);
 
         return true;
-    }
-
-    private static void writeGOTHelper(InterpreterResolvedJavaMethod interpreterMethod, UnsignedWord estEntry) {
-        GOTHeapSupport.get().makeGOTWritable();
-        GOTAccess.writeToGOTEntry(interpreterMethod.getGOTOffset(), estEntry);
-        GOTHeapSupport.get().makeGOTReadOnly();
     }
 
     @Override
@@ -111,7 +104,7 @@ final class InterpreterDirectivesSupportImpl implements InterpreterDirectivesSup
             return;
         }
         long previousEntry = rememberCompiledEntry.get(interpreterMethod);
-        writeGOTHelper(interpreterMethod, Word.pointer(previousEntry));
+        GOTAccess.writeToGOTEntry(interpreterMethod.getGOTOffset(), Word.pointer(previousEntry));
     }
 
     private class InterpreterOpToken {

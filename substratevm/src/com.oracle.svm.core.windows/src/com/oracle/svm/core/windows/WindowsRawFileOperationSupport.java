@@ -27,7 +27,6 @@ package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import java.io.File;
 import java.nio.ByteOrder;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -85,8 +84,8 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
     }
 
     @Override
-    public RawFileDescriptor create(File file, FileCreationMode creationMode, FileAccessMode accessMode) {
-        try (WindowsUtils.WCharPointerHolder wide = WindowsUtils.toWideCString(file.getPath())) {
+    public RawFileDescriptor create(String filename, FileCreationMode creationMode, FileAccessMode accessMode) {
+        try (WindowsUtils.WCharPointerHolder wide = WindowsUtils.toWideCString(filename)) {
             return createWide(wide.get(), creationMode, accessMode);
         }
     }
@@ -103,8 +102,8 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
     }
 
     @Override
-    public RawFileDescriptor open(File file, FileAccessMode mode) {
-        try (WindowsUtils.WCharPointerHolder wide = WindowsUtils.toWideCString(file.getPath())) {
+    public RawFileDescriptor open(String filename, FileAccessMode mode) {
+        try (WindowsUtils.WCharPointerHolder wide = WindowsUtils.toWideCString(filename)) {
             return openWide(wide.get(), mode);
         }
     }

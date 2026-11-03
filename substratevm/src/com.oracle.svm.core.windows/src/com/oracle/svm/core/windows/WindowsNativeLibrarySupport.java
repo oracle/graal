@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,19 +34,17 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIPlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.windows.WindowsUtils.WCharPointerHolder;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 import com.oracle.svm.core.windows.headers.WinSock;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -58,9 +56,9 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
 
     @Override
-    public boolean initializeBuiltinLibraries() {
+    public boolean initializeLibrariesDuringIsolateInit() {
         try {
-            loadJavaLibrary();
+            loadLibjava();
             loadNetLibrary();
         } catch (UnsatisfiedLinkError e) {
             Log.log().string("System.loadLibrary failed, " + e).newline();
@@ -70,8 +68,8 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
     }
 
     @Override
-    protected void loadJavaLibrary() {
-        super.loadJavaLibrary();
+    protected void loadLibjava() {
+        super.loadLibjava();
         Target_java_io_WinNTFileSystem.initIDs();
 
         /* Initialize the handles of standard FileDescriptors. */
@@ -91,9 +89,9 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
              * isolate applies to all subsequently launched isolates.
              */
         } else {
-            NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("net");
+            NativeLibrarySupport.singleton().registerInitializedLibrary("net");
         }
-        NativeLibrarySupport.singleton().registerInitializedBuiltinLibrary("extnet");
+        NativeLibrarySupport.singleton().registerInitializedLibrary("extnet");
         System.loadLibrary("extnet");
     }
 
@@ -155,7 +153,7 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         }
 
         private boolean doLoad() {
-            // Make sure the jvm.lib is available for linking
+            // Make sure the Native Image replacement JVM library is available for linking.
             // Need a better place to put this.
             Jvm.initialize();
 
@@ -185,14 +183,6 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
                 return LibLoaderAPI.GetProcAddress(dlhandle, symbol.get());
             }
         }
-    }
-}
-
-@AutomaticallyRegisteredFeature
-class WindowsNativeLibraryFeature implements InternalFeature {
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
     }
 }
 

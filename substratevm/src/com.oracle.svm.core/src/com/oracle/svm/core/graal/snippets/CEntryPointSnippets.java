@@ -53,8 +53,6 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.CPUFeatureAccess;
-import com.oracle.svm.guest.staging.IsolateArgumentParser;
-import com.oracle.svm.guest.staging.IsolateArguments;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateDiagnostics;
@@ -83,9 +81,9 @@ import com.oracle.svm.core.jdk.SignalHandlerSupport;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.IsolateThreadCache;
 import com.oracle.svm.core.thread.PlatformThreads;
@@ -96,6 +94,8 @@ import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.guest.staging.ArgsSupport;
+import com.oracle.svm.guest.staging.IsolateArgumentParser;
+import com.oracle.svm.guest.staging.IsolateArguments;
 import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.guest.staging.c.CGlobalData;
@@ -104,12 +104,14 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
+import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
@@ -261,6 +263,16 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
     }
 
+    /** Initializes the reserved registers from an initialized isolate thread without a foreign call. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void initReservedRegisters(IsolateThread thread) {
+        writeCurrentVMThread(thread);
+        setHeapBase(Isolates.getHeapBase(VMThreads.IsolateTL.get(thread)));
+        if (SubstrateOptions.useRelativeCodePointers()) {
+            writeCurrentVMCodeBase(VMThreads.CodeBaseTL.get(thread));
+        }
+    }
+
     /** Sets the heap base register, and if in use, the code base register, to the given values. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void initBaseRegisters(PointerBase heapBase, PointerBase codeBase) {
@@ -371,6 +383,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         CodeInfoTable.prepareImageCodeInfo();
+        if (PLTGOTConfiguration.isEnabled()) {
+            int error = PLTGOTConfiguration.singleton().getMethodAddressResolver().initialize();
+            if (error != CEntryPointErrors.NO_ERROR) {
+                return error;
+            }
+        }
         if (!VMThreads.initialize()) {
             return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
         }
@@ -539,7 +557,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
         }
 
-        boolean success = PlatformNativeLibrarySupport.singleton().initializeBuiltinLibraries();
+        boolean success = PlatformNativeLibrarySupport.singleton().initializeLibrariesDuringIsolateInit();
         if (firstIsolate) { // let other isolates (if any) initialize now
             int state = success ? FirstIsolateInitStates.SUCCESSFUL : FirstIsolateInitStates.FAILED;
             /* Do a volatile write to ensure that other threads see a consistent state. */
@@ -683,8 +701,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return error;
         }
 
-        initBaseRegisters(Isolates.getHeapBase(isolate));
-        writeCurrentVMThread(thread);
+        initReservedRegisters(thread);
         return enterAttachNewlyStartedThread1();
     }
 
@@ -734,6 +751,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private static void initializeIsolateThreadForCrashHandler0(Isolate isolate, IsolateThread thread) {
         VMThreads.StatusSupport.setStatusNative();
         VMThreads.IsolateTL.set(thread, isolate);
+        if (SubstrateOptions.useRelativeCodePointers()) {
+            VMThreads.CodeBaseTL.set(thread, KnownIntrinsics.codeBase());
+        }
         SubstrateDiagnostics.setOnlyAttachedForCrashHandler(thread);
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
     }
@@ -904,9 +924,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return CEntryPointErrors.NULL_ARGUMENT;
         }
 
-        writeCurrentVMThread(thread);
-        Isolate isolate = VMThreads.IsolateTL.get(thread);
-        initBaseRegisters(Isolates.getHeapBase(isolate));
+        initReservedRegisters(thread);
 
         if (runtimeAssertionsEnabled() || SubstrateOptions.CheckIsolateThreadAtEntry.getValue()) {
             /*
@@ -1139,7 +1157,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 default:
                     throw shouldNotReachHereUnexpectedInput(node.getLeaveAction()); // ExcludeFromJacocoGeneratedReport
             }
-            template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            SnippetTemplate template = template(tool, node, args);
+            /*
+             * Leaving Java changes the thread status, and assertions checking the transition's
+             * precondition may first read the current status. Allow these reads even though the
+             * replacee has no memory input for the status location.
+             */
+            template.setMayRemoveLocation(true);
+            template.instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
     }

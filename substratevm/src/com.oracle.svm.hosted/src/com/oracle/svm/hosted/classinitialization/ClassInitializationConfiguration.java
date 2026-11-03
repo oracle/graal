@@ -79,7 +79,7 @@ final class ClassInitializationConfiguration {
         if (initializationNode == null) {
             return null;
         }
-        return String.join(" and ", initializationNode.reasons);
+        return String.join(" and ", initializationNode.sortedReasons());
     }
 
     private static List<String> qualifierList(String classOrPackage) {
@@ -106,7 +106,7 @@ final class ClassInitializationConfiguration {
             } else {
                 if (node.strict) {
                     throw UserError.abort("Incompatible change of initialization policy for %s: trying to change %s %s to %s %s",
-                                    qualifiedName(node), node.kind, String.join(" and ", node.reasons), kind, reason);
+                                    qualifiedName(node), node.kind, String.join(" and ", node.sortedReasons()), kind, reason);
                 } else {
                     node.kind = node.kind.max(kind);
                 }
@@ -208,5 +208,14 @@ final class InitializationNode {
         this.kind = kind;
         this.strict = strict;
         this.reasons.addAll(Arrays.asList(reasons));
+    }
+
+    /**
+     * Reasons are not sorted by default, which would make the reports unstable.
+     */
+    String[] sortedReasons() {
+        String[] array = reasons.toArray(new String[reasons.size()]);
+        Arrays.sort(array);
+        return array;
     }
 }

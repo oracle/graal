@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.image;
 
-import com.oracle.svm.hosted.CHeaderGuestValue;
 import static com.oracle.svm.shared.util.SubstrateUtil.mangleName;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
@@ -48,6 +47,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -81,7 +81,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.c.function.GraalIsolateHeader;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.graal.code.CGlobalDataDirectReference;
@@ -93,15 +93,17 @@ import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.util.ByteFormattingUtil;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.c.CGlobalDataImpl;
+import com.oracle.svm.hosted.CHeaderGuestValue;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -537,7 +539,7 @@ public abstract class NativeImage extends AbstractImage {
             // Define symbols for the sections.
             if (codeCache.definesTextSectionBoundarySymbols()) {
                 objectFile.createDefinedSymbol(textSection.getName(), textSection, 0, 0, false, false, false);
-                if (ImageLayerBuildingSupport.buildingImageLayer() || SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                if (ImageLayerBuildingSupport.buildingImageLayer() || SubstrateOptions.DeleteLocalSymbols.getValue() || DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
                     /* add a dummy function symbol at the start of the code section */
                     objectFile.createDefinedSymbol(getTextSectionStartSymbol(), textSection, 0, 0, true, true, true);
                 }
@@ -735,7 +737,7 @@ public abstract class NativeImage extends AbstractImage {
             validateNoDirectRelocationsInTextSection(info);
         }
 
-        ResolvedJavaMethod method = ((MethodRef) targetObject).getMethod();
+        ResolvedJavaMethod method = MethodRefSupport.getMethod((MethodRef) targetObject);
         HostedMethod hMethod = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
         boolean injectedNotCompiled = isInjectedNotCompiled(hMethod);
         HostedMethod target = getMethodRefTargetMethod(metaAccess, hMethod);
@@ -765,7 +767,7 @@ public abstract class NativeImage extends AbstractImage {
         return !target.isCompiled() && !target.isCompiledInPriorLayer();
     }
 
-    static HostedMethod getMethodRefTargetMethod(HostedMetaAccess metaAccess, HostedMethod method) {
+    public static HostedMethod getMethodRefTargetMethod(HostedMetaAccess metaAccess, HostedMethod method) {
         if (isInjectedNotCompiled(method)) {
             return metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
         }

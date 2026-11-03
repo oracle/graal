@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -462,8 +462,8 @@ final class FileSystems {
         private FileSystem delegate; // effectively final after patch context
         private Function<Path, PreInitializePath> factory;
 
-        PreInitializeContextFileSystem(String tmpDir) {
-            this.delegate = newDefaultFileSystem(tmpDir);
+        PreInitializeContextFileSystem() {
+            this.delegate = newDefaultFileSystem(null);
             this.factory = new ImageBuildTimeFactory();
         }
 
@@ -619,7 +619,8 @@ final class FileSystems {
 
         @Override
         public Path getTempDirectory() {
-            return factory.apply(delegate.getTempDirectory());
+            Path tempDirectory = factory instanceof ImageBuildTimeFactory ? ((ImageBuildTimeFactory) factory).getTempDirectory() : delegate.getTempDirectory();
+            return factory.apply(tempDirectory);
         }
 
         @Override
@@ -679,6 +680,21 @@ final class FileSystems {
         private final class ImageBuildTimeFactory extends ImageExecutionTimeFactory {
 
             private final Collection<Reference<PreInitializePath>> emittedPaths = new ArrayList<>();
+            private volatile Path tempDirectory;
+
+            Path getTempDirectory() {
+                Path result = tempDirectory;
+                if (result == null) {
+                    // Preinitialization need not have access to host temporary storage.
+                    String tmpDir = System.getProperty("java.io.tmpdir");
+                    if (tmpDir == null) {
+                        throw new UnsupportedOperationException("Temporary directories not supported");
+                    }
+                    result = delegate.parsePath(tmpDir);
+                    tempDirectory = result;
+                }
+                return result;
+            }
 
             @Override
             public PreInitializePath apply(Path path) {

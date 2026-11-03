@@ -69,7 +69,7 @@ final class StringFormatFeature implements InternalFeature {
          * concurrent map.
          */
         char zeroDigit = seenLocales.computeIfAbsent(locale, l -> DecimalFormatSymbols.getInstance(l).getZeroDigit());
-        EconomicMap<Locale, Character> zeroChars = StringFormat.singleton().zeroChars;
+        EconomicMap<Locale, Character> zeroChars = StringFormat.currentLayer().zeroChars;
         if (zeroDigit != '0' && !zeroChars.containsKey(locale)) {
             zeroChars.put(locale, Character.valueOf(zeroDigit));
         }

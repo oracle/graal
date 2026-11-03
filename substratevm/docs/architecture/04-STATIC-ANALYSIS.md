@@ -18,6 +18,8 @@ The step is responsible for:
 This document describes the main Native Image use case. Web Image and other alternative front ends
 are outside the current scope.
 
+For closure guarantees and extension-policy rules in shared layers and runtime class loading, see [Partially Open World Analysis](PARTIALLY-OPEN-WORLD-ANALYSIS.md).
+
 ## Inputs and Entry State
 
 The static analysis phase receives state prepared by hosted setup:

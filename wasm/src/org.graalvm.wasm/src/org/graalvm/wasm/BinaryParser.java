@@ -841,7 +841,7 @@ public class BinaryParser extends BinaryStreamParser {
             localTypes[index + paramCount] = locals.get(index);
         }
         final BranchHintState branchHintState = branchHintSection == null ? BranchHintState.EMPTY : branchHintSection.stateFor(functionIndex);
-        return readFunction(functionIndex, localTypes, startOffset, endOffset, hasNextFunction, bytecode, codeEntryIndex, null, branchHintState);
+        return readFunction(functionIndex, localTypes, startOffset, endOffset, hasNextFunction, bytecode, codeEntryIndex, null, branchHintState, false);
     }
 
     private IntArrayList readCodeEntryLocals() {
@@ -903,10 +903,12 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private CodeEntry readFunction(int functionIndex, int[] locals, int sourceCodeStartOffset, int sourceCodeEndOffset, boolean hasNextFunction, RuntimeBytecodeGen bytecode,
-                    int codeEntryIndex, EconomicMap<Integer, Integer> offsetToLineIndexMap, BranchHintState branchHintState) {
+                    int codeEntryIndex, EconomicMap<Integer, Integer> offsetToLineIndexMap, BranchHintState branchHintState, boolean hasLegacyCatches) {
         final ParserState state = new ParserState(bytecode, module);
         final ArrayList<CallNode> callNodes = new ArrayList<>();
         final int bytecodeStartOffset = bytecode.location();
+        final int functionSourceCodeStartOffset = offset;
+        boolean hasLoops = false;
         int[] paramTypes = module.function(functionIndex).paramTypes();
         int[] resultTypes = module.function(functionIndex).resultTypes();
         state.enterFunction(paramTypes, resultTypes, locals);
@@ -959,6 +961,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.LOOP: {
+                    hasLoops = true;
                     // Jumps are targeting the loop instruction for OSR.
                     final int[] loopParamTypes;
                     final int[] loopResultTypes;
@@ -982,7 +985,7 @@ public class BinaryParser extends BinaryStreamParser {
                         default -> throw WasmException.create(Failure.DISABLED_MULTI_VALUE);
                     }
                     state.popAll(loopParamTypes);
-                    state.enterLoop(loopParamTypes, loopResultTypes);
+                    state.enterLoop(loopParamTypes, loopResultTypes, hasLegacyCatches);
                     break;
                 }
                 case Instructions.IF: {
@@ -1625,6 +1628,17 @@ public class BinaryParser extends BinaryStreamParser {
                 peek1();
                 fail(Failure.SECTION_SIZE_MISMATCH, "END opcode expected");
             }
+        }
+
+        if (!hasLegacyCatches && hasLoops && state.maxLegacyCatchDepth() != 0) {
+            // A loop can precede the first legacy catch. Re-emit only functions that actually
+            // contain legacy catches, before publishing code-entry metadata. Tail-call flags and
+            // the module's EH-family flags are idempotent; branch-hint consumption must be reset.
+            bytecode.retreatTo(bytecodeStartOffset);
+            offset = functionSourceCodeStartOffset;
+            branchHintState.index = 0;
+            return readFunction(functionIndex, locals, sourceCodeStartOffset, sourceCodeEndOffset, hasNextFunction, bytecode,
+                            codeEntryIndex, offsetToLineIndexMap, branchHintState, true);
         }
 
         if (offsetToLineIndexMap != null) {
@@ -4575,7 +4589,8 @@ public class BinaryParser extends BinaryStreamParser {
         final CodeEntry codeEntry = BytecodeParser.readCodeEntry(module, module.bytecode(), codeEntryIndex);
         offset = module.functionSourceCodeInstructionOffset(functionIndex);
         final int endOffset = module.functionSourceCodeEndOffset(functionIndex);
-        final CodeEntry result = readFunction(functionIndex, codeEntry.localTypes(), offset, endOffset, true, bytecode, codeEntryIndex, offsetToLineIndexMap, BranchHintState.EMPTY);
+        final CodeEntry result = readFunction(functionIndex, codeEntry.localTypes(), offset, endOffset, true, bytecode, codeEntryIndex, offsetToLineIndexMap, BranchHintState.EMPTY,
+                        codeEntry.maxLegacyCatchDepth() != 0);
         return Pair.create(result, bytecode.toArray());
     }
 }

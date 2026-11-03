@@ -38,8 +38,8 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.c.CIsolateData;
-import com.oracle.svm.core.c.CIsolateDataFactory;
+import com.oracle.svm.guest.staging.core.c.CIsolateData;
+import com.oracle.svm.guest.staging.core.c.CIsolateDataFactory;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jni.headers.JNIInvokeInterface;

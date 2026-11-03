@@ -1343,7 +1343,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
         String transitionBciExpr;
         if (parent.model.isBytecodeUpdatable()) {
-            transitionBciExpr = "newBci";
+            transitionBciExpr = parent.castBytecodeIndexToInt("newBci");
         } else {
             transitionBciExpr = BytecodeRootNodeElement.decodeBci("state");
         }
@@ -1351,13 +1351,13 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             b.newLine();
             // When transitioning from uncached to cached we need to update local tags.
             if (!parent.model.isBytecodeUpdatable()) {
-                b.declaration(parent.getBytecodeIndexType(), "currentBci", BytecodeRootNodeElement.decodeBci("state"));
+                b.declaration(type(int.class), "currentBci", BytecodeRootNodeElement.decodeBci("state"));
                 transitionBciExpr = "currentBci";
             }
             b.startIf().string(transitionBciExpr).string(" > 0 && this.getTier().ordinal() < bc.getTier().ordinal()").end().startBlock();
             b.lineComment("Populate cached tags for any locals already stored in the frame.");
 
-            b.startDeclaration(type(int.class), "localCount").startCall("bc.getLocalCount").string(parent.castBytecodeIndexToInt(transitionBciExpr)).end(2);
+            b.startDeclaration(type(int.class), "localCount").startCall("bc.getLocalCount").string(transitionBciExpr).end(2);
             b.startFor().string("int localOffset = 0; localOffset < localCount; localOffset++").end().startBlock();
             b.startIf().startCall("FRAMES.getTag").string("frame").string(BytecodeRootNodeElement.USER_LOCALS_START_INDEX + " + localOffset").end().string(" == ").staticReference(
                             parent.frameTagsElement.getIllegal()).end().startBlock();
@@ -1366,10 +1366,10 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             b.end();
 
             b.startStatement().startCall("bc.setLocalValue");
-            b.string(parent.castBytecodeIndexToInt(transitionBciExpr));
+            b.string(transitionBciExpr);
             b.string("frame");
             b.string("localOffset");
-            b.startCall("bc.getLocalValue").string(parent.castBytecodeIndexToInt(transitionBciExpr)).string("frame").string("localOffset").end();
+            b.startCall("bc.getLocalValue").string(transitionBciExpr).string("frame").string("localOffset").end();
             b.end(2);
             b.end();
             b.end();
@@ -1384,7 +1384,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.string("this");
         b.string(BytecodeRootNodeElement.decodeBci("state"));
         b.string("bc");
-        b.string(parent.castBytecodeIndexToInt(transitionBciExpr));
+        b.string(transitionBciExpr);
         b.string("wasCompiled");
         b.end(2); // createTransition + declaration
 

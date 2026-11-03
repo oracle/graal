@@ -65,10 +65,12 @@ meth public static boolean injectBranchProbability(double,boolean)
 meth public static boolean isCompilationConstant(java.lang.Object)
 meth public static boolean isExact(java.lang.Object,java.lang.Class<?>)
 meth public static boolean isPartialEvaluationConstant(java.lang.Object)
+meth public static int mergeExplodeKey(int)
 meth public static java.lang.RuntimeException shouldNotReachHere()
 meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.String)
 meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.String,java.lang.Throwable)
 meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.Throwable)
+meth public static long mergeExplodeKey(long)
 meth public static void bailout(java.lang.String)
 meth public static void blackhole(boolean)
 meth public static void blackhole(byte)
@@ -86,8 +88,6 @@ meth public static void materialize(java.lang.Object)
 meth public static void preserveFrameStateHere()
 meth public static void transferToInterpreter()
 meth public static void transferToInterpreterAndInvalidate()
-meth public static int mergeExplodeKey(int)
-meth public static long mergeExplodeKey(long)
 supr java.lang.Object
 hcls ShouldNotReachHere
 
@@ -818,6 +818,7 @@ meth public abstract org.graalvm.polyglot.SandboxPolicy getSandboxPolicy(java.la
 
 CLSS public final com.oracle.truffle.api.TruffleOptions
 fld public final static boolean AOT
+fld public final static boolean DetailedAssertions
 fld public final static boolean DetailedRewriteReasons
 fld public final static boolean TraceRewrites
 fld public final static com.oracle.truffle.api.nodes.NodeCost TraceRewritesFilterFromCost

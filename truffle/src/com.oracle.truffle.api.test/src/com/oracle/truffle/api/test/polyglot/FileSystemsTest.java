@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -3165,9 +3165,9 @@ public class FileSystemsTest {
 
     private static FileSystem createPreInitializeContextFileSystem() throws ReflectiveOperationException {
         Class<? extends FileSystem> clazz = Class.forName("com.oracle.truffle.polyglot.FileSystems$PreInitializeContextFileSystem").asSubclass(FileSystem.class);
-        Constructor<? extends FileSystem> init = clazz.getDeclaredConstructor(String.class);
+        Constructor<? extends FileSystem> init = clazz.getDeclaredConstructor();
         ReflectionUtils.setAccessible(init, true);
-        return init.newInstance(System.getProperty("java.io.tmpdir"));
+        return init.newInstance();
     }
 
     private static void switchToImageExecutionTime(FileSystem fileSystem, Path cwd) throws ReflectiveOperationException {

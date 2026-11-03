@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.lang.reflect.Field;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
 
 import sun.misc.Unsafe;
 
@@ -179,7 +180,7 @@ final class TStringUnsafe {
         UNSAFE.putInt(ret, javaStringHashFieldOffset, hash);
         UNSAFE.putByte(ret, javaStringCoderFieldOffset, (byte) stride);
         UNSAFE.putObjectVolatile(ret, javaStringValueFieldOffset, bytes);
-        assert checkUnsafeStringResult(bytes, stride, ret);
+        assert !TruffleOptions.DetailedAssertions || checkUnsafeStringResult(bytes, stride, ret);
         return ret;
     }
 

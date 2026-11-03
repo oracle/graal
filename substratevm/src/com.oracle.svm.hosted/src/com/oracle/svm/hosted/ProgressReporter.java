@@ -387,10 +387,10 @@ public class ProgressReporter {
         OptionValues hostedOptionValues = HostedOptionValues.singleton().get();
         var hostedOptionValuesMap = hostedOptionValues.getMap();
         for (OptionKey<?> option : hostedOptionValuesMap.getKeys()) {
-            if (option instanceof RuntimeOptionKey || option == SubstrateOptions.UnlockExperimentalVMOptions || option.getDescriptor().getStability() != OptionStability.EXPERIMENTAL) {
+            OptionDescriptor descriptor = option.getDescriptor();
+            if (option instanceof RuntimeOptionKey || option == SubstrateOptions.UnlockExperimentalVMOptions || descriptor == null || descriptor.getStability() != OptionStability.EXPERIMENTAL) {
                 continue;
             }
-            OptionDescriptor descriptor = option.getDescriptor();
             Object optionValue = option.getValue(hostedOptionValues);
             String emptyOrBooleanValue = "";
             if (descriptor.getOptionValueType() == Boolean.class) {

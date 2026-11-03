@@ -28,7 +28,7 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
@@ -112,8 +112,9 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
          * This currently only means that we don't support setting custom values for
          * java.lang.ScopedValue.cacheSize at runtime.
          */
-        RuntimeClassInitialization.initializeAtBuildTime("java.lang.ScopedValue");
-        RuntimeClassInitialization.initializeAtBuildTime("java.lang.ScopedValue$Cache");
+        JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
+        rci.initializeAtBuildTime("java.lang.ScopedValue");
+        rci.initializeAtBuildTime("java.lang.ScopedValue$Cache");
     }
 
     @Override

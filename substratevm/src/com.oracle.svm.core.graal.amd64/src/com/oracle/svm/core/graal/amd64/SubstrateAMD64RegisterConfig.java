@@ -76,8 +76,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.jvmci.shared.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
@@ -309,7 +309,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
              * argument. In the meantime, we put it in a scratch register. r10 contains the target,
              * rax the number of vector args, so r11 is the only scratch register left.
              */
-            JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, parameterTypes[0], metaAccess, target);
+            JavaKind kind = ObjectLayoutCompilerSupport.getCallSignatureKind(isEntryPoint, parameterTypes[0], metaAccess, target);
             kinds[0] = kind;
             ValueKind<?> paramValueKind = valueKindFactory.getValueKind(isEntryPoint ? kind : kind.getStackKind());
             locations[0] = r11.asValue(paramValueKind);
@@ -320,7 +320,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             int currentXMM = 0;
 
             for (int i = firstActualArgument; i < parameterTypes.length; i++) {
-                JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, parameterTypes[i], metaAccess, target);
+                JavaKind kind = ObjectLayoutCompilerSupport.getCallSignatureKind(isEntryPoint, parameterTypes[i], metaAccess, target);
                 kinds[i] = kind;
 
                 if (type.nativeABI() && Platform.includedIn(InternalPlatform.WINDOWS_BASE.class)) {
@@ -382,7 +382,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             VMError.guarantee(parameterTypes.length == type.fixedParameterAssignment.length, "Parameters/assignments size mismatch.");
 
             for (int i = firstActualArgument; i < locations.length; i++) {
-                JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, parameterTypes[i], metaAccess, target);
+                JavaKind kind = ObjectLayoutCompilerSupport.getCallSignatureKind(isEntryPoint, parameterTypes[i], metaAccess, target);
                 kinds[i] = kind;
 
                 ValueKind<?> paramValueKind = valueKindFactory.getValueKind(isEntryPoint ? kind : kind.getStackKind());
@@ -434,7 +434,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             }
         }
 
-        JavaKind returnKind = returnType == null ? JavaKind.Void : ObjectLayout.getCallSignatureKind(isEntryPoint, returnType, metaAccess, target);
+        JavaKind returnKind = returnType == null ? JavaKind.Void : ObjectLayoutCompilerSupport.getCallSignatureKind(isEntryPoint, returnType, metaAccess, target);
         AllocatableValue returnLocation = Value.ILLEGAL;
         if (returnKind != JavaKind.Void) {
             ValueKind<?> returnValueKind = valueKindFactory.getValueKind(returnKind.getStackKind());

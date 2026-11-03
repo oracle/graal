@@ -40,7 +40,10 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame.DeoptTargetTier;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
+import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.interpreter.InterpreterFrame;
 import com.oracle.svm.interpreter.RistrettoInterpreterSupport;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
@@ -60,10 +63,14 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.LineNumberTable;
 
 /** Implements the optional Ristretto services consumed by the base interpreter. */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, other = DisallowLayered.class)
 final class RistrettoInterpreterSupportImpl implements RistrettoInterpreterSupport {
+    /// Limits method names written to crash logs without allocating an intermediate string.
+    private static final int MAX_SYMBOL_LOG_LENGTH = 255;
+
     @Override
     @AlwaysInline("Keep the compilation-disabled interpreter entry call-free")
     public MethodProfile profileMethodEntry(InterpreterResolvedJavaMethod method) {
@@ -162,6 +169,49 @@ final class RistrettoInterpreterSupportImpl implements RistrettoInterpreterSuppo
         InterpreterResolvedJavaMethod interpretedMethod = rMethod.getInterpreterMethod();
         int flags = FrameSourceInfo.MethodFlags.computeSourceMethodFlags(interpretedMethod.getModifiers(), interpretedMethod.isHidden(), interpretedMethod.isLambdaFormCompiled());
         return InterpreterFrameSourceInfo.forInterpretedMethod(interpretedMethod, frameInfo.getBci(), flags);
+    }
+
+    @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used for crash log")
+    public boolean logRistrettoFrame(Log log, FrameInfoQueryResult frameInfo) {
+        if (frameInfo.getSourceClass() != null || !(frameInfo.getDeoptMethod() instanceof RistrettoMethod rMethod)) {
+            return false;
+        }
+
+        InterpreterResolvedJavaMethod interpretedMethod = rMethod.getInterpreterMethod();
+        int bci = frameInfo.getBci();
+        LineNumberTable lineNumberTable = interpretedMethod.getLineNumberTable();
+        int lineNumber = lineNumberTable != null && bci >= 0 ? lineNumberTable.getLineNumber(bci) : -1;
+
+        log.string(interpretedMethod.getDeclaringClass().getJavaClass().getName()).character('.');
+        logSymbol(log, interpretedMethod.getSymbolicName());
+        if (frameInfo.isDeoptEntry()) {
+            log.string("**");
+        }
+        log.character('(');
+        String sourceFileName = interpretedMethod.getDeclaringClass().getSourceFileName();
+        if (sourceFileName != null) {
+            log.string(sourceFileName);
+            if (lineNumber >= 0) {
+                log.character(':').signed(lineNumber);
+            }
+        } else {
+            log.string("Unknown Source");
+        }
+        log.character(')');
+        return true;
+    }
+
+    /// Writes a method name directly from its symbol to avoid allocating while printing a stack.
+    private static void logSymbol(Log log, ByteSequence symbol) {
+        int length = Math.min(symbol.length(), MAX_SYMBOL_LOG_LENGTH);
+        for (int i = 0; i < length; i++) {
+            int b = symbol.unsignedByteAt(i);
+            log.character(0x20 <= b && b <= 0x7e ? (char) b : '?');
+        }
+        if (symbol.length() > MAX_SYMBOL_LOG_LENGTH) {
+            log.string("...");
+        }
     }
 
     @Override

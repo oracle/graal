@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.webimage.WebImageCodeCache;
@@ -128,7 +128,7 @@ public class WebImageWasmGCCodeGen extends WebImageWasmCodeGen {
                             MethodPointer methodPointer = methodPointerConstant.pointer();
                             int funtableIndex = getFunctionTableIndex(methodPointer);
                             relocation.setValue(Instruction.Const.forLong(funtableIndex));
-                            relocation.setComment(methodPointer.getMethod().format("Method pointer for: %H.%n(%P)"));
+                            relocation.setComment(methodPointerConstant.getMethod().format("Method pointer for: %H.%n(%P)"));
                         }
                         case WasmFunctionIdConstant functionIdConstant -> {
                             WasmId.Func function = functionIdConstant.function();

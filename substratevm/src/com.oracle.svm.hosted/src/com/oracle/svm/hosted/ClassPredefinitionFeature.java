@@ -54,7 +54,8 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.configure.ConfigurationFile;
@@ -133,7 +134,7 @@ public class ClassPredefinitionFeature implements InternalFeature {
                  * which are initialized during the image build if they are used in an annotation.
                  */
                 if (!record.definedClass.isAnnotation() && !record.definedClass.isEnum()) {
-                    RuntimeClassInitialization.initializeAtRunTime(record.definedClass);
+                    JVMCIRuntimeClassInitializationSupport.singleton().initializeAtRunTime(GuestAccess.get().lookupType(record.definedClass));
                 }
             } else if (record.pendingSubtypes != null) {
                 StringBuilder msg = new StringBuilder();

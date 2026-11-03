@@ -65,6 +65,12 @@ public class RistrettoParser extends BytecodeParser {
         return cachedMetaAccess;
     }
 
+    /// Keeps the symbolic interface receiver check before a call is devirtualized or inlined.
+    @Override
+    protected boolean needsIncompatibleClassChangeErrorCheck() {
+        return true;
+    }
+
     /**
      * Do not apply ordinary invocation plugins while parsing a bytecode in an exception-handler
      * range. Ristretto needs the normal invoke path here because it explicitly creates the invoke's

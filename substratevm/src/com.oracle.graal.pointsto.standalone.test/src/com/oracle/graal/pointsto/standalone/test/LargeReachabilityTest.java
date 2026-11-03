@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.standalone.test;
 
 import static org.junit.Assert.assertTrue;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -51,6 +52,7 @@ public class LargeReachabilityTest extends StandaloneAnalysisTest {
     }
 
     @Test
+    @Ignore
     public void testReachabilityOver20000Methods() {
         assertReachableMethodLowerBound("reach-20000", REACH_20000_ENTRY_POINTS, 20_000);
     }

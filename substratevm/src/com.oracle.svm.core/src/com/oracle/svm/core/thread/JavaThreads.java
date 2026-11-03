@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.imagelayer.LastImageBuildPredicate;
 import com.oracle.svm.core.jdk.StackTraceUtils;
+import com.oracle.svm.core.jdk.Target_jdk_internal_misc_VM;
 import com.oracle.svm.core.jni.JNIThreadLocalPendingException;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackFrameVisitor;
@@ -55,6 +56,7 @@ import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
@@ -346,14 +348,21 @@ public final class JavaThreads {
         tjlt.holder = new Target_java_lang_Thread_FieldHolder(group, target, stackSize, priority, daemon);
     }
 
+    /// Initializes inherited thread locals and applies the JDK's context class loader boot policy.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/java.base/share/classes/java/lang/Thread.java#L686-L732")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/java.base/share/classes/java/lang/Thread.java#L741-L769")
     static void initNewThreadLocalsAndLoader(Target_java_lang_Thread tjlt, boolean inheritThreadLocals, Thread parent) {
+        // Only platform threads defer context loader initialization until VM boot completes.
+        boolean initializeContextClassLoader = Target_jdk_internal_misc_VM.isBooted() || fromTarget(tjlt).isVirtual();
         if (inheritThreadLocals) {
             Target_java_lang_ThreadLocal_ThreadLocalMap parentMap = toTarget(parent).inheritableThreadLocals;
             if (parentMap != null && parentMap.size() > 0) {
                 tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal.createInheritedMap(parentMap);
             }
-            tjlt.contextClassLoader = parent.getContextClassLoader();
-        } else {
+            if (initializeContextClassLoader) {
+                tjlt.contextClassLoader = parent.getContextClassLoader();
+            }
+        } else if (initializeContextClassLoader) {
             tjlt.contextClassLoader = ClassLoader.getSystemClassLoader();
         }
     }

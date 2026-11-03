@@ -47,7 +47,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.c.BooleanPointer;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.GenScavengeAllocationSupport;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;

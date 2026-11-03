@@ -50,7 +50,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.ExtensionPolicy;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.shared.BuildPhaseProvider;
@@ -111,8 +111,8 @@ public final class ImageClassLoader {
     /**
      * Modules containing SVM runtime code rather than application code. Membership in this set is used
      * by {@link SVMHost#isCoreType(ResolvedJavaType)} to classify SVM runtime types. In an open type
-     * world, {@link PointsToAnalysis#isClosed(AnalysisType)} treats their type hierarchies as closed,
-     * {@link PointsToAnalysis#isClosed(ResolvedJavaField)} treats their fields as closed by default, and
+     * world, {@link ExtensionPolicy#isTypeClosed(AnalysisType)} treats their type hierarchies as closed,
+     * {@link ExtensionPolicy#isFieldClosed(ResolvedJavaField)} treats their fields as closed by default, and
      * {@link MethodFlowsGraph} excludes their methods from open-world saturation.
      * <p>
      * In layered builds, {@link ExtensionLayerImageFeature} requires these types and their subtypes to

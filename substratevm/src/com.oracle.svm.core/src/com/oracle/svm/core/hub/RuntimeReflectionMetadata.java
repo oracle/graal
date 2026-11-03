@@ -33,14 +33,14 @@ import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaRecordComponent;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
-import com.oracle.svm.core.reflect.target.ReflectionObjectFactory;
+import com.oracle.svm.guest.staging.reflect.target.ReflectionObjectFactory;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.vm.ci.meta.JavaType;

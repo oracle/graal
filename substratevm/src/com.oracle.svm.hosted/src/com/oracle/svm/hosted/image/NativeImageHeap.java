@@ -64,7 +64,8 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -79,7 +80,8 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.strings.StringInternSupport;
-import com.oracle.svm.core.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.HostedConfiguration;
@@ -196,7 +198,7 @@ public final class NativeImageHeap implements ImageHeap {
 
         this.minInstanceSize = objectLayout.getMinImageHeapInstanceSize();
         this.minArraySize = objectLayout.getMinImageHeapArraySize();
-        this.fillerArrayBaseOffset = objectLayout.getArrayBaseOffset(JavaKind.Int);
+        this.fillerArrayBaseOffset = ObjectLayoutCompilerSupport.getArrayBaseOffset(objectLayout, JavaKind.Int);
         assert assertFillerObjectSizes();
 
         dynamicHubLayout = DynamicHubLayout.singleton();
@@ -534,7 +536,7 @@ public final class NativeImageHeap implements ImageHeap {
     public int countPatchAndVerifyDynamicHubs() {
         byte[] refMap = DynamicHubSupport.currentLayer().getReferenceMapEncoding();
         ObjectInfo refMapInfo = getObjectInfo(refMap);
-        long currentLayerRefMapDataStart = refMapInfo.getOffset() + ObjectLayout.singleton().getArrayBaseOffset(JavaKind.Byte);
+        long currentLayerRefMapDataStart = refMapInfo.getOffset() + ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.Byte);
 
         ObjectHeader objHeader = Heap.getHeap().getObjectHeader();
         int count = 0;
@@ -560,10 +562,10 @@ public final class NativeImageHeap implements ImageHeap {
     @Override
     public ObjectInfo addFillerObject(int size) {
         if (size >= minArraySize) {
-            int elementSize = objectLayout.getArrayIndexScale(JavaKind.Int);
+            int elementSize = ObjectLayoutCompilerSupport.getArrayIndexScale(objectLayout, JavaKind.Int);
             assert fillerArrayBaseOffset % elementSize == 0;
             int arrayLength = (size - fillerArrayBaseOffset) / elementSize;
-            assert objectLayout.getArraySize(JavaKind.Int, arrayLength, true) == size;
+            assert ObjectLayoutCompilerSupport.getArraySize(objectLayout, JavaKind.Int, arrayLength, true) == size;
             return addLateToImageHeap(new int[arrayLength], reasonSupport.fillerObject());
         } else if (size >= minInstanceSize) {
             return addLateToImageHeap(new FillerObject(), reasonSupport.fillerObject());
@@ -573,7 +575,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private boolean assertFillerObjectSizes() {
-        assert minArraySize == objectLayout.getArraySize(JavaKind.Int, 0, true);
+        assert minArraySize == ObjectLayoutCompilerSupport.getArraySize(objectLayout, JavaKind.Int, 0, true);
 
         HostedType filler = hMetaAccess.lookupJavaType(FillerObject.class);
         UnsignedWord fillerSize = LayoutEncoding.getPureInstanceSize(filler.getHub(), true);
@@ -750,7 +752,7 @@ public final class NativeImageHeap implements ImageHeap {
         } else if (type.isArray()) {
             HostedArrayClass clazz = (HostedArrayClass) type;
             int length = hConstantReflection.readArrayLength(constant);
-            final long size = objectLayout.getArraySize(type.getComponentType().getStorageKind(), length, true);
+            final long size = ObjectLayoutCompilerSupport.getArraySize(objectLayout, type.getComponentType().getStorageKind(), length, true);
             info = addToImageHeap(constant, clazz, size, identityHashCode, reason);
             Object addReason = reasonSupport.reasonForInfo(info);
             if (processBaseLayerConstant(constant, info)) {
@@ -800,7 +802,7 @@ public final class NativeImageHeap implements ImageHeap {
                 // Need to adjust to reflect displacement between code base and layer's text section
                 return true;
             }
-            ResolvedJavaMethod method = methodOffset.getMethod();
+            ResolvedJavaMethod method = MethodRefSupport.getMethod(methodOffset);
             HostedMethod hMethod = (method instanceof HostedMethod) ? (HostedMethod) method : hUniverse.lookup(method);
             if (NativeImage.isInjectedNotCompiled(hMethod)) {
                 // References code in another (maybe future) layer, which must be patched at runtime
@@ -923,7 +925,7 @@ public final class NativeImageHeap implements ImageHeap {
             assert !HostedConfiguration.isArrayLikeLayout(clazz) : type;
             return LayoutEncoding.getPureInstanceSize(clazz.getHub(), true).rawValue();
         } else if (type.isArray()) {
-            return objectLayout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(object), true);
+            return ObjectLayoutCompilerSupport.getArraySize(objectLayout, type.getComponentType().getStorageKind(), Array.getLength(object), true);
         } else {
             throw shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
         }

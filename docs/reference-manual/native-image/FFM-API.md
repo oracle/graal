@@ -394,6 +394,11 @@ To create the downcall and upcall at run time, you need to provide a foreign con
 If the _target method_ of an upcall is a static method, use a `directUpcall` for better performance.
 This creates an optimized variant of the upcall stub that's usually much faster and should be preferred.
 
+Direct upcalls are used only when the registered function descriptor matches the descriptor passed to `Linker.upcallStub`, ignoring layout names.
+Foreign configuration files represent pointers as `void*` and cannot specify pointer target layouts.
+To use a direct upcall with `AddressLayout.withTargetLayout(...)`, register the descriptor programmatically in a [custom feature](#register-stubs-in-a-custom-feature).
+If no matching direct upcall is registered, Native Image invokes the callback through its runtime method handle using the regular upcall stub registered for that native calling convention.
+
 ```json
 {
   "foreign": {

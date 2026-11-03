@@ -41,7 +41,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -215,7 +216,8 @@ class JRTFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (JRTSupport.Options.AllowJRTFileSystem.getValue()) {
-            RuntimeClassInitialization.initializeAtRunTime(ReflectionUtil.lookupClass("jdk.internal.jrtfs.SystemImage"));
+            Class<?> systemImage = ReflectionUtil.lookupClass("jdk.internal.jrtfs.SystemImage");
+            JVMCIRuntimeClassInitializationSupport.singleton().initializeAtRunTime(GuestAccess.get().lookupType(systemImage));
         } else {
             ServiceCatalogSupport.singleton().removeServicesFromServicesCatalog("java.nio.file.spi.FileSystemProvider", Set.of("jdk.internal.jrtfs.JrtFileSystemProvider"));
         }

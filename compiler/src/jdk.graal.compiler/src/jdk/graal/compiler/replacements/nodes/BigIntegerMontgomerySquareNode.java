@@ -120,6 +120,11 @@ public class BigIntegerMontgomerySquareNode extends MemoryKillStubIntrinsicNode 
     }
 
     @Override
+    public boolean needsExplicitZeroExtension(Architecture arch) {
+        return false;
+    }
+
+    @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         gen.getLIRGeneratorTool().emitBigIntegerMontgomerySquare(gen.operand(a),
                         gen.operand(n),

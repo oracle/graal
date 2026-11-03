@@ -88,7 +88,12 @@ public class ExecuteVMOperationEvent {
             return null;
         }
 
-        Thread mountedVThread = PlatformThreads.getMountedVirtualThread(thread);
+        /*
+         * The requesting platform thread waits in VM-internal code until this VM operation
+         * completes. This wait does not unmount its virtual thread, so we can read the mounted
+         * virtual thread without requiring a safepoint.
+         */
+        Thread mountedVThread = PlatformThreads.getMountedVirtualThreadUnsafe(thread);
         if (mountedVThread != null) {
             return mountedVThread;
         }

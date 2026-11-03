@@ -27,10 +27,10 @@ package com.oracle.svm.core.reflect;
 import java.lang.reflect.Field;
 
 import com.oracle.svm.configure.config.ConfigurationMemberInfo;
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.metadata.MetadataTracer;
-import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
-import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
+import com.oracle.svm.guest.staging.reflect.target.Target_java_lang_reflect_AccessibleObject;
+import com.oracle.svm.guest.staging.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
 public class UnsafeFieldUtil {

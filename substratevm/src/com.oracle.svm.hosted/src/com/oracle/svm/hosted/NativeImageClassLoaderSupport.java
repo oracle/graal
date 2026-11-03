@@ -514,9 +514,6 @@ public final class NativeImageClassLoaderSupport {
 
     public HostedOptionParser setupHostedOptionParser(List<String> arguments, Predicate<OptionDescriptors> builderOptionFilter) {
         var optionParser = new HostedOptionParser(getClassLoader(), arguments, builderOptionFilter);
-        // Explicitly set the default value of Optimize as it can modify the default values of other
-        // options
-        SubstrateOptions.Optimize.update(optionParser.getHostedValues(), SubstrateOptions.Optimize.getDefaultValue());
         remainingArguments = Collections.unmodifiableList((optionParser.parse()));
 
         /*

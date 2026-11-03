@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.pltgot;
 import java.util.function.Predicate;
 
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.hosted.image.MethodPointerRelocationProvider;
 import com.oracle.svm.hosted.meta.HostedMethod;

@@ -35,9 +35,9 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.graal.pointsto.ExtensionPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
@@ -468,44 +468,27 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     }
 
     /**
-     * For open world analysis saturate all the formal parameters and the returns from virtual
-     * invokes for all methods that can be directly accessible from the open world. This doesn't
-     * include methods in core VM classes.
+     * Seed external method entries and results of calls that may target extension code. A method
+     * whose entry is covered by analyzed callers can still invoke an extension callback.
      */
     void saturateForOpenTypeWorld(PointsToAnalysis bb) {
-        /*
-         * Skip methods declared in core VM types. The core is not extensible from the open world,
-         * and it should not be invoked directly.
-         */
-        AnalysisType declaringClass = method.getDeclaringClass();
-        if (bb.getHostVM().isCoreType(declaringClass)) {
-            return;
-        }
-
-        for (TypeFlow<?> parameter : getParameters()) {
-            if (parameter != null && parameter.canSaturate(bb)) {
-                parameter.enableFlow(bb);
-                parameter.onSaturated(bb);
+        ExtensionPolicy extensionPolicy = bb.getExtensionPolicy();
+        if (!extensionPolicy.isMethodEntryClosed(method)) {
+            for (TypeFlow<?> parameter : getParameters()) {
+                if (parameter != null && parameter.canSaturate(bb)) {
+                    parameter.enableFlow(bb);
+                    parameter.onSaturated(bb);
+                }
             }
         }
 
         /*
-         * Saturate the return of invokes that could return new types from the open world or that
-         * can only be invoked on open world receiver types. This applies to virtual invokes which
-         * may link to open world callees. It also applies to special invokes to target methods
-         * declared in abstract types: since the type may only be implemented in the open world the
-         * invokes may not otherwise be linked during analysis. In predicated points-to analysis
-         * this matters also for void methods since their successful execution (modeled by an
-         * ActualReturnTypeFlow) predicates subsequents statements in the caller. However, returns
-         * from methods that cannot be overwritten, i.e., the receiver type is closed, are not
-         * saturated. Similarly, we don't need to saturate the return of static invokes or the
-         * return of special invokes to methods in concrete classes since the analysis will resolve
-         * the concrete callee, and it will analyze it.
+         * An analyzed caller can pass an extension callback into a method with a closed entry.
+         * Account for the callback's results and normal continuation independently of entry seeding,
+         * even when no callback implementation is analyzed. This includes void-call return predicates.
          */
         for (InvokeTypeFlow invokeTypeFlow : getInvokes()) {
-            AnalysisType receiverType = invokeTypeFlow.getReceiverType();
-            if ((invokeTypeFlow.isDirectInvoke() && receiverType != null && receiverType.isAbstract() ||
-                            !invokeTypeFlow.isDirectInvoke()) && !bb.isClosed(receiverType)) {
+            if (extensionPolicy.requiresOpenInvokeResult(invokeTypeFlow.getReceiverType(), invokeTypeFlow.isDirectInvoke())) {
                 invokeTypeFlow.saturateForOpenTypeWorld(bb);
             }
         }

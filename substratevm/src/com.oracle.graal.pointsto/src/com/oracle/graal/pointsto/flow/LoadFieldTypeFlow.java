@@ -146,7 +146,7 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            if (bb.isClosed(field.getDeclaringClass())) {
+            if (bb.getExtensionPolicy().isTypeClosed(field.getDeclaringClass())) {
                 /*
                  * If the field declaring class is closed and the receiver flow saturates start
                  * observing the flow of the declaring class, unless the load is already saturated.

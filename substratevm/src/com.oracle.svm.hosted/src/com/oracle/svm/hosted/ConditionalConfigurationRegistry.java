@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 public abstract class ConditionalConfigurationRegistry {
@@ -80,7 +81,7 @@ public abstract class ConditionalConfigurationRegistry {
              * too late to register types for reached tracking. If the type is never reached, there
              * is no damage as subtypes will also never be reached.
              */
-            ClassInitializationSupport.singleton().addForTypeReachedTracking(reachabilityCondition.getType());
+            ClassInitializationSupport.singleton().addForTypeReachedTracking(GuestAccess.get().lookupType(reachabilityCondition.getType()));
         }
         if (reachabilityCondition.isAlwaysTrue()) {
             /* analysis optimization to include new types as early as possible */

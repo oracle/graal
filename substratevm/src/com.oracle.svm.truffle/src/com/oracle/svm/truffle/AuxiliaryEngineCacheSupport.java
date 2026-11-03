@@ -60,6 +60,7 @@ import com.oracle.svm.core.auximage.AuxiliaryImageObjectReplacer;
 import com.oracle.svm.core.auximage.AuxiliaryImagePersistenceCallback;
 import com.oracle.svm.core.auximage.AuxiliaryImagePersistenceCancelledException;
 import com.oracle.svm.core.auximage.MaximumAuxiliaryImageSizeExceededException;
+import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLogger;
@@ -68,6 +69,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.runtime.AbstractEngineCacheSupport;
 import com.oracle.truffle.runtime.EngineData;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 
 import jdk.graal.compiler.debug.TTY;
 
@@ -243,6 +245,18 @@ public final class AuxiliaryEngineCacheSupport extends AbstractEngineCacheSuppor
             e.putEngineLocal(EngineRoot.class, cachedEngine);
             loadingEngine.set(null);
             e.mergeLoadedSources(cachedEngine.getSources());
+            for (CallTarget callTarget : cachedEngine.getCallTargets()) {
+                OptimizedCallTarget target = (OptimizedCallTarget) callTarget;
+                if (target.isValid()) {
+                    /*
+                     * Restored code can execute without creating a fresh target or requesting a
+                     * compilation. Initialize its listeners and deoptimization tracing now that
+                     * the engine's options and logging have been patched.
+                     */
+                    ((SubstrateTruffleRuntime) OptimizedTruffleRuntime.getRuntime()).ensureInitializedAtRuntime(target);
+                    break;
+                }
+            }
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreInstanceFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 
@@ -116,20 +117,75 @@ public class PointsToAnalysisField extends AnalysisField {
     }
 
     @Override
-    public void injectDeclaredType() {
-        var bb = getUniverse().getBigbang();
+    public void injectConservativeFieldValues() {
+        if (getStorageKind().isObject()) {
+            injectConservativeFieldValues(List.of(initialFlow.getDeclaredType()), true);
+        } else {
+            injectFieldValueBound();
+        }
+    }
+
+    @Override
+    public void injectConservativeFieldValues(List<AnalysisType> customBounds, boolean canBeNull) {
+        assert getStorageKind().isObject();
+        var bb = (PointsToAnalysis) getUniverse().getBigbang();
+        var effectiveBound = initialFlow.getDeclaredType();
+        if (canBeNull) {
+            initialFlow.addState(bb, TypeState.forNull());
+        }
+        for (AnalysisType valueBound : customBounds) {
+            assert !valueBound.isPrimitive() && !valueBound.isWordType() : valueBound;
+            assert effectiveBound.isAssignableFrom(valueBound) : "Custom bound must be assignable to the effective field bound: field: " + this +
+                            " | effective bound: " + effectiveBound + " | custom bound: " + valueBound;
+            injectBoundValues(bb, valueBound, initialFlow, false);
+            injectArrayContents(bb, valueBound);
+        }
+    }
+
+    @Override
+    public void injectFieldValueBound() {
+        var bb = (PointsToAnalysis) getUniverse().getBigbang();
         if (!bb.isSupportedJavaKind(getStorageKind())) {
-            /*
-             * If this JavaKind is not tracked by the analysis, there is no point in inserting any
-             * state into the field.
-             */
+            /* There is no point in inserting state for a kind not tracked by the analysis. */
             return;
         }
         if (getStorageKind().isObject()) {
-            bb.injectFieldTypes(this, List.of(this.getType()), true);
+            injectBoundValues(bb, initialFlow.getDeclaredType(), initialFlow, true);
         } else {
             this.saturatePrimitiveField();
         }
+    }
+
+    private static void injectBoundValues(PointsToAnalysis bb, AnalysisType valueBound, TypeFlow<?> flow, boolean canBeNull) {
+        if (bb.getExtensionPolicy().isTypeClosed(valueBound)) {
+            // A closed bound has a complete assignable-type hierarchy.
+            valueBound.getTypeFlow(bb, canBeNull).addUse(bb, flow);
+        } else {
+            // An open bound must include values whose runtime types are not yet known.
+            bb.getPreSaturatedSourceTypeFlow().addUse(bb, flow);
+        }
+    }
+
+    /**
+     * Summarizes reference-array contents along the bound's declared dimensions, using Object[] for
+     * a supertype such as Object, Cloneable, or Serializable. When array flow aliasing is disabled,
+     * concrete arrays admitted by generic or covariant bounds require separate coverage (GR-80697).
+     */
+    private static void injectArrayContents(PointsToAnalysis bb, AnalysisType valueBound) {
+        AnalysisType arrayType = valueBound.isArray() ? valueBound : bb.getObjectType().getArrayClass();
+        if (!valueBound.isAssignableFrom(arrayType)) {
+            return;
+        }
+        do {
+            AnalysisType componentType = arrayType.getComponentType();
+            if (componentType.isPrimitive() || componentType.isWordType()) {
+                break;
+            }
+            var elements = arrayType.getContextInsensitiveAnalysisObject().getArrayElementsFlow(bb, true);
+            injectBoundValues(bb, componentType, elements, true);
+            // Each nested array dimension needs its component values.
+            arrayType = componentType;
+        } while (arrayType.isArray());
     }
 
     @Override
@@ -143,6 +199,17 @@ public class PointsToAnalysisField extends AnalysisField {
     @Override
     public boolean registerAsUnsafeAccessed(Object reason) {
         if (super.registerAsUnsafeAccessed(reason)) {
+            var bb = (PointsToAnalysis) getUniverse().getBigbang();
+            if (bb.analysisPolicy().useConservativeUnsafeAccess()) {
+                /*
+                 * Conservative unsafe stores have no value flow. An unsafe store in analyzed code
+                 * can write an extension value into a field that extensions cannot write directly.
+                 * An open value bound therefore requires saturation, independently of the field
+                 * classification and the saturation cutoff, so ordinary reads account for unknown
+                 * runtime types.
+                 */
+                injectConservativeFieldValues();
+            }
             if (fieldType.getStorageKind().isPrimitive()) {
                 /*
                  * Primitive type states are not propagated through unsafe loads/stores. Instead,
@@ -151,7 +218,7 @@ public class PointsToAnalysisField extends AnalysisField {
                  */
                 saturatePrimitiveField();
             }
-            ((PointsToAnalysis) getUniverse().getBigbang()).forceUnsafeUpdate();
+            bb.forceUnsafeUpdate();
             return true;
         }
         return false;

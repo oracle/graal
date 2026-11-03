@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,6 +81,9 @@ public interface NodeLIRBuilderTool extends NodeValueMap {
     void visitFullInfopointNode(FullInfopointNode i);
 
     LIRGeneratorTool getLIRGeneratorTool();
+
+    /** Whether narrowing on this target can leave upper register bits unchanged. */
+    boolean narrowsUseCastValue();
 
     void emitOverflowCheckBranch(AbstractBeginNode overflowSuccessor, AbstractBeginNode next, Stamp compareStamp, double probability);
 

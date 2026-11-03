@@ -85,6 +85,8 @@ public interface PersistedAnalysisMethodData {
 
         void setAnalysisGraphIsIntrinsic(boolean value);
 
+        SnapshotPrimitiveList.Int.Writer initClosedFieldWrites(int size);
+
         void setStrengthenedGraphLocation(String value);
 
         WrappedMethod.Writer getWrappedMethod();
@@ -156,6 +158,10 @@ public interface PersistedAnalysisMethodData {
         String getAnalysisGraphLocation();
 
         boolean getAnalysisGraphIsIntrinsic();
+
+        boolean hasClosedFieldWrites();
+
+        SnapshotPrimitiveList.Int.Loader getClosedFieldWrites();
 
         boolean hasStrengthenedGraphLocation();
 

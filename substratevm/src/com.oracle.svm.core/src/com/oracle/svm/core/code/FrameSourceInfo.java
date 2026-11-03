@@ -30,11 +30,11 @@ import java.lang.module.ModuleDescriptor;
 import java.util.Optional;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.nodes.FrameState;
-import jdk.internal.loader.BuiltinClassLoader;
 
 public abstract class FrameSourceInfo {
     public static final int LINENUMBER_UNKNOWN = -1;
@@ -137,10 +137,12 @@ public abstract class FrameSourceInfo {
         return getSourceReference(getSourceClass(), getSourceMethodName(), getSourceLineNumber());
     }
 
+    /// Creates a stack trace element whose loader metadata follows the JDK's display policy.
     public static StackTraceElement getSourceReference(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber) {
         ClassLoader classLoader = sourceClass.getClassLoader();
         String classLoaderName = null;
-        if (classLoader != null && !(classLoader instanceof BuiltinClassLoader)) {
+        if (classLoader != null) {
+            // StackTraceElement retains built-in loader names even when toString omits them.
             classLoaderName = classLoader.getName();
         }
 
@@ -153,7 +155,9 @@ public abstract class FrameSourceInfo {
         String className = sourceClass.getName();
         String sourceFileName = DynamicHub.fromClass(sourceClass).getSourceFileName();
 
-        return new StackTraceElement(classLoaderName, moduleName, moduleVersion, className, sourceMethodName, sourceFileName, sourceLineNumber);
+        StackTraceElement element = new StackTraceElement(classLoaderName, moduleName, moduleVersion, className, sourceMethodName, sourceFileName, sourceLineNumber);
+        JDKUtils.suppressBuiltinClassLoaderName(element, classLoader);
+        return element;
     }
 
     /**

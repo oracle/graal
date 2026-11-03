@@ -26,7 +26,8 @@ package com.oracle.svm.core.jdk;
 
 import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -88,7 +89,8 @@ class CompletableFutureFieldHolder {
 class CompletableFutureFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        RuntimeClassInitialization.initializeAtRunTime(CompletableFutureFieldHolder.class);
-        RuntimeClassInitialization.initializeAtRunTime(DelaySchedulerNanoTimeOffsetHolder.class);
+        JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
+        rci.initializeAtRunTime(GuestAccess.get().lookupType(CompletableFutureFieldHolder.class));
+        rci.initializeAtRunTime(GuestAccess.get().lookupType(DelaySchedulerNanoTimeOffsetHolder.class));
     }
 }

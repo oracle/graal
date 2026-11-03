@@ -174,7 +174,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
     private static void registerDefaultProxySelectorInit(DuringAnalysisAccess a) {
         if (isWindows()) {
             DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-            access.getNativeLibraries().addDynamicNonJniLibrary("winhttp");
+            access.getNativeLibraries().addDynamicLibrary("winhttp");
         }
 
         JVMCIRuntimeJNIAccess.register(constructor(a, "java.net.Proxy", Proxy.Type.class, SocketAddress.class));

@@ -132,6 +132,11 @@ public class Poly1305ProcessBlocksNode extends MemoryKillStubIntrinsicNode {
     }
 
     @Override
+    public boolean needsExplicitZeroExtension(Architecture arch) {
+        return !(arch instanceof AMD64);
+    }
+
+    @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         gen.getLIRGeneratorTool().emitPoly1305ProcessBlocks(runtimeCheckedCPUFeatures, gen.operand(input), gen.operand(length), gen.operand(accumulator), gen.operand(r));
     }

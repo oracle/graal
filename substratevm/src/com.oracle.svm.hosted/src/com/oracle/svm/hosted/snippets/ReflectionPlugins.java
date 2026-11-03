@@ -46,9 +46,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -58,6 +56,7 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -87,6 +86,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInline
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -134,7 +134,7 @@ public final class ReflectionPlugins {
         this.aUniverse = aUniverse;
         this.reason = reason;
 
-        this.classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        this.classInitializationSupport = ClassInitializationSupport.singleton();
 
         this.inferenceLog = DynamicAccessInferenceLog.singletonOrNull();
 
@@ -277,7 +277,7 @@ public final class ReflectionPlugins {
                 /* VarHandles.makeFieldHandle() triggers init of receiver class (JDK-8291065). */
                 Object classArg = args[0];
                 if (classArg instanceof Class<?>) {
-                    if (!classInitializationSupport.maybeInitializeAtBuildTime((Class<?>) classArg)) {
+                    if (!classInitializationSupport.maybeInitializeAtBuildTime(GuestAccess.get().lookupType((Class<?>) classArg))) {
                         /* Skip the folding and register the field for run time reflection. */
                         if (reason.duringAnalysis()) {
                             Field field = ReflectionUtil.lookupField(true, (Class<?>) args[0], (String) args[1]);
@@ -301,7 +301,7 @@ public final class ReflectionPlugins {
             Object fieldArg = args[0];
             if (fieldArg instanceof Field) {
                 Field field = (Field) fieldArg;
-                if (isStatic(field) && !classInitializationSupport.maybeInitializeAtBuildTime(field.getDeclaringClass())) {
+                if (isStatic(field) && !classInitializationSupport.maybeInitializeAtBuildTime(GuestAccess.get().lookupType(field.getDeclaringClass()))) {
                     /* Skip the folding and register the field for run time reflection. */
                     if (reason.duringAnalysis()) {
                         RuntimeReflection.register(field);
@@ -356,7 +356,7 @@ public final class ReflectionPlugins {
                     } else {
                         loader = imageClassLoader.getClassLoader();
                     }
-                    return processClassForName(b, targetMethod, nameNode, ConstantNode.forBoolean(true), loader);
+                    return processClassForName(b, targetMethod, nameNode, ConstantNode.forBoolean(true), loader, nameNode);
                 }
             });
             r.register(new RequiredInlineOnlyInvocationPlugin("forName", String.class, boolean.class, ClassLoader.class) {
@@ -384,7 +384,7 @@ public final class ReflectionPlugins {
                          */
                         loader = imageClassLoader.getClassLoader();
                     }
-                    return processClassForName(b, targetMethod, nameNode, initializeNode, loader);
+                    return processClassForName(b, targetMethod, nameNode, initializeNode, loader, nameNode, initializeNode, classLoaderNode);
                 }
             });
         }
@@ -430,7 +430,7 @@ public final class ReflectionPlugins {
      * {@link ImageClassLoader} to look up the class name, not the class loader that loaded the
      * native image generator.
      */
-    private boolean processClassForName(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode nameNode, ValueNode initializeNode, ClassLoader loader) {
+    private boolean processClassForName(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode nameNode, ValueNode initializeNode, ClassLoader loader, ValueNode... invokeArguments) {
         Object classNameValue = unbox(b, nameNode, JavaKind.Object);
         Object initializeValue = unbox(b, initializeNode, JavaKind.Boolean);
 
@@ -447,6 +447,21 @@ public final class ReflectionPlugins {
         TypeResult<Class<?>> typeResult = ImageClassLoader.findClass(className, false, loader);
         if (!typeResult.isPresent()) {
             if (RuntimeClassLoading.isSupported()) {
+                return false;
+            } else if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                /*
+                 * A later layer can provide the class. Keep the invoke and register its name so
+                 * an absent class still throws ClassNotFoundException with exact metadata.
+                 */
+                if (reason == ParsingReason.PointsToAnalysis) {
+                    b.add(ReachabilityCallbackNode.create(() -> RuntimeReflection.registerClassLookup(className), reason));
+                    if (inferenceLog != null) {
+                        inferenceLog.logRegistration(b, reason, targetMethod, null, arguments);
+                    }
+                    var callTarget = b.add(new MethodCallTargetNode(b.getInvokeKind(), targetMethod, invokeArguments, b.getInvokeReturnStamp(b.getAssumptions()), null));
+                    b.handleReplacedInvoke(callTarget, JavaKind.Object);
+                    return true;
+                }
                 return false;
             }
             Throwable e = typeResult.getException();

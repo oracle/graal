@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.svm.hosted.imagelayer.SnapshotWriters.initInts;
+
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
@@ -56,18 +60,18 @@ final class ImageLayerGraphWriter {
     private final NodeClassMap nodeClassMap = GraphEncoder.GLOBAL_NODE_CLASS_MAP;
 
     private record MethodGraphsInfo(String analysisGraphLocation, boolean analysisGraphIsIntrinsic,
-                    String strengthenedGraphLocation) {
+                    List<AnalysisField> closedFieldWrites, String strengthenedGraphLocation) {
 
-        static final MethodGraphsInfo NO_GRAPHS = new MethodGraphsInfo(null, false, null);
+        static final MethodGraphsInfo NO_GRAPHS = new MethodGraphsInfo(null, false, List.of(), null);
 
-        MethodGraphsInfo withAnalysisGraph(AnalysisMethod method, String location, boolean isIntrinsic) {
+        MethodGraphsInfo withAnalysisGraph(AnalysisMethod method, String location, boolean isIntrinsic, List<AnalysisField> newClosedFieldWrites) {
             assert analysisGraphLocation == null && !analysisGraphIsIntrinsic : "Only one analysis graph can be persisted for a given method: " + method;
-            return new MethodGraphsInfo(location, isIntrinsic, strengthenedGraphLocation);
+            return new MethodGraphsInfo(location, isIntrinsic, newClosedFieldWrites, strengthenedGraphLocation);
         }
 
         MethodGraphsInfo withStrengthenedGraph(AnalysisMethod method, String location) {
             assert strengthenedGraphLocation == null : "Only one strengthened graph can be persisted for a given method: " + method;
-            return new MethodGraphsInfo(analysisGraphLocation, analysisGraphIsIntrinsic, location);
+            return new MethodGraphsInfo(analysisGraphLocation, analysisGraphIsIntrinsic, closedFieldWrites, location);
         }
     }
 
@@ -92,6 +96,7 @@ final class ImageLayerGraphWriter {
             assert !method.isDelayed() : "The method " + method + " has an analysis graph, but is delayed to the application layer";
             builder.setAnalysisGraphLocation(graphsInfo.analysisGraphLocation);
             builder.setAnalysisGraphIsIntrinsic(graphsInfo.analysisGraphIsIntrinsic);
+            initInts(builder::initClosedFieldWrites, graphsInfo.closedFieldWrites.stream().mapToInt(AnalysisField::getId).sorted());
         }
         if (graphsInfo != null && graphsInfo.strengthenedGraphLocation != null) {
             assert !method.isDelayed() : "The method " + method + " has a strengthened graph, but is delayed to the application layer";
@@ -100,15 +105,23 @@ final class ImageLayerGraphWriter {
     }
 
     void persistAnalysisParsedGraph(AnalysisMethod method, AnalysisParsedGraph analysisParsedGraph) {
+        List<AnalysisField> closedFieldWrites = analysisParsedGraph.getMetadata().closedFieldWrites();
         String location = persistGraph(method, analysisParsedGraph.getEncodedGraph());
         if (location != null) {
+            /*
+             * A store can disappear from the encoded graph after closed-field writes are collected,
+             * so its field may no longer be referenced by the graph. Track it before the universe is sealed.
+             */
+            for (AnalysisField field : closedFieldWrites) {
+                field.registerAsTrackedAcrossLayers("closed-field write in persisted graph of " + method);
+            }
             /*
              * This method should only be called once for each method. This check is performed by
              * withAnalysisGraph as it will throw if the MethodGraphsInfo already has an analysis
              * graph.
              */
             methodsMap.compute(method, (_, methodGraphsInfo) -> (methodGraphsInfo != null ? methodGraphsInfo : MethodGraphsInfo.NO_GRAPHS)
-                            .withAnalysisGraph(method, location, analysisParsedGraph.isIntrinsic()));
+                            .withAnalysisGraph(method, location, analysisParsedGraph.isIntrinsic(), closedFieldWrites));
         }
     }
 

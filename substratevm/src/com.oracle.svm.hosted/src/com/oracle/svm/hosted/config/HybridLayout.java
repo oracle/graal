@@ -24,10 +24,11 @@
  */
 package com.oracle.svm.hosted.config;
 
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.hosted.HybridGuestValue;
 import java.lang.reflect.Modifier;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.guest.staging.hub.Hybrid;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
@@ -66,7 +67,7 @@ public class HybridLayout {
         var analysisComponentType = hybridClass.getWrapped().getUniverse().lookup(componentType);
         this.arrayComponentType = metaAccess.getUniverse().lookup(analysisComponentType);
         this.arrayField = null;
-        this.arrayBaseOffset = NumUtil.roundUp(hybridClass.getAfterFieldsOffset(), layout.sizeInBytes(getArrayElementStorageKind()));
+        this.arrayBaseOffset = NumUtil.roundUp(hybridClass.getAfterFieldsOffset(), ObjectLayoutCompilerSupport.sizeInBytes(layout, getArrayElementStorageKind()));
     }
 
     public JavaKind getArrayElementStorageKind() {
@@ -78,7 +79,7 @@ public class HybridLayout {
     }
 
     public long getArrayElementOffset(int index) {
-        return getArrayBaseOffset() + ((long) index) * layout.sizeInBytes(getArrayElementStorageKind());
+        return getArrayBaseOffset() + ((long) index) * ObjectLayoutCompilerSupport.sizeInBytes(layout, getArrayElementStorageKind());
     }
 
     public long getTotalSize(int length, boolean withOptionalIdHashField) {

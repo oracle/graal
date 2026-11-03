@@ -47,6 +47,8 @@ import jdk.graal.compiler.nodes.util.ConstantReflectionUtil;
 import jdk.graal.compiler.replacements.NodeStrideUtil;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -240,6 +242,15 @@ public class ArrayRegionEqualsNode extends PureFunctionStubIntrinsicNode impleme
         } else {
             return new ValueNode[]{arrayA, offsetA, arrayB, offsetB, length};
         }
+    }
+
+    @Override
+    public boolean needsExplicitZeroExtension(Architecture arch) {
+        /*
+         * A negative stub index selects dynamic strides. The AMD64 jump table uses the full stride
+         * register for addressing. AArch64 zero-extends the stride inside the operation.
+         */
+        return arch instanceof AMD64 && getDirectStubCallIndex() < 0;
     }
 
     @Override

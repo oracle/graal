@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -149,12 +149,14 @@ public class PointstoOptions {
     public static final OptionKey<Boolean> RelaxTypeFlowStateConstraints = new OptionKey<>(true);
 
     /**
-     * This flag enables conservative modeling of unsafe access during the analysis. First, the type
-     * state of unsafe accessed fields now contains all instantiated subtypes of their declared
-     * type. Second, all unsafe loads are saturated by default; we do this because we assume we
-     * cannot accurately track which fields can be unsafe accessed.
+     * This flag enables conservative modeling of unsafe access during the analysis. Unsafe-accessed
+     * fields with closed value bounds receive all instantiated subtypes of those bounds; fields
+     * with open value bounds saturate to account for unknown extension types. Unsafe reference loads
+     * start saturated because the analysis does not track their source fields and therefore cannot
+     * derive a narrower value bound. Requires {@link #RemoveSaturatedTypeFlows}, which in turn
+     * requires {@link #AliasArrayTypeFlows}.
      */
-    @Option(help = "Conservative unsafe access injects all unsafe accessed fields with the instantiated subtypes of their declared type and saturates all unsafe loads.")//
+    @Option(help = "Conservatively model unsafe-accessed field values and saturate all unsafe loads.")//
     public static final OptionKey<Boolean> UseConservativeUnsafeAccess = new OptionKey<>(true);
 
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true)//

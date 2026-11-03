@@ -48,7 +48,8 @@ import com.oracle.svm.core.code.CodeInfoEncoder.Encoders;
 import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.DynamicHubProvider;
@@ -867,7 +868,7 @@ public class FrameInfoEncoder {
             while (i < virtualObject.getValues().length) {
                 JavaValue value = virtualObject.getValues()[i];
                 JavaKind valueKind = virtualObject.getSlotKind(i);
-                if (objectLayout.sizeInBytes(kind) == 4 && objectLayout.sizeInBytes(valueKind) == 8) {
+                if (ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, kind) == 4 && ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, valueKind) == 8) {
                     /*
                      * Truffle uses arrays in a non-standard way: it declares an int[] array and
                      * uses it to also store long and double values. These values span two array
@@ -886,14 +887,16 @@ public class FrameInfoEncoder {
                         length += byteCount;
                         i += byteCount - /* loop increment */ 1;
                     } else {
-                        assert objectLayout.sizeInBytes(valueKind.getStackKind()) <= objectLayout.sizeInBytes(kind.getStackKind()) : valueKind + ", " + kind;
+                        assert ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, valueKind.getStackKind()) <= ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, kind
+                                        .getStackKind()) : valueKind + ", " + kind;
                         valueList.add(makeValueInfo(data, kind, value, isDeoptEntry));
                         length++;
                     }
                 }
 
                 i++;
-                assert objectLayout.getArrayElementOffset(kind, length) == objectLayout.getArrayBaseOffset(kind) + computeOffset(valueList, 2) : valueList;
+                assert ObjectLayoutCompilerSupport.getArrayElementOffset(objectLayout, kind, length) == ObjectLayoutCompilerSupport.getArrayBaseOffset(objectLayout, kind) + computeOffset(valueList,
+                                2) : valueList;
             }
 
             assert valueList.get(1) == null;
@@ -917,7 +920,7 @@ public class FrameInfoEncoder {
                 valueIdx += 1;
 
                 JavaKind kind = field.getStorageKind();
-                if (objectLayout.sizeInBytes(kind) == 4 && objectLayout.sizeInBytes(valueKind) == 8) {
+                if (ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, kind) == 4 && ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, valueKind) == 8) {
                     /*
                      * Truffle uses fields in a non-standard way: it declares a couple of
                      * (consecutive) int fields, and uses them to also store long and double values.
@@ -950,7 +953,7 @@ public class FrameInfoEncoder {
                     assert curOffset - objectLayout.getFirstFieldOffset() == computeOffset(valueList, 1) : field;
 
                     valueList.add(makeValueInfo(data, kind, value, isDeoptEntry));
-                    curOffset += objectLayout.sizeInBytes(kind);
+                    curOffset += ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, kind);
                 }
             }
         }
@@ -1007,7 +1010,7 @@ public class FrameInfoEncoder {
     private static int computeOffset(ArrayList<ValueInfo> valueInfos, int startIndex) {
         int result = 0;
         for (int i = startIndex; i < valueInfos.size(); i++) {
-            result += ObjectLayout.singleton().sizeInBytes(valueInfos.get(i).kind);
+            result += ObjectLayoutCompilerSupport.sizeInBytes(ObjectLayout.singleton(), valueInfos.get(i).kind);
         }
         return result;
     }
@@ -1030,8 +1033,9 @@ public class FrameInfoEncoder {
     @Uninterruptible(reason = "Safe for GC, but called from uninterruptible code.", calleeMustBe = false)
     private static void afterInstallation(CodeInfo info) {
         ImageSingletons.lookup(Counters.class).frameInfoSize.add(
-                        ObjectLayout.singleton().getArrayElementOffset(JavaKind.Byte, NonmovableArrays.lengthOf(CodeInfoAccess.getFrameInfoEncodings(info))) +
-                                        ObjectLayout.singleton().getArrayElementOffset(JavaKind.Object, NonmovableArrays.lengthOf(CodeInfoAccess.getObjectConstants(info))));
+                        ObjectLayoutCompilerSupport.getArrayElementOffset(ObjectLayout.singleton(), JavaKind.Byte, NonmovableArrays.lengthOf(CodeInfoAccess.getFrameInfoEncodings(info))) +
+                                        ObjectLayoutCompilerSupport.getArrayElementOffset(ObjectLayout.singleton(), JavaKind.Object, NonmovableArrays.lengthOf(CodeInfoAccess.getObjectConstants(
+                                                        info))));
     }
 
     private NonmovableArray<Byte> encodeFrameDatas(Runnable recordActivity) {

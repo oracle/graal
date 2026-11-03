@@ -124,6 +124,11 @@ public class BigIntegerMontgomeryMultiplyNode extends MemoryKillStubIntrinsicNod
     }
 
     @Override
+    public boolean needsExplicitZeroExtension(Architecture arch) {
+        return false;
+    }
+
+    @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         gen.getLIRGeneratorTool().emitBigIntegerMontgomeryMultiply(gen.operand(a),
                         gen.operand(b),

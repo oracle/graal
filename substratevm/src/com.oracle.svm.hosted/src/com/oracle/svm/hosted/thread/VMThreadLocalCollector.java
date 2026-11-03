@@ -35,7 +35,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
@@ -152,7 +153,7 @@ public class VMThreadLocalCollector implements Function<Object, Object>, VMThrea
             assert unalignedSize > 0;
             return NumUtil.roundUp(unalignedSize, 8);
         } else if (info.storageKind == JavaKind.Object) {
-            return ObjectLayout.singleton().sizeInBytes(info.storageKind);
+            return ObjectLayoutCompilerSupport.sizeInBytes(ObjectLayout.singleton(), info.storageKind);
         } else {
             return info.storageKind.getByteCount();
         }

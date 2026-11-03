@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.hub;
 
-import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.NO_DATA;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
+import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
 
 final class ImageDynamicHubMetadata implements DynamicHubMetadata {
     @UnknownPrimitiveField(availability = BuildPhaseProvider.CompileQueueFinished.class) //
@@ -70,7 +70,7 @@ final class ImageDynamicHubMetadata implements DynamicHubMetadata {
         if (enclosingMethodInfoIndex == NO_DATA) {
             return null;
         }
-        Object[] enclosingMethod = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseEnclosingMethod(enclosingMethodInfoIndex, declaringClass);
+        Object[] enclosingMethod = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseEnclosingMethod(enclosingMethodInfoIndex, DynamicHub.toClass(declaringClass));
         if (enclosingMethod != null) {
             PredefinedClassesSupport.throwIfUnresolvable((Class<?>) enclosingMethod[0], declaringClass.getClassLoader0());
         }
@@ -82,7 +82,7 @@ final class ImageDynamicHubMetadata implements DynamicHubMetadata {
         if (signersEncodingIndex == NO_DATA) {
             return null;
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseObjects(signersEncodingIndex, declaringClass);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseObjects(signersEncodingIndex, DynamicHub.toClass(declaringClass));
     }
 
     @Override
@@ -90,7 +90,7 @@ final class ImageDynamicHubMetadata implements DynamicHubMetadata {
         if (annotationsIndex == NO_DATA) {
             return null;
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(annotationsIndex, declaringClass);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(annotationsIndex, DynamicHub.toClass(declaringClass));
     }
 
     @Override
@@ -98,7 +98,7 @@ final class ImageDynamicHubMetadata implements DynamicHubMetadata {
         if (typeAnnotationsIndex == NO_DATA) {
             return null;
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(typeAnnotationsIndex, declaringClass);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseByteArray(typeAnnotationsIndex, DynamicHub.toClass(declaringClass));
     }
 
     @Override
@@ -106,7 +106,7 @@ final class ImageDynamicHubMetadata implements DynamicHubMetadata {
         if (classesEncodingIndex == NO_DATA) {
             return new Class<?>[0];
         }
-        Class<?>[] declaredClasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(classesEncodingIndex, declaringClass);
+        Class<?>[] declaredClasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(classesEncodingIndex, DynamicHub.toClass(declaringClass));
         for (Class<?> clazz : declaredClasses) {
             PredefinedClassesSupport.throwIfUnresolvable(clazz, declaringClass.getClassLoader0());
         }
@@ -118,7 +118,7 @@ final class ImageDynamicHubMetadata implements DynamicHubMetadata {
         if (nestMembersEncodingIndex == NO_DATA) {
             return new Class<?>[]{DynamicHub.toClass(declaringClass)};
         }
-        Class<?>[] nestMembers = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(nestMembersEncodingIndex, declaringClass);
+        Class<?>[] nestMembers = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(nestMembersEncodingIndex, DynamicHub.toClass(declaringClass));
         for (Class<?> clazz : nestMembers) {
             PredefinedClassesSupport.throwIfUnresolvable(clazz, declaringClass.getClassLoader0());
         }
@@ -130,7 +130,7 @@ final class ImageDynamicHubMetadata implements DynamicHubMetadata {
         if (permittedSubclassesEncodingIndex == NO_DATA) {
             return new Class<?>[0];
         }
-        Class<?>[] permittedSubclasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(permittedSubclassesEncodingIndex, declaringClass);
+        Class<?>[] permittedSubclasses = ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseClasses(permittedSubclassesEncodingIndex, DynamicHub.toClass(declaringClass));
         for (Class<?> clazz : permittedSubclasses) {
             PredefinedClassesSupport.throwIfUnresolvable(clazz, declaringClass.getClassLoader0());
         }

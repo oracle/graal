@@ -29,8 +29,8 @@ import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -80,7 +80,7 @@ public final class AMD64LoadMethodRefConstantOp extends AMD64LIRInstruction impl
     private static SubstrateMethodPointerConstant asMethodPointerConstant(Constant constant) {
         if (constant instanceof SubstrateMethodOffsetConstant offsetConstant) {
             MethodOffset offset = offsetConstant.offset();
-            return new SubstrateMethodPointerConstant(new MethodPointer(offset.getMethod(), offset.permitsRewriteToPLT()));
+            return new SubstrateMethodPointerConstant(MethodRefSupport.createMethodPointer(MethodRefSupport.getMethod(offset), offset.permitsRewriteToPLT()));
         }
         return (SubstrateMethodPointerConstant) constant;
     }

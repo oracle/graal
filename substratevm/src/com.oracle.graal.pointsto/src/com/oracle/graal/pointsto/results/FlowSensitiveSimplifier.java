@@ -167,7 +167,7 @@ final class FlowSensitiveSimplifier {
     private void handleLoadField(LoadFieldNode node, SimplifierTool tool) {
         PointsToAnalysisField field = (PointsToAnalysisField) node.field();
         /* An open field may be written from the open world, so its state cannot be trusted. */
-        if (!bb.isClosed(field)) {
+        if (!bb.getExtensionPolicy().isFieldClosed(field)) {
             return;
         }
         /* Unlike the globally valid sink flow, this mapped flow requires an anchored PiNode. */
@@ -321,7 +321,7 @@ final class FlowSensitiveSimplifier {
          * more types to be observed in subsequent layers.
          */
         boolean receiverAnalysisResultsComplete = strengthenGraphs.isClosedTypeWorld ||
-                        (hasReceiver && (bb.isClosed(invokeFlow.getReceiverType()) || !methodFlow.isSaturated(bb, invokeFlow.getReceiver())));
+                        (hasReceiver && (bb.getExtensionPolicy().isTypeClosed(invokeFlow.getReceiverType()) || !methodFlow.isSaturated(bb, invokeFlow.getReceiver())));
 
         if (callTarget.invokeKind().isDirect()) {
             /*

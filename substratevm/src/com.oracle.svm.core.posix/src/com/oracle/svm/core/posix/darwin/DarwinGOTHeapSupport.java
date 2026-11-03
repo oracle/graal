@@ -38,7 +38,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
-import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.pltgot.GOTHeapSupport;
@@ -66,7 +65,7 @@ public class DarwinGOTHeapSupport extends GOTHeapSupport {
         }
 
         Pointer gotStartInMemory = gotMemory.add(getGOTOffsetFromStartOfMapping());
-        LibC.memcpy(gotStartInMemory, IMAGE_GOT_BEGIN.get(), getGOTSectionSize());
+        initializeGOTContent(gotStartInMemory);
 
         gotStartAddress.write(gotMemory);
         DARWIN_GOT_START_ADDRESS.get().write(gotMemory);

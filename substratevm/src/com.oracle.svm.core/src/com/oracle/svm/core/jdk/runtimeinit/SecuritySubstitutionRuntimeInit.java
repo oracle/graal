@@ -35,8 +35,9 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.LayeredSecurityProvidersSupport;
+import com.oracle.svm.core.jdk.RuntimeSecurityProvidersSupport;
 import com.oracle.svm.core.jdk.SecurityProvidersInitializedAtRunTime;
-import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -58,7 +59,7 @@ final class Target_java_security_Security_SecPropLoader {
      */
     @Substitute
     private static void loadMaster() {
-        Target_java_security_Security.props = SecurityProvidersSupport.singleton().getSavedInitialSecurityProperties();
+        Target_java_security_Security.props = RuntimeSecurityProvidersSupport.singleton().getSavedInitialSecurityProperties();
     }
 }
 
@@ -94,7 +95,7 @@ final class Target_javax_crypto_JceSecurity {
     @Substitute
     static Exception getVerificationResult(Provider p) {
         /* The verification results map key is an identity wrapper object. */
-        Object o = SecurityProvidersSupport.singleton().getSecurityProviderVerificationResult(p.getName());
+        Object o = LayeredSecurityProvidersSupport.getSecurityProviderVerificationResult(p.getName());
         if (o == Boolean.TRUE) {
             return null;
         } else if (o != null) {
@@ -158,8 +159,8 @@ final class Target_sun_security_jca_ProviderConfig {
                 return null;
             }
             // Create providers which are in java.base directly
-            if (SecurityProvidersSupport.isBuiltInProvider(provName)) {
-                provider = SecurityProvidersSupport.singleton().loadBuiltInProvider(provName, debug);
+            if (LayeredSecurityProvidersSupport.isBuiltInProvider(provName)) {
+                provider = RuntimeSecurityProvidersSupport.singleton().loadBuiltInProvider(provName, debug);
             } else {
                 if (isLoading) {
                     /*
@@ -207,12 +208,12 @@ final class Target_sun_security_jca_ProviderList {
         }
         for (Target_sun_security_jca_ProviderConfig config : configs) {
             String configuredProviderName = config.provName;
-            String providerName = SecurityProvidersSupport.getBuiltInProviderName(configuredProviderName);
-            String providerFQName = SecurityProvidersSupport.getBuiltInProviderClassName(configuredProviderName);
+            String providerName = LayeredSecurityProvidersSupport.getBuiltInProviderName(configuredProviderName);
+            String providerFQName = LayeredSecurityProvidersSupport.getBuiltInProviderClassName(configuredProviderName);
             boolean matches = configuredProviderName.equals(name) || (providerName != null && providerName.equals(name)) || (providerFQName != null && providerFQName.equals(name));
             if (matches) {
-                if (SecurityProvidersSupport.singleton().isMissingBuiltInProvider(configuredProviderName)) {
-                    throw SecurityProvidersSupport.missingBuiltInProvider(configuredProviderName);
+                if (LayeredSecurityProvidersSupport.isMissingBuiltInProvider(configuredProviderName)) {
+                    throw LayeredSecurityProvidersSupport.missingBuiltInProvider(configuredProviderName);
                 }
                 return config.getProvider();
             }

@@ -63,7 +63,6 @@ import jdk.graal.compiler.core.match.ComplexMatchResult;
 import jdk.graal.compiler.core.match.MatchRule;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.CastValue;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRValueUtil;
 import jdk.graal.compiler.lir.LabelRef;
@@ -92,6 +91,7 @@ import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.java.LogicCompareAndSwapNode;
 import jdk.graal.compiler.nodes.java.ValueCompareAndSwapNode;
 import jdk.graal.compiler.nodes.memory.AddressableMemoryAccess;
+import jdk.graal.compiler.nodes.memory.ExtendableMemoryAccess;
 import jdk.graal.compiler.nodes.memory.LIRLowerableAccess;
 import jdk.graal.compiler.nodes.memory.MemoryAccess;
 import jdk.graal.compiler.nodes.memory.ReadNode;
@@ -153,7 +153,24 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         }
     }
 
+    /**
+     * Returns whether a sign or zero extension is folded into this memory access. Such an access
+     * reads the original width from memory but produces a value with the extended width.
+     *
+     * Match rules that replace the access with a memory operand must preserve both the read width
+     * and the extension. Use this check to decline a match when the replacement cannot do so;
+     * normal emission then performs the extending load and its consumer separately. A rule may
+     * accept such an access if it explicitly accounts for the extension, as the integer test rules
+     * do when reducing a constant mask to the original access width.
+     */
+    protected static boolean hasFoldedExtension(AddressableMemoryAccess access) {
+        return access instanceof ExtendableMemoryAccess extendable && extendable.extendsAccess();
+    }
+
     protected ComplexMatchResult emitCompareBranchMemory(IfNode ifNode, CompareNode compare, ValueNode value, LIRLowerableAccess access) {
+        if (hasFoldedExtension(access)) {
+            return null;
+        }
         Condition cond = compare.condition().asCondition();
         AMD64Kind kind = getMemoryKind(access);
         boolean matchedAsConstant = false; // For assertion checking
@@ -205,6 +222,9 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     }
 
     private ComplexMatchResult emitIntegerTestBranchMemory(IfNode x, ValueNode value, LIRLowerableAccess access) {
+        if (hasFoldedExtension(access)) {
+            return integerTestExtendedRead(x, access, value);
+        }
         OperandSize size = getMemoryKind(access) == AMD64Kind.QWORD ? QWORD : DWORD;
         return emitIntegerTestBranchMemory(x, value, access, size);
     }
@@ -247,6 +267,9 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     }
 
     protected ComplexMatchResult emitConvertMemoryOp(PlatformKind kind, AMD64RMOp op, OperandSize size, AddressableMemoryAccess access, ValueKind<?> addressKind) {
+        if (hasFoldedExtension(access)) {
+            return null;
+        }
         return builder -> {
             AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
             LIRFrameState state = getState(access);
@@ -430,19 +453,31 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     }
 
     private ComplexMatchResult integerTestNarrowMemory(ValueNode root, IntegerConvertNode<?> extend, LIRLowerableAccess access, ConstantNode mask) {
+        if (hasFoldedExtension(access)) {
+            return null;
+        }
         AMD64Kind kind = getMemoryKind(access);
         if ((kind != AMD64Kind.BYTE && kind != AMD64Kind.WORD && kind != AMD64Kind.DWORD) || extend.getInputBits() != kind.getSizeInBytes() * Byte.SIZE || !mask.isJavaConstant()) {
             return null;
         }
         int bits = extend.getInputBits();
-        long lowBits = (1L << bits) - 1;
         long constant = mask.asJavaConstant().asLong();
+        MemoryExtendKind extendKind = extend instanceof SignExtendNode ? MemoryExtendKind.getSignExtendKind(extend.getResultBits())
+                        : MemoryExtendKind.getZeroExtendKind(extend.getResultBits());
+        return integerTestMemory(root, access, constant, bits, extendKind);
+    }
+
+    /**
+     * Emits a memory test after accounting for the extension in the constant mask.
+     */
+    private ComplexMatchResult integerTestMemory(ValueNode root, LIRLowerableAccess access, long constant, int bits, MemoryExtendKind extendKind) {
+        long lowBits = (1L << bits) - 1;
         long reducedMask = constant & lowBits;
         /*
          * Only the zero/nonzero result of the masked value is needed. Zero-extended bits cannot
          * contribute; any selected sign-extended bit can instead be tested at the source sign bit.
          */
-        if (extend instanceof SignExtendNode && (constant & ~lowBits) != 0) {
+        if (extendKind.isSignExtend() && (constant & ~lowBits) != 0) {
             reducedMask |= 1L << (bits - 1);
         }
         OperandSize size = getMemorySize(access);
@@ -454,6 +489,27 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         ConditionalNode conditional = (ConditionalNode) root;
         return builder -> getLIRGeneratorTool().emitIntegerTestMoveMemory(size, (AMD64AddressValue) operand(access.getAddress()), immediate, getState(access),
                         operand(conditional.trueValue()), operand(conditional.falseValue()));
+    }
+
+    @MatchRule("(Conditional (IntegerTest Read=access Constant=mask) trueValue falseValue)")
+    public ComplexMatchResult integerTestMoveExtendedMemory(ConditionalNode root, LIRLowerableAccess access, ConstantNode mask) {
+        return integerTestExtendedRead(root, access, mask);
+    }
+
+    /**
+     * Folds a test of an extended read by reducing the mask to the original access width.
+     */
+    private ComplexMatchResult integerTestExtendedRead(ValueNode root, LIRLowerableAccess access, ValueNode mask) {
+        if (!hasFoldedExtension(access)) {
+            return null;
+        }
+        if (!mask.isJavaConstant()) {
+            return null;
+        }
+        ExtendableMemoryAccess extendable = (ExtendableMemoryAccess) access;
+        int bits = extendable.getAccessBits();
+        long constant = mask.asJavaConstant().asLong();
+        return integerTestMemory(root, access, constant, bits, extendable.getExtendKind());
     }
 
     @MatchRule("(If (IntegerEquals=compare value Read=access))")
@@ -558,6 +614,9 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     }
 
     private ComplexMatchResult binaryRead(AMD64RMOp op, OperandSize size, ValueNode value, LIRLowerableAccess access) {
+        if (hasFoldedExtension(access)) {
+            return null;
+        }
         return builder -> getArithmeticLIRGenerator().emitBinaryMemory(op, size, getLIRGeneratorTool().asAllocatable(operand(value)), (AMD64AddressValue) operand(access.getAddress()),
                         getState(access));
     }
@@ -641,6 +700,9 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
     }
 
     private ComplexMatchResult emitMemoryConsumer(WriteNode write, AMD64Assembler.AMD64BinaryArithmetic arithmeticOp, ReadNode read, ValueNode value) {
+        if (hasFoldedExtension(read)) {
+            return null;
+        }
         if (getMemoryKind(write).isInteger() && !write.canDeoptimize() && !write.ordersMemoryAccesses() && !read.canDeoptimize()) {
             OperandSize size = getMemorySize(write);
             if (write.getAddress() == read.getAddress()) {
@@ -702,18 +764,6 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         return emitMemoryConsumer(write, XOR, read, value);
     }
 
-    @MatchRule("(Write object Narrow=narrow)")
-    public ComplexMatchResult writeNarrow(WriteNode root, NarrowNode narrow) {
-        return builder -> {
-            LIRKind writeKind = getLIRGeneratorTool().getLIRKind(root.value().stamp(NodeView.DEFAULT));
-            Value input = operand(narrow.getValue());
-            LIRKind inputKind = LIRKind.combine(input).changeType(writeKind.getPlatformKind());
-            Value narrowed = new CastValue(inputKind, getLIRGeneratorTool().asAllocatable(input));
-            getArithmeticLIRGenerator().emitStore(writeKind, operand(root.getAddress()), narrowed, state(root), root.getMemoryOrder());
-            return null;
-        };
-    }
-
     @MatchRule("(SignExtend Read=access)")
     public ComplexMatchResult signExtend(SignExtendNode root, LIRLowerableAccess access) {
         return emitSignExtendMemory(access, root.getInputBits(), root.getResultBits(), null);
@@ -721,12 +771,18 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
 
     @MatchRule("(ZeroExtend Read=access)")
     public ComplexMatchResult zeroExtend(ZeroExtendNode root, LIRLowerableAccess access) {
+        if (hasFoldedExtension(access)) {
+            return null;
+        }
         AMD64Kind memoryKind = getMemoryKind(access);
         return builder -> getArithmeticLIRGenerator().emitZeroExtendMemory(memoryKind, root.getResultBits(), (AMD64AddressValue) operand(access.getAddress()), getState(access));
     }
 
     @MatchRule("(Narrow Read=access)")
     public ComplexMatchResult narrowRead(NarrowNode root, LIRLowerableAccess access) {
+        if (hasFoldedExtension(access)) {
+            return null;
+        }
         return new ComplexMatchResult() {
             @Override
             public Value evaluate(NodeLIRBuilder builder) {
@@ -781,6 +837,9 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
 
     @MatchRule("(Reinterpret Read=access)")
     public ComplexMatchResult reinterpret(ReinterpretNode root, LIRLowerableAccess access) {
+        if (hasFoldedExtension(access)) {
+            return null;
+        }
         return builder -> {
             LIRKind kind = getLIRGeneratorTool().getLIRKind(root.stamp(NodeView.DEFAULT));
             return emitReinterpretMemory(kind, access);

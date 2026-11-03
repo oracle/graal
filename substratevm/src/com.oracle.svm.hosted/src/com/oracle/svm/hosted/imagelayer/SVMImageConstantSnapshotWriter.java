@@ -26,12 +26,14 @@ package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.DYNAMIC_HUB;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.ENUM;
+import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.METHOD_TYPE;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.STRING;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.UNDEFINED_CONSTANT_ID;
 import static com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil.UNDEFINED_FIELD_INDEX;
 import static com.oracle.svm.hosted.imagelayer.SnapshotWriters.initInts;
 import static com.oracle.svm.hosted.imagelayer.SnapshotWriters.initSortedArray;
 
+import java.lang.invoke.MethodType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -64,9 +66,10 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
@@ -83,6 +86,7 @@ import com.oracle.svm.hosted.snapshot.constant.PersistedConstantData.ObjectValue
 import com.oracle.svm.hosted.snapshot.constant.RelinkingData;
 import com.oracle.svm.hosted.snapshot.constant.RelinkingData.EnumConstant;
 import com.oracle.svm.hosted.snapshot.constant.RelinkingData.FieldConstant;
+import com.oracle.svm.hosted.snapshot.constant.RelinkingData.MethodTypeConstant;
 import com.oracle.svm.hosted.snapshot.constant.RelinkingData.StringConstant;
 import com.oracle.svm.hosted.snapshot.layer.SharedLayerSnapshotData;
 import com.oracle.svm.hosted.snapshot.util.SnapshotStructList;
@@ -255,6 +259,19 @@ final class SVMImageConstantSnapshotWriter {
                     constantsToRelink.add(id);
                     tryStaticFinalFieldRelink = false;
                 }
+            } else if (aUniverse.lookup(METHOD_TYPE).equals(type)) {
+                MethodTypeConstant.Writer methodTypeBuilder = relinkingBuilder.initMethodTypeConstant();
+                MethodType methodType = bb.getSnippetReflectionProvider().asObject(MethodType.class, hostedObject);
+                AnalysisType returnType = bb.getMetaAccess().lookupJavaType(methodType.returnType());
+                methodTypeBuilder.setReturnTypeId(returnType.getId());
+                Class<?>[] parameterTypes = methodType.parameterArray();
+                var parameterTypeIdsBuilder = methodTypeBuilder.initParameterTypeIds(parameterTypes.length);
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    AnalysisType parameterType = bb.getMetaAccess().lookupJavaType(parameterTypes[i]);
+                    parameterTypeIdsBuilder.set(i, parameterType.getId());
+                }
+                constantsToRelink.add(id);
+                tryStaticFinalFieldRelink = false;
             } else if (aUniverse.lookup(ENUM).isAssignableFrom(type)) {
                 EnumConstant.Writer enumBuilder = relinkingBuilder.initEnumConstant();
                 Enum<?> value = bb.getSnippetReflectionProvider().asObject(Enum.class, hostedObject);
@@ -439,7 +456,7 @@ final class SVMImageConstantSnapshotWriter {
     }
 
     private static AnalysisMethod getRelocatableConstantMethod(MethodRef methodRef) {
-        ResolvedJavaMethod method = methodRef.getMethod();
+        ResolvedJavaMethod method = MethodRefSupport.getMethod(methodRef);
         if (method instanceof HostedMethod hostedMethod) {
             return hostedMethod.wrapped;
         } else {

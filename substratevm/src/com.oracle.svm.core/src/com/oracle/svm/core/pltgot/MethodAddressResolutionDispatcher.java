@@ -25,41 +25,10 @@
 package com.oracle.svm.core.pltgot;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.thread.JavaSpinLockUtils;
-
-import jdk.internal.misc.Unsafe;
 
 public class MethodAddressResolutionDispatcher {
-    private static final MethodAddressResolutionDispatcher dispatcher = new MethodAddressResolutionDispatcher();
-    private static final long LOCK_OFFSET = Unsafe.getUnsafe().objectFieldOffset(MethodAddressResolutionDispatcher.class, "lock");
-
-    @SuppressWarnings("unused")//
-    private volatile int lock;
-    private int activeResolverInstances = 0;
-
     @Uninterruptible(reason = "PLT/GOT method address resolution doesn't support interruptible code paths.")
     protected static long resolveMethodAddress(long gotEntry) {
-        try {
-            JavaSpinLockUtils.lockNoTransition(dispatcher, LOCK_OFFSET);
-            if (dispatcher.activeResolverInstances == 0) {
-                GOTHeapSupport.get().makeGOTWritable();
-            }
-            dispatcher.activeResolverInstances++;
-        } finally {
-            JavaSpinLockUtils.unlock(dispatcher, LOCK_OFFSET);
-        }
-
-        long resolvedMethodAddress = PLTGOTConfiguration.singleton().getMethodAddressResolver().resolveMethodWithGOTEntry(gotEntry);
-
-        try {
-            JavaSpinLockUtils.lockNoTransition(dispatcher, LOCK_OFFSET);
-            if (dispatcher.activeResolverInstances == 1) {
-                GOTHeapSupport.get().makeGOTReadOnly();
-            }
-            dispatcher.activeResolverInstances--;
-        } finally {
-            JavaSpinLockUtils.unlock(dispatcher, LOCK_OFFSET);
-        }
-        return resolvedMethodAddress;
+        return PLTGOTConfiguration.singleton().getMethodAddressResolver().resolveMethodWithGOTEntry(gotEntry);
     }
 }

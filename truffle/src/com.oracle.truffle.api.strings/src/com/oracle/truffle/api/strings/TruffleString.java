@@ -84,6 +84,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -199,7 +200,7 @@ public final class TruffleString extends AbstractTruffleString {
         assert bytes instanceof byte[] || isInlinedJavaString(bytes) || bytes instanceof NativePointer;
         assert offset >= 0;
         assert bytes instanceof NativePointer || offset + ((long) length << stride) <= ((byte[]) bytes).length;
-        assert attrsAreCorrect(bytes, encoding, offset, length, codePointLength, codeRange, stride);
+        assert !TruffleOptions.DetailedAssertions || attrsAreCorrect(bytes, encoding, offset, length, codePointLength, codeRange, stride);
 
         if (DEBUG_NON_ZERO_OFFSET && bytes instanceof byte[]) {
             int byteLength = Math.toIntExact((long) length << stride);
@@ -279,7 +280,7 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     TruffleString getCacheHead() {
-        assert cacheRingIsValid();
+        assert !TruffleOptions.DetailedAssertions || cacheRingIsValid();
         TruffleString cur = next;
         if (cur == null) {
             assert isCacheHead();

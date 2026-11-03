@@ -27,7 +27,7 @@ package com.oracle.svm.core.graal.llvm.util;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.Attribute;
 import com.oracle.svm.core.graal.llvm.util.LLVMIRBuilder.LinkageType;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;

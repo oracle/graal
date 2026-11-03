@@ -37,25 +37,23 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
-import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.PauseNode;
 
 public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapSupport {
 
+    private static final CGlobalData<Pointer> IMAGE_CODE_SECTION_BEGIN = CGlobalDataFactory.forSymbol("__svm_code_section");
+
     public static final String IMAGE_GOT_END_SYMBOL_NAME = "__svm_got_end";
-    public static final CGlobalData<Pointer> IMAGE_GOT_END = CGlobalDataFactory.forSymbol(IMAGE_GOT_END_SYMBOL_NAME);
     public static final String IMAGE_GOT_BEGIN_SYMBOL_NAME = "__svm_got_begin";
     public static final CGlobalData<Pointer> IMAGE_GOT_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_GOT_BEGIN_SYMBOL_NAME);
 
@@ -84,31 +82,47 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected static UnsignedWord getGOTSectionSize() {
-        return IMAGE_GOT_END.get().subtract(IMAGE_GOT_BEGIN.get());
+    protected static void initializeGOTContent(Pointer got) {
+        Pointer gotSection = IMAGE_GOT_BEGIN.get();
+        Pointer codeSectionBase = IMAGE_CODE_SECTION_BEGIN.get();
+        int entryCount = (int) NUMBER_OF_GOT_ENTRIES.get().readWord(0).rawValue();
+        int wordSize = SubstrateGuestTarget.getWordSize();
+        for (int entry = 0; entry < entryCount; entry++) {
+            int sourceOffset = entry * Integer.BYTES;
+            int destinationOffset = entry * wordSize;
+            Word codeSectionOffset = Word.unsigned(gotSection.readInt(sourceOffset));
+            got.writeWord(destinationOffset, codeSectionBase.add(codeSectionOffset));
+        }
+    }
+
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    protected static UnsignedWord getRuntimeGOTSize() {
+        int wordSize = SubstrateGuestTarget.getWordSize();
+        UnsignedWord numberOfEntries = NUMBER_OF_GOT_ENTRIES.get().readWord(0);
+        return numberOfEntries.multiply(wordSize);
     }
 
     /*
-     * Empty GOT-related Mach-O sections must be physically padded to one word for object-file symbol
-     * validity, so for empty GOT on Mach-O getGOTSectionSize() / wordSize will not be equal to the NUMBER_OF_GOT_ENTRIES.
-     * Runtime code must use this logical flag, not section allocation size, to decide whether GOT initialization is needed.
+     * An empty Mach-O .svm_got section has one four-byte padding entry for object-file symbol
+     * validity, but its logical entry count remains zero. Runtime code must use this count to decide
+     * whether GOT initialization is needed.
      */
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static boolean hasGOTEntries() {
+    static boolean hasGOTEntries() {
         Word numberOfEntries = NUMBER_OF_GOT_ENTRIES.get().readWord(0);
         return numberOfEntries.aboveThan(0);
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected static UnsignedWord getPageAlignedGOTSize() {
-        UnsignedWord gotSectionSize = getGOTSectionSize();
-        UnsignedWord pageSize = VirtualMemoryProvider.get().getGranularity();
-        return PointerUtils.roundUp((PointerBase) gotSectionSize, pageSize);
+        UnsignedWord runtimeGOTSize = getRuntimeGOTSize();
+        UnsignedWord pageSize = Word.unsigned(SubstrateOptions.getPageSize());
+        return PointerUtils.roundUp((PointerBase) runtimeGOTSize, pageSize);
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected static UnsignedWord getGOTOffsetFromStartOfMapping() {
-        return getPageAlignedGOTSize().subtract(getGOTSectionSize());
+        return getPageAlignedGOTSize().subtract(getRuntimeGOTSize());
     }
 
     @Override
@@ -120,20 +134,6 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
     @Fold
     public static GOTHeapSupport get() {
         return (GOTHeapSupport) ImageSingletons.lookup(DynamicMethodAddressResolutionHeapSupport.class);
-    }
-
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void makeGOTWritable() {
-        if (hasGOTEntries()) {
-            changeGOTMappingProtection(true);
-        }
-    }
-
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void makeGOTReadOnly() {
-        if (hasGOTEntries()) {
-            changeGOTMappingProtection(false);
-        }
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -149,29 +149,12 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
     }
 
     @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    protected Pointer getPreHeapMappingStartAddress() {
-        return getPreHeapMappingStartAddress(KnownIntrinsics.heapBase());
-    }
-
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     protected Pointer getPreHeapMappingStartAddress(PointerBase heapBase) {
         return ((Pointer) heapBase).subtract(getRequiredPreHeapMemoryInBytes());
     }
 
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static void changeGOTMappingProtection(boolean writable) {
-        Pointer gotMappingStartAddress = GOT_START_ADDRESS.get().read();
-        VMError.guarantee(gotMappingStartAddress.isNonNull());
-        int access = Access.READ;
-        if (writable) {
-            access |= Access.WRITE;
-        }
-        int ret = VirtualMemoryProvider.get().protect(gotMappingStartAddress, getPageAlignedGOTSize(), access);
-        VMError.guarantee(ret == 0, "Failed to change GOT protection.");
-    }
-
     @Override
-    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    @Uninterruptible(reason = "Called during isolate initialization.")
     public int initialize() {
         if (!hasGOTEntries()) {
             return CEntryPointErrors.NO_ERROR;
@@ -193,8 +176,9 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
         // Only the first isolate can reach here.
         int ret = initialize(GOT_START_ADDRESS.get());
         if (ret == CEntryPointErrors.NO_ERROR) {
-            makeGOTReadOnly();
+            ret = GOTAccess.initializeInFirstIsolate();
         }
+
         GOT_STATUS.get().writeWordVolatile(0, Word.signed(ret));
         return ret;
     }

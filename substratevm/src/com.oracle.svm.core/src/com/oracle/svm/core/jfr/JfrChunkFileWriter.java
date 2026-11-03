@@ -191,7 +191,12 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
     @Override
     @Uninterruptible(reason = "Prevent safepoints as those could change the flushed position.")
     public void write(JfrBuffer buffer) {
-        assert lock.isOwner();
+        /*
+         * During an epoch change, the requesting thread holds the chunk writer lock and waits for
+         * the VM operation to complete. The dedicated VM operation thread flushes the JFR buffers
+         * on its behalf, so it can write without owning the lock itself.
+         */
+        assert lock.isOwner() || VMOperationControl.isDedicatedVMOperationThread() && lock.hasOwner();
         assert buffer.isNonNull();
         assert buffer.getBufferType() == JfrBufferType.C_HEAP || VMOperation.isInProgressAtSafepoint() || JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
 

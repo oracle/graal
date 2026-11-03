@@ -62,7 +62,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.CGlobalDataLoadPolicy;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizationRuntime;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.jvmci.shared.meta.DeoptStub;
@@ -101,7 +101,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.CompressedNullConstant;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.jvmci.shared.meta.SharedField;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
@@ -1882,7 +1882,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         private static AMD64LIRInstruction createLoadMethodPointerConstant(AllocatableValue dst, SubstrateMethodPointerConstant constant) {
             if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-                if (constant.pointer().getMethod() instanceof SharedMethod sharedMethod && sharedMethod.forceIndirectCall()) {
+                if (constant.getMethod() instanceof SharedMethod sharedMethod && sharedMethod.forceIndirectCall()) {
                     DynamicImageLayerInfo dynamicImageLayerInfo = DynamicImageLayerInfo.singleton();
                     if (dynamicImageLayerInfo.isMethodCompilationDelayed(sharedMethod)) {
                         return new AMD64CGlobalDataDirectLoadAddressOp(dynamicImageLayerInfo.getSymbolForDelayedMethod(sharedMethod), dst);
@@ -1903,7 +1903,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
         private static AMD64LIRInstruction createLoadMethodOffsetConstant(AllocatableValue dst, SubstrateMethodOffsetConstant constant) {
             if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-                if (constant.offset().getMethod() instanceof SharedMethod sharedMethod && sharedMethod.forceIndirectCall()) {
+                if (MethodRefSupport.getMethod(constant.offset()) instanceof SharedMethod sharedMethod && sharedMethod.forceIndirectCall()) {
                     DynamicImageLayerInfo dynamicImageLayerInfo = DynamicImageLayerInfo.singleton();
                     if (dynamicImageLayerInfo.isMethodCompilationDelayed(sharedMethod)) {
                         return new AMD64LoadLayeredMethodOffsetConstantOp(dynamicImageLayerInfo.getSymbolForDelayedMethod(sharedMethod), dst, 0);
@@ -2535,7 +2535,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
+                    RegisterValue threadArg, int threadIsolateOffset, int threadCodeBaseOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
         CompilationResult result = new CompilationResult(identifier);
         AMD64MacroAssembler asm = createAssembler(HostedOptionValues.singleton().get());
         PatchConsumerFactory patchConsumerFactory = PatchConsumerFactory.HostedPatchConsumerFactory.factory();
@@ -2549,7 +2549,7 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             // Negative method IDs encode CremaResolvedJavaMethod instances.
             asm.testq(methodIdArg.getRegister(), methodIdArg.getRegister());
             asm.jccb(AMD64Assembler.ConditionFlag.GreaterEqual, nonCremaMethodId);
-            result.recordDataPatch(asm.position(), new ConstantReference(new SubstrateMethodPointerConstant(new MethodPointer(cremaData.wrapperMethod()))));
+            result.recordDataPatch(asm.position(), new ConstantReference(new SubstrateMethodPointerConstant(MethodRefSupport.createMethodPointer(cremaData.wrapperMethod()))));
             asm.leaq(jumpTargetRegister, asm.getPlaceholder(asm.position()));
             asm.jmp(jumpTargetRegister);
             asm.bind(nonCremaMethodId);
@@ -2563,6 +2563,9 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
          */
         asm.addq(rax, methodIdArg.getRegister()); // address of JNIAccessibleMethod
         asm.movq(jumpTargetRegister, new AMD64Address(rax, methodObjEntryPointOffset));
+        if (threadCodeBaseOffset >= 0) {
+            asm.addq(jumpTargetRegister, new AMD64Address(threadArg.getRegister(), threadCodeBaseOffset));
+        }
         asm.jmp(jumpTargetRegister);
         result.recordMark(asm.position(), PROLOGUE_DECD_RSP);
         result.recordMark(asm.position(), PROLOGUE_END);
