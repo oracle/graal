@@ -77,6 +77,7 @@ import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.LayeredModuleSingleton;
 import com.oracle.svm.core.jdk.Resources;
@@ -678,6 +679,10 @@ public class ModuleLayerFeature implements InternalFeature {
         Set<String> applicationModuleNames = applicationModules.stream().map(Module::getName).collect(Collectors.toUnmodifiableSet());
         ImageSingletons.add(ApplicationModules.class, new ApplicationModuleImpl(applicationModuleNames));
 
+        Set<String> coreModuleNames = RuntimeClassLoading.isSupported()
+                        ? cl.getCoreGuestModules().stream().map(module -> module.getName()).collect(Collectors.toUnmodifiableSet())
+                        : Set.of();
+
         Map<Module, Module> namedModulePairs = analysisReachableNamedModules
                         .stream()
                         .collect(Collectors.toMap(Function.identity(), m -> moduleLayerFeatureUtils.getRuntimeModuleForHostedModule(m, false)));
@@ -692,10 +697,10 @@ public class ModuleLayerFeature implements InternalFeature {
                 Module hostedFrom = e1.getKey();
                 Module runtimeFrom = e1.getValue();
                 for (Map.Entry<Module, Module> e2 : namedModulePairs.entrySet()) {
-                    replicateVisibilityModification(accessImpl, applicationModules, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue());
+                    replicateVisibilityModification(accessImpl, applicationModules, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue(), coreModuleNames);
                 }
                 for (Map.Entry<Module, Module> e2 : unnamedModulePairs.entrySet()) {
-                    replicateVisibilityModification(accessImpl, applicationModules, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue());
+                    replicateVisibilityModification(accessImpl, applicationModules, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue(), coreModuleNames);
                 }
             }
             for (Module runtimeFrom : namedModulePairs.values()) {
@@ -706,7 +711,8 @@ public class ModuleLayerFeature implements InternalFeature {
         }
     }
 
-    private void replicateVisibilityModification(AfterAnalysisAccessImpl accessImpl, List<Module> applicationModules, Module hostedFrom, Module hostedTo, Module runtimeFrom, Module runtimeTo)
+    private void replicateVisibilityModification(AfterAnalysisAccessImpl accessImpl, List<Module> applicationModules, Module hostedFrom, Module hostedTo, Module runtimeFrom, Module runtimeTo,
+                    Set<String> coreModuleNames)
                     throws IllegalAccessException {
         if (hostedTo == hostedFrom) {
             return;
@@ -714,6 +720,13 @@ public class ModuleLayerFeature implements InternalFeature {
 
         Module builderModule = ModuleLayerFeatureUtils.getBuilderModule();
         assert builderModule != null;
+        /*
+         * Builder access to core internals does not authorize runtime-loaded application code to
+         * enter core methods or mutate core fields. Such access would invalidate closed-entry and
+         * closed-field analysis assumptions. Preserve explicit application visibility below, but
+         * do not manufacture it from builder-only exports or opens.
+         */
+        boolean copyBuilderVisibility = hostedTo == builderModule && !coreModuleNames.contains(hostedFrom.getName());
 
         if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.canRead(hostedTo)) {
             moduleLayerFeatureUtils.addReads(accessImpl, runtimeFrom, runtimeTo);
@@ -727,7 +740,7 @@ public class ModuleLayerFeature implements InternalFeature {
         for (String pn : runtimeFrom.getPackages()) {
             if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.isOpen(pn, hostedTo)) {
                 moduleLayerFeatureUtils.addOpens(accessImpl, runtimeFrom, pn, runtimeTo);
-                if (hostedTo == builderModule) {
+                if (copyBuilderVisibility) {
                     for (Module appModule : applicationModules) {
                         moduleLayerFeatureUtils.addOpens(accessImpl, runtimeFrom, pn, appModule);
                     }
@@ -735,7 +748,7 @@ public class ModuleLayerFeature implements InternalFeature {
             }
             if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.isExported(pn, hostedTo)) {
                 moduleLayerFeatureUtils.addExports(accessImpl, runtimeFrom, pn, runtimeTo);
-                if (hostedTo == builderModule) {
+                if (copyBuilderVisibility) {
                     for (Module appModule : applicationModules) {
                         moduleLayerFeatureUtils.addExports(accessImpl, runtimeFrom, pn, appModule);
                     }
