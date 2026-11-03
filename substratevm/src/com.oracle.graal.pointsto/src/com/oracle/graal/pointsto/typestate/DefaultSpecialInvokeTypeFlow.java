@@ -42,6 +42,11 @@ import jdk.vm.ci.code.BytecodePosition;
 final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
 
     private boolean calleesLinked = false;
+    /**
+     * Records saturation with an open receiver bound, preserved after flow replacement.
+     * Extension-defined receivers can coexist with observed concrete types.
+     */
+    private volatile boolean receiverCanBeUnknown;
     private final boolean isDeoptInvokeTypeFlow;
 
     DefaultSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
@@ -67,14 +72,16 @@ final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
          * added.
          */
         TypeState receiverState = filterReceiverState(bb, getReceiver().getState());
-        if (seenReceiverTypes.equals(receiverState)) {
+        /* An unknown receiver requires initial linking even if its concrete type set stays empty. */
+        boolean needsOpenReceiverLink = receiverCanBeUnknown && !calleesLinked;
+        if (seenReceiverTypes.equals(receiverState) && !needsOpenReceiverLink) {
             // No new types have been added - nothing to do
             return;
         }
 
         /* The receiver state has changed. */
         seenReceiverTypes = receiverState;
-        if (receiverState.isNull()) {
+        if (receiverState.isNull() && !needsOpenReceiverLink) {
             // no types have been recorded
             return;
         }
@@ -106,6 +113,33 @@ final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
             updateReceiver(bb, calleeFlows, receiverState);
         });
         calleesLinked = true;
+    }
+
+    @Override
+    public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+        boolean openReceiver = !bb.getExtensionPolicy().isTypeClosed(receiverType);
+        if (openReceiver) {
+            /*
+             * Saturation can represent an extension-defined receiver even when no compatible type
+             * is instantiated in this layer. The direct target is known, so it must be linked
+             * without waiting for a concrete receiver type.
+             */
+            receiverCanBeUnknown = true;
+        }
+        super.onObservedSaturated(bb, observed);
+        /* An empty replacement receiver flow does not trigger an observer update on registration. */
+        if (openReceiver) {
+            bb.postTask(() -> onObservedUpdate(bb));
+        }
+    }
+
+    /**
+     * Preserve receiver saturation when linking the callee, independently of its external-entry
+     * policy, even after the actual receiver has been replaced by an all-instantiated type flow.
+     */
+    @Override
+    protected boolean hasSaturatedReceiver() {
+        return receiverCanBeUnknown || super.hasSaturatedReceiver();
     }
 
     @Override
