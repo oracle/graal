@@ -519,7 +519,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         }
 
         setKey(nextEntryIndex, key);
-        setValue(nextEntryIndex, value);
+        setRawValue(nextEntryIndex, value);
         totalEntries++;
 
         if (hasHashArray()) {
