@@ -111,6 +111,10 @@ public class OptimizeExactArithmeticPhase extends BasePhase<CoreProviders> imple
     }
 
     private static IntegerAddExactOverflowNode getOverFlowAddExactNode(Loop loop) {
+        if (loop.counted().isUnsignedCheck()) {
+            // Unsigned loop overflow proofs do not rule out signed overflow in Math.addExact.
+            return null;
+        }
         ValueNode counter = loop.counted().getLimitCheckedIV().valueNode();
         IntegerAddExactOverflowNode overFlowAddExactNode = null;
         if (counter instanceof IntegerAddExactNode integerAddExactNode) {
