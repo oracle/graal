@@ -408,12 +408,9 @@ public final class NativeLibraries {
             }
         }
         /*
-         * GR-79473 tracks removing libjvm.a from the base JDK's static library directory. Until
-         * then, the base JDK provides libjvm.a there. Native Image builds a
-         * replacement libjvm.a and the native-image driver puts its directory on CLibraryPath.
-         * Add those paths now, before Feature.duringSetup, so getStaticLibraryPath() finds the SVM
-         * replacement first when built-in symbols are registered instead of finding the
-         * same-named base JDK library.
+         * Native Image must link its replacement libjvm archive, whose directory the driver adds
+         * to CLibraryPath. Add those paths before Feature.duringSetup so getStaticLibraryPath()
+         * finds the Native Image replacement when built-in symbols are registered.
          */
         libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).toList());
         return libraryPaths;
