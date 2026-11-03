@@ -92,7 +92,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     /** Lazily allocated state whose lifetime follows this class metadata object. */
     private RuntimeClassHierarchyState runtimeClassHierarchyState;
 
-    /** Returns this type's runtime hierarchy state, creating it while the hierarchy lock is held. */
+    /** Returns this type's runtime hierarchy state, creating it while the shared runtime-assumption monitor is held. */
     final RuntimeClassHierarchyState getOrCreateRuntimeClassHierarchyState() {
         if (runtimeClassHierarchyState == null) {
             runtimeClassHierarchyState = new RuntimeClassHierarchyState();

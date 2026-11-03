@@ -92,6 +92,7 @@ import jdk.graal.compiler.hotspot.replacements.HotSpotIdentityHashCodeNode;
 import jdk.graal.compiler.hotspot.replacements.HotSpotInvocationPluginHelper;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReflectionGetCallerClassNode;
 import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
+import jdk.graal.compiler.replacements.CallSiteTargetPlugin;
 import jdk.graal.compiler.hotspot.replacements.HubGetClassNode;
 import jdk.graal.compiler.hotspot.replacements.ObjectCloneNode;
 import jdk.graal.compiler.hotspot.replaycomp.ReplayCompilationSupport;
@@ -471,22 +472,11 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerCallSitePlugins(InvocationPlugins plugins) {
-        InvocationPlugin plugin = new InlineOnlyInvocationPlugin("getTarget", Receiver.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                ValueNode callSite = receiver.get(true);
-                ValueNode folded = CallSiteTargetNode.tryFold(GraphUtil.originalValue(callSite, true), b.getMetaAccess(), b.getAssumptions());
-                if (folded != null) {
-                    b.addPush(JavaKind.Object, folded);
-                } else {
-                    b.addPush(JavaKind.Object, new CallSiteTargetNode(MacroParams.of(b, targetMethod, callSite)));
-                }
-                return true;
-            }
-        };
-        plugins.register(ConstantCallSite.class, plugin);
-        plugins.register(MutableCallSite.class, plugin);
-        plugins.register(VolatileCallSite.class, plugin);
+        CallSiteTargetPlugin.register(plugins, (b, targetMethod, receiver) -> {
+            ValueNode callSite = receiver.get(true);
+            ValueNode folded = CallSiteTargetNode.tryFold(GraphUtil.originalValue(callSite, true), b.getMetaAccess(), b.getAssumptions());
+            return folded != null ? folded : new CallSiteTargetNode(MacroParams.of(b, targetMethod, callSite));
+        }, ConstantCallSite.class, MutableCallSite.class, VolatileCallSite.class);
     }
 
     private static void registerReflectionPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config) {
@@ -1283,8 +1273,7 @@ public class HotSpotGraphBuilderPlugins {
                         case Double -> T_DOUBLE;
                         case Int -> T_INT;
                         case Long -> T_LONG;
-                        default ->
-                            throw GraalError.shouldNotReachHere("Unexpected element type " + type.toJavaName());
+                        default -> throw GraalError.shouldNotReachHere("Unexpected element type " + type.toJavaName());
                     };
                     if (isSimdSortSupported(architecture, config, jvmType)) {
                         ValueNode arrayNonNull = b.nullCheckedValue(array);
@@ -1314,8 +1303,7 @@ public class HotSpotGraphBuilderPlugins {
                             case Double -> T_DOUBLE;
                             case Int -> T_INT;
                             case Long -> T_LONG;
-                            default ->
-                                throw GraalError.shouldNotReachHere("Unexpected element type " + type.toJavaName());
+                            default -> throw GraalError.shouldNotReachHere("Unexpected element type " + type.toJavaName());
                         };
                         if (isSimdSortSupported(architecture, config, jvmType)) {
                             ValueNode arrayNonNull = b.nullCheckedValue(array);
