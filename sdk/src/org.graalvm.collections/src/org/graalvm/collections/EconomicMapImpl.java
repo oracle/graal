@@ -439,9 +439,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
             index = findLinear(key);
         }
         if (index != -1) {
-            Object oldValue = getValue(index);
-            setValue(index, value);
-            return (V) oldValue;
+            return (V) setValue(index, value);
         }
 
         putNewEntry(key, value, hash);
@@ -906,9 +904,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
             @SuppressWarnings("unchecked")
             @Override
             public V setValue(V newValue) {
-                V oldValue = (V) EconomicMapImpl.this.getValue(current);
-                EconomicMapImpl.this.setValue(current, newValue);
-                return oldValue;
+                return (V) EconomicMapImpl.this.setValue(current, newValue);
             }
         };
     }
@@ -933,12 +929,14 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         entries[index << 1] = newValue;
     }
 
-    private void setValue(int index, Object newValue) {
+    private Object setValue(int index, Object newValue) {
         Object oldValue = getRawValue(index);
         if (oldValue instanceof CollisionLink collisionLink) {
             setRawValue(index, new CollisionLink(newValue, collisionLink.next));
+            return collisionLink.value;
         } else {
             setRawValue(index, newValue);
+            return oldValue;
         }
     }
 

@@ -55,6 +55,7 @@ import java.util.NoSuchElementException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.junit.Assert;
 import org.junit.Test;
@@ -326,6 +327,43 @@ public class EconomicMapImplTest {
             assertEquals(expected, map.get(new CollidingKey(i)));
         }
         assertEquals((Object) 100, map.get(new CollidingKey(100)));
+    }
+
+    /**
+     * Checks that replacements return the previous logical value, including null, without changing
+     * a shallow copy's collision links. Also covers replacements through a cursor.
+     */
+    @Test
+    public void testReplacementPreservesCopy() {
+        for (int size : new int[]{2, 32}) {
+            EconomicMap<CollidingKey, Integer> map = EconomicMap.create();
+            CollidingKey[] keys = new CollidingKey[size];
+            for (int i = 0; i < size; i++) {
+                keys[i] = new CollidingKey(i);
+                assertNull(map.put(keys[i], i % 2 == 0 ? null : i));
+            }
+            EconomicMap<CollidingKey, Integer> copy = EconomicMap.create(map);
+            for (int i = 0; i < size; i++) {
+                CollidingKey equivalent = new CollidingKey(i);
+                Integer expected = i % 2 == 0 ? null : i;
+                assertEquals(expected, map.put(equivalent, 100 + i));
+                assertEquals(expected, copy.get(equivalent));
+                assertEquals((Object) (100 + i), map.put(equivalent, null));
+                assertNull(map.put(equivalent, 200 + i));
+            }
+            MapCursor<CollidingKey, Integer> cursor = copy.getEntries();
+            for (int i = 0; i < size; i++) {
+                assertTrue(cursor.advance());
+                assertSame(keys[i], cursor.getKey());
+                Integer expected = i % 2 == 0 ? null : i;
+                assertEquals(expected, cursor.setValue(-i - 1));
+                assertEquals((Object) (-i - 1), cursor.getValue());
+                assertEquals((Object) (200 + i), map.get(keys[i]));
+            }
+            assertFalse(cursor.advance());
+            assertEquals(size, map.size());
+            assertEquals(size, copy.size());
+        }
     }
 
     @Test
