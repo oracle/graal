@@ -360,8 +360,8 @@ public class ArrayCopyWithConversionsNode extends MemoryKillStubIntrinsicNode im
 
     static Stamp accessStamp(int chunkSize) {
         return switch (chunkSize) {
-            case 1 -> StampFactory.forKind(JavaKind.Byte);
-            case 2 -> StampFactory.forKind(JavaKind.Short);
+            case 1 -> IntegerStamp.create(Byte.SIZE);
+            case 2 -> IntegerStamp.create(Short.SIZE);
             case 4 -> StampFactory.forKind(JavaKind.Int);
             case 8 -> StampFactory.forKind(JavaKind.Long);
             case 16, 32, 64 -> SimdStamp.broadcast(IntegerStamp.create(Byte.SIZE), chunkSize);

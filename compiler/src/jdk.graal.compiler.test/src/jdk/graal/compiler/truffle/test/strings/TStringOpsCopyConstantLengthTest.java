@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class TStringOpsCopyConstantLengthTest extends TStringOpsTest<ArrayCopyWithConversionsNode> {
 
-    private static final int[] LENGTH_FILTER = {1, 2, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64};
+    private static final int[] LENGTH_FILTER = {1, 2, 3, 4, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64};
     private static final int ARRAY_LENGTH = 128;
 
     private Object[] constantArgs = new Object[5];
@@ -147,7 +147,8 @@ public class TStringOpsCopyConstantLengthTest extends TStringOpsTest<ArrayCopyWi
         int maxVectorSizeBytes = maxVectorSizeBytes();
         Assume.assumeTrue(ArrayCopyWithConversionsNode.canLowerConstantLengthCopy(maxVectorSizeBytes, Stride.S1, Stride.S1, false, length));
         constantArgs[4] = length;
-        getCode(getResolvedJavaMethod("copy"));
+        ArgSupplier destination = () -> new byte[ARRAY_LENGTH];
+        test("copy", args[0], args[1], destination, args[2], args[3]);
     }
 
     @Override
