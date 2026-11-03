@@ -44,6 +44,7 @@ import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.jca.SecurityProviderMode;
@@ -336,6 +337,9 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     public static void registerProviderForRuntimeResourceAccess(Module module, String serviceProviderName, Set<String> registeredProviders) {
         if (!registeredProviders.isEmpty()) {
+            if (serviceProviderName.equals(java.security.Provider.class.getName()) && FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
+                SecurityProviderRuntimeState.currentLayer().registerServiceProviders(registeredProviders);
+            }
             String serviceResourceLocation = "META-INF/services/" + serviceProviderName;
             byte[] serviceFileData = String.join("\n", registeredProviders).getBytes(StandardCharsets.UTF_8);
             RuntimeResourceAccess.addResource(module, serviceResourceLocation, serviceFileData);
@@ -346,6 +350,8 @@ public class ServiceLoaderFeature implements InternalFeature {
     private static ResolvedJavaMethod findNullaryConstructor(ResolvedJavaType providerClass) {
         ResolvedJavaMethod nullaryConstructor = null;
         try {
+            // Match Java reflection's linking without initializing the provider.
+            providerClass.link();
             ResolvedJavaMethod constructor = JVMCIReflectionUtil.getDeclaredConstructor(false, providerClass);
             if (Modifier.isPublic(constructor.getModifiers())) {
                 nullaryConstructor = constructor;
@@ -362,6 +368,8 @@ public class ServiceLoaderFeature implements InternalFeature {
         try {
             /* Only look for a provider() method if provider class is in an explicit module. */
             if (JVMCIReflectionUtil.getModule(providerClass).isNamed() && !JVMCIReflectionUtil.getModule(providerClass).isAutomatic()) {
+                // Match Java reflection's linking without initializing the provider.
+                providerClass.link();
                 for (ResolvedJavaMethod method : providerClass.getDeclaredMethods(false)) {
                     if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
                                     method.getSignature().getParameterCount(false) == 0 && method.getName().equals("provider")) {

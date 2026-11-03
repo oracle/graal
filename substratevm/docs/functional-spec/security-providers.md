@@ -421,6 +421,8 @@ resolved from retained descriptor inventory.
 Recursive loading returns no provider for that attempt, and repeated failures stop at the JDK retry
 limit rather than retrying indefinitely.
 `--future-defaults=metadata-security-provider-registration` enables this behavior implicitly.
+When building a layered image with run-time provider initialization, every layer must use the same
+initial security properties. The builder rejects changes and identifies the affected keys.
 
 ### 6.2 Provider Service Descriptors
 
@@ -437,6 +439,10 @@ descriptor; both legacy modes preserve the ordinary resource-query behavior. The
 permits an absent descriptor to return no resource, but does not suppress a descriptor retained by
 an independent reachable use. In particular, run-time provider initialization can itself retain
 the descriptor in a legacy mode, so an opaque query may find it without explicit resource metadata.
+
+An extension layer cannot add providers to a provider service descriptor already retained by an
+earlier layer. The builder rejects these additions because service files cannot yet be extended
+across image layers.
 
 ### 6.3 Earlier Service-Driven Inclusion Behavior
 

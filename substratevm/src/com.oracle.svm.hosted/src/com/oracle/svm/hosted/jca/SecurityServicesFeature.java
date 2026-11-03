@@ -86,7 +86,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -96,6 +95,7 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.SecurityProviderRuntimeAccess;
 import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
@@ -123,6 +123,7 @@ import com.oracle.svm.shared.util.ModuleSupport;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.OriginalClassProvider;
@@ -491,12 +492,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     public void afterRegistration(AfterRegistrationAccess a) {
         mode = SecurityProviderMode.current();
         catalogRegistrar = new SecurityProviderCatalogRegistrar(this, buildTimeProvidersByClassName);
-        ImageSingletons.add(SecurityProviderRuntimeState.class, new SecurityProviderRuntimeState());
 
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), true, "java.base", "sun.security.ssl");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
+        JVMCIRuntimeClassInitializationSupport.singleton().initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
                         "Force initialization of sun.security.krb5.KerberosSecrets.javaxSecurityAuthKerberosAccess");
     }
 
@@ -504,6 +504,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
+        Properties securityProperties = mode.legacyBuildTime() ? new Properties() : SharedSecrets.getJavaSecurityPropertiesAccess().getInitialProperties();
+        ImageSingletons.add(SecurityProviderRuntimeState.class, new SecurityProviderRuntimeState(securityProperties));
         oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
         oidMapField = access.findField(OIDMap.class, "oidMap");
         if (mode.legacyBuildTime()) {
@@ -514,11 +516,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         } else {
             SecurityProviderRuntimeState support = SecurityProviderRuntimeState.currentLayer();
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SecuritySubstitutions.class, false, "java.base", "sun.security.ec");
-            ResolvedJavaMethod sunECConstructor = constructor(a, "sun.security.ec.SunEC");
-            support.setSunECConstructor((Constructor<?>) OriginalMethodProvider.getJavaMethod(sunECConstructor));
-
-            Properties securityProperties = SharedSecrets.getJavaSecurityPropertiesAccess().getInitialProperties();
-            support.setSavedInitialSecurityProperties(securityProperties);
+            if (ImageLayerBuildingSupport.lastImageBuild()) {
+                ResolvedJavaMethod sunECConstructor = constructor(a, "sun.security.ec.SunEC");
+                Constructor<?> javaSunECConstructor = (Constructor<?>) OriginalMethodProvider.getJavaMethod(sunECConstructor);
+                javaSunECConstructor.setAccessible(true);
+                support.setSunECConstructor(javaSunECConstructor);
+                support.setSavedInitialSecurityProperties(securityProperties);
+            }
 
             /*
              * For the three providers below, their packages are explicitly initialized at build
@@ -535,9 +539,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          * The SecureRandom implementations open the /dev/random and /dev/urandom files which are
          * used as sources for entropy. These files are opened in the static initializers.
          */
-        rci.initializeAtRunTime(NativePRNG.class, "for substitutions");
-        rci.initializeAtRunTime(NativePRNG.Blocking.class, "for substitutions");
-        rci.initializeAtRunTime(NativePRNG.NonBlocking.class, "for substitutions");
+        rci.initializeAtRunTime(GuestAccess.get().lookupType(NativePRNG.class), "for substitutions");
+        rci.initializeAtRunTime(GuestAccess.get().lookupType(NativePRNG.Blocking.class), "for substitutions");
+        rci.initializeAtRunTime(GuestAccess.get().lookupType(NativePRNG.NonBlocking.class), "for substitutions");
 
         rci.initializeAtRunTime(type(access, "sun.security.provider.SeedGenerator"), "for substitutions");
         rci.initializeAtRunTime(type(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
