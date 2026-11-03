@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,9 @@ package com.oracle.truffle.api.bytecode.test.examples;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -53,13 +55,17 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.function.Supplier;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.bytecode.BytecodeBuilder;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeDescriptor;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
@@ -93,9 +99,10 @@ public class SerializationTutorial {
      * {@link GenerateBytecode} specification, set {@code enableSerialization = true}. Then, rebuild
      * your project to update the generated interpreter.
      * <p>
-     * When serialization is enabled, the Bytecode DSL generates extra methods that you can use to
-     * serialize/deserialize your bytecode nodes. It also validates that all of the
-     * non-{@code transient} fields (which will be serialized) are reachable.
+     * When serialization is enabled, the interpreter's {@link BytecodeDescriptor} provides
+     * methods that you can use to serialize/deserialize your bytecode nodes. The Bytecode DSL also
+     * validates that all of the non-{@code transient} fields (which will be serialized) are
+     * reachable.
      */
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true)
     @ShortCircuitOperation(name = "Or", operator = ShortCircuitOperation.Operator.OR_RETURN_CONVERTED, booleanConverter = SerializableBytecodeNode.AsBoolean.class)
@@ -252,7 +259,7 @@ public class SerializationTutorial {
 
     @Test
     public void testProgram() {
-        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, PARSER);
+        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.BYTECODE.create(getLanguage(), BytecodeConfig.DEFAULT, PARSER);
         SerializableBytecodeNode rootNode = nodes.getNode(0);
 
         // The fields are set by the parser.
@@ -314,14 +321,13 @@ public class SerializationTutorial {
     }
 
     /**
-     * Let's check that the serializer works. The Bytecode DSL defines a static {@code serialize}
-     * method on the generated {@code SerializableBytecodeNodeGen} class that we can call. The
-     * method takes a few arguments:
+     * Let's check that the serializer works. The
+     * {@link BytecodeDescriptor#serializeBuilderBytecode} method is available through
+     * {@code SerializableBytecodeNodeGen.BYTECODE}. The method takes a few arguments:
      * <ol>
      * <li>A {@link DataOutput} buffer to write the bytes to.</li>
      * <li>The {@link BytecodeSerializer} object.</li>
-     * <li>The {@link BytecodeParser BytecodeParser<Builder>} parser that gets invoked to perform
-     * serialization.</li>
+     * <li>The {@link BytecodeParser} parser that gets invoked to perform serialization.</li>
      * </ol>
      */
     @Test
@@ -329,8 +335,8 @@ public class SerializationTutorial {
         // Set up our output buffer.
         ByteArrayOutputStream output = new ByteArrayOutputStream();
 
-        // Invoke serialize.
-        SerializableBytecodeNodeGen.serialize(new DataOutputStream(output), new ExampleBytecodeSerializer(), PARSER);
+        // Invoke serializeBuilderBytecode.
+        SerializableBytecodeNodeGen.BYTECODE.serializeBuilderBytecode(new DataOutputStream(output), new ExampleBytecodeSerializer(), PARSER);
 
         // The results will be written to the output buffer.
         byte[] serialized = output.toByteArray();
@@ -375,14 +381,14 @@ public class SerializationTutorial {
     }
 
     /**
-     * Finally, we can test the serialization process end-to-end. Like with serialization, Bytecode
-     * DSL defines a static {@code deserialize} method on the generated
-     * {@code SerializableBytecodeNodeGen} class that we can call. The method takes a few arguments:
+     * Finally, we can test the serialization process end-to-end. The
+     * {@link BytecodeDescriptor#deserializeBuilderBytecode} method is available through the same
+     * descriptor. The method takes a few arguments:
      * <ol>
      * <li>A {@link TruffleLanguage} language used when creating each root node</li>
      * <li>A {@link BytecodeConfig} config that specifies which metadata to parse from the
      * serialized bytes (serialization encodes all metadata).</li>
-     * <li>A {@link Supplier<DataInput>} a callable that supplies a {@link DataInput} to read.
+     * <li>A {@link Supplier} that supplies a {@link DataInput} to read.
      * Deserialization can happen multiple times because of reparsing. The supplier is responsible
      * for producing a fresh {@link DataInput} each time it is called.</li>
      * <li>The {@link BytecodeDeserializer} object.</li>
@@ -392,15 +398,15 @@ public class SerializationTutorial {
     public void testRoundTrip() throws IOException {
         // First, serialize the program to get a byte array.
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        SerializableBytecodeNodeGen.serialize(new DataOutputStream(output), new ExampleBytecodeSerializer(), PARSER);
+        SerializableBytecodeNodeGen.BYTECODE.serializeBuilderBytecode(new DataOutputStream(output), new ExampleBytecodeSerializer(), PARSER);
         byte[] serialized = output.toByteArray();
 
         // Now, deserialize the bytes to produce a BytecodeRootNodes instance.
-        Supplier<DataInput> supplier = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(serialized));
-        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.deserialize(
+        Supplier<DataInput> builderBytecodeInput = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(serialized));
+        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.BYTECODE.deserializeBuilderBytecode(
                         getLanguage(),
                         BytecodeConfig.DEFAULT,
-                        supplier,
+                        builderBytecodeInput,
                         new ExampleBytecodeDeserializer());
 
         // It should produce a single root node.
@@ -422,21 +428,21 @@ public class SerializationTutorial {
      */
 
     /**
-     * **Serializing existing {@link BytecodeRootNodes}**
+     * <strong>Serializing existing {@link BytecodeRootNodes}</strong>
      * <p>
-     * In addition to the static {@code serialize} method generated on the root class, the Bytecode
-     * DSL also defines a {@link BytecodeRootNodes#serialize} method to serialize an existing
+     * In addition to {@link BytecodeDescriptor#serializeBuilderBytecode}, the Bytecode DSL also
+     * defines a {@link BytecodeRootNodes#serializeBuilderBytecode} method to serialize an existing
      * {@link BytecodeRootNodes} instance.
      * <p>
-     * This method does the same thing as the static {@code serialize} method, with one subtle
-     * difference: when serializing fields, it uses the existing nodes' fields, rather than the
-     * values of the fields set by the parser. We can illustrate this by modifying the name before
-     * serialization.
+     * This method does the same thing as {@link BytecodeDescriptor#serializeBuilderBytecode}, with
+     * one subtle difference: when serializing fields, it uses the existing nodes' fields, rather
+     * than the values of the fields set by the parser. We can illustrate this by modifying the name
+     * before serialization.
      */
     @Test
     public void testSerializeInstanceMethod() throws IOException {
         // Parse (just like before).
-        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, PARSER);
+        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.BYTECODE.create(getLanguage(), BytecodeConfig.DEFAULT, PARSER);
         SerializableBytecodeNode rootNode = nodes.getNode(0);
         assertEquals("getPlanet", rootNode.name);
 
@@ -445,15 +451,15 @@ public class SerializationTutorial {
 
         // Serialize using the instance method.
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        nodes.serialize(new DataOutputStream(output), new ExampleBytecodeSerializer());
+        nodes.serializeBuilderBytecode(new DataOutputStream(output), new ExampleBytecodeSerializer());
         byte[] serialized = output.toByteArray();
 
         // Now, deserialize (just like before).
-        Supplier<DataInput> supplier = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(serialized));
-        BytecodeRootNodes<SerializableBytecodeNode> deserializedNodes = SerializableBytecodeNodeGen.deserialize(
+        Supplier<DataInput> builderBytecodeInput = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(serialized));
+        BytecodeRootNodes<SerializableBytecodeNode> deserializedNodes = SerializableBytecodeNodeGen.BYTECODE.deserializeBuilderBytecode(
                         getLanguage(),
                         BytecodeConfig.DEFAULT,
-                        supplier,
+                        builderBytecodeInput,
                         new ExampleBytecodeDeserializer());
 
         // Test the result.
@@ -466,8 +472,8 @@ public class SerializationTutorial {
     }
 
     /**
-     * **Metadata**
-     *
+     * <strong>Metadata</strong>
+     * <p>
      * The source and instrumentation metadata provided by the parser is included during
      * serialization. Here's an example program that annotates its operations with source
      * information.
@@ -516,20 +522,20 @@ public class SerializationTutorial {
 
     @Test
     public void testSourceProgram() {
-        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, PARSER_WITH_SOURCES);
+        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.BYTECODE.create(getLanguage(), BytecodeConfig.DEFAULT, PARSER_WITH_SOURCES);
         assertEquals(1, nodes.count());
         doTestSourceProgram(nodes.getNode(0));
     }
 
     /**
-     * The serialization logic automatically encodes all of this metadata *except* for
+     * The serialization logic automatically encodes all of this metadata <em>except</em> for
      * {@link Source}s. We can see this if we try to serialize the program.
      */
     @Test
     public void testSerializeSourceProgram() throws IOException {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {
-            SerializableBytecodeNodeGen.serialize(new DataOutputStream(output), new ExampleBytecodeSerializer(), PARSER_WITH_SOURCES);
+            SerializableBytecodeNodeGen.BYTECODE.serializeBuilderBytecode(new DataOutputStream(output), new ExampleBytecodeSerializer(), PARSER_WITH_SOURCES);
             fail("should not reach here");
         } catch (AssertionError ex) {
             assertTrue(ex.getMessage().startsWith("Unsupported constant"));
@@ -550,7 +556,7 @@ public class SerializationTutorial {
                 buffer.writeByte(TYPE_SOURCE);
                 // Serialize the name.
                 buffer.writeUTF(source.getName());
-                /**
+                /*
                  * Serialize the characters.
                  *
                  * Note: serializing the full source characters is a naive way to serialize Sources.
@@ -586,13 +592,13 @@ public class SerializationTutorial {
     public void testSourceProgramRoundTrip() throws IOException {
         // Do a serialize + deserialize round trip.
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        SerializableBytecodeNodeGen.serialize(new DataOutputStream(output), new ExampleBytecodeSerializerWithSources(), PARSER_WITH_SOURCES);
+        SerializableBytecodeNodeGen.BYTECODE.serializeBuilderBytecode(new DataOutputStream(output), new ExampleBytecodeSerializerWithSources(), PARSER_WITH_SOURCES);
         byte[] serialized = output.toByteArray();
-        Supplier<DataInput> supplier = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(serialized));
-        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.deserialize(
+        Supplier<DataInput> builderBytecodeInput = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(serialized));
+        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.BYTECODE.deserializeBuilderBytecode(
                         getLanguage(),
                         BytecodeConfig.DEFAULT,
-                        supplier,
+                        builderBytecodeInput,
                         new ExampleBytecodeDeserializerWithSources());
 
         assertEquals(1, nodes.count());
@@ -603,7 +609,7 @@ public class SerializationTutorial {
     }
 
     /**
-     * **Root node constants**
+     * <strong>Root node constants</strong>
      * <p>
      * Recall that one parser invocation can produce multiple root nodes (e.g., nested nodes).
      * Here's an example program that returns a different root node depending on the value of its
@@ -706,20 +712,20 @@ public class SerializationTutorial {
     @Test
     public void testMultipleRootNodesRoundTrip() throws IOException {
         // First, let's parse the nodes normally and test the behaviour.
-        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.create(getLanguage(), BytecodeConfig.DEFAULT, MULTIPLE_ROOT_NODES_PARSER);
+        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.BYTECODE.create(getLanguage(), BytecodeConfig.DEFAULT, MULTIPLE_ROOT_NODES_PARSER);
         assertEquals(3, nodes.count());
         SerializableBytecodeNode rootNode = nodes.getNode(0);
         doTestMultipleRootNodes(rootNode);
 
         // Now, let's do a serialize + deserialize round trip and test the behaviour.
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        nodes.serialize(new DataOutputStream(output), new ExampleBytecodeSerializerWithRootNodes());
+        nodes.serializeBuilderBytecode(new DataOutputStream(output), new ExampleBytecodeSerializerWithRootNodes());
         byte[] serialized = output.toByteArray();
-        Supplier<DataInput> supplier = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(serialized));
-        BytecodeRootNodes<SerializableBytecodeNode> roundTripNodes = SerializableBytecodeNodeGen.deserialize(
+        Supplier<DataInput> builderBytecodeInput = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(serialized));
+        BytecodeRootNodes<SerializableBytecodeNode> roundTripNodes = SerializableBytecodeNodeGen.BYTECODE.deserializeBuilderBytecode(
                         getLanguage(),
                         BytecodeConfig.DEFAULT,
-                        supplier,
+                        builderBytecodeInput,
                         new ExampleBytecodeDeserializerWithRootNodes());
 
         assertEquals(3, roundTripNodes.count());
@@ -728,8 +734,241 @@ public class SerializationTutorial {
     }
 
     /**
-     * One of the parameters to {@code create} and {@code deserialize} is a language instance. For
-     * simplicity, we return null here.
+     * <strong>Execution bytecode</strong>
+     * <p>
+     * Deserializing a builder payload replays builder calls to construct the bytecodes. To reduce
+     * this work at startup, {@link BytecodeDescriptor#serializeExecutionBytecode} can produce an
+     * additional payload containing the executable bytecodes and metadata for a particular
+     * {@link BytecodeConfig}.
+     * <p>
+     * Supply both payloads to {@link BytecodeDescriptor#deserializeExecutionBytecode}. Its execution
+     * input function receives the requested configuration, augmented with globally enabled metadata
+     * or instrumentation. Return an input for a matching payload to load the bytecodes directly, or
+     * {@code null} to replay the builder payload. A returned payload with a mismatched configuration
+     * causes an error. The builder payload is also needed for later metadata updates, which always
+     * replay the builder calls.
+     * <p>
+     * This example serializes the source program's execution bytecode with
+     * {@link BytecodeConfig#DEFAULT}, omitting source information. The input helpers count how
+     * often each payload is requested, showing that requesting sources later reads the builder
+     * payload without reopening the execution bytecode payload.
+     */
+    @Test
+    public void testExecutionBytecodeSourceProgramRoundTrip() throws IOException {
+        // Serialize both payloads. It is up to the language to decide how to persist these
+        // payloads (e.g., in separate files or one file).
+        ExampleBytecodeSerializerWithSources serializer = new ExampleBytecodeSerializerWithSources();
+        ByteArrayOutputStream builderBytecodeOutput = new ByteArrayOutputStream();
+        SerializableBytecodeNodeGen.BYTECODE.serializeBuilderBytecode(new DataOutputStream(builderBytecodeOutput), serializer, PARSER_WITH_SOURCES);
+        ByteArrayOutputStream executionBytecodeOutput = new ByteArrayOutputStream();
+        SerializableBytecodeNodeGen.BYTECODE.serializeExecutionBytecode(getLanguage(), new DataOutputStream(executionBytecodeOutput), BytecodeConfig.DEFAULT, serializer, PARSER_WITH_SOURCES);
+
+        // Deserialize the bytecodes, requesting the DEFAULT config used by the execution bytecode payload.
+        CountingInputSupplier builderBytecodeInput = new CountingInputSupplier(builderBytecodeOutput.toByteArray());
+        CountingInputSupplier executionBytecodeInput = new CountingInputSupplier(executionBytecodeOutput.toByteArray());
+        BytecodeRootNodes<SerializableBytecodeNode> nodes = SerializableBytecodeNodeGen.BYTECODE.deserializeExecutionBytecode(
+                        getLanguage(), BytecodeConfig.DEFAULT, builderBytecodeInput,
+                        config -> config.matches(BytecodeConfig.DEFAULT) ? executionBytecodeInput.get() : null,
+                        new ExampleBytecodeDeserializerWithSources());
+        assertEquals(1, nodes.count());
+        SerializableBytecodeNode rootNode = nodes.getNode(0);
+
+        // Validate that the execution bytecode payload was used to load this node.
+        assertEquals(0, builderBytecodeInput.invocations);
+        assertEquals(1, executionBytecodeInput.invocations);
+        assertNull(rootNode.getBytecodeNode().getSourceInformation());
+        assertEquals(42, rootNode.getCallTarget().call(41));
+
+        // Reparses should use the builder payload.
+        assertTrue(nodes.ensureSourceInformation());
+        assertEquals(1, builderBytecodeInput.invocations);
+        assertEquals(1, executionBytecodeInput.invocations);
+        doTestSourceProgram(rootNode);
+
+        assertTrue(nodes.ensureComplete());
+        assertEquals(2, builderBytecodeInput.invocations);
+        assertEquals(1, executionBytecodeInput.invocations);
+        doTestSourceProgram(rootNode);
+    }
+
+    /** Supplies a fresh input for each request and counts how often the payload is requested. */
+    static final class CountingInputSupplier implements Supplier<DataInput> {
+        private final byte[] bytes;
+        private int invocations;
+
+        CountingInputSupplier(byte[] bytes) {
+            this.bytes = bytes;
+        }
+
+        @Override
+        public DataInput get() {
+            invocations++;
+            return SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(bytes));
+        }
+    }
+
+    /**
+     * <strong>Object identity</strong>
+     * <p>
+     * The previous examples reconstruct constants by value. This means that reparsing can
+     * deserialize them again and produce different objects for the same constants. We can
+     * demonstrate this with a test.
+     */
+    @Test
+    public void testIdentityNotPreserved() throws IOException {
+        // First, create the serialized representation.
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        SerializableBytecodeNodeGen.BYTECODE.serializeBuilderBytecode(new DataOutputStream(output), new ExampleBytecodeSerializer(), PARSER);
+        byte[] serialized = output.toByteArray();
+
+        // Then, deserialize the root node (so that reparsing uses the deserializer)
+        Supplier<DataInput> builderBytecodeInput = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(serialized));
+        SerializableBytecodeNode rootNode = SerializableBytecodeNodeGen.BYTECODE.deserializeBuilderBytecode(getLanguage(), BytecodeConfig.DEFAULT, builderBytecodeInput,
+                        new ExampleBytecodeDeserializer()).getNode(0);
+
+        // Obtain one of the deserialized constants.
+        Planet planetBeforeReparse = (Planet) rootNode.getCallTarget().call(0);
+        assertEquals(PLANETS[0], planetBeforeReparse);
+
+        // Trigger reparse, which re-runs the deserializer.
+        assertTrue(rootNode.getRootNodes().ensureComplete());
+
+        // Obtain the newly deserialized constant.
+        Planet planetAfterReparse = (Planet) rootNode.getCallTarget().call(0);
+        assertEquals(PLANETS[0], planetAfterReparse);
+        // The constants do not match after reparsing.
+        assertNotSame(planetBeforeReparse, planetAfterReparse);
+    }
+
+    /**
+     * When identity matters we must encode it in our serializer and deserializer. Let's extend
+     * them to treat planets as identity-sensitive.
+     * <p>
+     * We assign each planet an ID and cache it in an {@link IdentityHashMap}. Reusing the serializer
+     * preserves these IDs across serialization operations, including builder and execution bytecode
+     * payloads.
+     */
+    static class ExampleBytecodeSerializerWithPlanetIdentity extends ExampleBytecodeSerializer {
+        private final IdentityHashMap<Object, Integer> planetIds = new IdentityHashMap<>();
+
+        @Override
+        public void serialize(SerializerContext context, DataOutput buffer, Object object) throws IOException {
+            if (object instanceof Planet p) {
+                buffer.writeByte(TYPE_PLANET);
+                // Get the existing planet ID, if seen before, otherwise reserve a new ID.
+                int planetId = planetIds.computeIfAbsent(object, key -> planetIds.size());
+                // Write out the ID.
+                buffer.writeInt(planetId);
+                // Always write the attributes: each payload must be independently decodable, even if
+                // this serializer has already assigned the planet an ID.
+                buffer.writeUTF(p.name);
+                buffer.writeInt(p.diameterInKm);
+            } else {
+                // Fall back on the base serializer.
+                super.serialize(context, buffer, object);
+            }
+        }
+    }
+
+    /**
+     * The deserializer caches each decoded planet by ID. Repeated occurrences return the same
+     * object without constructing a new one.
+     */
+    static class ExampleBytecodeDeserializerWithPlanetIdentity extends ExampleBytecodeDeserializer {
+        private final HashMap<Integer, Planet> planets = new HashMap<>();
+
+        @Override
+        protected Object doDeserialize(DeserializerContext context, DataInput buffer, byte typeCode) throws IOException {
+            if (typeCode == TYPE_PLANET) {
+                int planetId = buffer.readInt();
+                // NB: consume name/diameter even if planetId was seen before.
+                String name = buffer.readUTF();
+                int diameter = buffer.readInt();
+                if (planets.containsKey(planetId)) {
+                    // Reuse existing planet.
+                    return planets.get(planetId);
+                } else {
+                    // First time encountering this planet ID; create it.
+                    Planet result = new Planet(name, diameter);
+                    planets.put(planetId, result);
+                    return result;
+                }
+            } else {
+                // Fall back on the base deserializer.
+                return super.doDeserialize(context, buffer, typeCode);
+            }
+        }
+    }
+
+    /**
+     * With these changes, serialization should properly handle planet identity.
+     */
+    @Test
+    public void testIdentityPreserved() throws IOException {
+        // First, create the serialized representation.
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        SerializableBytecodeNodeGen.BYTECODE.serializeBuilderBytecode(new DataOutputStream(output), new ExampleBytecodeSerializerWithPlanetIdentity(), PARSER);
+        byte[] serialized = output.toByteArray();
+
+        // Then, deserialize the root node (so that reparsing uses the deserializer)
+        Supplier<DataInput> builderBytecodeInput = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(serialized));
+        SerializableBytecodeNode rootNode = SerializableBytecodeNodeGen.BYTECODE.deserializeBuilderBytecode(getLanguage(), BytecodeConfig.DEFAULT, builderBytecodeInput,
+                        new ExampleBytecodeDeserializerWithPlanetIdentity()).getNode(0);
+
+        // Obtain one of the deserialized constants.
+        Planet planetBeforeReparse = (Planet) rootNode.getCallTarget().call(0);
+        assertEquals(PLANETS[0], planetBeforeReparse);
+
+        // Trigger reparse, which re-runs the deserializer.
+        assertTrue(rootNode.getRootNodes().ensureComplete());
+
+        // Obtain the newly deserialized constant.
+        Planet planetAfterReparse = (Planet) rootNode.getCallTarget().call(0);
+        assertEquals(PLANETS[0], planetAfterReparse);
+        // The constants should match after reparsing.
+        assertSame(planetBeforeReparse, planetAfterReparse);
+    }
+
+    /**
+     * When producing both builder and execution bytecode payloads, it is important to use the same
+     * serializer instance so that each planet has the same ID in both.
+     */
+    @Test
+    public void testIdentityPreservedWithExecutionBytecode() throws IOException {
+        // Create both payloads using the same serializer and its planet-to-ID cache.
+        ExampleBytecodeSerializerWithPlanetIdentity serializer = new ExampleBytecodeSerializerWithPlanetIdentity();
+        ByteArrayOutputStream builderBytecodeOutput = new ByteArrayOutputStream();
+        SerializableBytecodeNodeGen.BYTECODE.serializeBuilderBytecode(new DataOutputStream(builderBytecodeOutput), serializer, PARSER);
+        ByteArrayOutputStream executionBytecodeOutput = new ByteArrayOutputStream();
+        SerializableBytecodeNodeGen.BYTECODE.serializeExecutionBytecode(getLanguage(), new DataOutputStream(executionBytecodeOutput), BytecodeConfig.DEFAULT, serializer, PARSER);
+
+        // Deserialize the bytecodes, requesting the DEFAULT config used by the execution bytecode payload.
+        CountingInputSupplier builderBytecodeInput = new CountingInputSupplier(builderBytecodeOutput.toByteArray());
+        CountingInputSupplier executionBytecodeInput = new CountingInputSupplier(executionBytecodeOutput.toByteArray());
+        SerializableBytecodeNode rootNode = SerializableBytecodeNodeGen.BYTECODE.deserializeExecutionBytecode(
+                        getLanguage(), BytecodeConfig.DEFAULT, builderBytecodeInput,
+                        config -> config.matches(BytecodeConfig.DEFAULT) ? executionBytecodeInput.get() : null,
+                        new ExampleBytecodeDeserializerWithPlanetIdentity()).getNode(0);
+        assertEquals(0, builderBytecodeInput.invocations);
+        assertEquals(1, executionBytecodeInput.invocations);
+
+        // Obtain a planet from the bytecode derived from the execution bytecode payload.
+        Planet planetBeforeReparse = (Planet) rootNode.getCallTarget().call(0);
+        assertEquals(PLANETS[0], planetBeforeReparse);
+
+        // A reparse switches to the builder payload, retaining the same deserializer and cache.
+        // Because we used the same serializer instance, the planet IDs match in both payloads.
+        assertTrue(rootNode.getRootNodes().ensureComplete());
+        assertEquals(1, builderBytecodeInput.invocations);
+        assertEquals(1, executionBytecodeInput.invocations);
+        Planet planetAfterReparse = (Planet) rootNode.getCallTarget().call(0);
+        assertEquals(PLANETS[0], planetAfterReparse);
+        assertSame(planetBeforeReparse, planetAfterReparse);
+    }
+
+    /**
+     * One of the parameters to {@link BytecodeDescriptor#create} and the deserialization methods
+     * is a language instance. For simplicity, we return null here.
      */
     private static BytecodeDSLTestLanguage getLanguage() {
         return null;
