@@ -827,7 +827,7 @@ public class SVMHost extends HostVM {
                  * StaticFinalFieldFoldingPhase and the nodes it references safe for execution at
                  * image run time.
                  */
-                if (StaticFinalFieldFoldingPhase.isEnabled() && !SubstrateCompilationDirectives.isDeoptTarget(method)) {
+                if (StaticFinalFieldFoldingPhase.isEnabled() && !SubstrateCompilationDirectives.isDeoptTarget(method) && allowAnalysisSpecialization(method)) {
                     new StaticFinalFieldFoldingPhase().apply(graph, getProviders(method.getMethodVariantKey()));
                 }
                 /*
