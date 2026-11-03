@@ -28,22 +28,34 @@ import java.lang.reflect.Constructor;
 import java.security.Provider;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SecurityProviderRuntimeState.LayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
 public final class SecurityProviderRuntimeState {
     public enum AcquisitionKind {
         APPLICATION_SUPPLIED_ONLY,
@@ -77,16 +89,43 @@ public final class SecurityProviderRuntimeState {
     private final EconomicMap<String, ConditionalProviderInfo> providerInfos = ImageHeapMap.createNonLayeredMap();
     private final EconomicMap<String, List<ConfiguredProviderInfo>> configuredProviders = ImageHeapMap.createNonLayeredMap();
 
+    /** Build-time configuration used to validate extension layers. */
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    private final Map<String, String> initialProperties = new TreeMap<>();
+
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    private final Set<String> serviceProviders = new ConcurrentSkipListSet<>();
+
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    private Set<String> previousServiceProviders = Set.of();
+
     private Properties savedInitialSecurityProperties;
     private Constructor<?> sunECConstructor;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SecurityProviderRuntimeState() {
+    public SecurityProviderRuntimeState(Properties properties) {
+        for (String key : properties.stringPropertyNames()) {
+            initialProperties.put(key, properties.getProperty(key));
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static SecurityProviderRuntimeState currentLayer() {
         return LayeredImageSingletonSupport.singleton().lookup(SecurityProviderRuntimeState.class, false, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    // §FS-002-security-providers.6.2
+    public void registerServiceProviders(Set<String> providers) {
+        if (!previousServiceProviders.isEmpty()) {
+            Set<String> additionalProviders = new TreeSet<>(providers);
+            additionalProviders.removeAll(previousServiceProviders);
+            /* GR-66387: Resources cannot extend a positive service-file entry from a base layer. */
+            UserError.guarantee(additionalProviders.isEmpty(),
+                            "Cannot add security providers to the service file in an extension layer: %s. Register these providers in the base layer instead. Security provider service files cannot yet be extended across layers (GR-66387).",
+                            String.join(", ", additionalProviders));
+        }
+        serviceProviders.addAll(providers);
     }
 
     private static SecurityProviderRuntimeState[] singletons() {
@@ -276,5 +315,45 @@ public final class SecurityProviderRuntimeState {
             }
         }
         return null;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        private static final String PROPERTY_KEYS = "securityPropertyKeys";
+        private static final String PROPERTY_VALUES = "securityPropertyValues";
+        private static final String SERVICE_PROVIDERS = "securityServiceProviders";
+
+        @Override
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+            return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<SecurityProviderRuntimeState>() {
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, SecurityProviderRuntimeState singleton) {
+                    writer.writeStringList(PROPERTY_KEYS, List.copyOf(singleton.initialProperties.keySet()));
+                    writer.writeStringList(PROPERTY_VALUES, List.copyOf(singleton.initialProperties.values()));
+                    writer.writeStringList(SERVICE_PROVIDERS, List.copyOf(singleton.serviceProviders));
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
+                }
+
+                @Override
+                public void onSingletonRegistration(ImageSingletonLoader loader, SecurityProviderRuntimeState singleton) {
+                    List<String> keys = loader.readStringList(PROPERTY_KEYS);
+                    List<String> values = loader.readStringList(PROPERTY_VALUES);
+                    Map<String, String> previousProperties = new TreeMap<>();
+                    for (int i = 0; i < keys.size(); i++) {
+                        previousProperties.put(keys.get(i), values.get(i));
+                    }
+                    Set<String> changedKeys = new TreeSet<>(keys);
+                    changedKeys.addAll(singleton.initialProperties.keySet());
+                    changedKeys.removeIf(key -> Objects.equals(previousProperties.get(key), singleton.initialProperties.get(key)));
+                    // §FS-002-security-providers.6.1
+                    /* Static-final JDK fields can retain security-property values from the base. */
+                    UserError.guarantee(changedKeys.isEmpty(),
+                                    "Security properties differ between image layers: %s. Use the same java.security configuration when building every layer.",
+                                    String.join(", ", changedKeys));
+                    singleton.previousServiceProviders = Set.copyOf(loader.readStringList(SERVICE_PROVIDERS));
+                    singleton.serviceProviders.addAll(singleton.previousServiceProviders);
+                }
+            });
+        }
     }
 }
