@@ -137,6 +137,7 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         rci.initializeAtRunTime("sun.management.ManagementFactoryHelper$PlatformLoggingImpl", "Holds instances of LoggingMXBeanAccess");
         rci.initializeAtBuildTime("sun.misc", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.net", JDK_CLASS_REASON);
+        rci.initializeAtRunTime("sun.net.InetAddressCachePolicy", "Read DNS cache policies from run-time security and system properties");
 
         rci.initializeAtBuildTime("sun.nio", JDK_CLASS_REASON);
         if (OS.WINDOWS.isCurrent()) {
