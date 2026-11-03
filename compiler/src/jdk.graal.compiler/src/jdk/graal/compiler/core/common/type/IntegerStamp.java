@@ -2785,6 +2785,12 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                         @Override
                         protected Stamp foldStampImpl(Stamp a, Stamp b) {
+                            if (a.isEmpty()) {
+                                return a;
+                            }
+                            if (b.isEmpty()) {
+                                return b;
+                            }
                             IntegerStamp valueStamp = (IntegerStamp) a;
                             IntegerStamp maskStamp = (IntegerStamp) b;
 
