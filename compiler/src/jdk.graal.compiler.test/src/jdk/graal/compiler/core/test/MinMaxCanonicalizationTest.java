@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,22 +26,32 @@
 package jdk.graal.compiler.core.test;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
+import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
+import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import jdk.graal.compiler.nodes.calc.MaxNode;
+import jdk.graal.compiler.nodes.calc.MinMaxNode;
 import jdk.graal.compiler.nodes.calc.MinNode;
+import jdk.graal.compiler.nodes.calc.SignExtendNode;
 import jdk.graal.compiler.nodes.calc.UnsignedMaxNode;
 import jdk.graal.compiler.nodes.calc.UnsignedMinNode;
+import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class MinMaxCanonicalizationTest extends GraalCompilerTest {
@@ -77,6 +87,74 @@ public class MinMaxCanonicalizationTest extends GraalCompilerTest {
     @FunctionalInterface
     private interface MinMaxFactory {
         ValueNode create(ValueNode x, ValueNode y);
+    }
+
+    @Test
+    public void testExtendedConditional() {
+        for (boolean zeroExtend : new boolean[]{false, true}) {
+            for (boolean unsignedCompare : new boolean[]{false, true}) {
+                for (boolean max : new boolean[]{false, true}) {
+                    for (int limit : new int[]{63, 127}) {
+                        for (int offset : new int[]{0, 1}) {
+                            testExtendedConditional(zeroExtend, unsignedCompare, max, limit, offset, 32);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testIdentityZeroExtendedConditional() {
+        for (boolean unsignedCompare : new boolean[]{false, true}) {
+            for (boolean max : new boolean[]{false, true}) {
+                testExtendedConditional(true, unsignedCompare, max, 63, 0, 8);
+            }
+        }
+    }
+
+    private static void testExtendedConditional(boolean zeroExtend, boolean unsignedCompare, boolean max, int limit, int offset, int compareBits) {
+        ParameterNode input = new ParameterNode(0, StampPair.createSingle(IntegerStamp.create(8)));
+        ValueNode extended = zeroExtend ? new ZeroExtendNode(input, compareBits) : new SignExtendNode(input, compareBits);
+        ConstantNode bound = ConstantNode.forIntegerBits(compareBits, limit + offset);
+        LogicNode condition = unsignedCompare ? new IntegerBelowNode(extended, bound) : new IntegerLessThanNode(extended, bound);
+        ConstantNode alternate = ConstantNode.forIntegerBits(8, limit);
+        ValueNode result = MinMaxNode.fromConditional(condition, max ? alternate : input, max ? input : alternate, NodeView.DEFAULT);
+        assertNotNull(result);
+
+        for (int value = Byte.MIN_VALUE; value <= Byte.MAX_VALUE; value++) {
+            int wideValue = zeroExtend && compareBits > 8 ? Byte.toUnsignedInt((byte) value) : value;
+            boolean less = unsignedCompare ? Integer.compareUnsigned(wideValue, limit + offset) < 0 : wideValue < limit + offset;
+            int expected = less != max ? value : limit;
+            ValueNode folded = result;
+            if (result == input) {
+                folded = ConstantNode.forIntegerBits(8, value);
+            } else if (result instanceof MinMaxNode<?> minMax) {
+                ConstantNode constant = ConstantNode.forIntegerBits(8, value);
+                folded = BinaryArithmeticNode.tryConstantFold(minMax.getArithmeticOp(), minMax.getX() == input ? constant : minMax.getX(),
+                                minMax.getY() == input ? constant : minMax.getY(), minMax.stamp(NodeView.DEFAULT), NodeView.DEFAULT);
+            }
+            assertNotNull(folded);
+            Assert.assertEquals("zeroExtend=" + zeroExtend + " unsignedCompare=" + unsignedCompare + " max=" + max + " limit=" + limit + " offset=" + offset + " value=" + value,
+                            expected, folded.asJavaConstant().asInt());
+        }
+    }
+
+    @Test
+    public void testZeroExtendedConditionalNegativeConstant() {
+        ParameterNode input = new ParameterNode(0, StampPair.createSingle(IntegerStamp.create(8)));
+        ValueNode extended = new ZeroExtendNode(input, 32);
+        for (boolean unsignedCompare : new boolean[]{false, true}) {
+            for (int limit : new int[]{Byte.MIN_VALUE, -1}) {
+                for (int offset : new int[]{0, 1}) {
+                    ConstantNode bound = ConstantNode.forInt(limit + offset);
+                    LogicNode condition = unsignedCompare ? new IntegerBelowNode(extended, bound) : new IntegerLessThanNode(extended, bound);
+                    ConstantNode alternate = ConstantNode.forIntegerBits(8, limit);
+                    assertNull(MinMaxNode.fromConditional(condition, input, alternate, NodeView.DEFAULT));
+                    assertNull(MinMaxNode.fromConditional(condition, alternate, input, NodeView.DEFAULT));
+                }
+            }
+        }
     }
 
     @Test
