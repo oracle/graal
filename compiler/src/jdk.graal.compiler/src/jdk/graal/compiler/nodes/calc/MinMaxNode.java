@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -223,6 +223,10 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
             // Match with a narrow compare but producing a wide result. Produce a narrow min/max and
             // extend later.
             extension = (IntegerConvertNode<?>) otherValue;
+            if (yValue.isJavaConstant() && !extension.convert(yValue.asJavaConstant(), null).equals(yValue.asJavaConstant())) {
+                // Extending the narrow min/max must also preserve the constant branch's value.
+                return null;
+            }
         } else if ((x instanceof SignExtendNode || x instanceof ZeroExtendNode) && ((IntegerConvertNode<?>) x).getValue() == otherValue) {
             // Match with a wide compare but producing a narrow result. Produce a narrow min/max.
             x = otherValue;
