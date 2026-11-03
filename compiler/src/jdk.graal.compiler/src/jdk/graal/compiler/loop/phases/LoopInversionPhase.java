@@ -48,6 +48,7 @@ import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
+import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.GuardProxyNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -553,6 +554,17 @@ public class LoopInversionPhase extends LoopPhase<LoopPolicies> {
                              */
                             return null;
                         }
+                    }
+                }
+                for (GuardNode guard : loop.whole().nodes().filter(GuardNode.class)) {
+                    Node anchor = guard.getAnchor().asNode();
+                    if (anchor == loop.loopBegin() || loop.isOutsideLoop(anchor) && !loop.isOutsideLoop(guard.getCondition())) {
+                        /*
+                         * This guard can execute before the counted test, including on the exiting
+                         * header visit. Inversion only preserves body evaluations and would lose the
+                         * guard on the exit and zero-trip paths.
+                         */
+                        return null;
                     }
                 }
                 ifNode.getDebug().log("LoopInversion: Found counted test %s %s %s", loop.loopBegin(), loop.loopBegin().graph(), ifNode);
