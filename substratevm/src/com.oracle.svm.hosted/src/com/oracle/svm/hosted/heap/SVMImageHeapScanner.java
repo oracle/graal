@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.heap;
 
 import java.util.function.Consumer;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -99,17 +98,16 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     }
 
     @Override
-    protected void rescanEconomicMap(EconomicMap<?, ?> map, ScanReason reason) {
+    protected void rescanEconomicMap(JavaConstant map, ScanReason reason) {
         super.rescanEconomicMap(map, reason);
         /* Make sure any EconomicMapImpl$CollisionLink objects are scanned. */
-        ResolvedJavaType mapType = GuestAccess.get().lookupType(map.getClass());
+        ResolvedJavaType mapType = GuestAccess.get().getProviders().getMetaAccess().lookupJavaType(map);
         if (economicMapImplType.equals(mapType)) {
-            rescanField(map, economicMapImplEntriesField, reason);
-            rescanField(map, economicMapImplHashArrayField, reason);
-            rescanField(map, economicMapImplTotalEntriesField, reason);
-            rescanField(map, economicMapImplDeletedEntriesField, reason);
+            rescanFieldConstant(map, economicMapImplEntriesField, reason);
+            rescanFieldConstant(map, economicMapImplHashArrayField, reason);
+            rescanFieldConstant(map, economicMapImplTotalEntriesField, reason);
+            rescanFieldConstant(map, economicMapImplDeletedEntriesField, reason);
         }
-
     }
 
     @Override
