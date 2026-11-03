@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -253,7 +253,8 @@ public class PointerEqualsNode extends CompareNode implements Canonicalizable.Bi
             case Int:
                 long low = -128;
                 String arg = GraalServices.getSavedProperty("java.lang.Integer.IntegerCache.high");
-                long high = arg == null ? 127 : Integer.parseInt(arg);
+                // The JDK always caches integers through 127, even if a smaller limit was requested.
+                long high = arg == null ? 127 : Math.max(127, Integer.parseInt(arg));
                 return l >= low && l <= high;
             case Long:
                 return l >= -128 && l <= 127;
