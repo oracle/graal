@@ -27,6 +27,7 @@ package com.oracle.svm.guest.staging.option;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -144,8 +145,7 @@ public final class RuntimeOptionParser {
                     "VerifyDependencies",
                     "CreateCoredumpOnCrash",
                     "DisplayVMOutput",
-                    "LogVMOutput",
-                    "PrintFlagsFinal");
+                    "LogVMOutput");
 
     /// Lists HotSpot value `-XX` options ignored with a warning when
     /// `CREMA_HOTSPOT_OPTION_COMPATIBILITY` is enabled.
@@ -297,6 +297,67 @@ public final class RuntimeOptionParser {
         return Arrays.copyOfRange(initialArgs, separatorIndex + 1, initialArgs.length);
     }
 
+    /// Prints a sorted snapshot of the current runtime option values without exiting.
+    ///
+    /// This lists the options registered in the image and labels every entry `{native image}`.
+    /// It reports configured values; effective values computed by subsystems can differ. For example,
+    /// `MaxHeapSize` can remain `0` while the GC computes its actual limit separately. Origins are
+    /// limited to `{default}`, `{build-time}`, `{command line}`, and `{runtime}`. Runtime arguments
+    /// from all entry points, including JNI VM creation, use `{command line}`.
+    ///
+    /// Output uses [Log#log()], normally standard error, with Native Image log-file and callback
+    /// routing.
+    public void printFinalFlags() {
+        List<OptionDescriptor> sorted = new ArrayList<>();
+        for (OptionDescriptor descriptor : options.getValues()) {
+            sorted.add(descriptor);
+        }
+        sorted.sort(Comparator.comparing(OptionDescriptor::getName));
+        RuntimeOptionValues.Snapshot snapshot = RuntimeOptionValues.singleton().getSnapshot();
+        OptionValues values = snapshot.values();
+        Log out = Log.log();
+        out.string("[Global flags]").newline();
+        for (OptionDescriptor descriptor : sorted) {
+            OptionKey<?> key = descriptor.getOptionKey();
+            Class<?> valueType = descriptor.getOptionValueType();
+            String type;
+            if (valueType == Boolean.class) {
+                type = "bool";
+            } else if (valueType == Integer.class) {
+                type = "int";
+            } else if (valueType == Long.class) {
+                type = "intx";
+            } else if (valueType == Double.class) {
+                type = "double";
+            } else {
+                type = "ccstr";
+            }
+            String origin = snapshot.origin(key).toString();
+            out.string(formatFinalFlag(type, descriptor.getName(), key.getValue(values), origin)).newline();
+        }
+        out.flush();
+    }
+
+    /// Formats Native Image flag values using HotSpot's column positions and alignment.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/runtime/flags/jvmFlag.cpp#L139-L324")
+    private static String formatFinalFlag(String type, String name, Object value, String origin) {
+        StringBuilder line = new StringBuilder();
+        line.append(" ".repeat(9 - type.length())).append(type);
+        appendFinalFlagField(line, 10, name);
+        appendFinalFlagField(line, 50, " =");
+        appendFinalFlagField(line, 53, String.valueOf(value));
+        String kind = "{native image}";
+        appendFinalFlagField(line, 84, " ".repeat(20 - kind.length()) + kind);
+        appendFinalFlagField(line, 105, "{" + origin + "}");
+        return line.toString();
+    }
+
+    /// Starts a field at `column`, keeping a separator when the preceding field exceeds its width.
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+36/src/hotspot/share/runtime/flags/jvmFlag.cpp#L131-L137")
+    private static void appendFinalFlagField(StringBuilder line, int column, String value) {
+        line.append(" ".repeat(Math.max(1, column - line.length()))).append(value);
+    }
+
     /// Configures the low level log file after all runtime options have been parsed.
     private static void configureLogFile(String logFile) {
         if (logFile != null) {
@@ -374,7 +435,7 @@ public final class RuntimeOptionParser {
         }
 
         if (!values.isEmpty()) {
-            RuntimeOptionValues.singleton().update(values);
+            RuntimeOptionValues.singleton().update(values, RuntimeOptionValues.Origin.CommandLine);
         }
         if (newIdx == args.length) {
             /* We can be allocation free and just return the original arguments. */

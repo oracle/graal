@@ -183,7 +183,7 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
         }
     }
 
-    /// Registers parser options that are not discovered through ordinary runtime option references.
+    /// Registers parser options that must be available independently of runtime option references.
     /// PrintFlags options are looked up by name, while `UnlockDiagnosticVMOptions` is a no-op
     /// compatibility flag with no other runtime consumer.
     private static void registerAlwaysAvailableOptions(HostedOptionParser optionParser) {

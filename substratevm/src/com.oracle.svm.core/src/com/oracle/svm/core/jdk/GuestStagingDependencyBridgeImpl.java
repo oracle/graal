@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues.Origin;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.configure.config.SignatureUtil;
 import com.oracle.svm.core.AssertionsSupport;
@@ -244,7 +245,7 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
 
     @Override
     public void enableTraceClassLoading() {
-        RuntimeClassLoading.Options.TraceClassLoading.update(true);
+        RuntimeClassLoading.Options.TraceClassLoading.update(true, Origin.CommandLine);
     }
 
     @Override
@@ -259,7 +260,7 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
 
     @Override
     public void setVerifyMode(String mode) {
-        RuntimeClassLoading.Options.ClassVerification.update(RuntimeClassLoading.VerifyMode.valueOf(mode));
+        RuntimeClassLoading.Options.ClassVerification.update(RuntimeClassLoading.VerifyMode.valueOf(mode), Origin.CommandLine);
     }
 
     @Override

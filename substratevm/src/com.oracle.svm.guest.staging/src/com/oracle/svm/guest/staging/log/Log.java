@@ -70,7 +70,12 @@ public interface Log {
         return GuestStagingDependencyBridge.singleton().log();
     }
 
-    /** Returns {@link #log()} wrapped in a {@link PrintStream}. */
+    /// Returns [#log()] wrapped in a [PrintStream] for APIs that require a stream.
+    ///
+    /// Stream operations can allocate and depend on stream and charset support. They are suitable
+    /// only when normal Java execution and allocation are allowed, and must not be used from
+    /// uninterruptible or allocation-restricted code. Diagnostic output that can use [Log] directly
+    /// should use [#log()] to avoid the additional stream and charset dependencies.
     @GuestFold
     static PrintStream logStream() {
         return GuestStagingDependencyBridge.singleton().logStream();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,12 +49,12 @@ public class SharedLayerRuntimeOptionsValues extends RuntimeOptionValues {
     }
 
     @Override
-    public void update(OptionKey<?> key, Object value) {
+    public void update(OptionKey<?> key, Object value, Origin origin) {
         throw VMError.shouldNotReachHere("It is currently disallowed to set a runtime option in a shared layer %s", key);
     }
 
     @Override
-    public void update(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+    public void update(UnmodifiableEconomicMap<OptionKey<?>, Object> values, Origin origin) {
         throw VMError.shouldNotReachHere("It is currently disallowed to set a runtime option in a shared layer");
     }
 }

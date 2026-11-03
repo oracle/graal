@@ -33,6 +33,7 @@ import javax.management.ObjectName;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues.Origin;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 
@@ -70,7 +71,7 @@ public abstract class AbstractMemoryMXBean extends AbstractMXBean implements Mem
 
     @Override
     public void setVerbose(boolean value) {
-        SubstrateGCOptions.PrintGC.update(value);
+        SubstrateGCOptions.PrintGC.update(value, Origin.Runtime);
     }
 
     @Override

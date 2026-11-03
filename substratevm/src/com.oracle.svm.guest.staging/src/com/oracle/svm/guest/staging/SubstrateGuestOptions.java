@@ -64,6 +64,9 @@ public final class SubstrateGuestOptions {
 
     // @formatter:on
 
+    @Option(help = "Print final runtime option values and continue application startup.")//
+    public static final RuntimeOptionKey<Boolean> PrintFlagsFinal = new RuntimeOptionKey<>(false, Immutable);
+
     @Option(help = "Internal, instead use 'auxiliary_image_reserved_space_size' in 'graal_create_isolate_params_t', or option ReservedAuxiliaryImageBytes.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Long> AuxiliaryImageBytesIsolateArgument = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);
 
