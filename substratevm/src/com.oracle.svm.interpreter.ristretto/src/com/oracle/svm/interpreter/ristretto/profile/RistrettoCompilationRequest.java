@@ -25,6 +25,7 @@
 package com.oracle.svm.interpreter.ristretto.profile;
 
 import java.util.concurrent.Callable;
+import java.util.function.Predicate;
 
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
@@ -33,7 +34,6 @@ import com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
 import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
-import com.oracle.svm.interpreter.ristretto.compile.RistrettoInstalledCode;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMethod;
 
 import jdk.graal.compiler.debug.CounterKey;
@@ -144,7 +144,8 @@ public class RistrettoCompilationRequest implements Comparable<RistrettoCompilat
         SubstrateInstalledCodeImpl code;
         boolean installCode;
         try {
-            code = compileAndInstall(debug);
+            installCode = RistrettoCompilationManager.TestingBackdoor.installCode();
+            code = compileAndInstall(debug, compiledCode -> publishCompiledCode(compiledCode, installCode));
             if (code == null) {
                 onCompilationFailure();
                 return null;
@@ -156,15 +157,6 @@ public class RistrettoCompilationRequest implements Comparable<RistrettoCompilat
              * lifecycle as InterpreterMethod->RistrettoMethod->code, so the root pointer is only
              * dropped when a class is unloaded and the interpreter jvmci objects are collected.
              */
-            installCode = RistrettoCompilationManager.TestingBackdoor.installCode();
-            boolean published = publishCompiledCode(code, installCode);
-            if (!published) {
-                if (code.isValid()) {
-                    code.invalidate();
-                }
-                onCompilationFailure();
-                return null;
-            }
         } catch (BailoutException e) {
             if (!e.isPermanent()) {
                 onCompilationFailure();
@@ -183,22 +175,14 @@ public class RistrettoCompilationRequest implements Comparable<RistrettoCompilat
         return code;
     }
 
-    protected SubstrateInstalledCodeImpl compileAndInstall(DebugContext debug) {
-        return RistrettoUtils.compileAndInstallForPublication(rMethod, entryBCI, debug);
+    protected SubstrateInstalledCodeImpl compileAndInstall(DebugContext debug, Predicate<SubstrateInstalledCodeImpl> publish) {
+        return RistrettoUtils.compileAndInstall(rMethod, entryBCI, debug, publish);
     }
 
-    /** Publishes {@code code}, atomically with hierarchy validation when it carries such assumptions. */
-    private boolean publishCompiledCode(SubstrateInstalledCodeImpl code, boolean installCode) {
-        if (code instanceof RistrettoInstalledCode ristrettoCode) {
-            return ristrettoCode.registerHierarchyAssumptionsAndPublish(() -> publishCompiledCodeAfterHierarchyValidation(code, installCode));
-        }
-        return publishCompiledCodeAfterHierarchyValidation(code, installCode);
-    }
-
-    /** Performs the method-state publication step after hierarchy validation. */
-    protected boolean publishCompiledCodeAfterHierarchyValidation(SubstrateInstalledCodeImpl code, boolean installCode) {
+    /** Performs the actual invocation- or OSR-state publication after final assumption attachment. */
+    protected boolean publishCompiledCode(SubstrateInstalledCodeImpl code, boolean installCode) {
         if (isOSR()) {
-            return rMethod.onOSRCompilationSuccessAfterHierarchyValidation(entryBCI, osrCompilationRequestId, code, installCode);
+            return rMethod.tryPublishOSRCompilation(entryBCI, osrCompilationRequestId, code, installCode);
         }
         return rMethod.onCompilationSuccess(code, installCode);
     }
