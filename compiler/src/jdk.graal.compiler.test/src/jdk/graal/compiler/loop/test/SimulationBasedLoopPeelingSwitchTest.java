@@ -115,4 +115,19 @@ public class SimulationBasedLoopPeelingSwitchTest extends GraalCompilerTest {
         test("snippet", -1);
     }
 
+    public static void loopWithoutValuePhis(int[] values) {
+        while (values[0] != 0) {
+            values[0]--;
+        }
+    }
+
+    @Test
+    public void testLoopWithoutValuePhis() {
+        StructuredGraph graph = parseEager("loopWithoutValuePhis", StructuredGraph.AllowAssumptions.YES);
+        Loop loop = getProviders().getLoopsDataProvider().getLoopsData(graph).loops().getFirst();
+        loop.detectCounted();
+        Assert.assertTrue("loop must have no value phis", loop.loopBegin().valuePhis().isEmpty());
+        Assert.assertFalse("loop without a state phi must not be recognized as a guarded switch loop", LoopUtility.maybeSwitchWhenLoop(loop));
+    }
+
 }

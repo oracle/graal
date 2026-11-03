@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,6 +53,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.PhaseSuite;
+import jdk.graal.compiler.phases.common.LazyValue;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
@@ -72,10 +73,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class JTTTest extends GraalCompilerTest {
 
     /**
-     * Contains the fuzzed {@link Suites} to use for the compilation if
-     * {@link #COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY} is {@code true}.
+     * Creates the fuzzed plan only when a compilation needs suites. Executions that reuse cached
+     * code do not need to construct a new plan.
      */
-    private Suites fuzzedSuites;
+    private LazyValue<MinimalFuzzedCompilationPlan> fuzzedCompilationPlan;
 
     public static final class DummyTestClass {
     }
@@ -192,7 +193,7 @@ public class JTTTest extends GraalCompilerTest {
     @Override
     protected final void testAgainstExpected(OptionValues options, ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
         if (Boolean.getBoolean(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY)) {
-            testAgainstExpectedWithFuzzedCompilationPlan(options, method, expect, shouldNotDeopt, receiver, args);
+            testFuzzedCompilationPlan(options, method, expect, shouldNotDeopt, receiver, args);
         } else {
             super.testAgainstExpected(options, method, expect, shouldNotDeopt, receiver, args);
         }
@@ -216,8 +217,7 @@ public class JTTTest extends GraalCompilerTest {
      * {@link #MID_TIER_PHASE_SKIP_ODDS_SYSTEM_PROPERTY} and
      * {@link #LOW_TIER_PHASE_SKIP_ODDS_SYSTEM_PROPERTY}.
      */
-    private void testAgainstExpectedWithFuzzedCompilationPlan(OptionValues options, ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver,
-                    Object... args) {
+    private MinimalFuzzedCompilationPlan createFuzzedCompilationPlan(OptionValues options, ResolvedJavaMethod method) {
         Suites originalSuites = super.createSuites(options);
         // Removes {@link TestPhase}s added by {@link GraalCompilerTest} since they are anonymous
         // phases that cannot be serialized.
@@ -232,8 +232,8 @@ public class JTTTest extends GraalCompilerTest {
                         GraphState.MandatoryStages.getFromName(runtime.getCompilerConfigurationName()),
                         randomSeed);
         if (Boolean.getBoolean(MINIMAL_PLAN_SYSTEM_PROPERTY)) {
-            testFuzzedCompilationPlan(minimalFuzzedCompilationPlan, graph.getGraphState(), options, method, expect, shouldNotDeopt, receiver, args);
-            return;
+            minimalFuzzedCompilationPlan.verifyCompilationPlan(graph.getGraphState());
+            return minimalFuzzedCompilationPlan;
         }
         Integer phaseInsertionProbabilityHighTier = Integer.getInteger(HIGH_TIER_PHASE_SKIP_ODDS_SYSTEM_PROPERTY, Integer.getInteger(PHASE_SKIP_ODDS_SYSTEM_PROPERTY));
         if (phaseInsertionProbabilityHighTier == null) {
@@ -241,8 +241,8 @@ public class JTTTest extends GraalCompilerTest {
             // a phase (see {@link FuzzedPhasePlan#createFullFuzzedPhasePlan(MinimalFuzzedPhasePlan,
             // GraphState)})
             FullFuzzedCompilationPlan fullFuzzedCompilationPlan = FullFuzzedCompilationPlan.createFullFuzzedCompilationPlan(minimalFuzzedCompilationPlan, graph.getGraphState());
-            testFuzzedCompilationPlan(fullFuzzedCompilationPlan, graph.getGraphState(), options, method, expect, shouldNotDeopt, receiver, args);
-            return;
+            fullFuzzedCompilationPlan.verifyCompilationPlan(graph.getGraphState());
+            return fullFuzzedCompilationPlan;
         }
         int phaseInsertionProbabilityMidTier = Integer.getInteger(MID_TIER_PHASE_SKIP_ODDS_SYSTEM_PROPERTY, phaseInsertionProbabilityHighTier);
         int phaseInsertionProbabilityLowTier = Integer.getInteger(LOW_TIER_PHASE_SKIP_ODDS_SYSTEM_PROPERTY, phaseInsertionProbabilityHighTier);
@@ -250,33 +250,32 @@ public class JTTTest extends GraalCompilerTest {
                         phaseInsertionProbabilityHighTier,
                         phaseInsertionProbabilityMidTier,
                         phaseInsertionProbabilityLowTier);
-        testFuzzedCompilationPlan(fullFuzzedCompilationPlan, graph.getGraphState(), options, method, expect, shouldNotDeopt, receiver, args);
+        fullFuzzedCompilationPlan.verifyCompilationPlan(graph.getGraphState());
+        return fullFuzzedCompilationPlan;
     }
 
     /**
      * Executes the compilation with the given fuzzed compilation plan and asserts the result of the
-     * compilation corresponds to the expected result. For this, {@link #fuzzedSuites} is set with
-     * {@link MinimalFuzzedCompilationPlan#getSuites()}. If the execution of the fuzzed compilation
-     * plan throws or the result is unexpected, the problem is handled by calling
+     * compilation corresponds to the expected result. The plan is constructed lazily when
+     * {@link #createSuites} is called for a compilation. If execution throws or the result is
+     * unexpected, the problem is handled by calling
      * {@link #handleFailingFuzzedCompilationPlan}.
      */
-    private void testFuzzedCompilationPlan(MinimalFuzzedCompilationPlan plan, GraphState graphState, OptionValues options, ResolvedJavaMethod method, Result expect,
-                    Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
+    private void testFuzzedCompilationPlan(OptionValues options, ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
         OptionValues fuzzingOptions = FuzzedSuites.fuzzingOptions(options);
-        plan.verifyCompilationPlan(graphState);
-        fuzzedSuites = plan.getSuites();
+        fuzzedCompilationPlan = new LazyValue<>(() -> createFuzzedCompilationPlan(options, method));
         Result actual = null;
         try {
             actual = executeActualCheckDeopt(fuzzingOptions, method, shouldNotDeopt, receiver, args);
         } catch (AssumptionViolatedException e) {
             throw e;
         } catch (Throwable t) {
-            handleFailingFuzzedCompilationPlan(t, "Error during the execution of the fuzzed compilation plan.", plan);
+            handleFailingFuzzedCompilationPlan(t, "Error during the execution of the fuzzed compilation plan.", fuzzedCompilationPlan.get());
         }
         try {
             assertEquals(expect, actual);
         } catch (Throwable t) {
-            handleFailingFuzzedCompilationPlan(t, "The assertion on the result of the compilation with the fuzzed compilation plan throws an error.", plan);
+            handleFailingFuzzedCompilationPlan(t, "The assertion on the result of the compilation with the fuzzed compilation plan throws an error.", fuzzedCompilationPlan.get());
         }
     }
 
@@ -361,15 +360,16 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     /**
-     * @return {@link #fuzzedSuites} with a graph verification ({@link StructuredGraph#verify}) at
+     * @return the fuzzed suites with a graph verification ({@link StructuredGraph#verify}) at
      *         the end of each tier if {@link #COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY} is
      *         {@code true}. Otherwise, returns {@link GraalCompilerTest#createSuites}.
      */
     @Override
     protected Suites createSuites(OptionValues opts) {
-        if (!Boolean.getBoolean(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY) || fuzzedSuites == null) {
+        if (!Boolean.getBoolean(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY) || fuzzedCompilationPlan == null) {
             return super.createSuites(opts);
         }
+        Suites fuzzedSuites = fuzzedCompilationPlan.get().getSuites().copy();
         fuzzedSuites.getHighTier().appendPhase(new TestPhase() {
             @Override
             protected void run(StructuredGraph graph) {
