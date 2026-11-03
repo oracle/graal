@@ -24,19 +24,130 @@
  */
 package jdk.graal.compiler.lir.test;
 
-import static org.junit.Assert.assertEquals;
-
 import java.util.Arrays;
+import java.util.stream.IntStream;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.gen.NodeLIRBuilder;
+import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.LabelRef;
 import jdk.graal.compiler.lir.SwitchStrategy;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
+import jdk.graal.compiler.nodes.extended.SwitchNode;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaConstant;
 
-public class SwitchStrategyTest {
+public class SwitchStrategyTest extends GraalCompilerTest {
+
+    /// Normal switch lowering creates distinct label references per key. This node forces range
+    /// dispatch with one reference per successor so that compiled execution exercises shared targets.
+    @NodeInfo
+    private static final class RangeSwitchNode extends SwitchNode implements LIRLowerable {
+        public static final NodeClass<RangeSwitchNode> TYPE = NodeClass.create(RangeSwitchNode.class);
+
+        /// Preserves the keys of the Java switch through LIR generation.
+        private final JavaConstant[] keys;
+
+        /// Copies the switch data while leaving its successors disconnected until they are transferred.
+        protected RangeSwitchNode(IntegerSwitchNode original) {
+            super(TYPE, original.value(), new AbstractBeginNode[original.blockSuccessorCount()],
+                            IntStream.rangeClosed(0, original.keyCount()).map(original::keySuccessorIndex).toArray(), original.getProfileData());
+            keys = IntStream.range(0, original.keyCount()).mapToObj(original::keyAt).toArray(JavaConstant[]::new);
+        }
+
+        @Override
+        public boolean isSorted() {
+            return true;
+        }
+
+        @Override
+        public int keyCount() {
+            return keys.length;
+        }
+
+        @Override
+        public JavaConstant keyAt(int i) {
+            return keys[i];
+        }
+
+        @Override
+        public boolean equalKeys(SwitchNode other) {
+            return other instanceof RangeSwitchNode rangeSwitch && Arrays.equals(keys, rangeSwitch.keys);
+        }
+
+        @Override
+        public Stamp genericSuccessorStamp() {
+            return value().stamp(NodeView.DEFAULT);
+        }
+
+        @Override
+        protected Stamp stampAtKeySuccessor(int i) {
+            return StampFactory.forConstant(keyAt(i));
+        }
+
+        /// Emits the range strategy through the normal backend with shared successor labels.
+        @Override
+        public void generate(NodeLIRBuilderTool tool) {
+            NodeLIRBuilder builder = (NodeLIRBuilder) tool;
+            LabelRef[] successorLabels = new LabelRef[blockSuccessorCount()];
+            for (int i = 0; i < successorLabels.length; i++) {
+                successorLabels[i] = builder.getLIRBlock(blockSuccessor(i));
+            }
+            LabelRef[] keyTargets = new LabelRef[keyCount()];
+            for (int i = 0; i < keyTargets.length; i++) {
+                keyTargets[i] = successorLabels[keySuccessorIndex(i)];
+            }
+            SwitchStrategy strategy = new SwitchStrategy.RangesStrategy(Arrays.copyOf(getKeyProbabilities(), keyCount()), keys);
+            builder.getLIRGeneratorTool().emitStrategySwitch(strategy, builder.getLIRGeneratorTool().asAllocatable(builder.operand(value())), keyTargets,
+                            successorLabels[defaultSuccessorIndex()]);
+        }
+    }
+
+    /// Replaces the Java switch before final scheduling so that shared targets reach range dispatch.
+    @Override
+    protected void checkMidTierGraph(StructuredGraph graph) {
+        Assert.assertEquals(1, graph.getNodes().filter(IntegerSwitchNode.class).count());
+        IntegerSwitchNode original = graph.getNodes().filter(IntegerSwitchNode.class).first();
+        Assert.assertEquals(4, original.keyCount());
+        RangeSwitchNode replacement = graph.add(new RangeSwitchNode(original));
+        for (int i = 0; i < original.blockSuccessorCount(); i++) {
+            AbstractBeginNode successor = original.blockSuccessor(i);
+            original.setBlockSuccessor(i, null);
+            replacement.setBlockSuccessor(i, successor);
+        }
+        original.replaceAtPredecessor(replacement);
+        original.safeDelete();
+    }
+
+    /// Provides single keys followed by an adjacent range with a shared target.
+    public static int sharedTargetSwitch(int value) {
+        return switch (value) {
+            case Integer.MIN_VALUE, -3 -> 0;
+            case -2, -1 -> 1;
+            default -> -1;
+        };
+    }
+
+    /// Compiles the Java switch with shared range dispatch and executes keys and default cases.
+    @Test
+    public void compiledRangeAfterSingletons() {
+        for (int value : new int[]{Integer.MIN_VALUE, Integer.MIN_VALUE + 1, -100, -4, -3, -2, -1, 0, Integer.MAX_VALUE}) {
+            test("sharedTargetSwitch", value);
+        }
+    }
 
     /// Checks dispatch at every key and its neighbors, as well as at the integer limits.
     private static void assertRangeDispatch(int[] keys, int[] targets) {
@@ -91,7 +202,7 @@ public class SwitchStrategyTest {
                 return targets[index1] == targets[index2];
             }
         });
-        assertEquals("dispatch for " + value + " with keys " + Arrays.toString(keys), expected, actual[0]);
+        Assert.assertEquals("dispatch for " + value + " with keys " + Arrays.toString(keys), expected, actual[0]);
     }
 
     /// Covers a final shared range after single keys whose failed equality checks leave a gap.
