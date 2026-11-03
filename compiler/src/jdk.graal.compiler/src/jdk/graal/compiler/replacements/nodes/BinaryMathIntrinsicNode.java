@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.AbsNode;
 import jdk.graal.compiler.nodes.calc.BinaryNode;
 import jdk.graal.compiler.nodes.calc.FloatDivNode;
 import jdk.graal.compiler.nodes.calc.MulNode;
@@ -162,7 +163,10 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements LIRLowe
                     // Note that Math.pow(Double.MAX_VALUE, 0.5) returns different value than
                     // Math.sqrt(Double.MAX_VALUE) until Java 17.
                     if (yValue == 0.5D && forX.stamp(view) instanceof FloatStamp xStamp && xStamp.lowerBound() >= 0.0D) {
-                        return SqrtNode.create(forX, view);
+                        // FloatStamp does not distinguish +0.0 from -0.0. Unlike sqrt, pow(x, 0.5)
+                        // returns +0.0 for -0.0, so clear the sign if zero is possible.
+                        ValueNode base = xStamp.lowerBound() == 0.0D ? AbsNode.create(forX, view) : forX;
+                        return SqrtNode.create(base, view);
                     }
                 }
                 break;
