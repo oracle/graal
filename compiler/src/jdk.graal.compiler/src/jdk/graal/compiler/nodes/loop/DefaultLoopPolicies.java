@@ -612,7 +612,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
              * This is the idea behind the following heuristic. {@link factor} is 0 for control
              * split with success probabilities close to 1 or 0 and 1 for evenly distributed splits.
              *
-             * The initial value of {@link factor} is computed such that if all the successor
+             * The normalization of {@link factor} is computed such that if all the successor
              * probabilities are equals (i.e. 1 / successorCount) then its final value is 1 and the
              * its inverted and capped value is close to 0 meaning that the invariant can have any
              * frequency and it will be unswitched. On the other hand when one of the successor
@@ -621,8 +621,8 @@ public class DefaultLoopPolicies implements LoopPolicies {
              * must be executed often.
              *
              * Let's consider the following program with a probability of 0.1 for the null check.
-             * The initial value of factor is 2^(2*1) = 4 and its final value is 4 * 0.9 * 0.1 =
-             * 0.36. Then its inverted and capped value is 1 - 0.36 = 0.64 meaning that for this
+             * The factor is 2^(2*1) * 0.9 * 0.1 = 0.36. Then its inverted and capped value is
+             * 1 - 0.36 = 0.64 meaning that for this
              * invariant to be unswitched it must be used during more that 64% of the loop's
              * iterations.
              *
@@ -635,13 +635,16 @@ public class DefaultLoopPolicies implements LoopPolicies {
              *  }
              * </pre>
              */
-            double factor = Math.pow(split.get(0).getSuccessorCount(), split.get(0).getSuccessorCount() * split.size());
+            double factor;
             if (isTrusted) {
+                // Accumulate in log space to avoid overflowing the normalization n^(n * k).
+                double logFactor = 0.0;
                 for (ControlSplitNode s : split) {
                     for (double p : s.successorProbabilities()) {
-                        factor *= p;
+                        logFactor += Math.log(p * s.getSuccessorCount());
                     }
                 }
+                factor = Math.exp(logFactor);
                 assert ProfileData.isApproximatelyInRange(factor, 0.0, 1.0) : "factor should be between 0 and 1, but is : " + factor;
             } else {
                 debug.log("control split %s has an untrusted profile source", split);
