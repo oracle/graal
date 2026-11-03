@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.calc.CopySignNode;
+import jdk.graal.compiler.nodes.calc.RoundFloatToIntegerNode;
 import jdk.graal.compiler.nodes.calc.RoundNode;
 import jdk.graal.compiler.nodes.calc.SignumNode;
 import jdk.vm.ci.meta.JavaKind;
@@ -211,6 +212,22 @@ public class FloatStampTest extends GraphTest {
                 Assert.assertTrue(op.foldStamp(StampFactory.empty(JavaKind.Float)).isEmpty());
                 Assert.assertTrue(op.foldStamp(StampFactory.empty(JavaKind.Double)).isEmpty());
             }
+        }
+    }
+
+    @Test
+    public void testRoundToIntegerEmpty() {
+        for (JavaKind kind : new JavaKind[]{JavaKind.Float, JavaKind.Double}) {
+            ParameterNode param = new ParameterNode(0, StampPair.createSingle(StampFactory.forKind(kind)));
+            RoundFloatToIntegerNode round = new RoundFloatToIntegerNode(param);
+            Stamp emptyInput = StampFactory.empty(kind);
+            Stamp emptyResult = StampFactory.empty(kind == JavaKind.Float ? JavaKind.Int : JavaKind.Long);
+            assertEquals(emptyResult, round.foldStamp(emptyInput));
+
+            param.setStamp(emptyInput);
+            assertTrue(round.inferStamp());
+            assertEquals(emptyResult, round.stamp(NodeView.DEFAULT));
+            assertEquals(emptyResult, new RoundFloatToIntegerNode(param).stamp(NodeView.DEFAULT));
         }
     }
 
