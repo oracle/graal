@@ -133,8 +133,7 @@ public final class SecurityProviderRuntimeState {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized void registerProvider(String providerClassName, AcquisitionKind acquisitionKind, Object verificationResult, RuntimeDynamicAccessMetadata metadata) {
-        Exception verificationFailure = verificationResult instanceof Exception exception ? exception : null;
+    public synchronized void registerProvider(String providerClassName, AcquisitionKind acquisitionKind, Exception verificationFailure, RuntimeDynamicAccessMetadata metadata) {
         RuntimeDynamicAccessMetadata constructionMetadata = acquisitionKind == AcquisitionKind.JDK_CONSTRUCTIBLE ? metadata : null;
         providerInfos.put(providerClassName, mergeConditional(providerInfos.get(providerClassName),
                         new ConditionalProviderInfo(metadata, constructionMetadata, verificationFailure)));
