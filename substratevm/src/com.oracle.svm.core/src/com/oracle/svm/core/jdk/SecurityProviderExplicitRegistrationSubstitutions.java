@@ -35,6 +35,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.runtimeinit.Target_sun_security_jca_ProviderConfig;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
@@ -105,20 +106,6 @@ final class Target_sun_security_jca_Providers_ExplicitRegistration {
     }
 }
 
-@TargetClass(className = "sun.security.jca.ProviderConfig", onlyWith = ExplicitSecurityProviderRegistration.class)
-@SuppressWarnings({"unused", "static-method"})
-final class Target_sun_security_jca_ProviderConfig_ExplicitRegistration {
-    @Alias //
-    String provName;
-
-    @Alias //
-    Provider provider;
-
-    @Alias
-    Target_sun_security_jca_ProviderConfig_ExplicitRegistration(@SuppressWarnings("unused") Provider provider) {
-    }
-}
-
 @TargetClass(className = "sun.security.jca.ProviderList", onlyWith = ExplicitSecurityProviderRegistration.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_security_jca_ProviderList_ExplicitRegistration {
@@ -126,11 +113,11 @@ final class Target_sun_security_jca_ProviderList_ExplicitRegistration {
     private static Provider emptyProvider;
 
     @Alias //
-    Target_sun_security_jca_ProviderConfig_ExplicitRegistration[] configs;
+    Target_sun_security_jca_ProviderConfig[] configs;
 
     @Alias
     Target_sun_security_jca_ProviderList_ExplicitRegistration(
-                    @SuppressWarnings("unused") Target_sun_security_jca_ProviderConfig_ExplicitRegistration[] configs,
+                    @SuppressWarnings("unused") Target_sun_security_jca_ProviderConfig[] configs,
                     @SuppressWarnings("unused") boolean allLoaded) {
     }
 
@@ -149,7 +136,7 @@ final class Target_sun_security_jca_ProviderList_ExplicitRegistration {
         providerList.toArray();
         int removeIndex = -1;
         for (int index = 0; index < targetProviderList.configs.length; index++) {
-            Target_sun_security_jca_ProviderConfig_ExplicitRegistration config = targetProviderList.configs[index];
+            Target_sun_security_jca_ProviderConfig config = targetProviderList.configs[index];
             Provider provider = config.provider;
             if (provider != null && provider.getName().equals(name)) {
                 removeIndex = index;
@@ -160,7 +147,7 @@ final class Target_sun_security_jca_ProviderList_ExplicitRegistration {
             return providerList;
         }
 
-        Target_sun_security_jca_ProviderConfig_ExplicitRegistration[] updatedConfigs = new Target_sun_security_jca_ProviderConfig_ExplicitRegistration[targetProviderList.configs.length - 1];
+        Target_sun_security_jca_ProviderConfig[] updatedConfigs = new Target_sun_security_jca_ProviderConfig[targetProviderList.configs.length - 1];
         System.arraycopy(targetProviderList.configs, 0, updatedConfigs, 0, removeIndex);
         System.arraycopy(targetProviderList.configs, removeIndex + 1, updatedConfigs, removeIndex,
                         targetProviderList.configs.length - removeIndex - 1);
@@ -219,9 +206,9 @@ final class SecurityProviderListSupport {
             rawInsertionIndex = lastActiveRawIndex + 1;
         }
 
-        Target_sun_security_jca_ProviderConfig_ExplicitRegistration[] updatedConfigs = new Target_sun_security_jca_ProviderConfig_ExplicitRegistration[targetProviderList.configs.length + 1];
+        Target_sun_security_jca_ProviderConfig[] updatedConfigs = new Target_sun_security_jca_ProviderConfig[targetProviderList.configs.length + 1];
         System.arraycopy(targetProviderList.configs, 0, updatedConfigs, 0, rawInsertionIndex);
-        updatedConfigs[rawInsertionIndex] = new Target_sun_security_jca_ProviderConfig_ExplicitRegistration(provider);
+        updatedConfigs[rawInsertionIndex] = new Target_sun_security_jca_ProviderConfig(provider);
         System.arraycopy(targetProviderList.configs, rawInsertionIndex, updatedConfigs, rawInsertionIndex + 1,
                         targetProviderList.configs.length - rawInsertionIndex);
         return SubstrateUtil.cast(new Target_sun_security_jca_ProviderList_ExplicitRegistration(updatedConfigs, true),

@@ -31,18 +31,12 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.BuiltInSecurityProviderLoader;
 import com.oracle.svm.core.jdk.JceProviderVerificationSupport;
-import com.oracle.svm.core.jdk.SecurityProviderRuntimeAccess;
-import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 import com.oracle.svm.core.jdk.SecurityProvidersInitializedAtRunTime;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
-
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
 /**
  * The {@code javax.crypto.JceSecurity#verificationResults} cache is initialized by the
@@ -77,114 +71,6 @@ final class Target_javax_crypto_JceSecurity {
     static Exception getVerificationResult(Provider p) {
         return JceProviderVerificationSupport.getVerificationResult(p);
     }
-}
-
-/* The provider-construction path is identical in explicit and legacy run-time initialization. */
-@TargetClass(className = "sun.security.jca.ProviderConfig", onlyWith = SecurityProvidersInitializedAtRunTime.class)
-@SuppressWarnings({"unused", "static-method"})
-final class Target_sun_security_jca_ProviderConfig {
-
-    @Alias //
-    String provName;
-
-    @Alias //
-    String argument;
-
-    @Alias//
-    private static sun.security.util.Debug debug;
-
-    @Alias//
-    private Provider provider;
-
-    /** The descriptor selected for a cached JDK-managed provider, before configure(). */
-    @Inject private SecurityProviderRuntimeState.ConfiguredProviderInfo selectedProvider;
-
-    @Alias//
-    private boolean isLoading;
-
-    @Alias//
-    private int tries;
-
-    @Alias
-    private native Provider doLoadProvider();
-
-    @Alias
-    private native boolean shouldLoad();
-
-    /**
-     * The `entrypoint` for allocating security providers at runtime. The implementation is copied
-     * from the JDK with a small tweak to filter out providers that are neither user-requested nor
-     * reachable via a security service.
-     */
-    @Substitute
-    @SuppressFBWarnings(value = "DC_DOUBLECHECK", justification = "This double-check is implemented correctly and is intentional.")
-    Provider getProvider() {
-        if (provider != null && selectedProvider == null) {
-            return provider;
-        }
-        synchronized (this) {
-            SecurityProviderRuntimeState.ConfiguredProviderInfo configuredProvider = SecurityProviderRuntimeState.getConfiguredProvider(provName);
-            if (provider != null) {
-                if (selectedProvider == null || configuredProvider != null && selectedProvider == configuredProvider) {
-                    return provider;
-                }
-                // §FS-002-security-providers.1.5: Reevaluate a cached name after activation.
-                provider = null;
-            }
-            // §FS-002-security-providers.1.5: Retry budgets belong to the selected descriptor.
-            if (selectedProvider != configuredProvider) {
-                selectedProvider = configuredProvider;
-                tries = 0;
-            }
-            String configuredProviderClassName = configuredProvider != null ? configuredProvider.providerClassName() : null;
-            String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(provName);
-            String providerClassName = configuredProviderClassName != null ? configuredProviderClassName
-                            : builtInProviderClassName != null ? builtInProviderClassName : provName;
-            // §FS-002-security-providers.6.1
-            // Omit unregistered providers from the run-time list.
-            if (!SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName)) {
-                return null;
-            }
-            if (!shouldLoad()) {
-                return null;
-            }
-            // Create providers which are in java.base directly
-            if (BuiltInSecurityProviderLoader.isBuiltIn(provName)) {
-                provider = BuiltInSecurityProviderLoader.load(provName, debug);
-            } else {
-                if (isLoading) {
-                    /*
-                     * This method is synchronized, so this can only happen if there is recursion.
-                     */
-                    if (debug != null) {
-                        debug.println("Recursion loading provider: " + this);
-                        // Checkstyle: allow System.err (for JDK compatibility)
-                        new Exception("Call trace").printStackTrace(System.err);
-                        // Checkstyle: disallow System.err
-                    }
-                    return null;
-                }
-                try {
-                    isLoading = true;
-                    tries++;
-                    if (configuredProviderClassName != null) {
-                        /* §FS-002-security-providers.1.2, §FS-002-security-providers.6.1:
-                         * ordered retained descriptors, with the JDK ServiceLoader recursion and
-                         * retry state machine. */
-                        selectedProvider = configuredProvider;
-                        provider = SecurityProviderRuntimeAccess.loadRegisteredConfiguredProvider(provName, configuredProviderClassName,
-                                        configuredProvider.effectiveConstructionClassName(), argument);
-                    } else {
-                        provider = doLoadProvider();
-                    }
-                } finally {
-                    isLoading = false;
-                }
-            }
-        }
-        return provider;
-    }
-
 }
 
 @SuppressWarnings("unused")
