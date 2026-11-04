@@ -7,7 +7,7 @@ In the module path case, the option will cause all classes of the module to be r
 fully defined at image build-time. If used without arguments on command line all classes are
 required to be fully defined at image build-time.
 
-Using --link-at-build-time with arguments is allowed in every scope:
+Using --link-at-build-time with class or package arguments is allowed in every scope:
 
   1. On command line
   2. Embedded in a native-image.properties file of some zip/jar file on module-path
@@ -17,3 +17,6 @@ If the option is embedded in native-image.properties file in some zip/jar file a
 and package-names passed to the option have to be found in the zip/jar files the option is embedded
 in. Using --link-at-build-time with arguments on command line does not have that restriction.
 
+Using --link-at-build-time=module=<module-name> or --link-at-build-time=package=<package-name>
+is only allowed on command line, not in an embedded native-image.properties file.
+The package selector also accepts a trailing .* to include subpackages.
