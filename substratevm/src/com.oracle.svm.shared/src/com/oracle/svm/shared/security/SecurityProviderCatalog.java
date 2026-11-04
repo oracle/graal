@@ -35,31 +35,6 @@ public final class SecurityProviderCatalog {
     private SecurityProviderCatalog() {
     }
 
-    public static String getProviderName(String providerNameOrClassName) {
-        String providerClassName = getProviderClassName(providerNameOrClassName);
-        if (providerClassName == null) {
-            return null;
-        }
-        return switch (providerClassName) {
-            case "sun.security.provider.Sun" -> "SUN";
-            case "sun.security.rsa.SunRsaSign" -> "SunRsaSign";
-            case "com.sun.crypto.provider.SunJCE" -> "SunJCE";
-            case "sun.security.ssl.SunJSSE" -> "SunJSSE";
-            case "sun.security.ec.SunEC" -> "SunEC";
-            case "sun.security.jgss.SunProvider" -> "SunJGSS";
-            case "com.sun.security.sasl.Provider" -> "SunSASL";
-            case "org.jcp.xml.dsig.internal.dom.XMLDSigRI" -> "XMLDSig";
-            case "sun.security.smartcardio.SunPCSC" -> "SunPCSC";
-            case "sun.security.provider.certpath.ldap.JdkLDAP" -> "JdkLDAP";
-            case "com.sun.security.sasl.gsskerb.JdkSASL" -> "JdkSASL";
-            case "sun.security.pkcs11.SunPKCS11" -> "SunPKCS11";
-            case "sun.security.mscapi.SunMSCAPI" -> "SunMSCAPI";
-            case "com.oracle.security.ucrypto.UcryptoProvider" -> "OracleUcrypto";
-            case "apple.security.AppleProvider" -> "Apple";
-            default -> null;
-        };
-    }
-
     public static String getProviderClassName(String providerNameOrClassName) {
         return switch (providerNameOrClassName) {
             case "SUN", "sun.security.provider.Sun" -> "sun.security.provider.Sun";
