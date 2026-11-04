@@ -45,6 +45,7 @@ import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -263,6 +264,37 @@ public abstract class Heap {
     /** Consider all references in the given object as needing remembered set entries. */
     @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)
     public abstract void dirtyAllReferencesOf(Object obj);
+
+    /**
+     * Returns {@code true} if object references may be copied with a raw memory copy, provided that
+     * the copy is preceded by {@link #referenceRangePreWriteBarrier} and followed by
+     * {@link #referenceRangePostWriteBarrier} on the same destination range, with no safepoint in
+     * between. If this returns {@code false}, references must be copied one at a time with the
+     * regular barriers.
+     */
+    public boolean supportsBulkReferenceCopy() {
+        return false;
+    }
+
+    /**
+     * Executes the GC barriers that are required before {@code count} references starting at
+     * {@code start} in {@code holder} are overwritten by a raw memory copy. Only called if
+     * {@link #supportsBulkReferenceCopy()} returns {@code true}.
+     */
+    @Uninterruptible(reason = "Ensure that no GC can occur between the barriers and the copy.", callerMustBe = true)
+    public void referenceRangePreWriteBarrier(Object holder, Pointer start, UnsignedWord count) {
+        throw VMError.shouldNotReachHereAtRuntime();
+    }
+
+    /**
+     * Executes the GC barriers that are required after {@code count} references starting at
+     * {@code start} in {@code holder} were written by a raw memory copy. Only called if
+     * {@link #supportsBulkReferenceCopy()} returns {@code true}.
+     */
+    @Uninterruptible(reason = "Ensure that no GC can occur between the copy and the barriers.", callerMustBe = true)
+    public void referenceRangePostWriteBarrier(Object holder, Pointer start, UnsignedWord count) {
+        throw VMError.shouldNotReachHereAtRuntime();
+    }
 
     /**
      * Returns the longest time (in ms) that has elapsed since the last time that the whole heap has

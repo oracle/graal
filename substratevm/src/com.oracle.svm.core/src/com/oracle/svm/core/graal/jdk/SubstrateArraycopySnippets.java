@@ -43,6 +43,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.ArrayUtil;
+import com.oracle.svm.shared.NeverInline;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -97,6 +98,10 @@ public final class SubstrateArraycopySnippets extends SubstrateTemplates impleme
                 return;
             }
         } else if (LayoutEncoding.isObjectArray(fromLayoutEncoding)) {
+            if (JavaMemoryUtil.useBulkObjectArrayCopy(length)) {
+                doLongObjectArraycopy(fromArray, fromIndex, toArray, toIndex, length);
+                return;
+            }
             if (fromArray == toArray && fromIndex < toIndex) {
                 ArrayUtil.boundsCheckInSnippet(fromArray, fromIndex, toArray, toIndex, length);
                 JavaMemoryUtil.copyObjectArrayBackward(fromArray, fromIndex, fromArray, toIndex, length, fromLayoutEncoding);
@@ -116,6 +121,35 @@ public final class SubstrateArraycopySnippets extends SubstrateTemplates impleme
             }
         }
         throw new ArrayStoreException();
+    }
+
+    /**
+     * The object array part of {@link #doArraycopy} for copies long enough to be copied in bulk.
+     * Same checks, in the same order, as {@link #doArraycopy}. Kept out of line, and never returns
+     * to {@link #doArraycopy}'s copy code, so that {@link #doArraycopy} grows by only one check and
+     * one call and keeps nothing extra alive on its short-copy path.
+     */
+    @NeverInline("Keep doArraycopy small.")
+    private static void doLongObjectArraycopy(Object fromArray, int fromIndex, Object toArray, int toIndex, int length) {
+        DynamicHub fromHub = DynamicHubIntrinsics.readHub(fromArray);
+        DynamicHub toHub = DynamicHubIntrinsics.readHub(toArray);
+        int layoutEncoding = fromHub.getLayoutEncoding();
+        if (fromArray == toArray && fromIndex < toIndex) {
+            ArrayUtil.boundsCheckInSnippet(fromArray, fromIndex, toArray, toIndex, length);
+            JavaMemoryUtil.copyObjectArrayBackwardBulk(fromArray, fromIndex, fromArray, toIndex, length, layoutEncoding);
+        } else if (fromHub == toHub) {
+            ArrayUtil.boundsCheckInSnippet(fromArray, fromIndex, toArray, toIndex, length);
+            JavaMemoryUtil.copyObjectArrayForwardBulk(fromArray, fromIndex, toArray, toIndex, length, layoutEncoding);
+        } else if (LayoutEncoding.isObjectArray(toHub.getLayoutEncoding())) {
+            ArrayUtil.boundsCheckInSnippet(fromArray, fromIndex, toArray, toIndex, length);
+            if (DynamicHub.toClass(toHub).isAssignableFrom(DynamicHub.toClass(fromHub))) {
+                JavaMemoryUtil.copyObjectArrayForwardBulk(fromArray, fromIndex, toArray, toIndex, length, layoutEncoding);
+            } else {
+                JavaMemoryUtil.copyObjectArrayForwardWithStoreCheck(fromArray, fromIndex, toArray, toIndex, length);
+            }
+        } else {
+            throw new ArrayStoreException();
+        }
     }
 
     static final class SubstrateArrayCopyLowering implements NodeLoweringProvider<ArrayCopyNode> {
