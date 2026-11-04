@@ -188,10 +188,9 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
                      * GR-81047: ProviderUtil.initialize can be reachable without the SunMSCAPI provider. Its
                      * load call must not cause sunmscapi to be linked into unrelated images. The
                      * SunMSCAPI reachability handler registers the library when the provider is used.
+                     * This workaround can be removed once GR-69858 is merged.
                      */
-                    boolean providerWorkaroundLoad = "sunmscapi".equals(library) && b.getMethod().getName().equals("initialize") &&
-                                    b.getMethod().getDeclaringClass().toJavaName().equals("com.oracle.svm.core.jdk.ProviderUtil");
-                    if (!providerWorkaroundLoad) {
+                    if (!"sunmscapi".equals(library)) {
                         registerJNILibrary(library);
                     }
                 }
@@ -211,7 +210,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         }
     }
 
-    void addLibraryRegistrationHandler(Consumer<String> handler) {
+    public void addLibraryRegistrationHandler(Consumer<String> handler) {
         libraryRegistrationHandlers.add(handler);
         for (String libname : jniRegistrationSupportSingleton.currentLayerRegisteredLibraries) {
             handler.accept(libname);

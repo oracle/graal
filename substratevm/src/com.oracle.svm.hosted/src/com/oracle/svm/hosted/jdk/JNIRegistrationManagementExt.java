@@ -36,11 +36,11 @@ public class JNIRegistrationManagementExt extends JNIRegistrationUtil implements
         initializeAtRunTime(access, "com.sun.management.internal.OperatingSystemImpl");
 
         if (isWindows()) {
-            JNIRegistrationSupport.singleton().addLibraryRegistrationHandler(JNIRegistrationManagementExt::registerWindowsLibrarySupport);
+            JNIRegistrationSupport.singleton().addLibraryRegistrationHandler(JNIRegistrationManagementExt::registerLibraryDependencies);
         }
     }
 
-    private static void registerWindowsLibrarySupport(String library) {
+    private static void registerLibraryDependencies(String library) {
         if (library.equals("management_ext")) {
             NativeLibraries.singleton().addDynamicLibrary("psapi");
         }
