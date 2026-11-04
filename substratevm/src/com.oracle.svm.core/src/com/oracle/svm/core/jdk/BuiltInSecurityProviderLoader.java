@@ -38,10 +38,6 @@ public final class BuiltInSecurityProviderLoader {
     private BuiltInSecurityProviderLoader() {
     }
 
-    public static String getProviderName(String providerNameOrClassName) {
-        return SecurityProviderCatalog.getProviderName(providerNameOrClassName);
-    }
-
     public static String getProviderClassName(String providerNameOrClassName) {
         return SecurityProviderCatalog.getProviderClassName(providerNameOrClassName);
     }
