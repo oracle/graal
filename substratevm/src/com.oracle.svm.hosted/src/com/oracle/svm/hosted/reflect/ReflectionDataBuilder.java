@@ -1446,16 +1446,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return types.get(analysisType).dynamicAccess;
     }
 
-    public boolean isTypeRegisteredForReflection(Class<?> clazz) {
-        AnalysisType analysisType = metaAccess.optionalLookupJavaType(clazz).orElse(null);
-        if (analysisType == null) {
-            return false;
-        }
-        TypeData data = types.get(analysisType);
-        return (data != null && data.isRegisteredAs(ACCESSED)) ||
-                        (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isTypeRegistered(analysisType, ACCESSED));
-    }
-
     /**
      * Returns the run-time availability of type-access registrations contributed in the current
      * image layer, or {@code null} when this layer has no such registration.
@@ -1468,13 +1458,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
         TypeData data = types.get(analysisType);
         return data != null && data.isRegisteredAs(ACCESSED) ? data.getDynamicAccessMetadata() : null;
-    }
-
-    public boolean isMethodRegisteredForReflection(Executable method) {
-        AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(method);
-        ElementData data = methods.get(analysisMethod);
-        return (data != null && data.isRegisteredAs(ACCESSED)) ||
-                        (layeredReflectionDataBuilder != null && layeredReflectionDataBuilder.isMethodRegistered(analysisMethod, ACCESSED));
     }
 
     /**
