@@ -27,6 +27,8 @@ package jdk.graal.compiler.nodes.calc;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
+import java.util.function.Consumer;
+
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.Node;
@@ -139,6 +141,15 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements Canonica
             }
         }
         return TriState.UNKNOWN;
+    }
+
+    /**
+     * Requests a full search because the implication rule relates the operands to an
+     * {@link AndNode} used as the query's lookup key.
+     */
+    @Override
+    public boolean forEachImplicationKey(Consumer<ValueNode> consumer) {
+        return false;
     }
 
     @Override

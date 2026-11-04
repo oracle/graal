@@ -29,7 +29,6 @@ import static jdk.graal.compiler.duplication.util.DuplicationUtil.isRealMergeBlo
 import static jdk.graal.compiler.phases.common.ConditionalEliminationUtil.getOtherSafeStamp;
 import static jdk.graal.compiler.phases.common.ConditionalEliminationUtil.getSafeStamp;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -84,7 +83,6 @@ import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph.RecursiveVisitor;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
@@ -103,8 +101,10 @@ import jdk.graal.compiler.nodes.spi.StampInverter;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.SingleRunSubphase;
+import jdk.graal.compiler.phases.common.ConditionalEliminationConditionStack;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.GuardedCondition;
+import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.Implication;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.InfoElement;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.InfoElementProvider;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.Marks;
@@ -113,7 +113,6 @@ import jdk.graal.compiler.phases.common.util.GlobalProfilesOptimizationUtility;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.TriState;
 
 /**
  * @see DuplicationSimulationUtil
@@ -136,7 +135,6 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
         this(optionValues, config, canonicalizerTool, (x, y, z) -> false);
     }
 
-    private SimulationContext simContext;
     private SimulationEndInfo[] improvements;
 
     public SimulationEndInfo[] getImprovements() {
@@ -169,9 +167,10 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
             nodeToBlock = cfg.getNodeToBlock();
             blockToNodes = getBlockToNodes(cfg);
         }
-        simContext = new SimulationContext(graph, cfg, blockToNodes, nodeToBlock, new CFGFrequencyInfo(cfg), context);
-        new SimulationCFGTraversal<Marks>().visitDominatorTreeBounded(simContext.visitor, cfg.getStartBlock(), 0, Integer.MAX_VALUE);
-        improvements = simContext.simulatedImprovements();
+        try (SimulationContext simulationContext = new SimulationContext(graph, cfg, blockToNodes, nodeToBlock, new CFGFrequencyInfo(cfg), context)) {
+            new SimulationCFGTraversal<Marks>().visitDominatorTreeBounded(simulationContext.visitor, cfg.getStartBlock(), 0, Integer.MAX_VALUE);
+            improvements = simulationContext.simulatedImprovements();
+        }
     }
 
     protected BlockMap<List<Node>> getBlockToNodes(ControlFlowGraph cfg) {
@@ -191,7 +190,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
         return 1.5f;
     }
 
-    private final class SimulationContext {
+    private final class SimulationContext implements AutoCloseable {
         /**
          * Results indexed by candidate forward end, allocated when the first candidate is simulated.
          */
@@ -211,7 +210,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
         /**
          * Outer traversal visitor that collects the facts available at each candidate's entrance.
          */
-        private final RecursiveVisitor<Marks> visitor;
+        private final SimulationEntranceFrame visitor;
         /**
          * Lazily allocated frame reused by synchronous, nonrecursive candidate simulations.
          */
@@ -240,7 +239,6 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
         private SimulationContext(StructuredGraph graph, ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, CFGFrequencyInfo cfgFrequencyInfo,
                         CoreProviders context) {
             this.cfg = cfg;
-            this.visitor = new SimulationEntraceFrame(graph, blockToNodes, nodeToBlock, context, null);
             this.stopAtCF = config.stopSimulationAtControlFlow(graph.getOptions());
             this.cfgFrequencyInfo = cfgFrequencyInfo;
             LoopsData loopsData = context.getLoopsDataProvider().getLoopsData(graph);
@@ -253,9 +251,16 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
                     vectorizableLoops.add(loop);
                 }
             }
+            this.visitor = new SimulationEntranceFrame(graph, blockToNodes, nodeToBlock, context, null);
         }
 
-        private class SimulationEntraceFrame implements ControlFlowGraph.RecursiveVisitor<Marks> {
+        /** Closes the graph-event scope shared by the entrance and simulation frames. */
+        @Override
+        public void close() {
+            visitor.conditions.close();
+        }
+
+        private class SimulationEntranceFrame implements ControlFlowGraph.RecursiveVisitor<Marks> {
             /**
              * Mapping from graph nodes to blocks, shared by all frames.
              */
@@ -283,7 +288,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
             /**
              * Guarded facts shared with the entrance frame; candidates restore the inherited depth.
              */
-            protected final ArrayDeque<GuardedCondition> conditions;
+            protected final ConditionalEliminationConditionStack conditions;
             /**
              * Adapter exposing this frame's stamp lookup to conditional elimination.
              */
@@ -301,7 +306,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
              */
             protected EconomicMap<AbstractBeginNode, Stamp> successorStampCache;
 
-            SimulationEntraceFrame(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, CoreProviders providers, SimulationEntraceFrame parent) {
+            SimulationEntranceFrame(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, CoreProviders providers, SimulationEntranceFrame parent) {
                 this.graph = graph;
                 this.debug = graph.getDebug();
                 this.blockToNodes = blockToNodes;
@@ -313,7 +318,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
                  * through the existing scope undo log, rather than copying the whole node map.
                  */
                 this.map = parent == null ? graph.createNodeMap() : parent.map;
-                this.conditions = parent == null ? new ArrayDeque<>() : parent.conditions;
+                this.conditions = parent == null ? new ConditionalEliminationConditionStack(graph) : parent.conditions;
                 this.safeStampInputSearch = new SafeStampInputSearch(graph);
                 infoElementProvider = new InfoElementProvider() {
 
@@ -663,7 +668,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
 
         }
 
-        private class SimulationFrame extends SimulationEntraceFrame {
+        private class SimulationFrame extends SimulationEntranceFrame {
             /**
              * Merge at which the current candidate starts simulating duplication.
              */
@@ -713,7 +718,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
              */
             private int conditionsMark;
 
-            SimulationFrame(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, CoreProviders providers, SimulationEntraceFrame parent) {
+            SimulationFrame(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, CoreProviders providers, SimulationEntranceFrame parent) {
                 super(graph, blockToNodes, nodeToBlock, providers, parent);
                 processed = graph.createNodeBitMap();
                 inRegion = graph.createNodeBitMap();
@@ -1146,13 +1151,8 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
             }
 
             private boolean tryProveIfConditionFromExistingCondition(IfNode node) {
-                for (GuardedCondition guardedCondition : conditions) {
-                    TriState result = guardedCondition.getCondition().implies(guardedCondition.isNegated(), node.condition());
-                    if (result.isKnown()) {
-                        return killIfFromProof(node, result.toBoolean());
-                    }
-                }
-                return false;
+                Implication implication = conditions.findImplication(node.condition());
+                return implication != null && killIfFromProof(node, implication.result());
             }
 
             private boolean killIfFromProof(IfNode node, boolean result) {
