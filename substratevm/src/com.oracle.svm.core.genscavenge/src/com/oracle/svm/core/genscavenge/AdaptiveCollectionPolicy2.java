@@ -137,7 +137,9 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
          */
         UnsignedWord averagePromoted = UnsignedUtils.fromDouble(avgPromoted.getPaddedAverage());
         UnsignedWord promotionEstimate = UnsignedUtils.min(averagePromoted, youngUsed);
-        UnsignedWord freeInOldGenWithExpansion = sizes.getMaxOldSize().subtract(oldUsed);
+        /* Full compaction can leave old-gen usage above its maximum size. */
+        UnsignedWord maxOldSize = sizes.getMaxOldSize();
+        UnsignedWord freeInOldGenWithExpansion = oldUsed.belowThan(maxOldSize) ? maxOldSize.subtract(oldUsed) : Word.zero();
         /*
          * Note that ParallelScavengeHeap also considers if the OS has enough free memory ready to
          * commit and expand old gen for promotions, and if not, does a full GC. This is to avoid
@@ -277,11 +279,16 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
     private void resizeAfterYoungGC(boolean isSurvivorOverflowing, UnsignedWord oldLive, UnsignedWord survived) { // ParallelScavengeHeap::resize_after_young_gc
         doResizeAfterYoungGC(isSurvivorOverflowing, survived);
 
-        // Consider if should shrink old-gen
-        if (!isSurvivorOverflowing) {
+        /*
+         * Do not shrink old gen after survivor overflow, to avoid reducing its headroom when survivor
+         * space has proved insufficient. Normal tenuring can also push old-gen usage beyond its capacity
+         * target. In that case, leave resizing to the following full collection.
+         */
+        UnsignedWord oldCapacity = sizes.getOldSize();
+        boolean tryShrinkOldGen = !isSurvivorOverflowing && !oldSizeExceededInPreviousCollection;
+        if (tryShrinkOldGen) {
             // Upper bound for a single step shrink
             UnsignedWord maxShrinkBytes = minSpaceSize();
-            UnsignedWord oldCapacity = sizes.getOldSize();
             UnsignedWord oldGenFreeInBytes = oldCapacity.subtract(oldLive);
             UnsignedWord shrinkBytes = computeOldGenShrinkBytes(oldGenFreeInBytes, maxShrinkBytes);
             if (shrinkBytes.notEqual(0)) {

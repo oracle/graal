@@ -214,8 +214,9 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
          */
         UnsignedWord averagePromoted = UnsignedUtils.fromDouble(avgPromoted.getPaddedAverage());
         UnsignedWord promotionEstimate = UnsignedUtils.min(averagePromoted, youngUsed);
-        UnsignedWord oldFree = sizes.getOldSize().subtract(oldUsed);
-        return promotionEstimate.aboveThan(oldFree);
+        UnsignedWord oldCapacity = sizes.getOldSize();
+        /* Full compaction can leave old-gen usage above its capacity. */
+        return oldUsed.aboveThan(oldCapacity) || promotionEstimate.aboveThan(oldCapacity.subtract(oldUsed));
     }
 
     private void updateAverages(boolean isSurvivorOverflow, UnsignedWord survivedChunkBytes, UnsignedWord promotedChunkBytes) {
