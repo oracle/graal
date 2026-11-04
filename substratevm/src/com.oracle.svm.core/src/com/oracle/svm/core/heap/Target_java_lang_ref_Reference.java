@@ -43,6 +43,8 @@ import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.OpenJDK;
 import com.oracle.svm.guest.staging.core.heap.UnknownClass;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -123,6 +125,14 @@ public final class Target_java_lang_ref_Reference<T> {
 
     @KeepOriginal
     native T get();
+
+    @Substitute
+    @TargetElement(onlyWith = OpenJDK.class)
+    @SuppressWarnings("unchecked")
+    private T get0() {
+        /* Use the regular referent field access so the selected GC's read barrier is applied. */
+        return (T) ReferenceInternals.getReferent(SubstrateUtil.cast(this, Reference.class));
+    }
 
     @KeepOriginal
     native void clear();

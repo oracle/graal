@@ -448,7 +448,7 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
     helloworld(image_args + javac_command)
     if '--static' not in image_args:
         helloworld(image_args + ['--shared'])  # Build and run helloworld as shared library
-    if flightrecorder:
+    if flightrecorder and not mx.is_windows():
         helloworld(image_args + ['-J-XX:StartFlightRecording=dumponexit=true'])  # Build and run helloworld with FlightRecorder at image build time
     if '--static' not in image_args:
         cinterfacetutorial(extra_image_args)
