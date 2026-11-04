@@ -220,12 +220,12 @@ public class InjectLoopCounterStampsPhase extends BasePhase<CoreProviders> {
                     CountedLoopInfo counted = loop.counted();
                     InductionVariable counter = counted.getLimitCheckedIV();
                     if (canInjectExtremumStamp(counted, counter)) {
-
-                        tryInjectBetterStampForBaseIV(loop, counter, ec, () -> {
-                            graph.getOptimizationLog().report(getClass(), "LoopCounterStampImprovement", counter.getRootIV().valueNode());
-                            injectOtherBaseIVBounds(loop, counter, ec);
-
-                        });
+                        if (canInjectRootIVStamp(counted, counter)) {
+                            tryInjectBetterStampForBaseIV(loop, counter, ec, () -> {
+                                graph.getOptimizationLog().report(getClass(), "LoopCounterStampImprovement", counter.getRootIV().valueNode());
+                                injectOtherBaseIVBounds(loop, counter, ec);
+                            });
+                        }
 
                         /**
                          * The stamp for lower and upper bound of the entire loop is computed only
@@ -259,6 +259,29 @@ public class InjectLoopCounterStampsPhase extends BasePhase<CoreProviders> {
     private static boolean canInjectExtremumStamp(CountedLoopInfo counted, InductionVariable counter) {
         return counter.isConstantStride() && counted.counterNeverOverflows() &&
                         !NumUtil.absOverflows(counter.constantStride(), IntegerStamp.getBits(counter.strideNode().stamp(NodeView.DEFAULT)));
+    }
+
+    /**
+     * Checks whether a range calculated from the loop limit may narrow the root IV's stamp. For example:
+     *
+     * <pre>
+     * for (int i = Integer.MAX_VALUE - 1; (long) i &lt; 2147483649L; i++) {
+     *     body(i);
+     * }
+     * </pre>
+     *
+     * The root IV is the int counter {@code i}, represented by a loop phi; the checked IV is the derived
+     * value {@code (long) i}. The conversion always fits in a long, but {@code i++} eventually overflows to
+     * {@link Integer#MIN_VALUE}. A calculated range that excludes negative values would therefore be invalid
+     * for the phi and could remove checks the program still needs.
+     *
+     * <p>{@link CountedLoopInfo#counterNeverOverflows()} only establishes the checked IV's property. The root
+     * must either be that same IV or have a separate proof that its updates do not overflow. Otherwise leave
+     * its stamp unchanged.
+     */
+    private static boolean canInjectRootIVStamp(CountedLoopInfo counted, InductionVariable counter) {
+        InductionVariable root = counter.getRootIV();
+        return counter == root || counted.ivCanNeverOverflow(root);
     }
 
     /**

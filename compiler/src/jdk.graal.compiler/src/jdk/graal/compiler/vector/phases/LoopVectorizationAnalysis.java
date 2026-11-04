@@ -183,27 +183,40 @@ public final class LoopVectorizationAnalysis {
     }
 
     /**
-     * Detect whether the given loop is vectorizable. This can be used at any point before
-     * {@link LoopVectorizationPhase} to predict vectorizability, including in the high tier. Before
-     * actual loop vectorization, the result of this method is based on heuristics and is not
-     * guaranteed to be precise. Especially before {@link FloatingReadPhase} this analysis makes
-     * optimistic assumptions about the future shape of the loop.
+     * Analyzes whether the loop can be vectorized, either as an early prediction or at the point of
+     * vectorization. For example:
      *
-     * @param loop the loop to be checked for vectorizability
-     * @param preVectorizationCheck {@code true} iff this check is run by a phase prior to actual
-     *            loop vectorization
-     * @param providers a {@link CoreProviders} instance
+     * <pre>
+     * for (int i = 0; (long) i &lt; limit; i++) {
+     *     array[i] = i;
+     * }
+     * </pre>
      *
-     * @return {@code null} if the loop is not vectorizable, a valid non-{@code null}
-     *         {@link VectorizableLoopInfo} otherwise
+     * Here {@code i} is the int root IV and {@code (long) i} is the checked IV. An early analysis can
+     * recognize vectorizable stores before all required counter checks are established. Actual vectorization
+     * must also establish that the int updates do not overflow; the long conversion alone cannot do that.
+     *
+     * <p>With {@code preVectorizationCheck}, the result predicts a later graph and is not guaranteed to
+     * remain valid. In particular, before {@link FloatingReadPhase}, it makes optimistic assumptions about
+     * the eventual loop shape. Recheck at vectorization time.
+     *
+     * <p>This analysis can change the graph. While floating guards are allowed, it may create overflow guards
+     * and prepare a guarded limit for the supported widened-counter loop, even if a subsequent check rejects
+     * vectorization. Callers must not assume that a null result leaves the graph unchanged.
+     *
+     * <p>Phases deciding whether to preserve a loop from scalar optimizations should use {@link
+     * VectorLoopUtility#potentialVectorLoop}, which honors the scalar-loop protection option. This analysis
+     * itself is independent of that option; callers choose whether the classification should affect their
+     * optimization.
+     *
+     * @param loop the loop to analyze
+     * @param preVectorizationCheck whether this is an early prediction rather than the actual vectorization
+     * check
+     * @param providers compiler services used by the analysis
+     * @return {@code null} if the loop is not vectorizable, otherwise its {@link VectorizableLoopInfo}
      */
     public static VectorizableLoopInfo detectVectorizableLoop(Loop loop, boolean preVectorizationCheck, CoreProviders providers) {
         StructuredGraph graph = loop.loopBegin().graph();
-
-        if (preVectorizationCheck && !VectorLoopUtility.Options.RespectVectorization.getValue(graph.getOptions())) {
-            GraalError.shouldNotReachHere(
-                            "Pre-vectorization checks should not call detectVectorizableLoop directly if RespectVectorization is false; use VectorLoopUtility.potentialVectorLoop instead");
-        }
 
         final boolean beforeHighTierLowering = graph.isBeforeStage(StageFlag.HIGH_TIER_LOWERING);
         final boolean beforeGuardMovement = GraalOptions.SpeculativeGuardMovement.getValue(graph.getOptions()) && graph.isBeforeStage(StageFlag.GUARD_MOVEMENT);
@@ -422,6 +435,7 @@ public final class LoopVectorizationAnalysis {
                  */
                 if (graph.getGuardsStage().allowsFloatingGuards()) {
                     loop.counted().createOverFlowGuard();
+                    loop.counted().prepareRootOverflowGuard();
                 }
 
                 if ((seenSafepoint || vectDeopt) && seenObjectWrite) {
@@ -519,6 +533,14 @@ public final class LoopVectorizationAnalysis {
             }
             if (!(loop.counted().counterNeverOverflows() || loop.counted().getOverFlowGuard() != null)) {
                 debug.log(DebugContext.DETAILED_LEVEL, "loop counter might overflow");
+                return false;
+            }
+            // For for (int i = 0; (long) i < limit; i++), the checked long conversion fits even if the int
+            // root i overflows. A limit above MAX_VALUE can therefore invalidate the count used to form
+            // vector iterations. When the IVs differ, require a separate proof for i before vectorizing.
+            InductionVariable rootIV = loop.counted().getLimitCheckedIV().getRootIV();
+            if (rootIV != loop.counted().getLimitCheckedIV() && !loop.counted().ivCanNeverOverflow(rootIV)) {
+                debug.log(DebugContext.DETAILED_LEVEL, "loop counter's root induction variable might overflow");
                 return false;
             }
             if (hasObjectPhi(loop)) {

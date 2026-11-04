@@ -115,7 +115,14 @@ public class RemoveEmptyLoopsPhase extends PostRunCanonicalizationPhase<CoreProv
                     // could never be entered.
                     continue;
                 }
-                if (loop.detectCounted() && (loop.counted().counterNeverOverflows() || loop.counted().getOverFlowGuard() != null)) {
+                /*
+                 * An empty loop can still prevent the following code from running. In for (int i = 0; (long)
+                 * i < 2147483648L; i++) {}, the int root i overflows while the checked value (long) i always
+                 * remains below the limit. Remove the loop only when the checked IV and its root are both
+                 * proved non-overflowing; otherwise its apparent iteration count does not establish
+                 * termination.
+                 */
+                if (loop.detectCounted() && loop.counted().loopAndRootCanNeverOverflow()) {
                     removedLoop = tryRemoveEmptyLoop(graph, loop);
                 }
                 loop.deleteUnusedNodes();
