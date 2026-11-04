@@ -238,12 +238,12 @@ public class CremaFeature implements InternalFeature {
             // Setup fields info
             InterpreterResolvedObjectType objectType = (InterpreterResolvedObjectType) iType;
             initializeInterpreterFields(iUniverse, (HostedField[]) type.getStaticFields());
-            if (type.isInterface()) {
-                continue;
+            if (!type.isInterface()) {
+                HostedInstanceClass instanceClass = (HostedInstanceClass) type;
+                objectType.setAfterFieldsOffset(instanceClass.getAfterFieldsOffset());
+                initializeInterpreterFields(iUniverse, instanceClass.getInstanceFields(false));
             }
-            HostedInstanceClass instanceClass = (HostedInstanceClass) type;
-            objectType.setAfterFieldsOffset(instanceClass.getAfterFieldsOffset());
-            initializeInterpreterFields(iUniverse, instanceClass.getInstanceFields(false));
+            objectType.sortDeclaredFields();
         }
     }
 

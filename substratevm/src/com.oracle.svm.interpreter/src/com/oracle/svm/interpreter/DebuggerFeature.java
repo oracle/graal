@@ -631,6 +631,12 @@ public class DebuggerFeature implements InternalFeature {
             }
         }
 
+        for (InterpreterResolvedJavaType type : BuildTimeInterpreterUniverse.singleton().getTypes()) {
+            if (type instanceof InterpreterResolvedObjectType objectType) {
+                objectType.sortDeclaredFields();
+            }
+        }
+
         DebuggerSupport supportImpl = DebuggerSupport.singleton();
         for (InterpreterResolvedJavaMethod method : BuildTimeInterpreterUniverse.singleton().getMethods()) {
             ReferenceConstant<MethodRefHolder> nativeEntryPointHolderConstant = method.getNativeEntryPointHolderConstant();
