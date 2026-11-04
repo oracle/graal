@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,29 +24,30 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_INTERFACE_MASK;
 import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_ITABLE_SHIFT;
-import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_SHIFT_OFFSET;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
 
+import java.nio.ByteOrder;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.nodes.LoadOpenTypeWorldDispatchTableStartingOffset;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubUtils;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
 
 import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
@@ -59,6 +60,7 @@ import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.Snippets;
 import org.graalvm.word.impl.ObjectAccess;
+import org.graalvm.word.impl.Word;
 import jdk.vm.ci.meta.JavaKind;
 
 public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates implements Snippets {
@@ -120,30 +122,21 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
      * If {@link SubstrateOptions#useInterfaceHashing()} is enabled, interfaceIDs and itable
      * starting offsets are stored in a hash table (see TypeCheckBuilder for a general
      * documentation). This snippet handles the lookup in the hash table and returns the itable
-     * starting offset for the given interfaceID. See {@link DynamicHubUtils#hashParam(int[])} for
-     * details on the hashing function and hashing parameter.
+     * starting offset for the given interfaceID. See {@link DynamicHubUtils#hash(int, int)} for
+     * the image-wide choice between shift-and-mask and PEXT hashing.
      */
-    private static int determineITableStartingOffsetHashed(
+    private static long determineITableStartingOffsetHashed(
                     DynamicHub checkedHub,
                     int interfaceID) {
-        ReplacementsUtil.dynamicAssert(NumUtil.isUShort(interfaceID), "InterfaceIDs must fit in a short to be used for hashing.");
+        ReplacementsUtil.dynamicAssert(interfaceID > 0 && interfaceID <= DynamicHubUtils.MAX_HASHED_INTERFACE_ID, "Interface ID must be in the supported hashing range.");
 
-        // The upper byte of the hashParam holds the shift value, the lower three bytes hold p
-        // which is used for bitwise "and": hashParam = shift << HASHING_SHIFT_OFFSET | p.
         int hashParam = checkedHub.getOpenTypeWorldInterfaceHashParam();
-        int shift = hashParam >>> HASHING_SHIFT_OFFSET;
-        int[] hashTable = checkedHub.getOpenTypeWorldInterfaceHashTable();
+        long[] hashTable = checkedHub.getOpenTypeWorldInterfaceHashTable();
+        long hashTableEntry = readInterfaceHashTableEntry(hashTable, hashParam, interfaceID);
 
-        // No need to mask hashParam to get "p". interfaceID fits in a short -> the two upper
-        // bytes are 0.
-        int hash = (interfaceID >>> shift) & hashParam;
-        int offset = (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, hash);
-        int hashTableEntry = ObjectAccess.readInt(hashTable, offset, NamedLocationIdentity.FINAL_LOCATION);
-
-        // Hashtable entries contain integers which hold the iTableOffset and the interfaceID:
-        // hashTableEntry = iTableOffset << HASHING_ITABLE_SHIFT | interfaceID
-        ReplacementsUtil.dynamicAssert(interfaceID == (hashTableEntry & HASHING_INTERFACE_MASK), "InterfaceIDs do not match.");
-        return (hashTableEntry >>> HASHING_ITABLE_SHIFT);
+        // The interface ID occupies the low word.
+        ReplacementsUtil.dynamicAssert(interfaceID == (int) hashTableEntry, "InterfaceIDs do not match.");
+        return Integer.toUnsignedLong(readInterfaceHashTableOffset(hashTable, hashParam, interfaceID));
     }
 
     public static long determineITableStartingOffset(
@@ -162,27 +155,56 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
      * "real" {@code assert}s instead of {@link ReplacementsUtil#dynamicAssert}. Required for being
      * called outside of snippets.
      */
-    private static int determineITableStartingOffsetHashedNonSnippet(
+    private static long determineITableStartingOffsetHashedNonSnippet(
                     DynamicHub checkedHub,
                     int interfaceID) {
-        assert NumUtil.isUShort(interfaceID) : "InterfaceIDs must fit in a short to be used for hashing.";
+        assert interfaceID > 0 && interfaceID <= DynamicHubUtils.MAX_HASHED_INTERFACE_ID : "Interface ID must be in the supported hashing range.";
 
-        // The upper byte of the hashParam holds the shift value, the lower three bytes hold p
-        // which is used for bitwise "and": hashParam = shift << HASHING_SHIFT_OFFSET | p.
         int hashParam = checkedHub.getOpenTypeWorldInterfaceHashParam();
-        int shift = hashParam >>> HASHING_SHIFT_OFFSET;
-        int[] hashTable = checkedHub.getOpenTypeWorldInterfaceHashTable();
+        long[] hashTable = checkedHub.getOpenTypeWorldInterfaceHashTable();
+        long hashTableEntry = readInterfaceHashTableEntry(hashTable, hashParam, interfaceID);
 
-        // No need to mask hashParam to get "p". interfaceID fits in a short -> the two upper
-        // bytes are 0.
-        int hash = (interfaceID >>> shift) & hashParam;
-        int offset = (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, hash);
-        int hashTableEntry = ObjectAccess.readInt(hashTable, offset, NamedLocationIdentity.FINAL_LOCATION);
+        // The interface ID occupies the low word.
+        assert interfaceID == (int) hashTableEntry : "InterfaceIDs do not match.";
+        return Integer.toUnsignedLong(readInterfaceHashTableOffset(hashTable, hashParam, interfaceID));
+    }
 
-        // Hashtable entries contain integers which hold the iTableOffset and the interfaceID:
-        // hashTableEntry = iTableOffset << HASHING_ITABLE_SHIFT | interfaceID
-        assert interfaceID == (hashTableEntry & HASHING_INTERFACE_MASK) : "InterfaceIDs do not match.";
-        return (hashTableEntry >>> HASHING_ITABLE_SHIFT);
+    /**
+     * Returns the itable byte offset, or {@code -1} if the receiver does not implement the
+     * interface. The interface ID must be positive and covered by interface hashing. Unlike the
+     * unchecked dispatch lookup, this verifies the stored ID before using its offset, allowing
+     * receiver validation and dispatch to share a single hash-table read.
+     */
+    @AlwaysInline("Combine interface receiver validation and dispatch lookup")
+    public static long findHashedITableStartingOffset(DynamicHub checkedHub, int interfaceID) {
+        assert SubstrateOptions.useInterfaceHashing() && interfaceID > 0 && interfaceID <= SubstrateOptions.interfaceHashingMaxId();
+        int hashParam = checkedHub.getOpenTypeWorldInterfaceHashParam();
+        long[] hashTable = checkedHub.getOpenTypeWorldInterfaceHashTable();
+        long entry = readInterfaceHashTableEntry(hashTable, hashParam, interfaceID);
+        if (probability(BranchProbabilityNode.SLOW_PATH_PROBABILITY, (int) entry != interfaceID)) {
+            return -1;
+        }
+        return entry >>> HASHING_ITABLE_SHIFT;
+    }
+
+    @Fold
+    static int itableOffsetWordOffset() {
+        return SubstrateTarget.getArchitecture().getByteOrder() == ByteOrder.LITTLE_ENDIAN ? Integer.BYTES : 0;
+    }
+
+    @AlwaysInline("Avoid a helper call for the hash calculation and offset load")
+    private static int readInterfaceHashTableOffset(long[] hashTable, int hashParam, int interfaceID) {
+        int hash = DynamicHubUtils.hash(interfaceID, hashParam);
+        long offset = ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Long, hash) + itableOffsetWordOffset();
+        // The offset occupies the upper word; the table's encoding and stride are unchanged.
+        return ObjectAccess.readInt(hashTable, Word.signed(offset), NamedLocationIdentity.FINAL_LOCATION);
+    }
+
+    @AlwaysInline("Keep the packed interface entry available to its caller")
+    private static long readInterfaceHashTableEntry(long[] hashTable, int hashParam, int interfaceID) {
+        int hash = DynamicHubUtils.hash(interfaceID, hashParam);
+        long offset = ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Long, hash);
+        return ObjectAccess.readLong(hashTable, Word.signed(offset), NamedLocationIdentity.FINAL_LOCATION);
     }
 
     private final SnippetTemplate.SnippetInfo loadITableStartingOffset;

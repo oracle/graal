@@ -867,9 +867,14 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
 
             // Iterate the itables to impose constraints.
             for (InterpreterResolvedObjectType superInterface : computeTransitiveInterfaceList()) {
-                VMError.guarantee(superInterface.getVtable() != null);
+                InterpreterResolvedJavaMethod[] interfaceTable = superInterface.getVtable();
+                VMError.guarantee(interfaceTable != null);
+                // Marker interfaces have no dispatch entries and may carry a sentinel offset.
+                if (interfaceTable.length == 0) {
+                    continue;
+                }
                 int start = determineITableStartingIndex(superInterface);
-                for (int i = 0; i < superInterface.getVtable().length; i++) {
+                for (int i = 0; i < interfaceTable.length; i++) {
                     InterpreterResolvedJavaMethod thisMethod = thisTable[start + i];
                     // Ensure this class and its interfaces agree on the types for their related
                     // methods.
@@ -891,10 +896,22 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
          */
         long iTableStartingOffset = OpenTypeWorldDispatchTableSnippets.determineITableStartingOffset(getHub(), seedInterface.getHub().getInterfaceID());
 
+        return itableOffsetToIndex(iTableStartingOffset);
+    }
+
+    /**
+     * Converts an itable byte offset in a hub to an index in the interpreter dispatch table. The
+     * offset must refer to a dispatch table, not a sentinel used for type checks only.
+     */
+    public static int itableOffsetToIndex(long iTableStartingOffset) {
         int vtableBaseOffset = KnownOffsets.singleton().getVTableBaseOffset();
         int vtableEntrySize = KnownOffsets.singleton().getVTableEntrySize();
 
-        return (int) (iTableStartingOffset - vtableBaseOffset) / vtableEntrySize;
+        int relativeOffset = (int) (iTableStartingOffset - vtableBaseOffset);
+        assert relativeOffset >= 0;
+        // Valid table offsets are nonnegative. Unsigned division by the power-of-two entry size
+        // becomes a shift without the correction that signed division needs for negative values.
+        return Integer.divideUnsigned(relativeOffset, vtableEntrySize);
     }
 
     private Iterable<InterpreterResolvedObjectType> computeTransitiveInterfaceList() {

@@ -56,8 +56,14 @@ public class NativeGCStructs {
         @CField("int_array_count")
         UnsignedWord intArrayCount();
 
+        @CField("long_array_count")
+        UnsignedWord longArrayCount();
+
         @CField("int_array_size")
         UnsignedWord intArraySize();
+
+        @CField("long_array_size")
+        UnsignedWord longArraySize();
 
         @CField("object_count")
         UnsignedWord objectCount();
