@@ -40,7 +40,6 @@ import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.compacting.CompactingVisitor;
-import com.oracle.svm.core.genscavenge.compacting.MarkStack;
 import com.oracle.svm.core.genscavenge.compacting.ObjectFixupVisitor;
 import com.oracle.svm.core.genscavenge.compacting.ObjectMoveInfo;
 import com.oracle.svm.core.genscavenge.compacting.ObjectRefFixupVisitor;
@@ -54,18 +53,13 @@ import com.oracle.svm.core.code.RuntimeCodeInstallation;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.metaspace.Metaspace;
-import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
-
-import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 
 /**
  * Core of the mark-compact implementation for the old generation, which collects using (almost)
@@ -77,31 +71,31 @@ import jdk.graal.compiler.nodes.java.ArrayLengthNode;
  * <ul>
  * <li>{@linkplain #beginPromotion Absorb all chunks of the young generation.}
  *
- * <li>{@linkplain #markPinnedObject Mark pinned objects as reachable}. These objects must remain at
- * their current address, so the chunks that contain them will be swept instead of compacted.
- *
- * <li>Scan reachable objects, starting from roots, in {@link #promoteAlignedObject} and
- * {@link #scanGreyObjects}, which {@linkplain ObjectHeaderImpl#setMarked marks them with a
- * combination of bits} in the object header. Marked objects are pushed to the {@link #markStack} to
- * subsequently scan the objects that are transitively reachable from them. Only objects that have
- * an identity hash code that is based on their current address are copied to a new location, during
- * which a field is added that stores the identity hash code.
+ * <li>Scan reachable objects, starting from roots, in {@link GCImpl#scanGreyObjects} and
+ * {@link #promoteAlignedObject}, which {@linkplain ObjectHeaderImpl#setMarked marks them with a
+ * combination of bits} in the object header. Marked objects are {@linkplain GCImpl#mark pushed onto
+ * the mark stack} to subsequently scan the objects that are transitively reachable from them. Only
+ * objects that have an identity hash code that is based on their current address are copied to a
+ * new location, during which a field is added that stores the identity hash code.
  *
  * <li>Begin {@linkplain #sweepAndCompact compaction and sweeping,} first
  * {@linkplain ReferenceObjectProcessing#updateForwardedRefs() updating reference objects} before
- * the memory of their referent objects can be repurposed.
+ * the memory of their referent objects can be repurposed. Aligned chunks that
+ * {@linkplain AlignedHeapChunk#mustSweep contain pinned objects} are swept, other aligned chunks
+ * are compacted.
  *
  * <li>{@linkplain #planCompaction() Plan the compaction} by computing the new locations for entire
  * sequences of surviving objects and storing them in {@linkplain ObjectMoveInfo structures} in gaps
- * between them (made up of dead objects) which form a linked list. This phase also un-marks the
- * object headers and builds {@linkplain BrickTable brick tables} in the memory of the chunks' card
- * tables which can be used to find the structure that corresponds to an object with fewer accesses.
+ * between them (made up of dead objects) which form a linked list. This phase builds
+ * {@linkplain BrickTable brick tables} in the memory of the chunks' card tables which can be used
+ * to find the structure that corresponds to an object with fewer accesses.
  *
  * <li>{@linkplain #fixupReferencesBeforeCompaction Update each object reference} to point to the
- * new location of the referenced object, using the prepared structures and brick tables.
+ * new location of the referenced object, using the prepared structures and brick tables. This phase
+ * also unmarks object headers and rebuilds first object tables.
  *
  * <li>{@linkplain #compact Move each sequence of objects to its new location} (or overwrite dead
- * objects in swept chunks) and clear the chunks' card tables and rebuild their first object tables.
+ * objects in swept chunks) and clear the chunks' card tables (which stored brick tables).
  * </ul>
  *
  * While updating references using lookups in the brick table and structures seems expensive, it
@@ -117,8 +111,6 @@ import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 final class CompactingOldGeneration extends OldGeneration {
 
     private final Space space = new Space("Old", "O", false, getAge());
-    private final MarkStack markStack = new MarkStack();
-    private final MarkStack arrayMarkStack = new MarkStack();
 
     private final GreyObjectsWalker toGreyObjectsWalker = new GreyObjectsWalker();
     private final PlanningVisitor planningVisitor = new PlanningVisitor();
@@ -160,66 +152,21 @@ final class CompactingOldGeneration extends OldGeneration {
     @Override
     @Uninterruptible(reason = CORE_GC_CODE)
     boolean scanGreyObjects(boolean completeCollection) {
-        if (!completeCollection) {
-            if (!toGreyObjectsWalker.haveGreyObjects()) {
-                return false;
-            }
-            toGreyObjectsWalker.walkGreyObjects();
-            return true;
+        if (completeCollection) {
+            return false; // all objects are scanned via the mark stack in GCImpl
         }
-
-        if (markStack.isEmpty() && arrayMarkStack.isEmpty()) {
+        if (!toGreyObjectsWalker.haveGreyObjects()) {
             return false;
         }
-        GreyToBlackObjectVisitor visitor = GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
-        do {
-            while (!markStack.isEmpty()) {
-                visitor.visitObject(markStack.popObject());
-            }
-
-            // Process array ranges one at a time to avoid bloating the marking stack
-            if (!arrayMarkStack.isEmpty()) {
-                scanArrayRange(visitor);
-            }
-        } while (!markStack.isEmpty() || !arrayMarkStack.isEmpty());
+        toGreyObjectsWalker.walkGreyObjects();
         return true;
-    }
-
-    @AlwaysInline("GC performance")
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void pushOntoMarkStack(Object obj) {
-        DynamicHub objHub = DynamicHubIntrinsics.readHub(obj);
-        if (objHub.getHubType() == HubType.OBJECT_ARRAY) {
-            if (ArrayLengthNode.arrayLength(obj) != 0) {
-                arrayMarkStack.pushObject(obj);
-                arrayMarkStack.pushInt(0);
-            }
-        } else {
-            markStack.pushObject(obj);
-        }
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void scanArrayRange(GreyToBlackObjectVisitor visitor) {
-        int index = arrayMarkStack.popInt();
-        Object array = arrayMarkStack.popObject();
-
-        int length = ArrayLengthNode.arrayLength(array);
-        final int stride = 2048;
-        int count = length - index;
-        if (count > stride) {
-            count = stride;
-            arrayMarkStack.pushObject(array);
-            arrayMarkStack.pushInt(index + count);
-        }
-
-        visitor.visitObjectArrayRange(array, index, count);
     }
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     @Override
     public Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
+        assert !AlignedHeapChunk.mustSweep(originalChunk);
         if (!GCImpl.getGCImpl().isCompleteCollection()) {
             assert originalSpace.isFromSpace();
             return ObjectPromoter.copyAlignedObject(original, originalSpace, space);
@@ -231,9 +178,7 @@ final class CompactingOldGeneration extends OldGeneration {
             return original;
         }
         Object result = original;
-        if (ObjectHeaderImpl.isIdentityHashFieldOptional() &&
-                        ObjectHeaderImpl.hasIdentityHashFromAddressInline(header) &&
-                        !originalChunk.getSweep()) {
+        if (ObjectHeaderImpl.isIdentityHashFieldOptional() && ObjectHeaderImpl.hasIdentityHashFromAddressInline(header)) {
             /*
              * This object's identity hash code is based on its current address, which we expect to
              * change during compaction, so we must add a field to store it, which increases the
@@ -242,8 +187,7 @@ final class CompactingOldGeneration extends OldGeneration {
             result = ObjectPromoter.copyAlignedObject(original, originalSpace, space);
             assert !ObjectHeaderImpl.hasIdentityHashFromAddressInline(oh.readHeaderFromObject(result));
         }
-        ObjectHeaderImpl.setMarked(result);
-        pushOntoMarkStack(result);
+        GCImpl.getGCImpl().mark(result);
         return result;
     }
 
@@ -257,30 +201,14 @@ final class CompactingOldGeneration extends OldGeneration {
             return original;
         }
         assert originalSpace == space;
-        if (!ObjectHeaderImpl.isMarked(original)) {
-            ObjectHeaderImpl.setMarked(original);
-            pushOntoMarkStack(original);
-        }
+        GCImpl.getGCImpl().mark(original);
         return original;
-    }
-
-    @Uninterruptible(reason = CORE_GC_CODE)
-    void markPinnedObject(Object obj, AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
-        assert GCImpl.getGCImpl().isCompleteCollection() : "for incremental collections, must promote entire (swept) chunks";
-        assert originalSpace == space;
-        if (ObjectHeaderImpl.isMarked(obj)) {
-            assert chunk.getSweep();
-            return;
-        }
-        chunk.setSweep(true);
-        ObjectHeaderImpl.setMarked(obj);
-        pushOntoMarkStack(obj);
     }
 
     @Override
     @Uninterruptible(reason = CORE_GC_CODE)
     protected boolean promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
-        assert !GCImpl.getGCImpl().isCompleteCollection() : "for full collections, must mark individual pinned objects";
+        assert !GCImpl.getGCImpl().isCompleteCollection() : "full collection must have already tenured all chunks";
         assert originalSpace != space && originalSpace.isFromSpace();
         ObjectPromoter.promoteAlignedChunkWithPinnedObjectsBeforeSweeping(chunk, originalSpace, space);
         return true;
@@ -460,9 +388,8 @@ final class CompactingOldGeneration extends OldGeneration {
     private void compact(Timers timers) {
         AlignedHeapChunk.AlignedHeader chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
-            if (chunk.getSweep()) {
+            if (AlignedHeapChunk.mustSweep(chunk)) {
                 ObjectMoveInfo.visit(chunk, sweepingVisitor);
-                chunk.setSweep(false);
             } else {
                 compactingVisitor.init(chunk);
                 ObjectMoveInfo.visit(chunk, compactingVisitor);
@@ -480,7 +407,7 @@ final class CompactingOldGeneration extends OldGeneration {
                     RememberedSet.get().clearRememberedSet(chunk);
 
                     if (HeapParameters.getZapConsumedHeapChunks()) {
-                        HeapChunkProvider.zapUnusedObjectMemory(chunk, HeapParameters.getConsumedHeapChunkZapWord());
+                        HeapChunkProvider.zapConsumedUnusedObjectMemory(chunk);
                     }
                 } // empty chunks will be freed or reset before reuse, no need to reinitialize here
 
@@ -569,22 +496,8 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
-    void checkSanityBeforeCollection() {
-        assert markStack.isEmpty();
-        assert arrayMarkStack.isEmpty();
-    }
-
-    @Override
-    void checkSanityAfterCollection() {
-        assert markStack.isEmpty();
-        assert arrayMarkStack.isEmpty();
-    }
-
-    @Override
     @Uninterruptible(reason = "Tear-down in progress.")
     void tearDown() {
-        markStack.tearDown();
-        arrayMarkStack.tearDown();
         space.tearDown();
     }
 }

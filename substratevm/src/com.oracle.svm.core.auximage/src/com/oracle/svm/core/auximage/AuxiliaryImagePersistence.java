@@ -67,6 +67,7 @@ import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayoutCancelledException;
 import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.metaspace.Metaspace;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.thread.JavaVMOperation;
@@ -447,10 +448,14 @@ final class AuxiliaryImagePersistence {
                 throw new UnsupportedOperationException(msg);
             });
             if (AbstractPinnedObjectSupport.singleton().isPinnedSlow(obj)) {
+                // This is a best-effort check, e.g., Epsilon GC does not track pinning intent.
                 throw new UnsupportedOperationException("Object is pinned, but persisting and loading would move it: " + obj);
             }
             if (MonitorSupport.singleton().isLockedByAnyThread(obj)) {
                 throw new UnsupportedOperationException("Object is locked, so some state might be unsafe to persist: " + obj);
+            }
+            if (Metaspace.singleton().isInAddressSpace(obj)) {
+                throw new UnsupportedOperationException("Object belongs to metaspace, so it cannot be persisted: " + obj);
             }
             // Note: locked AbstractOwnableSynchronizers reference live threads and fail
         }

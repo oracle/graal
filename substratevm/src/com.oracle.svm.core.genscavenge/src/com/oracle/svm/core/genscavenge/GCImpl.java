@@ -63,7 +63,6 @@ import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
-import com.oracle.svm.core.heap.AbstractPinnedObjectSupport.PinnedObjectImpl;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
@@ -80,6 +79,8 @@ import com.oracle.svm.core.heap.SuspendSerialGCMaxHeapSize;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
@@ -102,6 +103,7 @@ import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
@@ -117,6 +119,7 @@ import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 
 /**
  * Garbage collector (incremental or complete) for {@link HeapImpl}.
@@ -126,18 +129,20 @@ public final class GCImpl implements GC {
     private static final long K = 1024;
     static final long M = K * K;
 
+    private final ChunkReleaser chunkReleaser = new ChunkReleaser();
     private final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor = new GreyToBlackObjRefVisitor();
     private final GreyToBlackObjectVisitor greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
     private final RuntimeCodeCacheWalker runtimeCodeCacheWalker = new RuntimeCodeCacheWalker(greyToBlackObjRefVisitor);
     private final RuntimeCodeCacheCleaner runtimeCodeCacheCleaner = new RuntimeCodeCacheCleaner();
-    private final SweepAndPromotePinnedChunkVisitor pinnedChunkPromotionVisitor = new SweepAndPromotePinnedChunkVisitor();
+    private final SweepAndPromotePinnedChunkVisitor pinnedChunkPromotionVisitor = new SweepAndPromotePinnedChunkVisitor(chunkReleaser);
+    private final MarkStack markStack = new MarkStack();
+    private final MarkStack arrayMarkStack = new MarkStack();
 
     private final GCAccounting accounting = new GCAccounting();
     private final Timers timers = new Timers();
     private final CollectionPolicies policies = new CollectionPolicies();
 
     private final CollectionVMOperation collectOperation = new CollectionVMOperation();
-    private final ChunkReleaser chunkReleaser = new ChunkReleaser();
 
     private CollectionPolicy policy;
     private boolean completeCollection = false;
@@ -161,6 +166,8 @@ public final class GCImpl implements GC {
     @Uninterruptible(reason = "Tear-down in progress.")
     public void tearDown() {
         policy.tearDown();
+        markStack.tearDown();
+        arrayMarkStack.tearDown();
     }
 
     @Override
@@ -531,16 +538,23 @@ public final class GCImpl implements GC {
         return Log.log().string("[").rational(uptimeMs, TimeUtils.millisPerSecond, 3).string("s").string("] GC(").unsigned(collectionEpoch).string(") ");
     }
 
-    private static void checkSanityBeforeCollection() {
+    private void checkSanityBeforeCollection() {
         HeapImpl heap = HeapImpl.getHeapImpl();
         heap.getYoungGeneration().checkSanityBeforeCollection();
         heap.getOldGeneration().checkSanityBeforeCollection();
+        checkSanityBeforeOrAfterCollection();
     }
 
-    private static void checkSanityAfterCollection() {
+    private void checkSanityAfterCollection() {
         HeapImpl heap = HeapImpl.getHeapImpl();
         heap.getYoungGeneration().checkSanityAfterCollection();
         heap.getOldGeneration().checkSanityAfterCollection();
+        checkSanityBeforeOrAfterCollection();
+    }
+
+    private void checkSanityBeforeOrAfterCollection() {
+        assert markStack.isEmpty();
+        assert arrayMarkStack.isEmpty();
     }
 
     @Fold
@@ -598,6 +612,7 @@ public final class GCImpl implements GC {
                      * reference objects that we process below, so we can (and need to) do it first.
                      */
                     var old = (CompactingOldGeneration) HeapImpl.getHeapImpl().getOldGeneration();
+                    assert chunkReleaser.isEmpty();
                     old.sweepAndCompact(timers, chunkReleaser);
                 } finally {
                     JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Sweep and Compact", startTicks);
@@ -625,6 +640,7 @@ public final class GCImpl implements GC {
                      * to them in reference objects elsewhere, so we must process those first above so
                      * that we can observe moved and dead objects before they are swept here.
                      */
+                    assert chunkReleaser.isEmpty();
                     sweepAndPromotePinnedChunks();
                 } finally {
                     JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Sweep and Promote Pinned Chunks", startTicks);
@@ -652,7 +668,6 @@ public final class GCImpl implements GC {
 
             Timer releaseSpacesTimer = timers.releaseSpaces.start();
             try {
-                assert SerialGCOptions.useCompactingOldGen() || chunkReleaser.isEmpty();
                 startTicks = JfrGCEvents.startGCPhasePause();
                 try {
                     releaseSpaces();
@@ -740,9 +755,9 @@ public final class GCImpl implements GC {
 
         startTicks = JfrGCEvents.startGCPhasePause();
         try {
-            markAndScanPinnedObjects();
+            preparePinnedObjects();
         } finally {
-            JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Promote Pinned Objects", startTicks);
+            JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Prepare Pinned Objects", startTicks);
         }
 
         startTicks = JfrGCEvents.startGCPhasePause();
@@ -765,7 +780,7 @@ public final class GCImpl implements GC {
 
         startTicks = JfrGCEvents.startGCPhasePause();
         try {
-            /* Visit all the Objects promoted since the snapshot. */
+            /* Visit remaining grey objects: promoted objects and objects on mark stacks. */
             scanGreyObjects();
 
             if (RuntimeCodeInstallation.isEnabled()) {
@@ -781,8 +796,8 @@ public final class GCImpl implements GC {
     }
 
     @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
-    private void markAndScanPinnedObjects() {
-        Timer promotePinnedObjectsTimer = timers.promotePinnedObjects.start();
+    private void preparePinnedObjects() {
+        Timer preparePinnedObjectsTimer = timers.preparePinnedObjects.start();
         try {
             /*
              * Remove closed pinned objects from the global list. This code needs to use write
@@ -790,75 +805,16 @@ public final class GCImpl implements GC {
              * generation each individual PinnedObjectImpl lives. So, the card table will be
              * modified.
              */
-            PinnedObjectImpl first = AbstractPinnedObjectSupport.singleton().removeClosedObjectsAndGetFirstOpenObject();
+            AbstractPinnedObjectSupport.singleton().removeClosedObjects();
 
             /*
-             * Mark pinned objects in aligned chunks and leave these chunks in From spaces. In
-             * copying collections, while scanning, we copy unmarked (non-pinned) live objects out
-             * of them and then sweep the chunks (leaving only pinned objects and filler objects)
-             * and promote them to the To spaces. In CompactingOldGen, the chunks are swept with other
-             * non-pinned live objects remaining in them.
-             *
-             * Note that:
-             *
-             * 1. Leaving chunks in the From space in the young generation adds references to it
-             * from the old generation to the remembered set. If the chunk is eventually promoted to
-             * the old generation itself, this is unnecessary, but not incorrect.
-             *
-             * 2. Marking non-pinned live objects and keeping them in their chunks in copying
-             * collections would be possible, but requires keeping track of the marked objects for
-             * scanning.
-             *
-             * 3. Unaligned objects are not handled here to simplify the code. They are never moved,
-             * but because PinnedObject.create() guarantees that pinned objects are not collected,
-             * they were put on the list. Regular scanning will see them as reachable from there.
+             * Nothing more to do: pinned objects will be reached while scanning the global list or
+             * from other roots. Scanning will see that their chunks contain pinned objects and
+             * choose to sweep these chunks instead, without moving the objects they contain.
              */
-            PinnedObjectImpl cur = first;
-            while (cur != null) {
-                if (canMove(cur.getObject())) {
-                    markPinnedObject(cur.getObject());
-                }
-                cur = cur.getNext();
-            }
-
-            if (SerialGCOptions.useCompactingOldGen() && completeCollection) {
-                // CompactingOldGen deals with pinned objects in aligned chunks on its own.
-                return;
-            }
-
-            /*
-             * Scan the pinned objects. We cannot do this in the same loop as above because when not
-             * all objects have been marked, scanning a reference to a yet unmarked pinned object
-             * will copy the object. Scanning may also copy a handle in this list, so resolve its
-             * forwarding pointer before reading its fields and save its next link before scanning.
-             */
-            cur = first;
-            ObjectHeaderImpl objectHeader = ObjectHeaderImpl.getObjectHeaderImpl();
-            while (cur != null) {
-                Pointer curPointer = Word.objectToUntrackedPointer(cur);
-                UnsignedWord header = objectHeader.readHeaderFromPointer(curPointer);
-                if (ObjectHeaderImpl.isForwardedHeader(header)) {
-                    cur = (PinnedObjectImpl) objectHeader.getForwardedObject(curPointer, header);
-                }
-                PinnedObjectImpl next = cur.getNext();
-                Object pinned = cur.getObject();
-                if (canMove(pinned)) {
-                    scanPinnedObject(pinned);
-                }
-                cur = next;
-            }
         } finally {
-            promotePinnedObjectsTimer.stop();
+            preparePinnedObjectsTimer.stop();
         }
-    }
-
-    /**
-     * Determines whether the collector could actually move an object. If not, it only gets put on
-     * the list maintained by {@link AbstractPinnedObjectSupport} to keep it alive.
-     */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static boolean canMove(Object object) {
-        return ObjectHeaderImpl.isAlignedObject(object);
     }
 
     @NeverInline("Starting a stack walk in the caller frame. " +
@@ -1064,26 +1020,37 @@ public final class GCImpl implements GC {
     private void scanGreyObjects() {
         Timer scanGreyObjectsTimer = timers.scanGreyObjects.start();
         try {
-            if (completeCollection) {
-                HeapImpl.getHeapImpl().getOldGeneration().scanGreyObjects(true);
-            } else {
-                incrementalScanGreyObjectsLoop();
-            }
+            scanGreyObjectsLoop();
         } finally {
             scanGreyObjectsTimer.stop();
         }
     }
 
     @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
-    private void incrementalScanGreyObjectsLoop() {
-        assert !completeCollection;
+    private void scanGreyObjectsLoop() {
         HeapImpl heap = HeapImpl.getHeapImpl();
         YoungGeneration youngGen = heap.getYoungGeneration();
         OldGeneration oldGen = heap.getOldGeneration();
+
         boolean hasGrey;
         do {
-            hasGrey = youngGen.scanGreyObjects();
-            hasGrey |= oldGen.scanGreyObjects(false);
+            hasGrey = !completeCollection && youngGen.scanGreyObjects();
+            hasGrey |= oldGen.scanGreyObjects(completeCollection);
+
+            /*
+             * Scan marked objects, such as live objects in chunks with pinned objects, or, in a
+             * complete collection with CompactingOldGeneration, the entire live heap.
+             */
+            while (!markStack.isEmpty() || !arrayMarkStack.isEmpty()) {
+                hasGrey = true;
+                while (!markStack.isEmpty()) {
+                    greyToBlackObjectVisitor.visitObject(markStack.popObject());
+                }
+                // Process array ranges one at a time to avoid bloating the marking stack
+                if (!arrayMarkStack.isEmpty()) {
+                    scanArrayRange(greyToBlackObjectVisitor);
+                }
+            }
         } while (hasGrey);
     }
 
@@ -1097,6 +1064,10 @@ public final class GCImpl implements GC {
         Space originalSpace = HeapChunk.getSpace(originalChunk);
         if (originalSpace.isToSpace()) {
             assert !SerialGCOptions.useCompactingOldGen() || !completeCollection || originalSpace.isMetaspace();
+            return original;
+        }
+        if (isAligned && AlignedHeapChunk.mustSweep((AlignedHeader) originalChunk)) {
+            mark(original);
             return original;
         }
 
@@ -1132,50 +1103,63 @@ public final class GCImpl implements GC {
         return UnalignedHeapChunk.getEnclosingChunk(obj);
     }
 
-    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
-    private void markPinnedObject(Object pinned) {
-        assert pinned != null;
-        assert AbstractPinnedObjectSupport.needsPinning(pinned);
-        assert canMove(pinned);
-
-        AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunk(pinned);
-        assert chunk.getObjectPinCount() > 0;
-        Space originalSpace = HeapChunk.getSpace(chunk);
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE, mayBeInlined = true)
+    void mark(Object obj) {
         if (SerialGCOptions.useCompactingOldGen() && completeCollection) {
-            // CompactingOldGen deals with pinned objects on its own.
-            var old = (CompactingOldGeneration) HeapImpl.getHeapImpl().getOldGeneration();
-            old.markPinnedObject(pinned, chunk, originalSpace);
-            return;
+            assert HeapChunk.getEnclosingHeapChunk(obj).getSpace().isCompactingOldSpace();
+        } else {
+            // Only objects in aligned chunks containing pinned objects may be marked.
+            AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunk(obj);
+            assert AlignedHeapChunk.mustSweep(chunk);
+            // Chunks with marked objects must remain in From spaces in original gen until sweeping.
+            Space space = chunk.getSpace();
+            assert space.isFromSpace();
+            assert space.isYoungSpace() || (completeCollection && space.isOldSpace());
         }
 
-        if (!completeCollection && originalSpace.isOldSpace()) {
-            assert !originalSpace.isFromSpace() : "must have already moved to the To space";
-            return; // object is in old gen, which we don't collect
+        if (!ObjectHeaderImpl.isMarked(obj)) {
+            ObjectHeaderImpl.setMarked(obj);
+            pushOntoMarkStack(obj);
         }
+    }
 
-        assert originalSpace.isFromSpace();
-        if (!ObjectHeaderImpl.isMarked(pinned)) { // may be pinned more than once
-            ObjectHeaderImpl.setMarked(pinned);
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE, mayBeInlined = true)
+    private void pushOntoMarkStack(Object obj) {
+        DynamicHub objHub = DynamicHubIntrinsics.readHub(obj);
+        if (objHub.getHubType() == HubType.OBJECT_ARRAY) {
+            if (ArrayLengthNode.arrayLength(obj) != 0) {
+                arrayMarkStack.pushObject(obj);
+                arrayMarkStack.pushInt(0);
+            }
+        } else {
+            markStack.pushObject(obj);
         }
     }
 
     @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
-    private void scanPinnedObject(Object pinned) {
-        assert !(SerialGCOptions.useCompactingOldGen() && completeCollection);
+    private void scanArrayRange(GreyToBlackObjectVisitor visitor) {
+        int index = arrayMarkStack.popInt();
+        Object array = arrayMarkStack.popObject();
 
-        Space space = AlignedHeapChunk.getEnclosingChunk(pinned).getSpace();
-        boolean spaceCollected = completeCollection || space.isYoungSpace();
-        boolean marked = ObjectHeaderImpl.isMarked(pinned);
-        assert marked == spaceCollected;
-        if (marked) {
-            greyToBlackObjectVisitor.visitObject(pinned);
+        int length = ArrayLengthNode.arrayLength(array);
+        final int stride = 2048;
+        int count = length - index;
+        if (count > stride) {
+            count = stride;
+            arrayMarkStack.pushObject(array);
+            arrayMarkStack.pushInt(index + count);
         }
+
+        visitor.visitObjectArrayRange(array, index, count);
     }
 
     @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
     void promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeader chunk) {
-        HeapImpl heap = HeapImpl.getHeapImpl();
+        assert AlignedHeapChunk.mustSweep(chunk);
         Space originalSpace = HeapChunk.getSpace(chunk);
+        HeapImpl heap = HeapImpl.getHeapImpl();
         boolean promoted = false;
         if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
             promoted = heap.getYoungGeneration().promoteAlignedChunkWithPinnedObjectsBeforeSweeping(chunk, originalSpace);

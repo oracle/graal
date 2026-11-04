@@ -30,6 +30,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
+import com.oracle.svm.core.genscavenge.compacting.SweepingVisitor;
 import com.oracle.svm.core.genscavenge.remset.AlignedChunkRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -38,31 +40,112 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.shared.Uninterruptible;
 
 /**
- * In chunks that contain pinned objects, overwrites objects which have died or which have survived
- * and been copied elsewhere, and promotes the chunk.
+ * In chunks with pinned objects, overwrites objects which have died and promotes the chunk.
+ *
+ * This visitor is used only for young collections and copying full collections. In compacting full
+ * collections, {@link SweepingVisitor} is used instead.
  */
 public final class SweepAndPromotePinnedChunkVisitor implements AlignedHeapChunk.Visitor {
+    private final ChunkReleaser chunkReleaser;
+
+    SweepAndPromotePinnedChunkVisitor(ChunkReleaser chunkReleaser) {
+        this.chunkReleaser = chunkReleaser;
+    }
+
     @Override
     @Uninterruptible(reason = CORE_GC_CODE)
     public void visitChunk(AlignedHeapChunk.AlignedHeader chunk) {
         Space originalSpace = HeapChunk.getSpace(chunk);
         assert originalSpace.isFromSpace();
 
-        assert !chunk.getSweep() : "must be set only here";
-        int pinCount = chunk.getObjectPinCount();
-        if (pinCount == 0) {
+        if (!AlignedHeapChunk.mustSweep(chunk)) {
             return;
         }
-        chunk.setSweep(true);
 
-        /*
-         * For building the chunk's remembered set, we must know whether it gets promoted from the
-         * young gen to the old gen. This also depends on whether there is enough space in young gen
-         * spaces, so we promote the chunk right away to be sure.
-         */
+        boolean promoted = false;
+        boolean rememberedSet = false; // determined on chunk promotion
+
+        /* Sweep, clear mark bits, and build remembered set and first object table. */
+        Pointer p = AlignedHeapChunk.getObjectsStart(chunk);
+        Pointer initialTop = HeapChunk.getTopPointer(chunk);
+        Pointer sweepStart = p;
+        while (p.belowThan(initialTop)) {
+            Word header = Heap.getHeap().getObjectHeader().readHeaderFromPointer(p);
+
+            assert !ObjectHeaderImpl.isForwardedHeader(header) : "must not move objects out of a chunk with pinned objects";
+            UnsignedWord objSize = LayoutEncoding.getSizeFromObjectInlineInGC(p.toObjectNonNull());
+            Pointer next = p.add(objSize);
+            assert next.belowOrEqual(initialTop);
+
+            if (ObjectHeaderImpl.isMarkedHeader(header)) {
+                if (!promoted) {
+                    /*
+                     * For building the chunk's remembered set, we must know whether it gets
+                     * promoted from the young gen to the old gen. This also depends on whether
+                     * there is enough space in young gen spaces, so we promote the chunk as soon
+                     * as we know it won't be empty.
+                     */
+                    rememberedSet = promoteChunk(chunk);
+                    promoted = true;
+                }
+
+                if (sweepStart.notEqual(p)) {
+                    UnsignedWord sweepSize = p.subtract(sweepStart);
+                    boolean uncommit = AlignedChunkPartialUncommitter.isSupported() && chunk.getAllPinned();
+                    Pointer uncommittableStart = FillerObjectUtil.writeFillerObjectAt(sweepStart, sweepSize, false, !uncommit);
+                    if (rememberedSet) {
+                        RememberedSet.get().enableRememberedSetForObject(chunk, sweepStart.toObjectNonNull(), sweepSize);
+                    }
+                    if (uncommit) {
+                        AlignedChunkPartialUncommitter.maybeUncommitOrFillDeadObjectGap(chunk, uncommittableStart, p);
+                    }
+                }
+                sweepStart = next;
+
+                Object obj = p.toObjectNonNull();
+                ObjectHeaderImpl.unsetMarkedAndClearRememberedSetBit(obj);
+                if (rememberedSet) {
+                    RememberedSet.get().enableRememberedSetForObject(chunk, obj, objSize);
+                    if (originalSpace.isYoungSpace() && !GCImpl.getGCImpl().isCompleteCollection()) {
+                        /*
+                         * Because the chunk was in the young gen during scanning, any references it
+                         * has to the young gen have not been added to the remembered set. We simply
+                         * add all survivors to the remembered set to be safe.
+                         */
+                        RememberedSet.get().dirtyCardForAlignedObject(obj, false);
+                    }
+                }
+            }
+
+            p = next;
+        }
+
+        assert sweepStart.belowOrEqual(HeapChunk.getEndPointer(chunk));
+        HeapChunk.setTopPointer(chunk, sweepStart);
+
+        if (AlignedHeapChunk.isEmpty(chunk)) {
+            assert !promoted;
+            HeapChunk.getSpace(chunk).extractAlignedHeapChunk(chunk);
+            chunkReleaser.add(chunk);
+        } else {
+            assert promoted;
+            if (AlignedChunkPartialUncommitter.isSupported() && chunk.getAllPinned()) {
+                AlignedChunkPartialUncommitter.maybeUncommitUnusedTail(chunk);
+            }
+            if (HeapParameters.getZapConsumedHeapChunks()) {
+                HeapChunkProvider.zapConsumedUnusedObjectMemory(chunk);
+            }
+        }
+    }
+
+    @Uninterruptible(reason = CORE_GC_CODE)
+    private static boolean promoteChunk(AlignedHeapChunk.AlignedHeader chunk) {
+        Space originalSpace = HeapChunk.getSpace(chunk);
+        assert originalSpace.isFromSpace();
+
         boolean fromYoung = originalSpace.isYoungSpace();
-        GCImpl.getGCImpl().promoteAlignedChunkWithPinnedObjectsBeforeSweeping(chunk);
         boolean completeCollection = GCImpl.getGCImpl().isCompleteCollection();
+        GCImpl.getGCImpl().promoteAlignedChunkWithPinnedObjectsBeforeSweeping(chunk);
         Space space = HeapChunk.getSpace(chunk);
         assert space.isToSpace() || (space.isCompactingOldSpace() && !completeCollection && fromYoung);
         boolean rememberedSet = SerialGCOptions.useRememberedSet() && space.isOldSpace();
@@ -73,65 +156,6 @@ public final class SweepAndPromotePinnedChunkVisitor implements AlignedHeapChunk
             // We always need to rebuild the first object table.
             FirstObjectTable.initializeTable(AlignedChunkRememberedSet.getFirstObjectTableStart(chunk), AlignedChunkRememberedSet.getFirstObjectTableSize());
         }
-
-        int foundPinnedObjs = 0;
-
-        /* Sweep, clear mark bits, and build remembered set and first object table. */
-        Pointer p = AlignedHeapChunk.getObjectsStart(chunk);
-        Pointer initialTop = HeapChunk.getTopPointer(chunk);
-        Pointer sweepStart = p;
-        while (p.belowThan(initialTop)) {
-            Word header = Heap.getHeap().getObjectHeader().readHeaderFromPointer(p);
-
-            UnsignedWord objSize;
-            if (ObjectHeaderImpl.isForwardedHeader(header)) {
-                objSize = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObjectOriginalSizeInlineInGC(p, header);
-            } else {
-                objSize = LayoutEncoding.getSizeFromObjectInlineInGC(p.toObjectNonNull());
-            }
-            Pointer next = p.add(objSize);
-            assert next.belowOrEqual(initialTop);
-
-            if (ObjectHeaderImpl.isMarkedHeader(header)) {
-                if (sweepStart.notEqual(p)) {
-                    UnsignedWord sweepSize = p.subtract(sweepStart);
-                    FillerObjectUtil.writeFillerObjectAt(sweepStart, sweepSize, false);
-                    if (rememberedSet) {
-                        RememberedSet.get().enableRememberedSetForObject(chunk, sweepStart.toObjectNonNull(), sweepSize);
-                    }
-                }
-                sweepStart = next;
-
-                Object obj = p.toObjectNonNull();
-                ObjectHeaderImpl.unsetMarkedAndClearRememberedSetBit(obj);
-                if (rememberedSet) {
-                    RememberedSet.get().enableRememberedSetForObject(chunk, obj, objSize);
-                    if (fromYoung && !completeCollection) {
-                        /*
-                         * Because the chunk was in the young gen during scanning, any references it
-                         * has to the young gen have not been added to the remembered set. We simply
-                         * add all survivors to the remembered set to be safe.
-                         */
-                        RememberedSet.get().dirtyCardForAlignedObject(obj, false);
-                    }
-                }
-
-                foundPinnedObjs++;
-                if (foundPinnedObjs == pinCount) {
-                    break;
-                }
-            }
-
-            p = next;
-        }
-
-        assert foundPinnedObjs > 0;
-        assert sweepStart.belowOrEqual(HeapChunk.getEndPointer(chunk));
-        HeapChunk.setTopPointer(chunk, sweepStart);
-        chunk.setSweep(false);
-
-        if (HeapParameters.getZapConsumedHeapChunks()) {
-            HeapChunkProvider.zapUnusedObjectMemory(chunk, HeapParameters.getConsumedHeapChunkZapWord());
-        }
+        return rememberedSet;
     }
 }

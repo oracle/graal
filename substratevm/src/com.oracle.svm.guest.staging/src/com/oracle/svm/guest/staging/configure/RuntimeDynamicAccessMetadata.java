@@ -206,7 +206,7 @@ public class RuntimeDynamicAccessMetadata {
     /*
      * Used in snippets, returns true only if the condition was already satisfied beforehand.
      */
-    public final boolean fastPathSatisfied() {
+    public final boolean isKnownSatisfied() {
         return satisfied;
     }
 

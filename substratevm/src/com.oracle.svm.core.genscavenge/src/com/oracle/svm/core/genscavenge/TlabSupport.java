@@ -184,7 +184,7 @@ public class TlabSupport {
         WordPointer actualSizePtr = StackValue.get(WordPointer.class);
         actualSizePtr.write(0, Word.zero());
 
-        Pointer memory = YoungGeneration.getHeapAllocation().allocateNewTlab(min, desired, actualSizePtr);
+        Pointer memory = YoungGeneration.getEdenAllocation().allocateNewTlab(min, desired, actualSizePtr);
         UnsignedWord actual = actualSizePtr.read();
         if (memory.isNull()) {
             assert actual.equal(Word.zero()) : "Allocation failed, but actual size was updated.";
@@ -283,7 +283,7 @@ public class TlabSupport {
         IsolateThread thread = VMThreads.firstThreadUnsafe();
         VMError.guarantee(VMThreads.nextThread(thread).isNull(), "Other isolate threads are still active");
 
-        // Aligned chunks are handled in HeapAllocation.
+        // Aligned chunks are handled in EdenAllocation.
         HeapChunkProvider.freeUnalignedChunkList(getTlab(thread).getUnalignedChunk());
     }
 
@@ -363,7 +363,7 @@ public class TlabSupport {
         UnsignedWord size = hardEnd.subtract(top);
 
         if (top.belowThan(hardEnd)) {
-            FillerObjectUtil.writeFillerObjectAt(top, size, false);
+            FillerObjectUtil.writeFillerObjectAt(top, size, false, true);
         }
     }
 
@@ -423,7 +423,7 @@ public class TlabSupport {
          * Compute the size of the new TLAB. To minimize fragmentation, the last TLAB that fits into
          * a heap chunk may be smaller than the desired size.
          */
-        UnsignedWord availableSize = YoungGeneration.getHeapAllocation().availableSizeForNewTlab();
+        UnsignedWord availableSize = YoungGeneration.getEdenAllocation().availableSizeForNewTlab();
         UnsignedWord newTlabSize = UnsignedUtils.min(availableSize, desiredSize.get().add(allocationSize));
         assert newTlabSize.belowOrEqual(maxSize());
         return newTlabSize;
@@ -496,7 +496,7 @@ public class TlabSupport {
     static void logTlabChunks(Log log, IsolateThread thread, String shortSpaceName) {
         ThreadLocalAllocation.Descriptor tlab = getTlabUnsafe(thread);
 
-        // Aligned chunks are handled in HeapAllocation.
+        // Aligned chunks are handled in EdenAllocation.
         UnalignedHeapChunk.UnalignedHeader uChunk = tlab.getUnalignedChunk();
         HeapChunkLogging.logChunks(log, uChunk, shortSpaceName, false);
     }

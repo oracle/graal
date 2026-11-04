@@ -112,6 +112,9 @@ import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
  * that is outside the TLAB and therefore not necessarily accessible. At the moment, this is not an
  * issue as we only support architectures where prefetch instructions never cause segfaults, even if
  * they access memory that is not accessible.
+ * <p>
+ * {@link PinnedAllocation} shares much of the allocation protocol of this class and may need
+ * corresponding updates when it changes.
  */
 public final class ThreadLocalAllocation {
     @RawStructure
@@ -257,20 +260,24 @@ public final class ThreadLocalAllocation {
 
         DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
         UnsignedWord size = LayoutEncoding.getArrayAllocationSize(hub.getLayoutEncoding(), length);
-        /*
-         * Check if the array is too big. This is an optimistic check because the heap probably has
-         * other objects in it, and the next collection could throw an OutOfMemoryError if this
-         * object is allocated and survives.
-         */
-        GCImpl.getPolicy().ensureSizeParametersInitialized();
-        if (GCImpl.getPolicy().isOutOfMemory(size) && !GCImpl.shouldIgnoreOutOfMemory()) {
-            OutOfMemoryError outOfMemoryError = new OutOfMemoryError("Array allocation too large.");
-            throw OutOfMemoryUtil.reportOutOfMemoryError(outOfMemoryError);
-        }
+        checkArrayLikeObjectSizeBeforeAllocation(size);
 
         Object result = slowPathNewArrayLikeObjectWithoutAllocating(hub, length, size, podReferenceMap);
         sampleSlowPathAllocation(result, size, length);
         return result;
+    }
+
+    /**
+     * Check if the array is too big. This is an optimistic check because the heap probably has
+     * other objects in it, and the next collection could throw an OutOfMemoryError if this object
+     * is allocated and survives.
+     */
+    static void checkArrayLikeObjectSizeBeforeAllocation(UnsignedWord sizeInBytes) {
+        GCImpl.getPolicy().ensureSizeParametersInitialized();
+        if (GCImpl.getPolicy().isOutOfMemory(sizeInBytes) && !GCImpl.shouldIgnoreOutOfMemory()) {
+            OutOfMemoryError outOfMemoryError = new OutOfMemoryError("Array allocation too large.");
+            throw OutOfMemoryUtil.reportOutOfMemoryError(outOfMemoryError);
+        }
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
@@ -370,7 +377,7 @@ public final class ThreadLocalAllocation {
     @Uninterruptible(reason = "Holds uninitialized memory.")
     private static Pointer allocateRawMemoryOutsideTlab(UnsignedWord size, BooleanPointer allocatedOutsideTlab) {
         allocatedOutsideTlab.write(true);
-        Pointer memory = YoungGeneration.getHeapAllocation().allocateOutsideTlab(size);
+        Pointer memory = YoungGeneration.getEdenAllocation().allocateOutsideTlab(size);
         allocatedAlignedBytes.set(allocatedAlignedBytes.get().add(size));
         return memory;
     }
@@ -462,5 +469,14 @@ public final class ThreadLocalAllocation {
 
         assert UnsignedUtils.isAMultiple(tlabSize, Word.unsigned(ObjectLayout.singleton().getAlignment()));
         return tlabSize;
+    }
+
+    /**
+     * While pinned allocation is not thread-local, its allocations should still be counted towards
+     * the allocating thread for reporting and profiling.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void trackPinnedAlignedAllocationOutsideTlab(UnsignedWord size) {
+        allocatedAlignedBytes.set(allocatedAlignedBytes.get().add(size));
     }
 }

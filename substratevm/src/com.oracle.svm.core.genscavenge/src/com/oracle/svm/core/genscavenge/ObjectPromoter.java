@@ -67,6 +67,7 @@ public class ObjectPromoter {
         assert VMOperation.isGCInProgress();
         assert ObjectHeaderImpl.isAlignedObject(originalObj);
         assert !ObjectHeaderImpl.isMarked(originalObj) : "must never copy a marked object";
+        assert !AlignedHeapChunk.mustSweep(AlignedHeapChunk.getEnclosingChunk(originalObj));
 
         UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, false);
         UnsignedWord copySize = originalSize;
@@ -123,7 +124,7 @@ public class ObjectPromoter {
     @Uninterruptible(reason = CORE_GC_CODE)
     static void promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace, Space targetSpace) {
         assert targetSpace != originalSpace && originalSpace.isFromSpace();
-        assert chunk.getObjectPinCount() != 0 : "should be used only with pinned objects";
+        assert AlignedHeapChunk.mustSweep(chunk);
 
         originalSpace.extractAlignedHeapChunk(chunk);
         targetSpace.appendAlignedHeapChunk(chunk);
@@ -158,7 +159,8 @@ public class ObjectPromoter {
         Pointer result = Word.nullPointer();
         /* Fast-path: try allocating in the last chunk. */
         AlignedHeapChunk.AlignedHeader oldChunk = targetSpace.getLastAlignedHeapChunk();
-        if (oldChunk.isNonNull()) {
+        if (oldChunk.isNonNull() && !AlignedHeapChunk.mustSweep(oldChunk)) {
+            /* Not copying into swept chunks: live objects in them must be marked. */
             result = AlignedHeapChunk.tryAllocateMemory(oldChunk, objectSize);
         }
         if (result.isNonNull()) {

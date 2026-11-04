@@ -204,7 +204,7 @@ public final class ObjectMoveInfo {
                 visitor.visitObject(obj);
                 p = p.add(objSize);
             }
-            if (nextObjSeq.isNonNull() && chunk.getSweep()) {
+            if (nextObjSeq.isNonNull() && AlignedHeapChunk.mustSweep(chunk)) {
                 // We will write a filler object here, add the location to the first object table.
                 assert p.belowThan(nextObjSeq);
                 UnsignedWord offset = p.subtract(AlignedHeapChunk.getObjectsStart(chunk));
@@ -243,6 +243,7 @@ public final class ObjectMoveInfo {
         return newObjSeqAddress.add(objOffset);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static int getSize() {
         return useCompressedLayout() ? 8 : 16;
     }
@@ -260,7 +261,7 @@ public final class ObjectMoveInfo {
             Pointer nextNewAddress = next.isNonNull() ? getNewAddress(next) : Word.nullPointer();
             Pointer nextNext = next.isNonNull() ? getNextObjectSeqAddress(next) : Word.nullPointer();
 
-            if (!visitor.visit(p, size, newAddress, next)) {
+            if (!visitor.visit(chunk, p, size, newAddress, next)) {
                 return;
             }
 
@@ -280,7 +281,7 @@ public final class ObjectMoveInfo {
          * @return {@code true} if visiting should continue, {@code false} if visiting should stop.
          */
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        boolean visit(Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq);
+        boolean visit(AlignedHeapChunk.AlignedHeader chunk, Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq);
     }
 
     private ObjectMoveInfo() {

@@ -33,10 +33,12 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.Uninterruptible;
 
 /**
- * Provides data for the heap monitoring. All sizes are on chunk (and not on object) granularity.
+ * Provides data for the heap monitoring. The sizes generally consider the full size of chunks (not
+ * individual objects), however, uncommitted memory in all-pinned aligned chunks is excluded.
  *
  * @see GCAccounting
  * @see ChunksAccounting
+ * @see AlignedChunkPartialUncommitter
  */
 public final class HeapAccounting {
     private final UninterruptibleUtils.AtomicUnsigned edenUsedBytes = new UninterruptibleUtils.AtomicUnsigned();

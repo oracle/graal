@@ -25,25 +25,28 @@
 package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static jdk.graal.compiler.replacements.AllocationSnippets.FillContent.DO_NOT_FILL;
 import static jdk.graal.compiler.replacements.AllocationSnippets.FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED;
 
-import com.oracle.svm.shared.config.ObjectLayout;
-import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
-import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
+import com.oracle.svm.core.genscavenge.compacting.CompactingAlignedChunkAccess;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.shared.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
 import jdk.vm.ci.meta.JavaKind;
 
 public class FillerObjectUtil {
@@ -71,16 +74,28 @@ public class FillerObjectUtil {
         return ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), ARRAY_ELEMENT_KIND);
     }
 
+    /**
+     * Writes a filler object. If {@code mayFillContents} is true, its body may additionally be
+     * filled with garbage.
+     *
+     * Returns the start of the array elements for an array filler, or the end of the object otherwise.
+     * Heap traversal does not access the bytes between the returned pointer and the object's end.
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static void writeFillerObjectAt(Pointer p, UnsignedWord size, boolean rememberedSet) {
+    public static Pointer writeFillerObjectAt(Pointer p, UnsignedWord size, boolean rememberedSet, boolean mayFillContents) {
+        FillContent fillContent = mayFillContents ? WITH_GARBAGE_IF_ASSERTIONS_ENABLED : DO_NOT_FILL;
         assert size.equal(instanceMinSize()) || size.aboveOrEqual(arrayMinSize());
+        Pointer unused;
         if (size.aboveOrEqual(arrayMinSize())) {
             int length = UnsignedUtils.safeToInt(size.subtract(arrayBaseOffset()).unsignedDivide(ARRAY_ELEMENT_SIZE));
-            FormatArrayNode.formatArray(p, ARRAY_CLASS, length, rememberedSet, false, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
+            FormatArrayNode.formatArray(p, ARRAY_CLASS, length, rememberedSet, false, fillContent, false);
+            unused = p.add(arrayBaseOffset());
         } else {
-            FormatObjectNode.formatObject(p, FillerObject.class, rememberedSet, WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false);
+            FormatObjectNode.formatObject(p, FillerObject.class, rememberedSet, fillContent, false);
+            unused = p.add(size);
         }
         assert LayoutEncoding.getSizeFromObjectInGC(p.toObject()).equal(size);
+        return unused;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -91,7 +106,7 @@ public class FillerObjectUtil {
 
     /** Zeros the non-header memory of a filler object without changing its array length. */
     @Uninterruptible(reason = "Uses raw pointers to access filler objects.")
-    static void cleanFillerObjectMemory(Object object) {
+    static void cleanFillerObjectMemory(Object object, boolean inAlignedChunkWithUncommittedPages) {
         int contentOffset;
         if (object.getClass() == ARRAY_CLASS) {
             contentOffset = arrayBaseOffset();
@@ -102,6 +117,11 @@ public class FillerObjectUtil {
 
         Pointer pointer = Word.objectToUntrackedPointer(object);
         UnsignedWord size = LayoutEncoding.getSizeFromObjectInlineInGC(object);
-        UnmanagedMemoryUtil.fill(pointer.add(contentOffset), size.subtract(contentOffset), (byte) 0);
+        if (inAlignedChunkWithUncommittedPages) {
+            AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunk(object);
+            CompactingAlignedChunkAccess.fillCommittedMemory(chunk, pointer.add(contentOffset), pointer.add(size), 0);
+        } else {
+            UnmanagedMemoryUtil.fill(pointer.add(contentOffset), size.subtract(contentOffset), (byte) 0);
+        }
     }
 }

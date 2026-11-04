@@ -377,26 +377,27 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     /** Foreign call: {@link #SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static DynamicHub slowPathHubOrUnsafeInstantiationError(DynamicHub hub) throws InstantiationException {
+        validateUnsafeInstanceAllocationHub(hub);
+        return hub;
+    }
+
+    public static void validateUnsafeInstanceAllocationHub(DynamicHub hub) throws InstantiationException {
         if (hub == null) {
             throw new NullPointerException("Allocation type is null.");
         } else if (!hub.isInstanceClass() || LayoutEncoding.isSpecial(hub.getLayoutEncoding())) {
             throw new InstantiationException("Can only allocate instance objects for concrete classes: " + DynamicHub.toClass(hub).getTypeName());
         } else if (LayoutEncoding.isHybrid(hub.getLayoutEncoding())) {
             throw new InstantiationException("Cannot allocate objects of special hybrid types: " + DynamicHub.toClass(hub).getTypeName());
-        } else {
-            if (hub.canUnsafeInstantiateAsInstanceSlowPath()) {
-                return hub;
-            } else {
-                Class<?> clazz = DynamicHub.toClass(hub);
-                if (FutureDefaultsOptions.exactReflection()) {
-                    throw MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
-                }
-                if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                    MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
-                }
-                throw new IllegalArgumentException("Type " + clazz.getTypeName() + " is instantiated reflectively but was never registered." +
-                                " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");
+        } else if (!hub.canUnsafeInstantiateAsInstanceSlowPath()) {
+            Class<?> clazz = DynamicHub.toClass(hub);
+            if (FutureDefaultsOptions.exactReflection()) {
+                throw MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
             }
+            if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+                MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
+            }
+            throw new IllegalArgumentException("Type " + clazz.getTypeName() + " is instantiated reflectively but was never registered." +
+                            " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");
         }
     }
 

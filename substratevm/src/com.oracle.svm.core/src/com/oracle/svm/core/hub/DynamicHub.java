@@ -1188,10 +1188,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public boolean canUnsafeInstantiateAsInstanceFastPath() {
-        return companion.canUnsafeAllocate != null && companion.canUnsafeAllocate.fastPathSatisfied();
+        return LayoutEncoding.isPureInstance(layoutEncoding) && companion.canUnsafeAllocate != null && companion.canUnsafeAllocate.isKnownSatisfied();
     }
 
     public boolean canUnsafeInstantiateAsInstanceSlowPath() {
+        assert LayoutEncoding.isPureInstance(layoutEncoding) : "expected to be checked by caller";
+
         RuntimeDynamicAccessMetadata canUnsafeAllocate = canUnsafeAllocate();
         return canUnsafeAllocate != null && canUnsafeAllocate.satisfied();
     }
