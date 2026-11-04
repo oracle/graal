@@ -131,6 +131,8 @@ Native Image constructs a JDK-managed provider through the same supported path a
 a public no-argument constructor, or the public static no-argument
 [`provider()`][service-loader] method of a service provider class in a named module.
 When both apply, [`provider()`][service-loader] takes precedence (JLS 7.7.4).
+A factory may return a subclass of its declared return type, including a concrete return type.
+The actual returned class determines provider identity and catalog retention.
 For a configured entry with an argument, construction includes the subsequent
 [`Provider.configure(argument)`][provider] call and uses its return value, even when that provider
 has a different name or implementation class.
