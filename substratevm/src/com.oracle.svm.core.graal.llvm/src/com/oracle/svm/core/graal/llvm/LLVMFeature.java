@@ -45,7 +45,6 @@ import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 import com.oracle.svm.core.graal.code.SubstrateVectorArchitectureFactory;
 import com.oracle.svm.core.graal.llvm.image.LLVMCCompilerInvoker;
 import com.oracle.svm.core.graal.llvm.lowering.LLVMLoadExceptionObjectLowering;
-import com.oracle.svm.core.graal.llvm.lowering.ScalarVectorArchitecture;
 import com.oracle.svm.core.graal.llvm.lowering.SubstrateLLVMLoweringProvider;
 import com.oracle.svm.core.graal.llvm.objectfile.LLVMObjectFile;
 import com.oracle.svm.core.graal.llvm.replacements.LLVMGraphBuilderPlugins;
@@ -53,7 +52,6 @@ import com.oracle.svm.core.graal.llvm.runtime.LLVMExceptionUnwind;
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.util.UserError;
@@ -180,9 +178,7 @@ public class LLVMFeature implements InternalFeature {
         @Override
         public DefaultJavaLoweringProvider newLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                         MetaAccessExtensionProvider metaAccessExtensionProvider, TargetDescription target) {
-            VectorArchitecture vectorArchitecture = getSingletonVectorArchitecture(
-                            (arch, enabled, referenceSize, compressedReferences, alignment, objectVectorization) -> new ScalarVectorArchitecture(referenceSize, compressedReferences, alignment),
-                            target.arch, false, ObjectLayout.singleton().getReferenceSize(), ObjectLayout.singleton().getAlignment(), platformConfig.getBarrierSet());
+            VectorArchitecture vectorArchitecture = getSingletonVectorArchitecture(target.arch, platformConfig.getBarrierSet());
             return new SubstrateLLVMLoweringProvider(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target, vectorArchitecture);
         }
     }

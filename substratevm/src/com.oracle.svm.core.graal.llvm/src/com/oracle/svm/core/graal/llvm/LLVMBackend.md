@@ -15,7 +15,7 @@ To enable the LLVM backend, pass the `--tool:llvm-backend` option to the `native
 
 ## Limitations
 
-With the LLVM backend, the Graal compiler's vectorization optimizations remain enabled, but vector memory and arithmetic operations use scalar widths.
+On AMD64 and AArch64 with the LLVM backend, the Graal compiler's vectorization optimizations remain enabled, but vector memory and arithmetic operations use scalar widths.
 LLVM may vectorize the generated bitcode during compilation.
 
 The LLVM backend does not support the [Foreign Function and Memory (FFM) API](https://www.graalvm.org/latest/reference-manual/native-image/native-code-interoperability/ffm-api/).

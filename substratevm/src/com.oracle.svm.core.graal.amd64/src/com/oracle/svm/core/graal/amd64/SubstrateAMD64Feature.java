@@ -30,8 +30,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
@@ -53,8 +51,6 @@ import jdk.graal.compiler.replacements.DefaultJavaLoweringProvider;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.amd64.AMD64GraphBuilderPlugins;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
-import jdk.graal.compiler.vector.architecture.amd64.VectorAMD64;
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -111,8 +107,7 @@ class SubstrateAMD64LoweringProviderFactory extends SubstrateVectorArchitectureF
     @Override
     public DefaultJavaLoweringProvider newLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider, TargetDescription target) {
-        VectorArchitecture vectorArchitecture = getSingletonVectorArchitecture(VectorAMD64::new, (AMD64) SubstrateTarget.getArchitecture(), !SubstrateOptions.useLLVMBackend(),
-                        ObjectLayout.singleton().getReferenceSize(), ObjectLayout.singleton().getAlignment(), platformConfig.getBarrierSet());
+        VectorArchitecture vectorArchitecture = getSingletonVectorArchitecture(target.arch, platformConfig.getBarrierSet());
         return new SubstrateAMD64LoweringProvider(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target, vectorArchitecture);
     }
 }
