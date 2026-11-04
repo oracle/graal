@@ -46,6 +46,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
@@ -744,6 +745,74 @@ public class StackValuesTest extends AbstractBasicInterpreterTest {
         Object marker = new Object();
         MaterializedFrame frame = (MaterializedFrame) root.getCallTarget().call(marker, true);
         assertFrameDoesNotContainValue(frame, marker);
+    }
+
+    /**
+     * Regression test: on block end, a block result is moved below stack values using
+     * store.stackvalue. The result should not get BEd by its consumer because store.stackvalue
+     * cannot handle a primitive value.
+     */
+    @Test
+    public void testBlockResultBoxingElimination() {
+        Assume.assumeTrue(run.hasBoxingElimination());
+        for (int numStackValues : new int[]{0, 1, 2, 3}) {
+            for (int depth : new int[]{1, 2}) {
+                BasicInterpreter root = parseNode("blockResultBoxingElimination", b -> {
+                    b.beginRoot();
+                    b.beginReturn();
+                    b.beginAdd();
+                    for (int i = 0; i < depth; i++) {
+                        b.beginBlock();
+                        for (int j = 0; j < numStackValues; j++) {
+                            b.beginBindStackValue();
+                            b.emitLoadConstant("saved value");
+                            b.endBindStackValue();
+                        }
+                    }
+                    b.emitLoadArgument(0);
+                    for (int i = 0; i < depth; i++) {
+                        b.endBlock();
+                    }
+                    b.emitLoadConstant(1L);
+                    b.endAdd();
+                    b.endReturn();
+                    b.endRoot();
+                });
+                root.getBytecodeNode().setUncachedThreshold(0);
+
+                assertEquals(42L, root.getCallTarget().call(41L));
+                assertEquals("value1", root.getCallTarget().call("value"));
+                assertEquals(42L, root.getCallTarget().call(41L));
+            }
+        }
+    }
+
+    /**
+     * Like {@link #testBlockResultBoxingElimination()} but tests the special case where the stack
+     * value is the block result.
+     */
+    @Test
+    public void testStackValueBlockResultBoxingElimination() {
+        Assume.assumeTrue(run.hasBoxingElimination());
+        BasicInterpreter root = parseNode("stackValueBlockResultBoxingElimination", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginAdd();
+            b.beginBlock();
+            b.beginBindStackValue();
+            b.emitLoadArgument(0);
+            b.endBindStackValue();
+            b.endBlock();
+            b.emitLoadConstant(1L);
+            b.endAdd();
+            b.endReturn();
+            b.endRoot();
+        });
+        root.getBytecodeNode().setUncachedThreshold(0);
+
+        assertEquals(42L, root.getCallTarget().call(41L));
+        assertEquals("value1", root.getCallTarget().call("value"));
+        assertEquals(42L, root.getCallTarget().call(41L));
     }
 
     @Test
