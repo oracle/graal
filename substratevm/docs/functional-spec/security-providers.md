@@ -380,6 +380,7 @@ Tracing [`Security.addProvider`][security], [`Security.insertProviderAt`][securi
 call receives an existing object.
 Selecting an application-supplied object later does not record its provider class: the object was
 not reflectively constructed by the provider-list operation.
+This also applies to built-in provider objects returned from cached name lookups and enumeration.
 For a cached service implementation, tracing records the constructor the JDK actually cached,
 including a no-argument constructor selected after a parameterized-constructor probe failed.
 Security operations reached through JDK runtime modules are attributed to the first non-JDK caller,
