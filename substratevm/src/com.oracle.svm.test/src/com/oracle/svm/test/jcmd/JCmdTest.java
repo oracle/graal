@@ -200,7 +200,7 @@ public class JCmdTest {
         assertOutputContainsStrings(jcmd, ":");
 
         jcmd = runJCmd("VM.version");
-        assertOutputContainsStrings(jcmd, "GraalVM");
+        assertOutputContainsStrings(jcmd, System.getProperty("java.vendor.version"));
     }
 
     @Test
