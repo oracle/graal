@@ -179,8 +179,7 @@ public final class SecurityProviderRuntimeAccess {
         }
         SecurityProviderRuntimeState.ConfiguredProviderInfo configuredProvider = SecurityProviderRuntimeState.getConfiguredProviderForDiagnostics(providerName);
         String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(providerName);
-        String providerClassName = configuredProvider != null ? configuredProvider.providerClassName()
-                        : builtInProviderClassName;
+        String providerClassName = configuredProvider != null ? configuredProvider.providerClassName() : null;
         // §FS-002-security-providers.3.3: Provider-object-only plans remain ordinary list misses.
         boolean applicationSuppliedOnly = isApplicationSuppliedOnlyDiagnostic(providerClassName, builtInProviderClassName);
         if (providerClassName != null && !isJdkAcquirable(providerClassName) &&
