@@ -41,9 +41,11 @@ meth public abstract com.oracle.truffle.api.frame.FrameExtensions getFrameExtens
 meth public abstract com.oracle.truffle.api.memory.ByteArraySupport getByteArraySupport()
 meth public abstract int readInt(int[],int)
 meth public abstract void writeInt(int[],int,int)
+meth public final java.lang.Object getSerializationKey(java.lang.Object)
 meth public final static com.oracle.truffle.api.bytecode.BytecodeDSLAccess lookup(java.lang.Object,boolean)
 supr java.lang.Object
 hfds safeSingleton,unsafeSingleton
+hcls DoubleNaNKey,FloatNaNKey
 
 CLSS public abstract com.oracle.truffle.api.bytecode.BytecodeDescriptor<%0 extends com.oracle.truffle.api.nodes.RootNode & com.oracle.truffle.api.bytecode.BytecodeRootNode, %1 extends com.oracle.truffle.api.TruffleLanguage<?>, %2 extends com.oracle.truffle.api.bytecode.BytecodeBuilder>
 cons protected init(java.lang.Object)
