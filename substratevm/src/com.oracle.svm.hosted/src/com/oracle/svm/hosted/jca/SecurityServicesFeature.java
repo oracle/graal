@@ -261,7 +261,8 @@ import sun.security.x509.OIDMap;
 /// likewise include metadata persisted by earlier layers. Each entry combines whether the JDK may
 /// construct the provider with the preserved JCE verification outcome. An application-supplied
 /// provider carries verification information derived from instantiation reachability without being
-/// marked as JDK-constructible or reflection-registered. The manifest is keyed by provider class
+/// marked as JDK-constructible or reflection-registered. Verification failures retain their original
+/// registration metadata and are considered only while that metadata is satisfied. The manifest is keyed by provider class
 /// name, as required by §FS-002-security-providers.4.3.
 ///
 /// ### design.5: Run-Time Access Services
