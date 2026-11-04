@@ -164,6 +164,8 @@ build fails with a diagnostic naming the provider and construction failure.
 Registering a JDK-constructible provider retains its selected construction path, every valid and
 resolvable service in its catalog, the service construction metadata, and its JCE verification
 outcome.
+Reusing an already-loaded build-time instance preserves the same service declaration and factory
+path that fresh construction would record; the implementation class does not replace that path.
 Thus, registering a provider that declares algorithms `A` and `B` makes both appear through
 [`Provider.getServices()`][provider] and makes both usable even if application reachability mentions
 only `A`.
