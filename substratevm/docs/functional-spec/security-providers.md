@@ -179,6 +179,8 @@ Reachability of a [`SecureRandom`][secure-random] constructor or
 [`SecureRandom`][secure-random], without application reflection metadata for those providers.
 The provider is then visible through [`Security`][security] if its `security.provider.<n>` entry
 installs it, and its complete catalog has the effects of [§FS-002-security-providers.1.3](security-providers.md#13-registration-effects).
+If no configured provider supplies this service, the rule registers nothing; a provider-object
+`getInstance` call can still use an application-supplied provider with service metadata.
 Native Image's internal random source triggers this rule only in an image that includes runtime
 compilation, which consumes that source.
 
