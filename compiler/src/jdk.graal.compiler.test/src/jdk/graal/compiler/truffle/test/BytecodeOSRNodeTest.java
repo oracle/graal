@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,12 +64,17 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.api.test.SubprocessTestUtils.WithSubprocess;
+import com.oracle.truffle.runtime.AbstractCompilationTask;
+import com.oracle.truffle.runtime.AbstractEngineCacheSupport.CompilePolicy;
 import com.oracle.truffle.runtime.BytecodeOSRMetadata;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedOSRLoopNode;
 import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
 
 import jdk.graal.compiler.test.GraalTest;
 
@@ -878,6 +883,195 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Assert.assertNotEquals(osrMetadata, BytecodeOSRMetadata.DISABLED);
         Assert.assertTrue(osrMetadata.getOSRCompilations().containsKey(5L));
         Assert.assertTrue(osrMetadata.getOSRCompilations().get(5L).isValid());
+    }
+
+    @Test
+    public void testCacheExecutedWithUninitializedOSRTarget() {
+        testCacheWithOSRTargets(CompilePolicy.executed, CacheOSRState.INVALIDATED, false);
+    }
+
+    @Test
+    public void testCacheHotWithUninitializedOSRTarget() {
+        testCacheWithOSRTargets(CompilePolicy.hot, CacheOSRState.INVALIDATED, false);
+    }
+
+    @Test
+    public void testCacheAOTWithUninitializedOSRTarget() {
+        testCacheWithOSRTargets(CompilePolicy.aot, CacheOSRState.INVALIDATED, false);
+    }
+
+    @Test
+    public void testCacheCompiledWithValidOSRTarget() {
+        testCacheWithOSRTargets(CompilePolicy.compiled, CacheOSRState.VALID, false);
+    }
+
+    @Test
+    public void testCacheAOTWithValidOSRTarget() {
+        testCacheWithOSRTargets(CompilePolicy.aot, CacheOSRState.VALID, false);
+    }
+
+    @Test
+    public void testCacheAOTWithMultipleOSRTargets() {
+        testCacheWithOSRTargets(CompilePolicy.aot, CacheOSRState.VALID, true);
+    }
+
+    @Test
+    public void testCacheHotWithValidOSRTarget() {
+        testCacheWithOSRTargets(CompilePolicy.hot, CacheOSRState.VALID, false);
+    }
+
+    @Test
+    public void testCacheHotWithMultipleOSRTargets() {
+        testCacheWithOSRTargets(CompilePolicy.hot, CacheOSRState.VALID, true);
+    }
+
+    @Test
+    public void testCacheHotWithCancelledOSRTarget() {
+        testCacheWithOSRTargets(CompilePolicy.hot, CacheOSRState.CANCELLED, false);
+    }
+
+    @Test
+    public void testCacheCompiledWithInvalidatedOSRTarget() {
+        testCacheWithOSRTargets(CompilePolicy.compiled, CacheOSRState.INVALIDATED, false);
+    }
+
+    @Test
+    public void testCacheCompiledWithCancelledOSRTarget() {
+        testCacheWithOSRTargets(CompilePolicy.compiled, CacheOSRState.CANCELLED, false);
+    }
+
+    private enum CacheOSRState {
+        VALID,
+        INVALIDATED,
+        CANCELLED
+    }
+
+    private void testCacheWithOSRTargets(CompilePolicy policy, CacheOSRState state, boolean multipleEntries) {
+        Context ctx = setupContext("engine.MultiTier", "false",
+                        "engine.OSR", "true",
+                        "engine.OSRCompilationThreshold", String.valueOf(OSR_THRESHOLD),
+                        "engine.DebugCacheStore", "true",
+                        "engine.DebugCacheCompile", policy.toString(),
+                        "engine.DebugCachePreinitializeContext", "false");
+        ctx.initialize(LANGUAGE);
+        var frameBuilder = FrameDescriptor.newBuilder();
+        BytecodeNode bytecodeNode = new BytecodeNode(4, frameBuilder, multiplyInputs);
+        RootNode rootNode = new Program(Language.REFERENCE.get(null), bytecodeNode, frameBuilder.build());
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+        Assert.assertEquals(2 * OSR_THRESHOLD, target.call(OSR_THRESHOLD, 2));
+        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) bytecodeNode.getOSRMetadata();
+        OptimizedCallTarget firstOSRTarget = osrMetadata.getOSRCompilations().get(0L);
+        Assert.assertTrue(firstOSRTarget.isValid());
+
+        // Reach a new OSR entry without reaching the secondary compilation threshold.
+        int innerIterations = BytecodeOSRMetadata.OSR_POLL_INTERVAL + 2;
+        Assert.assertEquals(innerIterations, target.call(1, innerIterations));
+        OptimizedCallTarget uninitializedTarget = osrMetadata.getOSRCompilations().get(5L);
+        Assert.assertNotNull(uninitializedTarget);
+        Assert.assertTrue(uninitializedTarget.wasExecuted());
+        Assert.assertFalse(uninitializedTarget.isInitialized());
+        Assert.assertFalse(uninitializedTarget.isValid());
+        if (multipleEntries) {
+            Assert.assertEquals(2 * (OSR_THRESHOLD - 1), target.call(2, OSR_THRESHOLD - 1));
+            Assert.assertTrue(uninitializedTarget.isValid());
+        }
+        if (state != CacheOSRState.VALID) {
+            firstOSRTarget.invalidate("test cache selection");
+        }
+        if (state == CacheOSRState.CANCELLED) {
+            boolean[] cancelled = new boolean[1];
+            OptimizedTruffleRuntimeListener listener = new OptimizedTruffleRuntimeListener() {
+                @Override
+                public void onCompilationStarted(OptimizedCallTarget compilation, AbstractCompilationTask task) {
+                    if (compilation == firstOSRTarget) {
+                        synchronized (compilation) {
+                            // Wait until the submitting thread has published the compilation task.
+                            cancelled[0] = compilation.cancelCompilation("test cache selection");
+                        }
+                    }
+                }
+            };
+            runtime.addListener(listener);
+            try {
+                firstOSRTarget.compile(true);
+            } finally {
+                runtime.removeListener(listener);
+            }
+            Assert.assertTrue(cancelled[0]);
+            Assert.assertFalse(firstOSRTarget.isValid());
+            Assert.assertFalse(firstOSRTarget.isSubmittedForCompilation());
+        }
+        int firstOSRCompilations = firstOSRTarget.getSuccessfulCompilationCount();
+        int secondOSRCompilations = uninitializedTarget.getSuccessfulCompilationCount();
+        Assert.assertFalse(target.isValid());
+
+        cleanup();
+
+        Assert.assertEquals(policy == CompilePolicy.executed || ((policy == CompilePolicy.hot || policy == CompilePolicy.aot) && state == CacheOSRState.VALID), target.isValid());
+        Assert.assertEquals(state == CacheOSRState.VALID, firstOSRTarget.isValid());
+        Assert.assertEquals(firstOSRCompilations, firstOSRTarget.getSuccessfulCompilationCount());
+        Assert.assertEquals(secondOSRCompilations, uninitializedTarget.getSuccessfulCompilationCount());
+        Assert.assertEquals(multipleEntries, uninitializedTarget.isInitialized());
+        Assert.assertEquals(multipleEntries, uninitializedTarget.isValid());
+        // Consume and close the cached engine rather than leaving it in the debug cache.
+        setupContext("engine.DebugCacheLoad", "true");
+        Assert.assertEquals(6, target.call(2, 3));
+    }
+
+    @Test
+    public void testCacheHotWithASTOSRTarget() {
+        testCacheWithASTOSRTarget(CompilePolicy.hot);
+    }
+
+    @Test
+    public void testCacheAOTWithASTOSRTarget() {
+        testCacheWithASTOSRTarget(CompilePolicy.aot);
+    }
+
+    @Test
+    public void testCacheExecutedWithASTOSRTarget() {
+        testCacheWithASTOSRTarget(CompilePolicy.executed);
+    }
+
+    private void testCacheWithASTOSRTarget(CompilePolicy policy) {
+        Context ctx = setupContext("engine.MultiTier", "false",
+                        "engine.DebugCacheStore", "true",
+                        "engine.DebugCacheCompile", policy.toString(),
+                        "engine.DebugCachePreinitializeContext", "false");
+        ctx.initialize(LANGUAGE);
+        class CountingLoop extends Node implements RepeatingNode {
+            @Override
+            public boolean executeRepeating(VirtualFrame frame) {
+                int remaining = frame.getIntStatic(0);
+                frame.setIntStatic(0, remaining - 1);
+                return remaining > 0;
+            }
+        }
+        OptimizedOSRLoopNode loop = (OptimizedOSRLoopNode) Truffle.getRuntime().createLoopNode(new CountingLoop());
+        FrameDescriptor.Builder frameBuilder = FrameDescriptor.newBuilder();
+        frameBuilder.addSlot(FrameSlotKind.Static, null, null);
+        RootNode rootNode = new RootNode(Language.REFERENCE.get(null), frameBuilder.build()) {
+            @Child private LoopNode loopNode = loop;
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                frame.setIntStatic(0, 10);
+                loopNode.execute(frame);
+                return 42;
+            }
+        };
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+        loop.forceOSR();
+        OptimizedCallTarget osrTarget = loop.getCompiledOSRLoop();
+        Assert.assertTrue(osrTarget.isValid());
+        Assert.assertFalse(target.isInitialized());
+        Assert.assertFalse(target.isValid());
+
+        cleanup();
+
+        Assert.assertTrue(target.isValid());
+        setupContext("engine.DebugCacheLoad", "true");
+        Assert.assertEquals(42, target.call());
     }
 
     @Test

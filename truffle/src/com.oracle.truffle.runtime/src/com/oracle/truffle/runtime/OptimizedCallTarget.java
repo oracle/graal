@@ -854,7 +854,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return initialized;
     }
 
-    private synchronized void initialize(boolean validate) {
+    synchronized void initialize(boolean validate) {
         if (!initialized) {
             if (isSourceCallTarget() && rootNode.isCloningAllowed() && !OptimizedRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
                 // We are the source CallTarget, so make a copy.
