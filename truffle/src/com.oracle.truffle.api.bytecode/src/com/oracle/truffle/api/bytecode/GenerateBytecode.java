@@ -580,7 +580,9 @@ public @interface GenerateBytecode {
 
     /**
      * Disables the assertions that reject {@code null} values in local stores and local accessor
-     * stores. The default is {@code false}.
+     * stores. The default is {@code false}. It also configures
+     * {@link BytecodeNode#setLocalValue(int, com.oracle.truffle.api.frame.Frame, int, Object)} to
+     * treat {@code null} as a valid store value instead of a clear.
      * <p>
      * This option provides temporary compatibility for interpreters that store {@code null} in
      * locals. Such interpreters should migrate to non-null sentinel values. This option will be

@@ -228,6 +228,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         this.add(createGetLocalNameInternal());
         this.add(createGetLocalInfoInternal());
 
+        this.add(createCopyLocalValue());
         if (!parent.model.usesBoxingElimination()) {
             this.add(createGetLocalValue());
             this.add(createSetLocalValue());
@@ -406,10 +407,52 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         AbstractBytecodeNodeElement.buildVerifyLocalsIndex(b);
         buildVerifyFrameDescriptor(b, false);
         b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
+        emitMaybeClearLocalValue(b, "frameIndex", "value");
         b.startStatement();
         b.startCall("frame", BytecodeRootNodeElement.getSetMethod(type(Object.class))).string("frameIndex").string("value").end();
         b.end();
         return ex;
+    }
+
+    private CodeExecutableElement createCopyLocalValue() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "copyLocalValue",
+                        new String[]{"bci", "source", "destination", "localOffset"},
+                        new TypeMirror[]{type(int.class), types.Frame, types.Frame, type(int.class)});
+        CodeTreeBuilder b = ex.createBuilder();
+        b.statement("assert validateBytecodeIndex(bci)");
+        buildVerifyLocalsIndex(b);
+        b.statement("assert getRoot().getFrameDescriptor() == source.getFrameDescriptor() : \"Invalid source frame descriptor.\"");
+        b.statement("assert getRoot().getFrameDescriptor() == destination.getFrameDescriptor() : \"Invalid destination frame descriptor.\"");
+        b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
+        // Handle cleared slots and default values before the getter can profile them. For ordinary
+        // values, reuse its PE-constant cached tag lookup in compiled code.
+        b.startIf().string("source.getTag(frameIndex) == FrameSlotKind.Illegal.tag").end().startBlock();
+        b.statement("destination.clear(frameIndex)");
+        b.statement("return");
+        b.end();
+        if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
+            b.startIf().string("source.isObject(frameIndex) && source.getObject(frameIndex) == DEFAULT_LOCAL_VALUE").end().startBlock();
+            b.statement("destination.setObject(frameIndex, DEFAULT_LOCAL_VALUE)");
+            b.statement("return");
+            b.end();
+        }
+        b.statement("setLocalValue(bci, destination, localOffset, getLocalValue(bci, source, localOffset))");
+        return ex;
+    }
+
+    void emitMaybeClearLocalValue(CodeTreeBuilder b, String frameIndex, String value) {
+        if (!parent.model.disableLocalNullChecks) {
+            b.startIf().string(value, " == null").end().startBlock();
+            b.startStatement().startCall("frame", "clear").string(frameIndex).end(2);
+            b.statement("return");
+            b.end();
+        }
+        if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
+            b.startIf().string(value, " == DEFAULT_LOCAL_VALUE").end().startBlock();
+            b.startStatement().startCall("frame", "setObject").string(frameIndex).string("DEFAULT_LOCAL_VALUE").end(2);
+            b.statement("return");
+            b.end();
+        }
     }
 
     private CodeExecutableElement createSetLocalValueInternal() {
@@ -1374,9 +1417,16 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
             b.startDeclaration(type(int.class), "localCount").startCall("bc.getLocalCount").string(transitionBciExpr).end(2);
             b.startFor().string("int localOffset = 0; localOffset < localCount; localOffset++").end().startBlock();
-            b.startIf().startCall("FRAMES.getTag").string("frame").string(BytecodeRootNodeElement.USER_LOCALS_START_INDEX + " + localOffset").end().string(" == ").staticReference(
-                            parent.frameTagsElement.getIllegal()).end().startBlock();
-            // Setting the cached tag for a cleared slot would pollute the tag to generic.
+            b.declaration(type(int.class), "frameIndex", BytecodeRootNodeElement.USER_LOCALS_START_INDEX + " + localOffset");
+            b.startDeclaration(type(byte.class), "frameTag").startCall("FRAMES.getTag").string("frame").string("frameIndex").end(2);
+            // Do not populate the cached tag if the slot is illegal or contains a default local value.
+            b.startIf().string("frameTag == ").staticReference(parent.frameTagsElement.getIllegal());
+            if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
+                // The slot can be illegal if explicitly cleared with a local accessor; check both.
+                b.string(" || (frameTag == ").staticReference(parent.frameTagsElement.getObject());
+                b.string(" && ").startCall("FRAMES.getObject").string("frame").string("frameIndex").end().string(" == DEFAULT_LOCAL_VALUE)");
+            }
+            b.end().startBlock();
             b.statement("continue");
             b.end();
 

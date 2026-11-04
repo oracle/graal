@@ -72,6 +72,7 @@ import com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInter
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder.BytecodeVariant;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -386,6 +387,58 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
         assertCompiled(target);
         assertEquals(42L, target.call());
         assertCompiled(target);
+    }
+
+    /**
+     * getLocalValue should not repeatedly deoptimize in the presence of a cleared slot.
+     */
+    @Test
+    public void testGetClearedLocalValueStaysCompiled() {
+        assumeTrue(hasBoxingElimination());
+        BasicInterpreter root = parseNodeForCompilation(run, "getClearedLocalValue", b -> {
+            b.beginRoot();
+            BytecodeLocal local = b.createLocal();
+            b.beginStoreLocal(local);
+            b.emitLoadArgument(0);
+            b.endStoreLocal();
+            b.beginYield();
+            b.emitLoadNull();
+            b.endYield();
+            b.beginReturn();
+            b.emitLoadLocal(local);
+            b.endReturn();
+            b.endRoot();
+        });
+        ContinuationResult continuation = (ContinuationResult) root.getCallTarget().call(42L);
+        BytecodeNode bytecode = root.getBytecodeNode();
+        int bci = continuation.getBytecodeLocation().getBytecodeIndex();
+        Frame locals = continuation.getFrame();
+        assertEquals(FrameSlotKind.Long, bytecode.getLocals().get(0).getTypeProfile());
+
+        OptimizedCallTarget reader = (OptimizedCallTarget) new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return bytecode.getLocalValue(bci, (Frame) frame.getArguments()[0], 0);
+            }
+        }.getCallTarget();
+        assertEquals(42L, reader.call(locals));
+        // Warm both return types without changing the local's primitive cached tag.
+        bytecode.setLocalValue(bci, locals, 0, null);
+        assertNull(reader.call(locals));
+        bytecode.setLocalValue(bci, locals, 0, 42L);
+        reader.compile(true);
+        assertCompiled(reader);
+
+        for (int i = 0; i < 3; i++) {
+            bytecode.setLocalValue(bci, locals, 0, null);
+            assertNull(reader.call(locals));
+            assertCompiled(reader);
+            assertEquals(FrameSlotKind.Long, bytecode.getLocals().get(0).getTypeProfile());
+
+            bytecode.setLocalValue(bci, locals, 0, 42L);
+            assertEquals(42L, reader.call(locals));
+            assertCompiled(reader);
+        }
     }
 
     @Test
