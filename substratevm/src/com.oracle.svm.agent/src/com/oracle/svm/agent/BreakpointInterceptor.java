@@ -959,10 +959,10 @@ final class BreakpointInterceptor {
             validResult = !clearException(jni) &&
                             fromJniString(jni, requestedProviderName).equals(fromJniString(jni, providerName));
         }
-        if (validResult) {
+        if (validResult && !isApplicationSuppliedSecurityProvider(provider)) {
             traceJdkConstructibleSecurityProvider(jni, provider, acquisition.callerClass(), state);
+            traceSecurityProvider(jni, provider, true, acquisition.callerClass(), state);
         }
-        traceSecurityProvider(jni, provider, validResult, acquisition.callerClass(), state);
         return true;
     }
 
