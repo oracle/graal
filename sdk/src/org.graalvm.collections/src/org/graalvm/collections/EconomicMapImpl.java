@@ -284,7 +284,7 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
     }
 
     private int findHash(K key, int hash) {
-        int index = getHashArray(getHashIndex(hash)) - 1;
+        int index = getHashArrayByHash(hash) - 1;
         if (index != -1) {
             Object entryKey = getKey(index);
             if (compareKeys(key, entryKey)) {
@@ -321,6 +321,42 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
         }
     }
 
+    /**
+     * Combines {@link #getHashIndex(int)} and {@link #getHashArray(int)} so that the hash table
+     * entry width is determined only once. Equivalent to {@code getHashArray(getHashIndex(hash))}.
+     *
+     * @param hash the mixed key hash returned by {@link #getHash(Object)}
+     * @return the bucket's head entry index plus one, or zero if the bucket is empty
+     */
+    private int getHashArrayByHash(int hash) {
+        if (entries.length < LARGE_HASH_THRESHOLD) {
+            int hashTableSize = hashArray.length;
+            int index = hash & (hashTableSize - 1);
+            return (hashArray[index] & 0xFF);
+        } else if (entries.length < VERY_LARGE_HASH_THRESHOLD) {
+            int hashTableSize = hashArray.length >> 1;
+            int index = hash & (hashTableSize - 1);
+            int adjustedIndex = index << 1;
+            return (hashArray[adjustedIndex] & 0xFF) | ((hashArray[adjustedIndex + 1] & 0xFF) << 8);
+        } else if (entries.length < HUGE_HASH_THRESHOLD) {
+            int hashTableSize = hashArray.length / 3;
+            int index = hash & (hashTableSize - 1);
+            int adjustedIndex = index * 3;
+            return (hashArray[adjustedIndex] & 0xFF) | ((hashArray[adjustedIndex + 1] & 0xFF) << 8) | ((hashArray[adjustedIndex + 2] & 0xFF) << 16);
+        } else {
+            int hashTableSize = hashArray.length >> 2;
+            int index = hash & (hashTableSize - 1);
+            int adjustedIndex = index << 2;
+            return (hashArray[adjustedIndex] & 0xFF) | ((hashArray[adjustedIndex + 1] & 0xFF) << 8) | ((hashArray[adjustedIndex + 2] & 0xFF) << 16) | ((hashArray[adjustedIndex + 3] & 0xFF) << 24);
+        }
+    }
+
+    /**
+     * Reads the encoded head entry index stored in a hash table bucket.
+     *
+     * @param index the bucket index returned by {@link #getHashIndex(int)}
+     * @return the bucket's head entry index plus one, or zero if the bucket is empty
+     */
     private int getHashArray(int index) {
         if (entries.length < LARGE_HASH_THRESHOLD) {
             return (hashArray[index] & 0xFF);
