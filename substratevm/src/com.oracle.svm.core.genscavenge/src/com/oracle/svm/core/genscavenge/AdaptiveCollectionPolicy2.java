@@ -290,7 +290,7 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
             // Upper bound for a single step shrink
             UnsignedWord maxShrinkBytes = minSpaceSize();
             UnsignedWord oldGenFreeInBytes = oldCapacity.subtract(oldLive);
-            UnsignedWord shrinkBytes = computeOldGenShrinkBytes(oldGenFreeInBytes, maxShrinkBytes);
+            UnsignedWord shrinkBytes = alignDown(computeOldGenShrinkBytes(oldGenFreeInBytes, maxShrinkBytes));
             if (shrinkBytes.notEqual(0)) {
                 int minHeapFreeRatio = MIN_HEAP_FREE_RATIO; // (avoids ecj warnings)
                 if (minHeapFreeRatio != 0) {
@@ -303,7 +303,7 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
                 }
 
                 // from PSOldGen::shrink
-                UnsignedWord newOldSize = minSpaceSize(alignDown(oldCapacity.subtract(shrinkBytes)));
+                UnsignedWord newOldSize = minSpaceSize(oldCapacity.subtract(shrinkBytes));
                 sizes.setOldSize(newOldSize);
             }
         }
