@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,10 @@
 package jdk.graal.compiler.microbenchmarks.graal;
 
 import org.openjdk.jmh.annotations.Benchmark;
+
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.microbenchmarks.graal.util.GraalUtil;
+import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 
 import jdk.graal.compiler.microbenchmarks.graal.util.GraalState;
 import jdk.graal.compiler.microbenchmarks.graal.util.GraphState;
@@ -168,4 +172,39 @@ public class ConditionalEliminationBenchmark extends GraalBenchmark {
     public void search(Search s, GraalState g) {
         new ConditionalEliminationPhase(CanonicalizerPhase.create(), false).apply(s.graph, g.providers);
     }
+
+    /** Profile-independent JDK control-flow graphs for measuring ordinary CE overhead. */
+    public abstract static class PreparedJDKGraph extends GraphState {
+        @Override
+        protected StructuredGraph preprocessOriginal(StructuredGraph parsed) {
+            GraalState context = new GraalState();
+            // Benchmark identical complete control flow, independent of which JDK paths the
+            // benchmark launcher happened to execute before graph construction.
+            StructuredGraph graph = GraalUtil.getGraph(context, parsed.method(), false);
+            CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
+            canonicalizer.apply(graph, context.providers);
+            new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, context.providers);
+            parsed.getDebug().log("CE benchmark input: %s, nodes=%d", graph.method(), graph.getNodeCount());
+            return graph;
+        }
+    }
+
+    @MethodSpec(declaringClass = java.util.regex.Pattern.class, name = "sequence")
+    public static class PatternSequence extends PreparedJDKGraph {
+    }
+
+    @MethodSpec(declaringClass = java.util.concurrent.ConcurrentHashMap.class, name = "transfer")
+    public static class ConcurrentMapTransfer extends PreparedJDKGraph {
+    }
+
+    @Benchmark
+    public void patternSequence(PatternSequence s, GraalState g) {
+        new ConditionalEliminationPhase(CanonicalizerPhase.create(), true).apply(s.graph, g.providers);
+    }
+
+    @Benchmark
+    public void concurrentMapTransfer(ConcurrentMapTransfer s, GraalState g) {
+        new ConditionalEliminationPhase(CanonicalizerPhase.create(), true).apply(s.graph, g.providers);
+    }
+
 }

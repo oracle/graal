@@ -29,7 +29,6 @@ import static jdk.graal.compiler.duplication.util.DuplicationUtil.isRealMergeBlo
 import static jdk.graal.compiler.phases.common.ConditionalEliminationUtil.getOtherSafeStamp;
 import static jdk.graal.compiler.phases.common.ConditionalEliminationUtil.getSafeStamp;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -84,7 +83,6 @@ import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph.RecursiveVisitor;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
@@ -103,6 +101,7 @@ import jdk.graal.compiler.nodes.spi.StampInverter;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.SingleRunSubphase;
+import jdk.graal.compiler.phases.common.ConditionalEliminationConditionStack;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.GuardedCondition;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.InfoElement;
@@ -136,7 +135,6 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
         this(optionValues, config, canonicalizerTool, (x, y, z) -> false);
     }
 
-    private SimulationContext simContext;
     private SimulationEndInfo[] improvements;
 
     public SimulationEndInfo[] getImprovements() {
@@ -169,9 +167,10 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
             nodeToBlock = cfg.getNodeToBlock();
             blockToNodes = getBlockToNodes(cfg);
         }
-        simContext = new SimulationContext(graph, cfg, blockToNodes, nodeToBlock, new CFGFrequencyInfo(cfg), context);
-        SimulationCFGTraversal.visitDominatorTreeBounded(cfg, simContext.visitor, cfg.getStartBlock(), 0, Integer.MAX_VALUE);
-        improvements = simContext.simulatedImprovements();
+        try (SimulationContext simulationContext = new SimulationContext(graph, cfg, blockToNodes, nodeToBlock, new CFGFrequencyInfo(cfg), context)) {
+            SimulationCFGTraversal.visitDominatorTreeBounded(cfg, simulationContext.visitor, cfg.getStartBlock(), 0, Integer.MAX_VALUE);
+            improvements = simulationContext.simulatedImprovements();
+        }
     }
 
     protected BlockMap<List<Node>> getBlockToNodes(ControlFlowGraph cfg) {
@@ -191,11 +190,11 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
         return 1.5f;
     }
 
-    private final class SimulationContext {
+    private final class SimulationContext implements AutoCloseable {
         private BlockMap<SimulationEndInfo> improvements;
         private int simulationsPerformed;
         private final ControlFlowGraph cfg;
-        private final RecursiveVisitor<?> visitor;
+        private final SimulationEntraceFrame visitor;
         private SimulationFrame simulationVisitor;
         private final boolean stopAtCF;
         private final CFGFrequencyInfo cfgFrequencyInfo;
@@ -205,7 +204,6 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
         private SimulationContext(StructuredGraph graph, ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, CFGFrequencyInfo cfgFrequencyInfo,
                         CoreProviders context) {
             this.cfg = cfg;
-            this.visitor = new SimulationEntraceFrame(graph, blockToNodes, nodeToBlock, context);
             this.stopAtCF = config.stopSimulationAtControlFlow(graph.getOptions());
             this.cfgFrequencyInfo = cfgFrequencyInfo;
             this.loopsData = context.getLoopsDataProvider().getLoopsData(graph);
@@ -216,6 +214,16 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
                     vectorizableLoops.add(loop);
                 }
             }
+            this.visitor = new SimulationEntraceFrame(graph, blockToNodes, nodeToBlock, context);
+        }
+
+        @Override
+        public void close() {
+            // The simulation frame is created after the entrance frame; close listeners in reverse.
+            if (simulationVisitor != null) {
+                simulationVisitor.conditions.close();
+            }
+            visitor.conditions.close();
         }
 
         private class SimulationEntraceFrame implements ControlFlowGraph.RecursiveVisitor<Marks> {
@@ -225,7 +233,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
             protected final NodeStack undoOperations;
             protected final StructuredGraph graph;
             protected final DebugContext debug;
-            protected final ArrayDeque<GuardedCondition> conditions;
+            protected final ConditionalEliminationConditionStack conditions;
             protected final InfoElementProvider infoElementProvider;
             protected final CoreProviders providers;
             protected final SafeStampInputSearch safeStampInputSearch;
@@ -238,7 +246,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
                 this.nodeToBlock = nodeToBlock;
                 this.undoOperations = new NodeStack();
                 this.map = graph.createNodeMap();
-                this.conditions = new ArrayDeque<>();
+                this.conditions = new ConditionalEliminationConditionStack(graph);
                 this.safeStampInputSearch = new SafeStampInputSearch(graph);
                 infoElementProvider = new InfoElementProvider() {
 
@@ -595,7 +603,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
                 visited = graph.createNodeBitMap();
             }
 
-            private void beforeSimulation(SimulationEndInfo state, NodeMap<InfoElement> outerMap, ArrayDeque<GuardedCondition> outerConditions) {
+            private void beforeSimulation(SimulationEndInfo state, NodeMap<InfoElement> outerMap, ConditionalEliminationConditionStack outerConditions) {
                 assert simulationState == null;
                 this.simulationState = state;
                 if (synonyms != null) {
@@ -606,7 +614,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
                 while (cursor.advance()) {
                     this.map.setAndGrow(cursor.getKey(), cursor.getValue());
                 }
-                conditions.addAll(outerConditions);
+                conditions.pushAll(outerConditions);
             }
 
             private void afterSimulation() {
