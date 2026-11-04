@@ -25,6 +25,7 @@ You can keep preservation selections in an [argument file with option-value cont
 
 ```text
 # native-image: value-continuations
+
 # Library scope
 -H:Preserve=...
     package=my.library.*

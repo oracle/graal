@@ -133,6 +133,7 @@ For example, _preserve.args_ can contain:
 
 ```text
 # native-image: value-continuations
+
 # Library scope
 -H:Preserve=...
     package=my.library.*
