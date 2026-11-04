@@ -65,14 +65,12 @@ import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil.InlineeReturnAction;
 import jdk.graal.compiler.phases.contract.NodeCostUtil;
 import jdk.graal.compiler.truffle.ConstantArgumentInfo;
-import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PerformanceInformationHandler;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions.PerformanceWarningKind;
 import jdk.graal.compiler.truffle.TruffleTierContext;
 import jdk.graal.compiler.truffle.nodes.frame.NewFrameNode;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.Signature;
 
 @NodeInfo(nameTemplate = "{p#directCallTarget}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class CallNode extends Node implements Comparable<CallNode> {
@@ -344,19 +342,11 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         return false;
     }
 
-    private boolean isCallTargetCallSignature(Signature s) {
-        KnownTruffleTypes types = getCallTree().getGraphManager().rootContext().types();
-        return s.getParameterCount(false) == 2 &&
-                        s.getParameterType(0, types.Node).equals(types.Node) &&
-                        s.getParameterType(1, types.Node).equals(types.Object_Array) &&
-                        s.getReturnType(types.Node).equals(types.java_lang_Object);
-    }
-
     public ConstantArgumentInfo[] findConstantGuestArguments() {
         ConstantArgumentInfo[] result = null;
+        assert invoke.getTargetMethod().equals(getCallTree().getGraphManager().rootContext().types().OptimizedCallTarget_callDirect) : invoke.getTargetMethod();
         NodeInputList<ValueNode> arguments = invoke.callTarget().arguments();
-        assert isCallTargetCallSignature(invoke.getTargetMethod().getSignature());
-        if (arguments.get(2) instanceof AllocatedObjectNode allocatedArgsArray) {
+        if (arguments.get(3) instanceof AllocatedObjectNode allocatedArgsArray) {
             if (isArgumentArrayMutated(allocatedArgsArray, invoke.callTarget())) {
                 return null;
             }

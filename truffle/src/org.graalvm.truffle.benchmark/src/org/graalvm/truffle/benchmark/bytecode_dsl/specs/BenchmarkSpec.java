@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,6 +70,14 @@ public interface BenchmarkSpec {
      * interpreter}.
      */
     void parseBytecodeDSL(BytecodeDSLBenchmarkRootNodeBuilder b);
+
+    /**
+     * Builds the benchmark for execution with the {@link BytecodeDSLBenchmarkRootNode Bytecode DSL
+     * interpreter} for the given JMH benchmark method.
+     */
+    default void parseBytecodeDSL(BytecodeDSLBenchmarkRootNodeBuilder b, @SuppressWarnings("unused") String benchmarkMethod) {
+        parseBytecodeDSL(b);
+    }
 
     /**
      * Builds the benchmark for execution with the {@link BaseBytecodeRootNode manual bytecode

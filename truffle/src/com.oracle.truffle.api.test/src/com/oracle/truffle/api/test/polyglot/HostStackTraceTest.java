@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,8 +55,8 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -76,10 +76,12 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class HostStackTraceTest extends AbstractPolyglotTest {
 
+    private boolean rootCall;
+
     @ExportLibrary(InteropLibrary.class)
     class HostStackTraceExecutable implements TruffleObject {
 
-        final CallTarget callTarget;
+        final RootCallTarget callTarget;
 
         HostStackTraceExecutable(String name, SourceSection rootSection, SourceSection callSection) {
             this.callTarget = new ExecuteRootNode(name, rootSection, callSection).getCallTarget();
@@ -97,9 +99,12 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
             return true;
         }
 
-        // unached version does callTarget.call
+        // uncached version does callTarget.call
         @ExportMessage
         final Object execute(Object[] arguments, @Cached IndirectCallNode callNode) {
+            if (rootCall) {
+                return callNode.call(callTarget.getRootNode(), -1, arguments);
+            }
             return callNode.call(callTarget, arguments);
         }
 
@@ -280,6 +285,12 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
             assertTrue(frame.isHostFrame());
             assertEquals("execute", frame.toHostFrame().getMethodName());
         }
+    }
+
+    @Test
+    public void testExecuteGuestTwoFramesWithRootCall() {
+        rootCall = true;
+        testExecuteGuestTwoFrames();
     }
 
     @Test

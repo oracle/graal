@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,7 +69,7 @@ public abstract class SLImportBuiltin extends SLBuiltinNode {
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             return SLNull.SINGLETON;
         } catch (SecurityException e) {
-            throw SLException.create("No polyglot access allowed.", this);
+            throw SLException.create("No polyglot access allowed.", this, -1);
         }
     }
 

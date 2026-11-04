@@ -65,7 +65,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleOptions;
@@ -74,6 +73,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
+import com.oracle.truffle.api.impl.RuntimeCallTarget;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
@@ -128,7 +128,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * </pre>
  */
 @SuppressWarnings({"hiding"})
-public abstract class OptimizedCallTarget implements TruffleCompilable, RootCallTarget, ReplaceObserver {
+public abstract class OptimizedCallTarget extends RuntimeCallTarget implements TruffleCompilable, ReplaceObserver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
     private static final String VALID_ROOT_ASSUMPTION_NAME = "validRootAssumption";
@@ -517,9 +517,9 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         Node location = encapsulating.set(null);
         try {
             if (CompilerDirectives.isPartialEvaluationConstant(this)) {
-                return callDirect(location, args);
+                return callDirect(location, -1, args);
             } else {
-                return callIndirect(location, args);
+                return callIndirect(location, -1, args);
             }
         } catch (Throwable t) {
             Throwable profiled = profileExceptionType(t);
@@ -534,9 +534,9 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     public final Object call(Node location, Object... args) {
         try {
             if (CompilerDirectives.isPartialEvaluationConstant(this)) {
-                return callDirect(location, args);
+                return callDirect(location, -1, args);
             } else {
-                return callIndirect(location, args);
+                return callIndirect(location, -1, args);
             }
         } catch (Throwable t) {
             Throwable profiled = profileExceptionType(t);
@@ -545,29 +545,102 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         }
     }
 
+    @Override
+    public final Object call(Node location, int bytecodeIndex, Object[] args) {
+        try {
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                return callDirect(location, bytecodeIndex, args);
+            } else {
+                return callIndirect(location, bytecodeIndex, args);
+            }
+        } catch (Throwable t) {
+            Throwable profiled = profileExceptionType(t);
+            OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(location, null, profiled, null, bytecodeIndex);
+            throw OptimizedCallTarget.rethrow(profiled);
+        }
+    }
+
+    @Override
+    public final Object callRoot(Node location, int bytecodeIndex, RootNode root, Object[] arguments) {
+        FrameWithoutBoxing frame = null;
+        assert root == rootNode;
+        if (!HostCompilerDirectives.inInterpreterFastPath() || isValid()) {
+            try {
+                return call(location, bytecodeIndex, arguments);
+            } finally {
+                // reachability fences keep the values available to frame iteration
+                Reference.reachabilityFence(location);
+                Reference.reachabilityFence(root);
+                /*
+                 * Even this null local must remain available to stack walking: it marks the regular
+                 * call-target path, whose guest frame is already recorded by executeRootNode.
+                 */
+                Reference.reachabilityFence(frame);
+                reachabilityFence(bytecodeIndex);
+            }
+        }
+        if (TruffleOptions.AOT) {
+            ensureStackSpace(engine.interpreterCallStackHeadRoom);
+        }
+        ensureInitialized();
+        profileArguments(arguments);
+        int intCallCount = this.callCount;
+        this.callCount = intCallCount == Integer.MAX_VALUE ? intCallCount : ++intCallCount;
+        int intLoopCallCount = this.callAndLoopCount;
+        this.callAndLoopCount = intLoopCallCount == Integer.MAX_VALUE ? intLoopCallCount : ++intLoopCallCount;
+        if (shouldCompileImpl(intCallCount, intLoopCallCount)) {
+            compileQueuedByHotness(!engine.multiTier);
+        }
+        frame = createFrame(root.getFrameDescriptor(), arguments);
+        try {
+            Object result = executeRootNode(root, frame);
+            TruffleSafepoint.poll(root);
+            profileReturnValue(result);
+            return result;
+        } catch (Throwable t) {
+            throw handleException(frame, t, location, bytecodeIndex);
+        } finally {
+            // reachability fences keep the values available to frame iteration
+            Reference.reachabilityFence(location);
+            Reference.reachabilityFence(root);
+            Reference.reachabilityFence(frame);
+            reachabilityFence(bytecodeIndex);
+        }
+    }
+
+    // A guest stack marker must identify execution, not callRoot's regular call-target path.
+    private static Object executeRootNode(RootNode root, FrameWithoutBoxing frame) {
+        return root.execute(frame);
+    }
+
+    private static void reachabilityFence(@SuppressWarnings("unused") int local) {
+    }
+
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    public final Object callIndirect(Node location, Object... args) {
+    public final Object callIndirect(Node location, int bytecodeIndex, Object[] args) {
         /*
          * Indirect calls should not invalidate existing compilations of the callee, and the callee
          * should still be able to use profiled arguments until an incompatible argument is passed.
          * So we profile arguments for indirect calls too, but behind a truffle boundary.
+         * Stack walking reads bytecodeIndex from this host Java frame, not the Truffle frame.
          */
         profileIndirectArguments(args);
         try {
             return doInvoke(args);
         } finally {
-            // this is needed to keep the values from being cleared as non-live locals
             Reference.reachabilityFence(location);
+            reachabilityFence(bytecodeIndex);
         }
     }
 
     /**
      * In compiled code, this is only used if the callee is <i>not</i> inlined. If the callee is
-     * inlined, {@link #callInlined(Node, Object...)} is used instead, which does not profile
+     * inlined, {@link #callInlined(Node, int, Object[])} is used instead, which does not profile
      * arguments, as it is estimated redundant. See the docs of {@link OptimizedCallTarget}.
      */
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    public final Object callDirect(Node location, Object... args) {
+    public final Object callDirect(Node location, int bytecodeIndex, Object[] args) {
+        // Stack walking reads bytecodeIndex from this host Java frame, not the Truffle frame.
         CompilerAsserts.partialEvaluationConstant(this);
         try {
             profileArguments(args);
@@ -577,13 +650,13 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             }
             return result;
         } finally {
-            // this is needed to keep the values from being cleared as non-live locals
             Reference.reachabilityFence(location);
+            reachabilityFence(bytecodeIndex);
         }
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    public final Object callInlined(Node location, Object... arguments) {
+    public final Object callInlined(Node location, int bytecodeIndex, Object[] arguments) {
         CompilerAsserts.partialEvaluationConstant(this);
         try {
             ensureInitialized();
@@ -591,6 +664,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         } finally {
             // this is needed to keep the values from being cleared as non-live locals
             Reference.reachabilityFence(location);
+            reachabilityFence(bytecodeIndex);
         }
     }
 
@@ -826,12 +900,16 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     private RuntimeException handleException(VirtualFrame frame, Throwable t) {
+        return handleException(frame, t, null, -1);
+    }
+
+    private RuntimeException handleException(VirtualFrame frame, Throwable t, Node location, int bytecodeIndex) {
         Throwable profiledT = profileExceptionType(t);
         VirtualFrame effectiveFrame = frame;
         if (rootNode instanceof BaseOSRRootNode osrRootNode) {
             effectiveFrame = osrRootNode.getFrame(frame);
         }
-        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(null, this, profiledT, effectiveFrame);
+        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(location, this, profiledT, effectiveFrame, bytecodeIndex);
         throw rethrow(profiledT);
     }
 

@@ -8,6 +8,13 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-80881: Bytecode DSL: `Float` and `Double` constants are now compared by their raw bits, so distinct NaN payloads no longer share a constant-pool slot.
 * GR-80881: Bytecode DSL: `Float` and `Double` constants are now compared by their raw bits, so distinct NaN payloads no longer share a constant-pool slot.
 * GR-80844: Bytecode DSL: Constants used inside a `finally` handler are now serialized once, in the outermost context that can decode them, and the handler refers to that entry. Replays of the handler and the enclosing code therefore share one deserialized instance. A constant that references a root node declared inside the handler stays in the handler's own table. Equality-based deduplication is unchanged. Previously serialized bytecode still deserializes.
+* GR-72833: Added `RootNode.call(Node, int, Object[])` and root-aware direct/indirect call overloads to optimize interpreter calls when concrete root types are known. Added `RootNode.initializeCallTarget()` for explicit initialization; root-based calls require an initialized call target and otherwise throw `IllegalStateException`.
+* GR-72833: Added explicit bytecode-index call overloads and support in `FrameInstance` and guest stack traces; `-1` retains implicit lookup. Recompiled varargs calls may select a new overload; pass guest arguments in one `Object[]` to preserve their meaning. Existing binaries are unaffected.
+* GR-72833: Added an `AbstractTruffleException` constructor overload and `getBytecodeIndex()` for explicit exception locations.
+* GR-72833: Bytecode DSL: Added `BytecodeIndexMode` (`CACHED_NODE`, the default; `FRAME`; `MANUAL`; `NONE`), `BytecodeNode.getBytecodeIndex(Frame)`, and `BytecodeNode.setBytecodeIndex(Frame, int)`. The existing `storeBytecodeIndexInFrame()` option remains supported; `true` is equivalent to `FRAME`. Illegal-local exception factories can accept the current bytecode index, or `-1` when unavailable.
+* GR-72833: Added `BytecodeNode.setBytecodeIndex(Node, Frame, int)` to store or clear the current bytecode index from nested nodes, with an encapsulating-node fallback for uncached execution.
+* GR-72833: Bytecode DSL: Added execution-metadata options on `OperationProxy.Proxyable` (`bindFrame`, `bindBytecodeNode`, `bindBytecodeIndex`) and `@Bind("$bytecodeIndex")`. AST indices default to `-1` unless explicitly bound.
+* GR-72833: Specialization DSL: Fixed empty variadic child validation when execute methods provide all evaluated operands.
 
 ## Version 25.5
 

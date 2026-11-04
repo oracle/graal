@@ -145,5 +145,6 @@ public @interface Yield {
      */
     int resultOperandIndex() default 0;
 
-    // no storeBytecodeIndex() attribute. Unconditionally enabled as we yield from the method.
+    // No storeBytecodeIndex() attribute. Enabled in automatic modes as we yield from the method;
+    // MANUAL specializations can request storage with @StoreBytecodeIndex.
 }

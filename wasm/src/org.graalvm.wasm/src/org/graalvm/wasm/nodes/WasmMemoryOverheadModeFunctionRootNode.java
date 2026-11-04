@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,11 +58,17 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * {@link WasmOptions#MemoryOverheadMode}, since memories, tables, etc. are not initialized and code
  * execution would lead to unexpected results.
  */
-public class WasmMemoryOverheadModeFunctionRootNode extends WasmFunctionRootNode {
+public final class WasmMemoryOverheadModeFunctionRootNode extends WasmRootNode {
 
-    public WasmMemoryOverheadModeFunctionRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmModule module, WasmFixedMemoryImplFunctionNode functionNode,
-                    WasmCodeEntry codeEntry) {
-        super(language, frameDescriptor, module, functionNode, codeEntry);
+    // Retain the same function graph as a regular root for memory-overhead measurements.
+    @Child @SuppressWarnings("unused") private WasmFixedMemoryImplFunctionNode functionNode;
+    @SuppressWarnings("unused") private final WasmCodeEntry codeEntry;
+
+    public WasmMemoryOverheadModeFunctionRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmModule module,
+                    WasmFixedMemoryImplFunctionNode functionNode, WasmCodeEntry codeEntry) {
+        super(language, frameDescriptor, module);
+        this.functionNode = functionNode;
+        this.codeEntry = codeEntry;
     }
 
     @Override

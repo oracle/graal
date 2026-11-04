@@ -43,6 +43,7 @@ package org.graalvm.wasm.test;
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
@@ -57,6 +58,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.ModuleLimits;
+import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
@@ -76,18 +78,22 @@ import org.graalvm.wasm.api.ModuleImportDescriptor;
 import org.graalvm.wasm.api.Sequence;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.exception.WasmRuntimeException;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
+import org.graalvm.wasm.nodes.WasmFixedMemoryImplFunctionNode;
+import org.graalvm.wasm.nodes.WasmMemoryOverheadModeFunctionRootNode;
 import org.graalvm.wasm.types.NumberType;
 import org.graalvm.wasm.types.ReferenceType;
 import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -100,6 +106,7 @@ import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class WasmJsApiSuite {
@@ -155,6 +162,53 @@ public class WasmJsApiSuite {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    @Test
+    public void testMemoryOverheadModeRetainsFunctionGraph() throws ReflectiveOperationException {
+        try (Context context = Context.newBuilder(WasmLanguage.ID).allowExperimentalOptions(true).option("wasm.MemoryOverheadMode", "true").build()) {
+            context.initialize(WasmLanguage.ID);
+            context.enter();
+            try {
+                WebAssembly wasm = new WebAssembly(WasmContext.get(null));
+                WasmModule module = wasm.moduleDecode(binaryWithExports);
+                Assert.assertNotNull(module.codeEntries());
+                WasmInstance instance = wasm.moduleInstantiate(module, WasmConstant.NULL);
+                Assert.assertNull(module.codeEntries());
+
+                Field codeEntryField = WasmMemoryOverheadModeFunctionRootNode.class.getDeclaredField("codeEntry");
+                codeEntryField.setAccessible(true);
+                for (int functionIndex = 0; functionIndex < module.numFunctions(); functionIndex++) {
+                    RootNode root = ((RootCallTarget) instance.target(functionIndex)).getRootNode();
+                    Assert.assertTrue(root instanceof WasmMemoryOverheadModeFunctionRootNode);
+                    Assert.assertEquals(1, NodeUtil.findAllNodeInstances(root, WasmFixedMemoryImplFunctionNode.class).size());
+                    WasmCodeEntry codeEntry = (WasmCodeEntry) codeEntryField.get(root);
+                    Assert.assertNotNull(codeEntry);
+                    Assert.assertSame(module.function(functionIndex), codeEntry.function());
+                    Assert.assertSame(module.bytecode(), codeEntry.bytecode());
+                }
+            } finally {
+                context.leave();
+            }
+        }
+    }
+
+    @Test
+    public void testMemoryOverheadModeProhibitsExecution() throws InteropException {
+        try (Context context = Context.newBuilder(WasmLanguage.ID).allowExperimentalOptions(true).option("wasm.MemoryOverheadMode", "true").build()) {
+            context.initialize(WasmLanguage.ID);
+            context.enter();
+            try {
+                WebAssembly wasm = new WebAssembly(WasmContext.get(null));
+                WasmModule module = wasm.moduleDecode(binaryWithExports);
+                WasmInstance instance = wasm.moduleInstantiate(module, WasmConstant.NULL);
+                Object main = WebAssembly.instanceExport(instance, "main");
+                WasmException exception = Assert.assertThrows(WasmException.class, () -> InteropLibrary.getUncached(main).execute(main));
+                Assert.assertEquals(Failure.MEMORY_OVERHEAD_MODE.name, InteropLibrary.getUncached(exception).readMember(exception, "failure"));
+            } finally {
+                context.leave();
+            }
+        }
     }
 
     @Test
@@ -2534,9 +2588,8 @@ public class WasmJsApiSuite {
     }
 
     /**
-     * Trigger a {@link WasmException} during a call performed by an uncached
-     * {@link org.graalvm.wasm.nodes.WasmIndirectCallNode}, via an uncached {@link InteropLibrary},
-     * to test {@link org.graalvm.wasm.nodes.WasmIndirectCallNode#getBytecodeOffset()}.
+     * Trigger a {@link WasmException} during a call performed via an uncached
+     * {@link InteropLibrary}.
      */
     @Test
     public void testUncachedIndirectCallException() throws IOException, InterruptedException {

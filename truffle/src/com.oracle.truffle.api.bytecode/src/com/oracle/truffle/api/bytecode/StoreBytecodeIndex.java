@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,41 +49,12 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 
 /**
- * Can be applied to {@link Specialization}- or {@link Fallback}-annotated methods to specify
- * whether they require a bytecode index update in the frame. This allows the DSL to update the
- * bytecode index only for a given specialization instead of the entire operation. In practice, this
- * means that the bytecode index is updated just before the specialization is executed.
+ * Stores the BCI in the frame before an annotated {@link Specialization} or {@link Fallback}
+ * executes. Requires {@link Operation#storeBytecodeIndex()} to be {@code false}, the default in
+ * {@link BytecodeIndexMode#MANUAL} mode.
  * <p>
- * This annotation only has an effect if {@link GenerateBytecode#storeBytecodeIndexInFrame()} is set
- * to <code>true</code> or if the {@link GenerateBytecode#enableUncachedInterpreter() uncached
- * interpreter tier} is enabled and the parent operation has {@link Operation#storeBytecodeIndex()}
- * set to <code>false</code>.
- * <p>
- * Usage example:
- *
- * <pre>
- * // Disable bytecode index updates at the operation level
- * &#64;Operation(storeBytecodeIndex = false)
- * static final class Abs {
- *
- *     &#64;Specialization(guards = "v &gt;= 0")
- *     public static long doGreaterZero(long v) {
- *         return v;
- *     }
- *
- *     &#64;Specialization(guards = "v &lt; 0")
- *     public static long doLessThanZero(long v) {
- *         return -v;
- *     }
- *
- *     // Update the bytecode index only for this specialization
- *     &#64;Specialization
- *     &#64;StoreBytecodeIndex
- *     public static long doCallAbs(DynamicObject v) {
- *         // ... guest language call ...
- *     }
- * }
- * </pre>
+ * Applies in {@link BytecodeIndexMode#FRAME}, {@code MANUAL}, and uncached
+ * {@link BytecodeIndexMode#CACHED_NODE} execution.
  *
  * @see Operation#storeBytecodeIndex()
  * @since 25.1

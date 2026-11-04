@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,14 +78,14 @@ public class SpecializationSignatureParser {
     }
 
     @SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED", justification = "Calls to params poll() as expected. FindBugs false positive.")
-    public Signature parse(ExecutableElement specialization, MessageContainer errorTarget, ConstantOperandsModel constantOperands) {
+    public Signature parse(ExecutableElement specialization, MessageContainer errorTarget, ConstantOperandsModel constantOperands, boolean bindFrame) {
         final boolean isFallback = ElementUtils.findAnnotationMirror(specialization, types.Fallback) != null;
 
         Queue<? extends VariableElement> params = new ArrayDeque<>(specialization.getParameters());
 
         // First: an optional VirtualFrame parameter.
         skipDSLParameters(params);
-        if (!params.isEmpty() && isAssignable(peekType(params), types.Frame)) {
+        if (bindFrame && !params.isEmpty() && isAssignable(peekType(params), types.Frame)) {
             if (!isAssignable(params.poll().asType(), types.VirtualFrame)) {
                 errorTarget.addError(specialization, "Frame parameter must have type VirtualFrame.");
             }

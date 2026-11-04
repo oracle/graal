@@ -66,6 +66,7 @@ import org.graalvm.wasm.vector.Vector128Ops;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -74,7 +75,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
 
 @NodeInfo(language = WasmLanguage.ID, description = "The root node of all WebAssembly functions")
-public class WasmFunctionRootNode extends WasmRootNode {
+public final class WasmFunctionRootNode extends WasmRootNode {
 
     @Child private WasmFixedMemoryImplFunctionNode functionNode;
     private final WasmCodeEntry codeEntry;
@@ -101,6 +102,22 @@ public class WasmFunctionRootNode extends WasmRootNode {
 
     int localType(int index) {
         return codeEntry.localType(index);
+    }
+
+    @Override
+    protected Object translateStackTraceElement(TruffleStackTraceElement element) {
+        Node location = element.getLocation();
+        SourceSection sc = location != null ? location.getEncapsulatingSourceSection() : getSourceSection();
+        return new WasmStackTraceElementObject(this, sc, element.getBytecodeIndex());
+    }
+
+    // Keep the entry point declared on the concrete root for host-compiler inlining.
+    @Override
+    public Object execute(VirtualFrame frame) {
+        assert WasmArguments.isValid(frame.getArguments());
+        final WasmInstance instance = instance(frame);
+        tryInitialize(instance);
+        return executeWithInstance(frame, instance);
     }
 
     @Override
@@ -178,7 +195,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
     }
 
     @Override
-    public final String getQualifiedName() {
+    public String getQualifiedName() {
         return codeEntry.function().moduleName() + "." + getName();
     }
 
@@ -216,7 +233,7 @@ public class WasmFunctionRootNode extends WasmRootNode {
 
     @Override
     @CompilerDirectives.TruffleBoundary
-    public final SourceSection getSourceSection() {
+    public SourceSection getSourceSection() {
         if (sourceSection == null) {
             final DebugFunction debugFunction = debugFunction();
             if (debugFunction == null) {
@@ -233,8 +250,8 @@ public class WasmFunctionRootNode extends WasmRootNode {
         return sourceSection;
     }
 
-    public final Node[] getCallNodes() {
-        return functionNode.getCallNodes();
+    public WasmFunctionRootNode[] getDirectCallTargets() {
+        return functionNode.getDirectCallTargets();
     }
 
     @Override

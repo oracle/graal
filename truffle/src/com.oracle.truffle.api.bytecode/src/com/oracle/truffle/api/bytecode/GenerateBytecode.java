@@ -354,11 +354,11 @@ public @interface GenerateBytecode {
      * materialized access's local is in scope at the static location of the access, but since root
      * nodes can be called at any time, it is still possible to execute the root node (and thus
      * perform the access) when the local is out of scope, leading to unexpected behaviour (e.g.,
-     * reading an incorrect local value). When the bytecode index is
-     * {@link #storeBytecodeIndexInFrame() stored in the frame}, the interpreter will dynamically
-     * validate each materialized access, throwing a runtime exception when the local is not in
-     * scope. Thus, to diagnose issues with invalid materialized accesses, it is recommended to
-     * enable storing the bytecode index in the frame.
+     * reading an incorrect local value). When {@link #bytecodeIndexMode()} is
+     * {@link BytecodeIndexMode#FRAME}, the interpreter will dynamically validate each materialized
+     * access, throwing a runtime exception when the local is not in scope. Thus, to diagnose issues
+     * with invalid materialized accesses, it is recommended to use
+     * {@link BytecodeIndexMode#FRAME}.
      *
      * @since 24.2
      */
@@ -424,22 +424,27 @@ public @interface GenerateBytecode {
     boolean enableQuickening() default true;
 
     /**
-     * Whether the generated interpreter should store the bytecode index (bci) in the frame.
+     * Configures how the generated interpreter makes its current bytecode index available for
+     * stack walking and frame introspection.
      * <p>
-     * By default, methods that compute location-dependent information (like
-     * {@link BytecodeNode#getBytecodeLocation(com.oracle.truffle.api.frame.Frame, Node)}) must
-     * follow {@link Node#getParent() Node parent} pointers and scan the bytecode to compute the
-     * current bci, which is not suitable for the fast path. When this feature is enabled, an
-     * implementation can use
-     * {@link BytecodeNode#getBytecodeIndex(com.oracle.truffle.api.frame.Frame)} to obtain the bci
-     * efficiently on the fast path and use it for location-dependent computations (e.g.,
-     * {@link BytecodeNode#getBytecodeLocation(int)}).
+     * Operations can always bind {@code @Bind("$bytecodeIndex") int bci} for explicit propagation.
+     *
+     * @return the lookup mode; defaults to {@link BytecodeIndexMode#CACHED_NODE}
+     * @since 25.6
+     */
+    BytecodeIndexMode bytecodeIndexMode() default BytecodeIndexMode.CACHED_NODE;
+
+    /**
+     * Whether the generated interpreter should automatically store the bytecode index in the frame
+     * in all interpreter tiers.
      * <p>
-     * Note that operations always have fast-path access to the bci using a bind parameter (e.g.,
-     * {@code @Bind("$bytecodeIndex") int bci}); this feature should only be enabled for fast-path
-     * bci access outside of the current operation (e.g., for closures or frame introspection).
-     * Storing the bci in the frame increases frame size and requires additional frame writes, so it
-     * can negatively affect performance.
+     * Setting this attribute to {@code true} is equivalent to setting
+     * {@link #bytecodeIndexMode()} to {@link BytecodeIndexMode#FRAME}. It cannot be combined with a
+     * non-default bytecode index mode. Setting it to {@code false} does not override
+     * {@link #bytecodeIndexMode()}.
+     * <p>
+     * For new interpreters, prefer {@link #bytecodeIndexMode()} with
+     * {@link BytecodeIndexMode#FRAME}.
      *
      * @since 24.2
      */
@@ -583,7 +588,7 @@ public @interface GenerateBytecode {
      * }
      *
      * class MyIllegalLocalException extends AbstractTruffleException {
-     *     public static MyIllegalLocalException create(Node location, BytecodeNode bytecode, BytecodeLocation location, LocalVariable variable) {
+     *     public static MyIllegalLocalException create(Node location, BytecodeNode bytecode, BytecodeLocation bytecodeLocation, LocalVariable variable) {
      *         // ...
      *     }
      * }
@@ -599,6 +604,7 @@ public @interface GenerateBytecode {
      * <li>{@link Node}: the current location (equivalent to {@code @Bind("$node")})</li>
      * <li>{@link BytecodeNode}: the current bytecode node</li>
      * <li>{@link BytecodeLocation}: the current bytecode location</li>
+     * <li>{@code int}: the current bytecode index, or {@code -1} when the index is unavailable</li>
      * <li>{@link LocalVariable}: an introspection object modeling the local's metadata (name, info,
      * etc.)</li>
      * </ul>

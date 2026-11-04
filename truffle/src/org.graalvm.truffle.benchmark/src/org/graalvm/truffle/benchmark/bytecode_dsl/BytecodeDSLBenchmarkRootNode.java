@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,14 +41,20 @@
 package org.graalvm.truffle.benchmark.bytecode_dsl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.bytecode.BytecodeIndexMode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @GenerateBytecodeTestVariants({
@@ -64,8 +70,16 @@ import com.oracle.truffle.api.nodes.RootNode;
                                                 int.class, boolean.class})),
                 @Variant(suffix = "TailCallAllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
                                 enableTailCallHandlers = true, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, boxingEliminationTypes = {
+                                                int.class, boolean.class})),
+                @Variant(suffix = "TailCallExplicitBciAllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
+                                enableTailCallHandlers = true, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.NONE, boxingEliminationTypes = {
+                                                int.class, boolean.class})),
+                @Variant(suffix = "TailCallStoredBciAllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
+                                enableTailCallHandlers = true, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME, boxingEliminationTypes = {
                                                 int.class, boolean.class}))
 })
+// NONE variants intentionally benchmark operations that cannot store a bytecode index.
+@SuppressWarnings("truffle-interpreted-performance")
 public abstract class BytecodeDSLBenchmarkRootNode extends RootNode implements BytecodeRootNode {
 
     protected BytecodeDSLBenchmarkRootNode(BenchmarkLanguage language, FrameDescriptor frameDescriptor) {
@@ -153,6 +167,209 @@ public abstract class BytecodeDSLBenchmarkRootNode extends RootNode implements B
         @Specialization
         static int doArray(int[] array, int i) {
             return array[i];
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractDirectCall {
+        @Specialization(guards = "true", excludeForUncached = true)
+        static int doInt(int delta, int value,
+                        @Cached("create($rootNode.getCallTarget())") DirectCallNode callNode) {
+            return (int) callNode.call(value - delta);
+        }
+
+        @Specialization(replaces = "doInt")
+        static int doUncached(int delta, int value,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Cached IndirectCallNode callNode) {
+            return (int) callNode.call(root.getCallTarget(), value - delta);
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractIndirectCall {
+        @Specialization
+        static int doInt(int delta, int value,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Cached IndirectCallNode callNode) {
+            return (int) callNode.call(root.getCallTarget(), value - delta);
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractCallTarget {
+        @Specialization
+        static int doInt(int delta, int value,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Bind Node location) {
+            return (int) root.getCallTarget().call(location, new Object[]{value - delta});
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractCallTargetImplicitBci {
+        @Specialization
+        static int doInt(int delta, int value,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Bind Node location) {
+            return (int) root.getCallTarget().call(location, -1, new Object[]{value - delta});
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractCallTargetExplicitBci {
+        @Specialization
+        static int doInt(int delta, int value,
+                        @Bind("$bytecodeIndex") int bytecodeIndex,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Bind Node location) {
+            return (int) root.getCallTarget().call(location, bytecodeIndex, new Object[]{value - delta});
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractDirectCallImplicitBci {
+        @Specialization(guards = "true", excludeForUncached = true)
+        static int doInt(int delta, int value,
+                        @Cached("create($rootNode.getCallTarget())") DirectCallNode callNode) {
+            return (int) callNode.call(-1, new Object[]{value - delta});
+        }
+
+        @Specialization(replaces = "doInt")
+        static int doUncached(int delta, int value,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Cached IndirectCallNode callNode) {
+            return (int) callNode.call(root.getCallTarget(), -1, new Object[]{value - delta});
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractDirectCallExplicitBci {
+        @Specialization(guards = "true", excludeForUncached = true)
+        static int doInt(int delta, int value,
+                        @Bind("$bytecodeIndex") int bytecodeIndex,
+                        @Cached("create($rootNode.getCallTarget())") DirectCallNode callNode) {
+            return (int) callNode.call(bytecodeIndex, new Object[]{value - delta});
+        }
+
+        @Specialization(replaces = "doInt")
+        static int doUncached(int delta, int value,
+                        @Bind("$bytecodeIndex") int bytecodeIndex,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Cached IndirectCallNode callNode) {
+            return (int) callNode.call(root.getCallTarget(), bytecodeIndex, new Object[]{value - delta});
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractIndirectCallImplicitBci {
+        @Specialization
+        static int doInt(int delta, int value,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Cached IndirectCallNode callNode) {
+            return (int) callNode.call(root.getCallTarget(), -1, new Object[]{value - delta});
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractIndirectCallExplicitBci {
+        @Specialization
+        static int doInt(int delta, int value,
+                        @Bind("$bytecodeIndex") int bytecodeIndex,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Cached IndirectCallNode callNode) {
+            return (int) callNode.call(root.getCallTarget(), bytecodeIndex, new Object[]{value - delta});
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractDirectCallWithRootNodeImplicitBci {
+        @Specialization(guards = "true", excludeForUncached = true)
+        static int doInt(int delta, int value,
+                        @Cached("create($rootNode.getCallTarget())") DirectCallNode callNode) {
+            return (int) callNode.call(BytecodeDSLBenchmarkRootNode.class, -1, new Object[]{value - delta});
+        }
+
+        @Specialization(replaces = "doInt")
+        static int doUncached(int delta, int value,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Cached IndirectCallNode callNode) {
+            return (int) callNode.call(root, -1, new Object[]{value - delta});
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractDirectCallWithRootNodeExplicitBci {
+        @Specialization(guards = "true", excludeForUncached = true)
+        static int doInt(int delta, int value,
+                        @Bind("$bytecodeIndex") int bytecodeIndex,
+                        @Cached("create($rootNode.getCallTarget())") DirectCallNode callNode) {
+            return (int) callNode.call(BytecodeDSLBenchmarkRootNode.class, bytecodeIndex, new Object[]{value - delta});
+        }
+
+        @Specialization(replaces = "doInt")
+        static int doUncached(int delta, int value,
+                        @Bind("$bytecodeIndex") int bytecodeIndex,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Cached IndirectCallNode callNode) {
+            return (int) callNode.call(root, bytecodeIndex, new Object[]{value - delta});
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractIndirectCallWithRootNodeImplicitBci {
+        @Specialization
+        static int doInt(int delta, int value,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Cached IndirectCallNode callNode) {
+            return (int) callNode.call(root, -1, new Object[]{value - delta});
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractIndirectCallWithRootNodeExplicitBci {
+        @Specialization
+        static int doInt(int delta, int value,
+                        @Bind("$bytecodeIndex") int bytecodeIndex,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Cached IndirectCallNode callNode) {
+            return (int) callNode.call(root, bytecodeIndex, new Object[]{value - delta});
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractRootNodeCallImplicitBci {
+        @Specialization
+        static int doInt(int delta, int value,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Bind Node location) {
+            return (int) root.call(location, -1, new Object[]{value - delta});
+        }
+    }
+
+    @Operation(storeBytecodeIndex = true)
+    @ConstantOperand(type = int.class)
+    static final class RecurseSubtractRootNodeCallExplicitBci {
+        @Specialization
+        static int doInt(int delta, int value,
+                        @Bind("$bytecodeIndex") int bytecodeIndex,
+                        @Bind BytecodeDSLBenchmarkRootNode root,
+                        @Bind Node location) {
+            return (int) root.call(location, bytecodeIndex, new Object[]{value - delta});
         }
     }
 

@@ -69,6 +69,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.InstructionGroup;
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
@@ -201,9 +202,11 @@ final class BytecodeNodeElement extends AbstractElement {
         this.add(createGetBranchProfiles());
         this.add(createFindBytecodeIndex1());
         this.add(createFindBytecodeIndex2());
-        if (parent.model.storeBciInFrame) {
+        if (parent.model.supportsBytecodeIndexAccess()) {
             this.add(createGetBytecodeIndex());
-        } else {
+            this.add(createSetBytecodeIndex());
+        }
+        if (parent.model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.CACHED_NODE) {
             this.add(createFindBytecodeIndexOfOperationNode());
         }
         this.add(createToString());
@@ -288,11 +291,13 @@ final class BytecodeNodeElement extends AbstractElement {
     }
 
     private boolean useOperationNodeForBytecodeIndex() {
-        return !parent.model.storeBciInFrame && tier == InterpreterTier.CACHED;
+        return parent.model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.CACHED_NODE && tier == InterpreterTier.CACHED;
     }
 
     private boolean useFrameForBytecodeIndex() {
-        return parent.model.storeBciInFrame || tier == InterpreterTier.UNCACHED;
+        return parent.model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.FRAME ||
+                        parent.model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.MANUAL ||
+                        (parent.model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.CACHED_NODE && tier == InterpreterTier.UNCACHED);
     }
 
     private CodeExecutableElement createGetLocalValue() {
@@ -911,6 +916,9 @@ final class BytecodeNodeElement extends AbstractElement {
             b.staticReference(types.FrameInstance_FrameAccess, "READ_ONLY");
             b.end();
             b.end(); // frame declaration
+            b.startIf().string("frame == null || frame.getTag(BCI_INDEX) == ").staticReference(types.FrameSlotKind, "Illegal").string(".tag").end().startBlock();
+            b.startReturn().string("-1").end();
+            b.end();
             b.startReturn();
             parent.emitReadBytecodeIndexFromFrame(b, "frame", true);
             b.end();
@@ -932,6 +940,9 @@ final class BytecodeNodeElement extends AbstractElement {
             b.end();
             b.startReturn().string("-1").end();
         } else if (useFrameForBytecodeIndex()) {
+            b.startIf().string("frame == null || frame.getTag(BCI_INDEX) == ").staticReference(types.FrameSlotKind, "Illegal").string(".tag").end().startBlock();
+            b.startReturn().string("-1").end();
+            b.end();
             b.startReturn();
             parent.emitReadBytecodeIndexFromFrame(b, "frame", true);
             b.end();
@@ -948,6 +959,14 @@ final class BytecodeNodeElement extends AbstractElement {
         b.startReturn();
         parent.emitReadBytecodeIndexFromFrame(b, "frame", true);
         b.end();
+        return ex;
+    }
+
+    private CodeExecutableElement createSetBytecodeIndex() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeNode, "setBytecodeIndex", new String[]{"frame", "bytecodeIndex"}, new TypeMirror[]{types.Frame, type(int.class)});
+        CodeTreeBuilder b = ex.createBuilder();
+        b.statement("assert bytecodeIndex == -1 || validateBytecodeIndex(bytecodeIndex)");
+        parent.emitWriteBytecodeIndexToFrame(b, "frame", "bytecodeIndex");
         return ex;
     }
 
@@ -1676,18 +1695,6 @@ final class BytecodeNodeElement extends AbstractElement {
             }
         } else {
             b.declaration(this.getStackPointerType(), "sp", BytecodeRootNodeElement.decodeSp("startState"));
-        }
-
-        if (parent.model.needsBciSlot() && !parent.model.storeBciInFrame && !tier.isUncached()) {
-            // If a bci slot is allocated but not used for non-uncached interpreters, set it to
-            // an invalid value just in case it gets read during a stack walk.
-            if (mayWrapLocalFrame()) {
-                b.declaration(types.FrameWithoutBoxing, localFrame(), "frame");
-                startIfHasSeparateLocalFrame(b, true, true);
-                b.startAssign(localFrame()).tree(readContinuationFrame("frame", types.FrameWithoutBoxing)).end();
-                b.end();
-            }
-            parent.emitWriteBytecodeIndexToFrame(b, localFrame(), "-1");
         }
 
         if (tier.isCached()) {
@@ -2737,6 +2744,10 @@ final class BytecodeNodeElement extends AbstractElement {
         b.end(); // case default
         b.end(); // switch
 
+        if (parent.model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.MANUAL) {
+            // Exceptional callbacks bypass the tag instruction handlers.
+            storeBciInFrame(b);
+        }
         b.startReturn().startCall("node.findProbe().onReturnExceptionalOrUnwind");
         b.string(localFrame());
         b.string("throwable");
@@ -2920,9 +2931,7 @@ final class BytecodeNodeElement extends AbstractElement {
     }
 
     void storeBciInFrame(CodeTreeBuilder b) {
-        if (BytecodeRootNodeElement.isStoreBciEnabled(parent.model, tier)) {
-            parent.emitWriteBytecodeIndexToFrame(b, localFrame(), "bci");
-        }
+        parent.emitWriteBytecodeIndexToFrame(b, localFrame(), "bci");
     }
 
     void emitStackEffect(CodeTreeBuilder b, int stackEffect) {

@@ -136,7 +136,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean allowUnsafe;
     public boolean enableYield;
     public boolean enableMaterializedLocalAccesses;
-    public boolean storeBciInFrame;
+    public BytecodeIndexMode bytecodeIndexMode;
     public boolean captureFramesForTrace;
     public boolean bytecodeDebugListener;
     public boolean additionalAssertions;
@@ -149,6 +149,13 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean enableThreadedSwitch;
     public boolean enableTailCallHandlers;
     public boolean enableCompressedSources;
+
+    public enum BytecodeIndexMode {
+        FRAME,
+        CACHED_NODE,
+        MANUAL,
+        NONE,
+    }
 
     public enum LoadIllegalLocalStrategy {
         FRAME_SLOT_TYPE_EXCEPTION,
@@ -176,6 +183,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
             NODE,
             BYTECODE_NODE,
             BYTECODE_LOCATION,
+            BYTECODE_INDEX,
             LOCAL_VARIABLE
         }
 
@@ -1041,8 +1049,17 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     }
 
     public boolean needsBciSlot() {
-        // Uncached does not use nodes, so the bci is necessary for identifying locations.
-        return enableUncachedInterpreter || storeBciInFrame;
+        return bytecodeIndexMode == BytecodeIndexMode.FRAME || bytecodeIndexMode == BytecodeIndexMode.MANUAL ||
+                        (bytecodeIndexMode == BytecodeIndexMode.CACHED_NODE && enableUncachedInterpreter);
+    }
+
+    public boolean storesBytecodeIndex(boolean uncached) {
+        return bytecodeIndexMode == BytecodeIndexMode.FRAME ||
+                        (bytecodeIndexMode == BytecodeIndexMode.CACHED_NODE && uncached);
+    }
+
+    public boolean supportsBytecodeIndexAccess() {
+        return bytecodeIndexMode == BytecodeIndexMode.FRAME || bytecodeIndexMode == BytecodeIndexMode.MANUAL;
     }
 
     public boolean localAccessesNeedLocalIndex() {
@@ -1053,12 +1070,12 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean materializedLocalAccessesNeedLocalIndex() {
         // With block scoping, we need a local index to resolve boxing elimination tags. We also use
         // it to do liveness checks when the bci is stored in the frame.
-        return enableMaterializedLocalAccesses && enableBlockScoping && (usesBoxingElimination() || storeBciInFrame);
+        return enableMaterializedLocalAccesses && enableBlockScoping && (usesBoxingElimination() || bytecodeIndexMode == BytecodeIndexMode.FRAME);
     }
 
     public boolean canValidateMaterializedLocalLiveness() {
         // We can check local liveness in materialized accesses if the bci is stored in the frame.
-        return enableBlockScoping && storeBciInFrame;
+        return enableBlockScoping && bytecodeIndexMode == BytecodeIndexMode.FRAME;
     }
 
     @Override

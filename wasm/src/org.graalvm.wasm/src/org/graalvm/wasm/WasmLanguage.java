@@ -391,7 +391,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     }
 
     public static final class ReturnCallData {
-        public CallTarget target = null;
+        public RootNode rootNode = null;
         public Object[] args = null;
     }
 }

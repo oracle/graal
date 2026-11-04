@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeIndexMode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
@@ -126,7 +127,7 @@ public class TailCallHandlerExceptionTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableTailCallHandlers = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableTailCallHandlers = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
     abstract static class TailCallExceptionRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
         protected TailCallExceptionRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);

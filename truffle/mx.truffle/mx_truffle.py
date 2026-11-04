@@ -1145,7 +1145,6 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, build_args=None):
     excluded_tests = [
         "com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest",  # runs in its own image
         "com.oracle.truffle.api.test.profiles.*",  # GR-52260
-        "com.oracle.truffle.api.test.StackTraceTest",  # GR-52261
         "com.oracle.truffle.api.test.nodes.*",  # GR-52262
         "com.oracle.truffle.api.test.host.*",  # GR-52263
         "com.oracle.truffle.api.test.interop.*",  # GR-52264

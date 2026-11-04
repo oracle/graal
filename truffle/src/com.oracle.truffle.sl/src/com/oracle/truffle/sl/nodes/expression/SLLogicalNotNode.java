@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,8 +65,10 @@ public abstract class SLLogicalNotNode extends SLExpressionNode {
     }
 
     @Fallback
-    public static boolean typeError(Object value, @Bind Node node) {
-        throw SLException.typeError(node, "!", value);
+    public static boolean typeError(Object value,
+                    @Bind Node node,
+                    @Bind("$bytecodeIndex") int bytecodeIndex) {
+        throw SLException.typeError(node, bytecodeIndex, "!", value);
     }
 
 }

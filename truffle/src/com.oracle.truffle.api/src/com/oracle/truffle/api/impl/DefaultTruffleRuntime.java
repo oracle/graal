@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
@@ -180,12 +181,11 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         if (skipFrames < 0) {
             throw new IllegalArgumentException("The skipFrames parameter must be >= 0.");
         }
-        T result = null;
         DefaultFrameInstance frameInstance = getThreadLocalStackTrace();
         int skipCounter = skipFrames;
         while (frameInstance != null) {
             if (skipCounter <= 0) {
-                result = visitor.visitFrame(frameInstance);
+                T result = visitor.visitFrame(frameInstance);
                 if (result != null) {
                     return result;
                 }
@@ -193,7 +193,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
             frameInstance = frameInstance.callerFrame;
             skipCounter--;
         }
-        return result;
+        return null;
     }
 
     private DefaultFrameInstance getThreadLocalStackTrace() {
@@ -204,18 +204,12 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         stackTraces.set(topFrame);
     }
 
-    DefaultFrameInstance pushFrame(VirtualFrame frame, CallTarget target) {
-        DefaultFrameInstance callerFrame = getThreadLocalStackTrace();
-        setThreadLocalStackTrace(new DefaultFrameInstance(frame, target, null, callerFrame));
-        return callerFrame;
-    }
-
-    DefaultFrameInstance pushFrame(VirtualFrame frame, CallTarget target, Node parentCallNode) {
+    DefaultFrameInstance pushFrame(VirtualFrame frame, CallTarget target, Node parentCallNode, int bytecodeIndex) {
         DefaultFrameInstance callerFrame = getThreadLocalStackTrace();
         // we need to ensure that frame instances are immutable so we need to recreate the parent
         // frame
-        DefaultFrameInstance callerFrameWithCallNode = callerFrame != null ? callerFrame.withCallNode(parentCallNode) : callerFrame;
-        setThreadLocalStackTrace(new DefaultFrameInstance(frame, target, null, callerFrameWithCallNode));
+        DefaultFrameInstance callerFrameWithCallNode = callerFrame != null ? callerFrame.withCallNode(parentCallNode, bytecodeIndex) : callerFrame;
+        setThreadLocalStackTrace(new DefaultFrameInstance(frame, target, null, -1, callerFrameWithCallNode));
         return callerFrame;
     }
 
@@ -279,15 +273,18 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         private final CallTarget target;
         private final VirtualFrame frame;
         private final Node callNode;
+        private final int bytecodeIndex;
         private final DefaultFrameInstance callerFrame;
 
-        DefaultFrameInstance(VirtualFrame frame, CallTarget target, Node callNode, DefaultFrameInstance callerFrame) {
+        DefaultFrameInstance(VirtualFrame frame, CallTarget target, Node callNode, int bytecodeIndex, DefaultFrameInstance callerFrame) {
             this.target = target;
             this.frame = frame;
             this.callNode = callNode;
+            this.bytecodeIndex = bytecodeIndex;
             this.callerFrame = callerFrame;
         }
 
+        @Override
         public Frame getFrame(FrameAccess access) {
             Frame localFrame = this.frame;
             switch (access) {
@@ -303,20 +300,49 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
             }
         }
 
+        @Override
         public boolean isVirtualFrame() {
             return false;
         }
 
+        @Override
         public CallTarget getCallTarget() {
             return target;
         }
 
+        @Override
         public Node getCallNode() {
             return callNode;
         }
 
-        DefaultFrameInstance withCallNode(Node otherCallNode) {
-            return new DefaultFrameInstance(frame, target, otherCallNode, callerFrame);
+        @Override
+        public int getBytecodeIndex() {
+            if (bytecodeIndex != -1) {
+                return bytecodeIndex;
+            }
+            return FrameInstance.super.getBytecodeIndex();
+        }
+
+        int getBytecodeIndex(Frame readOnlyFrame) {
+            if (bytecodeIndex != -1) {
+                return bytecodeIndex;
+            }
+            RootCallTarget rootTarget = (RootCallTarget) target;
+            RootNode root = rootTarget.getRootNode();
+            return DefaultRuntimeAccessor.NODES.findBytecodeIndex(root, callNode, readOnlyFrame);
+        }
+
+        @Override
+        public Node getInstrumentableCallNode() {
+            RootCallTarget rootTarget = (RootCallTarget) target;
+            RootNode root = rootTarget.getRootNode();
+            Frame readOnlyFrame = DefaultRuntimeAccessor.NODES.isCaptureFramesForTrace(root, false) ? getFrame(FrameAccess.READ_ONLY) : null;
+            int callBytecodeIndex = bytecodeIndex != -1 ? bytecodeIndex : DefaultRuntimeAccessor.NODES.findBytecodeIndex(root, callNode, readOnlyFrame);
+            return DefaultRuntimeAccessor.NODES.findInstrumentableCallNode(root, callNode, readOnlyFrame, callBytecodeIndex);
+        }
+
+        DefaultFrameInstance withCallNode(Node otherCallNode, int otherBytecodeIndex) {
+            return new DefaultFrameInstance(frame, target, otherCallNode, otherBytecodeIndex, callerFrame);
         }
 
     }

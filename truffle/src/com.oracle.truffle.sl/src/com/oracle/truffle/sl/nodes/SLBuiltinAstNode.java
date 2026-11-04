@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,7 @@ public abstract class SLBuiltinAstNode extends SLExpressionNode {
         try {
             return executeImpl(frame);
         } catch (UnsupportedSpecializationException e) {
-            throw SLException.typeError(e.getNode(), e.getSuppliedValues());
+            throw SLException.typeError(e.getNode(), -1, e.getSuppliedValues());
         }
     }
 

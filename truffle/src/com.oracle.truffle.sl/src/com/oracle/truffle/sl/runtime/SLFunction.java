@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.sl.runtime;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLogger;
@@ -67,20 +66,19 @@ import com.oracle.truffle.sl.nodes.SLUndefinedFunctionRootNode;
 
 /**
  * Represents a SL function. On the Truffle level, a callable element is represented by a
- * {@link RootCallTarget call target}. This class encapsulates a call target, and adds version
- * support: functions in SL can be redefined, i.e. changed at run time. When a function is
- * redefined, the call target managed by this function object is changed (and {@link #callTarget} is
- * therefore not a final field).
+ * {@link SLRootNode root node}. This class encapsulates a root node, and adds version support:
+ * functions in SL can be redefined, i.e. changed at run time. When a function is redefined, the
+ * root node managed by this function object is changed (and {@link #rootNode} is therefore not a
+ * final field).
  * <p>
  * Function redefinition is expected to be rare, therefore optimized call nodes want to speculate
- * that the call target is stable. This is possible with the help of a Truffle {@link Assumption}: a
- * call node can keep the call target returned by {@link #getCallTarget()} cached until the
- * assumption returned by {@link #getCallTargetStable()} is valid.
+ * that the root node is stable. This is possible with the help of a Truffle {@link Assumption}: a
+ * call node can keep the root node returned by {@link #getRootNode()} cached until the assumption
+ * returned by {@link #getCallTargetStable()} is valid.
  * <p>
- * The {@link #callTarget} can be {@code null}. To ensure that only one {@link SLFunction} instance
- * per name exists, the {@link SLFunctionRegistry} creates an instance also when performing name
- * lookup. A function that has been looked up, i.e., used, but not defined, has a call target that
- * encapsulates a {@link SLUndefinedFunctionRootNode}.
+ * To ensure that only one {@link SLFunction} instance per name exists, the
+ * {@link SLFunctionRegistry} creates an instance also when performing name lookup. A function that
+ * has been looked up, i.e., used, but not defined, has an {@link SLUndefinedFunctionRootNode}.
  */
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
@@ -94,10 +92,10 @@ public final class SLFunction implements TruffleObject {
     private final TruffleString name;
 
     /** The current implementation of this function. */
-    private RootCallTarget callTarget;
+    private SLRootNode rootNode;
 
     /**
-     * Manages the assumption that the {@link #callTarget} is stable. We use the utility class
+     * Manages the assumption that the {@link #rootNode} is stable. We use the utility class
      * {@link CyclicAssumption}, which automatically creates a new {@link Assumption} when the old
      * one gets invalidated.
      */
@@ -118,11 +116,11 @@ public final class SLFunction implements TruffleObject {
     }
 
     protected void setCallTarget(RootCallTarget callTarget) {
-        boolean wasNull = this.callTarget == null;
-        this.callTarget = callTarget;
+        boolean wasNull = this.rootNode == null;
+        this.rootNode = (SLRootNode) callTarget.getRootNode();
         /*
-         * We have a new call target. Invalidate all code that speculated that the old call target
-         * was stable.
+         * We have a new root node. Invalidate all code that speculated that the old root node was
+         * stable.
          */
         LOG.log(Level.FINE, "Installed call target for: {0}", name);
         if (!wasNull) {
@@ -131,7 +129,11 @@ public final class SLFunction implements TruffleObject {
     }
 
     public RootCallTarget getCallTarget() {
-        return callTarget;
+        return rootNode.getCallTarget();
+    }
+
+    public SLRootNode getRootNode() {
+        return rootNode;
     }
 
     public Assumption getCallTargetStable() {
@@ -164,7 +166,7 @@ public final class SLFunction implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     SourceSection getSourceLocation() {
-        return ((SLRootNode) getCallTarget().getRootNode()).ensureSourceSection();
+        return rootNode.ensureSourceSection();
     }
 
     @SuppressWarnings("static-method")
@@ -236,57 +238,27 @@ public final class SLFunction implements TruffleObject {
     abstract static class Execute {
 
         /**
-         * Inline cached specialization of the dispatch.
+         * Dispatches through a cached root and direct call node to enable inlining. Function
+         * redefinition invalidates the cached specialization through {@code callTargetStable}.
          *
-         * <p>
-         * Since SL is a quite simple language, the benefit of the inline cache seems small: after
-         * checking that the actual function to be executed is the same as the cachedFuntion, we can
-         * safely execute the cached call target. You can reasonably argue that caching the call
-         * target is overkill, since we could just retrieve it via {@code function.getCallTarget()}.
-         * However, caching the call target and using a {@link DirectCallNode} allows Truffle to
-         * perform method inlining. In addition, in a more complex language the lookup of the call
-         * target is usually much more complicated than in SL.
-         * </p>
-         *
-         * <p>
-         * {@code limit = "INLINE_CACHE_SIZE"} Specifies the limit number of inline cache
-         * specialization instantiations.
-         * </p>
-         * <p>
-         * {@code guards = "function.getCallTarget() == cachedTarget"} The inline cache check. Note
-         * that cachedTarget is a final field so that the compiler can optimize the check.
-         * </p>
-         * <p>
-         * {@code assumptions = "callTargetStable"} Support for function redefinition: When a
-         * function is redefined, the call target maintained by the SLFunction object is changed. To
-         * avoid a check for that, we use an Assumption that is invalidated by the SLFunction when
-         * the change is performed. Since checking an assumption is a no-op in compiled code, the
-         * assumption check performed by the DSL does not add any overhead during optimized
-         * execution.
-         * </p>
-         *
-         * @see Cached
-         * @see Specialization
-         *
-         * @param function the dynamically provided function
-         * @param arguments the arguments to the function
-         * @param callTargetStable The assumption object assuming the function was not redefined.
-         * @param cachedTarget The call target we aim to invoke
-         * @param callNode the {@link DirectCallNode} specifically created for the
-         *            {@link CallTarget} in cachedFunction.
+         * @param function the function to invoke
+         * @param arguments the call arguments
+         * @param callTargetStable the assumption that the function has not been redefined
+         * @param cachedRoot the cached root node
+         * @param callNode the direct call node for {@code cachedRoot}
+         * @return the call result
          */
         @Specialization(limit = "INLINE_CACHE_SIZE", //
-                        guards = "function.getCallTarget() == cachedTarget", //
+                        guards = "function.getRootNode() == cachedRoot", //
                         assumptions = "callTargetStable")
         @SuppressWarnings("unused")
         protected static Object doDirect(SLFunction function, Object[] arguments,
                         @Cached("function.getCallTargetStable()") Assumption callTargetStable,
-                        @Cached("function.getCallTarget()") RootCallTarget cachedTarget,
-                        @Cached("create(cachedTarget)") DirectCallNode callNode) {
+                        @Cached(value = "function.getRootNode()", adopt = false) SLRootNode cachedRoot,
+                        @Cached("create(cachedRoot.getCallTarget())") DirectCallNode callNode) {
 
-            /* Inline cache hit, we are safe to execute the cached call target. */
-            Object returnValue = callNode.call(arguments);
-            return returnValue;
+            /* Inline cache hit, we are safe to execute the cached root node. */
+            return callNode.call(SLRootNode.class, -1, arguments);
         }
 
         /**
@@ -298,10 +270,10 @@ public final class SLFunction implements TruffleObject {
         protected static Object doIndirect(SLFunction function, Object[] arguments,
                         @Cached IndirectCallNode callNode) {
             /*
-             * SL has a quite simple call lookup: just ask the function for the current call target,
+             * SL has a quite simple call lookup: just ask the function for the current root node,
              * and call it.
              */
-            return callNode.call(function.getCallTarget(), arguments);
+            return callNode.call(function.getRootNode(), -1, arguments);
         }
     }
 

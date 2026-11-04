@@ -54,6 +54,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
 
     // java.base
     public final ResolvedJavaType Object_Array = lookupType(Object[].class);
+    public final ResolvedJavaType Int = lookupType(int.class);
     public final ResolvedJavaType java_lang_Object = lookupType(Object.class);
     public final ResolvedJavaType Objects = lookupType(Objects.class);
     public final ResolvedJavaType MethodHandle = lookupType(MethodHandle.class);
@@ -175,9 +176,9 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
 
     public final ResolvedJavaType OptimizedCallTarget = lookupTypeCached("com.oracle.truffle.runtime.OptimizedCallTarget");
     public final ResolvedJavaMethod OptimizedCallTarget_call = findMethod(OptimizedCallTarget, "call", Object_Array);
-    public final ResolvedJavaMethod OptimizedCallTarget_callDirect = findMethod(OptimizedCallTarget, "callDirect", Node, Object_Array);
-    public final ResolvedJavaMethod OptimizedCallTarget_callInlined = findMethod(OptimizedCallTarget, "callInlined", Node, Object_Array);
-    public final ResolvedJavaMethod OptimizedCallTarget_callIndirect = findMethod(OptimizedCallTarget, "callIndirect", Node, Object_Array);
+    public final ResolvedJavaMethod OptimizedCallTarget_callDirect = findMethod(OptimizedCallTarget, "callDirect", Node, Int, Object_Array);
+    public final ResolvedJavaMethod OptimizedCallTarget_callInlined = findMethod(OptimizedCallTarget, "callInlined", Node, Int, Object_Array);
+    public final ResolvedJavaMethod OptimizedCallTarget_callIndirect = findMethod(OptimizedCallTarget, "callIndirect", Node, Int, Object_Array);
     public final ResolvedJavaMethod OptimizedCallTarget_callBoundary = findMethod(OptimizedCallTarget, "callBoundary", Object_Array);
     public final ResolvedJavaMethod OptimizedCallTarget_executeRootNode = findMethod(OptimizedCallTarget, "executeRootNode", VirtualFrame, CompilationState);
     public final ResolvedJavaMethod OptimizedCallTarget_profiledPERoot = findMethod(OptimizedCallTarget, "profiledPERoot", Object_Array);

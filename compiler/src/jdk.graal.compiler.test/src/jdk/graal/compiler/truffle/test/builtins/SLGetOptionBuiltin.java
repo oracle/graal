@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,7 @@ public abstract class SLGetOptionBuiltin extends SLGraalRuntimeBuiltin {
                     @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
         final OptionDescriptor option = OptimizedRuntimeOptions.getDescriptors().get(toJavaStringNode.execute(name));
         if (option == null) {
-            throw SLException.create("No such option named \"" + name + "\" found in " + OptimizedRuntimeOptions.class.getName(), this);
+            throw SLException.create("No such option named \"" + name + "\" found in " + OptimizedRuntimeOptions.class.getName(), this, -1);
         }
         return convertValue(((OptimizedCallTarget) getRootNode().getCallTarget()).getOptionValue(option.getKey()));
     }

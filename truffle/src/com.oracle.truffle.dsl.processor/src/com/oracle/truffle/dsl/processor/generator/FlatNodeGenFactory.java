@@ -3943,6 +3943,14 @@ public class FlatNodeGenFactory {
             }
             values.add(createParameterReference(frameLocal, method.getMethod(), 0));
         }
+        if (method.getBytecodeNodeParameter() != null) {
+            LocalVariable bytecodeNode = frameState.get(ExecutableTypeData.BYTECODE_NODE_PARAMETER_NAME);
+            values.add(createParameterReference(bytecodeNode, method.getMethod(), method.getBytecodeNodeParameterIndex()));
+        }
+        if (method.getBytecodeIndexParameter() != null) {
+            LocalVariable bytecodeIndex = frameState.get(ExecutableTypeData.BYTECODE_INDEX_PARAMETER_NAME);
+            values.add(createParameterReference(bytecodeIndex, method.getMethod(), method.getBytecodeIndexParameterIndex()));
+        }
 
         int evaluatedIndex = 0;
         for (int executionIndex = 0; executionIndex < node.getExecutionCount(); executionIndex++) {
@@ -4068,7 +4076,15 @@ public class FlatNodeGenFactory {
             for (VariableElement var : executable.getParameters()) {
                 ((CodeVariableElement) var).getAnnotationMirrors().clear();
             }
-            executable.renameArguments(FRAME_VALUE);
+            if (executedType.getFrameParameter() != null) {
+                ((CodeVariableElement) executable.getParameters().get(0)).setName(FRAME_VALUE);
+            }
+            if (executedType.getBytecodeNodeParameter() != null) {
+                ((CodeVariableElement) executable.getParameters().get(executedType.getBytecodeNodeParameterIndex())).setName(ExecutableTypeData.BYTECODE_NODE_PARAMETER_NAME);
+            }
+            if (executedType.getBytecodeIndexParameter() != null) {
+                ((CodeVariableElement) executable.getParameters().get(executedType.getBytecodeIndexParameterIndex())).setName(ExecutableTypeData.BYTECODE_INDEX_PARAMETER_NAME);
+            }
             if (executable.isVarArgs()) {
                 ((CodeVariableElement) executable.getParameters().get(executable.getParameters().size() - 1)).setName(VARARGS_NAME);
             }
@@ -6103,6 +6119,14 @@ public class FlatNodeGenFactory {
                 bindings.add(parameterLocal.createReference());
             }
         }
+        if (targetType.getBytecodeNodeParameter() != null) {
+            LocalVariable parameterLocal = frameState.get(ExecutableTypeData.BYTECODE_NODE_PARAMETER_NAME);
+            bindings.add(parameterLocal.createReference());
+        }
+        if (targetType.getBytecodeIndexParameter() != null) {
+            LocalVariable parameterLocal = frameState.get(ExecutableTypeData.BYTECODE_INDEX_PARAMETER_NAME);
+            bindings.add(parameterLocal.createReference());
+        }
 
         for (int i = 0; i < sourceTypes.size(); i++) {
             LocalVariable parameterLocal = frameState.getValue(i);
@@ -7648,7 +7672,7 @@ public class FlatNodeGenFactory {
             ArrayType objectArray = new ArrayCodeTypeMirror(context.getType(Object.class));
             builder.startIf().startCall("isTracingEnabled").end(2);
             builder.startBlock().startStatement().startCall("traceOnEnter").startNewArray(objectArray, null);
-            frameState.addReferencesTo(builder);
+            frameState.addEvaluatedReferencesTo(builder);
             builder.end(4);  // new array, call traceOnEnter, statement, block
         }
     }
@@ -7836,6 +7860,14 @@ public class FlatNodeGenFactory {
             } else {
                 set(FRAME_VALUE, new LocalVariable(frame, FRAME_VALUE, null));
             }
+            TypeMirror bytecodeNode = executedType.getBytecodeNodeParameter();
+            if (bytecodeNode != null) {
+                set(ExecutableTypeData.BYTECODE_NODE_PARAMETER_NAME, new LocalVariable(bytecodeNode, ExecutableTypeData.BYTECODE_NODE_PARAMETER_NAME, null));
+            }
+            TypeMirror bytecodeIndex = executedType.getBytecodeIndexParameter();
+            if (bytecodeIndex != null) {
+                set(ExecutableTypeData.BYTECODE_INDEX_PARAMETER_NAME, new LocalVariable(bytecodeIndex, ExecutableTypeData.BYTECODE_INDEX_PARAMETER_NAME, null));
+            }
             for (NodeFieldData field : factory.node.getFields()) {
                 String fieldName = fieldValueName(field);
                 CodeTree lookupValue;
@@ -7970,23 +8002,37 @@ public class FlatNodeGenFactory {
                     builder.tree(local.createReference());
                 }
             }
-
-            List<NodeExecutionData> executions = factory.node.getChildExecutions();
-            for (NodeExecutionData execution : executions) {
-                LocalVariable var = getValue(execution);
-                if (var != null) {
-                    builder.startGroup().tree(var.createReference()).end();
+            for (String name : new String[]{ExecutableTypeData.BYTECODE_NODE_PARAMETER_NAME, ExecutableTypeData.BYTECODE_INDEX_PARAMETER_NAME}) {
+                LocalVariable local = values.get(name);
+                if (local != null) {
+                    builder.tree(local.createReference());
                 }
             }
+            addEvaluatedReferencesTo(builder);
 
             for (VariableElement arg : factory.plugs.additionalArguments()) {
                 builder.variable(arg);
             }
         }
 
+        private void addEvaluatedReferencesTo(CodeTreeBuilder builder) {
+            for (NodeExecutionData execution : factory.node.getChildExecutions()) {
+                LocalVariable var = getValue(execution);
+                if (var != null) {
+                    builder.startGroup().tree(var.createReference()).end();
+                }
+            }
+        }
+
         public void addParametersTo(CodeExecutableElement targetMethod, int varArgsThreshold, String... optionalNames) {
             for (String var : optionalNames) {
                 LocalVariable local = values.get(var);
+                if (local != null) {
+                    targetMethod.addParameter(local.createParameter());
+                }
+            }
+            for (String name : new String[]{ExecutableTypeData.BYTECODE_NODE_PARAMETER_NAME, ExecutableTypeData.BYTECODE_INDEX_PARAMETER_NAME}) {
+                LocalVariable local = values.get(name);
                 if (local != null) {
                     targetMethod.addParameter(local.createParameter());
                 }

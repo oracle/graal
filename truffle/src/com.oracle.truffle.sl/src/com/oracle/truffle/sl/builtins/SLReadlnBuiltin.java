@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,7 +80,7 @@ public abstract class SLReadlnBuiltin extends SLBuiltinNode {
         try {
             return in.readLine();
         } catch (IOException ex) {
-            throw SLException.create(ex.getMessage(), this);
+            throw SLException.create(ex.getMessage(), this, -1);
         }
     }
 }

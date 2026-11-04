@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
@@ -685,6 +686,64 @@ public class RootNodeTest {
     }
 
     @Test
+    public void testInitializeCallTarget() {
+        CountingInitializationRootNode root = new CountingInitializationRootNode();
+        assertNull(TestAPIAccessor.nodeAccess().getCallTargetWithoutInitialization(root));
+
+        root.initializeCallTarget();
+        CallTarget target = TestAPIAccessor.nodeAccess().getCallTargetWithoutInitialization(root);
+        assertEquals(1, root.prepareCount);
+        assertEquals(0, root.executeCount);
+
+        root.initializeCallTarget();
+        assertSame(target, root.getCallTarget());
+        assertEquals(1, root.prepareCount);
+        assertEquals(42, root.call(null, -1, new Object[0]));
+        assertEquals(1, root.executeCount);
+    }
+
+    @Test
+    public void testRootCallsRequireInitializedCallTarget() {
+        CountingInitializationRootNode root = new CountingInitializationRootNode();
+        IndirectCallNode cached = IndirectCallNode.create();
+        IndirectCallNode uncached = IndirectCallNode.getUncached();
+
+        assertThrows(IllegalStateException.class, () -> root.call(null, -1, new Object[0]));
+        assertThrows(IllegalStateException.class, () -> cached.call(root, -1, new Object[0]));
+        assertThrows(IllegalStateException.class, () -> uncached.call(root, -1, new Object[0]));
+        assertNull(TestAPIAccessor.nodeAccess().getCallTargetWithoutInitialization(root));
+        assertEquals(0, root.prepareCount);
+        assertEquals(0, root.executeCount);
+
+        root.initializeCallTarget();
+        assertEquals(42, root.call(null, -1, new Object[0]));
+        assertEquals(42, cached.call(root, -1, new Object[0]));
+        assertEquals(42, uncached.call(root, -1, new Object[0]));
+        assertEquals(1, root.prepareCount);
+        assertEquals(3, root.executeCount);
+    }
+
+    private static final class CountingInitializationRootNode extends RootNode {
+        private int prepareCount;
+        private int executeCount;
+
+        CountingInitializationRootNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            executeCount++;
+            return 42;
+        }
+
+        @Override
+        protected void prepareForCall() {
+            prepareCount++;
+        }
+    }
+
+    @Test
     public void testPrepareForCall() {
         LazyInitializedRootNode root = new LazyInitializedRootNode();
         assertEquals(false, root.execute(null));
@@ -720,6 +779,8 @@ public class RootNodeTest {
         PreventCallWhenUninitializedRootNode root2 = new PreventCallWhenUninitializedRootNode();
         assertEquals(false, root2.execute(null));
         assertThrows(IllegalStateException.class, root2::getCallTarget);
+        assertThrows(IllegalStateException.class, root2::initializeCallTarget);
+        assertNull(TestAPIAccessor.nodeAccess().getCallTargetWithoutInitialization(root2));
     }
 
     static final class PreventCallWhenUninitializedRootNode extends RootNode {

@@ -28,6 +28,11 @@ This guide presents the conceptual details of the Bytecode DSL; for more concret
   - [Unwind Exceptions](#unwind-exceptions)
   - [Intercepting exceptions](#intercepting-exceptions)
 - [Advanced features](#advanced-features)
+  - [Bytecode index modes](#bytecode-index-modes)
+    - [CACHED_NODE (default)](#cached_node-default)
+    - [FRAME](#frame)
+    - [MANUAL](#manual)
+    - [NONE](#none)
   - [Cached and uncached execution](#cached-and-uncached-execution)
   - [Source information](#source-information)
   - [Instrumentation](#instrumentation)
@@ -114,6 +119,8 @@ Custom operations can also `@Bind BytecodeNode` in their specializations (more a
 
 Because the bytecode may change, a bytecode index (obtained using `@Bind("$bytecodeIndex")`) must be paired with a `BytecodeNode` to meaningfully identify a program location.
 You can also instantiate a [`BytecodeLocation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeLocation.java), which logically represents the bytecode node and index, using `BytecodeNode#getBytecodeLocation(int)` or `@Bind BytecodeLocation`.
+
+See [Bytecode index modes](#bytecode-index-modes) for details on making the current bytecode index available to stack walks and other runtime code.
 
 ## Operations
 Operations are the basic unit of language semantics in the Bytecode DSL.
@@ -254,12 +261,13 @@ Like Truffle nodes, Bytecode DSL operations encode the behaviour of specializati
 Expressions used in operations can access special variables that capture the current interpreter state:
 
 - `$rootNode` evaluates to the bytecode root node
-- `$bytecode` evaluates to the current `BytecodeNode`
+- `$bytecodeNode` evaluates to the current `BytecodeNode`
 - `$bytecodeIndex` evaluates to the current bytecode index (as an `int`)
 
 When using [`@Bind`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl/src/com/oracle/truffle/api/dsl/Bind.java) to bind interpreter state, you can often omit the expressions and rely on default bind expressions:
 
 - `@Bind MyBytecodeRootNode` binds the bytecode root node
+- `@Bind Node` binds the operation node in the cached interpreter, or the current `BytecodeNode` in the uncached interpreter. In [bytecode index modes](#bytecode-index-modes) other than `CACHED_NODE`, the cached interpreter may instead bind the `BytecodeNode` for stateless operations (avoiding allocation of an operation node).
 - `@Bind BytecodeNode` binds the current `BytecodeNode`
 - `@Bind BytecodeLocation` binds the current `BytecodeLocation` (constructing it from the current bytecode index and `BytecodeNode`).
 - `@Bind Instruction` binds the `Instruction` introspection object for the current instruction.
@@ -366,8 +374,8 @@ b.endRoot();
 
 When using materialized accesses with outer locals, you should be careful to only call the inner root when the outer local is live; otherwise, the access could produce unexpected values.
 The bytecode builder statically checks that the local is in scope when emitting a materialized access, but the interpreter cannot easily check that the access occurs at that same point in execution.
-The interpreter _will_ validate the access when it is configured to store the bytecode index in the frame (see the `storeBytecodeIndexInFrame` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java)), but for performance reasons this flag is `false` by default.
-Consider enabling the flag temporarily if you encounter unexpected behaviour with materialized local values.
+The interpreter _will_ validate the access when its bytecode index mode is `FRAME` (see `bytecodeIndexMode` in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java)), but the default mode is `CACHED_NODE` for performance reasons.
+Consider temporarily using `FRAME` mode if you encounter unexpected behaviour with materialized local values.
 
 
 ## Control flow
@@ -542,6 +550,90 @@ The hooks are invoked at most once for each throw, and may be invoked sequential
 
 This section describes some of the more advanced features supported by Bytecode DSL interpreters.
 
+### Bytecode index modes
+
+[`@GenerateBytecode.bytecodeIndexMode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java) controls how the current bytecode index (BCI) is made available to stack walks and guest stack traces.
+Depending on your use case, you can resolve the BCI from a node, store it automatically in the frame, track it manually, or pass it explicitly without frame storage.
+All modes support passing an explicit BCI through call APIs.
+
+Start with `CACHED_NODE` for the simplest integration, then prefer `MANUAL` with explicit BCI propagation as the interpreter matures.
+Choose based on how often the language needs BCI or stack lookup:
+
+| Mode | Storage and lookup cost | When to use |
+| --- | --- | --- |
+| `CACHED_NODE` | No automatic frame writes in cached execution, but more expensive node-based lookup. Uncached execution automatically stores the BCI in the frame. | Easiest starting point; BCI and stack lookups are uncommon. |
+| `FRAME` | Reserves a frame slot and automatically writes it before operations that need the BCI; cheap frame-based lookup. Highest automatic BCI-storage overhead. | Simple integration when BCI and stack lookups are frequent. |
+| `MANUAL` | No routine automatic frame writes. Reserves a frame slot for cheap lookup when the BCI is stored manually, for example before interop calls. | Recommended after getting started; explicitly propagate BCIs to calls and exceptions, and store them for boundaries that cannot carry a BCI. |
+| `NONE` | No BCI frame slot or automatic writes. | Pass the BCI explicitly to calls and exceptions. Use only if the language does not need BCI information across interop boundaries, where the BCI cannot be passed explicitly. |
+
+The sections below describe storage opt-ins and exceptions, including instrumentation and continuation resumes.
+
+#### CACHED_NODE (default)
+
+This mode derives the BCI from the enclosing operation node in cached execution; uncached lookup reads an automatically stored frame BCI.
+Location lookups require a location in the bytecode tree. Direct frame-slot access is unsupported.
+
+To perform a call in this mode, bind the operation's location node using `@Bind Node location` in the specialization, then pass it for implicit lookup:
+
+```java
+return target.call(location, arguments);
+```
+
+#### FRAME
+
+This mode reserves a frame slot for the BCI and automatically stores it before operations that need it.
+Use `@Operation(storeBytecodeIndex = true)` to request storage for an operation, or `@StoreBytecodeIndex` for individual specializations.
+Lookup reads the automatically stored frame BCI in every tier, but still requires a non-null location.
+`getBytecodeIndex` and `setBytecodeIndex` also access this slot; automatic updates replace manual values.
+
+Enable `@Operation(storeBytecodeIndex = true)` on the call operation and bind its location using `@Bind Node location` in the specialization.
+Then call implicitly:
+
+```java
+return target.call(location, arguments);
+```
+
+#### MANUAL
+
+This mode reserves a frame slot for manually storing the BCI.
+Implicit lookup reads this frame slot even without a location node; unset or cleared means unknown.
+Automatic operation storage defaults to disabled; `storeBytecodeIndex` or `@StoreBytecodeIndex` can opt in.
+Tag instrumentation is an exception: the interpreter automatically stores the BCI before tag callbacks, including exceptional returns.
+Resuming a continuation also always stores the resume BCI, replacing any previous value, including an unset or cleared value. Fresh invocations do not initialize the slot.
+
+Guest calls pass the BCI explicitly as in `NONE` below.
+For interop and native calls, which cannot carry a BCI, store it before crossing the boundary.
+Bind `@Bind BytecodeNode bytecodeNode` and `@Bind("$bytecodeIndex") int bci` in the specialization and accept `VirtualFrame frame` as its first parameter.
+For example, an interop call stores the BCI as follows:
+
+```java
+bytecodeNode.setBytecodeIndex(frame, bci);
+return interop.execute(function, arguments);
+```
+
+Leave the stored BCI in place after the call, just like `@StoreBytecodeIndex`; later stores replace it.
+In particular, do not clear it in `finally`, since exception unwinding needs the stored BCI.
+In a nested cached node where the bytecode node is not available, use `BytecodeNode.setBytecodeIndex(this, frame, bci)` to store the BCI in the frame. The static setter finds the enclosing bytecode node using `this` as the location. Uncached nodes may pass `null` to use the encapsulating node. A non-null location must be a partial evaluation constant. Prefer the instance setter when the bytecode node is already available or bound with `@Bind`.
+Handle checked interop exceptions as required by the language; see the [SimpleLanguage call operation](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.sl/src/com/oracle/truffle/sl/bytecode/SLBytecodeRootNode.java).
+
+#### NONE
+
+There is no BCI frame slot or implicit lookup. Calls, exceptions, and location-sensitive helpers must receive their BCI explicitly.
+Passing `-1` requests implicit lookup, which cannot recover a BCI in `NONE` mode.
+
+Bind `@Bind BytecodeNode bytecodeNode` and `@Bind("$bytecodeIndex") int bci` in the specialization, then pass the BCI explicitly on every call:
+
+```java
+return target.call(bytecodeNode, bci, arguments);
+```
+
+`RootNode.call`, `DirectCallNode.call`, and `IndirectCallNode.call` also accept explicit BCIs in every mode.
+Before calling a root directly or through `IndirectCallNode.call(RootNode, int, Object[])`, initialize its call target with `RootNode.initializeCallTarget()` or `RootNode.getCallTarget()` during setup; these call overloads do not initialize it implicitly.
+
+**Prefer explicit BCI propagation.**
+Use `MANUAL` if you support interop or native calls; use `NONE` if you do not and all calls, exceptions, and location-sensitive helpers receive an explicit BCI.
+Start with the default `CACHED_NODE` mode, then migrate to `MANUAL` when adding explicit BCI propagation.
+
 ### Cached and uncached execution
 
 By default, Bytecode DSL interpreters execute _cached_, allocating memory to profile conditional branches, operation specializations, and more.
@@ -592,6 +684,10 @@ The Bytecode DSL supports two forms of instrumentation:
 2. Tag-based instrumentation associates operations with particular instrumentation [`Tag`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/Tag.java)s using `Tag` operations. If these instrumentations are enabled, the bytecode will include instructions that invoke the various event callbacks on any attached [`ExecutionEventNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/ExecutionEventNode.java)s (e.g., `onEnter`, `onReturnValue`) when executing the enclosed operation. Tag-based instrumentation can be enabled using the `enableTagInstrumentation` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
 
 Override [`BytecodeRootNode.interceptOutgoingValue`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNode.java) to convert every guest-language value before it is exposed to tag instrumentation, for example to replace an internal representation with an interop-capable value. Override [`BytecodeRootNode.interceptIncomingValue`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNode.java) to convert values supplied by tag instrumentation to representations supported by the guest language. The hooks add no generated calls unless they are overridden and do not apply to `@Instrumentation` operations.
+
+Instrumentation nodes and inline parsing locations do not themselves identify the current BCI: a tag can span multiple instructions, and its enter and return BCIs are not interchangeable.
+In `FRAME` and `MANUAL` modes, use `BytecodeNode.getBytecodeIndex(frame)` to read the BCI stored at the tagged boundary, including from inline code executed with that frame.
+Do not infer the current BCI from a tag's enter or return location; outside a callback boundary, no current BCI is guaranteed unless the language has stored or passed it explicitly.
 
 Note: once instrumentation instructions are added, they cannot be removed from the bytecode. However, in tag-based instrumentation you can still disable the instruments so that the instrumentation instructions have no effect.
 
