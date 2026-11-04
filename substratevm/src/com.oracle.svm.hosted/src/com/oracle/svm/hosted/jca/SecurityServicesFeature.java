@@ -170,13 +170,13 @@ import sun.security.x509.OIDMap;
 /// ## system-overview: System Overview
 ///
 /// <pre>
-/// reflection metadata -+  builder §AR-002, during analysis §PH-004
+/// reflection metadata -+  builder JVM, during static analysis
 /// Provider instances --+-> planner -> catalog registrar -> run-time manifest
-///                                                              | build/run §AR-001.design.2.2
+///                                                              | build/run boundary
 ///                                                              v
-///          generated image §AR-003:  acquisition filter <-- JDK-managed lookups
+///          generated image:  acquisition filter <-- JDK-managed lookups
 ///                                    JCE verification   <-- provider-object calls
-/// where: a feature §AR-002.design.4 ; behavior §FS-002 ; legacy retires per §AR-004.design.8
+/// where: a hosted feature; behavior §FS-002; legacy retires per §AR-004.design.8
 /// </pre>
 ///
 /// ## terminology: Terminology
