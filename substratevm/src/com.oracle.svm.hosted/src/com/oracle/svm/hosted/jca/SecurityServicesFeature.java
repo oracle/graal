@@ -936,12 +936,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                     }
                     Method providerMethod = findProviderMethod(serviceProviderClass);
                     if (providerMethod != null) {
-                        Class<?> returnType = providerMethod.getReturnType();
-                        if (ProviderConstruction.isProviderImplementationClass(returnType)) {
-                            registerServiceProviderConstructionCandidate(returnType, serviceProviderClass, descriptorOrder);
-                        } else {
-                            unresolvedServiceProviderFactories.add(new ServiceProviderFactoryCandidate(serviceProviderClass, providerMethod, descriptorOrder));
-                        }
+                        // §FS-002-security-providers.1.2: Factory return types need not be exact.
+                        unresolvedServiceProviderFactories.add(new ServiceProviderFactoryCandidate(serviceProviderClass, providerMethod, descriptorOrder));
                     } else if (ProviderConstruction.isProviderImplementationClass(serviceProviderClass) && findNullaryConstructor(serviceProviderClass) != null) {
                         registerServiceProviderConstructionCandidate(serviceProviderClass, serviceProviderClass, descriptorOrder);
                     }
