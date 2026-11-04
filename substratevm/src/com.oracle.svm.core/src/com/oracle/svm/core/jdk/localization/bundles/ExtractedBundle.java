@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,20 @@ public final class ExtractedBundle extends AbstractMap<String, Object> implement
             lookup.forEach(copiedContent::put);
             this.content = copiedContent;
         }
+    }
+
+    /// Builds instance contents using the same map implementation as non-empty prepared bundles.
+    public ExtractedBundle(Object[][] entries) {
+        EconomicMap<String, Object> instanceContent = EconomicMap.create(entries.length);
+        for (Object[] entry : entries) {
+            String key = (String) entry[0];
+            Object value = entry[1];
+            if (key == null || value == null) {
+                throw new NullPointerException();
+            }
+            instanceContent.put(key, value);
+        }
+        this.content = instanceContent;
     }
 
     @Override

@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.jdk.localization;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
@@ -32,6 +33,7 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.ListResourceBundle;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
@@ -59,9 +61,13 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.meta.MethodRefUtils;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
@@ -132,6 +138,8 @@ public class LocalizationFeature implements InternalFeature {
     protected LocalizationSupport support;
 
     private Function<String, Class<?>> findClassByName;
+
+    private BeforeAnalysisAccessImpl analysisAccess;
 
     @Platforms(Platform.HOSTED_ONLY.class) private ImageClassLoader imageClassLoader;
 
@@ -325,8 +333,25 @@ public class LocalizationFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
+        var access = (BeforeAnalysisAccessImpl) a;
+        analysisAccess = access;
         addResourceBundles();
-        var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+        if (substituteLoadLookup) {
+            /* Directly constructed bundles need no explicit resource bundle registration. */
+            a.registerSubtypeReachabilityHandler((callbackAccess, bundleClass) -> {
+                if (!Modifier.isAbstract(bundleClass.getModifiers())) {
+                    var bundleType = ((DuringAnalysisAccessImpl) callbackAccess).getMetaAccess().lookupJavaType(bundleClass);
+                    // A prepared subclass can make its uninstantiated superclass reachable.
+                    bundleType.registerInstantiatedCallback(_ -> {
+                        try {
+                            ((BundleContentSubstitutedLocalizationSupport) support).prepareUnpreparedBundle(bundleClass, this::createBundleGetter);
+                        } catch (ReflectiveOperationException e) {
+                            throw VMError.shouldNotReachHere(e);
+                        }
+                    });
+                }
+            }, ListResourceBundle.class);
+        }
         /*
          * Static @Stable fields initialized in static initializers of build-time initialized
          * classes.
@@ -340,6 +365,25 @@ public class LocalizationFeature implements InternalFeature {
                 registerNegativeLocaleServiceProviderQueries(((FeatureImpl.DuringAnalysisAccessImpl) callbackAccess).getApplicationClassLoader());
             }, LocaleProviderAdapter.class);
         }
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        analysisAccess = null;
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        if (substituteLoadLookup) {
+            MethodRef[] getters = ((BundleContentSubstitutedLocalizationSupport) support).finishBundleGetters();
+            access.registerAsImmutable(getters);
+        }
+    }
+
+    private MethodRef createBundleGetter(Method method) {
+        var getter = analysisAccess.getMetaAccess().lookupJavaMethod(method);
+        analysisAccess.registerAsRoot(getter, true, "Invoked non-virtually for an unprepared resource bundle");
+        return MethodRefUtils.create(getter);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
