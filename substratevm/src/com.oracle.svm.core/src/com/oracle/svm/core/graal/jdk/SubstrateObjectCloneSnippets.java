@@ -116,7 +116,11 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
                 int length = ArrayLengthNode.arrayLength(original);
                 Object newArray = KnownIntrinsics.unvalidatedNewArray(DynamicHub.toClass(hub.getComponentHub()), length);
                 if (LayoutEncoding.isObjectArray(layoutEncoding)) {
-                    JavaMemoryUtil.copyObjectArrayForward(original, 0, newArray, 0, length, layoutEncoding);
+                    if (JavaMemoryUtil.useBulkObjectArrayCopy(length)) {
+                        JavaMemoryUtil.copyObjectArrayForwardBulk(original, 0, newArray, 0, length, layoutEncoding);
+                    } else {
+                        JavaMemoryUtil.copyObjectArrayForward(original, 0, newArray, 0, length, layoutEncoding);
+                    }
                 } else {
                     JavaMemoryUtil.copyPrimitiveArrayForward(original, 0, newArray, 0, length, layoutEncoding);
                 }

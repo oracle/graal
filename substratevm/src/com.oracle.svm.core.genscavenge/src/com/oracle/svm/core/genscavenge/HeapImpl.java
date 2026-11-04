@@ -47,6 +47,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.graal.BarrierSnippets;
 import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
@@ -83,6 +84,7 @@ import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -811,6 +813,33 @@ public final class HeapImpl extends Heap {
         }
 
         RememberedSet.get().dirtyAllReferencesIfNecessary(obj);
+    }
+
+    @Override
+    public boolean supportsBulkReferenceCopy() {
+        return true;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Ensure that no GC can occur between the barriers and the copy.", callerMustBe = true)
+    public void referenceRangePreWriteBarrier(Object holder, Pointer start, UnsignedWord count) {
+        /* The serial and epsilon GCs do not need pre-write barriers. */
+    }
+
+    /** Same card marking as the array range post-write barrier emitted by the compiler. */
+    @Override
+    @Uninterruptible(reason = "Ensure that no GC can occur between the copy and the barriers.", callerMustBe = true)
+    public void referenceRangePostWriteBarrier(Object holder, Pointer start, UnsignedWord count) {
+        if (count.equal(0)) {
+            return;
+        }
+        UnsignedWord header = getObjectHeader().readHeaderFromObject(holder);
+        if (!RememberedSet.get().hasRememberedSet(header)) {
+            return;
+        }
+        int referenceSize = ObjectLayout.singleton().getReferenceSize();
+        Pointer end = start.add(count.subtract(1).multiply(referenceSize));
+        BarrierSnippets.arrayRangePostWriteBarrierStub(holder, start, end);
     }
 
     @Override
