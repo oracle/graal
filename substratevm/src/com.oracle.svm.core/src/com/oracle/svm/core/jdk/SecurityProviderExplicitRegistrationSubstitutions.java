@@ -28,11 +28,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.Provider;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -64,38 +60,6 @@ final class Target_java_security_Security_ExplicitRegistration {
         return SecurityProviderRuntimeAccess.traceJdkProviderLookup(provider);
     }
 
-    @Substitute
-    public static Provider[] getProviders() {
-        Provider[] providers = sun.security.jca.Providers.getFullProviderList().toArray();
-        return SecurityProviderRuntimeAccess.traceJdkProviderLookups(providers);
-    }
-
-    /** §FS-002-security-providers.5.1: Trace only providers returned by a filtered lookup. */
-    @Substitute
-    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/java.base/share/classes/java/security/Security.java#L691-L722")
-    public static Provider[] getProviders(Map<String, String> filter) {
-        Provider[] allProviders = sun.security.jca.Providers.getFullProviderList().toArray();
-        Set<Map.Entry<String, String>> entries = filter.entrySet();
-
-        if (allProviders.length == 0) {
-            return null;
-        } else if (entries == null) {
-            return SecurityProviderRuntimeAccess.traceJdkProviderLookups(allProviders);
-        } else if (entries.isEmpty()) {
-            return null;
-        }
-
-        LinkedList<Provider> candidates = new LinkedList<>(Arrays.asList(allProviders));
-        for (Map.Entry<String, String> entry : entries) {
-            Target_java_security_Security_Criteria_ExplicitRegistration criteria = new Target_java_security_Security_Criteria_ExplicitRegistration(entry.getKey(), entry.getValue());
-            candidates.removeIf(provider -> !criteria.isCriterionSatisfied(provider));
-            if (candidates.isEmpty()) {
-                return null;
-            }
-        }
-        return SecurityProviderRuntimeAccess.traceJdkProviderLookups(candidates.toArray(new Provider[0]));
-    }
-
     /** §FS-002-security-providers.4.2: Insert relative to providers visible to the application. */
     @Substitute
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/java.base/share/classes/java/security/Security.java#L469-L478")
@@ -108,16 +72,6 @@ final class Target_java_security_Security_ExplicitRegistration {
         sun.security.jca.Providers.setProviderList(updatedProviders);
         return SecurityProviderListSupport.visibleIndex(updatedProviders, provider.getName());
     }
-}
-
-@TargetClass(value = java.security.Security.class, innerClass = "Criteria", onlyWith = ExplicitSecurityProviderRegistration.class)
-final class Target_java_security_Security_Criteria_ExplicitRegistration {
-    @Alias
-    Target_java_security_Security_Criteria_ExplicitRegistration(@SuppressWarnings("unused") String key, @SuppressWarnings("unused") String value) {
-    }
-
-    @Alias
-    native boolean isCriterionSatisfied(Provider provider);
 }
 
 @TargetClass(value = java.security.Security.class, innerClass = "SecPropLoader", onlyWith = ExplicitSecurityProviderRegistration.class)
