@@ -32,6 +32,7 @@ import static org.junit.Assert.assertSame;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -83,6 +84,44 @@ public class MinMaxCanonicalizationTest extends GraalCompilerTest {
                         ConditionalNode conditional = graph.addWithoutUnique(new ConditionalNode(condition, trueValue, falseValue));
                         Assert.assertTrue(((IntegerStamp) conditional.stamp(NodeView.DEFAULT)).contains(bound));
                     }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testOffByOneSignExtendOutOfRange() {
+        for (int bits : new int[]{8, 16, 32}) {
+            StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), getDebugContext(), StructuredGraph.AllowAssumptions.YES).build();
+            ValueNode x = graph.addWithoutUnique(new ParameterNode(0, StampPair.createSingle(IntegerStamp.create(bits))));
+            long min = NumUtil.minValue(bits);
+            LogicNode condition = graph.addWithoutUnique(new IntegerBelowNode(x, ConstantNode.forIntegerBits(bits, min, graph)));
+            ValueNode extended = graph.addOrUnique(new SignExtendNode(x, 64));
+            ValueNode constant = ConstantNode.forLong(min - 1, graph);
+            for (boolean flipped : new boolean[]{false, true}) {
+                ValueNode trueValue = flipped ? constant : extended;
+                ValueNode falseValue = flipped ? extended : constant;
+                assertNull(MinMaxNode.fromConditional(condition, trueValue, falseValue, NodeView.DEFAULT));
+                ConditionalNode conditional = graph.addWithoutUnique(new ConditionalNode(condition, trueValue, falseValue));
+                Assert.assertTrue(((IntegerStamp) conditional.stamp(NodeView.DEFAULT)).contains(min - 1));
+            }
+        }
+    }
+
+    @Test
+    public void testOffByOneSignExtendInRange() {
+        for (int bits : new int[]{8, 16, 32}) {
+            long min = NumUtil.minValue(bits);
+            for (long value : new long[]{min, min + 1, -1, 0, 1, NumUtil.maxValue(bits)}) {
+                ValueNode x = ConstantNode.forIntegerBits(bits, value);
+                LogicNode condition = new IntegerBelowNode(x, ConstantNode.forIntegerBits(bits, min + 1));
+                ValueNode extended = new SignExtendNode(x, 64);
+                ValueNode constant = ConstantNode.forLong(min);
+                for (boolean flipped : new boolean[]{false, true}) {
+                    ValueNode result = MinMaxNode.fromConditional(condition, flipped ? constant : extended, flipped ? extended : constant, NodeView.DEFAULT);
+                    assertNotNull(result);
+                    boolean below = Long.compareUnsigned(value & NumUtil.maxValueUnsigned(bits), (min + 1) & NumUtil.maxValueUnsigned(bits)) < 0;
+                    Assert.assertEquals(below == flipped ? min : value, result.asJavaConstant().asLong());
                 }
             }
         }
