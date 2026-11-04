@@ -131,6 +131,11 @@ final class Target_sun_security_jca_ProviderConfig {
                 // §FS-002-security-providers.1.5: Reevaluate a cached name after activation.
                 provider = null;
             }
+            // §FS-002-security-providers.1.5: Retry budgets belong to the selected descriptor.
+            if (selectedProvider != configuredProvider) {
+                selectedProvider = configuredProvider;
+                tries = 0;
+            }
             String configuredProviderClassName = configuredProvider != null ? configuredProvider.providerClassName() : null;
             String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(provName);
             String providerClassName = configuredProviderClassName != null ? configuredProviderClassName
