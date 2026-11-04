@@ -1162,11 +1162,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
-    Object getProviderVerificationResult(Provider provider) {
+    Exception getProviderVerificationResult(Provider provider) {
         // §FS-002-security-providers.4.3
         // Class registration establishes successful verification for an application provider.
         if (!buildTimeProvidersByClassName.containsKey(provider.getClass().getName())) {
-            return Boolean.TRUE;
+            return null;
         }
         // Preserve the build-time outcome of configured providers by provider class.
         try {
@@ -1183,11 +1183,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
              * don't want to keep provider objects that were only instantiated for verification in
              * the image heap.
              *
-             * The verification result can be either null, in case of success, or an Exception, in
-             * case of failure. Null is interpreted as Boolean.TRUE at runtime, signifying successful
-             * verification.
+             * A null result records successful verification; an exception records the failure.
              */
-            return result instanceof Exception ? result : Boolean.TRUE;
+            return (Exception) result;
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }

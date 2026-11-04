@@ -101,22 +101,22 @@ final class SecurityProviderCatalogRegistrar {
         provider.entrySet();
 
         String providerClassName = provider.getClass().getName();
-        Object verificationResult = feature.getProviderVerificationResult(provider);
+        Exception verificationFailure = feature.getProviderVerificationResult(provider);
         recordConfiguredProvider(provider);
         AcquisitionKind acquisitionKind = feature.isLoadableProviderClass(access, provider.getClass())
                         ? AcquisitionKind.JDK_CONSTRUCTIBLE
                         : AcquisitionKind.APPLICATION_SUPPLIED_ONLY;
-        writeProviderManifest(providerClassName, acquisitionKind, verificationResult, metadata);
+        writeProviderManifest(providerClassName, acquisitionKind, verificationFailure, metadata);
     }
 
     static void registerApplicationSuppliedProviderClass(Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
         // §FS-002-security-providers.4.3: Instantiation establishes application verification.
         // A configured instance of the class must not leak failure into provider-object use.
-        writeProviderManifest(providerClass.getName(), AcquisitionKind.APPLICATION_SUPPLIED_ONLY, Boolean.TRUE, metadata);
+        writeProviderManifest(providerClass.getName(), AcquisitionKind.APPLICATION_SUPPLIED_ONLY, null, metadata);
     }
 
     /** The sole production chokepoint that writes provider eligibility into the run-time manifest. */
-    private static void writeProviderManifest(String providerClassName, AcquisitionKind acquisitionKind, Object verificationResult, RuntimeDynamicAccessMetadata metadata) {
-        SecurityProviderRuntimeState.currentLayer().registerProvider(providerClassName, acquisitionKind, verificationResult, metadata);
+    private static void writeProviderManifest(String providerClassName, AcquisitionKind acquisitionKind, Exception verificationFailure, RuntimeDynamicAccessMetadata metadata) {
+        SecurityProviderRuntimeState.currentLayer().registerProvider(providerClassName, acquisitionKind, verificationFailure, metadata);
     }
 }
