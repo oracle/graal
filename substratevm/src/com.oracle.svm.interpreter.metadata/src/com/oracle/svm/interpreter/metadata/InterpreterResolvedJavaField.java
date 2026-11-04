@@ -269,6 +269,12 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
         return layerNum;
     }
 
+    /** Returns whether this field has addressable storage that can be encoded in a JNI field ID. */
+    public final boolean canCreateJNIFieldId() {
+        int fieldOffset = getOffset();
+        return isStatic() ? fieldOffset >= 0 && getInstalledLayerNum() != MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED : fieldOffset > 0;
+    }
+
     /**
      * Gets or creates the tagged JNI field ID for this interpreter field. Instance field IDs encode
      * the field offset directly. Static field IDs are cached by the declaring class loader's
@@ -278,14 +284,12 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
      * @return the JNI field ID
      */
     public final JNIFieldId getOrCreateJNIFieldId() {
-        DynamicHub hub = getDeclaringClass().getHub();
-        assert hub.isRuntimeLoaded() || hub.isPreserved();
+        assert canCreateJNIFieldId();
         int fieldOffset = getOffset();
-        assert isStatic() ? fieldOffset >= 0 : fieldOffset > 0;
         if (!isStatic()) {
             return InterpreterJNIFieldIds.forInstanceField(fieldOffset);
         }
-        assert getInstalledLayerNum() != MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
+        DynamicHub hub = getDeclaringClass().getHub();
         ClassLoader loader = getDeclaringClass().getJavaClass().getClassLoader();
         var node = ClassRegistries.runtimeLastLayer().getRegistry(loader).getOrCreateInterpreterJNIStaticFieldId(
                         this, hub, fieldOffset, getInstalledLayerNum());

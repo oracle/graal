@@ -501,18 +501,24 @@ public abstract class InterpreterSupport {
     /** Gets the executable encoded by an interpreter JNI method ID. */
     public abstract Executable getJNIMethodExecutable(JNIMethodId methodId);
 
+    /** Returns whether a usable interpreter JNI method ID can be created for {@code method}. */
+    public abstract boolean canCreateJNIMethodId(ResolvedJavaMethod method);
+
     /**
-     * Gets or creates a JNI method ID for an interpreter-backed {@code method}. Returns the null
-     * pointer if the method cannot be accessed through the interpreter.
+     * Gets or creates a JNI method ID for an interpreter-backed {@code method} for which
+     * {@link #canCreateJNIMethodId(ResolvedJavaMethod)} is {@code true}.
      */
     public abstract JNIMethodId getOrCreateJNIMethodId(ResolvedJavaMethod method);
 
     /** Gets an interpreter method in {@code clazz} with {@code name} and {@code signature}. */
     public abstract ResolvedJavaMethod lookupMethodForJNI(Class<?> clazz, String name, String signature);
 
+    /** Returns whether a usable interpreter JNI field ID can be created for {@code field}. */
+    public abstract boolean canCreateJNIFieldId(ResolvedJavaField field);
+
     /**
-     * Gets or creates a JNI field ID for an interpreter-backed {@code field}. Returns the null
-     * pointer if the field cannot be accessed through the interpreter.
+     * Gets or creates a JNI field ID for an interpreter-backed {@code field} for which
+     * {@link #canCreateJNIFieldId(ResolvedJavaField)} is {@code true}.
      */
     public abstract JNIFieldId getOrCreateJNIFieldId(ResolvedJavaField field);
 

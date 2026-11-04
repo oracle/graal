@@ -381,6 +381,7 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     method("com.oracle.svm.interpreter.InterpreterSupportImpl", "getJNIField", CREMA_RUN_TIME_ONLY),
                     method("com.oracle.svm.interpreter.InterpreterSupportImpl", "getJNIMethodExecutable", CREMA_RUN_TIME_ONLY),
                     method("com.oracle.svm.interpreter.InterpreterSupportImpl", "lookupFieldForJNI", CREMA_RUN_TIME_ONLY),
+                    method("com.oracle.svm.interpreter.InterpreterSupportImpl", "lookupMethodForJNI", CREMA_RUN_TIME_ONLY),
                     clazz("com.oracle.svm.interpreter.metadata.AccessChecks", CREMA_RUN_TIME_ONLY),
                     clazz("com.oracle.svm.interpreter.metadata.CremaMethodAccess", CREMA_RUN_TIME_ONLY),
                     method("com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField", "getOrCreateJNIFieldId", CREMA_RUN_TIME_ONLY),

@@ -53,8 +53,6 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.PreparedSignature;
-import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
-import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubUtils;
@@ -67,18 +65,20 @@ import com.oracle.svm.core.interpreter.InterpreterJNIMethodIds;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.shared.lookup.LookupSuccessInvocationFailure;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.hosted.SubstrateBytecodeHandlerStub;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
@@ -164,21 +164,21 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     }
 
     @Override
+    public boolean canCreateJNIMethodId(ResolvedJavaMethod method) {
+        return method instanceof InterpreterResolvedJavaMethod interpreterMethod && InterpreterToVM.canInvoke(interpreterMethod);
+    }
+
+    @Override
     public JNIMethodId getOrCreateJNIMethodId(ResolvedJavaMethod method) {
-        if (method instanceof InterpreterResolvedJavaMethod interpreterMethod) {
-            DynamicHub declaringHub = interpreterMethod.getDeclaringClass().getHub();
-            if (declaringHub.isRuntimeLoaded() || declaringHub.isPreserved()) {
-                return interpreterMethod.getOrCreateJNIMethodId();
-            }
-        }
-        return Word.nullPointer();
+        assert canCreateJNIMethodId(method);
+        return ((InterpreterResolvedJavaMethod) method).getOrCreateJNIMethodId();
     }
 
     @Override
     public ResolvedJavaMethod lookupMethodForJNI(Class<?> clazz, String name, String signature) {
-        DynamicHub hub = DynamicHub.fromClass(clazz);
-        assert hub.isRuntimeLoaded() || hub.isPreserved();
-
+        if (clazz.isPrimitive()) {
+            return null;
+        }
         Symbol<Name> symbolicName = SymbolsSupport.getNames().lookup(name);
         if (symbolicName == null) {
             return null;
@@ -187,27 +187,28 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         if (symbolicDescriptor == null) {
             return null;
         }
+        InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz));
         try {
-            return ((InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(hub)).lookupMethod(symbolicName, symbolicDescriptor);
+            return type.lookupMethod(symbolicName, symbolicDescriptor);
         } catch (LookupSuccessInvocationFailure e) {
             return e.getResult();
         }
     }
 
     @Override
+    public boolean canCreateJNIFieldId(ResolvedJavaField field) {
+        return field instanceof InterpreterResolvedJavaField interpreterField && interpreterField.canCreateJNIFieldId();
+    }
+
+    @Override
     public JNIFieldId getOrCreateJNIFieldId(ResolvedJavaField field) {
-        if (field instanceof InterpreterResolvedJavaField interpreterField) {
-            return interpreterField.getOrCreateJNIFieldId();
-        }
-        return Word.nullPointer();
+        assert canCreateJNIFieldId(field);
+        return ((InterpreterResolvedJavaField) field).getOrCreateJNIFieldId();
     }
 
     @Override
     public ResolvedJavaField lookupFieldForJNI(Class<?> clazz, String name, String signature, boolean isStatic) {
-        assert DynamicHub.fromClass(clazz).isRuntimeLoaded() || DynamicHub.fromClass(clazz).isPreserved();
-        assert !clazz.isPrimitive();
-
-        if (clazz.isArray()) {
+        if (clazz.isPrimitive() || clazz.isArray()) {
             return null;
         }
         InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz));

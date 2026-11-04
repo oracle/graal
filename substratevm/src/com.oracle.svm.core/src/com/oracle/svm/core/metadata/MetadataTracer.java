@@ -329,6 +329,22 @@ public final class MetadataTracer {
         traceJNITypeImpl(ConfigurationTypeDescriptor.fromClass(clazz));
     }
 
+    /**
+     * Marks the given field and its declaring type as accessible from JNI.
+     */
+    public void traceJNIFieldAccess(Class<?> declaringClass, String fieldName) {
+        traceJNIType(declaringClass);
+        traceFieldAccess(declaringClass, fieldName, ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+    }
+
+    /**
+     * Marks the given method and its declaring type as accessible from JNI.
+     */
+    public void traceJNIMethodAccess(Class<?> declaringClass, String methodName, String signature) {
+        traceJNIType(declaringClass);
+        traceMethodAccess(declaringClass, methodName, signature, ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+    }
+
     private void traceJNITypeImpl(ConfigurationTypeDescriptor typeDescriptor) {
         assert enabledAtRunTime();
         ConfigurationType type = traceReflectionTypeImpl(typeDescriptor);
