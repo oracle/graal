@@ -225,6 +225,11 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
+    public final UnsignedWord getEdenCapacity() {
+        return sizes.getEdenSize();
+    }
+
+    @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public final UnsignedWord getSurvivorSpacesCapacity() {
         return sizes.getSurvivorSize();

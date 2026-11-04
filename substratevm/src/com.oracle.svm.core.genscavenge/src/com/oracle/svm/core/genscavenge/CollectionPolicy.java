@@ -122,6 +122,9 @@ public interface CollectionPolicy {
 
     UnsignedWord getMaximumSurvivorSize();
 
+    /** The current capacity target for eden. */
+    UnsignedWord getEdenCapacity();
+
     /**
      * The total capacity of all survivor-from spaces of all ages, equal to the size of all
      * survivor-to spaces of all ages. In other words, when copying during a collection, up to 2x

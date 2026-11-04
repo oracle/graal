@@ -25,6 +25,7 @@
 package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.genscavenge.AdaptiveCollectionPolicy2Tunables.NUM_OF_GC_SAMPLE;
+import static com.oracle.svm.core.genscavenge.GenScavengeGCCause.OnAllocation;
 
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
@@ -197,7 +198,13 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
 
             tenuringThreshold = computeTenuringThreshold(survivorOverflow, tenuringThreshold);
 
-            resizeAfterYoungGC(survivorOverflow, oldLive, survived);
+            /*
+             * This guard is not in the original HotSpot policy. Native Image explicitly requests
+             * young collections, e.g. during runtime-state trimming. Growing Eden cannot reduce
+             * their frequency.
+             */
+            boolean allowEdenGrowth = cause == OnAllocation;
+            resizeAfterYoungGC(survivorOverflow, oldLive, survived, allowEdenGrowth);
 
             decaySupplementalGrowth(minorCount);
         }
@@ -276,8 +283,8 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
         sizes.setOldSize(newOldSize);
     }
 
-    private void resizeAfterYoungGC(boolean isSurvivorOverflowing, UnsignedWord oldLive, UnsignedWord survived) { // ParallelScavengeHeap::resize_after_young_gc
-        doResizeAfterYoungGC(isSurvivorOverflowing, survived);
+    private void resizeAfterYoungGC(boolean isSurvivorOverflowing, UnsignedWord oldLive, UnsignedWord survived, boolean allowEdenGrowth) { // ParallelScavengeHeap::resize_after_young_gc
+        doResizeAfterYoungGC(isSurvivorOverflowing, survived, allowEdenGrowth);
 
         /*
          * Do not shrink old gen after survivor overflow, to avoid reducing its headroom when survivor
@@ -309,15 +316,18 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
         }
     }
 
-    private void doResizeAfterYoungGC(boolean isSurvivorOverflowing, UnsignedWord survived) { // PSYoungGen::resize_after_young_gc
-        computeYoungDesiredSizesAndResize(isSurvivorOverflowing, survived);
+    private void doResizeAfterYoungGC(boolean isSurvivorOverflowing, UnsignedWord survived, boolean allowEdenGrowth) { // PSYoungGen::resize_after_young_gc
+        computeYoungDesiredSizesAndResize(isSurvivorOverflowing, survived, allowEdenGrowth);
     }
 
-    private void computeYoungDesiredSizesAndResize(boolean isSurvivorOverflowing, UnsignedWord survived) { // PSYoungGen::compute_desired_sizes
+    private void computeYoungDesiredSizesAndResize(boolean isSurvivorOverflowing, UnsignedWord survived, boolean allowEdenGrowth) { // PSYoungGen::compute_desired_sizes
         UnsignedWord currentEdenSize = sizes.getEdenSize();
         UnsignedWord currentSurvivorSize = sizes.getSurvivorSize();
 
         UnsignedWord edenSize = computeDesiredEdenSize(isSurvivorOverflowing, currentEdenSize);
+        if (!allowEdenGrowth) {
+            edenSize = UnsignedUtils.min(edenSize, currentEdenSize);
+        }
         edenSize = minSpaceSize(alignUp(edenSize));
 
         UnsignedWord survivorSize = computeDesiredSurvivorSize(currentSurvivorSize);
