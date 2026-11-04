@@ -484,6 +484,8 @@ provider-registration signal with the same provider and catalog effects as uncon
 reflection metadata.
 Without explicit registration, the option preserves the earlier option-driven inclusion behavior
 without requiring another registration signal or a future-default option.
+In legacy modes, the option retains provider eligibility and its construction path without retaining
+the complete service catalog.
 In legacy run-time provider-list initialization mode, naming a provider does not by itself construct
 the provider during the image build.
 The JDK constructs a configured provider through its retained path at run time, and only services

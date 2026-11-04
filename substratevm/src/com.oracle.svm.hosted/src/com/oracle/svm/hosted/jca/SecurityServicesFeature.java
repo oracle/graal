@@ -624,9 +624,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         LegacySecurityProviderCompatibility.registerAdditionalProviders(access, providerClass -> {
             if (shouldRegisterProviderClassForReflection(access, providerClass)) {
                 registerProviderClassForReflection(providerClass);
-                // §FS-002-security-providers.6.5: The deprecated option remains a complete
-                // registration signal in every transition mode.
-                providerPlanner.requestCompleteProvider(providerClass);
+                // §FS-002-security-providers.6.5: Only explicit mode retains the full catalog.
+                if (mode.explicitRegistration()) {
+                    providerPlanner.requestCompleteProvider(providerClass);
+                } else {
+                    catalogRegistrar.includeLegacyRequestedProviderClass(providerClass);
+                }
             }
         });
         if (Options.EnableSecurityServicesFeature.getValue()) {
