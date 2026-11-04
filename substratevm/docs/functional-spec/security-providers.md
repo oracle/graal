@@ -300,8 +300,10 @@ is not diagnosed by a name lookup: until the application inserts an instance,
 [`Security.getProvider(String)`][security] returns `null`.
 This exception does not suppress the diagnostic for a configured built-in provider merely because
 application code also makes provider-object use of its implementation class reachable.
-The diagnostic resolver uses only recorded configured entries and built-in provider aliases; it
-does not interpret an arbitrary dotted provider name as an implementation class name.
+The diagnostic resolver uses only recorded configured entries; a built-in alias alone does not
+establish that a provider was configured or is available on the current platform.
+An unconfigured built-in name and an arbitrary unknown name return `null`.
+The resolver does not interpret an arbitrary dotted provider name as an implementation class name.
 The same diagnostic applies in exact-metadata and compatibility reporting modes.
 If reflective construction is attempted,
 [`MissingReflectionRegistrationError`][missing-reflection-registration-error] remains the top-level
