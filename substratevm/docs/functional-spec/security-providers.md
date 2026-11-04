@@ -194,6 +194,8 @@ After activation, [`Security.getProvider(String)`][security] returns it at its c
 and its retained services become usable.
 The result is the same whether [`Security.getProviders()`][security] initialized the list before or
 after activation, and an active condition never becomes inactive.
+When activation selects an earlier descriptor, its construction receives a fresh retry budget even
+if the previously selected candidate exhausted its retries.
 
 ## 2. Permitted Run-Time Access
 
