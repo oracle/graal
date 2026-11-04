@@ -121,6 +121,7 @@ final class SecurityProviderCatalogRegistrar {
         String providerClassName = provider.getClass().getName();
         Exception verificationFailure = feature.getProviderVerificationResult(provider);
         recordConfiguredProvider(provider);
+        feature.recordServiceLoadedConfiguredProvider(provider);
         AcquisitionKind acquisitionKind = feature.isLoadableProviderClass(access, provider.getClass())
                         ? AcquisitionKind.JDK_CONSTRUCTIBLE
                         : AcquisitionKind.APPLICATION_SUPPLIED_ONLY;

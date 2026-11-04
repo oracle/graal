@@ -1238,6 +1238,16 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         throw lastFailure == null ? UserError.abort(message, providerClass.getName()) : UserError.abort(lastFailure, message, providerClass.getName());
     }
 
+    /** §FS-002-security-providers.1.3: Reusing an instance must retain its factory declaration. */
+    void recordServiceLoadedConfiguredProvider(Provider provider) {
+        for (Class<?> constructionClass : getJdkProviderConstructionClasses(provider.getClass())) {
+            Integer descriptorOrder = providerConstructionOrder.get(constructionClass);
+            if (descriptorOrder != null) {
+                SecurityProviderCatalogRegistrar.recordServiceLoadedConfiguredProvider(provider, constructionClass, descriptorOrder);
+            }
+        }
+    }
+
     /** §FS-002-security-providers.1.2: Preserve a selected path across configure() class changes. */
     private void registerConfiguredProviderConstructionCandidates(Provider provider, Class<?> constructionClass) {
         for (String token : List.of(provider.getName(), provider.getClass().getName())) {
