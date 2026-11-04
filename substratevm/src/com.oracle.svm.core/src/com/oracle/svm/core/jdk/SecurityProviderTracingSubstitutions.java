@@ -26,8 +26,13 @@ package com.oracle.svm.core.jdk;
 
 import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -89,6 +94,52 @@ final class JDKWithoutSecurityProviderReflection implements BooleanSupplier {
     public boolean getAsBoolean() {
         return !new JDKWithSecurityProviderReflection().getAsBoolean();
     }
+}
+
+@TargetClass(java.security.Security.class)
+final class Target_java_security_Security_Enumeration_Tracing {
+    @Substitute
+    public static Provider[] getProviders() {
+        Provider[] providers = sun.security.jca.Providers.getFullProviderList().toArray();
+        return SecurityProviderRuntimeAccess.traceJdkProviderLookups(providers);
+    }
+
+    /** §FS-002-security-providers.5.1: Trace only providers returned by a filtered lookup. */
+    @Substitute
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/java.base/share/classes/java/security/Security.java#L691-L722")
+    public static Provider[] getProviders(Map<String, String> filter) {
+        Provider[] allProviders = sun.security.jca.Providers.getFullProviderList().toArray();
+        Set<Map.Entry<String, String>> entries = filter.entrySet();
+
+        if (allProviders.length == 0) {
+            return null;
+        } else if (entries == null) {
+            return SecurityProviderRuntimeAccess.traceJdkProviderLookups(allProviders);
+        } else if (entries.isEmpty()) {
+            return null;
+        }
+
+        LinkedList<Provider> candidates = new LinkedList<>(Arrays.asList(allProviders));
+        for (Map.Entry<String, String> entry : entries) {
+            Target_java_security_Security_Criteria_Tracing criteria = new Target_java_security_Security_Criteria_Tracing(entry.getKey(), entry.getValue());
+            candidates.removeIf(provider -> !criteria.isCriterionSatisfied(provider));
+            if (candidates.isEmpty()) {
+                return null;
+            }
+        }
+        return SecurityProviderRuntimeAccess.traceJdkProviderLookups(candidates.toArray(new Provider[0]));
+    }
+
+}
+
+@TargetClass(value = java.security.Security.class, innerClass = "Criteria")
+final class Target_java_security_Security_Criteria_Tracing {
+    @Alias
+    Target_java_security_Security_Criteria_Tracing(@SuppressWarnings("unused") String key, @SuppressWarnings("unused") String value) {
+    }
+
+    @Alias
+    native boolean isCriterionSatisfied(Provider provider);
 }
 
 public final class SecurityProviderTracingSubstitutions {
