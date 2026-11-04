@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -579,13 +579,15 @@ public class AMD64VectorShuffle {
             this.result = result;
             this.source = source;
             this.selectorData = selectorData;
-            this.selector = tool.newVariable(LIRKind.value(source.getPlatformKind()));
+            GraalError.guarantee(source.getPlatformKind().getSizeInBytes() == result.getPlatformKind().getSizeInBytes(), "permute source and result widths must match");
+            GraalError.guarantee(selectorData.length == result.getPlatformKind().getSizeInBytes(), "permute selector must cover the operation width");
+            this.selector = tool.newVariable(LIRKind.value(result.getPlatformKind()));
             this.mask = mask;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            AMD64Kind kind = (AMD64Kind) source.getPlatformKind();
+            AMD64Kind kind = (AMD64Kind) result.getPlatformKind();
             int alignment = crb.dataBuilder.ensureValidDataAlignment(selectorData.length);
             AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(selectorData, alignment);
             EVMOVDQU64.emit(masm, AVXKind.getRegisterSize(kind), asRegister(selector), address);

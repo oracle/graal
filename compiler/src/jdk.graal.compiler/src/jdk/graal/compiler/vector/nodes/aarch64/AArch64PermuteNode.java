@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.Variable;
@@ -95,12 +96,14 @@ public class AArch64PermuteNode extends UnaryNode implements LIRLowerable {
         int mapIdx = 0;
         for (int idx : destinationMapping) {
             for (int byteOffset = 0; byteOffset < elementByteSize; byteOffset++) {
-                int byteIndex = idx * elementByteSize + byteOffset;
-                assert byteIndex >= 0 && byteIndex < 16 : byteIndex;
-                /*
-                 * Note NumUtil.safeToByte caps byteIndex at 127; However, this is fine since the
-                 * index should be < 16 on AArch64 NEON.
-                 */
+                int byteIndex;
+                if (idx == -1) {
+                    /* TBL produces zero for indices outside its 16-byte input table. */
+                    byteIndex = 16;
+                } else {
+                    byteIndex = idx * elementByteSize + byteOffset;
+                    GraalError.guarantee(byteIndex >= 0 && byteIndex < 16, "unexpected byte index %d", byteIndex);
+                }
                 byteMap[mapIdx++] = NumUtil.safeToByte(byteIndex);
             }
         }

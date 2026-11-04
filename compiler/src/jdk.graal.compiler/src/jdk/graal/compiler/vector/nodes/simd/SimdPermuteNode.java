@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -125,6 +125,15 @@ public class SimdPermuteNode extends UnaryNode {
             }
             return new SimdPermuteNode(forValuePerm.getValue(), newDestinationMapping);
         } else if (forValue instanceof SimdBroadcastNode) {
+            /*
+             * A -1 entry inserts zero instead of selecting an input lane. Replacing this permutation
+             * with a broadcast would incorrectly fill that lane with the broadcast's scalar value.
+             */
+            for (int index : destinationMapping) {
+                if (index == -1) {
+                    return this;
+                }
+            }
             SimdBroadcastNode broadcastNode = (SimdBroadcastNode) forValue;
             return new SimdBroadcastNode(broadcastNode.getValue(), destinationMapping.length);
         }
