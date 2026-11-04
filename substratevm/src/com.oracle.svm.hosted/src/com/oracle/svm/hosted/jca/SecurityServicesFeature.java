@@ -1042,7 +1042,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private void registerSecureRandomProvidersFromPlatformSignal() {
         // §FS-002-security-providers.1.4
         EconomicSet<Service> services = availableServices.get(SECURE_RANDOM_SERVICE);
-        VMError.guarantee(services != null);
+        if (services == null) {
+            return;
+        }
         EconomicSet<Class<?>> providerClasses = EconomicSet.create();
         for (Service service : services) {
             providerClasses.add(service.getProvider().getClass());
