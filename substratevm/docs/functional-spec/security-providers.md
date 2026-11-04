@@ -357,6 +357,9 @@ Instantiation reachability records successful verification for an application-su
 provider class independently of any configured-list instance of the same class. In particular, a
 verification failure for an omitted configured instance does not prevent provider-object use of an
 application-created instance.
+Each failed verification outcome retains its original registration condition when registrations for
+the same class are merged; unconditional application verification does not activate a conditional
+configured-instance failure.
 The implementation-specific recognition rule is [§AR-004-security-providers.requirements.3](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java).
 
 ## 5. Tracing Metadata

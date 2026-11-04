@@ -65,8 +65,19 @@ public final class SecurityProviderRuntimeState {
     public record ProviderInfo(AcquisitionKind acquisitionKind, Exception verificationFailure) {
     }
 
+    private record ConditionalVerificationFailure(RuntimeDynamicAccessMetadata metadata, Exception exception) {
+    }
+
     private record ConditionalProviderInfo(RuntimeDynamicAccessMetadata registrationMetadata,
-                    RuntimeDynamicAccessMetadata jdkConstructionMetadata, Exception verificationFailure) {
+                    RuntimeDynamicAccessMetadata jdkConstructionMetadata, List<ConditionalVerificationFailure> verificationFailures) {
+        Exception activeVerificationFailure() {
+            for (ConditionalVerificationFailure failure : verificationFailures) {
+                if (failure.metadata().satisfied()) {
+                    return failure.exception();
+                }
+            }
+            return null;
+        }
     }
 
     /**
@@ -136,7 +147,8 @@ public final class SecurityProviderRuntimeState {
     public synchronized void registerProvider(String providerClassName, AcquisitionKind acquisitionKind, Exception verificationFailure, RuntimeDynamicAccessMetadata metadata) {
         RuntimeDynamicAccessMetadata constructionMetadata = acquisitionKind == AcquisitionKind.JDK_CONSTRUCTIBLE ? metadata : null;
         providerInfos.put(providerClassName, mergeConditional(providerInfos.get(providerClassName),
-                        new ConditionalProviderInfo(metadata, constructionMetadata, verificationFailure)));
+                        new ConditionalProviderInfo(metadata, constructionMetadata,
+                                        verificationFailure == null ? List.of() : List.of(new ConditionalVerificationFailure(metadata, verificationFailure)))));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -212,8 +224,13 @@ public final class SecurityProviderRuntimeState {
         }
         RuntimeDynamicAccessMetadata registrationMetadata = RuntimeDynamicAccessMetadata.merge(oldInfo.registrationMetadata(), newInfo.registrationMetadata());
         RuntimeDynamicAccessMetadata constructionMetadata = RuntimeDynamicAccessMetadata.merge(oldInfo.jdkConstructionMetadata(), newInfo.jdkConstructionMetadata());
-        Exception verificationFailure = oldInfo.verificationFailure() != null ? oldInfo.verificationFailure() : newInfo.verificationFailure();
-        return new ConditionalProviderInfo(registrationMetadata, constructionMetadata, verificationFailure);
+        List<ConditionalVerificationFailure> verificationFailures = new ArrayList<>(oldInfo.verificationFailures());
+        for (ConditionalVerificationFailure failure : newInfo.verificationFailures()) {
+            if (!verificationFailures.contains(failure)) {
+                verificationFailures.add(failure);
+            }
+        }
+        return new ConditionalProviderInfo(registrationMetadata, constructionMetadata, List.copyOf(verificationFailures));
     }
 
     private static ProviderInfo mergeActive(ProviderInfo oldInfo, ProviderInfo newInfo) {
@@ -240,7 +257,7 @@ public final class SecurityProviderRuntimeState {
                 AcquisitionKind acquisitionKind = info.jdkConstructionMetadata() != null && info.jdkConstructionMetadata().satisfied()
                                 ? AcquisitionKind.JDK_CONSTRUCTIBLE
                                 : AcquisitionKind.APPLICATION_SUPPLIED_ONLY;
-                result = mergeActive(result, new ProviderInfo(acquisitionKind, info.verificationFailure()));
+                result = mergeActive(result, new ProviderInfo(acquisitionKind, info.activeVerificationFailure()));
             }
         }
         return result;
