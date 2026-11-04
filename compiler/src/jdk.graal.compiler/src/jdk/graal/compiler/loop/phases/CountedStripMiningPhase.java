@@ -529,11 +529,15 @@ public class CountedStripMiningPhase extends BasePhase<MidTierContext> {
      *
      * This method processes the loops in {@code stripMiningCandidates} to select those for which
      * the aggregated {@linkplain #estimateCodeSizeIncrease estimated} node size increase of strip
-     * mining does not exceed the budget specified by {@link Options#CountedStripMiningBudget}.
+     * mining does not exceed the budget specified by {@link Options#CountedStripMiningBudget}. The
+     * first candidate is always retained, even if its estimated cost exceeds the budget.
      *
-     * @return the selected loops for strip mining that stay within budget
+     * @return the selected loops, including the first candidate even if its cost exceeds the budget
      */
     public static EconomicSet<LoopBeginNode> pruneStripMiningCandidates(EconomicSet<LoopBeginNode> stripMiningCandidates, ControlFlowGraph cfg, double codeSizeIncreaseFactor) {
+        if (stripMiningCandidates.size() <= 1) {
+            return stripMiningCandidates;
+        }
         int graphsize = NodeCostUtil.computeGraphSize(cfg.graph);
         EconomicSet<LoopBeginNode> prunedCandidates = stripMiningCandidates;
         if (graphsize > Options.CountedStripMiningNodeSizeSmallGraphs.getValue(cfg.graph.getOptions())) {
@@ -545,11 +549,14 @@ public class CountedStripMiningPhase extends BasePhase<MidTierContext> {
             for (LoopBeginNode cur : loops) {
                 int codeSizeIncrease = estimateCodeSizeIncrease(cur);
                 OptimizationEffect effect = budget.potentialOpt(1, codeSizeIncrease);
-                // always perform a single strip mining, if the budget is full after that is fine
-                prunedCandidates.add(cur);
                 if (effect.budgetExceeded()) {
+                    // Always retain the first candidate, even when it exceeds the budget.
+                    if (prunedCandidates.isEmpty()) {
+                        prunedCandidates.add(cur);
+                    }
                     break;
                 }
+                prunedCandidates.add(cur);
                 budget.applyLastOp();
             }
         }
