@@ -40,6 +40,7 @@ import com.oracle.svm.shared.option.OptionOrigin;
 public class ArgFilesOptionPreprocessor {
 
     private static final String DISABLE_AT_FILES_OPTION = "--disable-@files";
+    private static final String VALUE_CONTINUATIONS_HEADER = "# native-image: value-continuations";
 
     private boolean disableAtFiles = false;
 
@@ -60,8 +61,7 @@ public class ArgFilesOptionPreprocessor {
                 // escaped @argument
                 return List.of(argWithoutAt);
             }
-            boolean expandOptionValues = argWithoutAt.startsWith("=");
-            Path argFile = Paths.get(expandOptionValues ? argWithoutAt.substring(1) : argWithoutAt);
+            Path argFile = Paths.get(argWithoutAt);
             if (origin != null) {
                 if (argFile.isAbsolute()) {
                     NativeImage.showError("Argument file '" + argFile + "' must be relative to " + origin);
@@ -72,10 +72,7 @@ public class ArgFilesOptionPreprocessor {
                     NativeImage.showError("Argument file '" + argFile + "' referenced by " + origin + " escapes its containing directory or JAR");
                 }
             }
-            List<String> arguments = readArgFile(argFile, expandOptionValues, origin);
-            if (expandOptionValues) {
-                arguments = expandOptionValueContinuations(arguments);
-            }
+            List<String> arguments = readArgFile(argFile, origin);
             List<String> result = new ArrayList<>();
             arguments.forEach(arg -> addArg(result, arg));
             return result;
@@ -106,7 +103,7 @@ public class ArgFilesOptionPreprocessor {
     }
 
     // Ported from JDK11's java.base/share/native/libjli/args.c
-    private static List<String> readArgFile(Path file, boolean markBlankLines, OptionOrigin origin) {
+    private static List<String> readArgFile(Path file, OptionOrigin origin) {
         List<String> arguments = new ArrayList<>();
 
         String options = null;
@@ -116,6 +113,7 @@ public class ArgFilesOptionPreprocessor {
             NativeImage.showError("Cannot read argument file '" + file + "'", e);
         }
 
+        boolean expandOptionValues = options.lines().findFirst().orElse("").equals(VALUE_CONTINUATIONS_HEADER);
         CTX_ARGS ctx = new CTX_ARGS();
         ctx.state = PARSER_STATE.FIND_NEXT;
         ctx.parts = new ArrayList<>(4);
@@ -123,7 +121,7 @@ public class ArgFilesOptionPreprocessor {
         ctx.cptr = 0;
         ctx.eob = options.length();
         ctx.options = options;
-        ctx.markBlankLines = markBlankLines;
+        ctx.markBlankLines = expandOptionValues;
 
         while (true) {
             String token = nextToken(ctx);
@@ -143,10 +141,10 @@ public class ArgFilesOptionPreprocessor {
                 arguments.add(String.join("", ctx.parts));
             }
         }
-        return arguments;
+        return expandOptionValues ? expandOptionValueContinuations(arguments) : arguments;
     }
 
-    /// Expands the option-value sections enabled by `@=file` after Java-style tokenization.
+    /// Expands the option-value sections enabled by the file's first-line marker after Java-style tokenization.
     /// An option ending in `=...` collects comma-separated values until a blank line, another such option, or EOF.
     private static List<String> expandOptionValueContinuations(List<String> arguments) {
         List<String> expanded = new ArrayList<>();

@@ -114,14 +114,15 @@ These deprecated URL protocol options are omitted from the generated table; see 
 | `-cp` | Path | class search path of directories and zip/jar files |  | `-cp <class search path of directories and zip/jar files>` |
 | `-p` | Path | module path |  | `-p <module path>` |
 | `@argument` | String | one or more argument files containing options |  | `@argument files` |
-| `@=argument` | String | one or more argument files with option-value continuations |  | `@=argument files` |
 
 <!-- END: build-options-table -->
 
 ## Argument Files
 
 Native Image argument files use UTF-8 and follow the [Java launcher argument-file specification](https://docs.oracle.com/en/java/javase/25/docs/specs/man/java.html#java-command-line-argument-files).
-All of its syntax rules apply, with the following extension when you use `@=file` instead of `@file`.
+All of its syntax rules apply.
+To enable option-value continuations, put `# native-image: value-continuations` on the first line of the file.
+The marker must match exactly; a marker on a later line does not enable the extension.
 
 An option ending in `=...` starts an option-value continuation.
 Subsequent arguments within the file are joined with commas until an empty or whitespace-only line, another option ending in `=...`, or the end of the file.
@@ -131,6 +132,7 @@ A continuation with no entries produces an empty option value.
 For example, _preserve.args_ can contain:
 
 ```text
+# native-image: value-continuations
 # Library scope
 -H:Preserve=...
     package=my.library.*
@@ -141,14 +143,14 @@ For example, _preserve.args_ can contain:
     my/application/.*
 ```
 
-Running `native-image @=preserve.args -cp classes Main` expands the file into:
+Running `native-image @preserve.args -cp classes Main` expands the file into:
 
 ```text
 -H:Preserve=package=my.library.*,module=java.logging
 -H:IncludeResources=my/library/.*,my/application/.*
 ```
 
-You can also use `@file` and `@=file` in the `Args` property of _native-image.properties_.
+You can also use `@file` in the `Args` property of _native-image.properties_.
 File paths must be relative to the directory containing the properties file; for properties embedded in a JAR, the referenced file is read from the same JAR.
 For macro options, paths are relative to the macro option directory.
 References must stay within the containing class-path or module-path entry, or macro option directory; references that escape it are rejected.

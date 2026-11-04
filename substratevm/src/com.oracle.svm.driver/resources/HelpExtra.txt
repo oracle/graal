@@ -1,7 +1,9 @@
 Non-standard options help:
 
-    @=argument files      one or more argument files with option-value continuations
-||@=argument| files|one or more argument files with option-value continuations|String||false|
+    Argument files whose first line is '# native-image: value-continuations' support
+    option-value continuations: an option ending in '=...' joins subsequent values
+    with commas until a blank line, another option ending in '=...', or end of file.
+    Comment-only lines do not end a continuation.
 
     --exclude-config      exclude configuration for a space-separated pair of classpath/modulepath
                           pattern and resource pattern. For example:

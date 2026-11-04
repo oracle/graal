@@ -24,13 +24,14 @@ A typical way to address this is to use `-H:Preserve=package=...` at build time 
 You can keep preservation selections in an [argument file with option-value continuations](../../docs/reference-manual/native-image/BuildOptions.md#argument-files):
 
 ```text
+# native-image: value-continuations
 # Library scope
 -H:Preserve=...
     package=my.library.*
     module=java.logging
 ```
 
-Pass this file as `native-image @=preserve.args ...`.
+Pass this file as `native-image @preserve.args ...`.
 The driver expands the section into `-H:Preserve=package=my.library.*,module=java.logging`.
 `Preserve` remains an application build choice and cannot be embedded in a library's _native-image.properties_.
 
