@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,7 @@ import jdk.vm.ci.meta.JavaType;
  * needed to perform type checks.
  *
  * <p>
- * Within this class are two version of metadata generated depending on whether we are operating on
+ * Within this class are two versions of metadata generated depending on whether we are operating on
  * an open- or closed-type world assumption.
  *
  * <h3>Closed-World Type Information</h3>
@@ -125,7 +125,8 @@ import jdk.vm.ci.meta.JavaType;
  * <h4>Without Interface Hashing</h4>
  * <p>
  * {@link DynamicHub#getOpenTypeWorldTypeCheckSlots() openTypeWorldTypeCheckSlots} contain two
- * entries per interface, one for the typeID and one for the itable offset:
+ * entries per interface after the class-display prefix, one for the interface ID and one for the
+ * itable byte offset:
  *
  * <pre>
  * checkSlots = [...typeIDs... ; interfaceID_0 ; itableOffset_0 ; ...]
@@ -133,24 +134,34 @@ import jdk.vm.ci.meta.JavaType;
  *
  * <h4>With Interface Hashing</h4>
  * <p>
- * {@link DynamicHub#getOpenTypeWorldTypeCheckSlots() openTypeWorldTypeCheckSlots} only contain
- * information about the type hierarchy:
+ * Interfaces with IDs at most {@link SubstrateOptions#interfaceHashingMaxId()} are represented in
+ * a hash table. Remaining interfaces retain their pairs in
+ * {@link DynamicHub#getOpenTypeWorldTypeCheckSlots() openTypeWorldTypeCheckSlots}. If all interfaces
+ * are hashed, only the class-display prefix remains:
  *
  * <pre>
  * checkSlots = [ ... ; parent.typeID ; this.typeID]
  * </pre>
  * <p>
- * Type check information for interfaces is encoded in a hash table. Interfaces that have an
- * interfaceIDs > {@link SubstrateOptions#InterfaceHashingMaxId} are encoded in the checkSlots array
- * as before. This hash table is computed based on the implemented interfaces. The hash table
- * entries encode the following:
+ * The hash table is computed from the implemented interfaces. Each entry combines an interface
+ * ID with its itable byte offset:
  *
  * <pre>
- * hashTable[hash(interfaceID)] = (iTableOffset << {@link DynamicHubUtils#HASHING_ITABLE_SHIFT HASHING_ITABLE_OFFSET}) | interfaceID
+ * hashTable[hash(interfaceID)] = ((long) iTableOffset << {@link DynamicHubUtils#HASHING_ITABLE_SHIFT}) | interfaceID
  * </pre>
  *
- * Thus, interfaceIDs encoded in hash tables must be > 0, to properly distinguish them from empty
- * hash table entries.
+ * Interface IDs are positive, so zero denotes an empty bucket. Each long entry stores the
+ * interface ID in its low 32 bits and the full byte offset in its upper 32 bits. Hashing remains
+ * limited to unsigned 16-bit IDs, so bits 16 through 31 are zero. This encoding is shared by
+ * image-built and runtime-loaded hubs.
+ * <p>
+ * The hashing function is chosen once during image building, including for runtime-loaded hubs.
+ * With {@link SubstrateOptions#usePextInterfaceHashing()}, selected bits of the interface ID are
+ * packed contiguously using PEXT, and the table has {@code 1 << Integer.bitCount(mask)} entries.
+ * This is enabled by default on AMD64 targets whose required CPU features include BMI2. Otherwise,
+ * the hash parameter encodes a shift and a mask, and the table has {@code mask + 1} entries. Both
+ * formats reserve every possible index, including empty buckets for absent interfaces. See
+ * {@link DynamicHubUtils#hash(int, int)} and {@link DynamicHubUtils#hashParam(int[])}.
  * <p>
  * The implementation of the open-world typechecks can be found in {@link OpenTypeWorldSnippets},
  * the loading of interface methods can be found in {@link OpenTypeWorldDispatchTableSnippets}. The

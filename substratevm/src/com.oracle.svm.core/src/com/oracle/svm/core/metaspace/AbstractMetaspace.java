@@ -135,6 +135,18 @@ public abstract class AbstractMetaspace implements Metaspace {
     }
 
     @Override
+    public final long[] allocateLongArray(int length) {
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            long[] result = allocateLongArray0(length);
+            checkOutOfMemory(result);
+            return result;
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
+    }
+
+    @Override
     public final <T> T allocateObject(Class<T> clazz) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
@@ -157,6 +169,9 @@ public abstract class AbstractMetaspace implements Metaspace {
 
     /** Returns {@code null} if the allocation failed. */
     protected abstract int[] allocateIntArray0(int length);
+
+    /** Returns {@code null} if the allocation failed. */
+    protected abstract long[] allocateLongArray0(int length);
 
     /** Returns {@code null} if the allocation failed. */
     protected abstract Object allocateObject0(DynamicHub hub);

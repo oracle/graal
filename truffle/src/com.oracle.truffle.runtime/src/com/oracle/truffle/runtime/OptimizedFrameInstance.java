@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,12 +44,14 @@ import java.lang.reflect.Method;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.JDKAccessor;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.code.stack.InspectedFrame;
 
@@ -59,20 +61,27 @@ public class OptimizedFrameInstance implements FrameInstance {
     static final int OPTIMIZATION_TIER_FRAME_INDEX = 2;
 
     static final int CALL_NODE_NOTIFY_INDEX = 1;
+    static final int CALL_NODE_BYTECODE_INDEX_NOTIFY_INDEX = 2;
+
+    static final int CALL_ROOT_ROOT_INDEX = 3;
+    /** The frame is the first local variable declared after the callRoot parameters. */
+    static final int CALL_ROOT_FRAME_INDEX = 5;
 
     static final Method CALL_TARGET_METHOD;
     static final Method CALL_DIRECT;
     static final Method CALL_INLINED;
     static final Method CALL_INLINED_CALL;
     static final Method CALL_INDIRECT;
+    static final Method CALL_ROOT;
 
     static {
         try {
-            CALL_DIRECT = OptimizedCallTarget.class.getDeclaredMethod("callDirect", Node.class, Object[].class);
-            CALL_INLINED = OptimizedCallTarget.class.getDeclaredMethod("callInlined", Node.class, Object[].class);
+            CALL_DIRECT = OptimizedCallTarget.class.getDeclaredMethod("callDirect", Node.class, int.class, Object[].class);
+            CALL_INLINED = OptimizedCallTarget.class.getDeclaredMethod("callInlined", Node.class, int.class, Object[].class);
             CALL_INLINED_CALL = OptimizedRuntimeSupport.class.getDeclaredMethod(OptimizedRuntimeSupport.CALL_INLINED_METHOD_NAME, Node.class, CallTarget.class, Object[].class);
-            CALL_INDIRECT = OptimizedCallTarget.class.getDeclaredMethod("callIndirect", Node.class, Object[].class);
+            CALL_INDIRECT = OptimizedCallTarget.class.getDeclaredMethod("callIndirect", Node.class, int.class, Object[].class);
             CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("executeRootNode", VirtualFrame.class, CompilationState.class);
+            CALL_ROOT = OptimizedCallTarget.class.getDeclaredMethod("callRoot", Node.class, int.class, RootNode.class, Object[].class);
         } catch (NoSuchMethodException | SecurityException e) {
             throw new InternalError(e);
         }
@@ -80,10 +89,18 @@ public class OptimizedFrameInstance implements FrameInstance {
 
     private final InspectedFrame callTargetFrame;
     private final InspectedFrame callNodeFrame;
+    private final int bytecodeIndex;
+    private final int frameIndex;
 
-    OptimizedFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame) {
+    OptimizedFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame, int bytecodeIndex) {
+        this(callTargetFrame, callNodeFrame, bytecodeIndex, FRAME_INDEX);
+    }
+
+    OptimizedFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame, int bytecodeIndex, int frameIndex) {
         this.callTargetFrame = callTargetFrame;
         this.callNodeFrame = callNodeFrame;
+        this.bytecodeIndex = bytecodeIndex;
+        this.frameIndex = frameIndex;
     }
 
     @TruffleBoundary
@@ -96,7 +113,7 @@ public class OptimizedFrameInstance implements FrameInstance {
                                                 "use the default runtime or native mode or avoid using the guest code leading to caller frames access in write/materialize mode.");
             }
 
-            if (inspectedFrame.isVirtual(FRAME_INDEX)) {
+            if (inspectedFrame.isVirtual(frameIndex)) {
                 final OptimizedCallTarget callTarget = (OptimizedCallTarget) getCallTarget();
                 if (callTarget.engine.traceDeoptimizeFrame) {
                     OptimizedTruffleRuntime.StackTraceHelper.logHostAndGuestStacktrace("FrameInstance#getFrame(MATERIALIZE)", callTarget);
@@ -104,7 +121,7 @@ public class OptimizedFrameInstance implements FrameInstance {
                 inspectedFrame.materializeVirtualObjects(false);
             }
         }
-        Frame frame = (Frame) inspectedFrame.getLocal(FRAME_INDEX);
+        Frame frame = (Frame) inspectedFrame.getLocal(frameIndex);
         if (access == FrameAccess.MATERIALIZE) {
             frame = frame.materialize();
         }
@@ -120,37 +137,74 @@ public class OptimizedFrameInstance implements FrameInstance {
     @TruffleBoundary
     @Override
     public boolean isVirtualFrame() {
-        return callTargetFrame.isVirtual(FRAME_INDEX);
+        return callTargetFrame.isVirtual(frameIndex);
+    }
+
+    private CompilationState getCompilationState() {
+        if (frameIndex == CALL_ROOT_FRAME_INDEX) {
+            return CompilationState.INTERPRETED;
+        }
+        return (CompilationState) callTargetFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX);
     }
 
     @TruffleBoundary
     @Override
     public int getCompilationTier() {
-        return ((CompilationState) callTargetFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).getTier();
+        return getCompilationState().getTier();
     }
 
     @TruffleBoundary
     @Override
     public boolean isCompilationRoot() {
-        return ((CompilationState) callTargetFrame.getLocal(OPTIMIZATION_TIER_FRAME_INDEX)).isCompilationRoot();
+        return getCompilationState().isCompilationRoot();
     }
 
     @TruffleBoundary
     @Override
     public CallTarget getCallTarget() {
+        if (frameIndex == CALL_ROOT_FRAME_INDEX) {
+            return ((RootNode) callTargetFrame.getLocal(CALL_ROOT_ROOT_INDEX)).getCallTarget();
+        }
         return (CallTarget) callTargetFrame.getLocal(CALL_TARGET_INDEX);
     }
 
     @TruffleBoundary
     @Override
     public final Node getCallNode() {
-        if (callNodeFrame != null) {
-            Object receiver = callNodeFrame.getLocal(CALL_NODE_NOTIFY_INDEX);
-            if (receiver instanceof Node) {
-                return (Node) receiver;
-            }
+        if (callNodeFrame == null) {
+            return null;
         }
-        return null;
+        Object location = callNodeFrame.getLocal(CALL_NODE_NOTIFY_INDEX);
+        return location instanceof Node ? (Node) location : null;
+    }
+
+    @TruffleBoundary
+    @Override
+    public int getBytecodeIndex() {
+        if (bytecodeIndex != -1) {
+            return bytecodeIndex;
+        }
+        return FrameInstance.super.getBytecodeIndex();
+    }
+
+    int getBytecodeIndex(Frame instrumentableFrame) {
+        if (bytecodeIndex != -1) {
+            return bytecodeIndex;
+        }
+        RootCallTarget target = (RootCallTarget) getCallTarget();
+        RootNode root = target.getRootNode();
+        return OptimizedRuntimeAccessor.NODES.findBytecodeIndex(root, getCallNode(), instrumentableFrame);
+    }
+
+    @TruffleBoundary
+    @Override
+    public Node getInstrumentableCallNode() {
+        RootCallTarget target = (RootCallTarget) getCallTarget();
+        RootNode root = target.getRootNode();
+        Node location = getCallNode();
+        Frame instrumentableFrame = OptimizedRuntimeAccessor.NODES.isCaptureFramesForTrace(root, getCompilationTier() > 0) ? getFrame(FrameAccess.READ_ONLY) : null;
+        int resolvedBytecodeIndex = bytecodeIndex != -1 ? bytecodeIndex : OptimizedRuntimeAccessor.NODES.findBytecodeIndex(root, location, instrumentableFrame);
+        return OptimizedRuntimeAccessor.NODES.findInstrumentableCallNode(root, location, instrumentableFrame, resolvedBytecodeIndex);
     }
 
 }

@@ -52,7 +52,7 @@ public class LargeReachabilityTest extends StandaloneAnalysisTest {
     }
 
     @Test
-    @Ignore
+    @Ignore("GR-80795")
     public void testReachabilityOver20000Methods() {
         assertReachableMethodLowerBound("reach-20000", REACH_20000_ENTRY_POINTS, 20_000);
     }

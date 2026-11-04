@@ -47,7 +47,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
@@ -57,7 +56,6 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
@@ -127,7 +125,6 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     private JNIRegistrationSupportSingleton jniRegistrationSupportSingleton = null;
     private JNILibraryLinkagePlan jniLibraryLinkagePlan;
-    private boolean isSunMSCAPIProviderReachable = false;
     private final List<Consumer<String>> libraryRegistrationHandlers = new CopyOnWriteArrayList<>();
     private List<String> darwinOtoolCommand;
 
@@ -161,15 +158,6 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         }
     }
 
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        if (isWindows()) {
-            AfterAnalysisAccessImpl afterAnalysisAccessImpl = (AfterAnalysisAccessImpl) access;
-            var optSunMSCAPIClass = optionalType(access, "sun.security.mscapi.SunMSCAPI").map(AnalysisType.class::cast);
-            isSunMSCAPIProviderReachable = optSunMSCAPIClass.isPresent() && afterAnalysisAccessImpl.isReachable(optSunMSCAPIClass.get());
-        }
-    }
-
     public void markPreviousLayerLibrariesReachable() {
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
             for (String library : jniRegistrationSupportSingleton.prevLayerRegisteredLibraries) {
@@ -195,7 +183,17 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
                  * String arguments.
                  */
                 if (libnameNode.isConstant()) {
-                    registerJNILibrary(providers.getSnippetReflection().asObject(String.class, libnameNode.asJavaConstant()));
+                    String library = providers.getSnippetReflection().asObject(String.class, libnameNode.asJavaConstant());
+                    /*
+                     * GR-81047: ProviderUtil.initialize can be reachable without the SunMSCAPI provider. Its
+                     * load call must not cause sunmscapi to be linked into unrelated images. The
+                     * SunMSCAPI reachability handler registers the library when the provider is used.
+                     */
+                    boolean providerWorkaroundLoad = "sunmscapi".equals(library) && b.getMethod().getName().equals("initialize") &&
+                                    b.getMethod().getDeclaringClass().toJavaName().equals("com.oracle.svm.core.jdk.ProviderUtil");
+                    if (!providerWorkaroundLoad) {
+                        registerJNILibrary(library);
+                    }
                 }
                 /* We never want to do any actual intrinsification, process the original invoke. */
                 return false;
@@ -377,7 +375,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         if (getLinkagePlan().hasRequiredShim(libname)) {
             return false;
         }
-        return !libname.equals("sunmscapi") || isSunMSCAPIProviderReachable;
+        return true;
     }
 
     private void copyJDKLibrary(Path jdkLibDir, String library) throws IOException {

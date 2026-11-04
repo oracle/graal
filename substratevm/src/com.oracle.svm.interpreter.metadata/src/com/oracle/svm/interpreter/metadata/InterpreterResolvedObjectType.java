@@ -92,7 +92,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
     /** Lazily allocated state whose lifetime follows this class metadata object. */
     private RuntimeClassHierarchyState runtimeClassHierarchyState;
 
-    /** Returns this type's runtime hierarchy state, creating it while the hierarchy lock is held. */
+    /** Returns this type's runtime hierarchy state, creating it while the shared runtime-assumption monitor is held. */
     final RuntimeClassHierarchyState getOrCreateRuntimeClassHierarchyState() {
         if (runtimeClassHierarchyState == null) {
             runtimeClassHierarchyState = new RuntimeClassHierarchyState();
@@ -639,6 +639,7 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         return declaredMethods;
     }
 
+    /// Returns declared fields, ordered by offset after field initialization is complete.
     public InterpreterResolvedJavaField[] getDeclaredFields() {
         return declaredFields;
     }
@@ -651,6 +652,18 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         this.declaredFields = declaredFields;
     }
 
+    /// Sorts declared fields by offset after their offsets have been assigned. Fields without
+    /// storage retain their negative sentinel offsets and remain in the metadata. Fields with
+    /// equal offsets retain their relative order.
+    ///
+    /// Hosted types are populated before offsets are available, so sorting is separate from
+    /// `setDeclaredFields`. Runtime-loaded types are sorted before publication.
+    public final void sortDeclaredFields() {
+        if (declaredFields != null) {
+            Arrays.sort(declaredFields, (a, b) -> Integer.compare(a.getOffset(), b.getOffset()));
+        }
+    }
+
     public final void setAfterFieldsOffset(int afterFieldsOffset) {
         this.afterFieldsOffset = afterFieldsOffset;
     }
@@ -659,6 +672,9 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         return afterFieldsOffset;
     }
 
+    /// Returns instance fields in ascending offset order once declared fields have been sorted.
+    /// Inherited fields are merged by offset because a subclass can fill gaps in its superclass's
+    /// layout.
     @Override
     public InterpreterResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
         // Collect non-static fields declared in this class
@@ -687,7 +703,6 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
             return thisClazzFields;
         }
 
-        // Merge with superclass instance fields: superclass first, preserving declared order
         InterpreterResolvedJavaField[] parent = superclass.getInstanceFields(true);
         if (parent.length == 0) {
             return thisClazzFields;
@@ -695,11 +710,23 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
         if (thisClazzFields.length == 0) {
             return parent;
         }
-        InterpreterResolvedJavaField[] result = Arrays.copyOf(parent, parent.length + thisClazzFields.length);
-        System.arraycopy(thisClazzFields, 0, result, parent.length, thisClazzFields.length);
+        InterpreterResolvedJavaField[] result = new InterpreterResolvedJavaField[parent.length + thisClazzFields.length];
+        int parentIndex = 0;
+        int declaredIndex = 0;
+        int resultIndex = 0;
+        while (parentIndex < parent.length && declaredIndex < thisClazzFields.length) {
+            if (parent[parentIndex].getOffset() <= thisClazzFields[declaredIndex].getOffset()) {
+                result[resultIndex++] = parent[parentIndex++];
+            } else {
+                result[resultIndex++] = thisClazzFields[declaredIndex++];
+            }
+        }
+        System.arraycopy(parent, parentIndex, result, resultIndex, parent.length - parentIndex);
+        System.arraycopy(thisClazzFields, declaredIndex, result, resultIndex, thisClazzFields.length - declaredIndex);
         return result;
     }
 
+    /// Returns declared static fields in offset order once declared fields have been sorted.
     @Override
     public InterpreterResolvedJavaField[] getStaticFields() {
         InterpreterResolvedJavaField[] declared = this.declaredFields;
@@ -867,9 +894,14 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
 
             // Iterate the itables to impose constraints.
             for (InterpreterResolvedObjectType superInterface : computeTransitiveInterfaceList()) {
-                VMError.guarantee(superInterface.getVtable() != null);
+                InterpreterResolvedJavaMethod[] interfaceTable = superInterface.getVtable();
+                VMError.guarantee(interfaceTable != null);
+                // Marker interfaces have no dispatch entries and may carry a sentinel offset.
+                if (interfaceTable.length == 0) {
+                    continue;
+                }
                 int start = determineITableStartingIndex(superInterface);
-                for (int i = 0; i < superInterface.getVtable().length; i++) {
+                for (int i = 0; i < interfaceTable.length; i++) {
                     InterpreterResolvedJavaMethod thisMethod = thisTable[start + i];
                     // Ensure this class and its interfaces agree on the types for their related
                     // methods.
@@ -891,10 +923,22 @@ public class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
          */
         long iTableStartingOffset = OpenTypeWorldDispatchTableSnippets.determineITableStartingOffset(getHub(), seedInterface.getHub().getInterfaceID());
 
+        return itableOffsetToIndex(iTableStartingOffset);
+    }
+
+    /**
+     * Converts an itable byte offset in a hub to an index in the interpreter dispatch table. The
+     * offset must refer to a dispatch table, not a sentinel used for type checks only.
+     */
+    public static int itableOffsetToIndex(long iTableStartingOffset) {
         int vtableBaseOffset = KnownOffsets.singleton().getVTableBaseOffset();
         int vtableEntrySize = KnownOffsets.singleton().getVTableEntrySize();
 
-        return (int) (iTableStartingOffset - vtableBaseOffset) / vtableEntrySize;
+        int relativeOffset = (int) (iTableStartingOffset - vtableBaseOffset);
+        assert relativeOffset >= 0;
+        // Valid table offsets are nonnegative. Unsigned division by the power-of-two entry size
+        // becomes a shift without the correction that signed division needs for negative values.
+        return Integer.divideUnsigned(relativeOffset, vtableEntrySize);
     }
 
     private Iterable<InterpreterResolvedObjectType> computeTransitiveInterfaceList() {

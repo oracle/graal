@@ -32,6 +32,7 @@ import java.security.Provider;
 import java.security.Security;
 import java.security.spec.AlgorithmParameterSpec;
 
+import javax.crypto.KEM;
 import javax.crypto.MacSpi;
 
 import org.graalvm.nativeimage.ImageInfo;
@@ -116,6 +117,11 @@ public class SecurityServiceTest {
         } catch (NoSuchAlgorithmException e) {
             Assert.fail("Failed to fetch noop service with exception: " + e);
         }
+    }
+
+    @Test
+    public void testKEMServiceRegistration() throws Exception {
+        Assert.assertNotNull("KEM service was not created", KEM.getInstance("ML-KEM"));
     }
 
     @Delete

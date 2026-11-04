@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
@@ -51,6 +52,7 @@ import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -79,67 +81,80 @@ public abstract class SLToTruffleStringNode extends Node {
     private static final TruffleString FALSE = SLStrings.constant("false");
     private static final TruffleString FOREIGN_OBJECT = SLStrings.constant("[foreign object]");
 
-    public abstract TruffleString execute(Node node, Object value);
+    public abstract TruffleString execute(VirtualFrame frame, Node node, int bytecodeIndex, Object value);
 
     @Specialization
-    public static TruffleString fromNull(@SuppressWarnings("unused") SLNull value) {
+    @SuppressWarnings("unused")
+    public static TruffleString fromNull(Node node, int bytecodeIndex, SLNull value) {
         return SLStrings.NULL;
     }
 
     @Specialization
-    protected static TruffleString fromString(String value,
+    @SuppressWarnings("unused")
+    protected static TruffleString fromString(Node node, int bytecodeIndex, String value,
                     // TruffleString nodes cannot be inlined yet
                     @Shared("fromJava") @Cached(inline = false) TruffleString.FromJavaStringNode fromJavaStringNode) {
         return fromJavaStringNode.execute(value, SLLanguage.STRING_ENCODING);
     }
 
     @Specialization
-    public static TruffleString fromTruffleString(TruffleString value) {
+    @SuppressWarnings("unused")
+    public static TruffleString fromTruffleString(Node node, int bytecodeIndex, TruffleString value) {
         return value;
     }
 
     @Specialization
-    public static TruffleString fromBoolean(boolean value) {
+    @SuppressWarnings("unused")
+    public static TruffleString fromBoolean(Node node, int bytecodeIndex, boolean value) {
         return value ? TRUE : FALSE;
     }
 
     @Specialization
     @TruffleBoundary
-    protected static TruffleString fromLong(long value,
+    @SuppressWarnings("unused")
+    protected static TruffleString fromLong(Node node, int bytecodeIndex, long value,
                     @Shared("fromLong") @Cached(inline = false) TruffleString.FromLongNode fromLongNode) {
         return fromLongNode.execute(value, SLLanguage.STRING_ENCODING, true);
     }
 
     @Specialization
     @TruffleBoundary
-    protected static TruffleString fromBigNumber(SLBigInteger value,
+    @SuppressWarnings("unused")
+    protected static TruffleString fromBigNumber(Node node, int bytecodeIndex, SLBigInteger value,
                     @Shared("fromJava") @Cached(inline = false) TruffleString.FromJavaStringNode fromJavaStringNode) {
         return fromJavaStringNode.execute(value.toString(), SLLanguage.STRING_ENCODING);
     }
 
     @Specialization
-    public static TruffleString fromFunction(SLFunction value) {
+    @SuppressWarnings("unused")
+    public static TruffleString fromFunction(Node node, int bytecodeIndex, SLFunction value) {
         return value.getName();
     }
 
     @InliningCutoff
     @Specialization(limit = "LIMIT")
-    public static TruffleString fromInterop(Object value,
+    public static TruffleString fromInterop(VirtualFrame frame, Node node, int bytecodeIndex, Object value,
                     @CachedLibrary("value") InteropLibrary interop,
                     @Shared("fromLong") @Cached(inline = false) TruffleString.FromLongNode fromLongNode,
                     @Shared("fromJava") @Cached(inline = false) TruffleString.FromJavaStringNode fromJavaStringNode) {
+        BytecodeNode bytecodeNode = bytecodeIndex == -1 ? null : BytecodeNode.get(node);
+        if (bytecodeIndex != -1) {
+            bytecodeNode.setBytecodeIndex(frame, bytecodeIndex);
+        }
         try {
+            TruffleString result;
             if (interop.fitsInLong(value)) {
-                return fromLongNode.execute(interop.asLong(value), SLLanguage.STRING_ENCODING, true);
+                result = fromLongNode.execute(interop.asLong(value), SLLanguage.STRING_ENCODING, true);
             } else if (interop.isString(value)) {
-                return fromJavaStringNode.execute(interop.asString(value), SLLanguage.STRING_ENCODING);
+                result = fromJavaStringNode.execute(interop.asString(value), SLLanguage.STRING_ENCODING);
             } else if (interop.isNumber(value) && value instanceof SLBigInteger) {
-                return fromJavaStringNode.execute(bigNumberToString((SLBigInteger) value), SLLanguage.STRING_ENCODING);
+                result = fromJavaStringNode.execute(bigNumberToString((SLBigInteger) value), SLLanguage.STRING_ENCODING);
             } else if (interop.isNull(value)) {
-                return SLStrings.NULL_LC;
+                result = SLStrings.NULL_LC;
             } else {
-                return FOREIGN_OBJECT;
+                result = FOREIGN_OBJECT;
             }
+            return result;
         } catch (UnsupportedMessageException e) {
             throw shouldNotReachHere(e);
         }

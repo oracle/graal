@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FullInfopointNode;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.LogicNegationNode;
 import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
@@ -55,11 +56,16 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
+import jdk.graal.compiler.nodes.calc.MaxNode;
 import jdk.graal.compiler.nodes.calc.NegateNode;
+import jdk.graal.compiler.nodes.calc.SignExtendNode;
+import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.loop.InductionVariable.Direction;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.util.IntegerHelper;
 import jdk.graal.compiler.nodes.util.SignedIntegerHelper;
 import jdk.graal.compiler.nodes.util.UnsignedIntegerHelper;
@@ -663,11 +669,175 @@ public class CountedLoopInfo {
     }
 
     /**
+     * Tries to exclude overflow of the counter updated by each supported loop, so later optimizations can use
+     * its iteration count. For example:
+     *
+     * <pre>
+     * for (int i = 0; (long) i &lt; limit; i++) {
+     *     body(i);
+     * }
+     * </pre>
+     *
+     * Here {@code i} is the root induction variable (IV): the loop updates it with {@code i++}. The
+     * limit-checked IV is the derived value {@code (long) i}. That conversion fits in a long even when the
+     * int increment overflows. For this shape, {@link #prepareRootOverflowGuard()} can add a check before the
+     * loop that excludes such limits.
+     *
+     * <p>Preparation can add nodes, replace loop comparisons and rebuild counted-loop information. Obtain
+     * fresh loop data afterwards. Returning does not mean every loop was prepared: unsupported loops,
+     * substitutions, disallowed floating guards and failed speculation can prevent a rewrite. Each consumer
+     * must still test {@link #loopAndRootCanNeverOverflow()} for its loop and keep its existing fallback when
+     * the result is false.
+     *
+     * <p>Every phase that wants to optimize a supported widened-counter loop by bounding its int counter
+     * must call this preparation before obtaining loop information. Inversion changes the supported head
+     * test, guard movement uses the iteration count, and guard lowering ends the opportunity to insert
+     * floating guards. These phases can run independently, so a call in one phase does not replace the calls
+     * in the others.
+     */
+    public static void prepareRootOverflowGuards(StructuredGraph graph, CoreProviders providers) {
+        if (graph.isSubstitution() || !graph.getGuardsStage().allowsFloatingGuards() || !graph.hasLoops()) {
+            return;
+        }
+        LoopsData loops = providers.getLoopsDataProvider().getLoopsData(graph);
+        for (Loop candidate : loops.loops()) {
+            if (candidate.detectCounted()) {
+                candidate.counted().prepareRootOverflowGuard();
+            }
+        }
+    }
+
+    /**
+     * Adds a speculative check on the limit of a loop such as:
+     *
+     * <pre>
+     * for (int i = 0; (long) i &lt; limit; i++) {
+     *     body(i);
+     * }
+     * </pre>
+     *
+     * The root IV is the int counter {@code i}; the limit-checked IV is {@code (long) i}. With {@code limit =
+     * 2147483648L}, incrementing {@code i} past {@link Integer#MAX_VALUE} produces {@link Integer#MIN_VALUE}.
+     * Every int value is still below that long limit, so the loop condition never becomes false. The
+     * conversion itself does not overflow.
+     *
+     * <p>For the supported shape, the transformation is equivalent to:
+     *
+     * <pre>
+     * long checkedLimit = Math.max(limit, 0);
+     * if (checkedLimit > (long) Integer.MAX_VALUE) {
+     *     deopt;
+     * }
+     * for (int i = 0; (long) i &lt; checkedLimit; i++) {
+     *     body(i);
+     * }
+     * </pre>
+     *
+     * If execution passes the new guard, {@code i} reaches the limit before an int increment can overflow.
+     * The nonnegative checked limit permits a useful Pi stamp. {@link
+     * #supportsRootOverflowGuard(BasicInductionVariable)} requires a nonnegative start, preserving whether
+     * the original loop executes. This method records {@code checkedLimit}'s range as {@code [0,
+     * Integer.MAX_VALUE]} in a guarded Pi, replaces the comparison limit and rebuilds counted-loop
+     * information. Use {@code loop.counted()} afterwards rather than retaining this instance.
+     *
+     * <p>{@link #supportsRootOverflowGuard(BasicInductionVariable)} defines the supported loop shape. No
+     * rewrite is needed when overflow of {@code i} is already excluded. Substitutions and stages that
+     * disallow floating guards are skipped; failed speculation can also prevent insertion.
+     *
+     * <p>This method returns no success indication. A consumer must query {@link
+     * #loopAndRootCanNeverOverflow()} on the resulting counted loop and decline its optimization if overflow
+     * is still possible or unproved.
+     */
+    public void prepareRootOverflowGuard() {
+        StructuredGraph graph = loop.loopBegin().graph();
+        if (graph.isSubstitution() || !graph.getGuardsStage().allowsFloatingGuards()) {
+            return;
+        }
+        BasicInductionVariable root = limitCheckedIV.getRootIV();
+        if (root == limitCheckedIV || ivCanNeverOverflow(root) || !root.isConstantStride() || !supportsRootOverflowGuard(root)) {
+            return;
+        }
+        ValueNode originalLimit = getLimit();
+        IntegerStamp limitStamp = (IntegerStamp) originalLimit.stamp(NodeView.DEFAULT);
+        ValueNode zero = ConstantNode.forIntegerStamp(limitStamp, 0, graph);
+        ValueNode nonNegativeLimit = graph.addOrUniqueWithInputs(MaxNode.create(originalLimit, zero, NodeView.DEFAULT));
+        ValueNode max = ConstantNode.forIntegerStamp(limitStamp, Integer.MAX_VALUE, graph);
+        LogicNode overflow = graph.addOrUniqueWithInputs(IntegerLessThanNode.create(max, nonNegativeLimit, NodeView.DEFAULT));
+        GuardingNode guard = createOverflowGuard(overflow, null);
+        if (guard == null) {
+            return;
+        }
+        ValueNode guardedLimit = graph.addOrUniqueWithInputs(PiNode.create(nonNegativeLimit, IntegerStamp.create(limitStamp.getBits(), 0, Integer.MAX_VALUE), guard.asNode()));
+        LogicNode condition = (LogicNode) getLimitTest().condition().copyWithInputs(true);
+        condition.replaceFirstInput(originalLimit, guardedLimit);
+        getLimitTest().setCondition(condition);
+        loop.resetCounted();
+        loop.detectCounted();
+    }
+
+    /**
+     * Recognizes the loop shape for which checking the limit alone excludes overflow of the int increment:
+     *
+     * <pre>
+     * for (int i = 7; (long) i &lt; limit; i++) {
+     *     body(i);
+     * }
+     * </pre>
+     *
+     * The root IV is {@code i}, and the limit-checked IV must be its direct sign extension. A constant
+     * nonnegative start and a stride of one mean a limit at most {@link Integer#MAX_VALUE} stops the loop
+     * before an increment overflows. For example, a limit of 10 gives body values 7, 8 and 9; the last
+     * increment reaches 10. A limit at or below 7 executes no iterations. Clamping a negative limit to zero
+     * preserves that empty-loop case because the start is nonnegative.
+     *
+     * <p>The signed, exclusive head test is required: an inclusive test could still increment after
+     * visiting {@code Integer.MAX_VALUE}, and a tail test executes the body before testing the limit.
+     * Neither is supported here.
+     *
+     * <p>The conversion must directly read {@code i}. For {@code (long) (i + offset)}, the int addition may
+     * overflow before conversion, so checking the long limit is insufficient.
+     *
+     * @param root the limit-checked IV's root, already known to have a constant stride
+     */
+    private boolean supportsRootOverflowGuard(BasicInductionVariable root) {
+        final boolean signedExclusiveHeadTest = !isInverted() && !isUnsignedCheck() && !isLimitIncluded();
+        final boolean incrementsFromNonNegativeStart = root.constantStride() == 1 && root.isConstantInit() && root.constantInit() >= 0;
+        final boolean intRoot = IntegerStamp.getBits(root.valueNode().stamp(NodeView.DEFAULT)) == Integer.SIZE;
+        final boolean directlySignExtendedRoot = limitCheckedIV instanceof DerivedConvertedInductionVariable converted && converted.getBase() == root &&
+                        converted.valueNode() instanceof SignExtendNode;
+        return signedExclusiveHeadTest && incrementsFromNonNegativeStart && intRoot && directlySignExtendedRoot;
+    }
+
+    /**
      * Determine if there are static properties or dynamic checks in place that guarantee that the
      * {@link #getLimitCheckedIV()} never overflows.
      */
     public boolean loopCanNeverOverflow() {
         return counterNeverOverflows() || getOverFlowGuard() != null;
+    }
+
+    /**
+     * Checks whether existing stamps or guards exclude overflow of both the limit-checked IV and its root.
+     * Consider:
+     *
+     * <pre>
+     * for (int i = 0; (long) i &lt; limit; i++) {
+     *     body(i);
+     * }
+     * </pre>
+     *
+     * The root IV is {@code i}, updated as an int. The limit-checked IV is {@code (long) i}. The long conversion
+     * fits even if {@code i++} overflows from {@link Integer#MAX_VALUE} to {@link Integer#MIN_VALUE}; proving
+     * only the limit-checked IV safe does not establish that this loop reaches its limit. This method also checks
+     * {@code i}. In a plain {@code i &lt; intLimit} loop, the limit-checked IV and root are the same, so one check
+     * suffices.
+     *
+     * <p>No guards are inserted. A false result means at least one required proof is unavailable; it does not
+     * mean overflow must occur.
+     */
+    public boolean loopAndRootCanNeverOverflow() {
+        InductionVariable checked = getLimitCheckedIV();
+        return loopCanNeverOverflow() && (checked == checked.getRootIV() || ivCanNeverOverflow(checked.getRootIV()));
     }
 
     /**
@@ -683,27 +853,348 @@ public class CountedLoopInfo {
         return ivCanNeverOverflow(getLimitCheckedIV());
     }
 
-    public boolean ivCanNeverOverflow(InductionVariable iv) {
-        if (iv != getLimitCheckedIV()) {
-            /*
-             * All non-limit checked IVs: This IV is not compared against limit and thus we cannot
-             * play the trick comparing against the end stamp. We have to compute (if possible) the
-             * extremum value and use that.
-             */
-            if (iv.isConstantInit() && isConstantMaxTripCount() && iv.isConstantStride()) {
-                try {
-                    final int bits = IntegerStamp.getBits(iv.valueNode().stamp(NodeView.DEFAULT));
-                    final long signedTripCount = LoopUtility.tripCountSignedExact(this);
-                    final long stripTimesTripCount = LoopUtility.multiplyExact(bits, iv.constantStride(), signedTripCount);
-                    @SuppressWarnings("unused")
-                    long extremum = LoopUtility.addExact(bits, stripTimesTripCount, iv.initNode().asJavaConstant().asLong());
-                    return true;
-                } catch (ArithmeticException e) {
-                    // overflow
-                    return false;
+    /**
+     * Checks the update from the first body value to the first tested value, which a tail-test proof alone
+     * does not cover:
+     *
+     * <pre>
+     * int i = start;
+     * do {
+     *     body(i);
+     *     i += 4;
+     * } while (i &lt; limit);
+     * </pre>
+     *
+     * Here {@code iv} is the body IV {@code i}; the limit-checked IV is its next value {@code i + 4}. With {@code
+     * start = Integer.MAX_VALUE}, the first addition overflows before the first test. A guard that protects
+     * later updates of the limit-checked IV does not constrain this initial body value.
+     *
+     * <p>First try the initial-value and stride stamps. If they permit overflow, combine an existing overflow
+     * guard with comparisons on the path into the loop. For example, a guard establishing {@code limit <=
+     * Integer.MAX_VALUE - 3} and an entry test {@code start < limit} give {@code start <= Integer.MAX_VALUE -
+     * 4}, making the first addition safe. The result is true only if that addition and the subsequent checked
+     * updates are both proved safe. This method inserts no guards.
+     */
+    private boolean initialUpdateCanNeverOverflow(InductionVariable iv) {
+        if (!loopCanNeverOverflow()) {
+            return false;
+        }
+        IntegerStamp initStamp = (IntegerStamp) iv.initNode().stamp(NodeView.DEFAULT);
+        IntegerStamp strideStamp = (IntegerStamp) iv.strideNode().stamp(NodeView.DEFAULT);
+        if (IntegerStamp.addCanOverflow(initStamp, strideStamp)) {
+            // For stride four, the guard can establish limit <= MAX_VALUE - 3. Use that bound when
+            // interpreting an entry test such as start < limit.
+            Stamp limitStamp = getTripCountLimit().stamp(NodeView.DEFAULT);
+            limitStamp = refineLimitStampFromOverflowGuard(limitStamp);
+            initStamp = refineInitialStampFromEntryTests(iv.initNode(), initStamp, limitStamp);
+        }
+        return !IntegerStamp.addCanOverflow(initStamp, strideStamp);
+    }
+
+    /**
+     * Recovers a bound on the loop limit from an existing overflow guard. For example:
+     *
+     * <pre>
+     * int i = start;
+     * do {
+     *     body(i);
+     *     i += 4;
+     * } while (i &lt; limit);
+     * </pre>
+     *
+     * The body IV is {@code i}; the limit-checked IV is {@code i + 4}. Its overflow guard can establish {@code
+     * limit <= Integer.MAX_VALUE - 3}. That bound is useful to the caller: together with an entry test {@code
+     * start < limit}, it proves the first addition safe.
+     *
+     * <p>Interpret the guard's successful branch using its negation flag and either operand order, and
+     * intersect any bound on {@link #getTripCountLimit()} with {@code limitStamp}. If the guard is not a
+     * floating comparison involving that limit, or yields no narrower range, return the existing stamp. This
+     * only computes a stamp; it neither inserts a guard nor changes the graph.
+     */
+    private Stamp refineLimitStampFromOverflowGuard(Stamp originalLimitStamp) {
+        Stamp limitStamp = originalLimitStamp;
+        if (getOverFlowGuard() instanceof GuardNode overflowGuard) {
+            LogicNode overflowCondition = overflowGuard.getCondition();
+            boolean negated = overflowGuard.isNegated();
+            // A newly created overflow guard may be queried before its negation is canonicalized.
+            if (overflowCondition instanceof LogicNegationNode not) {
+                overflowCondition = not.getValue();
+                negated = !negated;
+            }
+            if (overflowCondition instanceof CompareNode overflowCompare) {
+                Stamp refined = null;
+                if (overflowCompare.getX() == getTripCountLimit()) {
+                    refined = overflowCompare.getSucceedingStampForX(negated, limitStamp, overflowCompare.getY().stamp(NodeView.DEFAULT));
+                } else if (overflowCompare.getY() == getTripCountLimit()) {
+                    refined = overflowCompare.getSucceedingStampForY(negated, overflowCompare.getX().stamp(NodeView.DEFAULT), limitStamp);
+                }
+                if (refined != null) {
+                    limitStamp = limitStamp.improveWith(refined);
                 }
             }
+        }
+        return limitStamp;
+    }
+
+    /**
+     * Narrows the initial body value using comparisons that every path into the loop must satisfy. For
+     * example:
+     *
+     * <pre>
+     * if (start &lt; limit) {
+     *     int i = start;
+     *     do {
+     *         body(i);
+     *         i += 4;
+     *     } while (i &lt; limit);
+     * }
+     * </pre>
+     *
+     * The root/body IV is {@code i}, initialized by {@code initialValue = start}; the limit-checked IV is {@code i
+     * + 4}. If {@code limitStamp} already establishes {@code limit <= Integer.MAX_VALUE - 3}, the entry
+     * comparison gives {@code start <= Integer.MAX_VALUE - 4}. The caller can then exclude overflow of the
+     * first addition.
+     *
+     * <p>Only the true or false successor that dominates the loop header constrains entry: a comparison on a
+     * path the loop can bypass proves nothing. When that comparison uses the trip-count limit, use the
+     * supplied refined stamp. Ignore successors absent from the current CFG and retain the initial range when
+     * no useful comparison is found. The graph is unchanged.
+     */
+    private IntegerStamp refineInitialStampFromEntryTests(ValueNode initialValue, IntegerStamp originalInitStamp, Stamp limitStamp) {
+        IntegerStamp initStamp = originalInitStamp;
+        ControlFlowGraph cfg = loop.loopsData().getCFG();
+        HIRBlock header = cfg.blockFor(loop.loopBegin());
+        for (HIRBlock dominator = header.getDominator(); dominator != null; dominator = dominator.getDominator()) {
+            if (dominator.getEndNode() instanceof IfNode branch && branch.isAlive() && branch.condition() instanceof CompareNode compare &&
+                            !cfg.getNodeToBlock().isNew(branch.trueSuccessor()) && !cfg.getNodeToBlock().isNew(branch.falseSuccessor())) {
+                boolean onTrue = cfg.blockFor(branch.trueSuccessor()).dominates(header);
+                if (!onTrue && !cfg.blockFor(branch.falseSuccessor()).dominates(header)) {
+                    continue;
+                }
+                Stamp refined = null;
+                if (compare.getX() == initialValue) {
+                    refined = compare.getSucceedingStampForX(!onTrue, initStamp, compare.getY() == getTripCountLimit() ? limitStamp : compare.getY().stamp(NodeView.DEFAULT));
+                } else if (compare.getY() == initialValue) {
+                    refined = compare.getSucceedingStampForY(!onTrue, compare.getX() == getTripCountLimit() ? limitStamp : compare.getX().stamp(NodeView.DEFAULT), initStamp);
+                }
+                if (refined != null) {
+                    initStamp = (IntegerStamp) initStamp.improveWith(refined);
+                }
+            }
+        }
+        return initStamp;
+    }
+
+    /**
+     * Checks whether the limit-checked IV is one supported direct derivation of its root. For example:
+     *
+     * <pre>
+     * for (int i = 0; (long) i &lt; limit; i++) {
+     *     body(i);
+     * }
+     * </pre>
+     *
+     * The root is {@code i}; the limit-checked IV directly sign-extends it. Also accept zero extension and
+     * direct arithmetic such as {@code i + 7}. The IV detector already requires nonnegative inputs for
+     * zero-extension IVs, and arithmetic IVs keep their base's integer width.
+     *
+     * <p>Pi and narrowing IVs are not supported by the root-range calculation. A Pi may carry a branch-local
+     * bound; narrowing changes the width in which the limit-checked values advance.
+     *
+     * <p>The immediate base must be the root. Thus {@code (long) (i + 1)} is rejected: the addition can
+     * overflow as an int before conversion, changing the long sequence from {@code 2147483647L} to {@code
+     * -2147483648L}. Recognizing a supported form does not prove {@code i} cannot overflow; the caller must
+     * still check its range.
+     */
+    private static boolean isDirectAffineRoot(InductionVariable limitCheckedIV) {
+        final ValueNode limitCheckedValue = limitCheckedIV.valueNode();
+        return limitCheckedIV instanceof DerivedInductionVariable derived && derived.getBase() == limitCheckedIV.getRootIV() &&
+                        (!(derived instanceof DerivedConvertedInductionVariable) || limitCheckedValue instanceof SignExtendNode || limitCheckedValue instanceof ZeroExtendNode);
+    }
+
+    /**
+     * Bounds the number of iterations from the body-start and limit stamps, without narrowing the count to an
+     * int. For example:
+     *
+     * <pre>
+     * for (int i = start; (long) i &lt; 10; i += 3) {
+     *     body(i);
+     * }
+     * </pre>
+     *
+     * The root IV is {@code i}, and the limit-checked IV is {@code (long) i}. If {@code start} is in {@code [0,
+     * 2]}, the longest sequence starts at zero: {@code 0, 3, 6, 9}, or {@code ceil((10 - 0) / 3) = 4}
+     * iterations. The caller uses this bound to check the root's final update separately.
+     *
+     * <p>Use the comparison's signed or unsigned ordering to select the furthest start and limit. Divide
+     * their distance upward by the absolute stride of the limit-checked IV; an inclusive bound adds one to
+     * the distance. The result is at least one, conservatively covering an inverted loop's first iteration.
+     *
+     * <p>An unsigned 32-bit count can exceed {@link Integer#MAX_VALUE}, even when another graph node
+     * represents it with a positive int Pi. Read the original stamps and use exact long arithmetic so that
+     * narrowing cannot hide those iterations. Arithmetic overflow or a negative distance throws {@link
+     * ArithmeticException}; the caller then declines the proof.
+     */
+    private long maximumRootTripCount() {
+        IntegerStamp startStamp = (IntegerStamp) getBodyIVStart().stamp(NodeView.DEFAULT);
+        IntegerStamp limitStamp = (IntegerStamp) getTripCountLimit().stamp(NodeView.DEFAULT);
+        IntegerHelper helper = getCounterIntegerHelper();
+        boolean up = limitCheckedIV.direction() == Direction.Up;
+        long max = helper.upperBound(up ? limitStamp : startStamp);
+        long min = helper.lowerBound(up ? startStamp : limitStamp);
+        long range = Math.subtractExact(max, min);
+        if (range < 0) {
+            throw new ArithmeticException("Negative trip-count range");
+        }
+        long absStride = Math.absExact(limitCheckedIV.constantStride());
+        long numerator = Math.addExact(range, absStride - 1);
+        if (isLimitIncluded()) {
+            numerator = Math.incrementExact(numerator);
+        }
+        return Math.max(1, numerator / absStride);
+    }
+
+    /**
+     * Bounds the updates of an IV other than the limit-checked IV and rejects any native-width overflow.
+     * For example:
+     *
+     * <pre>
+     * for (int i = 0, j = 5; (long) i &lt; 9; i += 3, j += 2) {
+     *     body(j);
+     * }
+     * </pre>
+     *
+     * The limit-checked IV is {@code (long) i}, its root is {@code i}, and {@code j} is an independent IV. Three
+     * iterations take {@code i} to 9 and {@code j} to 11. To prove {@code j} safe, it is not enough that 11
+     * fits in an int: the count must also describe the actual updates of {@code i}.
+     *
+     * <p>Returns true only for a constant-stride IV when the limit-checked IV is known not to overflow. If
+     * the limit-checked IV differs from its root, it must be a supported direct derivation of that root.
+     * An inverted loop must also have the initial body value described by {@link
+     * #invertedBodyStartMatchesCheckedIV()}. A constant iteration count may bound another IV only after the
+     * root's final update is known to fit its integer width. A count derived from stamps is used only to
+     * establish that property for the root itself. Finally require the requested IV's extremum to fit its
+     * integer width. Missing information, an unsupported shape or failed exact arithmetic returns false.
+     */
+    private boolean nonCheckedIVCanNeverOverflow(InductionVariable iv) {
+        if (!iv.isConstantStride() || !loopCanNeverOverflow()) {
             return false;
+        }
+        try {
+            BasicInductionVariable root = limitCheckedIV.getRootIV();
+            final boolean directAffineRoot = isDirectAffineRoot(limitCheckedIV);
+            // A constant limit does not make (long) (i + offset) exact: the int addition can overflow first.
+            // An inverted loop also needs a representable previous body value before its count can bound
+            // another IV.
+            if (limitCheckedIV != root && !directAffineRoot || !invertedBodyStartMatchesCheckedIV()) {
+                return false;
+            }
+            final long maxTripCount;
+            if (iv.isConstantInit() && isConstantMaxTripCount()) {
+                maxTripCount = LoopUtility.tripCountSignedExact(this);
+                if (iv != root && limitCheckedIV != root) {
+                    // Before reusing this count for an independent IV, require the root's final update to
+                    // fit its own integer width.
+                    checkIVExtremum(root, maxTripCount);
+                }
+            } else if (iv == root && directAffineRoot && limitCheckedIV.isConstantStride()) {
+                maxTripCount = maximumRootTripCount();
+            } else {
+                return false;
+            }
+            checkIVExtremum(iv, maxTripCount);
+            return true;
+        } catch (ArithmeticException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Checks the initial values used to count an inverted loop such as:
+     *
+     * <pre>
+     * int i = start;
+     * do {
+     *     body(i);
+     *     i += stride;
+     * } while (i &lt; limit);
+     * </pre>
+     *
+     * When the body and limit-checked IVs differ, requires {@code bodyInit == limitCheckedInit -
+     * limitCheckedStride}. Requires constant values and evaluates the subtraction using exact long
+     * arithmetic. Unknown or unequal values return false; arithmetic overflow propagates to the caller.
+     *
+     * <p>Returns true without checking for non-inverted loops or identical body and limit-checked IVs.
+     */
+    private boolean invertedBodyStartMatchesCheckedIV() {
+        if (!isInverted() || bodyUsedIV == limitCheckedIV) {
+            return true;
+        }
+        ValueNode bodyStart = getBodyIVStart();
+        return limitCheckedIV.isConstantInit() && limitCheckedIV.isConstantStride() && bodyStart.isConstant() &&
+                        bodyStart.asJavaConstant().asLong() == Math.subtractExact(limitCheckedIV.constantInit(), limitCheckedIV.constantStride());
+    }
+
+    /**
+     * Checks that the IV's last update fits its integer width. For example:
+     *
+     * <pre>
+     * for (int i = 0, j = 5; i &lt; 3; i++, j += 2) {
+     *     body(j);
+     * }
+     * </pre>
+     *
+     * For {@code iv = j} and {@code maxTripCount = 3}, the body sees {@code 5, 7, 9}, but the final update
+     * produces 11. Check {@code 5 + 2 * 3}, including that update, with exact 32-bit multiplication and
+     * addition.
+     *
+     * <p>For a range of possible initial values, use its upper bound when the stride is positive and its
+     * lower bound when negative. An unrepresentable product or sum throws {@link ArithmeticException}, so the
+     * caller declines the proof. The caller must already have justified the iteration bound; this method does
+     * not establish that the controlling loop terminates.
+     */
+    private static void checkIVExtremum(InductionVariable iv, long maxTripCount) {
+        int bits = IntegerStamp.getBits(iv.valueNode().stamp(NodeView.DEFAULT));
+        long stride = iv.constantStride();
+        long strideTimesTripCount = LoopUtility.multiplyExact(bits, stride, maxTripCount);
+        IntegerStamp initStamp = (IntegerStamp) iv.initNode().stamp(NodeView.DEFAULT);
+        @SuppressWarnings("unused")
+        long extremum = LoopUtility.addExact(bits, strideTimesTripCount, stride > 0 ? initStamp.upperBound() : initStamp.lowerBound());
+    }
+
+    /**
+     * Tries to prove that {@code iv}'s updates do not overflow, using existing stamps and guards. For
+     * example:
+     *
+     * <pre>
+     * for (int i = 0, j = 5; (long) i &lt; 9; i += 3, j += 2) {
+     *     body(j);
+     * }
+     * </pre>
+     *
+     * The limit-checked IV is {@code (long) i}; its root is the updated int {@code i}; {@code j} is an independent
+     * IV. Proving that the limit-checked IV does not overflow does not establish either int counter's range.
+     * To prove that {@code j} does not overflow, first justify the three-iteration bound using {@code i}, then
+     * establish that {@code j}'s last update to 11 fits in an int.
+     *
+     * <p>A tail-counted loop has another case: its first body update occurs before its first condition test,
+     * so that update needs a separate check. Dispatch those body/root updates to {@link
+     * #initialUpdateCanNeverOverflow(InductionVariable)}, other IVs except the limit-checked IV to {@link
+     * #nonCheckedIVCanNeverOverflow(InductionVariable)}, and reason directly from the stride and limit for
+     * the limit-checked IV. The latter must not obtain its own proof recursively through {@link
+     * #loopCanNeverOverflow()}.
+     *
+     * <p>No guards are inserted. False means a proof is unavailable, not that overflow necessarily occurs.
+     */
+    public boolean ivCanNeverOverflow(InductionVariable iv) {
+        final boolean exactRootUpdate = iv instanceof BasicInductionVariable basic && iv != limitCheckedIV && basic.getOp() == limitCheckedIV.valueNode() &&
+                        !isUnsignedCheck() && iv.isConstantStride() && Loop.absStrideIsOne(iv);
+        final boolean previousBodyValue = isInverted() && bodyUsedIV != limitCheckedIV && iv == bodyUsedIV;
+        if (previousBodyValue || exactRootUpdate) {
+            return initialUpdateCanNeverOverflow(iv);
+        }
+        if (iv != getLimitCheckedIV()) {
+            return nonCheckedIVCanNeverOverflow(iv);
         }
 
         // BELOW: limitCheckedIV case
@@ -768,7 +1259,9 @@ public class CountedLoopInfo {
         IntegerHelper integerHelper = getCounterIntegerHelper();
         if (getDirection() == InductionVariable.Direction.Up) {
             long max = integerHelper.maxValue();
-            return integerHelper.compare(endStamp.upperBound(), max - (strideStamp.upperBound() - 1) - (isLimitIncluded ? 1 : 0)) <= 0;
+            // Negating MIN_VALUE can produce a mathematical step above the signed stride stamp's upper bound.
+            return strideStamp.lowerBound() >= 0 &&
+                            integerHelper.compare(endStamp.upperBound(), max - (strideStamp.upperBound() - 1) - (isLimitIncluded ? 1 : 0)) <= 0;
         } else if (getDirection() == InductionVariable.Direction.Down) {
             long min = integerHelper.minValue();
             return integerHelper.compare(min + (1 - strideStamp.lowerBound()) + (isLimitIncluded ? 1 : 0), endStamp.lowerBound()) <= 0;

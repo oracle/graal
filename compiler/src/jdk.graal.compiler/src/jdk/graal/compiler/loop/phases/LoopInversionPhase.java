@@ -418,6 +418,14 @@ public class LoopInversionPhase extends LoopPhase<LoopPolicies> {
     @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
+        // For for (int i = 0; (long) i < limit; i++), the checked IV is long but the updated root IV i is
+        // int. Prepare a guard on limit while the test is still at the head, the shape supported by the
+        // helper. After inversion it would be too late for that preparation. The resulting bound lets later
+        // count-based optimizations, including stamp injection below, prove that i does not overflow. This is
+        // not a requirement that inversion reject every potentially overflowing loop: moving the test must
+        // preserve its updates and entry behavior. Preparation may replace comparisons, so acquire loop data
+        // afterwards.
+        CountedLoopInfo.prepareRootOverflowGuards(graph, context);
         if (!graph.hasLoops()) {
             return;
         }

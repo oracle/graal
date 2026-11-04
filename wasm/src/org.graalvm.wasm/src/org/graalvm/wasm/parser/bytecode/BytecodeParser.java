@@ -47,9 +47,7 @@ import static org.graalvm.wasm.BinaryStreamParser.rawPeekU16;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU32;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 
 import org.graalvm.wasm.BinaryStreamParser;
@@ -58,13 +56,13 @@ import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmStore;
 import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
-import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -450,62 +448,63 @@ public abstract class BytecodeParser {
         final int startOffset = endOffset - length;
         CodeEntryMetadata metadata = readCodeEntryMetadata(bytecode, startOffset, endOffset);
         boolean usesMemoryZero = module.memoryCount() != 0;
-        return new CodeEntry(functionIndex, maxStackSize, metadata.maxLegacyCatchDepth, locals, results, metadata.callNodes, startOffset, endOffset, usesMemoryZero,
-                        exceptionTableOffset);
+        return new CodeEntry(functionIndex, maxStackSize, metadata.maxLegacyCatchDepth, locals, results, metadata.callFunctionIndices, metadata.indirectCallCount,
+                        startOffset, endOffset, usesMemoryZero, exceptionTableOffset);
     }
 
     /**
-     * Rereads the code section entries for all functions based on the bytecode of the module and
-     * adds the resulting call nodes to the entries.
+     * Call metadata and legacy catch depth reconstructed from the module's bytecode.
      */
     private static final class CodeEntryMetadata {
-        private final List<CallNode> callNodes;
+        private final int[] callFunctionIndices;
+        private final int indirectCallCount;
         private final int maxLegacyCatchDepth;
 
-        private CodeEntryMetadata(List<CallNode> callNodes, int maxLegacyCatchDepth) {
-            this.callNodes = callNodes;
+        private CodeEntryMetadata(int[] callFunctionIndices, int indirectCallCount, int maxLegacyCatchDepth) {
+            this.callFunctionIndices = callFunctionIndices;
+            this.indirectCallCount = indirectCallCount;
             this.maxLegacyCatchDepth = maxLegacyCatchDepth;
         }
     }
 
     private static CodeEntryMetadata readCodeEntryMetadata(byte[] bytecode, int startOffset, int endOffset) {
         int offset = startOffset;
-        ArrayList<CallNode> callNodes = new ArrayList<>();
+        IntArrayList callFunctionIndices = new IntArrayList();
+        int indirectCallCount = 0;
         int maxLegacyCatchDepth = 0;
         while (offset < endOffset) {
             int opcode = BinaryStreamParser.rawPeekU8(bytecode, offset);
-            final int originalOffset = offset;
             offset++;
             switch (opcode) {
                 case Bytecode.CALL_U8: {
                     final int functionIndex = rawPeekU8(bytecode, offset + 1);
-                    callNodes.add(new CallNode(originalOffset, functionIndex));
+                    callFunctionIndices.add(functionIndex);
                     offset += 2;
                     break;
                 }
                 case Bytecode.CALL_I32: {
                     final int functionIndex = rawPeekI32(bytecode, offset + 4);
-                    callNodes.add(new CallNode(originalOffset, functionIndex));
+                    callFunctionIndices.add(functionIndex);
                     offset += 8;
                     break;
                 }
                 case Bytecode.CALL_INDIRECT_U8: {
-                    callNodes.add(new CallNode(originalOffset));
+                    indirectCallCount++;
                     offset += 3;
                     break;
                 }
                 case Bytecode.CALL_INDIRECT_I32: {
-                    callNodes.add(new CallNode(originalOffset));
+                    indirectCallCount++;
                     offset += 12;
                     break;
                 }
                 case Bytecode.CALL_REF_U8: {
-                    callNodes.add(new CallNode(originalOffset));
+                    indirectCallCount++;
                     offset += 2;
                     break;
                 }
                 case Bytecode.CALL_REF_I32: {
-                    callNodes.add(new CallNode(originalOffset));
+                    indirectCallCount++;
                     offset += 8;
                     break;
                 }
@@ -1323,6 +1322,6 @@ public abstract class BytecodeParser {
                     throw CompilerDirectives.shouldNotReachHere();
             }
         }
-        return new CodeEntryMetadata(callNodes, maxLegacyCatchDepth);
+        return new CodeEntryMetadata(callFunctionIndices.toArray(), indirectCallCount, maxLegacyCatchDepth);
     }
 }

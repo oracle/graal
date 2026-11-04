@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,57 +38,27 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.nodes;
+package com.oracle.truffle.api.impl;
 
-import java.util.Objects;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
-import org.graalvm.wasm.WasmConstant;
+public abstract class RuntimeCallTarget implements RootCallTarget {
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.NeverDefault;
-
-/**
- * Direct call node for direct function (code entry) calls within the same module. The call target
- * is resolved during module instantiation, before linking.
- */
-public final class WasmDirectCallNode extends WasmCallNode {
-
-    private final CallTarget target;
-
-    @Child private WasmReturnCallNode returnCallNode;
-
-    WasmDirectCallNode(CallTarget target, int bytecodeOffset) {
-        super(bytecodeOffset);
-        this.target = Objects.requireNonNull(target);
-    }
-
-    public CallTarget target() {
-        return target;
-    }
-
-    public Object execute(Object[] args, boolean targetContainsReturnCalls) {
-        final Object result = target.call(this, args);
-        CompilerAsserts.partialEvaluationConstant(targetContainsReturnCalls);
-        if (targetContainsReturnCalls && result == WasmConstant.RETURN_CALL_VALUE) {
-            return executeReturnCall();
-        }
-        assert result != WasmConstant.RETURN_CALL_VALUE : "target should not contain tail calls";
-        return result;
-    }
-
-    private Object executeReturnCall() {
-        if (returnCallNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            returnCallNode = insert(WasmReturnCallNode.create());
-        }
-        return returnCallNode.call();
-    }
-
-    @NeverDefault
-    public static WasmDirectCallNode create(CallTarget target, int bytecodeOffset) {
-        return new WasmDirectCallNode(target, bytecodeOffset);
-    }
+    /**
+     * Calls the root node from runtime-specific code.
+     * <p>
+     * This method must only be used by Truffle runtime implementations and never by guest language
+     * implementations. The given {@code root} must be the same root node as returned by
+     * {@link #getRootNode()}. Behavior is unspecified otherwise.
+     *
+     * @param location the location of the call, or {@code null} if no location is available
+     * @param bytecodeIndex the bytecode index of the call, or {@code -1} if unavailable
+     * @param root the root node of this call target
+     * @param arguments the arguments passed to the call
+     * @return the result of the call
+     */
+    public abstract Object callRoot(Node location, int bytecodeIndex, RootNode root, Object[] arguments);
 
 }

@@ -80,18 +80,104 @@ public class LoopInversionRegressionTest extends GraalCompilerTest {
         return i;
     }
 
-    @Test
-    public void testTailCountedDetection() {
-        StructuredGraph graph = parseEager("tailCountedLoop", AllowAssumptions.YES);
+    /**
+     * Builds the inverted-loop shape used to test the first body update. For example:
+     *
+     * <pre>
+     * int i = Integer.MAX_VALUE;
+     * do {
+     *     body(i);
+     * } while (++i &lt; limit);
+     * </pre>
+     *
+     * The body/root IV is {@code i}; the checked IV is its next value {@code i + 1}. The first increment
+     * overflows to {@code Integer.MIN_VALUE} before the condition is tested. A proof about subsequent checked
+     * increments must not imply that this first update was safe.
+     *
+     * <p>Mark the parsed loop as compiler-inverted and assert that counted-loop analysis finds distinct body
+     * and checked IVs and proves the checked IV safe. The calling tests then check the body IV separately: an
+     * entry comparison can make its first update safe, while the boundary-start examples must fail that
+     * proof.
+     */
+    private Loop getInvertedCountedLoop(String snippet) {
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         LoopsData loopsData = getDefaultHighTierContext().getLoopsDataProvider().getLoopsData(graph);
         Assert.assertEquals(1, loopsData.loops().size());
         Loop loop = loopsData.loops().get(0);
-        Assert.assertTrue(loop.detectCounted());
-        Assert.assertNotNull(loop.counted().getTripCountLimit());
         loop.loopBegin().setCompilerInverted();
-        loop.resetCounted();
         Assert.assertTrue(loop.detectCounted());
         Assert.assertTrue(loop.counted().isInverted());
+        Assert.assertNotSame(loop.counted().getLimitCheckedIV(), loop.counted().getBodyIV());
+        Assert.assertTrue(loop.counted().counterNeverOverflows());
+        return loop;
+    }
+
+    public static int entryGuardedTailCountedUp(int start, int limit) {
+        if (start >= limit) {
+            return 0;
+        }
+        int i = start;
+        do {
+            i++;
+        } while (i < limit);
+        return i;
+    }
+
+    public static int entryGuardedTailCountedDown(int start, int limit) {
+        if (start <= limit) {
+            return 0;
+        }
+        int i = start;
+        do {
+            i--;
+        } while (i > limit);
+        return i;
+    }
+
+    @Test
+    public void testTailCountedDetection() {
+        Loop loop = getInvertedCountedLoop("tailCountedLoop");
+        Assert.assertTrue(loop.counted().ivCanNeverOverflow(loop.counted().getBodyIV()));
+        Loop up = getInvertedCountedLoop("entryGuardedTailCountedUp");
+        Assert.assertTrue(up.counted().ivCanNeverOverflow(up.counted().getBodyIV()));
+        Loop down = getInvertedCountedLoop("entryGuardedTailCountedDown");
+        Assert.assertTrue(down.counted().ivCanNeverOverflow(down.counted().getBodyIV()));
+    }
+
+    public static int initiallyWrappingUp(int limit) {
+        int i = Integer.MAX_VALUE;
+        int negativeIterations = 0;
+        do {
+            if (i < 0) {
+                negativeIterations++;
+            }
+        } while (++i < limit);
+        return negativeIterations;
+    }
+
+    @Test
+    public void testInitiallyWrappingUp() {
+        Loop loop = getInvertedCountedLoop("initiallyWrappingUp");
+        Assert.assertFalse(loop.counted().ivCanNeverOverflow(loop.counted().getBodyIV()));
+        test("initiallyWrappingUp", Integer.MIN_VALUE + 2);
+    }
+
+    public static int initiallyWrappingDown(int limit) {
+        int i = Integer.MIN_VALUE;
+        int positiveIterations = 0;
+        do {
+            if (i > 0) {
+                positiveIterations++;
+            }
+        } while (--i > limit);
+        return positiveIterations;
+    }
+
+    @Test
+    public void testInitiallyWrappingDown() {
+        Loop loop = getInvertedCountedLoop("initiallyWrappingDown");
+        Assert.assertFalse(loop.counted().ivCanNeverOverflow(loop.counted().getBodyIV()));
+        test("initiallyWrappingDown", Integer.MAX_VALUE - 2);
     }
 
 }

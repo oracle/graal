@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -407,6 +407,43 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         osrNode.callTarget = target; // set the call target so stack walking can use it
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(2 * OSR_THRESHOLD));
+    }
+
+    /*
+     * Test that frame iteration combines a callRoot logical frame with its active bytecode OSR
+     * frame and does not reuse that OSR frame for the caller below it.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testIterateFramesDuringBytecodeOSRFromCallRoot() {
+        var calleeFrameBuilder = FrameDescriptor.newBuilder();
+        IterateFramesInsideExecuteOSR osrNode = new IterateFramesInsideExecuteOSR(calleeFrameBuilder);
+        RootNode calleeRoot = new Program(osrNode, calleeFrameBuilder.build());
+        OptimizedCallTarget calleeTarget = (OptimizedCallTarget) calleeRoot.getCallTarget();
+
+        var callerFrameBuilder = FrameDescriptor.newBuilder();
+        int callerSlot = callerFrameBuilder.addSlot(FrameSlotKind.Int, "caller", null);
+        CallRootCallerRootNode callerRoot = new CallRootCallerRootNode(calleeRoot, callerFrameBuilder.build(), callerSlot);
+        OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRoot.getCallTarget();
+
+        Assert.assertFalse(calleeTarget.isValid());
+        Assert.assertFalse(callerTarget.isValid());
+        List<FrameSummary> frames = (List<FrameSummary>) callerTarget.call();
+        Assert.assertEquals(2, frames.size());
+
+        FrameSummary calleeFrame = frames.get(0);
+        Assert.assertSame(calleeTarget, calleeFrame.target);
+        Assert.assertNull(calleeFrame.callNode);
+        Assert.assertEquals(-1, calleeFrame.bytecodeIndex);
+        Assert.assertSame(calleeRoot.getFrameDescriptor(), calleeFrame.frameDescriptor);
+        Assert.assertEquals(BaseGetStackTraceNode.OSR_VALUE, calleeFrame.slotValue);
+
+        FrameSummary callerFrame = frames.get(1);
+        Assert.assertSame(callerTarget, callerFrame.target);
+        Assert.assertSame(callerRoot.location, callerFrame.callNode);
+        Assert.assertEquals(CallRootCallerRootNode.BYTECODE_INDEX, callerFrame.bytecodeIndex);
+        Assert.assertSame(callerRoot.getFrameDescriptor(), callerFrame.frameDescriptor);
+        Assert.assertEquals(CallRootCallerRootNode.CALLER_VALUE, callerFrame.slotValue);
     }
 
     /*
@@ -1549,6 +1586,76 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
             // do nothing. we want the parent frame to be stale.
+        }
+    }
+
+    private static final class FrameSummary {
+        final CallTarget target;
+        final Node callNode;
+        final int bytecodeIndex;
+        final FrameDescriptor frameDescriptor;
+        final int slotValue;
+
+        FrameSummary(FrameInstance frameInstance) {
+            target = frameInstance.getCallTarget();
+            callNode = frameInstance.getCallNode();
+            bytecodeIndex = frameInstance.getBytecodeIndex();
+            Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+            frameDescriptor = frame.getFrameDescriptor();
+            try {
+                slotValue = frame.getInt(0);
+            } catch (FrameSlotTypeException e) {
+                throw new AssertionError(e);
+            }
+        }
+    }
+
+    private static final class IterateFramesInsideExecuteOSR extends BaseGetStackTraceNode {
+        IterateFramesInsideExecuteOSR(FrameDescriptor.Builder frameBuilder) {
+            super(frameBuilder);
+        }
+
+        @Override
+        public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+            osrFrame.setInt(valueSlot, OSR_VALUE);
+            return captureFrames();
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return executeLoop(frame);
+        }
+
+        @TruffleBoundary
+        private static List<FrameSummary> captureFrames() {
+            List<FrameSummary> frames = new java.util.ArrayList<>(2);
+            Truffle.getRuntime().iterateFrames(frameInstance -> {
+                frames.add(new FrameSummary(frameInstance));
+                return frames.size() == 2 ? frames : null;
+            });
+            return frames;
+        }
+    }
+
+    private static final class CallRootCallerRootNode extends RootNode {
+        static final int BYTECODE_INDEX = 42;
+        static final int CALLER_VALUE = 33;
+
+        private final RootNode callee;
+        private final int callerSlot;
+        @Child private Node location = new Node() {
+        };
+
+        CallRootCallerRootNode(RootNode callee, FrameDescriptor frameDescriptor, int callerSlot) {
+            super(null, frameDescriptor);
+            this.callee = callee;
+            this.callerSlot = callerSlot;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            frame.setInt(callerSlot, CALLER_VALUE);
+            return callee.call(location, BYTECODE_INDEX, frame.getArguments());
         }
     }
 

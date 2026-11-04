@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -136,18 +136,16 @@ public @interface Operation {
     String javadoc() default "";
 
     /**
-     * Indicates whether this operation requires the bytecode index to be updated. By default, the
-     * DSL assumes that all operations with caches require the bytecode index to be updated. The DSL
-     * will emit a warning if specifying this attribute is necessary.
+     * Whether to store the BCI in the frame before executing this operation. Applies in
+     * {@link BytecodeIndexMode#FRAME}, {@link BytecodeIndexMode#MANUAL}, and uncached
+     * {@link BytecodeIndexMode#CACHED_NODE} execution.
      * <p>
-     * If this attribute has been set to <code>false</code>, then the {@link StoreBytecodeIndex}
-     * annotation can be used to enable this property for individual {@link Specialization} or
-     * {@link Fallback}-annotated methods.
-     * <p>
-     * This annotation only has an effect if {@link GenerateBytecode#storeBytecodeIndexInFrame()} is
-     * set to <code>true</code> or if the {@link GenerateBytecode#enableUncachedInterpreter()
-     * uncached interpreter tier} is enabled.
+     * When unspecified, storage is disabled in {@code MANUAL} mode and inferred from specialization
+     * caches (including bind parameters) in other modes. The DSL warns when an explicit choice is
+     * recommended. When {@code false}, {@link StoreBytecodeIndex} can enable storage for individual
+     * {@link Specialization} or {@link Fallback} methods.
      *
+     * @return whether to enable operation-level BCI storage
      * @see StoreBytecodeIndex
      * @since 25.1
      */

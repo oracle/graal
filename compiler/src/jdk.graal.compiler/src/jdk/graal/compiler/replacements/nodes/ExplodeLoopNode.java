@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,6 +57,7 @@ public final class ExplodeLoopNode extends FixedWithNextNode implements NodeWith
         ArrayList<Node> succs = new ArrayList<>();
         while (!(currentNext instanceof LoopBeginNode)) {
             assert currentNext != null : "cannot find loop after " + this;
+            succs.clear();
             for (Node n : currentNext.cfgSuccessors()) {
                 succs.add(n);
             }

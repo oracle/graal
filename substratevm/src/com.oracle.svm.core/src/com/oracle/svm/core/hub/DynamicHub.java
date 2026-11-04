@@ -358,18 +358,20 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     public static final int NO_INTERFACE_ID = -1;
 
     /**
-     * HashTable used for interface hashing under open type world if
-     * {@link SubstrateOptions#useInterfaceHashing()} is enabled. See TypeCheckBuilder for a general
-     * documentation. This array may be used by the garbage collector and therefore needs to live in
-     * the image heap or {@link Metaspace}.
+     * Hash table used for interface type checks and itable lookups under open type world if
+     * {@link SubstrateOptions#useInterfaceHashing()} is enabled. Each entry contains an interface
+     * ID and its itable byte offset; see {@link DynamicHubUtils#HASHING_ITABLE_SHIFT}. This array
+     * may be used by the garbage collector and therefore needs to live in the image heap or
+     * {@link Metaspace}.
      */
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
-    private int[] openTypeWorldInterfaceHashTable;
+    private long[] openTypeWorldInterfaceHashTable;
 
     /**
      * Hashing parameter used for interface hashing under open type world if
-     * {@link SubstrateOptions#useInterfaceHashing()} is enabled. See TypeCheckBuilder for a general
-     * documentation.
+     * {@link SubstrateOptions#useInterfaceHashing()} is enabled. With PEXT, this is the bit selection
+     * mask; otherwise it packs a shift and mask. All hubs use the same image-wide format, including
+     * runtime-loaded hubs. See {@link DynamicHubUtils#hash(int, int)}.
      */
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
     private int openTypeWorldInterfaceHashParam;
@@ -534,7 +536,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                     short typeIDDepth,
                     short numIterableInterfaceTypes,
                     int[] openTypeWorldTypeCheckSlots,
-                    int[] openTypeWorldInterfaceHashTable,
+                    long[] openTypeWorldInterfaceHashTable,
                     int openTypeWorldInterfaceHashParam,
                     int vTableEntries,
                     int[] declaredInstanceReferenceFieldOffsets,
@@ -643,7 +645,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         Metaspace metaspace = Metaspace.singleton();
         VMError.guarantee(metaspace.isInAddressSpace(openTypeWorldTypeCheckSlots), "openTypeWorldTypeCheckSlots must have already been copied to the metaspace");
-        VMError.guarantee(metaspace.isInAddressSpace(openTypeWorldInterfaceHashTable), "openTypeWorldInterfaceHashTable must have already been copied to the metaspace");
+        VMError.guarantee(openTypeWorldInterfaceHashTable == null ? !SubstrateOptions.useInterfaceHashing() : metaspace.isInAddressSpace(openTypeWorldInterfaceHashTable),
+                        "openTypeWorldInterfaceHashTable must be in metaspace, or null when interface hashing is disabled");
 
         /* Allocate the hub in the metaspace. */
         DynamicHub hub = metaspace.allocateDynamicHub(vTableEntries);
@@ -800,7 +803,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setOpenTypeWorldData(MethodRef[] vtable, int typeID, int interfaceID, int typeCheckDepth, int numClassTypes, int numIterableInterfaceTypes, int[] typeCheckSlots,
-                    int[] openTypeWorldInterfaceHashTable,
+                    long[] openTypeWorldInterfaceHashTable,
                     int openTypeWorldInterfaceHashParam) {
         assert this.vtable == null : "Initialization must be called only once";
 
@@ -1050,10 +1053,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     /**
      * The number of interfaces that are stored in {@link #openTypeWorldTypeCheckSlots} and need to
-     * be iterated for type checks or itable loading. Depending on
-     * {@link SubstrateOptions#useInterfaceHashing()} interfaces a likely encoded in
-     * {@link #openTypeWorldInterfaceHashTable}. Their number is excluded from the number of
-     * iterable interfaces.
+     * be iterated for type checks or itable loading. Interfaces represented in
+     * {@link #openTypeWorldInterfaceHashTable} are excluded from this count.
      */
     public int getNumIterableInterfaceTypes() {
         return numIterableInterfaceTypes;
@@ -1068,7 +1069,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return interfaceID;
     }
 
-    public int[] getOpenTypeWorldInterfaceHashTable() {
+    public long[] getOpenTypeWorldInterfaceHashTable() {
         return openTypeWorldInterfaceHashTable;
     }
 

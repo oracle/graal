@@ -581,7 +581,7 @@ public class AgnosticInliningPolicy implements InliningPolicy {
         }
         // Check that the argument array is safe, where safe means that it is not modified.
         final StructuredGraph ir = node.getIR();
-        final ParameterNode parameterArray = ir.getParameter(2);
+        final ParameterNode parameterArray = ir.getParameter(3);
         final ValueNode castArray = unproxifyArgumentArray(parameterArray);
         if (castArray == null) {
             return null;

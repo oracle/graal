@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -244,6 +244,7 @@ public final class TruffleStackTrace extends Exception {
             topCallSite = null;
             stackFrameLimit = -1;
         }
+        int topBytecodeIndex = isTruffleException ? LanguageAccessor.EXCEPTIONS.getBytecodeIndex(throwable) : -1;
         // add the lazily captured stack frames above the manually queried ones
         List<TracebackElement> elements = new ArrayList<>();
         TracebackElement currentElement = lazy.current;
@@ -279,20 +280,22 @@ public final class TruffleStackTrace extends Exception {
                     frame = osrFrame;
                     osrFrame = null;
                 }
-                int bytecodeIndex = LanguageAccessor.NODES.findBytecodeIndex(rootNode, topCallSite, frame);
+                int bytecodeIndex = getBytecodeIndex(rootNode, topCallSite, frame, topBytecodeIndex);
                 frames.add(new TruffleStackTraceElement(topCallSite, element.root, frame, bytecodeIndex));
                 topCallSite = null;
+                topBytecodeIndex = -1;
 
             }
-            if (element.callNode != null) {
+            if (element.callNode != null || element.bytecodeIndex != -1) {
                 // This is the location for the next stack trace element.
                 topCallSite = element.callNode;
+                topBytecodeIndex = element.bytecodeIndex;
             }
         }
         int lazyFrames = frames.size();
 
         // attach the remaining stack trace elements
-        addFramesByStackWalking(stackFrameLimit, topCallSite, osrFrame, frames);
+        addFramesByStackWalking(stackFrameLimit, topCallSite, topBytecodeIndex, osrFrame, frames);
 
         TruffleStackTrace fullStackTrace = new TruffleStackTrace(frames, lazyFrames);
         // capture host stack trace for guest language exceptions;
@@ -310,12 +313,14 @@ public final class TruffleStackTrace extends Exception {
         private final Node callNode;
         private final RootCallTarget root;
         private final MaterializedFrame frame;
+        private final int bytecodeIndex;
 
-        TracebackElement(TracebackElement last, Node callNode, RootCallTarget root, MaterializedFrame frame) {
+        TracebackElement(TracebackElement last, Node callNode, RootCallTarget root, MaterializedFrame frame, int bytecodeIndex) {
             this.last = last;
             this.callNode = callNode;
             this.root = root;
             this.frame = frame;
+            this.bytecodeIndex = bytecodeIndex;
         }
     }
 
@@ -353,6 +358,10 @@ public final class TruffleStackTrace extends Exception {
     }
 
     static void addStackFrameInfo(Node callNode, RootCallTarget target, Throwable t, Frame currentFrame) {
+        addStackFrameInfo(callNode, target, t, currentFrame, -1);
+    }
+
+    static void addStackFrameInfo(Node callNode, RootCallTarget target, Throwable t, Frame currentFrame, int bytecodeIndex) {
         if (t instanceof ControlFlowException) {
             // control flow exceptions should never have to get a stack trace.
             return;
@@ -361,33 +370,33 @@ public final class TruffleStackTrace extends Exception {
         if (currentFrame != null && LanguageAccessor.NODES.isCaptureFramesForTrace(target.getRootNode(), CompilerDirectives.inCompiledCode())) {
             frame = currentFrame.materialize();
         }
-        callInnerAddStackFrameInfo(callNode, target, t, frame);
+        callInnerAddStackFrameInfo(callNode, target, t, frame, bytecodeIndex);
     }
 
-    private static void callInnerAddStackFrameInfo(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame) {
+    private static void callInnerAddStackFrameInfo(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame, int bytecodeIndex) {
         boolean isException = LanguageAccessor.EXCEPTIONS.isException(t);
         if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(isException) && isException) {
-            innerAddStackFrame(callNode, root, t, currentFrame);
+            innerAddStackFrame(callNode, root, t, currentFrame, bytecodeIndex);
         } else {
-            innerAddStackFrameSlow(callNode, root, t, currentFrame);
+            innerAddStackFrameSlow(callNode, root, t, currentFrame, bytecodeIndex);
         }
     }
 
     @TruffleBoundary
-    private static void innerAddStackFrameSlow(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame) {
+    private static void innerAddStackFrameSlow(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame, int bytecodeIndex) {
         if (LanguageAccessor.EXCEPTIONS.isException(t)) {
             /*
              * Capture as much information as possible for internal errors. This branch should not
              * be reached by host exceptions as they should have already been wrapped in a
              * HostException in the guest-to-host call root node.
              */
-            innerAddStackFrame(callNode, root, t, currentFrame);
+            innerAddStackFrame(callNode, root, t, currentFrame, bytecodeIndex);
         } else {
             fillIn(t);
         }
     }
 
-    private static void innerAddStackFrame(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame) {
+    private static void innerAddStackFrame(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame, int bytecodeIndex) {
         assert LanguageAccessor.EXCEPTIONS.isException(t);
         int stackTraceElementLimit = LanguageAccessor.EXCEPTIONS.getStackTraceElementLimit(t);
         LazyStackTrace lazy = (LazyStackTrace) LanguageAccessor.EXCEPTIONS.getLazyStackTrace(t);
@@ -395,7 +404,7 @@ public final class TruffleStackTrace extends Exception {
             lazy = new LazyStackTrace();
             LanguageAccessor.EXCEPTIONS.setLazyStackTrace(t, lazy);
         }
-        appendLazyStackTrace(callNode, root, currentFrame, lazy, stackTraceElementLimit);
+        appendLazyStackTrace(callNode, root, currentFrame, lazy, stackTraceElementLimit, bytecodeIndex);
     }
 
     @TruffleBoundary
@@ -437,19 +446,26 @@ public final class TruffleStackTrace extends Exception {
         return true;
     }
 
-    private static void appendLazyStackTrace(Node callNode, RootCallTarget root, MaterializedFrame currentFrame, LazyStackTrace lazy, int stackTraceElementLimit) {
+    private static void appendLazyStackTrace(Node callNode, RootCallTarget root, MaterializedFrame currentFrame, LazyStackTrace lazy, int stackTraceElementLimit, int bytecodeIndex) {
         if (lazy.stackTrace == null) {
             if (stackTraceElementLimit >= 0 && lazy.frameCount >= stackTraceElementLimit) {
                 return;
             }
-            lazy.current = new TracebackElement(lazy.current, callNode, root, currentFrame);
+            lazy.current = new TracebackElement(lazy.current, callNode, root, currentFrame, bytecodeIndex);
             if (root != null && LanguageAccessor.ACCESSOR.nodeSupport().countsTowardsStackTraceLimit(root.getRootNode())) {
                 lazy.frameCount++;
             }
         }
     }
 
-    private static void addFramesByStackWalking(int stackFrameLimit, final Node topCallSite, final MaterializedFrame osrFrame, List<TruffleStackTraceElement> frames) {
+    private static int getBytecodeIndex(RootNode root, Node callNode, Frame frame, int bytecodeIndex) {
+        if (bytecodeIndex != -1) {
+            return bytecodeIndex;
+        }
+        return LanguageAccessor.NODES.findBytecodeIndex(root, callNode, frame);
+    }
+
+    private static void addFramesByStackWalking(int stackFrameLimit, final Node topCallSite, final int topBytecodeIndex, final MaterializedFrame osrFrame, List<TruffleStackTraceElement> frames) {
         int lazyFrames = frames.size();
         if (stackFrameLimit >= 0 && lazyFrames >= stackFrameLimit) {
             // early exit: avoid costly iterateFrames call if enough frames have been recorded
@@ -471,16 +487,18 @@ public final class TruffleStackTrace extends Exception {
 
                 Node callNode;
                 Frame frame;
+                int bytecodeIndex;
                 if (first) {
                     callNode = topCallSite;
                     frame = osrFrame == null ? captureFrame(frameInstance, root) : osrFrame;
+                    bytecodeIndex = getBytecodeIndex(root, callNode, frame, topBytecodeIndex);
                     first = false;
                 } else {
                     callNode = frameInstance.getCallNode();
                     frame = captureFrame(frameInstance, root);
+                    bytecodeIndex = LanguageAccessor.RUNTIME.getBytecodeIndex(frameInstance, frame);
                 }
 
-                int bytecodeIndex = LanguageAccessor.NODES.findBytecodeIndex(root, callNode, frame);
                 frames.add(new TruffleStackTraceElement(callNode, target, frame, bytecodeIndex));
                 if (target != null && LanguageAccessor.ACCESSOR.nodeSupport().countsTowardsStackTraceLimit(target.getRootNode())) {
                     stackFrameIndex++;

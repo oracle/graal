@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -92,6 +92,9 @@ public interface Metaspace {
     /** Allocates an int array. */
     int[] allocateIntArray(int length);
 
+    /** Allocates a long array. */
+    long[] allocateLongArray(int length);
+
     /** Allocates a pure-instance object of the given class. */
     <T> T allocateObject(Class<T> clazz);
 
@@ -103,6 +106,12 @@ public interface Metaspace {
 
     default int[] copyToMetaspace(int[] heapArray) {
         int[] result = Metaspace.singleton().allocateIntArray(heapArray.length);
+        System.arraycopy(heapArray, 0, result, 0, heapArray.length);
+        return result;
+    }
+
+    default long[] copyToMetaspace(long[] heapArray) {
+        long[] result = Metaspace.singleton().allocateLongArray(heapArray.length);
         System.arraycopy(heapArray, 0, result, 0, heapArray.length);
         return result;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import static org.junit.Assert.fail;
 import org.junit.Test;
 
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeIndexMode;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
@@ -246,7 +247,7 @@ public class ReadBytecodeLocationTest {
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBytecodeIndexInFrame = true, enableYield = true)
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.FRAME, enableYield = true)
 abstract class BytecodeNodeWithStoredBci extends RootNode implements BytecodeRootNode {
 
     protected BytecodeNodeWithStoredBci(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

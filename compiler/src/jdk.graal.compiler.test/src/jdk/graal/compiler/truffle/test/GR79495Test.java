@@ -259,7 +259,7 @@ public class GR79495Test extends PartialEvaluationTest {
             }
         }
 
-        @Operation(storeBytecodeIndex = true)
+        @Operation
         @ConstantOperand(type = TestInterpreter.class)
         static final class InvokeInlined {
             @Specialization
@@ -289,7 +289,7 @@ public class GR79495Test extends PartialEvaluationTest {
             }
         }
 
-        @Operation(storeBytecodeIndex = true)
+        @Operation
         @ConstantOperand(type = LocalAccessor.class)
         static final class ResumeAndUnpack {
             @Specialization(guards = "target == rootNode", limit = "2")
@@ -310,7 +310,7 @@ public class GR79495Test extends PartialEvaluationTest {
             }
         }
 
-        @Operation(storeBytecodeIndex = true)
+        @Operation
         static final class ContinueInlined {
             @SuppressWarnings("unused")
             @Specialization(guards = "result.getContinuationRootNode() == rootNode", limit = "3")

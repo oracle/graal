@@ -28,6 +28,7 @@ package com.oracle.svm.interpreter;
 import static com.oracle.svm.interpreter.InterpreterOptions.DebuggerWithInterpreter;
 import static com.oracle.svm.interpreter.InterpreterOptions.InterpreterTraceSupport;
 import static com.oracle.svm.interpreter.InterpreterUtil.forceTraceInterpreter;
+import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEINTERFACE;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -43,6 +44,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.hub.DynamicHubUtils;
@@ -938,6 +940,18 @@ public final class InterpreterToVM {
     }
 
     private static InterpreterResolvedJavaMethod peekAtInterpreterVTable(InterpreterResolvedObjectType seedType, Class<?> thisClass, int vTableIndex, boolean interfaceDispatch) {
+        InterpreterResolvedObjectType objectType = getInterpreterObjectType(thisClass);
+        int idx;
+        if (SubstrateOptions.useClosedTypeWorldHubLayout() || !interfaceDispatch) {
+            idx = vTableIndex;
+        } else {
+            idx = vTableIndex + objectType.determineITableStartingIndex(seedType);
+        }
+        return peekAtInterpreterVTable(objectType, idx);
+    }
+
+    @AlwaysInline("Share receiver metadata access between dispatch paths")
+    private static InterpreterResolvedObjectType getInterpreterObjectType(Class<?> thisClass) {
         ResolvedJavaType thisType;
         if (RuntimeClassLoading.isSupported()) {
             thisType = DynamicHub.fromClass(thisClass).getInterpreterType();
@@ -949,16 +963,14 @@ public final class InterpreterToVM {
         VMError.guarantee(thisType != null);
         VMError.guarantee(thisType instanceof InterpreterResolvedObjectType);
 
-        InterpreterResolvedObjectType objectType = (InterpreterResolvedObjectType) thisType;
+        return (InterpreterResolvedObjectType) thisType;
+    }
+
+    @AlwaysInline("Share dispatch-table entry access between dispatch paths")
+    private static InterpreterResolvedJavaMethod peekAtInterpreterVTable(InterpreterResolvedObjectType objectType, int idx) {
         InterpreterResolvedJavaMethod[] vTable = objectType.getVtable();
         VMError.guarantee(vTable != null);
 
-        int idx;
-        if (SubstrateOptions.useClosedTypeWorldHubLayout() || !interfaceDispatch) {
-            idx = vTableIndex;
-        } else {
-            idx = vTableIndex + objectType.determineITableStartingIndex(seedType);
-        }
         if (idx < 0 || idx >= vTable.length) {
             throw VMError.shouldNotReachHere(MetadataUtil.fmt("Invalid vtable index: %s, for vtable length: %s, and receiver type: %s", idx, vTable.length, objectType));
         }
@@ -971,12 +983,46 @@ public final class InterpreterToVM {
                     throws SemanticJavaException {
         boolean trace = InterpreterTraceSupport.getValue() && !quiet && InterpreterOptions.InterpreterTrace.getValue();
 
-        if (trace) {
-            forceTraceInterpreter().string("Dispatching ").string(callKind.toString()).string(" invocation for seed: ").string(seedMethod.toString()).newline();
-        }
+        traceInvocation(seedMethod, callKind, trace);
 
         // First, find the target method.
         InterpreterResolvedJavaMethod target = resolveCallSiteTarget(seedMethod, calleeArgs, callKind, trace);
+        return invokeResolvedTarget(seedMethod, target, calleeArgs, stayInInterpreter, trace);
+    }
+
+    /**
+     * Validates the receiver and dispatches using one hashed interface entry. The caller must have
+     * profiled and null-checked the receiver, and established that the symbolic interface equals
+     * the seed's declaring interface, whose ID is covered by interface hashing.
+     */
+    @NeverInline("Keep checked interface dispatch out of bytecode-handler stubs")
+    static Object dispatchCheckedInterfaceInvocation(InterpreterResolvedJavaMethod seedMethod, Object[] calleeArgs, boolean stayInInterpreter) {
+        assert seedMethod.getDeclaringClass().isInterface() && seedMethod.hasDispatchIndex();
+        boolean trace = InterpreterTraceSupport.getValue() && InterpreterOptions.InterpreterTrace.getValue();
+        traceInvocation(seedMethod, CallKind.ITABLE_LOOKUP, trace);
+
+        Class<?> receiverClass = calleeArgs[0].getClass();
+        DynamicHub receiverHub = DynamicHub.fromClass(receiverClass);
+        InterpreterResolvedObjectType seedInterface = seedMethod.getDeclaringClass();
+        long offset = OpenTypeWorldDispatchTableSnippets.findHashedITableStartingOffset(receiverHub, seedInterface.getHub().getInterfaceID());
+        if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, offset < 0)) {
+            throw Interpreter.incompatibleInvokeReceiver(receiverHub.getInterpreterType(), seedInterface, INVOKEINTERFACE);
+        }
+
+        int index = seedMethod.getVTableIndex() + InterpreterResolvedObjectType.itableOffsetToIndex(offset);
+        InterpreterResolvedJavaMethod target = peekAtInterpreterVTable(getInterpreterObjectType(receiverClass), index);
+        return invokeResolvedTarget(seedMethod, target, calleeArgs, stayInInterpreter, trace);
+    }
+
+    @AlwaysInline("Fold tracing in the dispatch entries")
+    private static void traceInvocation(InterpreterResolvedJavaMethod seedMethod, CallKind callKind, boolean trace) {
+        if (trace) {
+            forceTraceInterpreter().string("Dispatching ").string(callKind.toString()).string(" invocation for seed: ").string(seedMethod.toString()).newline();
+        }
+    }
+
+    @AlwaysInline("Keep resolved invocation handling consistent across dispatch entries")
+    private static Object invokeResolvedTarget(InterpreterResolvedJavaMethod seedMethod, InterpreterResolvedJavaMethod target, Object[] calleeArgs, boolean stayInInterpreter, boolean trace) {
         boolean callRuntimeLoadedJNI = target.isNative() && target instanceof CremaResolvedJavaMethodImpl;
 
         // Next, determine whether the call should stay in interpreter or call the compiled target.

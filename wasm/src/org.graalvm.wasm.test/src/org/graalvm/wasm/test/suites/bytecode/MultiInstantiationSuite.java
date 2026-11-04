@@ -602,6 +602,68 @@ public class MultiInstantiationSuite {
         });
     }
 
+    @Test
+    public void testMixedCallsAcrossInstantiations() throws IOException, InterruptedException {
+        for (int repetitions : new int[]{0, 1, 130}) {
+            byte[] binary = WasmBinaryTools.compileWat("main", """
+                            (module
+                              (type $t (func (result i32)))
+                              (import "a" "f" (func $imported (type $t)))
+                              (func $first (type $t) i32.const 7)
+                              (func $second (type $t) i32.const 11)
+                              (table 2 funcref)
+                              (elem (i32.const 0) $first $second)
+                              (func (export "main") (result i32)
+                                i32.const 0
+                            """ + """
+                                call $first
+                                i32.add
+                                call $imported
+                                i32.add
+                                i32.const 1
+                                call_indirect (type $t)
+                                i32.add
+                                call $first
+                                i32.add
+                                call $imported
+                                i32.add
+                            """.repeat(repetitions) + "))");
+
+            int[] expectedFunctionIndices = new int[4 * repetitions];
+            for (int i = 0; i < repetitions; i++) {
+                expectedFunctionIndices[4 * i] = 1;
+                expectedFunctionIndices[4 * i + 1] = 0;
+                expectedFunctionIndices[4 * i + 2] = 1;
+                expectedFunctionIndices[4 * i + 3] = 0;
+            }
+
+            try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
+                WasmTestUtils.runInWasmContext(context, c -> {
+                    WebAssembly wasm = new WebAssembly(c);
+                    WasmModule module = wasm.moduleDecode(binary);
+                    CodeEntry parsed = module.codeEntries()[2];
+                    CodeEntry reread = BytecodeParser.readCodeEntries(module)[2];
+                    Assert.assertArrayEquals(expectedFunctionIndices, parsed.callFunctionIndices());
+                    Assert.assertArrayEquals(expectedFunctionIndices, reread.callFunctionIndices());
+                    Assert.assertEquals(repetitions, parsed.indirectCallCount());
+                    Assert.assertEquals(repetitions, reread.indirectCallCount());
+
+                    for (int i = 1; i <= 2; i++) {
+                        int importedValue = 10 * i;
+                        Dictionary imports = new Dictionary();
+                        Dictionary importedModule = new Dictionary();
+                        importedModule.addMember("f", new Executable(args -> importedValue));
+                        imports.addMember("a", importedModule);
+
+                        WasmInstance instance = wasm.moduleInstantiate(module, imports);
+                        Value main = context.asValue(instance).getMember("exports").getMember("main");
+                        Assert.assertEquals(repetitions * (25 + 2 * importedValue), main.execute().asInt());
+                    }
+                });
+            }
+        }
+    }
+
     // Tests that exercise the BytecodeParser#readCodeEntries code path that is used when
     // instantiating a module multiple times.
     @Test
@@ -637,8 +699,8 @@ public class MultiInstantiationSuite {
 
     /**
      * Checks that bytecode rereading skips every operand byte of U8, U16, and I32 labels and finds
-     * the following call at its exact offset. Poisoning label operands with call opcodes exposes
-     * scans that stop too early or skip too far.
+     * the following call target. Poisoning label operands with call opcodes exposes scans that
+     * stop too early or skip too far.
      */
     @Test
     public void testRereadSkipLabels() throws IOException, InterruptedException {
@@ -660,9 +722,13 @@ public class MultiInstantiationSuite {
                 WasmTestUtils.runInWasmContext(context, c -> {
                     WasmModule module = new WebAssembly(c).moduleDecode(binary);
                     CodeEntry original = module.codeEntries()[1];
-                    Assert.assertEquals(1, original.callNodes().size());
-                    // Initial parsing records the end of this three-byte CALL_U8 instruction.
-                    int callOffset = original.callNodes().get(0).getBytecodeOffset() - 3;
+                    Assert.assertArrayEquals(new int[]{0}, original.callFunctionIndices());
+                    // Only DROP and RETURN instructions follow the call in this fixture.
+                    int callOffset = original.bytecodeEndOffset() - 1;
+                    while (callOffset >= original.bytecodeStartOffset() && module.bytecode()[callOffset] != (byte) Bytecode.CALL_U8) {
+                        callOffset--;
+                    }
+                    Assert.assertTrue(callOffset >= original.bytecodeStartOffset());
                     int labelSize = stackSize == 0 ? 2 : stackSize == 64 ? 3 : 10;
                     int labelOpcode = stackSize == 0 ? Bytecode.LABEL_U8 : stackSize == 64 ? Bytecode.LABEL_U16 : Bytecode.LABEL_I32;
                     int skipOpcode = stackSize == 0 ? Bytecode.SKIP_LABEL_U8 : stackSize == 64 ? Bytecode.SKIP_LABEL_U16 : Bytecode.SKIP_LABEL_I32;
@@ -675,9 +741,8 @@ public class MultiInstantiationSuite {
                     Arrays.fill(bytecode, callOffset - labelSize + 1, callOffset, (byte) Bytecode.CALL_U8);
                     CodeEntry reread = BytecodeParser.readCodeEntry(module, bytecode, 1);
                     String message = "Incorrect label scan at stack height " + stackSize;
-                    Assert.assertEquals(message, 1, reread.callNodes().size());
-                    Assert.assertEquals(message, callOffset, reread.callNodes().get(0).getBytecodeOffset());
-                    Assert.assertEquals(message, 0, reread.callNodes().get(0).getFunctionIndex());
+                    Assert.assertArrayEquals(message, new int[]{0}, reread.callFunctionIndices());
+                    Assert.assertEquals(message, 0, reread.indirectCallCount());
                 });
             }
         }

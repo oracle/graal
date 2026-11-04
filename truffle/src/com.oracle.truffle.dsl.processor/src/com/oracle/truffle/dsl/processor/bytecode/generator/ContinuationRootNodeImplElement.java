@@ -56,6 +56,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.BytecodeIndexMode;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -142,6 +143,11 @@ final class ContinuationRootNodeImplElement extends AbstractElement {
         b.startIf().string("parentFrame.getFrameDescriptor() != root.getFrameDescriptor()").end().startBlock();
         BytecodeRootNodeElement.emitThrowIllegalArgumentException(b, "Invalid continuation parent frame passed");
         b.end();
+
+        if (parent.model.bytecodeIndexMode == BytecodeIndexMode.MANUAL) {
+            b.lineComment("Resuming a continuation always replaces the manually stored index with the resume index.");
+            parent.emitWriteBytecodeIndexToFrame(b, "parentFrame", "bytecodeLocation.getBytecodeIndex()");
+        }
 
         if (parent.model.usesBoxingElimination()) {
             if (parent.cachedTailCallBytecodeNode != null) {

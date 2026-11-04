@@ -96,6 +96,15 @@ meth public void setLocalValue(int,java.lang.Object)
 supr java.lang.Object
 hfds bytecode,bytecodeIndex,frame
 
+CLSS public final !enum com.oracle.truffle.api.bytecode.BytecodeIndexMode
+fld public final static com.oracle.truffle.api.bytecode.BytecodeIndexMode CACHED_NODE
+fld public final static com.oracle.truffle.api.bytecode.BytecodeIndexMode FRAME
+fld public final static com.oracle.truffle.api.bytecode.BytecodeIndexMode MANUAL
+fld public final static com.oracle.truffle.api.bytecode.BytecodeIndexMode NONE
+meth public static com.oracle.truffle.api.bytecode.BytecodeIndexMode valueOf(java.lang.String)
+meth public static com.oracle.truffle.api.bytecode.BytecodeIndexMode[] values()
+supr java.lang.Enum<com.oracle.truffle.api.bytecode.BytecodeIndexMode>
+
 CLSS public abstract com.oracle.truffle.api.bytecode.BytecodeLabel
 cons public init(java.lang.Object)
 supr java.lang.Object
@@ -205,6 +214,8 @@ meth public static com.oracle.truffle.api.bytecode.BytecodeNode get(com.oracle.t
 meth public static com.oracle.truffle.api.bytecode.BytecodeNode get(com.oracle.truffle.api.nodes.Node)
 meth public static java.lang.Object[] getLocalNames(com.oracle.truffle.api.frame.FrameInstance)
 meth public static java.lang.Object[] getLocalValues(com.oracle.truffle.api.frame.FrameInstance)
+meth public static void setBytecodeIndex(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.Frame,int)
+meth public void setBytecodeIndex(com.oracle.truffle.api.frame.Frame,int)
 supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract interface com.oracle.truffle.api.bytecode.BytecodeParser<%0 extends com.oracle.truffle.api.bytecode.BytecodeBuilder>
@@ -402,6 +413,7 @@ meth public abstract !hasdefault boolean enableUncachedInterpreter()
 meth public abstract !hasdefault boolean enableYield()
 meth public abstract !hasdefault boolean inlinePrimitiveConstants()
 meth public abstract !hasdefault boolean storeBytecodeIndexInFrame()
+meth public abstract !hasdefault com.oracle.truffle.api.bytecode.BytecodeIndexMode bytecodeIndexMode()
 meth public abstract !hasdefault java.lang.Class<? extends java.lang.RuntimeException> illegalLocalException()
 meth public abstract !hasdefault java.lang.Class<? extends java.lang.Throwable>[] unwindExceptions()
 meth public abstract !hasdefault java.lang.Class<?> tagTreeNodeLibrary()
@@ -659,6 +671,9 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.bytecod
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean allowUncached()
+meth public abstract !hasdefault boolean bindBytecodeIndex()
+meth public abstract !hasdefault boolean bindBytecodeNode()
+meth public abstract !hasdefault boolean bindFrame()
 meth public abstract !hasdefault boolean storeBytecodeIndex()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.bytecode.OperationProxy$Repeat
@@ -1078,6 +1093,8 @@ meth public boolean isInternal()
 meth public com.oracle.truffle.api.nodes.Node copy()
 meth public final com.oracle.truffle.api.RootCallTarget getCallTarget()
 meth public final com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()
+meth public final java.lang.Object call(com.oracle.truffle.api.nodes.Node,int,java.lang.Object[])
+meth public final void initializeCallTarget()
 meth public java.lang.String getName()
 meth public java.lang.String getQualifiedName()
 meth public static com.oracle.truffle.api.nodes.RootNode createConstantNode(java.lang.Object)

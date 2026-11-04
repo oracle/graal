@@ -38,10 +38,11 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.InterpreterExecutionOffsets;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
-import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.MethodRefSupport;
+import com.oracle.svm.core.methodhandles.RuntimeCallSiteTargetSupport;
 import com.oracle.svm.graal.hosted.DeoptimizationFeature;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
+import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.interpreter.BuildTimeInterpreterUniverse;
@@ -131,6 +132,7 @@ public final class RistrettoFeature implements InternalFeature {
         RuntimeSupport.getRuntimeSupport().addTearDownHook(RistrettoCompilationManager.getProfileSupportTearDownHook());
 
         if (RistrettoOptions.useDeoptimization()) {
+            RuntimeSupport.getRuntimeSupport().addStartupHook(new RistrettoCallSiteTargetAssumptionStartupHook());
             ImageSingletons.add(RistrettoDeoptimizationSupport.class, new RistrettoDeoptimizationSupport());
         }
     }
@@ -144,6 +146,8 @@ public final class RistrettoFeature implements InternalFeature {
         preserveBytecodeSupport.beforeAnalysis(access);
         RistrettoUtils.forcePreserveType(access.getBigBang(), RistrettoDirectives.class);
         RistrettoUtils.forcePreserveType(access.getBigBang(), RistrettoOSRSupport.class);
+        RistrettoOptions.configureCallSiteTargetValueAssumptions();
+
         /*
          * The low-level Ristretto fast path reads these fields via offsets recorded in
          * InterpreterExecutionOffsets. Analysis does not necessarily observe those reads as normal
@@ -271,5 +275,14 @@ public final class RistrettoFeature implements InternalFeature {
         public boolean getAsBoolean() {
             return SubstrateOptions.useRistretto();
         }
+    }
+}
+
+/** Configures CallSite target-assumption tracking after runtime options are parsed. */
+final class RistrettoCallSiteTargetAssumptionStartupHook implements RuntimeSupport.Hook {
+    @Override
+    public void execute(boolean isFirstIsolate) {
+        RuntimeCallSiteTargetSupport.setTargetAssumptionTrackingEnabled(
+                        RistrettoOptions.JITUseCallSiteTargetValueAssumptions.getValue());
     }
 }

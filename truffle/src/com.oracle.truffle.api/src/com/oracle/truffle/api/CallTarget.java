@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,6 +102,24 @@ public interface CallTarget {
      */
     default Object call(Node location, Object... arguments) {
         throw CompilerDirectives.shouldNotReachHere("callDirect not supported for this runtime");
+    }
+
+    /**
+     * Calls the root node, preserving the explicit location and BCI for stack walking.
+     * <p>
+     * Callers that do not have an explicit bytecode index should pass {@code -1}.
+     *
+     * @param location a {@link Node} that identifies the location of this call. The location may be
+     *            <code>null</code> if no location is available.
+     * @param bytecodeIndex the bytecode index associated with this call, or <code>-1</code> if no
+     *            explicit bytecode index is available.
+     * @param arguments the arguments passed to the call, as an object array.
+     * @return the result of the call.
+     * @see #call(Node, Object...)
+     * @since 25.6
+     */
+    default Object call(Node location, int bytecodeIndex, Object[] arguments) {
+        throw CompilerDirectives.shouldNotReachHere("call(Node, int, Object[]) not supported for this runtime");
     }
 
 }

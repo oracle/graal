@@ -487,6 +487,10 @@ public class FeatureImpl {
             return guestMethod == null ? null : guestAccess.asExecutableConstant(guestMethod);
         }
 
+        public void rescanConstant(JavaConstant constant, ScanReason reason) {
+            getUniverse().getHeapScanner().rescanConstant(constant, reason);
+        }
+
         public void rescanObject(Object obj, ScanReason reason) {
             getUniverse().getHeapScanner().rescanObject(obj, reason);
         }
@@ -1326,15 +1330,8 @@ public class FeatureImpl {
         public void registerAsImmutable(Object root, Predicate<Object> includeObject) {
             // GR-79002: migrate builder-side clients to JavaConstant-based registration.
             JavaConstant rootConstant = aUniverse.getHostedValuesProvider().forObject(root);
-            ImageHeapConstant imageHeapConstant = resolveImageHeapConstant(rootConstant);
-            if (imageHeapConstant == null) {
-                return;
-            }
-            heap.registerAsImmutable(imageHeapConstant, constant -> {
-                JavaConstant hostedObject = constant.getHostedObject();
-                AnalysisError.guarantee(hostedObject != null, "Cannot materialize an unbacked image heap constant: %s", constant);
-                return includeObject.test(aUniverse.getHostedValuesProvider().asObject(Object.class, hostedObject));
-            });
+            Predicate<JavaConstant> includeObjectConstant = constant -> includeObject.test(aUniverse.getHostedValuesProvider().asObject(Object.class, constant));
+            registerAsImmutable(rootConstant, includeObjectConstant);
         }
 
         @Override

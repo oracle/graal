@@ -109,6 +109,7 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.InternalReflectiveAccess;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
@@ -125,6 +126,7 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.TypeResult;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
@@ -132,6 +134,7 @@ import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
 import jdk.internal.access.SharedSecrets;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.security.jca.ProviderList;
@@ -408,6 +411,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static final String SIGNATURE_SERVICE = "Signature";
     private static final String CIPHER_SERVICE = "Cipher";
     private static final String KEY_AGREEMENT_SERVICE = "KeyAgreement";
+    private static final String KEM_SERVICE = "KEM";
     private static final String KEY_STORE = "KeyStore";
     private static final String CERTIFICATE_FACTORY = "CertificateFactory";
     private static final String JKS = "JKS";
@@ -491,6 +495,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         catalogRegistrar = new SecurityProviderCatalogRegistrar(this, buildTimeProvidersByClassName);
 
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), true, "java.base", "sun.security.ssl");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
         JVMCIRuntimeClassInitializationSupport.singleton().initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
                         "Force initialization of sun.security.krb5.KerberosSecrets.javaxSecurityAuthKerberosAccess");
@@ -740,9 +745,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
         NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) a).getNativeLibraries();
-        /* Library sunmscapi depends on ncrypt and crypt32 */
+        /* Library sunmscapi depends on ncrypt and crypt32. */
         nativeLibraries.addDynamicLibrary("ncrypt");
         nativeLibraries.addDynamicLibrary("crypt32");
+
+        JNIRegistrationSupport.singleton().registerJNILibrary("sunmscapi");
 
         registerForThrowNew(a, "java.security.cert.CertificateParsingException", "java.security.InvalidKeyException",
                         "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
@@ -1064,7 +1071,25 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             for (Service service : services) {
                 registerService(access, service);
             }
+            if (!mode.explicitRegistration() && serviceType.equals(KEM_SERVICE)) {
+                registerHybridProviderServices(access);
+            }
         }
+    }
+
+    /** §FS-002-security-providers.6.3: Preserve JDK-internal services in compatibility modes. */
+    private void registerHybridProviderServices(DuringAnalysisAccess access) {
+        optionalType(access, "sun.security.ssl.HybridProvider").ifPresent(hybridProviderType -> {
+            ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(hybridProviderType);
+            // Constant reflection does not initialize the class before reading static fields.
+            originalType.initialize();
+            JavaConstant providerConst = JVMCIReflectionUtil.readStaticField(originalType, "PROVIDER");
+            Provider provider = GuestAccess.get().getSnippetReflection().asObject(Provider.class, providerConst);
+            for (Service service : provider.getServices()) {
+                registerService(access, service);
+            }
+            catalogRegistrar.includeProviderForLegacyService(access, provider, RuntimeDynamicAccessMetadata.alwaysAvailable(false));
+        });
     }
 
     /** Service.getInstance() methods must be public static and should return the service type. */

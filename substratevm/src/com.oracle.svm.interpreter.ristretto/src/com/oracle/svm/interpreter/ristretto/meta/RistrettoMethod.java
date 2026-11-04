@@ -724,26 +724,12 @@ public final class RistrettoMethod extends SubstrateMethod {
         return requireOSRBackedgeState(targetBCI).installedCodeEntryPointIfLive();
     }
 
-    public boolean onOSRCompilationSuccess(int targetBCI, int requestId, SubstrateInstalledCodeImpl code, boolean installCode) {
-        return onOSRCompilationSuccess(targetBCI, requestId, code, installCode, true);
-    }
-
     /**
-     * Publishes OSR code from a hierarchy-validation transaction.
-     *
-     * Rejected code must be invalidated by the caller after it releases the hierarchy lock. The
-     * ordinary publication entry point invalidates stale code itself only after releasing the OSR
-     * state monitor.
+     * Attempts the final OSR-state publication. The compile/install caller owns rejected-code
+     * invalidation after it releases the runtime-assumption monitor.
      */
-    public boolean onOSRCompilationSuccessAfterHierarchyValidation(int targetBCI, int requestId, SubstrateInstalledCodeImpl code, boolean installCode) {
-        return onOSRCompilationSuccess(targetBCI, requestId, code, installCode, false);
-    }
-
-    private boolean onOSRCompilationSuccess(int targetBCI, int requestId, SubstrateInstalledCodeImpl code, boolean installCode, boolean invalidateRejectedCode) {
+    public boolean tryPublishOSRCompilation(int targetBCI, int requestId, SubstrateInstalledCodeImpl code, boolean installCode) {
         boolean published = requireOSRBackedgeState(targetBCI).onCompilationSuccess(this, requestId, code, installCode);
-        if (!published && invalidateRejectedCode && code != null && code.isValid()) {
-            code.invalidate();
-        }
         if (published && installCode) {
             getProfile().resetOSRBackedgeProcessing(targetBCI);
         }

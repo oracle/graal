@@ -24,23 +24,37 @@
  */
 package com.oracle.svm.interpreter.ristretto.compile;
 
+import java.lang.invoke.CallSite;
+import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MutableCallSite;
+import java.lang.invoke.VolatileCallSite;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.graal.snippets.SubstrateSharedGraphBuilderPlugins;
 import com.oracle.svm.interpreter.ristretto.IsInRuntimeCompiledCodeNode;
 import com.oracle.svm.interpreter.ristretto.RistrettoDirectives;
+import com.oracle.svm.interpreter.ristretto.RistrettoOptions;
 import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.replacements.CallSiteTargetPlugin;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Assumptions.CallSiteTargetValue;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -101,6 +115,7 @@ public final class RistrettoGraphBuilderPlugins {
         SubstrateSharedGraphBuilderPlugins.registerObjectPlugins(invocationPlugins);
         SubstrateSharedGraphBuilderPlugins.registerUnsafeAllocateInstancePlugin(new Registration(invocationPlugins, "jdk.internal.misc.Unsafe"));
         registerMethodHandlesPlugins(invocationPlugins);
+        registerCallSiteTargetPlugins(invocationPlugins);
         /*
          * registerClassPlugins(...) accepts two optional hosted hooks. We intentionally disable
          * both here for semantic correctness of runtime-loaded code, not just because hosted
@@ -140,5 +155,116 @@ public final class RistrettoGraphBuilderPlugins {
                 return true;
             }
         });
+    }
+
+    /**
+     * Registers constant-target folding for the CallSite kinds whose semantics permit it.
+     *
+     * <ul>
+     * <li>A {@link ConstantCallSite} target is immutable, so it needs no runtime assumption.</li>
+     * <li>A {@link MutableCallSite} target can be folded only with an assumption that invalidates
+     * the installed code when the target changes.</li>
+     * <li>A {@link VolatileCallSite} target uses the same invalidating assumption as a mutable site.
+     * Its target is acquired through {@link VolatileCallSite#getTarget()} and its setter retains a
+     * volatile store after invalidating dependent code.</li>
+     * </ul>
+     *
+     * The registration mechanics are shared with the HotSpot plugin; only conversion to Ristretto
+     * constants and runtime assumptions is implemented in this plugin.
+     */
+    private static void registerCallSiteTargetPlugins(InvocationPlugins invocationPlugins) {
+        registerCallSiteTargetPlugin(invocationPlugins, ConstantCallSite.class, false);
+        registerCallSiteTargetPlugin(invocationPlugins, MutableCallSite.class, true);
+        registerCallSiteTargetPlugin(invocationPlugins, VolatileCallSite.class, true);
+    }
+
+    private static void registerCallSiteTargetPlugin(InvocationPlugins invocationPlugins, Class<? extends CallSite> callSiteClass, boolean requiresAssumption) {
+        CallSiteTargetPlugin.register(invocationPlugins, (b, targetMethod, receiver) -> {
+            assert targetMethod != null;
+            ResolvedJavaField targetField = getCallSiteTargetField(b);
+            return tryFoldCallSiteTarget(b, receiver.get(false), targetField, callSiteClass, requiresAssumption);
+        }, callSiteClass);
+    }
+
+    /**
+     * Returns a constant target for a constant CallSite receiver when its lifetime rules make the
+     * fold safe. Mutable sites additionally record the target identity that runtime publication
+     * must validate and register for invalidation.
+     */
+    private static ConstantNode tryFoldCallSiteTarget(GraphBuilderContext b, ValueNode callSiteNode, ResolvedJavaField targetField, Class<? extends CallSite> callSiteClass,
+                    boolean requiresAssumption) {
+        if (targetField == null) {
+            return null;
+        }
+        ValueNode originalCallSiteNode = GraphUtil.originalValue(callSiteNode, true);
+        if (originalCallSiteNode == null) {
+            return null;
+        }
+        JavaConstant callSiteConstant = originalCallSiteNode.asJavaConstant();
+        if (callSiteConstant == null) {
+            callSiteConstant = tryReadStaticFinalCallSiteConstant(b, originalCallSiteNode);
+        }
+        if (callSiteConstant == null) {
+            return null;
+        }
+        if (callSiteClass == ConstantCallSite.class && !isFrozenConstantCallSite(b, callSiteConstant)) {
+            return null;
+        }
+        JavaConstant targetConstant = readCallSiteTarget(b, targetField, callSiteConstant, callSiteClass);
+        if (targetConstant == null || targetConstant.isNull()) {
+            return null;
+        }
+        if (requiresAssumption) {
+            if (!RistrettoOptions.JITUseCallSiteTargetValueAssumptions.getValue() || !RistrettoOptions.useDeoptimization() ||
+                            b.getAssumptions() == null) {
+                return null;
+            }
+            b.getAssumptions().record(new CallSiteTargetValue(callSiteConstant, targetConstant));
+        }
+        return ConstantNode.forConstant(targetConstant, b.getMetaAccess(), b.getGraph());
+    }
+
+    /** Reads volatile targets with acquire semantics before recording the target-value assumption. */
+    private static JavaConstant readCallSiteTarget(GraphBuilderContext b, ResolvedJavaField targetField, JavaConstant callSiteConstant,
+                    Class<? extends CallSite> callSiteClass) {
+        if (callSiteClass == VolatileCallSite.class) {
+            VolatileCallSite site = b.getSnippetReflection().asObject(VolatileCallSite.class, callSiteConstant);
+            return site == null ? null : b.getSnippetReflection().forObject(site.getTarget());
+        }
+        return b.getConstantReflection().readFieldValue(targetField, callSiteConstant);
+    }
+
+    private static boolean isFrozenConstantCallSite(GraphBuilderContext b, JavaConstant callSiteConstant) {
+        ResolvedJavaField isFrozenField = getConstantCallSiteIsFrozenField(b);
+        if (isFrozenField == null) {
+            return false;
+        }
+        JavaConstant isFrozenConstant = b.getConstantReflection().readFieldValue(isFrozenField, callSiteConstant);
+        return isFrozenConstant != null && isFrozenConstant.asBoolean();
+    }
+
+    private static ResolvedJavaField getCallSiteTargetField(GraphBuilderContext b) {
+        ResolvedJavaField targetField = JVMCIReflectionUtil.getUniqueDeclaredField(true, b.getMetaAccess().lookupJavaType(CallSite.class), "target");
+        return targetField != null && !targetField.isStatic() ? targetField : null;
+    }
+
+    private static ResolvedJavaField getConstantCallSiteIsFrozenField(GraphBuilderContext b) {
+        ResolvedJavaField isFrozenField = JVMCIReflectionUtil.getUniqueDeclaredField(true, b.getMetaAccess().lookupJavaType(ConstantCallSite.class), "isFrozen");
+        return isFrozenField != null && !isFrozenField.isStatic() ? isFrozenField : null;
+    }
+
+    /**
+     * Returns the CallSite constant loaded from a static final field, or {@code null} when the
+     * node does not represent such a field. Runtime graphs can retain this field load instead of
+     * exposing the CallSite as a constant node.
+     */
+    private static JavaConstant tryReadStaticFinalCallSiteConstant(GraphBuilderContext b, ValueNode node) {
+        if (!(node instanceof LoadFieldNode loadField)) {
+            return null;
+        }
+        if (!loadField.field().isStatic() || !Modifier.isFinal(loadField.field().getModifiers())) {
+            return null;
+        }
+        return b.getConstantReflection().readFieldValue(loadField.field(), null);
     }
 }

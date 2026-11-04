@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -92,8 +91,7 @@ public final class InteropCallAdapterNode extends RootNode {
 
         try {
             assert functionInstance.context() == WasmContext.get(null);
-            CallTarget target = functionInstance.target();
-            Object result = callNode.execute(target, validateArguments(arguments, WasmArguments.RUNTIME_ARGUMENT_COUNT));
+            Object result = callNode.execute(functionInstance.rootNode(), -1, validateArguments(arguments, WasmArguments.RUNTIME_ARGUMENT_COUNT));
 
             int resultCount = functionType.resultTypes().length;
             if (resultCount > 1) {
@@ -191,6 +189,11 @@ public final class InteropCallAdapterNode extends RootNode {
     @Override
     public String toString() {
         return getName();
+    }
+
+    @Override
+    public boolean isInternal() {
+        return true;
     }
 
     @Override

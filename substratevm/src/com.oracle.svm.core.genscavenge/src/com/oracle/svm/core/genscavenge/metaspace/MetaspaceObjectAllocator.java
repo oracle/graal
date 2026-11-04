@@ -52,6 +52,8 @@ class MetaspaceObjectAllocator {
     private final AtomicLong byteArrayCount = new AtomicLong(0);
     private final AtomicLong intArraySize = new AtomicLong(0);
     private final AtomicLong intArrayCount = new AtomicLong(0);
+    private final AtomicLong longArraySize = new AtomicLong(0);
+    private final AtomicLong longArrayCount = new AtomicLong(0);
     private final AtomicLong objectSize = new AtomicLong(0);
     private final AtomicLong objectCount = new AtomicLong(0);
 
@@ -73,6 +75,11 @@ class MetaspaceObjectAllocator {
     public int[] allocateIntArray(int length) {
         DynamicHub hub = DynamicHub.fromClass(int[].class);
         return (int[]) allocateArrayLikeObject(hub, length, intArraySize, intArrayCount);
+    }
+
+    public long[] allocateLongArray(int length) {
+        DynamicHub hub = DynamicHub.fromClass(long[].class);
+        return (long[]) allocateArrayLikeObject(hub, length, longArraySize, longArrayCount);
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
@@ -137,12 +144,16 @@ class MetaspaceObjectAllocator {
         long intSize = intArraySize.get();
         logValue(log, "int[]", intCount, intSize, mega);
 
+        long longCount = longArrayCount.get();
+        long longSize = longArraySize.get();
+        logValue(log, "long[]", longCount, longSize, mega);
+
         long pureObjectCount = objectCount.get();
         long pureObjectSize = objectSize.get();
         logValue(log, "Object", pureObjectCount, pureObjectSize, mega);
 
-        long totalCount = hubCount + byteCount + intCount + pureObjectCount;
-        long totalSize = hubSize + byteSize + intSize + pureObjectSize;
+        long totalCount = hubCount + byteCount + intCount + longCount + pureObjectCount;
+        long totalSize = hubSize + byteSize + intSize + longSize + pureObjectSize;
         logValue(log, "Total", totalCount, totalSize, mega);
 
         log.indent(false);

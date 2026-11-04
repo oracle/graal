@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -154,7 +154,6 @@ public interface TruffleRuntime {
      * Instances of {@link FrameInstance} must not escape the invocation of
      * {@link FrameInstanceVisitor#visitFrame(FrameInstance)}. This rule is currently not enforced,
      * but will be in future versions of Truffle.
-     *
      * <p>
      * Note that this method can cause deoptimization if
      * {@link FrameInstance#getFrame(FrameInstance.FrameAccess)} is called with
@@ -185,10 +184,9 @@ public interface TruffleRuntime {
      * every {@link FrameInstance}, returns null. Any non-null result of the visitor indicates that
      * frame iteration should stop.
      * <p>
-     * Instances of {@link FrameInstance} must note escape the invocation of
+     * Instances of {@link FrameInstance} must not escape the invocation of
      * {@link FrameInstanceVisitor#visitFrame(FrameInstance)}. This rule is currently not enforced,
      * but will be in future versions of Truffle.
-     *
      * <p>
      * Note that this method can cause deoptimization if
      * {@link FrameInstance#getFrame(FrameInstance.FrameAccess)} is called with

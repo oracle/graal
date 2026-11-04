@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ module org.graalvm.sl {
   requires org.graalvm.truffle;
   exports com.oracle.truffle.sl to org.graalvm.sl.test;
   exports com.oracle.truffle.sl.runtime to org.graalvm.sl.test;
+  exports com.oracle.truffle.sl.nodes to org.graalvm.sl.test;
   exports com.oracle.truffle.sl.builtins to org.graalvm.sl.test;
   provides  com.oracle.truffle.api.provider.TruffleLanguageProvider with
     com.oracle.truffle.sl.SLLanguageProvider;

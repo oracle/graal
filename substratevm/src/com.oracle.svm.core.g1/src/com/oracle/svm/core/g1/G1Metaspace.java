@@ -90,6 +90,11 @@ public final class G1Metaspace extends AbstractMetaspace {
     }
 
     @Override
+    protected long[] allocateLongArray0(int length) {
+        return NativeGCAllocationSupport.singleton().allocateMetaspaceLongArray(length);
+    }
+
+    @Override
     protected Object allocateObject0(DynamicHub hub) {
         return NativeGCAllocationSupport.singleton().allocateMetaspaceInstance(hub);
     }
@@ -113,9 +118,10 @@ public final class G1Metaspace extends AbstractMetaspace {
         printAllocationStatistics(log, "DynamicHub", statistics.dynamicHubCount(), statistics.dynamicHubSize());
         printAllocationStatistics(log, "byte[]", statistics.byteArrayCount(), statistics.byteArraySize());
         printAllocationStatistics(log, "int[]", statistics.intArrayCount(), statistics.intArraySize());
+        printAllocationStatistics(log, "long[]", statistics.longArrayCount(), statistics.longArraySize());
         printAllocationStatistics(log, "Object", statistics.objectCount(), statistics.objectSize());
-        UnsignedWord totalCount = statistics.dynamicHubCount().add(statistics.byteArrayCount()).add(statistics.intArrayCount()).add(statistics.objectCount());
-        UnsignedWord totalSize = statistics.dynamicHubSize().add(statistics.byteArraySize()).add(statistics.intArraySize()).add(statistics.objectSize());
+        UnsignedWord totalCount = statistics.dynamicHubCount().add(statistics.byteArrayCount()).add(statistics.intArrayCount()).add(statistics.longArrayCount()).add(statistics.objectCount());
+        UnsignedWord totalSize = statistics.dynamicHubSize().add(statistics.byteArraySize()).add(statistics.intArraySize()).add(statistics.longArraySize()).add(statistics.objectSize());
         printAllocationStatistics(log, "Total", totalCount, totalSize);
         log.indent(false);
     }

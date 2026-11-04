@@ -28,7 +28,8 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import com.oracle.svm.interpreter.metadata.RuntimeLoadedClassHierarchy.AssumptionDependent;
+import com.oracle.svm.core.deopt.RuntimeAssumptionSupport.DependentAttachment;
+import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -37,18 +38,24 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Mutable runtime hierarchy state owned by one {@link InterpreterResolvedObjectType}. All access
- * is serialized by the runtime hierarchy lock. Descendants are weak so a longer-lived superclass
+ * is serialized by the shared runtime-assumption monitor. Descendants are weak so a longer-lived superclass
  * or interface does not keep a child-loader class alive.
  */
 final class RuntimeClassHierarchyState {
     /** Weak references to published direct runtime subtypes of this owner. */
     private final ArrayList<WeakReference<InterpreterResolvedObjectType>> runtimeSubtypes = new ArrayList<>();
     /** Code that assumes this owner has no runtime descendants. */
-    private ArrayList<WeakReference<AssumptionDependent>> leafDependents;
+    private ArrayList<WeakReference<SubstrateInstalledCode>> leafDependents;
+    /** Attachment attempts credited since the last completed leaf-dependent prune. */
+    private int leafPruneAttachmentCredit;
     /** Code that assumes this owner has no additional concrete runtime descendant. */
-    private ArrayList<WeakReference<AssumptionDependent>> concreteSubtypeDependents;
+    private ArrayList<WeakReference<SubstrateInstalledCode>> concreteSubtypeDependents;
+    /** Attachment attempts credited since the last completed concrete-subtype prune. */
+    private int concreteSubtypePruneAttachmentCredit;
     /** Code whose concrete-method assumptions are rooted at this owner. */
     private ArrayList<ConcreteMethodDependent> concreteMethodDependents;
+    /** Attachment attempts credited since the last completed concrete-method prune. */
+    private int concreteMethodPruneAttachmentCredit;
 
     /** Adds one direct runtime subtype. Each runtime type is published exactly once. */
     void addRuntimeSubtype(InterpreterResolvedObjectType subtype) {
@@ -163,46 +170,96 @@ final class RuntimeClassHierarchyState {
     }
 
     /** Records code that assumes this owner has no runtime descendants. */
-    void addLeafDependent(AssumptionDependent dependent) {
+    DependentAttachment addLeafDependent(SubstrateInstalledCode dependent) {
         if (leafDependents == null) {
             leafDependents = new ArrayList<>();
-        } else {
-            pruneInvalidDependents(leafDependents);
         }
-        leafDependents.add(new WeakReference<>(dependent));
+        pruneLeafDependentsAmortized();
+        WeakReference<SubstrateInstalledCode> attachment = new WeakReference<>(dependent);
+        leafDependents.add(attachment);
+        return () -> leafDependents.remove(attachment);
     }
 
     /** Records code that assumes this owner has no additional concrete runtime descendant. */
-    void addConcreteSubtypeDependent(AssumptionDependent dependent) {
+    DependentAttachment addConcreteSubtypeDependent(SubstrateInstalledCode dependent) {
         if (concreteSubtypeDependents == null) {
             concreteSubtypeDependents = new ArrayList<>();
-        } else {
-            pruneInvalidDependents(concreteSubtypeDependents);
         }
-        concreteSubtypeDependents.add(new WeakReference<>(dependent));
+        pruneConcreteSubtypeDependentsAmortized();
+        WeakReference<SubstrateInstalledCode> attachment = new WeakReference<>(dependent);
+        concreteSubtypeDependents.add(attachment);
+        return () -> concreteSubtypeDependents.remove(attachment);
     }
 
     /** Records code that assumes all concrete descendants resolve {@code method} to {@code impl}. */
-    void addConcreteMethodDependent(InterpreterResolvedObjectType context, InterpreterResolvedJavaMethod method, InterpreterResolvedJavaMethod impl, AssumptionDependent dependent) {
+    DependentAttachment addConcreteMethodDependent(InterpreterResolvedObjectType context, InterpreterResolvedJavaMethod method, InterpreterResolvedJavaMethod impl,
+                    SubstrateInstalledCode dependent) {
         assert method.getDeclaringClass().isAssignableFrom(context);
         if (concreteMethodDependents == null) {
             concreteMethodDependents = new ArrayList<>();
-        } else {
-            pruneConcreteMethodDependents();
         }
-        concreteMethodDependents.add(new ConcreteMethodDependent(method, impl, dependent));
+        pruneConcreteMethodDependentsAmortized();
+        ConcreteMethodDependent attachment = new ConcreteMethodDependent(method, impl, dependent);
+        concreteMethodDependents.add(attachment);
+        return () -> concreteMethodDependents.remove(attachment);
     }
 
-    /** Prunes cleared or invalid dependents before appending another entry. */
-    private static void pruneInvalidDependents(ArrayList<WeakReference<AssumptionDependent>> dependents) {
+    /**
+     * Credits one leaf-bucket attempt before append and prunes after half its current size.
+     *
+     * Intentionally copies the other two amortized schedules here and the CallSite schedule in
+     * {@code RuntimeCallSiteTargetSupport}. Each bucket has its own credit; an empty bucket resets
+     * it, a nonempty attempt increments it once, and pruning at {@code ceil(currentSize / 2)} resets
+     * it again. Keep all four copies consistent; the runtime-assumption tests share a schedule oracle.
+     */
+    private void pruneLeafDependentsAmortized() {
+        int size = leafDependents.size();
+        if (size == 0) {
+            leafPruneAttachmentCredit = 0;
+            return;
+        }
+        int threshold = size - size / 2;
+        leafPruneAttachmentCredit++;
+        if (leafPruneAttachmentCredit < threshold) {
+            return;
+        }
+        pruneInvalidDependents(leafDependents);
+        leafPruneAttachmentCredit = 0;
+    }
+
+    /**
+     * Credits one concrete-subtype attempt before append and prunes after half its current size.
+     *
+     * Intentionally copies the other two amortized schedules here and the CallSite schedule in
+     * {@code RuntimeCallSiteTargetSupport}. Each bucket has its own credit; an empty bucket resets
+     * it, a nonempty attempt increments it once, and pruning at {@code ceil(currentSize / 2)} resets
+     * it again. Keep all four copies consistent; the runtime-assumption tests share a schedule oracle.
+     */
+    private void pruneConcreteSubtypeDependentsAmortized() {
+        int size = concreteSubtypeDependents.size();
+        if (size == 0) {
+            concreteSubtypePruneAttachmentCredit = 0;
+            return;
+        }
+        int threshold = size - size / 2;
+        concreteSubtypePruneAttachmentCredit++;
+        if (concreteSubtypePruneAttachmentCredit < threshold) {
+            return;
+        }
+        pruneInvalidDependents(concreteSubtypeDependents);
+        concreteSubtypePruneAttachmentCredit = 0;
+    }
+
+    /** Applies the unchanged weak-code validity predicate to one hierarchy bucket. */
+    private static void pruneInvalidDependents(ArrayList<WeakReference<SubstrateInstalledCode>> dependents) {
         dependents.removeIf(reference -> {
-            AssumptionDependent dependent = reference.get();
+            SubstrateInstalledCode dependent = reference.get();
             return dependent == null || !dependent.isValid();
         });
     }
 
     /** Collects live code invalidated by publication of {@code descendant}. */
-    void collectInvalidatedDependents(InterpreterResolvedObjectType descendant, EconomicSet<AssumptionDependent> dependentsToInvalidate) {
+    void collectInvalidatedDependents(InterpreterResolvedObjectType descendant, EconomicSet<SubstrateInstalledCode> dependentsToInvalidate) {
         collectUnconditionalDependents(leafDependents, dependentsToInvalidate);
         if (descendant.isConcrete()) {
             collectUnconditionalDependents(concreteSubtypeDependents, dependentsToInvalidate);
@@ -216,12 +273,12 @@ final class RuntimeClassHierarchyState {
      * Adds every live, valid entry in {@code dependents} to {@code dependentsToInvalidate}, then
      * clears {@code dependents}.
      */
-    private static void collectUnconditionalDependents(ArrayList<WeakReference<AssumptionDependent>> dependents, EconomicSet<AssumptionDependent> dependentsToInvalidate) {
+    private static void collectUnconditionalDependents(ArrayList<WeakReference<SubstrateInstalledCode>> dependents, EconomicSet<SubstrateInstalledCode> dependentsToInvalidate) {
         if (dependents == null) {
             return;
         }
-        for (WeakReference<AssumptionDependent> reference : dependents) {
-            AssumptionDependent dependent = reference.get();
+        for (WeakReference<SubstrateInstalledCode> reference : dependents) {
+            SubstrateInstalledCode dependent = reference.get();
             if (dependent != null && dependent.isValid()) {
                 dependentsToInvalidate.add(dependent);
             }
@@ -230,14 +287,14 @@ final class RuntimeClassHierarchyState {
     }
 
     /** Invalidates concrete-method dependents whose expected implementation changed. */
-    private void collectConcreteMethodDependents(InterpreterResolvedObjectType descendant, EconomicSet<AssumptionDependent> dependentsToInvalidate) {
+    private void collectConcreteMethodDependents(InterpreterResolvedObjectType descendant, EconomicSet<SubstrateInstalledCode> dependentsToInvalidate) {
         if (concreteMethodDependents == null) {
             return;
         }
         Iterator<ConcreteMethodDependent> iterator = concreteMethodDependents.iterator();
         while (iterator.hasNext()) {
             ConcreteMethodDependent entry = iterator.next();
-            AssumptionDependent dependent = entry.dependent.get();
+            SubstrateInstalledCode dependent = entry.dependent.get();
             if (dependent == null || !dependent.isValid()) {
                 iterator.remove();
             } else if (entry.isInvalidatedBy(descendant)) {
@@ -253,9 +310,32 @@ final class RuntimeClassHierarchyState {
             return;
         }
         concreteMethodDependents.removeIf(entry -> {
-            AssumptionDependent dependent = entry.dependent.get();
+            SubstrateInstalledCode dependent = entry.dependent.get();
             return dependent == null || !dependent.isValid();
         });
+    }
+
+    /**
+     * Credits one concrete-method attempt before append and prunes after half its current size.
+     *
+     * Intentionally copies the other two amortized schedules here and the CallSite schedule in
+     * {@code RuntimeCallSiteTargetSupport}. Each bucket has its own credit; an empty bucket resets
+     * it, a nonempty attempt increments it once, and pruning at {@code ceil(currentSize / 2)} resets
+     * it again. Keep all four copies consistent; the runtime-assumption tests share a schedule oracle.
+     */
+    private void pruneConcreteMethodDependentsAmortized() {
+        int size = concreteMethodDependents.size();
+        if (size == 0) {
+            concreteMethodPruneAttachmentCredit = 0;
+            return;
+        }
+        int threshold = size - size / 2;
+        concreteMethodPruneAttachmentCredit++;
+        if (concreteMethodPruneAttachmentCredit < threshold) {
+            return;
+        }
+        pruneConcreteMethodDependents();
+        concreteMethodPruneAttachmentCredit = 0;
     }
 
     /** Weak participant payload for one concrete-method use case. */
@@ -265,9 +345,9 @@ final class RuntimeClassHierarchyState {
         /** Weak implementation that can be declared by a runtime-loaded descendant. */
         private final WeakReference<InterpreterResolvedJavaMethod> impl;
         /** Installed code invalidated when the expected implementation changes. */
-        private final WeakReference<AssumptionDependent> dependent;
+        private final WeakReference<SubstrateInstalledCode> dependent;
 
-        private ConcreteMethodDependent(InterpreterResolvedJavaMethod method, InterpreterResolvedJavaMethod impl, AssumptionDependent dependent) {
+        private ConcreteMethodDependent(InterpreterResolvedJavaMethod method, InterpreterResolvedJavaMethod impl, SubstrateInstalledCode dependent) {
             this.method = method;
             this.impl = new WeakReference<>(impl);
             this.dependent = new WeakReference<>(dependent);

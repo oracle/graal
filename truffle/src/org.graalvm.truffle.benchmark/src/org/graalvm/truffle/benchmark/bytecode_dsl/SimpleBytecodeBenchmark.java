@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,12 +67,13 @@ import com.oracle.truffle.api.CallTarget;
 @Measurement(iterations = 5, time = 1)
 public class SimpleBytecodeBenchmark extends AbstractBytecodeBenchmark {
 
-    @Param({"NestedLoopBenchmark", "CalculatorBenchmark"}) private String benchmarkSpecClass;
+    @Param({"NestedLoopBenchmark", "CalculatorBenchmark", "RecursiveFibonacciBenchmark"}) private String benchmarkSpecClass;
     @Param({"interpreter", "default"}) private String mode;
     private BenchmarkSpec benchmarkSpec;
     private Context context;
     // The call target under test (populated during setup with the correct call target)
     private CallTarget callTarget;
+    private Object[] arguments;
     // For expected result checking, when enabled.
     private Object result;
 
@@ -93,16 +94,19 @@ public class SimpleBytecodeBenchmark extends AbstractBytecodeBenchmark {
 
         benchmarkSpec = getBenchmarkSpec();
         String benchMethod = getBenchmarkMethod(params);
+        arguments = benchmarkSpec.arguments();
         context.enter();
         callTarget = switch (benchMethod) {
-            case "bytecodeDSLNoOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeNoOpts.BYTECODE, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
-            case "bytecodeDSLAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeAllOpts.BYTECODE, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
+            case "bytecodeDSLNoOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeNoOpts.BYTECODE, null, b1 -> benchmarkSpec.parseBytecodeDSL(b1,
+                            benchMethod)).getNodes().getLast().getCallTarget();
+            case "bytecodeDSLAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeAllOpts.BYTECODE, null, b1 -> benchmarkSpec.parseBytecodeDSL(b1,
+                            benchMethod)).getNodes().getLast().getCallTarget();
             case "bytecodeDSLThreadedAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeThreadedAllOpts.BYTECODE, null,
-                            benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
+                            b1 -> benchmarkSpec.parseBytecodeDSL(b1, benchMethod)).getNodes().getLast().getCallTarget();
             case "bytecodeDSLTailCallAllOpts" -> createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeTailCallAllOpts.BYTECODE, null,
-                            benchmarkSpec::parseBytecodeDSL).getNodes().getLast().getCallTarget();
+                            b1 -> benchmarkSpec.parseBytecodeDSL(b1, benchMethod)).getNodes().getLast().getCallTarget();
             case "bytecodeDSLUncached" -> {
-                var node = createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeUncached.BYTECODE, null, benchmarkSpec::parseBytecodeDSL).getNodes().getLast();
+                var node = createBytecodeDSLNodes(BytecodeDSLBenchmarkRootNodeUncached.BYTECODE, null, b1 -> benchmarkSpec.parseBytecodeDSL(b1, benchMethod)).getNodes().getLast();
                 node.getBytecodeNode().setUncachedThreshold(Integer.MIN_VALUE);
                 yield node.getCallTarget();
             }
@@ -139,7 +143,7 @@ public class SimpleBytecodeBenchmark extends AbstractBytecodeBenchmark {
     }
 
     private void benchmark(CallTarget ct) {
-        result = ct.call(benchmarkSpec.arguments());
+        result = ct.call(arguments);
     }
 
     @Benchmark

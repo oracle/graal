@@ -27,6 +27,7 @@ package jdk.graal.compiler.truffle.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -42,6 +43,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
@@ -77,6 +79,87 @@ public class RootNodeCompilationTest extends TestWithSynchronousCompiling {
     }
 
     @Test
+    public void testDirectCallExplicitBytecodeIndexOnException() {
+        assertExplicitBytecodeIndexOnException(new DirectExplicitBytecodeIndexCallerRootNode());
+    }
+
+    @Test
+    public void testInlinedDirectCallExplicitBytecodeIndexOnException() {
+        DirectExplicitBytecodeIndexCallerRootNode root = new DirectExplicitBytecodeIndexCallerRootNode();
+        root.callNode.forceInlining();
+        assertExplicitBytecodeIndexOnException(root);
+        assertTrue(((ThrowErrorRootNode) root.calleeRoot).compiled);
+    }
+
+    @Test
+    public void testIndirectCallExplicitBytecodeIndexOnException() {
+        assertExplicitBytecodeIndexOnException(new IndirectExplicitBytecodeIndexCallerRootNode());
+    }
+
+    @Test
+    public void testDirectRootCallExplicitBytecodeIndexOnException() {
+        DirectRootExplicitBytecodeIndexCallerRootNode root = new DirectRootExplicitBytecodeIndexCallerRootNode();
+        root.getCallTarget();
+        assertTrue(root.callNode.cloneCallTarget());
+        assertTrue(root.callNode.isCallTargetCloned());
+        assertExplicitBytecodeIndexOnException(root);
+    }
+
+    @Test
+    public void testIndirectRootCallExplicitBytecodeIndexOnException() {
+        assertExplicitBytecodeIndexOnException(new IndirectRootExplicitBytecodeIndexCallerRootNode());
+    }
+
+    @Test
+    public void testDirectRootCallImplicitBytecodeIndexOnException() {
+        DirectRootImplicitBytecodeIndexCallerRootNode root = new DirectRootImplicitBytecodeIndexCallerRootNode();
+        root.getCallTarget();
+        assertTrue(root.callNode.cloneCallTarget());
+        assertTrue(root.callNode.isCallTargetCloned());
+
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        OptimizedCallTarget middleTarget = (OptimizedCallTarget) root.callNode.getCurrentCallTarget();
+        CloningCaptureCallerRootNode middleRoot = (CloningCaptureCallerRootNode) middleTarget.getRootNode();
+        @SuppressWarnings("unchecked")
+        List<TruffleStackTraceElement> trace = (List<TruffleStackTraceElement>) target.call();
+        assertEquals(3, trace.size());
+
+        TruffleStackTraceElement middle = trace.get(1);
+        assertSame(middleTarget, middle.getTarget());
+        assertSame(middleRoot, middle.getLocation());
+        assertEquals(0b11, middle.getBytecodeIndex());
+        assertEquals(1, middleRoot.interpretedCount);
+
+        TruffleStackTraceElement caller = trace.get(2);
+        assertSame(target, caller.getTarget());
+        assertSame(root.getCallNode(), caller.getLocation());
+        assertEquals(DirectRootImplicitBytecodeIndexCallerRootNode.BYTECODE_INDEX, caller.getBytecodeIndex());
+        assertEquals(1, root.captureCount);
+    }
+
+    private static void assertExplicitBytecodeIndexOnException(ExplicitBytecodeIndexCallerRootNode root) {
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        assertExplicitBytecodeIndexOnException(root, target, false);
+
+        target.compile(true);
+        target.waitForCompilation();
+        assertTrue(target.isValid());
+        assertExplicitBytecodeIndexOnException(root, target, true);
+    }
+
+    private static void assertExplicitBytecodeIndexOnException(ExplicitBytecodeIndexCallerRootNode root, OptimizedCallTarget target, boolean compiled) {
+        assertFails(() -> target.call(root.getArguments()), TestException.class, (e) -> {
+            List<TruffleStackTraceElement> trace = TruffleStackTrace.getStackTrace(e);
+            assertEquals(2, trace.size());
+            TruffleStackTraceElement caller = trace.get(1);
+            assertSame(target, caller.getTarget());
+            assertSame(root.getCallNode(), caller.getLocation());
+            assertEquals(ExplicitBytecodeIndexCallerRootNode.BYTECODE_INDEX, caller.getBytecodeIndex());
+        });
+        assertEquals(compiled, root.compiled);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void testCaptureStack() {
         var throw0 = new CaptureStackRootNode();
@@ -104,6 +187,154 @@ public class RootNodeCompilationTest extends TestWithSynchronousCompiling {
         }
 
         assertTrue(target.isValid());
+    }
+
+    abstract static class ExplicitBytecodeIndexCallerRootNode extends RootNode {
+
+        static final int BYTECODE_INDEX = 42;
+
+        final RootNode calleeRoot;
+        final CallTarget callee;
+        boolean compiled;
+
+        ExplicitBytecodeIndexCallerRootNode() {
+            this(new ThrowErrorRootNode());
+        }
+
+        ExplicitBytecodeIndexCallerRootNode(RootNode calleeRoot) {
+            super(null);
+            this.calleeRoot = calleeRoot;
+            this.callee = calleeRoot.getCallTarget();
+        }
+
+        abstract Node getCallNode();
+
+        Object[] getArguments() {
+            return new Object[0];
+        }
+
+        final void recordExecutionMode() {
+            compiled = CompilerDirectives.inCompiledCode();
+        }
+
+        @Override
+        protected int findBytecodeIndex(Node node, Frame frame) {
+            return 7;
+        }
+    }
+
+    static final class DirectExplicitBytecodeIndexCallerRootNode extends ExplicitBytecodeIndexCallerRootNode {
+
+        @Child private DirectCallNode callNode = DirectCallNode.create(callee);
+
+        @Override
+        Node getCallNode() {
+            return callNode;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            recordExecutionMode();
+            return callNode.call(BYTECODE_INDEX, new Object[0]);
+        }
+    }
+
+    static final class IndirectExplicitBytecodeIndexCallerRootNode extends ExplicitBytecodeIndexCallerRootNode {
+
+        @Child private IndirectCallNode callNode = IndirectCallNode.create();
+
+        @Override
+        Node getCallNode() {
+            return callNode;
+        }
+
+        @Override
+        Object[] getArguments() {
+            return new Object[]{callee};
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            recordExecutionMode();
+            CallTarget target = (CallTarget) frame.getArguments()[0];
+            return callNode.call(target, BYTECODE_INDEX, new Object[0]);
+        }
+    }
+
+    static final class DirectRootExplicitBytecodeIndexCallerRootNode extends ExplicitBytecodeIndexCallerRootNode {
+
+        @Child private DirectCallNode callNode = DirectCallNode.create(callee);
+
+        DirectRootExplicitBytecodeIndexCallerRootNode() {
+            super(new CloningThrowErrorRootNode());
+        }
+
+        @Override
+        Node getCallNode() {
+            return callNode;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            recordExecutionMode();
+            return callNode.call(CloningThrowErrorRootNode.class, BYTECODE_INDEX, new Object[0]);
+        }
+    }
+
+    static final class DirectRootImplicitBytecodeIndexCallerRootNode extends ExplicitBytecodeIndexCallerRootNode {
+
+        static final int BYTECODE_INDEX = 7;
+
+        @Child private DirectCallNode callNode = DirectCallNode.create(callee);
+        int captureCount;
+
+        DirectRootImplicitBytecodeIndexCallerRootNode() {
+            super(new CloningCaptureCallerRootNode());
+        }
+
+        @Override
+        Node getCallNode() {
+            return callNode;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            recordExecutionMode();
+            return callNode.call(CloningCaptureCallerRootNode.class, -1, new Object[0]);
+        }
+
+        @Override
+        protected boolean isCaptureFramesForTrace(boolean compiledFrame) {
+            captureCount++;
+            return true;
+        }
+
+        @Override
+        protected int findBytecodeIndex(Node node, Frame frame) {
+            return frame == null ? -1 : BYTECODE_INDEX;
+        }
+    }
+
+    static final class IndirectRootExplicitBytecodeIndexCallerRootNode extends ExplicitBytecodeIndexCallerRootNode {
+
+        @Child private IndirectCallNode callNode = IndirectCallNode.create();
+
+        @Override
+        Node getCallNode() {
+            return callNode;
+        }
+
+        @Override
+        Object[] getArguments() {
+            return new Object[]{calleeRoot};
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            recordExecutionMode();
+            ThrowErrorRootNode root = (ThrowErrorRootNode) frame.getArguments()[0];
+            return callNode.call(root, BYTECODE_INDEX, new Object[0]);
+        }
     }
 
     abstract static class BaseRootNode extends RootNode {
@@ -377,11 +608,22 @@ public class RootNodeCompilationTest extends TestWithSynchronousCompiling {
 
     static class ThrowErrorRootNode extends BaseRootNode {
 
+        boolean compiled;
+
         @Override
         public Object execute(VirtualFrame frame) {
+            compiled = CompilerDirectives.inCompiledCode();
             throw new TestException(this);
         }
 
+    }
+
+    static final class CloningThrowErrorRootNode extends ThrowErrorRootNode {
+
+        @Override
+        public boolean isCloningAllowed() {
+            return true;
+        }
     }
 
     static class CaptureStackRootNode extends BaseRootNode {
@@ -391,6 +633,21 @@ public class RootNodeCompilationTest extends TestWithSynchronousCompiling {
             return TruffleStackTrace.getStackTrace(new TestException(this));
         }
 
+    }
+
+    static final class CloningCaptureCallerRootNode extends BaseRootNode {
+
+        private final CallTarget target = new CaptureStackRootNode().getCallTarget();
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return target.call(this);
+        }
+
+        @Override
+        public boolean isCloningAllowed() {
+            return true;
+        }
     }
 
     @SuppressWarnings("serial")

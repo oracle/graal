@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.replacements.test;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -363,6 +364,32 @@ public class InstanceOfTest extends TypeCheckTest {
 
     public static boolean isArrayOfD(Object o) {
         return o instanceof D[];
+    }
+
+    /// Tests the interfaces retained when different primitive array types merge.
+    @Test
+    public void testMergedArrayInterfaces() {
+        test("mergedArrayIsCloneable", true);
+        test("mergedArrayIsCloneable", false);
+        test("mergedArrayIsSerializable", true);
+        test("mergedArrayIsSerializable", false);
+    }
+
+    /// Checks `Cloneable` after merging arrays without a common array superclass.
+    public static boolean mergedArrayIsCloneable(boolean chooseIntArray) {
+        Object array;
+        if (chooseIntArray) {
+            array = new int[1];
+        } else {
+            array = new long[1];
+        }
+        return array instanceof Cloneable;
+    }
+
+    /// Checks `Serializable` after merging arrays without a common array superclass.
+    public static boolean mergedArrayIsSerializable(boolean chooseIntArray) {
+        Object array = chooseIntArray ? new int[1] : new long[1];
+        return array instanceof Serializable;
     }
 
     @Test

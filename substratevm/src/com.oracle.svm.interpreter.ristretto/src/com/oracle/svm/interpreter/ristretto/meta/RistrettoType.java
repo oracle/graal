@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.interpreter.ristretto.meta;
 
-import java.util.ArrayList;
 import java.util.function.Function;
 
 import com.oracle.svm.core.hub.DynamicHub;
@@ -40,11 +39,6 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
-import jdk.vm.ci.meta.Assumptions.CallSiteTargetValue;
-import jdk.vm.ci.meta.Assumptions.ConcreteMethod;
-import jdk.vm.ci.meta.Assumptions.ConcreteSubtype;
-import jdk.vm.ci.meta.Assumptions.LeafType;
-import jdk.vm.ci.meta.Assumptions.NoFinalizableSubclass;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -148,13 +142,13 @@ public final class RistrettoType extends SubstrateType {
         }
         ResolvedJavaType ristrettoResult = normalizeJVMCIType(result.getResult());
         /*
-         * An assumption-free result is a closed fact in the current image, so there is no assumption
-         * object to translate into Ristretto metadata.
+         * An assumption-free result is a closed fact in the current image, so there is no runtime
+         * dependency to retain.
          */
         if (result.isAssumptionFree()) {
             return new AssumptionResult<>(ristrettoResult);
         }
-        return new AssumptionResult<>(ristrettoResult, toRistrettoAssumptions(result));
+        return new AssumptionResult<>(ristrettoResult, retainRuntimeAssumptions(result));
     }
 
     @Override
@@ -174,7 +168,7 @@ public final class RistrettoType extends SubstrateType {
             if (result.isAssumptionFree()) {
                 return new AssumptionResult<>(ristrettoResult);
             }
-            return new AssumptionResult<>(ristrettoResult, toRistrettoAssumptions(result));
+            return new AssumptionResult<>(ristrettoResult, retainRuntimeAssumptions(result));
         }
         return super.findUniqueConcreteMethod(method);
     }
@@ -190,46 +184,14 @@ public final class RistrettoType extends SubstrateType {
     }
 
     /**
-     * Replays the original compiler assumptions into a temporary container, converts every JVMCI
-     * type and method reference to the corresponding Ristretto wrapper, and returns the translated
-     * assumption array for the new {@link AssumptionResult}.
+     * Replays the original JVMCI assumptions into an owned array. Runtime hierarchy queries create
+     * these assumptions with canonical interpreter metadata, so only the query result is translated
+     * to its compiler-side Ristretto representation.
      */
-    private static Assumption[] toRistrettoAssumptions(AssumptionResult<?> result) {
-        Assumptions originalAssumptions = new Assumptions();
-        result.recordTo(originalAssumptions);
-
-        ArrayList<Assumption> ristrettoAssumptions = new ArrayList<>();
-        for (Assumption assumption : originalAssumptions) {
-            ristrettoAssumptions.add(toRistrettoAssumption(assumption));
-        }
-        return ristrettoAssumptions.toArray(new Assumption[0]);
-    }
-
-    /**
-     * Converts one assumption payload from image-resident JVMCI metadata to Ristretto metadata while
-     * preserving the assumption kind used by the compiler.
-     */
-    private static Assumption toRistrettoAssumption(Assumption assumption) {
-        if (assumption instanceof NoFinalizableSubclass noFinalizableSubclass) {
-            return new NoFinalizableSubclass(toRequiredRistrettoType(noFinalizableSubclass.receiverType));
-        } else if (assumption instanceof ConcreteSubtype concreteSubtype) {
-            return new ConcreteSubtype(toRequiredRistrettoType(concreteSubtype.context), toRequiredRistrettoType(concreteSubtype.subtype));
-        } else if (assumption instanceof LeafType leafType) {
-            return new LeafType(toRequiredRistrettoType(leafType.context));
-        } else if (assumption instanceof ConcreteMethod concreteMethod) {
-            return new ConcreteMethod(toRequiredRistrettoMethod(concreteMethod.method), toRequiredRistrettoType(concreteMethod.context), toRequiredRistrettoMethod(concreteMethod.impl));
-        } else if (assumption instanceof CallSiteTargetValue) {
-            return assumption;
-        }
-        throw GraalError.shouldNotReachHere("Unsupported Ristretto assumption: " + assumption);
-    }
-
-    private static RistrettoType toRequiredRistrettoType(ResolvedJavaType type) {
-        ResolvedJavaType ristrettoType = normalizeJVMCIType(type);
-        if (ristrettoType instanceof RistrettoType rType) {
-            return rType;
-        }
-        throw GraalError.shouldNotReachHere("Cannot map assumption type to Ristretto metadata: " + type);
+    private static Assumption[] retainRuntimeAssumptions(AssumptionResult<?> result) {
+        Assumptions runtimeAssumptions = new Assumptions();
+        result.recordTo(runtimeAssumptions);
+        return runtimeAssumptions.toArray();
     }
 
     private static RistrettoMethod toRequiredRistrettoMethod(ResolvedJavaMethod method) {
