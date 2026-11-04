@@ -464,7 +464,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
             maxDiff = min(maxDiff, LoopUnswitchMaxIncrease.getValue(options));
             return min(maxDiff, remainingGraphSpace);
         } catch (ArithmeticException e) {
-            return remainingGraphSpace;
+            return min(LoopUnswitchMaxIncrease.getValue(options), remainingGraphSpace);
         }
     }
 
