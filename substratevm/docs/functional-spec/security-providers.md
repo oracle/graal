@@ -438,6 +438,9 @@ With that metadata, it can return the provider only when [`ServiceLoader`][servi
 [`Provider`][provider] is reachable and therefore retains the descriptor.
 Descriptor discovery preserves declaration order without instantiating declarations that have no
 active provider-registration signal.
+`-H:ServiceLoaderFeatureExcludeServices=java.security.Provider` disables automatic descriptor retention
+and removes provider entries from the services catalog in every mode, including explicit provider
+registration; qualifying reflection metadata alone does not override the exclusion.
 Only explicit-registration mode registers a negative resource query for an absent provider
 descriptor; both legacy modes preserve the ordinary resource-query behavior. The negative query
 permits an absent descriptor to return no resource, but does not suppress a descriptor retained by

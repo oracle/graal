@@ -178,7 +178,7 @@ public class ServiceLoaderFeature implements InternalFeature {
             Resources.currentLayer().registerNegativeQuery(access.getApplicationClassLoader().getUnnamedModule(), SECURITY_PROVIDER_SERVICE_RESOURCE);
         }
         accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
-            if (securityProviderMode.explicitRegistration() && serviceName.equals(java.security.Provider.class.getName())) {
+            if (securityProviderMode.explicitRegistration() && serviceName.equals(java.security.Provider.class.getName()) && !servicesToSkip.contains(serviceName)) {
                 ResolvedJavaType serviceClass = accessImpl.findTypeByName(serviceName);
                 if (serviceClass != null) {
                     access.registerReachabilityHandler(a -> preserveSecurityProviderDescriptors(a, providers), serviceClass);
