@@ -85,6 +85,24 @@ final class SecurityProviderCatalogRegistrar {
         }
     }
 
+    /** §FS-002-security-providers.6.5: Retain legacy eligibility without constructing a provider. */
+    void includeLegacyRequestedProviderClass(Class<?> providerClass) {
+        RuntimeDynamicAccessMetadata metadata = RuntimeDynamicAccessMetadata.alwaysAvailable(false);
+        feature.registerProviderConstructionPaths(providerClass, metadata);
+        SecurityProviderRuntimeState.currentLayer().registerConfiguredProviderName(providerClass.getName(), providerClass.getName());
+        List<Provider> providers = buildTimeProvidersByClassName.get(providerClass.getName());
+        if (providers == null) {
+            writeProviderManifest(providerClass.getName(), AcquisitionKind.JDK_CONSTRUCTIBLE, null, metadata);
+            return;
+        }
+        for (Provider provider : providers) {
+            usedProviders.add(provider);
+            provider.entrySet();
+            recordConfiguredProvider(provider);
+            writeProviderManifest(providerClass.getName(), AcquisitionKind.JDK_CONSTRUCTIBLE, feature.getProviderVerificationResult(provider), metadata);
+        }
+    }
+
     /** §FS-002-security-providers.6.3: Include one provider without its whole catalog. */
     void includeProviderForLegacyService(DuringAnalysisAccess access, Provider provider, RuntimeDynamicAccessMetadata metadata) {
         registerProvider(access, provider, metadata);
