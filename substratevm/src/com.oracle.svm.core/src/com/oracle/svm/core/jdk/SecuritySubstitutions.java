@@ -109,9 +109,15 @@ final class Target_java_security_Provider {
 final class Target_java_security_Provider_Service {
 
     /**
-     * The field is lazily initialized on first access. We already have the necessary reflection
-     * configuration for the reflective lookup at image run time.
+     * A retained service must resolve its implementation using run-time metadata
+     * (§FS-002-security-providers.4.1). Builder lookups can populate this cache after analysis;
+     * retaining it can introduce unanalyzed types or bypass missing-registration checks.
      */
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private Object classCache;
+
+    /** Constructor lookup must also use run-time metadata instead of a build-time cached value. */
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private Object constructorCache;
