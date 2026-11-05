@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.core.SubstrateOptions.ResourceProtocol;
+
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -105,8 +107,9 @@ final class Target_java_net_URL {
     private static native URLStreamHandler lookupViaProperty(String protocol);
 
     /**
-     * Same as in the JDK except: disabled protocols are rejected before any handler lookup, resource
-     * is not overrideable, and the default factory has Native Image handling for resource and jrt.
+     * Same as in the JDK except: disabled protocols are rejected before any handler lookup, the
+     * configured embedded-resource protocol is not overrideable, and the default factory has Native
+     * Image handling for that protocol and jrt.
      */
     @Substitute
     @TargetElement(name = "getURLStreamHandler")
@@ -122,7 +125,7 @@ final class Target_java_net_URL {
 
         boolean checkedWithFactory = false;
         URLStreamHandlerFactory currentFactory;
-        boolean overrideable = isOverrideable(protocol) && !JavaNetSubstitutions.RESOURCE_PROTOCOL.equalsIgnoreCase(protocol);
+        boolean overrideable = isOverrideable(protocol) && !ResourceProtocol.getValue().equals(protocol);
         if (overrideable && Target_jdk_internal_misc_VM.isBooted()) {
             currentFactory = factory;
             if (currentFactory != null) {
@@ -164,7 +167,7 @@ final class Target_java_net_URL {
     }
 
     /**
-     * Same as in the JDK except: it handles the resource protocol, it does not pull in the JAR
+     * Same as in the JDK except: it handles the configured embedded-resource protocol, it does not pull in the JAR
      * provider by default, and it handles error messages related to metadata better.
      */
     @BasedOnJDKClass(className = "java.net.URL$DefaultFactory")
@@ -174,12 +177,13 @@ final class Target_java_net_URL {
             if (JavaNetSubstitutions.isDisabledURLProtocol(protocol)) {
                 return null;
             }
+            if (ResourceProtocol.getValue().equals(protocol)) {
+                return JavaNetSubstitutions.createResourceURLStreamHandler();
+            }
             // Avoid using reflection during bootstrap.
             switch (protocol) {
                 case "file":
                     return new sun.net.www.protocol.file.Handler();
-                case JavaNetSubstitutions.RESOURCE_PROTOCOL:
-                    return JavaNetSubstitutions.createResourceURLStreamHandler();
                 case "jrt":
                     if (JRTSupport.Options.AllowJRTFileSystem.getValue()) {
                         return JavaNetSubstitutions.newJRTURLStreamHandler();
@@ -216,7 +220,7 @@ final class Target_java_net_URL_WithRuntimeClassLoading {
         if (JavaNetSubstitutions.isDisabledURLProtocol(protocol)) {
             return null;
         }
-        if (JavaNetSubstitutions.RESOURCE_PROTOCOL.equalsIgnoreCase(protocol)) {
+        if (ResourceProtocol.getValue().equals(protocol)) {
             return JavaNetSubstitutions.createResourceURLStreamHandler();
         }
         return getURLStreamHandlerOriginal(protocol);
@@ -312,7 +316,6 @@ final class URLProtocolsSupport {
 /** Dummy class to have a class with the file's name. */
 public final class JavaNetSubstitutions {
     static final String ALL_PROTOCOLS = "all";
-    static final String RESOURCE_PROTOCOL = "resource";
     private static final String PROTOCOL_QUALIFIER = "sun.net.www.protocol.";
     static final Set<String> KNOWN_JDK_PROTOCOLS = Set.of(
                     "file", "ftp", "http", "https", "jar", "jmod", "jrt", "mailto");
@@ -335,7 +338,7 @@ public final class JavaNetSubstitutions {
             LogUtils.warning("The URL protocol " + protocol + " was both enabled and disabled. The disable option takes precedence.");
             return;
         }
-        if (RESOURCE_PROTOCOL.equalsIgnoreCase(protocol)) {
+        if (ResourceProtocol.getValue().equalsIgnoreCase(protocol)) {
             return;
         }
         String handlerClassName = handlerClassName(protocol);

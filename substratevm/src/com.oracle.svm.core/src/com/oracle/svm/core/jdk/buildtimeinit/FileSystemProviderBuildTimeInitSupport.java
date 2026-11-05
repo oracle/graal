@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,7 @@ import com.oracle.svm.core.jdk.JRTSupport;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jdk.UserSystemProperty;
 import com.oracle.svm.core.jdk.runtimeinit.FileSystemProviderRunTimeInitSupport;
+import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -156,6 +157,13 @@ final class FileSystemProviderBuildTimeInitFeature implements InternalFeature {
             installedProviders.addAll(FileSystemProvider.installedProviders());
         }
         ImageSingletons.add(FileSystemProviderBuildTimeInitSupport.class, new FileSystemProviderBuildTimeInitSupport(installedProviders));
+        if (FileSystemProviderBuildTimeInitSupport.Options.AddAllFileSystemProviders.getValue()) {
+            // The resource scheme is image-specific, so register the provider after hosted options
+            // are available.
+            // Collision handling must match run-time initialization: the embedded-resource provider
+            // takes precedence for its configured scheme.
+            FileSystemProviderBuildTimeInitSupport.register(new NativeImageResourceFileSystemProvider());
+        }
 
         /* Access to Java modules (jimage/jrtfs access) in images is experimental. */
         if (!JRTSupport.Options.AllowJRTFileSystem.getValue()) {

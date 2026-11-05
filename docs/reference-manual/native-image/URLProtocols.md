@@ -51,6 +51,16 @@ and reports the handler class that must be added to reachability metadata.
 The `--enable-http`, `--enable-https`, and `--enable-url-protocols` options are deprecated.
 Use reachability metadata instead.
 
+## Embedded-Resource Protocol
+
+Embedded-resource URLs and the Native Image filesystem provider use the `resource` scheme by default.
+You can select a different scheme at image build time with the hosted option `-H:ResourceProtocol=<scheme>`.
+Native Image normalizes the selected scheme to lowercase at build time because schemes are case-insensitive.
+The selected scheme applies to embedded-resource URLs, URIs, URL handlers, and NIO filesystem lookup and cannot be changed at run time.
+
+Choose an unused scheme that starts with an ASCII letter and contains only ASCII letters, digits, `+`, `-`, or `.`.
+The image builder rejects empty or syntactically invalid scheme names.
+
 ## HTTPS Support
 Support for the `https` URL protocol relies on the Java Cryptography Architecture (JCA) framework.
 Registering the `https` handler can add the code required by the JCA to the generated binary, including statically linked native libraries that the JCA may depend on.
