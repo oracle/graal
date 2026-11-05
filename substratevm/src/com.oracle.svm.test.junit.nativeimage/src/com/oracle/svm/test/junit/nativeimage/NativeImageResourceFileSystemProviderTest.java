@@ -71,9 +71,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.svm.test.api.AddExports;
-
-@AddExports("java.base/java.lang")
 public class NativeImageResourceFileSystemProviderTest {
 
     private static final String NEW_DIRECTORY = RESOURCE_DIR + "/tmp";

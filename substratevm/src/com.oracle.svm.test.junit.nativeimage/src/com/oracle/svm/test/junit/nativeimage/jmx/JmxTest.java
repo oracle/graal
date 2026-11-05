@@ -67,11 +67,9 @@ import org.junit.Test;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
 import com.oracle.svm.hosted.c.util.FileUtils;
-import com.oracle.svm.test.api.AddExports;
 
 import jdk.management.jfr.FlightRecorderMXBean;
 
-@AddExports("jdk.management.agent/jdk.internal.agent")
 public class JmxTest {
     static final String PORT_PROPERTY = "com.sun.management.jmxremote.port";
     static final String RMI_PORT_PROPERTY = "com.sun.management.jmxremote.rmi.port";

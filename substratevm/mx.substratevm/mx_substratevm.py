@@ -264,7 +264,7 @@ GraalTags = Tags([
     'terminus',
     'debuginfotest',
     'standalone_pointsto_unittests',
-    'driver_unittests',
+    'hosted_unittests',
     'native_unittests',
     'generic_field_type',
     'runtime_assertions',
@@ -569,9 +569,10 @@ def svm_gate_body(args, tasks):
                 standalone_pointsto_unittest(['espresso'])
                 standalone_pointsto_unittest(['host'])
 
-    with Task('driver unittests', tasks, tags=[GraalTags.driver_unittests]) as t:
+    with Task('Hosted unit tests', tasks, tags=[GraalTags.hosted_unittests]) as t:
         if t:
-            jvm_unittest_distribution('SVM_DRIVER_TESTS')
+            # This scan runs separately under the check_svm_invariants tag.
+            _hosted_unittests(exclude_tests=['com.oracle.svm.test.junit.hosted.CheckSVMInvariants'])
 
     with Task('native unittests', tasks, tags=[GraalTags.native_unittests, GraalTags.all_native_unittests]) as t:
         if t:
@@ -834,11 +835,6 @@ def _native_unittest_resource_args():
         with open(join(simple_dir, f'simple-resource{i}.txt'), 'w', encoding='utf-8') as out:
             out.write(f"Simple file{i}\n")
 
-    # This trace-processor test uses reflective access to SVM_CONFIGURE internals so that the JVM
-    # unit-test path can apply test-local module exports lazily. Native unit tests cannot apply the
-    # same late exports and would also need extra reflection metadata for the test plumbing.
-    mx_unittest.add_global_ignore_glob('com.oracle.svm.configure.test.config.URLProtocolTraceProcessorTest')
-
     def write_micronaut_style_service_entries(cp_entry, service_name, implementation_names):
         service_dir = join(cp_entry, micronaut_style_service_root, service_name)
         mx_util.ensure_dir_exists(service_dir)
@@ -1023,7 +1019,7 @@ def runtime_assertionstest(args):
 
 
 def runtime_classpath_resource_test_task(extra_build_args=None):
-    svm_tests_jar = mx.distribution('substratevm:SVM_TESTS').path
+    svm_tests_jar = mx.distribution('substratevm:SVM_NATIVE_UNITTESTS').path
     build_args = svm_experimental_options(['-H:+ClassForNameRespectsClassLoader']) + [
         RUNTIME_CLASSLOADERS_INIT_ARG,
     ]
@@ -1053,16 +1049,15 @@ def runtime_classpath_resource_test_task(extra_build_args=None):
     ])
 
 
+_java_desktop_junit_project = 'com.oracle.svm.test.junit.desktop'
+
+
 def java_desktop_integration_task(native_image, extra_build_args=None):
     build_args = _native_unittest_resource_args() + (extra_build_args or [])
     build_args += svm_experimental_options(['-H:Preserve=module=java.desktop'])
     _native_unittest(native_image, [
         '--test-classes-per-run', '1',
-        'com.oracle.svm.test.junit.desktop.HeadlessJavaDesktopTest',
-        'com.oracle.svm.test.junit.desktop.NonHeadlessJavaDesktopTest',
-        'com.oracle.svm.test.junit.desktop.DynamicJavaLibraryLinkageTest',
-        'com.oracle.svm.test.junit.desktop.DynamicJDKLibraryLinkageTest',
-        'com.oracle.svm.test.junit.desktop.UserProvidedStaticLibraryTest',
+        _java_desktop_junit_project + '.',
         '--build-args',
     ] + build_args)
 
@@ -1317,7 +1312,7 @@ def _native_junit(
             extra_image_args = mx.get_runtime_jvm_args(group_deps, jdk=mx_compiler.jdk, exclude_names=exclude_names)
             # Other groups and transitive dependencies must not enable SVM security providers in this image.
             feature_args = []
-            if configure_svm_test_features and mx.distribution('substratevm:SVM_TESTS') in group_deps:
+            if configure_svm_test_features and mx.distribution('substratevm:SVM_NATIVE_UNITTESTS') in group_deps:
                 feature_args = _svm_unittest_feature_args()
             group_image_args = ['-ea', '-esa'] + feature_args + build_args + list(group_build_args) + extra_image_args + ['--macro:junit=' + group_unittest_file] + svm_experimental_options(['-H:Path=' + group_dir])
             unittest_image = native_image(group_image_args)
@@ -1457,23 +1452,31 @@ def _native_unittest(native_image, cmdline_args, custom_batch=None, configure_sv
     return _run_native_unittest(native_image, _parse_native_unittest_args(cmdline_args), custom_batch=custom_batch, configure_svm_tests=configure_svm_tests)
 
 
+_default_native_only_junit_projects = ['com.oracle.svm.test.junit.nativeimage']
+
+
 def _run_native_unittest(native_image, pargs, custom_batch=None, configure_svm_tests=False):
     build_args = unmask(pargs.build_args)
     if configure_svm_tests:
         build_args = _native_unittest_resource_args() + build_args
-    if pargs.custom_only:
-        pargs.all = True
-
-    blacklist = pargs.blacklist
+    blacklist = list(pargs.blacklist or [])
     whitelist = pargs.whitelist
     test_classes_per_run = pargs.test_classes_per_run[0] if pargs.test_classes_per_run else None
 
-    user_unittest_args = unmask(pargs.unittest_args)
-    unittest_args = user_unittest_args if user_unittest_args else ['com.oracle.svm.test', 'com.oracle.svm.configure.test']
-    # Keep the no-argument path cheap for presubmit and GitHub-action usage by only running the
-    # default image group. Explicit selectors or --all opt into additional custom-arg images.
-    include_custom_test_groups = pargs.all or bool(user_unittest_args)
+    unittest_args = unmask(pargs.unittest_args)
+    vm_args, selectors = mx.extract_VM_args(unittest_args)
     candidates = mx_unittest.find_test_candidates(['@Test', '@Parameters'], None, mx_compiler.jdk)
+    if selectors:
+        # The truffle_unittests gate relies on explicit selectors to run tests from other suites.
+        # Exclude the hosted tests and tracing-agent fixtures because they run on the JVM.
+        excluded_tests = _junit_project_classes(candidates, ['com.oracle.svm.test.junit.hosted', 'com.oracle.svm.configure.test'])
+        blacklist.extend(re.compile(re.escape(c) + r'(?:#|$)') for c in excluded_tests)
+    else:
+        test_classes = _junit_project_classes(candidates, _default_native_only_junit_projects + ['com.oracle.svm.test.junit.shared'])
+        if whitelist:
+            test_classes = [c for c in test_classes if any(pattern.match(c) for pattern in whitelist)]
+        unittest_args = vm_args
+        whitelist = [re.compile(_junit_test_pattern(sorted(test_classes)))]
     _native_junit(
         native_image,
         unittest_args,
@@ -1484,24 +1487,90 @@ def _run_native_unittest(native_image, pargs, custom_batch=None, configure_svm_t
         whitelist,
         pargs.preserve_image,
         test_classes_per_run,
-        include_custom_test_groups=include_custom_test_groups,
+        include_custom_test_groups=pargs.all or pargs.custom_only or bool(selectors),
         include_default_test_group=not pargs.custom_only,
         custom_batch=custom_batch,
         configure_svm_test_features=configure_svm_tests,
     )
 
 
-def jvm_unittest(args):
-    return mx_unittest.unittest(['--suite', 'substratevm'] + args)
+@mx.command(suite.name, 'unittest', usage_msg='[unittest options] [--] [VM options] [filters...]')
+def unittest(args):
+    """Run JUnit tests from the hosted and shared projects on HotSpot."""
+    # Apply this restriction only when substratevm is the primary suite so importing suites
+    # keep their own test selection.
+    if mx.primary_suite() != suite or '-h' in args or '--help' in args:
+        return _unittest_on_hotspot(args)
+
+    return _hosted_unittests(args)
 
 
-def jvm_unittest_distribution(distribution_name):
-    distribution = mx.distribution(distribution_name)
-    candidates = mx_unittest.find_test_candidates(['@Theory', '@Test', '@Parameters'], suite, get_jdk())
-    test_classes = sorted(test_class for test_class, dependency in candidates.items() if dependency == distribution)
+def _hosted_unittests(args=(), *, exclude_tests=()):
+    return _project_unittests(['com.oracle.svm.test.junit.hosted', 'com.oracle.svm.test.junit.shared'], args, exclude_tests=exclude_tests)
+
+
+def _project_unittests(project_names, args, *, exclude_tests=()):
+    candidates = mx_unittest.find_test_candidates(['@Theory', '@Test', '@Parameters'], None, get_jdk())
+    allowed = _junit_project_classes(candidates, project_names)
+    allowed.difference_update(exclude_tests)
+    if not allowed:
+        mx.abort('No matching unit tests found. Did you forget to run "mx build"?')
+    # Exclude tests outside the selected projects so user filters can only narrow the selection.
+    return jvm_unittest(args, excluded_test_classes=sorted(candidates.keys() - allowed))
+
+
+def _junit_test_classes(project_names, annotations=('@Theory', '@Test', '@Parameters')):
+    candidates = mx_unittest.find_test_candidates(list(annotations), suite, get_jdk())
+    return sorted(_junit_project_classes(candidates, project_names))
+
+
+def _junit_project_classes(candidates, project_names):
+    output_dirs = [mx.project(name).output_dir() for name in project_names]
+    # Use class files to identify the owning project because test packages can differ
+    # from project names and several projects can share one distribution.
+    return {c for c in candidates if any(exists(join(output_dir, c.replace('.', os.sep) + '.class')) for output_dir in output_dirs)}
+
+
+def _junit_test_pattern(test_classes):
     if not test_classes:
-        mx.abort(f'No unit tests found in {distribution_name}. Did you forget to run "mx build"?')
-    return jvm_unittest(test_classes)
+        # Match nothing so the native JUnit runner reports its usual empty-selection error.
+        return r'(?!)'
+    return r'^(?:' + '|'.join(re.escape(c) for c in test_classes) + r')$'
+
+
+def jvm_unittest(args, *, excluded_test_classes=None):
+    args = ['--suite', 'substratevm'] + list(args)
+    if excluded_test_classes is None:
+        return mx_unittest.unittest(args)
+    return _unittest_on_hotspot(args, excluded_test_classes=excluded_test_classes)
+
+
+def _unittest_on_hotspot(args, *, excluded_test_classes=None):
+    if '-h' in args or '--help' in args:
+        return mx_unittest.unittest(args)
+
+    # Only parse runner options. Arguments after '--' belong to the VM and test selectors.
+    delimiter = args.index('--') if '--' in args else len(args)
+    parser = ArgumentParser(add_help=False)
+    parser.add_argument('--blacklist')
+    parsed, remaining = parser.parse_known_args(args[:delimiter])
+    remaining += args[delimiter:]
+
+    excluded_tests = excluded_test_classes
+    if excluded_tests is None:
+        excluded_tests = _junit_test_classes(_default_native_only_junit_projects + [_java_desktop_junit_project])
+    with tempfile.TemporaryDirectory(prefix='svm-unittest-') as directory:
+        blacklist = join(directory, 'excluded-tests.txt')
+        with open(blacklist, 'w', encoding='utf-8') as output:
+            if parsed.blacklist:
+                with open(parsed.blacklist, encoding='utf-8') as user_blacklist:
+                    output.write(user_blacklist.read())
+                output.write('\n')
+            for test_class in excluded_tests:
+                output.write(test_class + '\n')
+                # mx retains the method suffix when applying exclusion patterns.
+                output.write(test_class + '#*\n')
+        return mx_unittest.unittest(['--blacklist', blacklist] + remaining)
 
 
 @mx.command(suite_name=suite.name, command_name='standalone-pointsto-unittest', usage_msg='[host|espresso] [test-spec] [analysis-option ...]')
@@ -1550,7 +1619,7 @@ def standalone_pointsto_unittest(args):
     unittest_args.append(requested_test_spec)
     if requested_vmaccess == 'espresso':
         unittest_args = espresso_vmargs() + unittest_args
-    return jvm_unittest(unittest_args)
+    return _project_unittests(['com.oracle.graal.pointsto.standalone.test'], unittest_args)
 
 
 def js_image_test(jslib, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None, pre_args=None):
@@ -3287,6 +3356,7 @@ def clinittest(args):
                 '-o', binary_path,
                 '-H:+ReportExceptionStackTraces',
                 '-H:Class=com.oracle.svm.test.clinit.TestClassInitialization',
+                '--initialize-at-run-time=com.oracle.svm.test.clinit',
                 '-H:ConfigurationFileDirectories=' + join(suite.dir, 'src', 'com.oracle.svm.test', 'src', 'com', 'oracle', 'svm', 'test', 'clinit', 'typereached'),
                 '--features=com.oracle.svm.test.clinit.TestClassInitializationFeature',
             ] + svm_experimental_options([
@@ -4145,6 +4215,7 @@ def _debug_args():
         return [f'--vm.{arg[1:]}' for arg in debug_args]
     return []
 
+
 @mx.command(suite.name, 'native-unittest')
 def native_unittest(args):
     """Builds and runs native JUnit images, grouped by required build arguments."""
@@ -4379,13 +4450,14 @@ class StandalonePointstoUnittestsConfig(mx_unittest.MxUnittestConfig):
 mx_unittest.register_unittest_config(StandalonePointstoUnittestsConfig())
 
 
-class SVMInvariantsUnittestConfig(mx_compiler.GraalUnittestConfig):
+class SVMHostedUnittestsConfig(mx_compiler.GraalUnittestConfig):
 
     def __init__(self):
-        super().__init__('svm-invariants-tests')
+        super().__init__('svm-hosted-tests')
 
     def apply(self, config):
         vmArgs, mainClass, mainClassArgs = super().apply(config)
+        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.nativeimage/*=ALL-UNNAMED'])
         mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.espresso.shared.svm/*=ALL-UNNAMED'])
         mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess'])
         mainClassArgs.extend(['-JUnitOpenPackages', 'java.base/jdk.internal.module=jdk.graal.compiler.vmaccess'])
@@ -4401,35 +4473,7 @@ class SVMInvariantsUnittestConfig(mx_compiler.GraalUnittestConfig):
         return [d for s in svmSuites for d in s.dists if d.isJARDistribution() and not d.is_test_distribution()]
 
 
-mx_unittest.register_unittest_config(SVMInvariantsUnittestConfig())
-
-
-class SVMDriverUnittestsConfig(mx_unittest.MxUnittestConfig):
-
-    def __init__(self):
-        super().__init__('svm-driver-unittest')
-
-    def apply(self, config):
-        vmArgs, mainClass, mainClassArgs = config
-
-        vmArgs.extend([
-            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
-            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=ALL-UNNAMED',
-            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess',
-            '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
-            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.core.common.util=ALL-UNNAMED',
-            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
-            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.phases.util=ALL-UNNAMED',
-            '--add-exports=jdk.graal.compiler/jdk.graal.compiler.util.json=ALL-UNNAMED',
-            '--add-exports=java.base/jdk.internal.module=jdk.graal.compiler.vmaccess',
-        ])
-
-        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=jdk.graal.compiler,ALL-UNNAMED'])
-        mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.nativeimage/*=ALL-UNNAMED'])
-
-        return (vmArgs, mainClass, mainClassArgs)
-
-mx_unittest.register_unittest_config(SVMDriverUnittestsConfig())
+mx_unittest.register_unittest_config(SVMHostedUnittestsConfig())
 
 
 @mx.command(suite, 'update-build-options-table', usage_msg='[--check] - Update or verify the BuildOptions.md table')

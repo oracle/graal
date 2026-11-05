@@ -54,7 +54,7 @@ import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SerializationConfiguration;
 import com.oracle.svm.configure.config.TypeConfiguration;
-import com.oracle.svm.configure.test.AddExports;
+import com.oracle.svm.test.api.AddExports;
 
 @AddExports({"org.graalvm.nativeimage/org.graalvm.nativeimage.impl", "jdk.graal.compiler/jdk.graal.compiler.util", "jdk.graal.compiler/jdk.graal.compiler.util.json"})
 public class OmitPreviousConfigTests {

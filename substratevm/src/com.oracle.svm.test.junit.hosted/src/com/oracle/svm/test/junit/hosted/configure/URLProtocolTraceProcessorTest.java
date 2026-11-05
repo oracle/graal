@@ -40,9 +40,9 @@ import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.TypeConfiguration;
-import com.oracle.svm.configure.test.AddExports;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 
+import jdk.graal.compiler.test.AddExports;
 import jdk.graal.compiler.util.json.JsonParser;
 
 @AddExports({"org.graalvm.nativeimage/org.graalvm.nativeimage.impl",

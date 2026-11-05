@@ -71,7 +71,6 @@ import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
 import com.oracle.svm.core.hub.registry.ClassRegistries;
-import com.oracle.svm.test.api.AddExports;
 
 import org.junit.Assert;
 import org.junit.Assume;
@@ -79,7 +78,6 @@ import org.junit.Test;
 
 import jdk.internal.loader.BuiltinClassLoader;
 
-@AddExports({"java.base/java.lang", "java.base/jdk.internal.loader"})
 public class NativeImageResourceTest {
 
     /**

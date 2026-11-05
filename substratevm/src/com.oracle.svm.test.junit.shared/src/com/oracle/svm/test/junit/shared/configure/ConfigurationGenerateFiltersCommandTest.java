@@ -34,7 +34,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.configure.command.ConfigurationGenerateFiltersCommand;
-import com.oracle.svm.configure.test.AddExports;
+import com.oracle.svm.test.api.AddExports;
 
 import jdk.graal.compiler.util.json.JsonParser;
 

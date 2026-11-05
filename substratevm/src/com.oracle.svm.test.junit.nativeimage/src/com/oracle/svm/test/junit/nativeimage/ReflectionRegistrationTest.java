@@ -184,7 +184,7 @@ public class ReflectionRegistrationTest {
     }
 
     @NativeImageBuildArgs({
-                    "--exact-reachability-metadata=com.oracle.svm.test",
+                    "--exact-reachability-metadata=com.oracle.svm.test.junit.nativeimage",
                     "--features=com.oracle.svm.test.junit.nativeimage.ReflectionRegistrationTest$ExactReachabilityTest$TestFeature"
     })
     public static class ExactReachabilityTest {

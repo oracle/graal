@@ -30,7 +30,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.configure.ClassNameSupport;
-import com.oracle.svm.configure.test.AddExports;
+import com.oracle.svm.test.api.AddExports;
 
 import jdk.vm.ci.meta.MetaUtil;
 

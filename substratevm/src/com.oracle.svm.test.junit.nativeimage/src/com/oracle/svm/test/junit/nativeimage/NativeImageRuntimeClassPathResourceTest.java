@@ -39,11 +39,8 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.svm.test.api.AddExports;
-
 import jdk.internal.loader.BuiltinClassLoader;
 
-@AddExports({"java.base/jdk.internal.loader"})
 public class NativeImageRuntimeClassPathResourceTest {
 
     @Test

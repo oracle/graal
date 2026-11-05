@@ -46,9 +46,11 @@ import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
+import com.oracle.svm.test.api.AddExports;
 
 import jdk.graal.compiler.util.json.JsonWriter;
 
+@AddExports({"org.graalvm.nativeimage/org.graalvm.nativeimage.impl", "jdk.graal.compiler/jdk.graal.compiler.util.json"})
 public class ResourceConfigurationTest {
 
     @Test
@@ -93,7 +95,7 @@ public class ResourceConfigurationTest {
             List<String> addedResources = new LinkedList<>();
             List<String> ignoredResources = new LinkedList<>();
 
-            ResourceConfigurationParser<UnresolvedAccessCondition> rcp = createParser(newTestRegistry(addedResources, ignoredResources));
+            ResourceConfigurationParser<UnresolvedAccessCondition> rcp = createParser(addedResources, ignoredResources);
             writerThread.start();
             rcp.parseAndRegister(pr);
 
@@ -109,7 +111,7 @@ public class ResourceConfigurationTest {
     @Test
     public void quotedRegexExcludeRegistersAsRegex() throws IOException {
         List<String> ignoredResources = new ArrayList<>();
-        ResourceConfigurationParser<UnresolvedAccessCondition> parser = createParser(newTestRegistry(new LinkedList<>(), ignoredResources));
+        ResourceConfigurationParser<UnresolvedAccessCondition> parser = createParser(new LinkedList<>(), ignoredResources);
         String config = "{ \"resources\": { \"includes\": [], \"excludes\": [ " +
                         "{ \"pattern\": \"\\\\QMETA-INF/services/com.alibaba.csp.sentinel.cluster.TokenService\\\\E\" } ] } }";
 
@@ -118,12 +120,9 @@ public class ResourceConfigurationTest {
         Assert.assertEquals(List.of("\\QMETA-INF/services/com.alibaba.csp.sentinel.cluster.TokenService\\E"), ignoredResources);
     }
 
-    private static ResourceConfigurationParser<UnresolvedAccessCondition> createParser(ResourcesRegistry<UnresolvedAccessCondition> registry) {
-        return ResourceConfigurationParser.create(false, AccessConditionResolver.identityResolver(), registry, EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
-    }
-
-    private static ResourcesRegistry<UnresolvedAccessCondition> newTestRegistry(List<String> addedResources, List<String> ignoredResources) {
-        return new ResourcesRegistry<>() {
+    /* JUnit inspects method signatures before applying @AddExports, so keep ResourcesRegistry local. */
+    private static ResourceConfigurationParser<UnresolvedAccessCondition> createParser(List<String> addedResources, List<String> ignoredResources) {
+        ResourcesRegistry<UnresolvedAccessCondition> registry = new ResourcesRegistry<>() {
 
             @Override
             public void addResources(UnresolvedAccessCondition condition, String pattern, Object origin) {
@@ -165,5 +164,6 @@ public class ResourceConfigurationTest {
             public void addClassBasedResourceBundle(UnresolvedAccessCondition condition, String basename, String className) {
             }
         };
+        return ResourceConfigurationParser.create(false, AccessConditionResolver.identityResolver(), registry, EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
     }
 }

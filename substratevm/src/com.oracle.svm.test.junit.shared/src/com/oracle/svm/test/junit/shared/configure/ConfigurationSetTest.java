@@ -33,7 +33,7 @@ import org.junit.Test;
 
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.config.ConfigurationSet;
-import com.oracle.svm.configure.test.AddExports;
+import com.oracle.svm.test.api.AddExports;
 
 @AddExports({"org.graalvm.nativeimage/org.graalvm.nativeimage.impl", "jdk.graal.compiler/jdk.graal.compiler.util", "jdk.graal.compiler/jdk.graal.compiler.util.json"})
 public class ConfigurationSetTest {

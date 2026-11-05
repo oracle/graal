@@ -34,7 +34,7 @@ import org.junit.Test;
 
 import com.oracle.svm.configure.ConfigurationParser;
 import com.oracle.svm.configure.ConfigurationParserOption;
-import com.oracle.svm.configure.test.AddExports;
+import com.oracle.svm.test.api.AddExports;
 
 import jdk.graal.compiler.util.json.JsonParser;
 import jdk.graal.compiler.util.json.JsonParserException;

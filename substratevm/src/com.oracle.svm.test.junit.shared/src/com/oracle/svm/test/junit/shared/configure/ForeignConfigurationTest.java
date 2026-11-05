@@ -59,7 +59,7 @@ import com.oracle.svm.configure.config.conditional.PartialConfigurationWithOrigi
 import com.oracle.svm.configure.filters.ComplexFilter;
 import com.oracle.svm.configure.filters.ConfigurationFilter.Inclusion;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
-import com.oracle.svm.configure.test.AddExports;
+import com.oracle.svm.test.api.AddExports;
 
 import jdk.graal.compiler.util.json.JsonParser;
 import jdk.graal.compiler.util.json.JsonPrintable;
