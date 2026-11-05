@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -108,11 +108,12 @@ public class InitMemoryVerificationPhase extends BasePhase<CoreProviders> implem
 
         @Override
         protected Integer merge(AbstractMergeNode merge, List<Integer> states) {
-            int sum = 0;
+            int max = 0;
             for (int kills : states) {
-                sum += kills;
+                // Predecessor states describe alternative paths, not additional writes.
+                max = Math.max(max, kills);
             }
-            return sum;
+            return max;
         }
 
         @Override
