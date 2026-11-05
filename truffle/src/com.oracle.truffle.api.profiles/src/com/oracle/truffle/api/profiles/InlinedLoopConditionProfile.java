@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -115,13 +115,6 @@ public final class InlinedLoopConditionProfile extends InlinedProfile {
     private final LongField trueCount;
     private final IntField falseCount;
 
-    /**
-     * A constant holding the maximum value an {@code int} can have, 2<sup>30</sup>-1. The sum of
-     * the true and false count must not overflow. This constant is used to check whether one of the
-     * counts does not exceed the required maximum value.
-     */
-    static final int MAX_VALUE = 0x3fffffff;
-
     private InlinedLoopConditionProfile() {
         this.trueCount = null;
         this.falseCount = null;
@@ -208,7 +201,7 @@ public final class InlinedLoopConditionProfile extends InlinedProfile {
             /* Avoid division by zero if profile was never used. */
             return 0.0;
         } else {
-            return (double) trueCountLocal / (double) (trueCountLocal + falseCountLocal);
+            return trueCountLocal / ((double) trueCountLocal + falseCountLocal);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,9 +55,12 @@ import org.junit.Test;
 import com.oracle.truffle.api.dsl.InlineSupport.InlinableField;
 import com.oracle.truffle.api.profiles.InlinedLoopConditionProfile;
 import com.oracle.truffle.api.profiles.LoopConditionProfile;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class LoopConditionProfileTest extends AbstractProfileTest {
+
+    private static final Class<?>[] PROFILE_TYPES = {LoopConditionProfile.class, InlinedLoopConditionProfile.class};
 
     private static boolean[] VALUES = new boolean[]{true, false};
 
@@ -385,4 +388,15 @@ public class LoopConditionProfileTest extends AbstractProfileTest {
         assertTrue(p.wasFalse(state));
     }
 
+    private static double probability(Class<?> profileType, long trueCount, int falseCount) {
+        return (double) ReflectionUtils.invokeStatic(profileType, "calculateProbability", new Class<?>[]{long.class, int.class}, trueCount, falseCount);
+    }
+
+    @Test
+    public void testCalculateProbability() {
+        for (Class<?> profileType : PROFILE_TYPES) {
+            assertEquals(1.0, probability(profileType, Long.MAX_VALUE, 1), 0.0);
+            assertEquals(0.7, probability(profileType, 7, 3), 0.0);
+        }
+    }
 }

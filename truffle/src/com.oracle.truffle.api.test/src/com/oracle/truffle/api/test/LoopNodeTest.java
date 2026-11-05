@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -184,6 +184,20 @@ public class LoopNodeTest {
         Assert.assertEquals("Ronaldo", specialValue);
     }
 
+    private static double runtimeLoopProbability(long trueCount, int falseCount) throws ClassNotFoundException {
+        TruffleTestAssumptions.assumeNotAOT();
+        TruffleTestAssumptions.assumeOptimizingRuntime();
+        // Load by name because the API test project has no dependency on the optimizing runtime.
+        Class<?> loopType = Class.forName("com.oracle.truffle.runtime.AbstractOptimizedLoopNode");
+        return (double) ReflectionUtils.invokeStatic(loopType, "calculateProbability", new Class<?>[]{long.class, int.class}, trueCount, falseCount);
+    }
+
+    @Test
+    public void testCalculateProbability() throws ClassNotFoundException {
+        Assert.assertEquals(1.0, runtimeLoopProbability(Long.MAX_VALUE, 1), 0.0);
+        Assert.assertEquals(0.7, runtimeLoopProbability(7, 3), 0.0);
+    }
+
     private static class BodyNode extends GuestLanguageNode {
 
         int invocations;
@@ -341,5 +355,4 @@ public class LoopNodeTest {
     @SuppressWarnings("serial")
     private static final class BreakException extends ControlFlowException {
     }
-
 }

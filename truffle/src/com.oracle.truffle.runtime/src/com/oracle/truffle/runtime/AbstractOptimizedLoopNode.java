@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,7 +89,7 @@ abstract class AbstractOptimizedLoopNode extends LoopNode {
             // Avoid division by zero and assume default probability for AOT.
             return 0.5;
         } else {
-            return (double) trueCountLocal / (double) (trueCountLocal + falseCountLocal);
+            return trueCountLocal / ((double) trueCountLocal + falseCountLocal);
         }
     }
 }
