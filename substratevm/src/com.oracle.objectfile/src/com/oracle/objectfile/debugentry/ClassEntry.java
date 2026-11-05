@@ -113,9 +113,14 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
                         .forEach(this::addFile);
 
         files = files.stream().distinct().toList();
+        /*
+         * Entry 0 of the DWARF 5 file table is the primary source file. If the class has one, it
+         * was added first, so it takes index 0 and the other files follow from 1.
+         */
+        int firstFileIdx = !files.isEmpty() && isClassFile(files.getFirst()) ? 0 : 1;
         indexedFiles = IntStream.range(0, files.size())
                         .boxed()
-                        .collect(Collectors.toUnmodifiableMap(i -> files.get(i), i -> i + 1));
+                        .collect(Collectors.toUnmodifiableMap(i -> files.get(i), i -> i + firstFileIdx));
 
         dirs = dirs.stream().distinct().toList();
         indexedDirs = IntStream.range(0, dirs.size())
@@ -227,10 +232,24 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
     }
 
     /**
+     * Checks if the given file entry is this class's primary source file, which is entry 0 of the
+     * DWARF 5 file table.
+     *
+     * @param file the file entry to check
+     * @return true if the file is the class's primary source file
+     */
+    public boolean isClassFile(FileEntry file) {
+        return file != null && !file.fileName().isEmpty() && file.equals(fileEntry);
+    }
+
+    /**
      * Returns the file index of a given file entry within this class entry.
      * <p>
      * This method is only called once all debug info entries are produced, the class entry and the
      * file index was generated.
+     * <p>
+     * The class's own file is at index 0 (the primary source file in the DWARF 5 file table). Other
+     * files are indexed starting at 1.
      *
      * @param file the given file entry
      * @return the index of the file entry
@@ -240,7 +259,6 @@ public sealed class ClassEntry extends StructureTypeEntry permits EnumClassEntry
         if (file == null || !indexedFiles.containsKey(file)) {
             return 0;
         }
-
         return indexedFiles.get(file);
     }
 
