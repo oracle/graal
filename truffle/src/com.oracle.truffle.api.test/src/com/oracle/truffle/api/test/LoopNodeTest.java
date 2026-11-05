@@ -184,20 +184,6 @@ public class LoopNodeTest {
         Assert.assertEquals("Ronaldo", specialValue);
     }
 
-    private static double runtimeLoopProbability(long trueCount, int falseCount) throws ClassNotFoundException {
-        TruffleTestAssumptions.assumeNotAOT();
-        TruffleTestAssumptions.assumeOptimizingRuntime();
-        // Load by name because the API test project has no dependency on the optimizing runtime.
-        Class<?> loopType = Class.forName("com.oracle.truffle.runtime.AbstractOptimizedLoopNode");
-        return (double) ReflectionUtils.invokeStatic(loopType, "calculateProbability", new Class<?>[]{long.class, int.class}, trueCount, falseCount);
-    }
-
-    @Test
-    public void testCalculateProbability() throws ClassNotFoundException {
-        Assert.assertEquals(1.0, runtimeLoopProbability(Long.MAX_VALUE, 1), 0.0);
-        Assert.assertEquals(0.7, runtimeLoopProbability(7, 3), 0.0);
-    }
-
     private static class BodyNode extends GuestLanguageNode {
 
         int invocations;

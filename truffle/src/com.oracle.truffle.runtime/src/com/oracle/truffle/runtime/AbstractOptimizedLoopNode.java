@@ -47,7 +47,10 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 
-abstract class AbstractOptimizedLoopNode extends LoopNode {
+/**
+ * Base class providing branch probability profiling for optimized loop nodes.
+ */
+public abstract class AbstractOptimizedLoopNode extends LoopNode {
 
     @Child protected RepeatingNode repeatingNode;
 
@@ -63,7 +66,11 @@ abstract class AbstractOptimizedLoopNode extends LoopNode {
         return repeatingNode;
     }
 
-    protected final void profileCounted(long iterations) {
+    /**
+     * Updates the branch probability counters from a loop iteration count. Counter updates are
+     * ignored outside the interpreter and when the true counter would overflow.
+     */
+    public final void profileCounted(long iterations) {
         if (CompilerDirectives.inInterpreter()) {
             long trueCountLocal = trueCount + iterations;
             if (trueCountLocal >= 0) { // don't write overflow values
