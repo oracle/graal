@@ -304,6 +304,7 @@ public abstract class OptimizedCallTarget extends RuntimeCallTarget implements T
      * after the compilation has started does not reset the task until the compilation finishes.
      */
     private volatile CompilationTask compilationTask;
+
     private int successfulCompilationsCount;
 
     private volatile boolean needsSplit;
@@ -1480,6 +1481,22 @@ public abstract class OptimizedCallTarget extends RuntimeCallTarget implements T
     // region Arguments profiling
 
     // region Manual Arguments profiling
+    final void initializeExecutionSignature(ExecutionSignature signature) {
+        Objects.requireNonNull(signature);
+        assert argumentsProfile == null : "argument profile already initialized";
+        assert returnProfile == null : "return profile already initialized";
+
+        Class<?>[] argumentTypes = signature.getArgumentTypes();
+        if (argumentTypes != null && argumentTypes.length <= MAX_PROFILED_ARGUMENTS && engine.argumentTypeSpeculation) {
+            argumentsProfile = new ArgumentsProfile(argumentTypes, "Fixed execution signature");
+        } else {
+            argumentsProfile = ArgumentsProfile.INVALID;
+        }
+
+        Class<?> returnType = signature.getReturnType();
+        returnProfile = returnType == null || returnType == Object.class ? ReturnProfile.INVALID : new ReturnProfile(returnType);
+    }
+
     final void initializeUnsafeArgumentTypes(Class<?>[] argumentTypes) {
         CompilerAsserts.neverPartOfCompilation();
         ArgumentsProfile newProfile = new ArgumentsProfile(argumentTypes, "Custom profiled argument types");

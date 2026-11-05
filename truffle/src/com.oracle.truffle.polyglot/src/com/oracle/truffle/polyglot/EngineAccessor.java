@@ -1717,7 +1717,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean skipEngineValidation(RootNode rootNode) {
-            return rootNode instanceof HostToGuestRootNode || rootNode instanceof ThreadSpawnRootNode;
+            return rootNode instanceof HostToGuestRootNode || rootNode instanceof ThreadSpawnRootNode || rootNode instanceof PolyglotProxyClass.ObjectMethodRootNode;
         }
 
         @Override
@@ -2486,6 +2486,7 @@ final class EngineAccessor extends Accessor {
         public TruffleLogger getEngineLogger(Object polyglotEngine) {
             return ((PolyglotEngineImpl) polyglotEngine).getEngineLogger();
         }
+
     }
 
     private static class GuardedExecutableNode extends ExecutableNode {

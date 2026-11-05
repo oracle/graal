@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.runtime;
 
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.function.Consumer;
@@ -72,6 +73,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.runtime.OptimizedTruffleRuntime.CompilerOptionsDescriptors;
 
@@ -82,11 +84,31 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
+    public boolean supportsExactGeneratedProxyCall(Method method) {
+        return OptimizedTruffleRuntime.getRuntime().supportsExactGeneratedProxyCall(method);
+    }
+
+    @Override
+    public void registerExactGeneratedProxyEntries(Method[] entries) {
+        OptimizedTruffleRuntime.getRuntime().registerExactGeneratedProxyEntries(entries);
+    }
+
+    @Override
     public RuntimeCallTarget newCallTarget(CallTarget source, RootNode rootNode) {
         assert OptimizedRuntimeAccessor.NODES.getCallTargetWithoutInitialization(rootNode) == null : "CallTarget for root node already initialized.";
 
         CompilerAsserts.neverPartOfCompilation();
         return OptimizedTruffleRuntime.getRuntime().createOptimizedCallTarget((OptimizedCallTarget) source, rootNode);
+    }
+
+    @Override
+    public RuntimeCallTarget newCallTarget(CallTarget source, RootNode rootNode, ExecutionSignature signature) {
+        assert OptimizedRuntimeAccessor.NODES.getCallTargetWithoutInitialization(rootNode) == null : "CallTarget for root node already initialized.";
+
+        CompilerAsserts.neverPartOfCompilation();
+        OptimizedCallTarget target = OptimizedTruffleRuntime.getRuntime().createOptimizedCallTarget((OptimizedCallTarget) source, rootNode);
+        target.initializeExecutionSignature(signature);
+        return target;
     }
 
     @Override

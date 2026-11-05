@@ -1742,9 +1742,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return new OtherContextGuestObject(this, value, valueContext);
     }
 
-    Object migrateHostWrapper(PolyglotWrapper wrapper) {
-        Object wrapped = wrapper.getGuestObject();
-        PolyglotContextImpl valueContext = wrapper.getContext();
+    Object migrateHostWrapper(Object wrapper) {
+        Object wrapped = PolyglotWrapper.getGuestObject(wrapper);
+        PolyglotContextImpl valueContext = PolyglotWrapper.getLanguageContext(wrapper).context;
         if (valueContext != this) {
             // migrate wrapped value to the context
             wrapped = migrateValue(wrapped, valueContext);
@@ -2238,7 +2238,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 targetLanguageContext = languageContext;
             } else if (PolyglotWrapper.isInstance(hostValue)) {
                 // host wrappers can nicely reuse the associated context
-                targetLanguageContext = PolyglotWrapper.asInstance(hostValue).getLanguageContext();
+                targetLanguageContext = PolyglotWrapper.getLanguageContext(hostValue);
                 if (this != targetLanguageContext.context) {
                     // this will fail later in toGuestValue when migrating
                     // or succeed in case of host languages.

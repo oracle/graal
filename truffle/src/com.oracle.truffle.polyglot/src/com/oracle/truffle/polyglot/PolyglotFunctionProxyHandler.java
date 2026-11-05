@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CallTarget;
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.polyglot.PolyglotFunctionProxyHandlerFactory.FunctionProxyNodeGen;
 import com.oracle.truffle.polyglot.PolyglotObjectProxyHandler.ProxyInvokeNode;
 import org.graalvm.polyglot.Context;
@@ -74,7 +76,7 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
         this.functionObj = obj;
         this.languageContext = languageContext;
         this.functionMethod = functionMethod;
-        this.target = FunctionProxyNode.lookup(languageContext, obj.getClass(), functionMethod, genericType);
+        this.target = FunctionProxyNode.lookup(languageContext, obj.getClass(), functionMethod, genericType, false, null);
         this.contextAnchor = languageContext.context.getContextAPI();
     }
 
@@ -82,7 +84,10 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
     static <T> T create(Class<T> functionalType, Type genericType, Object function, PolyglotLanguageContext languageContext) {
         assert isFunctionalInterface(functionalType);
         Method functionalInterfaceMethod = functionalInterfaceMethod(functionalType);
-        final PolyglotFunctionProxyHandler handler = new PolyglotFunctionProxyHandler(function, functionalInterfaceMethod, genericType, languageContext);
+        if (PolyglotProxyClass.isOptimizationRequested(functionalType)) {
+            return functionalType.cast(PolyglotProxyClass.get(functionalType).newInstance(languageContext, function, genericType, functionalInterfaceMethod));
+        }
+        PolyglotFunctionProxyHandler handler = new PolyglotFunctionProxyHandler(function, functionalInterfaceMethod, genericType, languageContext);
         Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
         return functionalType.cast(obj);
     }
@@ -94,10 +99,15 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
         Method found = null;
         for (Method m : functionalInterface.getMethods()) {
             if (Modifier.isAbstract(m.getModifiers()) && !isObjectMethodOverride(m)) {
-                if (found != null) {
+                if (found == null) {
+                    found = m;
+                } else if (!found.getName().equals(m.getName()) || !Arrays.equals(found.getParameterTypes(), m.getParameterTypes())) {
+                    return null;
+                } else if (found.getReturnType().isAssignableFrom(m.getReturnType())) {
+                    found = m;
+                } else if (!m.getReturnType().isAssignableFrom(found.getReturnType())) {
                     return null;
                 }
-                found = m;
             }
         }
         return found;
@@ -154,41 +164,32 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
         CompilerAsserts.neverPartOfCompilation();
         Object[] resolvedArguments = arguments == null ? PolyglotObjectProxyHandler.EMPTY : arguments;
-        if (method.equals(functionMethod)) {
-            return target.call(null, languageContext, functionObj, spreadVarArgsArray(resolvedArguments));
+        if (Modifier.isAbstract(method.getModifiers()) && !isObjectMethodOverride(method)) {
+            Object[] functionArguments = functionMethod.isVarArgs() ? spreadVarArgsArray(resolvedArguments, 0) : resolvedArguments;
+            return target.call(null, languageContext, functionObj, functionArguments);
         } else {
             return invokeDefault(this, proxy, method, resolvedArguments);
         }
     }
 
-    private Object[] spreadVarArgsArray(Object[] arguments) {
-        if (!functionMethod.isVarArgs()) {
-            return arguments;
-        }
-        if (arguments.length == 1) {
-            return (Object[]) arguments[0];
+    private static Object[] spreadVarArgsArray(Object[] arguments, int offset) {
+        int argumentCount = arguments.length - offset;
+        if (argumentCount == 1) {
+            return (Object[]) arguments[offset];
         } else {
-            final int allButOne = arguments.length - 1;
-            Object[] last = (Object[]) arguments[allButOne];
+            final int allButOne = argumentCount - 1;
+            Object[] last = (Object[]) arguments[offset + allButOne];
             Object[] merge = new Object[allButOne + last.length];
-            System.arraycopy(arguments, 0, merge, 0, allButOne);
+            System.arraycopy(arguments, offset, merge, 0, allButOne);
             System.arraycopy(last, 0, merge, allButOne, last.length);
             return merge;
         }
     }
 
+    @CompilerDirectives.TruffleBoundary
     static Object invokeDefault(PolyglotWrapper host, Object proxy, Method method, Object[] arguments) throws Throwable {
-        if (method.getDeclaringClass() == Object.class) {
-            switch (method.getName()) {
-                case "equals":
-                    return PolyglotWrapper.equalsProxy(host, arguments[0]);
-                case "hashCode":
-                    return PolyglotWrapper.hashCode(host.getLanguageContext(), host.getGuestObject());
-                case "toString":
-                    return PolyglotWrapper.toString(host);
-                default:
-                    throw new UnsupportedOperationException(method.getName());
-            }
+        if (method.getDeclaringClass() == Object.class || isObjectMethodOverride(method)) {
+            return invokeObjectMethod(host.getLanguageContext(), host.getGuestObject(), method, arguments);
         }
 
         if (TruffleOptions.AOT) {
@@ -197,18 +198,33 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
         return InvocationHandler.invokeDefault(proxy, method, arguments);
     }
 
+    static Object invokeObjectMethod(Object languageContext, Object receiver, Method method, Object[] arguments) {
+        switch (method.getName()) {
+            case "equals":
+                return PolyglotWrapper.equalsProxy(languageContext, receiver, arguments[0]);
+            case "hashCode":
+                return PolyglotWrapper.hashCode(languageContext, receiver);
+            case "toString":
+                return PolyglotWrapper.toString(languageContext, receiver);
+            default:
+                throw new UnsupportedOperationException(method.getName());
+        }
+    }
+
     @ImportStatic(ProxyInvokeNode.class)
     abstract static class FunctionProxyNode extends HostToGuestRootNode {
 
         final Class<?> receiverClass;
         final Method method;
         final Type genericType;
+        final boolean flatArguments;
 
-        FunctionProxyNode(PolyglotLanguageInstance languageInstance, Class<?> receiverType, Method method, Type genericType) {
+        FunctionProxyNode(PolyglotLanguageInstance languageInstance, Class<?> receiverType, Method method, Type genericType, boolean flatArguments) {
             super(languageInstance);
             this.receiverClass = Objects.requireNonNull(receiverType);
             this.method = Objects.requireNonNull(method);
             this.genericType = genericType;
+            this.flatArguments = flatArguments;
         }
 
         @SuppressWarnings("unchecked")
@@ -229,7 +245,12 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
                         @Cached PolyglotExecuteNode executeNode) {
             assert Objects.equals(ProxyInvokeNode.getMethodGenericReturnType(method, genericType), returnType) &&
                             Objects.equals(ProxyInvokeNode.getMethodReturnType(method, returnType), returnClass);
-            return executeNode.execute(languageContext, function, args[ARGUMENT_OFFSET], returnClass, returnType, Object[].class, Object[].class);
+            assert Modifier.isAbstract(method.getModifiers()) && !isObjectMethodOverride(method) : method;
+            if (flatArguments && !method.isVarArgs()) {
+                return executeNode.executeImpl(languageContext, function, args, ARGUMENT_OFFSET, returnClass, returnType);
+            }
+            Object[] arguments = flatArguments ? spreadVarArgsArray(args, ARGUMENT_OFFSET) : (Object[]) args[ARGUMENT_OFFSET];
+            return executeNode.execute(languageContext, function, arguments, returnClass, returnType, Object[].class, Object[].class);
         }
 
         @Override
@@ -238,6 +259,7 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
             result = 31 * result + Objects.hashCode(receiverClass);
             result = 31 * result + Objects.hashCode(method);
             result = 31 * result + Objects.hashCode(genericType);
+            result = 31 * result + Boolean.hashCode(flatArguments);
             return result;
         }
 
@@ -247,14 +269,16 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
                 return false;
             }
             FunctionProxyNode other = (FunctionProxyNode) obj;
-            return receiverClass == other.receiverClass && method.equals(other.method) && Objects.equals(genericType, other.genericType);
+            return receiverClass == other.receiverClass && method.equals(other.method) && Objects.equals(genericType, other.genericType) && flatArguments == other.flatArguments;
         }
 
-        static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Method method, Type genericType) {
-            FunctionProxyNode node = FunctionProxyNodeGen.create(languageContext.getLanguageInstance(), receiverClass, method, genericType);
+        static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Method method, Type genericType, boolean flatArguments,
+                        ExecutionSignature signature) {
+            FunctionProxyNode node = FunctionProxyNodeGen.create(languageContext.getLanguageInstance(), receiverClass, method, genericType, flatArguments);
             CallTarget target = lookupHostCodeCache(languageContext, node, CallTarget.class);
             if (target == null) {
-                target = installHostCodeCache(languageContext, node, node.getCallTarget(), CallTarget.class);
+                CallTarget newTarget = signature == null ? node.getCallTarget() : EngineAccessor.NODES.initializeTarget(node, signature);
+                target = installHostCodeCache(languageContext, node, newTarget, CallTarget.class);
             }
             return target;
         }

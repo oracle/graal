@@ -846,6 +846,29 @@ Copy the following code into `reachability-metadata.json`:
 
 Now, you can add `reachability-metadata.json` to `META-INF/native-image/<group-id>/` of your project.
 
+### Generating Guest-to-Java Interface Proxies
+
+Use `@Value.Optimized` for fast access to guest object members or execution of guest functions through a Java interface.
+This is the recommended approach for performance-sensitive interface calls.
+Annotate a public, non-sealed interface and convert the guest value with `Value.as`:
+
+```java
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Value;
+
+@Value.Optimized
+@HostAccess.Implementable
+public interface Arithmetic {
+    double add(int left, int right);
+    double subtract(int left, int right);
+}
+```
+
+Convert a guest object exposing `add` and `subtract` with `value.as(Arithmetic.class)`.
+`@HostAccess.Implementable` permits the conversion under the default host access policy.
+
+Native Image generates and registers proxies for annotated interfaces included in the image at build time; HotSpot generates them on first use.
+
 ## Manage the Lifecycle of Contexts and Engines
 
 A polyglot [`Context`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html) or [`Engine`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html) can hold resources that are released when it is closed.
