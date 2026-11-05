@@ -108,7 +108,7 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
         Iterator<Timer> it = this.timers.values().iterator();
         while (it.hasNext()) {
             Timer timer = it.next();
-            StatisticsPrinter.print(out, timer.getName() + "_time", ((int) timer.getTotalTime()));
+            StatisticsPrinter.print(out, timer.getName() + "_time", ((int) timer.getTotalTimeMs()));
             if (it.hasNext()) {
                 StatisticsPrinter.print(out, timer.getName() + "_memory", timer.getTotalMemory());
             } else {
