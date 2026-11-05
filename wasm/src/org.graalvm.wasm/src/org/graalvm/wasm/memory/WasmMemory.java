@@ -306,6 +306,32 @@ public abstract sealed class WasmMemory implements TruffleObject, EmbedderDataHo
     }
 
     /**
+     * Copies from a {@link WasmMemory} of a different concrete implementation. Bounds are validated
+     * on both memories before any data is written. Lengths larger than {@link Integer#MAX_VALUE} are
+     * transferred in chunks so the fallback does not allocate a single {@code byte[]} of that size
+     * or throw {@link ArithmeticException} from {@link Math#toIntExact(long)}.
+     */
+    @TruffleBoundary
+    protected final void copyFromGeneric(Node node, WasmMemory source, long sourceOffset, long destinationOffset, long length) {
+        validateLength(node, length);
+        final WasmMemoryLibrary lib = WasmMemoryLibrary.getUncached();
+        validateAddress(node, sourceOffset, length, lib.byteSize(source));
+        validateAddress(node, destinationOffset, length, lib.byteSize(this));
+        long remaining = length;
+        long srcOff = sourceOffset;
+        long dstOff = destinationOffset;
+        final byte[] tmp = remaining == 0 ? new byte[0] : new byte[(int) Math.min(remaining, 1 << 20)];
+        while (remaining > 0) {
+            final int n = (int) Math.min(remaining, tmp.length);
+            lib.copyToBuffer(source, node, tmp, srcOff, 0, n);
+            lib.initialize(this, node, tmp, 0, dstOff, n);
+            remaining -= n;
+            srcOff += n;
+            dstOff += n;
+        }
+    }
+
+    /**
      * Reads the null-terminated UTF-8 string starting at {@code startOffset}.
      *
      * @param startOffset memory index of the first character
