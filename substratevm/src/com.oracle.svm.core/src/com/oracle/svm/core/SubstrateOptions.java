@@ -41,11 +41,14 @@ import static org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 import static org.graalvm.nativeimage.impl.InternalPlatform.PLATFORM_JNI;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -783,6 +786,36 @@ public class SubstrateOptions {
     @Option(help = "List of comma separated URL protocols to enable.")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
+    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
+    @Option(help = "URL protocol and URI scheme for embedded resources. Select an unused scheme to avoid collisions with application filesystem providers.", type = OptionType.Expert)//
+    public static final HostedOptionKey<String> ResourceProtocol = new HostedOptionKey<>("resource", SubstrateOptions::validateResourceProtocol) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            super.onValueUpdate(values, oldValue, newValue);
+            // Leave non-ASCII input for validation, since Unicode case folding can produce ASCII.
+            if (newValue.chars().allMatch(c -> c <= 0x7f)) {
+                values.put(this, newValue.toLowerCase(Locale.ROOT));
+            }
+        }
+    };
+
+    private static void validateResourceProtocol(HostedOptionKey<String> optionKey) {
+        String scheme = optionKey.getValue();
+        // URL.of forbids overriding file and jrt handlers; URL parsing treats url: as a special prefix.
+        if (scheme.equals("file") || scheme.equals("jrt") || scheme.equals("url")) {
+            throw UserError.invalidOptionValue(optionKey, scheme, "The URI scheme is reserved by the JDK and cannot be used for embedded resources");
+        }
+        try {
+            if (scheme.equals(new URI(scheme, "/", null).getScheme())) {
+                return;
+            }
+        } catch (URISyntaxException e) {
+            // Report the invalid option below.
+        }
+        throw UserError.invalidOptionValue(optionKey, optionKey.getValue(),
+                        "Expected a non-empty URI scheme starting with an ASCII letter and containing only ASCII letters, digits, '+', '-', or '.'");
+    }
 
     private static final String DEPRECATION_MESSAGE_DISABLE_URL_PROTOCOLS = "Non-default URL protocols are disabled unless registered in reachability metadata. " +
                     "This option has no reachability-metadata replacement for default protocols such as file and resource.";

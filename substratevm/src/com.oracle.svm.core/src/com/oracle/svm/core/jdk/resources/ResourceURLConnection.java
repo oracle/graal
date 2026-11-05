@@ -25,7 +25,7 @@
 
 package com.oracle.svm.core.jdk.resources;
 
-import static com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider.RESOURCE_PROTOCOL;
+import static com.oracle.svm.core.SubstrateOptions.ResourceProtocol;
 
 import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
@@ -72,7 +72,7 @@ public final class ResourceURLConnection extends URLConnection {
         String hostName = urlHost != null && !urlHost.isEmpty() ? ParseUtil.decode(urlHost) : null;
         String urlPath = ParseUtil.decode(url.getPath());
         if (urlPath.isEmpty()) {
-            throw new IllegalArgumentException("Empty URL path not allowed in " + RESOURCE_PROTOCOL + " URL");
+            throw new IllegalArgumentException("Empty URL path not allowed in " + ResourceProtocol.getValue() + " URL");
         }
         NativeImageResourceFileSystemUtil.RootedResourcePath resourcePath = NativeImageResourceFileSystemUtil.parseRootedResourcePath(urlPath, "URL", urlPath);
         String resourceName = resourcePath.resourceName();
@@ -80,7 +80,7 @@ public final class ResourceURLConnection extends URLConnection {
         Object entry;
         if (ClassRegistries.respectClassLoader()) {
             if (hostName == null) {
-                throw new IllegalArgumentException("Host required in " + RESOURCE_PROTOCOL + " URL");
+                throw new IllegalArgumentException("Host required in " + ResourceProtocol.getValue() + " URL");
             }
             String moduleName = url.getUserInfo();
             Module resourceModule = moduleName != null ? ModuleLayer.boot().findModule(ParseUtil.decode(moduleName)).orElse(null) : null;

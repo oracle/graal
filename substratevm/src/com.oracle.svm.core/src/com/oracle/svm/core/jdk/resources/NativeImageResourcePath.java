@@ -25,7 +25,7 @@
 
 package com.oracle.svm.core.jdk.resources;
 
-import static com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider.RESOURCE_PROTOCOL;
+import static com.oracle.svm.core.SubstrateOptions.ResourceProtocol;
 
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -387,13 +387,13 @@ public class NativeImageResourcePath extends NativeImageResourcePathRepresentati
                 byte[] resolvedPath = absolute.getResolvedPath();
                 int separator = indexOf(resolvedPath, (byte) '/');
                 if (separator <= 0 || separator == resolvedPath.length - 1) {
-                    throw new IllegalArgumentException("Loader-aware " + RESOURCE_PROTOCOL + " paths require a loader key and resource name.");
+                    throw new IllegalArgumentException("Loader-aware " + ResourceProtocol.getValue() + " paths require a loader key and resource name.");
                 }
                 String host = NativeImageResourceFileSystem.getString(Arrays.copyOf(resolvedPath, separator));
                 String resourcePath = NativeImageResourceFileSystem.getString(Arrays.copyOfRange(resolvedPath, separator, resolvedPath.length));
-                return new URI(RESOURCE_PROTOCOL, moduleName, host, -1, NativeImageResourceFileSystemUtil.formatRootedResourcePathFromAbsolute(uriRootId, resourcePath), null, null);
+                return new URI(ResourceProtocol.getValue(), moduleName, host, -1, NativeImageResourceFileSystemUtil.formatRootedResourcePathFromAbsolute(uriRootId, resourcePath), null, null);
             }
-            return new URI(RESOURCE_PROTOCOL, moduleName, NativeImageResourceFileSystemUtil.formatRootedResourcePathFromAbsolute(uriRootId, NativeImageResourceFileSystem.getString(
+            return new URI(ResourceProtocol.getValue(), moduleName, NativeImageResourceFileSystemUtil.formatRootedResourcePathFromAbsolute(uriRootId, NativeImageResourceFileSystem.getString(
                             absolute.path)), null, null);
         } catch (URISyntaxException e) {
             throw new AssertionError(e);

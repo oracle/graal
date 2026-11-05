@@ -72,6 +72,8 @@ The options serve the following purposes:
   It does not force picocli to initialize at build time.
   Review initialization policies before adapting this proof of concept for production.
 
+The `jvm-library` macro selects `org.graalvm.nativeimage.libjvm.resource` by default, leaving `resource` available to application filesystem providers.
+
 Note that we do not add the application to this build's class path or preservation selectors.
 It is not part of this build and will only be consumed at run-time of this image (this JDK).
 
