@@ -5,7 +5,7 @@ This guide applies to the `substratevm` directory.
 ## Scope
 
 - `substratevm` is an `mx` suite for GraalVM Native Image. It provides the native-image tool that is part of GraalVM.
-- Most code lives under `src/`, with one directory per module, for example `src/com.oracle.svm.core`, `src/com.oracle.svm.hosted`, `src/com.oracle.svm.graal`, and `src/com.oracle.svm.test`.
+- Most code lives under `src/`, with one directory per module, for example `src/com.oracle.svm.core`, `src/com.oracle.svm.hosted`, `src/com.oracle.svm.graal`, and `src/com.oracle.svm.test.junit.nativeimage`.
 - Java sources are typically under `src/<module>/src/com/oracle/...`.
 - Use `docs/` for developer documentation, `ci/` for CI configuration, and `mx.substratevm/` for suite metadata.
 - Treat `mxbuild/`, `svmbuild/`, and `sources/` as generated output.

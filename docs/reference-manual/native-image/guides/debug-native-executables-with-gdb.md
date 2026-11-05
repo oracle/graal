@@ -44,10 +44,7 @@ readelf -p .debug.svm.imagebuild.classpath hello_image.debug
 It gives a list of all class path entries that were used to build the native executable:
 ```
 String dump of section '.debug.svm.imagebuild.classpath':
-  [     0]  /home/user/.mx/cache/HAMCREST_e237ae735aac4fa5a7253ec693191f42ef7ddce384c11d29fbf605981c0be077d086757409acad53cb5b9e53d86a07cc428d459ff0f5b00d32a8cbbca390be49/hamcrest.jar
-  [    b0]  /home/user/.mx/cache/JUNIT_5974670c3d178a12da5929ba5dd9b4f5ff461bdc1b92618c2c36d53e88650df7adbf3c1684017bb082b477cb8f40f15dcf7526f06f06183f93118ba9ebeaccce/junit.jar
-  [   15a]  /home/user/mx/mxbuild/jdk20/dists/jdk9/junit-tool.jar
-  [   1a9]  /home/user/graal/substratevm/mxbuild/jdk20/com.oracle.svm.test/bin
+  [     0]  /home/user/graal/substratevm/mxbuild/jdk25+21+11/com.oracle.svm.test.debug/bin
 ```
 
 The following sections are available

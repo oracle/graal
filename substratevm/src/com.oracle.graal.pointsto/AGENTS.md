@@ -126,7 +126,7 @@ Engine-selection caveat:
 
 Hosted local validation (run from `substratevm`):
 
-1. `mx unittest com.oracle.graal.pointsto.standalone.test`
+1. `mx standalone-pointsto-unittest host`
 2. `mx helloworld`
 
 ## Source map (paths relative to repository root)

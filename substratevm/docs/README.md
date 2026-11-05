@@ -2,15 +2,10 @@
 
 The documentation and manuals contained in this directory are describing Native Image internals. The information contained in these docs is meant for Native Image developers and contributors, **not** the end-users.
 
-## Running the SubstrateVM test suite
+## Running Tests
 
-There are multiple ways to run the tests:
-
-1. Run `mx build` to compile. You _must always_ run this first, because `mx native-unittest` on its own only compiles the JARs to a native image and runs it, it doesn't compile the source code to JARs. Thus changing the unit tests won't affect test results until you do this.
-2. Run `mx native-unittest`. You _should not_ run `mx unittest`, which doesn't work without extra flags.
-3. Use `mx gate` (see below).
-
-It's a good idea to run test commands from the `graal/substratevm` directory. Build and test artifacts are written under the suite output root (mxbuild).
+See [Testing Native Image](Testing.md) for selecting a test project and running and debugging its tests.
+Run build and test commands from the _substratevm_ directory.
 
 ## Running the gates
 
