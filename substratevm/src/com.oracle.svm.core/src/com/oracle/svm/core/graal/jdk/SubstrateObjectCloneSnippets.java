@@ -39,12 +39,11 @@ import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
-import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
+import com.oracle.svm.guest.staging.core.heap.InstanceReferenceMapDecoder;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubProvider;
-import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
@@ -135,14 +134,14 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
          * actively groups object references together. So, the loop below will typically be only
          * executed for a very small number of iterations.
          */
-        Pointer refMapPos = (Pointer) DynamicHubSupport.getInstanceReferenceMap(hub);
+        Pointer refMapPos = (Pointer) DynamicHubUtils.getInstanceReferenceMap(hub);
         int entryCount = refMapPos.readInt(0);
         refMapPos = refMapPos.add(4);
 
         int referenceSize = ObjectLayout.singleton().getReferenceSize();
 
         assert entryCount >= 0;
-        UnsignedWord sizeOfEntries = Word.unsigned(InstanceReferenceMapEncoder.MAP_ENTRY_SIZE).multiply(entryCount);
+        UnsignedWord sizeOfEntries = Word.unsigned(InstanceReferenceMapDecoder.MAP_ENTRY_SIZE).multiply(entryCount);
         Pointer refMapEnd = refMapPos.add(sizeOfEntries);
 
         long curOffset = ObjectLayout.singleton().getFirstFieldOffset();
@@ -204,9 +203,9 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             return true;
         }
         ResolvedJavaType type = ObjectClone.getConcreteType(alias.stamp(NodeView.DEFAULT));
-        if (type instanceof SharedType) {
+        if (type instanceof SharedType sharedType) {
             // Hybrids are instances with array-like encoding; cloning virtually is unimplemented.
-            int encoding = DynamicHubProvider.getHub((SharedType) type).getLayoutEncoding();
+            int encoding = DynamicHubUtils.getHub(sharedType).getLayoutEncoding();
             return !LayoutEncoding.isHybrid(encoding);
         }
         if (type != null && type.isArray()) {

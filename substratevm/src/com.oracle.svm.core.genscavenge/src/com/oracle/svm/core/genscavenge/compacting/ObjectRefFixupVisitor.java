@@ -38,7 +38,7 @@ import com.oracle.svm.core.genscavenge.DerivedReferenceUpdater;
 import com.oracle.svm.core.heap.DerivedReferenceSupport;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import org.graalvm.word.impl.Word;
 
 /**

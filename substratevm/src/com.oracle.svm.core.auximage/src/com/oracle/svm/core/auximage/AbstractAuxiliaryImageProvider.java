@@ -40,7 +40,7 @@ import com.oracle.svm.guest.staging.IsolateArguments;
 import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.AuxiliaryImageProvider;

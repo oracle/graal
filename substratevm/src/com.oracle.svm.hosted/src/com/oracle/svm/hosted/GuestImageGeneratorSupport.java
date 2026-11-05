@@ -38,6 +38,7 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.ArgsSupport;
+import com.oracle.svm.guest.staging.core.heap.GCCauseSupport;
 import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.guest.staging.JavaMainSupport;
 import com.oracle.svm.guest.staging.config.SubstrateGuestTarget;
@@ -124,6 +125,32 @@ final class GuestImageGeneratorSupport {
         }
         ResolvedJavaMethod install = access.lookupMethod(parserType, "install", IsolateArgumentParser.class);
         access.invoke(install, null, guestParser);
+    }
+
+    /**
+     * Installs the GCCause support singleton in the builder and guest registries. The manual
+     * registration can be removed when guest-staging types support automatic singleton
+     * registration (GR-76716).
+     */
+    static void installGCCauseSupport() {
+        if (ImageSingletons.lookup(LoadedLayeredImageSingletonInfo.class).handledDuringLoading(GCCauseSupport.class)) {
+            return;
+        }
+
+        GCCauseSupport support = new GCCauseSupport();
+        GCCauseSupport.install(support);
+
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaType supportType = access.lookupType(GCCauseSupport.class);
+        ResolvedJavaMethod ctor = JVMCIReflectionUtil.getDeclaredConstructor(supportType);
+        JavaConstant guestSupport;
+        try {
+            guestSupport = access.invoke(ctor, null);
+        } catch (InvocationException ex) {
+            throw VMError.shouldNotReachHere("Error creating GCCause support in the guest context", ex);
+        }
+        ResolvedJavaMethod install = access.lookupMethod(supportType, "install", GCCauseSupport.class);
+        access.invoke(install, null, guestSupport);
     }
 
     /**

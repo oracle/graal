@@ -22,11 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.guest.staging.core.heap;
 
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.shared.util.VMError;
 
 /**
@@ -63,7 +62,7 @@ public interface ObjectReferenceVisitor {
 
     /**
      * Visits a derived reference. Derived references can only be on the stack or in a
-     * {@link StoredContinuation}.
+     * {@code StoredContinuation}.
      *
      * @param baseObjRef Address where the base reference is stored.
      * @param derivedObjRef Address where the derived reference is stored.

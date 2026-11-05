@@ -71,8 +71,9 @@ import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.guest.staging.hub.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
 import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
 import com.oracle.svm.core.hub.crema.CremaJNIMethodIds;
@@ -126,7 +127,7 @@ import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Target_java_lang_BaseVirtualThread;
@@ -433,7 +434,7 @@ public final class JNIFunctions {
         if (RuntimeClassLoading.isSupported()) {
             DynamicHub hub = DynamicHub.fromClass(clazz);
             if (hub.isRuntimeLoaded()) {
-                ResolvedJavaType interpreterType = hub.getInterpreterType();
+                ResolvedJavaType interpreterType = DynamicHubUtils.getInterpreterType(hub);
                 assert interpreterType instanceof CremaResolvedJavaType : "expected Crema type";
                 CremaResolvedJavaType type = (CremaResolvedJavaType) interpreterType;
                 for (CremaResolvedJavaMethod cremaMethod : type.getDeclaredCremaMethods()) {
@@ -2231,7 +2232,7 @@ public final class JNIFunctions {
             if (RuntimeClassLoading.isSupported()) {
                 if (clazz.isRuntimeLoaded()) {
                     assert JNIReflectionDictionary.getLinkage(clazz, name, signature) == null : "Runtime loaded classes should have no global linkage";
-                    ResolvedJavaType interpreterType = clazz.getInterpreterType();
+                    ResolvedJavaType interpreterType = DynamicHubUtils.getInterpreterType(clazz);
                     assert interpreterType instanceof CremaResolvedJavaType : "expected Crema type";
                     CremaResolvedJavaType type = (CremaResolvedJavaType) interpreterType;
                     CremaResolvedJavaMethod cremaMethod = type.lookupDeclaredMethod(name.toString(), signature.toString());

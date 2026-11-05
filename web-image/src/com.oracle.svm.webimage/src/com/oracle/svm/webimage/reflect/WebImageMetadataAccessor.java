@@ -42,7 +42,7 @@ import com.oracle.svm.webimage.platform.WebImagePlatform;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
- * Provides access to meta data without relying on {@link com.oracle.svm.core.code.CodeInfo}.
+ * Provides access to meta data without relying on {@link com.oracle.svm.guest.staging.core.code.CodeInfo}.
  */
 @AutomaticallyRegisteredImageSingleton(RuntimeMetadataDecoder.MetadataAccessor.class)
 @Platforms(WebImagePlatform.class)

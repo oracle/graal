@@ -27,7 +27,7 @@ package com.oracle.svm.core.graal.code;
 
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
-import com.oracle.svm.core.hub.DynamicHubProvider;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -54,7 +54,7 @@ public class SubstrateMetaAccessExtensionProvider implements MetaAccessExtension
 
     @Override
     public boolean canConstantFoldDynamicAllocation(ResolvedJavaType type) {
-        return type != null && DynamicHubProvider.getHub((SharedType) type).isInstantiated();
+        return type != null && DynamicHubUtils.getHub((SharedType) type).isInstantiated();
     }
 
     @Override

@@ -52,7 +52,7 @@ import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
-import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.guest.staging.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.SmallestPossibleObject;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;

@@ -50,6 +50,7 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.encoder.IdentitySymbolEncoder;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.hosted.BootLoaderSupport;
@@ -183,7 +184,7 @@ public class DynamicHubInitializer {
 
         if (RuntimeClassLoading.isSupported()) {
             ResolvedJavaType interpreterType = RuntimeClassLoading.createInterpreterType(hub, type);
-            hub.setInterpreterType(interpreterType);
+            DynamicHubUtils.setInterpreterType(hub, interpreterType);
             heapScanner.rescanField(hub.getCompanion(), hubCompanionInterpreterType, reason);
             heapScanner.rescanObject(CremaSupport.singleton().getAllDeclaredMethods(interpreterType), reason);
         }

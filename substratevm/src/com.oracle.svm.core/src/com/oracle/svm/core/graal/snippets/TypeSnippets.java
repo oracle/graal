@@ -39,7 +39,7 @@ import java.util.Map;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.word.DynamicHubAccess;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubProvider;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 
@@ -193,7 +193,7 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
         int index = 0;
         for (int i = 0; i < hubs.length; i++) {
             if (!positiveOnly || hints.hints[i].positive) {
-                hubs[index] = DynamicHubProvider.getHub((SharedType) hints.hints[i].type);
+                hubs[index] = DynamicHubUtils.getHub((SharedType) hints.hints[i].type);
                 isPositive[index] = hints.hints[i].positive;
                 index++;
             }
@@ -279,7 +279,7 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
             InstanceOfNode node = (InstanceOfNode) replacer.instanceOf;
             TypeReference typeReference = node.type();
             SharedType type = (SharedType) typeReference.getType();
-            DynamicHub hub = DynamicHubProvider.getHub(type);
+            DynamicHub hub = DynamicHubUtils.getHub(type);
 
             SnippetTemplate.Arguments args;
             if (typeReference.isExact()) {

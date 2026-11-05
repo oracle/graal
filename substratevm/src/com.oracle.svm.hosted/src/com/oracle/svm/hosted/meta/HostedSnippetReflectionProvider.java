@@ -28,7 +28,7 @@ import com.oracle.graal.pointsto.heap.AbstractImageHeapSnippetReflectionProvider
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.graal.nodes.TLABObjectHeaderConstant;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.shared.util.VMError;

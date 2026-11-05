@@ -36,7 +36,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.IsolateArguments;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.shared.util.TimeUtils;

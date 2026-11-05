@@ -83,9 +83,9 @@ import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
 import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubProvider;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
@@ -1104,7 +1104,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         if (type.isArray()) {
             targetType = (SharedType) type.getElementalType();
         }
-        DynamicHub hub = DynamicHubProvider.getHub(targetType);
+        DynamicHub hub = DynamicHubUtils.getHub(targetType);
         return hub.isLoaded() ? lookupLoaderEntry(UniqueShortNameProvider.singleton().uniqueShortLoaderName(hub.getClassLoader())) : NULL_LOADER_ENTRY;
     }
 

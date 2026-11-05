@@ -41,18 +41,19 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfoEncoder.Counters;
 import com.oracle.svm.core.code.CodeInfoEncoder.Encoders;
 import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.encoder.SymbolEncoder;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.hub.DynamicHubProvider;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.jvmci.shared.meta.SharedField;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
@@ -854,10 +855,10 @@ public class FrameInfoEncoder {
         ArrayList<ValueInfo> valueList = new ArrayList<>(virtualObject.getValues().length + 4);
         SharedType type = (SharedType) virtualObject.getType();
         /* The first element is the hub of the virtual object. */
-        valueList.add(makeValueInfo(data, JavaKind.Object, constantAccess.forObject(DynamicHubProvider.getHub(type), false), isDeoptEntry));
+        valueList.add(makeValueInfo(data, JavaKind.Object, constantAccess.forObject(DynamicHubUtils.getHub(type), false), isDeoptEntry));
 
         ObjectLayout objectLayout = ObjectLayout.singleton();
-        assert type.isArray() == LayoutEncoding.isArray(DynamicHubProvider.getHub(type).getLayoutEncoding()) : "deoptimization code uses layout encoding to determine if type is an array";
+        assert type.isArray() == LayoutEncoding.isArray(DynamicHubUtils.getHub(type).getLayoutEncoding()) : "deoptimization code uses layout encoding to determine if type is an array";
         if (type.isArray()) {
             /* We do not know the final length yet, so add a placeholder. */
             valueList.add(null);

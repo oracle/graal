@@ -73,6 +73,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.guest.staging.hub.ClassDefinitionInfo;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.LogUtils;
@@ -617,10 +618,10 @@ public final class RuntimeBootModuleLayerSupport {
     }
 
     /// Creates class definition metadata that matches the `CodeSource` HotSpot assigns to classes loaded from `--patch-module`.
-    public static RuntimeClassLoading.ClassDefinitionInfo createPatchedClassDefinitionInfo(ClassLoader loader, URL codeSourceURL) {
+    public static ClassDefinitionInfo createPatchedClassDefinitionInfo(ClassLoader loader, URL codeSourceURL) {
         CodeSource codeSource = new CodeSource(codeSourceURL, (CodeSigner[]) null);
         ProtectionDomain protectionDomain = new ProtectionDomain(codeSource, new Permissions(), loader, null);
-        return new RuntimeClassLoading.ClassDefinitionInfo(protectionDomain);
+        return new ClassDefinitionInfo(protectionDomain);
     }
 
     /// Loads `resourceName` from the patch paths for `moduleName` if that module is resolved

@@ -34,9 +34,9 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.config.ObjectLayout;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectHeader;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.guest.staging.hub.HubType;
 import com.oracle.svm.guest.staging.hub.Hybrid;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;

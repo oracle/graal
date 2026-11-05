@@ -35,7 +35,7 @@ import com.oracle.svm.core.genscavenge.remset.NoRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 import com.oracle.svm.core.heap.BarrierSetProvider;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.hosted.webimage.wasmgc.image.WasmGCHeapLayouter;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;

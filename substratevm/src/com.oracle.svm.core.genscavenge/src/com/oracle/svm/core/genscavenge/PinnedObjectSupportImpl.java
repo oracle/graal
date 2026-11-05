@@ -37,7 +37,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
-import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.thread.VMOperation;
@@ -163,7 +163,7 @@ public final class PinnedObjectSupportImpl extends AbstractPinnedObjectSupport {
         if (!SubstrateOptions.PinnedObjectAddressing.getValue()) {
             throw new UnsupportedOperationException("Pinned object addressing has been disabled.");
         }
-        DynamicHub hub = ObjectHeader.readDynamicHubFromObject(array);
+        DynamicHub hub = (DynamicHub) ObjectHeader.readDynamicHubFromObject(array);
         assert hub.isArray();
         UnsignedWord offsetOfArrayElement = LayoutEncoding.getArrayElementOffset(hub.getLayoutEncoding(), index);
         return addressOfPinnedObject(array).add(offsetOfArrayElement);

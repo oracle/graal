@@ -59,9 +59,10 @@ import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.nodes.VaListInitializationNode;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
-import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.GCCause;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.crema.CremaJNIMethodIds;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaSupport;
@@ -309,7 +310,7 @@ public abstract class InterpreterStubSection {
         Object receiver = ((Pointer) Word.pointer(accessHelper.getGpArgumentAt(PreparedSignature.encodeArgumentType(JavaKind.Object, 0, true), enterData))).toObject();
 
         DynamicHub hub = DynamicHub.fromClass(receiver.getClass());
-        InterpreterResolvedObjectType thisType = (InterpreterResolvedObjectType) hub.getInterpreterType();
+        InterpreterResolvedObjectType thisType = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(hub);
         InterpreterResolvedJavaMethod interpreterMethod = thisType.getVtable()[vTableIndex];
 
         return enterHelper(interpreterMethod, enterData);

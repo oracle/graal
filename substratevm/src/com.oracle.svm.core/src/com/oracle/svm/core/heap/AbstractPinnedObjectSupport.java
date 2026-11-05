@@ -38,9 +38,11 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.shared.Uninterruptible;
@@ -195,7 +197,7 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
             if (referent == null) {
                 throw new NullPointerException("PinnedObject is missing a referent");
             }
-            DynamicHub hub = ObjectHeader.readDynamicHubFromObject(referent);
+            DynamicHub hub = (DynamicHub) ObjectHeader.readDynamicHubFromObject(referent);
             UnsignedWord offsetOfArrayElement = LayoutEncoding.getArrayElementOffset(hub.getLayoutEncoding(), index);
             return (T) addressOfObject().add(offsetOfArrayElement);
         }

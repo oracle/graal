@@ -53,7 +53,7 @@ import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubProvider;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.methodhandles.RuntimeCallSiteTargetSupport;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
@@ -250,7 +250,7 @@ public class RistrettoUtils {
         } else if (declaringClass instanceof InterpreterResolvedJavaType interpreterType) {
             return interpreterType.getJavaClass();
         } else if (declaringClass instanceof SharedType sharedType) {
-            return DynamicHub.toClass(DynamicHubProvider.getHub(sharedType));
+            return DynamicHub.toClass(DynamicHubUtils.getHub(sharedType));
         }
         throw VMError.shouldNotReachHere("Unexpected declaring class for runtime Java declaring-class lookup: " + declaringClass);
     }
@@ -298,7 +298,7 @@ public class RistrettoUtils {
     }
 
     private static ResolvedJavaMethod resolveOSRGetter(String methodName, String descriptor) {
-        InterpreterResolvedObjectType osrSupportType = (InterpreterResolvedObjectType) DynamicHub.fromClass(RistrettoOSRSupport.class).getInterpreterType();
+        InterpreterResolvedObjectType osrSupportType = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(RistrettoOSRSupport.class));
         if (osrSupportType == null) {
             throw VMError.shouldNotReachHere("Ristretto OSR support type is not preserved for runtime compilation.");
         }
@@ -1093,7 +1093,7 @@ public class RistrettoUtils {
     }
 
     public static RistrettoMethod toRMethodOrNull(SubstrateMethod substrateMethod) {
-        InterpreterResolvedObjectType iType = (InterpreterResolvedObjectType) substrateMethod.getDeclaringClass().getHub().getInterpreterType();
+        InterpreterResolvedObjectType iType = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(substrateMethod.getDeclaringClass().getHub());
         for (var iMeth : iType.getAllDeclaredMethods()) {
             if (iMeth.getName().equals(substrateMethod.getName()) && iMeth.getSignature().toMethodDescriptor().equals(substrateMethod.getSignature().toMethodDescriptor())) {
                 RistrettoMethod rMethod = RistrettoMethod.getOrCreate(iMeth);
@@ -1105,7 +1105,7 @@ public class RistrettoUtils {
     }
 
     public static RistrettoField toRFieldOrNull(SubstrateField substrateField) {
-        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) substrateField.getDeclaringClass().getHub().getInterpreterType();
+        InterpreterResolvedJavaType iType = (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(substrateField.getDeclaringClass().getHub());
         if (substrateField.isStatic()) {
             for (var iField : iType.getStaticFields()) {
                 if (iField.getName().equals(substrateField.getName())) {
@@ -1123,6 +1123,6 @@ public class RistrettoUtils {
     }
 
     public static RistrettoType toRType(SubstrateType substrateType) {
-        return RistrettoType.getOrCreate((InterpreterResolvedJavaType) substrateType.getHub().getInterpreterType());
+        return RistrettoType.getOrCreate((InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(substrateType.getHub()));
     }
 }

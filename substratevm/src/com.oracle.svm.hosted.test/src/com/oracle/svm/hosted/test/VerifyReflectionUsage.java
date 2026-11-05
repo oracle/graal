@@ -122,7 +122,6 @@ public class VerifyReflectionUsage extends VerifyReflectionUsageBase {
                     clazz("com.oracle.svm.core.graal.jdk.SubstrateArraycopySnippets"),
                     clazz("com.oracle.svm.core.graal.llvm.NodeLLVMBuilder"),
                     clazz("com.oracle.svm.core.graal.llvm.runtime.LLVMExceptionUnwind"),
-                    clazz("com.oracle.svm.core.graal.meta.DynamicHubOffsets"),
                     clazz("com.oracle.svm.core.graal.meta.KnownOffsets"),
                     clazz("com.oracle.svm.core.graal.meta.SubstrateReplacements"),
                     clazz("com.oracle.svm.core.graal.meta.SubstrateReplacements$SnippetInlineInvokePlugin"),

@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
@@ -869,7 +870,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         if (cls == null) {
             return UnresolvedJavaType.create(typeBytes.toString());
         } else {
-            return DynamicHub.fromClass(cls).getInterpreterType();
+            return DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(cls));
         }
     }
 }

@@ -269,6 +269,7 @@ import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.methodhandles.MethodHandleInterpreterUtils;
@@ -3345,7 +3346,10 @@ public final class Interpreter {
                         DynamicHub typeHub = opcode == INVOKESPECIAL ? callerFrame.method.getDeclaringClass().getHub() : linkedInvoke.symbolicHolder.getHub();
                         boolean assignable = InterpreterToVM.isAssignableFrom(typeHub, instanceHub, opcode != INVOKEINTERFACE);
                         if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, !assignable)) {
-                            throw incompatibleInvokeReceiver(instanceHub.getInterpreterType(), typeHub.getInterpreterType(), opcode);
+                            throw incompatibleInvokeReceiver(
+                                            DynamicHubUtils.getInterpreterType(instanceHub),
+                                            DynamicHubUtils.getInterpreterType(typeHub),
+                                            opcode);
                         }
                     }
                 }

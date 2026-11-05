@@ -35,7 +35,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.guest.staging.hub.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
@@ -114,6 +114,9 @@ public interface CremaSupport {
     Object allocateInstance(ResolvedJavaType type) throws InstantiationException;
 
     Object execute(ResolvedJavaMethod targetMethod, Object[] args, CallKind callKind);
+
+    /** Executes the class initializer of a runtime-loaded class. */
+    void executeClassInitializer(DynamicHub hub);
 
     default Class<?> resolveOrThrow(UnresolvedJavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
         ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());

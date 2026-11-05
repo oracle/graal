@@ -27,6 +27,7 @@ package com.oracle.svm.interpreter.metadata;
 import java.lang.reflect.Field;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
@@ -34,14 +35,14 @@ import com.oracle.svm.espresso.shared.meta.FieldAccess;
 
 public interface CremaFieldAccess extends WithModifiers, FieldAccess<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> {
     static InterpreterResolvedJavaField toJVMCI(Field field) {
-        InterpreterResolvedObjectType holder = (InterpreterResolvedObjectType) DynamicHub.fromClass(field.getDeclaringClass()).getInterpreterType();
+        InterpreterResolvedObjectType holder = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(field.getDeclaringClass()));
         /*
          * Since we are looking for a field that already exists in the system, we expect the symbols
          * to already exist for the name here. As a result we just perform a lookup instead of
          * getOrCreate.
          */
         Symbol<Name> name = SymbolsSupport.getNames().lookup(field.getName());
-        InterpreterResolvedJavaType type = (InterpreterResolvedJavaType) DynamicHub.fromClass(field.getType()).getInterpreterType();
+        InterpreterResolvedJavaType type = (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(field.getType()));
         return holder.lookupField(name, type.getSymbolicType());
     }
 }

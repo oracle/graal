@@ -36,8 +36,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.graalvm.nativeimage.impl.ClassLoading;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.guest.staging.hub.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SVMSymbols.SVMTypes;
 import com.oracle.svm.core.jdk.ModuleNative;
@@ -349,14 +350,14 @@ public abstract sealed class AbstractRuntimeClassRegistry extends AbstractClassR
     private static void traceDefine(ClassDefinitionInfo info, ClassLoader loader, Class<?> clazz) {
         if (RuntimeClassLoading.Options.TraceClassLoading.getValue()) {
             DynamicHub hub = DynamicHub.fromClass(clazz);
-            ResolvedJavaType interpreterType = hub.getInterpreterType();
+            ResolvedJavaType interpreterType = DynamicHubUtils.getInterpreterType(hub);
             String className = interpreterType.toJavaName();
             String source = info.source;
             source = source == null ? "<unknown>" : source;
             Log.log().string(traceMessage(className, loader, source, "load")).newline();
         }
         if (RuntimeClassLoading.Options.LogClassLoadingCauseFor.getValue() != null) {
-            String className = DynamicHub.fromClass(clazz).getInterpreterType().toJavaName();
+            String className = DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz)).toJavaName();
             String pattern = RuntimeClassLoading.Options.LogClassLoadingCauseFor.getValue();
             if (pattern.equals("*") || className.contains(pattern)) {
                 Log.log().string("[class,load,cause] Java stack when loading ").string(className).newline();

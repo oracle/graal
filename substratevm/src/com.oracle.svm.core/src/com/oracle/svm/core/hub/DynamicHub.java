@@ -27,11 +27,11 @@ package com.oracle.svm.core.hub;
 import static com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
-import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeByte;
-import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeInt;
-import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeObject;
-import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeShort;
 import static com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry.UNINITIALIZED_DECLARING_CLASS_SENTINEL;
+import static com.oracle.svm.guest.staging.core.graal.meta.DynamicHubOffsets.writeByte;
+import static com.oracle.svm.guest.staging.core.graal.meta.DynamicHubOffsets.writeInt;
+import static com.oracle.svm.guest.staging.core.graal.meta.DynamicHubOffsets.writeObject;
+import static com.oracle.svm.guest.staging.core.graal.meta.DynamicHubOffsets.writeShort;
 import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_CLASSES_FLAG;
 import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_CONSTRUCTORS_FLAG;
 import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.ALL_DECLARED_CLASSES_FLAG;
@@ -116,12 +116,12 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
-import com.oracle.svm.core.graal.meta.DynamicHubOffsets;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
+import com.oracle.svm.guest.staging.core.graal.meta.DynamicHubOffsets;
+import com.oracle.svm.guest.staging.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
-import com.oracle.svm.core.heap.ReferenceMapIndex;
-import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.guest.staging.core.heap.ReferenceMapIndex;
+import com.oracle.svm.guest.staging.hub.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
@@ -129,7 +129,7 @@ import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.metadata.MetadataTracer;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.core.reflect.CremaSerializationConstructorAccessor;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
@@ -150,7 +150,6 @@ import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.guest.staging.reflect.fieldaccessor.UnsafeFieldAccessorFactory;
 import com.oracle.svm.guest.staging.util.LazyFinalReference;
-import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.shared.AlwaysInline;
@@ -451,7 +450,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /**
      * A compressed offset, relative to the heap base, that points to the
      * {@link InstanceReferenceMap} for this hub (see
-     * {@link DynamicHubSupport#getInstanceReferenceMap}).
+     * {@link DynamicHubUtils#getInstanceReferenceMap}).
      */
     @UnknownPrimitiveField(availability = AfterHeapLayout.class)//
     private int referenceMapCompressedOffset = -1;
@@ -649,7 +648,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                         "openTypeWorldInterfaceHashTable must be in metaspace, or null when interface hashing is disabled");
 
         /* Allocate the hub in the metaspace. */
-        DynamicHub hub = metaspace.allocateDynamicHub(vTableEntries);
+        DynamicHub hub = (DynamicHub) metaspace.allocateDynamicHub(vTableEntries);
         int referenceMapCompressedOffset = RuntimeInstanceReferenceMapSupport.singleton().getOrCreateReferenceMap(metadataSuperHub, monitorOffset, declaredInstanceReferenceFieldOffsets);
 
         /* Write fields in defining order. */
@@ -977,12 +976,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         throw new NoClassDefFoundError(message);
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setMetaType(SharedType metaType) {
-        assert companion.metaType == null;
-        companion.metaType = metaType;
-    }
-
     public boolean hasDefaultMethods() {
         return isFlagSet(flags, HAS_DEFAULT_METHODS_FLAG_BIT);
     }
@@ -1001,19 +994,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     public void ensureInitialized() {
         EnsureClassInitializedNode.ensureClassInitialized(toClass(this));
-    }
-
-    public SharedType getMetaType() {
-        return companion.metaType;
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public ResolvedJavaType getInterpreterType() {
-        return companion.interpreterType;
-    }
-
-    public void setInterpreterType(ResolvedJavaType interpreterType) {
-        companion.interpreterType = interpreterType;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -1241,6 +1221,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return SubstrateUtil.cast(clazz, DynamicHub.class);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public DynamicHubCompanion getCompanion() {
         return companion;
     }

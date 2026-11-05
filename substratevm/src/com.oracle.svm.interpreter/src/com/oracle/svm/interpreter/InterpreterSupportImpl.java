@@ -55,6 +55,7 @@ import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
 import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
@@ -174,7 +175,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     @Override
     public PreparedSignature prepareJNIDowncallSignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass) {
         InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
-        ResolvedJavaType wordType = DynamicHub.fromClass(stubSection.target.wordJavaKind.toJavaClass()).getInterpreterType();
+        ResolvedJavaType wordType = DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(stubSection.target.wordJavaKind.toJavaClass()));
 
         int parameterCount = signature.getParameterCount(false);
         JavaType[] parameterTypes = new JavaType[parameterCount + 2];
@@ -235,7 +236,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     public PreparedSignature prepareJNIUpcallVarargsSignature(Signature signature, ResolvedJavaType accessingClass, boolean nonVirtual) {
         InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
 
-        ResolvedJavaType wordType = DynamicHub.fromClass(stubSection.target.wordJavaKind.toJavaClass()).getInterpreterType();
+        ResolvedJavaType wordType = DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(stubSection.target.wordJavaKind.toJavaClass()));
 
         int parameterCount = signature.getParameterCount(false);
         int startIndex = (nonVirtual ? 4 : 3);
@@ -287,10 +288,10 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             return wordType;
         } else if (kind == JavaKind.Boolean || kind == JavaKind.Byte || kind == JavaKind.Short || kind == JavaKind.Char) {
             // C varargs promote sub-words to int (C99, 6.5.2.2-6)
-            return DynamicHub.fromClass(int.class).getInterpreterType();
+            return DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(int.class));
         } else if (kind == JavaKind.Float) {
             // C varargs promote float to double (C99, 6.5.2.2-6)
-            return DynamicHub.fromClass(double.class).getInterpreterType();
+            return DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(double.class));
         }
         return signature.getParameterType(index, accessingClass);
     }

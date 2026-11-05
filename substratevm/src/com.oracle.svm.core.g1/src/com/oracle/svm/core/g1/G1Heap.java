@@ -71,20 +71,20 @@ import com.oracle.svm.core.gc.shared.NativeGCVMOperationSupport.NativeGCVMOperat
 import com.oracle.svm.core.gc.shared.NativeGCVMOperationSupport.NativeGCVMOperationWrapperData;
 import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.FillerObject;
-import com.oracle.svm.core.heap.GC;
-import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
+import com.oracle.svm.guest.staging.core.heap.GC;
+import com.oracle.svm.guest.staging.core.heap.GCCause;
+import com.oracle.svm.guest.staging.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.InstanceReferenceMapDecoder;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
-import com.oracle.svm.core.heap.ObjectHeader;
-import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
+import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
-import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
+import com.oracle.svm.guest.staging.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.ThreadsLock;
@@ -202,7 +202,7 @@ public final class G1Heap extends Heap {
         Word vmOperationThread = Word.objectToUntrackedWord(VMOperationControl.getDedicatedVMOperationThread());
         Word safepointMaster = Word.objectToUntrackedWord(Safepoint.singleton());
         Word runtimeCodeInfoMemory = Word.objectToUntrackedWord(RuntimeCodeInfoMemory.singleton());
-        int referenceMapCompressedOffsetShift = InstanceReferenceMapEncoder.REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT;
+        int referenceMapCompressedOffsetShift = InstanceReferenceMapDecoder.REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT;
         Word threadLocalsReferenceMap = NonmovableArrays.addressOf(threadLocalSupport.getThreadLocalsReferenceMap(), threadLocalSupport.getThreadLocalsReferenceMapIndex());
         Word classesAssumedReachableForCodeUnloading = getClassesAssumedReachableForCodeUnloading();
         Word performanceData = Word.objectToUntrackedWord(perfData);
@@ -612,7 +612,7 @@ public final class G1Heap extends Heap {
 
         if (objectHeader.isEncodedObjectHeader((Word) value)) {
             log.string("is the encoded object header for an object of type ");
-            DynamicHub hub = objectHeader.dynamicHubFromObjectHeader((Word) value);
+            DynamicHub hub = (DynamicHub) objectHeader.dynamicHubFromObjectHeader((Word) value);
             log.string(hub.getName());
             return true;
         }

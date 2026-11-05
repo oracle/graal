@@ -954,7 +954,7 @@ public final class InterpreterToVM {
     private static InterpreterResolvedObjectType getInterpreterObjectType(Class<?> thisClass) {
         ResolvedJavaType thisType;
         if (RuntimeClassLoading.isSupported()) {
-            thisType = DynamicHub.fromClass(thisClass).getInterpreterType();
+            thisType = DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(thisClass));
         } else {
             assert DebuggerWithInterpreter.getValue();
             DebuggerSupport interpreterSupport = ImageSingletons.lookup(DebuggerSupport.class);
@@ -1006,7 +1006,7 @@ public final class InterpreterToVM {
         InterpreterResolvedObjectType seedInterface = seedMethod.getDeclaringClass();
         long offset = OpenTypeWorldDispatchTableSnippets.findHashedITableStartingOffset(receiverHub, seedInterface.getHub().getInterfaceID());
         if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, offset < 0)) {
-            throw Interpreter.incompatibleInvokeReceiver(receiverHub.getInterpreterType(), seedInterface, INVOKEINTERFACE);
+            throw Interpreter.incompatibleInvokeReceiver(DynamicHubUtils.getInterpreterType(receiverHub), seedInterface, INVOKEINTERFACE);
         }
 
         int index = seedMethod.getVTableIndex() + InterpreterResolvedObjectType.itableOffsetToIndex(offset);

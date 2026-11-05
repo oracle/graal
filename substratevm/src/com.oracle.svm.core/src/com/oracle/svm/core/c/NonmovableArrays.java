@@ -39,11 +39,13 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.SubstrateTarget;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableObjectArray;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.shared.config.ObjectLayout;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectHeader;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.guest.staging.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
+import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -122,7 +124,7 @@ public final class NonmovableArrays {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static DynamicHub readHub(NonmovableArray<?> array) {
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
-        return objectHeader.readDynamicHubFromPointer((Pointer) array);
+        return (DynamicHub) objectHeader.readDynamicHubFromPointer((Pointer) array);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

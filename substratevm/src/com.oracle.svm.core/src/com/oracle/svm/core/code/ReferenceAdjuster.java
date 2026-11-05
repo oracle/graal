@@ -31,7 +31,7 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.c.NonmovableObjectArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableObjectArray;
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.nmt.NmtCategory;

@@ -35,9 +35,9 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
-import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.guest.staging.core.heap.InstanceReferenceMapDecoder;
+import com.oracle.svm.guest.staging.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
+import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.heap.ReferenceInternals;
@@ -116,7 +116,7 @@ public class InteriorObjRefWalker {
             throw new IllegalArgumentException("Unsupported hub type: " + objHub.getHubType());
         }
 
-        InstanceReferenceMap referenceMap = DynamicHubSupport.getInstanceReferenceMap(objHub);
+        InstanceReferenceMap referenceMap = DynamicHubUtils.getInstanceReferenceMap(objHub);
         InstanceReferenceMapDecoder.walkReferences(Word.zero(), referenceMap, new ObjectReferenceVisitor() {
             @Override
             public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
@@ -139,7 +139,7 @@ public class InteriorObjRefWalker {
     private static void walkInstanceInline(Object obj, ObjectReferenceVisitor visitor, DynamicHub objHub) {
         // Visit Object reference in the fields of the Object.
         Pointer objPointer = Word.objectToUntrackedPointer(obj);
-        InstanceReferenceMap referenceMap = DynamicHubSupport.getInstanceReferenceMap(objHub);
+        InstanceReferenceMap referenceMap = DynamicHubUtils.getInstanceReferenceMap(objHub);
         InstanceReferenceMapDecoder.walkReferencesInline(objPointer, referenceMap, visitor, obj);
     }
 

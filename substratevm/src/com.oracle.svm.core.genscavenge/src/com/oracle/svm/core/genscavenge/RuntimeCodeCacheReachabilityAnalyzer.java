@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -106,7 +106,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
         if (space.isCompactingOldSpace() && !GCImpl.getGCImpl().isCompleteCollection()) {
             return true;
         }
-        Class<?> clazz = DynamicHub.toClass(ohi.dynamicHubFromObjectHeader(header));
+        Class<?> clazz = DynamicHub.toClass((DynamicHub) ohi.dynamicHubFromObjectHeader(header));
         return isAssumedReachable(clazz);
     }
 

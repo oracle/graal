@@ -26,7 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.guest.staging.core.heap.GCCause;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 
 final class GenScavengeGCCause extends GCCause {

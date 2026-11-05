@@ -31,9 +31,9 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.c.NonmovableObjectArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.ReferenceAdjuster;
 import com.oracle.svm.core.graal.isolated.ClientHandle;
 import com.oracle.svm.guest.staging.core.handles.ThreadLocalHandles;

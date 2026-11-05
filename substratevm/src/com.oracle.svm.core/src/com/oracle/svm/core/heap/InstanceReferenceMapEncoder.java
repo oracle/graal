@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
+import static com.oracle.svm.guest.staging.core.heap.InstanceReferenceMapDecoder.REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -33,9 +35,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
+import com.oracle.svm.guest.staging.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
+import com.oracle.svm.guest.staging.core.heap.ReferenceMapIndex;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
-import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -57,12 +59,6 @@ import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
  * </ul>
  */
 public class InstanceReferenceMapEncoder extends ReferenceMapEncoder {
-    @DuplicatedInNativeCode //
-    public static final int REFERENCE_MAP_COMPRESSED_OFFSET_SHIFT = 2;
-
-    public static final int MAP_HEADER_SIZE = 4;
-    public static final int MAP_ENTRY_SIZE = 8;
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public static int computeReferenceMapCompressedOffset(long currentLayerRefMapDataStart, int referenceMapIndex) {
         long uncompressedOffset = currentLayerRefMapDataStart + referenceMapIndex;

@@ -27,7 +27,6 @@ package com.oracle.svm.core.hub;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
 
-import java.security.ProtectionDomain;
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -38,10 +37,10 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.espresso.classfile.Constants;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.hub.ClassDefinitionInfo;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.shared.option.HostedOptionKey;
@@ -215,97 +214,6 @@ public class RuntimeClassLoading {
                         "Classes cannot be defined at runtime by default when using ahead-of-time Native Image compilation. Tried to define class:" + System.lineSeparator() + System.lineSeparator() +
                                         "    " + className + System.lineSeparator() + System.lineSeparator() +
                                         DEFINITION_NOT_SUPPORTED_MESSAGE);
-    }
-
-    public static final class ClassDefinitionInfo {
-        public static final ClassDefinitionInfo EMPTY = new ClassDefinitionInfo(null, null, null, null, false, false, false);
-
-        // Constructor for regular definition, but with a specified protection domain
-        public ClassDefinitionInfo(ProtectionDomain protectionDomain) {
-            this(protectionDomain, null);
-        }
-
-        // Constructor for regular definition, but with a specified source
-        public ClassDefinitionInfo(ProtectionDomain protectionDomain, String source) {
-            this(protectionDomain, source, null, null, false, false, false);
-        }
-
-        // Constructor for Hidden class definition.
-        public ClassDefinitionInfo(ProtectionDomain protectionDomain, Class<?> dynamicNest, Object classData, boolean isStrongHidden, boolean forceAllowVMAnnotations) {
-            this(protectionDomain, null, dynamicNest, classData, true, isStrongHidden, forceAllowVMAnnotations);
-        }
-
-        private ClassDefinitionInfo(ProtectionDomain protectionDomain,
-                        String source, Class<?> dynamicNest,
-                        Object classData,
-                        boolean isHidden,
-                        boolean isStrongHidden,
-                        boolean forceAllowVMAnnotations) {
-            assert !isStrongHidden || isHidden;
-            assert dynamicNest == null || isHidden;
-            assert classData == null || isHidden;
-            assert !forceAllowVMAnnotations || isHidden;
-            this.protectionDomain = protectionDomain;
-            this.source = source;
-            this.dynamicNest = dynamicNest;
-            this.classData = classData;
-            this.isHidden = isHidden;
-            this.isStrongHidden = isStrongHidden;
-            this.forceAllowVMAnnotations = forceAllowVMAnnotations;
-        }
-
-        public final ProtectionDomain protectionDomain;
-        public final String source;
-
-        // Hidden class
-        public final Class<?> dynamicNest;
-        public final Object classData;
-        public final boolean isHidden;
-        public final boolean isStrongHidden;
-        public final boolean forceAllowVMAnnotations;
-
-        public boolean addedToRegistry() {
-            return !isHidden();
-        }
-
-        public boolean isHidden() {
-            return isHidden;
-        }
-
-        public boolean isStrongHidden() {
-            return isStrongHidden;
-        }
-
-        public boolean forceAllowVMAnnotations() {
-            return forceAllowVMAnnotations;
-        }
-
-        public int patchFlags(int classFlags) {
-            int flags = classFlags;
-            if (isHidden()) {
-                flags |= Constants.ACC_IS_HIDDEN_CLASS;
-            }
-            return flags;
-        }
-
-        @Override
-        public String toString() {
-            if (this == EMPTY) {
-                return "EMPTY";
-            }
-            if (!isHidden) {
-                return "ClassDefinitionInfo{protectionDomain=" + protectionDomain + ", source=" + source + "}";
-            }
-            return "ClassDefinitionInfo{" +
-                            "protectionDomain=" + protectionDomain +
-                            ", source=" + source +
-                            ", dynamicNest=" + dynamicNest +
-                            ", classData=" + classData +
-                            ", isHidden=" + isHidden +
-                            ", isStrongHidden=" + isStrongHidden +
-                            ", forceAllowVMAnnotations=" + forceAllowVMAnnotations +
-                            '}';
-        }
     }
 
     public static ResolvedJavaType createInterpreterType(DynamicHub hub, ResolvedJavaType analysisType) {

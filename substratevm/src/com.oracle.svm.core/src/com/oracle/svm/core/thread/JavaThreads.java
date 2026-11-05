@@ -48,6 +48,7 @@ import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalLong;
+import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.NeverInline;
@@ -195,6 +196,32 @@ public final class JavaThreads {
     public static boolean isCurrentThreadVirtual() {
         Thread thread = PlatformThreads.currentThread.get();
         return thread != null && toTarget(thread).vthread != null;
+    }
+
+    @InternalVMMethod
+    public static final class VirtualThreadPinning {
+        private VirtualThreadPinning() {
+        }
+
+        /**
+         * Pins the current continuation when continuation support is enabled and the current thread
+         * is truly virtual.
+         */
+        public static void pinCurrentThreadIfVirtual() {
+            if (ContinuationSupport.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
+                Target_jdk_internal_vm_Continuation.pin();
+            }
+        }
+
+        /**
+         * Unpins the current continuation when continuation support is enabled and the current thread
+         * is truly virtual.
+         */
+        public static void unpinCurrentThreadIfVirtual() {
+            if (ContinuationSupport.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
+                Target_jdk_internal_vm_Continuation.unpin();
+            }
+        }
     }
 
     /**

@@ -35,6 +35,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.guest.staging.core.heap;
 
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-/**
- * Supply a closure to be applied to Objects.
- *
- */
-public interface ObjectVisitor {
+public interface GC {
     /**
-     * Visit an Object.
-     *
-     * @param o The Object to be visited.
+     * Performs a garbage collection for {@code cause}. The cause determines whether the collector
+     * performs a complete or partial collection.
      */
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting the heap.")
-    void visitObject(Object o);
+    void collect(GCCause cause);
+
+    /**
+     * Notify the GC that it might be a good time to do a collection. The final decision is up to
+     * the GC and its policy.
+     */
+    void collectionHint(boolean fullGC);
+
+    /** Human-readable name. */
+    String getName();
+
+    /** Human-readable default heap size. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    String getDefaultMaxHeapSize();
 }

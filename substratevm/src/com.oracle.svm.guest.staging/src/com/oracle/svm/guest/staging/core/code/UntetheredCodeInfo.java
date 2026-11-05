@@ -22,17 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.c;
+package com.oracle.svm.guest.staging.core.code;
 
+import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
 
 /**
- * An array with a constant memory address, either in unmanaged memory or as an object in the image
- * heap.
- *
- * @param <T> the type of stored objects, purely for tagging and compile-time checks.
- * @see NonmovableArrays
- * @see NonmovableObjectArray
+ * The untethered version of {@link CodeInfo}, which can be released by the GC at <b>ANY</b>
+ * safepoint. Before it is possible to access any data, it is necessary to convert a pointer of this
+ * type to a {@link CodeInfo} pointer using {@code CodeInfoAccess#acquireTether} and
+ * {@code CodeInfoAccess#convert}. For more details, refer to the documentation of
+ * {@code CodeInfoAccess}.
+ * <p>
+ * <b>NEVER</b> do a direct cast from {@link UntetheredCodeInfo} to {@link CodeInfo}.
+ * <p>
+ * If it is necessary to access data without acquiring the tether, then call the static methods of
+ * the class {@code UntetheredCodeInfoAccess} from uninterruptible code.
  */
-public interface NonmovableArray<T> extends PointerBase {
+@RawStructure
+public interface UntetheredCodeInfo extends PointerBase {
 }

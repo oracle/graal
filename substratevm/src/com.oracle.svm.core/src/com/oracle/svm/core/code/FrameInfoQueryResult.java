@@ -35,6 +35,7 @@ import com.oracle.svm.core.code.CodeInfoEncoder.Encoders;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
 

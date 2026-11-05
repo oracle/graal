@@ -48,17 +48,12 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.image.DefaultImageHeapObjectSorter;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.ContinuationSupport;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
-import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
-import com.oracle.svm.espresso.shared.resolver.CallKind;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Information about the runtime class initialization state of a {@link DynamicHub class}, and
@@ -736,9 +731,7 @@ public final class ClassInitializationInfo {
     @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
     private void setInitThread0() {
         assert initThread.isNull();
-        if (ContinuationSupport.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
-            Target_jdk_internal_vm_Continuation.pin();
-        }
+        JavaThreads.VirtualThreadPinning.pinCurrentThreadIfVirtual();
         initThread = CurrentIsolate.getCurrentThread();
     }
 
@@ -755,9 +748,7 @@ public final class ClassInitializationInfo {
     private void clearInitThread0() {
         assert initThread == CurrentIsolate.getCurrentThread();
         initThread = Word.nullPointer();
-        if (ContinuationSupport.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
-            Target_jdk_internal_vm_Continuation.unpin();
-        }
+        JavaThreads.VirtualThreadPinning.unpinCurrentThreadIfVirtual();
     }
 
     /** Eagerly initialize superinterfaces that declare default methods. May throw exceptions. */
@@ -855,9 +846,7 @@ public final class ClassInitializationInfo {
 
     private void invokeClassInitializer0(DynamicHub hub) {
         if (RuntimeClassLoading.isSupported() && runtimeClassInitializer == INTERPRETER_INITIALIZATION_MARKER) {
-            ResolvedJavaMethod classInitializer = hub.getInterpreterType().getClassInitializer();
-            VMError.guarantee(classInitializer != null, "Class initializer not found for class that declares `hasClassInitializer`.");
-            CremaSupport.singleton().execute(classInitializer, new Object[0], CallKind.STATIC);
+            CremaSupport.singleton().executeClassInitializer(hub);
         } else {
             ClassInitializerFunctionPointer functionPointer = (ClassInitializerFunctionPointer) runtimeClassInitializer.functionPointer;
             VMError.guarantee(functionPointer.isNonNull());

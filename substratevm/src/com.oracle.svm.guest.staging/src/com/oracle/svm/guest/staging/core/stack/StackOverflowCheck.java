@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.stack;
+package com.oracle.svm.guest.staging.core.stack;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
@@ -30,13 +30,12 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
-import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.imagelayer.LayeredGuestFoldResolver;
+import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.option.HostedOptionKey;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 
 /**
@@ -61,7 +60,7 @@ import jdk.graal.compiler.options.Option;
  * available, and a matching call of {@link #protectYellowZone()} makes the yellow zone unavailable
  * again for usage. The yellow zone is fairly commonly used by Substrate VM Java code, but it is not
  * intended for application code, i.e., the yellow zone should not be made available in places where
- * the VM calls back to application code. {@link VMOperation} such as the GC always make the yellow
+ * the VM calls back to application code. {@code VMOperation} such as the GC always make the yellow
  * zone available: a {@link StackOverflowError} during GC would be a fatal error because
  * interrupting GC leaves the heap in an inconsistent state. So it is better to make the yellow zone
  * available upfront. The yellow zone is sized (by empirical measurement and testing) so that a GC
@@ -89,7 +88,7 @@ public interface StackOverflowCheck {
      * this direction.
      */
     interface PlatformSupport {
-        @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
+        @GuestFold(resolver = LayeredGuestFoldResolver.INITIAL_LAYER)
         static PlatformSupport singleton() {
             return ImageSingletons.lookup(PlatformSupport.class);
         }
@@ -112,7 +111,7 @@ public interface StackOverflowCheck {
         boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr);
     }
 
-    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
+    @GuestFold(resolver = LayeredGuestFoldResolver.INITIAL_LAYER)
     static StackOverflowCheck singleton() {
         return ImageSingletons.lookup(StackOverflowCheck.class);
     }

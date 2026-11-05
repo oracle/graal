@@ -33,14 +33,14 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
-import com.oracle.svm.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
+import com.oracle.svm.guest.staging.core.heap.InstanceReferenceMapDecoder;
+import com.oracle.svm.guest.staging.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
@@ -89,7 +89,7 @@ public class RuntimeInstanceReferenceMapSupport {
          * except for the monitor field, which is not inherited by subclasses.
          */
         MarkInheritedFieldsInBitmapVisitor markInheritedFields = new MarkInheritedFieldsInBitmapVisitor(map, superHub.getMonitorOffset());
-        InstanceReferenceMap superMap = DynamicHubSupport.getInstanceReferenceMap(superHub);
+        InstanceReferenceMap superMap = DynamicHubUtils.getInstanceReferenceMap(superHub);
         InstanceReferenceMapDecoder.walkReferences(Word.nullPointer(), superMap, markInheritedFields, null);
 
         /* Mark object fields declared in this class. */

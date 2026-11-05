@@ -25,7 +25,7 @@
 
 package com.oracle.svm.hosted.webimage.wasm.gc;
 
-import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.guest.staging.core.heap.GCCause;
 
 public class WasmGCCause extends GCCause {
 

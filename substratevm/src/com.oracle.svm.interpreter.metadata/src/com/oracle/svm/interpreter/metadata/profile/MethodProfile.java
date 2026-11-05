@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
@@ -432,7 +433,7 @@ public final class MethodProfile {
             getAtBCI(bci, TypeProfile.class).markNullSeen();
             return;
         }
-        ResolvedJavaType type = DynamicHub.fromClass(receiver.getClass()).getInterpreterType();
+        ResolvedJavaType type = DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(receiver.getClass()));
         profileType(bci, type);
     }
 

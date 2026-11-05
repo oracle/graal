@@ -24,19 +24,28 @@
  */
 package com.oracle.svm.core.hub;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.util.Arrays;
 import java.util.BitSet;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
+import com.oracle.svm.guest.staging.hub.DynamicHubSupport;
+import com.oracle.svm.guest.staging.core.heap.InstanceReferenceMapDecoder.InstanceReferenceMap;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Contains utilities for interacting with DynamicHubs, such as converting vtable indexes to
@@ -46,6 +55,50 @@ public final class DynamicHubUtils {
 
     /** Offset stored for interface membership entries that have no dispatch table. */
     static final int INVALID_ITABLE_OFFSET = 0xBADD0D1D;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void setMetaType(DynamicHub hub, SharedType metaType) {
+        assert hub.getCompanion().metaType == null;
+        hub.getCompanion().metaType = (DynamicHubProvider) metaType;
+    }
+
+    public static SharedType getMetaType(DynamicHub hub) {
+        return (SharedType) hub.getCompanion().metaType;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static ResolvedJavaType getInterpreterType(DynamicHub hub) {
+        return (ResolvedJavaType) hub.getCompanion().interpreterType;
+    }
+
+    public static void setInterpreterType(DynamicHub hub, ResolvedJavaType interpreterType) {
+        hub.getCompanion().interpreterType = (DynamicHubProvider) interpreterType;
+    }
+
+    public static DynamicHub getHub(SharedType type) {
+        return ((DynamicHubProvider) type).getHub();
+    }
+
+    /**
+     * Temporary forwarding method while {@code DynamicHub} remains core-owned for GR-78110.
+     * Remove this wrapper and use {@link DynamicHubSupport#getInstanceReferenceMap(int)} from the
+     * migrated hub-taking API when {@code DynamicHub} moves to guest staging.
+     */
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static InstanceReferenceMap getInstanceReferenceMap(DynamicHub hub) {
+        return DynamicHubSupport.getInstanceReferenceMap(hub.getReferenceMapCompressedOffset());
+    }
+
+    /**
+     * Temporary forwarding method while {@code DynamicHub} remains core-owned for GR-78110.
+     * Remove this wrapper and use {@link DynamicHubSupport#hasEmptyReferenceMap(int)} from the
+     * migrated hub-taking API when {@code DynamicHub} moves to guest staging.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean hasEmptyReferenceMap(DynamicHub hub) {
+        return DynamicHubSupport.hasEmptyReferenceMap(hub.getReferenceMapCompressedOffset());
+    }
 
     // Constants for interface hashing
 

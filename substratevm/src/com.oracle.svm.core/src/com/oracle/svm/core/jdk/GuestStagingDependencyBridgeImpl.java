@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -35,23 +37,29 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues.Origin;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.configure.config.SignatureUtil;
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.AssertionsSupport;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.RuntimeStateTrimSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.util.NonmovableByteArrayReader;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.graal.RuntimeCompilation;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.AbstractRuntimeClassRegistry;
@@ -65,7 +73,6 @@ import com.oracle.svm.core.reflect.RuntimeReflectionSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.guest.staging.option.NotifyGCRuntimeOptionKey;
 import com.oracle.svm.guest.staging.reflect.RuntimeConstantPool;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
@@ -77,6 +84,8 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+
 /**
  * Provides core implementations for runtime services that guest-staging code cannot yet access
  * directly.
@@ -84,6 +93,24 @@ import com.oracle.svm.shared.util.VMError;
 @AutomaticallyRegisteredImageSingleton(GuestStagingDependencyBridge.class)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBridge {
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public <T> T getHostedArray(NonmovableArray<?> array) {
+        return NonmovableArrays.getHostedArray(array);
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public Pointer nonmovableByteArrayPointerTo(NonmovableArray<Byte> array, long index) {
+        return NonmovableByteArrayReader.pointerTo(array, index);
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public NonmovableArray<Byte> nonmovableByteArrayFromImageHeap(byte[] array) {
+        return NonmovableArrays.fromImageHeap(array);
+    }
 
     @Override
     public boolean useEpsilonGC() {
@@ -111,8 +138,19 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
-    public void heapOptionValueChanged(NotifyGCRuntimeOptionKey<?> key) {
-        Heap.getHeap().optionValueChanged(key);
+    public LocationIdentity offHeapLocationIdentity() {
+        return NamedLocationIdentity.OFF_HEAP_LOCATION;
+    }
+
+    @Override
+    public Class<?> dynamicHubClass() {
+        return DynamicHub.class;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public Object readHub(Object object) {
+        return DynamicHubIntrinsics.readHub(object);
     }
 
     @Override
@@ -226,6 +264,11 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
             return null;
         }
         return new RuntimeConstantPoolImpl(CremaSupport.singleton().getConstantPool(hub));
+    }
+
+    @Override
+    public boolean isClassLoaded(Class<?> clazz) {
+        return DynamicHub.fromClass(clazz).isLoaded();
     }
 
     @Override
