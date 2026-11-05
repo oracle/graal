@@ -726,11 +726,11 @@ _DACAPO_SKIP_AGENT_ASSERTIONS = {
 
 _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     'h2' :      [],
-    'pmd':      [],
+    'pmd':      ['--initialize-at-build-time=org.apache.xerces.jaxp.datatype.DatatypeFactoryImpl'],
     # org.apache.crimson.parser.Parser2 is force initialized at build-time due to non-determinism in class initialization
     # order that can lead to runtime issues. See GR-26324.
     'xalan':    ['--initialize-at-build-time=org.apache.crimson.parser.Parser2,org.apache.crimson.parser.Parser2$Catalog,org.apache.crimson.parser.Parser2$NullHandler,org.apache.xml.utils.res.CharArrayWrapper'],
-    # There are two main issues with fop:
+    # There are three main issues with fop:
     # 1. LoggingFeature is enabled by default, causing the LogManager configuration to be parsed at build-time. However
     #    DaCapo Harness sets the `java.util.logging.config.file` property at run-time. Therefore, we set
     #    `java.util.logging.config.file` to an empty file to avoid incorrectly parsing the default log configuration,
@@ -738,8 +738,10 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     #    not exist and would fail the benchmark when assertions are enabled.
     # 2. Native-image picks a different service provider than the JVM for javax.xml.transform.TransformerFactory.
     #    We can simply remove the jar containing that provider as it is not required for the benchmark to run.
+    # 3. The Xerces DatatypeFactory provider is reachable from build-time initialized JAXB state.
     'fop':      [f"-Djava.util.logging.config.file={_empty_file()}",
-                 '--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList'],
+                 '--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList',
+                 '--initialize-at-build-time=org.apache.xerces.jaxp.datatype.DatatypeFactoryImpl'],
     'batik':    []
 }
 
@@ -952,6 +954,10 @@ _scala_daCapo_exclude_lib = {
 _scala_daCapo_additional_lib = {
 }
 
+_scala_daCapo_extra_image_build_args = {
+    'scalac': ['--initialize-at-build-time=org.apache.xerces.jaxp.datatype.DatatypeFactoryImpl'],
+}
+
 
 class ScalaDaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.ScalaDaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
     def name(self):
@@ -995,6 +1001,10 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.ScalaDaCapoBenchmark
             return user_args
         else:
             return []
+
+    def extra_image_build_argument(self, benchmark, args):
+        default_args = _scala_daCapo_extra_image_build_args.get(benchmark, [])
+        return default_args + super().extra_image_build_argument(benchmark, args)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
