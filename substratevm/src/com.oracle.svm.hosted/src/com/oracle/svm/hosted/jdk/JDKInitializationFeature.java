@@ -110,7 +110,18 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         rci.initializeAtBuildTime("javax.naming", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.net", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.tools", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("javax.xml", JDK_CLASS_REASON);
+
+        /* Legacy Java EE APIs use javax.xml.bind, rpc, soap, and ws, but are not part of the JDK. */
+        rci.initializeAtBuildTime("javax.xml.XMLConstants", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.catalog", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.crypto", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.datatype", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.namespace", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.parsers", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.stream", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.transform", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.validation", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.xpath", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("jdk.management.jfr.internal.FlightRecorderMXBeanProvider$SingleMBeanComponent", "Ends up in the image heap with -H:Preserve=all");
 
@@ -230,7 +241,10 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
             rci.initializeAtBuildTime("sun.nio.fs.WindowsPath", "Allow WindowsPath objects in the image heap (" + FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON + ")");
         }
 
-        rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
+        /* com.sun.xml.bind, ws, etc. are third-party packages and shouldn't be initialized at build-time */
+        rci.initializeAtBuildTime("com.sun.xml.internal", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("org.xml.sax", JDK_CLASS_REASON);
+        /* Maybe org.w3c.dom should also be marked as build-time initialized here. */
         rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
 
