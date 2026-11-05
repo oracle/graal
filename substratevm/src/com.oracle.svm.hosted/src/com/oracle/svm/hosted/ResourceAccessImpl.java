@@ -24,15 +24,16 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.svm.util.GuestInvoked;
-import com.oracle.svm.util.dynamicaccess.JVMCIAccessCondition;
+import java.util.ResourceBundle;
+
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 
-import java.util.ResourceBundle;
-
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.GuestInvoked;
+import com.oracle.svm.util.GuestType;
+import com.oracle.svm.util.dynamicaccess.JVMCIAccessCondition;
 import com.oracle.svm.util.dynamicaccess.JVMCIResourceAccess;
 
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
@@ -86,7 +87,7 @@ public final class ResourceAccessImpl implements ResourceAccess, JVMCIResourceAc
      * @see ResourceAccess#register(AccessCondition, Module, String)
      */
     @GuestInvoked
-    public void registerResource(JavaConstant condition, JavaConstant module, String pattern) {
+    public void registerResource(@GuestType(AccessCondition.class) JavaConstant condition, @GuestType(Module.class) JavaConstant module, String pattern) {
         if (module != null && !module.isNull()) {
             throw new UnsupportedOperationException("Guest feature resource registration for named modules is not supported.");
         }
@@ -108,7 +109,7 @@ public final class ResourceAccessImpl implements ResourceAccess, JVMCIResourceAc
      * @see ResourceAccess#register(AccessCondition, String)
      */
     @GuestInvoked
-    public void registerResource(JavaConstant condition, String glob) {
+    public void registerResource(@GuestType(AccessCondition.class) JavaConstant condition, String glob) {
         register(JVMCIAccessCondition.guestAccessCondition(condition), (ResolvedJavaModule) null, glob);
     }
 
@@ -120,13 +121,13 @@ public final class ResourceAccessImpl implements ResourceAccess, JVMCIResourceAc
      * @see ResourceAccess#registerResourceBundle(AccessCondition, java.util.ResourceBundle...)
      */
     @GuestInvoked
-    public void registerResourceBundles(JavaConstant condition, JavaConstant bundles) {
+    public void registerResourceBundles(@GuestType(AccessCondition.class) JavaConstant condition, @GuestType(ResourceBundle[].class) JavaConstant bundles) {
         AccessCondition accessCondition = JVMCIAccessCondition.guestAccessCondition(condition);
         GuestAccess guestAccess = GuestAccess.get();
         guestAccess.asGuestArrayElements(bundles, guestAccess.lookupType(ResourceBundle.class)).forEach(bundle -> registerResourceBundle(accessCondition, bundle));
     }
 
-    private void registerResourceBundle(AccessCondition condition, JavaConstant bundle) {
+    private void registerResourceBundle(AccessCondition condition, @GuestType(ResourceBundle.class) JavaConstant bundle) {
         // TODO GR-71805: register JVMCI resource bundles without materializing ResourceBundle.
         registerResourceBundle(condition, GuestAccess.get().getSnippetReflection().asObject(ResourceBundle.class, bundle));
     }
