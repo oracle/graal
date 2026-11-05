@@ -136,6 +136,69 @@ public abstract class LLVMVectorReduce {
 
     @NodeChild(type = LLVMExpressionNode.class)
     @NodeField(name = "vectorLength", type = int.class)
+    public abstract static class LLVMVectorReduceFMinNode extends LLVMBuiltin {
+        protected abstract int getVectorLength();
+
+        @Specialization
+        @ExplodeLoop
+        protected float doVector(LLVMFloatVector value) {
+            assert value.getLength() == getVectorLength();
+            float result = value.getValue(0);
+            for (int i = 1; i < getVectorLength(); i++) {
+                float element = value.getValue(i);
+                if (!Float.isNaN(element)) {
+                    result = Float.isNaN(result) ? element : Math.min(result, element);
+                }
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected double doVector(LLVMDoubleVector value) {
+            assert value.getLength() == getVectorLength();
+            double result = value.getValue(0);
+            for (int i = 1; i < getVectorLength(); i++) {
+                double element = value.getValue(i);
+                if (!Double.isNaN(element)) {
+                    result = Double.isNaN(result) ? element : Math.min(result, element);
+                }
+            }
+            return result;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "vectorLength", type = int.class)
+    public abstract static class LLVMVectorReduceFMulNode extends LLVMBuiltin {
+        protected abstract int getVectorLength();
+
+        @Specialization
+        @ExplodeLoop
+        protected float doVector(float start, LLVMFloatVector value) {
+            assert value.getLength() == getVectorLength();
+            float result = start;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result *= value.getValue(i);
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected double doVector(double start, LLVMDoubleVector value) {
+            assert value.getLength() == getVectorLength();
+            double result = start;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result *= value.getValue(i);
+            }
+            return result;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "vectorLength", type = int.class)
     public abstract static class LLVMVectorReduceAddNode extends LLVMBuiltin {
         protected abstract int getVectorLength();
 

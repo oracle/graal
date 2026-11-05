@@ -31,10 +31,12 @@ package com.oracle.truffle.llvm.runtime.nodes.vector;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI128Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -155,6 +157,21 @@ public abstract class LLVMExtractElementNode {
 
         @Specialization
         protected double doDouble(LLVMDoubleVector vector, long index) {
+            return vector.getValue(Math.toIntExact(index));
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMI128ExtractElementNode extends LLVMExpressionNode {
+
+        @Specialization
+        protected LLVMIVarBit doI128(LLVMI128Vector vector, int index) {
+            return vector.getValue(index);
+        }
+
+        @Specialization
+        protected LLVMIVarBit doI128(LLVMI128Vector vector, long index) {
             return vector.getValue(Math.toIntExact(index));
         }
     }
