@@ -41,9 +41,12 @@
 package org.graalvm.collections.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -52,6 +55,7 @@ import java.util.NoSuchElementException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.junit.Assert;
 import org.junit.Test;
@@ -162,6 +166,73 @@ public class EconomicMapImplTest {
     }
 
     @Test
+    public void testRepeatedIteratorRemove() {
+        for (int size : new int[]{2, 4, 8, 32, 256}) {
+            for (boolean values : new boolean[]{false, true}) {
+                EconomicMap<CollidingKey, Integer> map = EconomicMap.create();
+                for (int i = 0; i < size; i++) {
+                    map.put(new CollidingKey(i), i == 1 ? null : i);
+                }
+                Iterator<?> iterator = values ? map.getValues().iterator() : map.getKeys().iterator();
+                assertThrows(IllegalStateException.class, iterator::remove);
+                iterator.next();
+                iterator.next();
+                iterator.remove();
+                assertThrows(IllegalStateException.class, iterator::remove);
+                assertEquals(size - 1, map.size());
+                assertTrue(map.containsKey(new CollidingKey(0)));
+                assertFalse(map.containsKey(new CollidingKey(1)));
+                while (iterator.hasNext()) {
+                    iterator.next();
+                    iterator.remove();
+                    assertThrows(IllegalStateException.class, iterator::remove);
+                }
+                assertEquals(1, map.size());
+                assertEquals((Object) 0, map.get(new CollidingKey(0)));
+            }
+        }
+    }
+
+    @Test
+    public void testIteratorRemoveAfterFailedNext() {
+        for (int size : new int[]{1, 2, 8, 32}) {
+            for (boolean values : new boolean[]{false, true}) {
+                EconomicMap<Integer, Integer> map = EconomicMap.create();
+                for (int i = 0; i < size; i++) {
+                    map.put(i, null);
+                }
+                Iterator<?> iterator = values ? map.getValues().iterator() : map.getKeys().iterator();
+                while (iterator.hasNext()) {
+                    iterator.next();
+                }
+                assertThrows(NoSuchElementException.class, iterator::next);
+                iterator.remove();
+                assertThrows(IllegalStateException.class, iterator::remove);
+                assertEquals(size - 1, map.size());
+                assertFalse(map.containsKey(size - 1));
+            }
+        }
+    }
+
+    @Test
+    public void testRepeatedSetIteratorRemove() {
+        for (int size : new int[]{2, 4, 8, 32, 256}) {
+            EconomicSet<CollidingKey> set = EconomicSet.create();
+            for (int i = 0; i < size; i++) {
+                set.add(new CollidingKey(i));
+            }
+            Iterator<CollidingKey> iterator = set.iterator();
+            assertThrows(IllegalStateException.class, iterator::remove);
+            while (iterator.hasNext()) {
+                iterator.next();
+                iterator.remove();
+                assertThrows(IllegalStateException.class, iterator::remove);
+            }
+            assertTrue(set.isEmpty());
+        }
+    }
+
+    @Test
     public void testKeyIteratorNext() {
         EconomicMap<String, Integer> map = EconomicMap.create();
         map.put("one", 1);
@@ -258,6 +329,43 @@ public class EconomicMapImplTest {
         assertEquals((Object) 100, map.get(new CollidingKey(100)));
     }
 
+    /**
+     * Checks that replacements return the previous logical value, including null, without changing
+     * a shallow copy's collision links. Also covers replacements through a cursor.
+     */
+    @Test
+    public void testReplacementPreservesCopy() {
+        for (int size : new int[]{2, 32}) {
+            EconomicMap<CollidingKey, Integer> map = EconomicMap.create();
+            CollidingKey[] keys = new CollidingKey[size];
+            for (int i = 0; i < size; i++) {
+                keys[i] = new CollidingKey(i);
+                assertNull(map.put(keys[i], i % 2 == 0 ? null : i));
+            }
+            EconomicMap<CollidingKey, Integer> copy = EconomicMap.create(map);
+            for (int i = 0; i < size; i++) {
+                CollidingKey equivalent = new CollidingKey(i);
+                Integer expected = i % 2 == 0 ? null : i;
+                assertEquals(expected, map.put(equivalent, 100 + i));
+                assertEquals(expected, copy.get(equivalent));
+                assertEquals((Object) (100 + i), map.put(equivalent, null));
+                assertNull(map.put(equivalent, 200 + i));
+            }
+            MapCursor<CollidingKey, Integer> cursor = copy.getEntries();
+            for (int i = 0; i < size; i++) {
+                assertTrue(cursor.advance());
+                assertSame(keys[i], cursor.getKey());
+                Integer expected = i % 2 == 0 ? null : i;
+                assertEquals(expected, cursor.setValue(-i - 1));
+                assertEquals((Object) (-i - 1), cursor.getValue());
+                assertEquals((Object) (200 + i), map.get(keys[i]));
+            }
+            assertFalse(cursor.advance());
+            assertEquals(size, map.size());
+            assertEquals(size, copy.size());
+        }
+    }
+
     @Test
     public void testHashTableSizeAtHalfOccupancy() {
         EconomicMap<CollidingKey, Integer> map = EconomicMap.create();
@@ -325,6 +433,180 @@ public class EconomicMapImplTest {
             assertEquals(expected, map.get(new CollidingKey(i)));
         }
         assertEquals((Object) 100, map.get(new CollidingKey(100)));
+    }
+
+    /**
+     * Verifies that equivalent-key updates preserve the original key object and insertion order across
+     * map sizes. Covers null-valued entries, non-null {@code putIfAbsent} hits, and ordinary {@code
+     * put} replacement.
+     */
+    @Test
+    public void testPutIfAbsentRetainsKeyAndOrder() {
+        for (int size : new int[]{0, 3, 4, 8, 32}) {
+            EconomicMap<CollidingKey, Integer> map = EconomicMap.create();
+            for (int i = 0; i < size; i++) {
+                map.put(new CollidingKey(i), i);
+            }
+            CollidingKey original = new CollidingKey(-1);
+            CollidingKey equivalent = new CollidingKey(-1);
+            assertNull(map.putIfAbsent(original, null));
+            assertNull(map.putIfAbsent(equivalent, null));
+            Assert.assertTrue(map.containsKey(original));
+            assertNull(map.putIfAbsent(equivalent, 1));
+            assertEquals((Object) 1, map.putIfAbsent(equivalent, 2));
+            assertEquals((Object) 1, map.putIfAbsent(equivalent, null));
+            assertEquals((Object) 1, map.get(original));
+            assertEquals((Object) 1, map.put(equivalent, 3));
+            assertEquals((Object) 3, map.get(original));
+            assertEquals(size + 1, map.size());
+            Iterator<CollidingKey> keys = map.getKeys().iterator();
+            for (int i = 0; i < size; i++) {
+                assertEquals(new CollidingKey(i), keys.next());
+            }
+            Assert.assertSame(original, keys.next());
+            Assert.assertFalse(keys.hasNext());
+        }
+    }
+
+    /**
+     * Checks that both identity strategies keep equal but distinct key objects separate, while
+     * repeated insertion of the same object preserves its value.
+     */
+    @Test
+    public void testPutIfAbsentIdentityEquivalence() {
+        for (Equivalence equivalence : new Equivalence[]{Equivalence.IDENTITY, Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE}) {
+            EconomicMap<CollidingKey, Integer> map = EconomicMap.create(equivalence);
+            for (int i = 0; i < 32; i++) {
+                CollidingKey first = new CollidingKey(i);
+                CollidingKey equal = new CollidingKey(i);
+                assertNull(map.putIfAbsent(first, i));
+                assertNull(map.putIfAbsent(equal, -i));
+                assertEquals((Object) i, map.putIfAbsent(first, 100));
+                assertEquals((Object) (-i), map.get(equal));
+            }
+            assertEquals(64, map.size());
+        }
+    }
+
+    /**
+     * Verifies that {@code putIfAbsent} uses the configured equivalence rather than the keys' own
+     * equality when deciding whether to preserve an existing value.
+     */
+    @Test
+    public void testPutIfAbsentCustomEquivalence() {
+        Equivalence equivalence = new Equivalence() {
+            @Override
+            public boolean equals(Object a, Object b) {
+                return ((CollidingKey) a).id / 2 == ((CollidingKey) b).id / 2;
+            }
+
+            @Override
+            public int hashCode(Object key) {
+                return ((CollidingKey) key).id / 2;
+            }
+        };
+        EconomicMap<CollidingKey, Integer> map = EconomicMap.create(equivalence);
+        for (int i = 0; i < 64; i += 2) {
+            CollidingKey key = new CollidingKey(i);
+            CollidingKey equivalent = new CollidingKey(i + 1);
+            assertNull(map.putIfAbsent(key, i));
+            assertEquals((Object) i, map.putIfAbsent(equivalent, i + 1));
+            assertEquals((Object) i, map.get(equivalent));
+        }
+        assertEquals(32, map.size());
+    }
+
+    /**
+     * Checks that {@code putIfAbsent} rejects null keys in both empty and populated maps without
+     * changing existing mappings.
+     */
+    @Test
+    public void testPutIfAbsentRejectsNullKeys() {
+        EconomicMap<Integer, Integer> map = EconomicMap.create();
+        assertThrows(UnsupportedOperationException.class, () -> map.putIfAbsent(null, null));
+        map.put(1, 2);
+        assertThrows(UnsupportedOperationException.class, () -> map.putIfAbsent(null, 3));
+        assertEquals(1, map.size());
+        assertEquals((Object) 2, map.get(1));
+    }
+
+    /**
+     * Checks that computing a value for an equivalent key fills a null-valued mapping without
+     * replacing the stored key or changing iteration order. The function receives the caller's key,
+     * not the stored key.
+     */
+    @Test
+    public void testComputeIfAbsentRetainsKeyAndOrder() {
+        for (int size : new int[]{2, 32}) {
+            EconomicMap<CollidingKey, Integer> map = EconomicMap.create();
+            CollidingKey first = new CollidingKey(-2);
+            CollidingKey original = new CollidingKey(-1);
+            CollidingKey equivalent = new CollidingKey(-1);
+            map.put(first, 77);
+            map.put(original, null);
+            for (int i = 0; i < size; i++) {
+                map.put(new CollidingKey(i), i);
+            }
+            assertEquals((Object) 42, map.computeIfAbsent(equivalent, k -> {
+                assertSame(equivalent, k);
+                return 42;
+            }));
+            Iterator<CollidingKey> keys = map.getKeys().iterator();
+            assertSame(first, keys.next());
+            assertSame(original, keys.next());
+            for (int i = 0; i < size; i++) {
+                assertEquals(i, keys.next().id);
+                assertEquals((Object) i, map.get(new CollidingKey(i)));
+            }
+            assertFalse(keys.hasNext());
+            assertEquals((Object) 77, map.get(first));
+            assertEquals((Object) 42, map.get(original));
+        }
+    }
+
+    /**
+     * Verifies that {@code computeIfAbsent} rejects a null key before invoking the mapping function
+     * and leaves the map empty.
+     */
+    @Test
+    public void testComputeIfAbsentRejectsNullKey() {
+        EconomicMap<Integer, Integer> map = EconomicMap.create();
+        Assert.assertThrows(UnsupportedOperationException.class, () -> map.computeIfAbsent(null, k -> {
+            throw new AssertionError("Null key must be rejected before invoking the mapping function");
+        }));
+        assertTrue(map.isEmpty());
+    }
+
+    /**
+     * Checks that duplicate colliding additions preserve set size, original key objects, and iteration
+     * order. Also verifies removal and reinsertion after those duplicate additions.
+     */
+    @Test
+    public void testDuplicateSetAddWithCollisions() {
+        EconomicSet<CollidingKey> set = EconomicSet.create();
+        CollidingKey[] keys = new CollidingKey[32];
+        for (int i = 0; i < keys.length; i++) {
+            keys[i] = new CollidingKey(i);
+            assertTrue(set.add(keys[i]));
+        }
+        for (int i = 0; i < keys.length; i++) {
+            assertFalse(set.add(keys[i]));
+            assertFalse(set.add(new CollidingKey(i)));
+        }
+        assertEquals(keys.length, set.size());
+        Iterator<CollidingKey> iterator = set.iterator();
+        for (CollidingKey key : keys) {
+            assertSame(key, iterator.next());
+        }
+        assertFalse(iterator.hasNext());
+        set.remove(new CollidingKey(17));
+        assertFalse(set.contains(keys[17]));
+        assertEquals(keys.length - 1, set.size());
+        assertTrue(set.add(new CollidingKey(17)));
+        assertEquals(keys.length, set.size());
+        for (CollidingKey key : keys) {
+            assertTrue(set.contains(key));
+        }
     }
 
     private static final class CollidingKey {

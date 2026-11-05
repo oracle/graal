@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -126,6 +126,13 @@ public class EconomicMapLargeTest {
                     (map, randomInt) -> map.removeKey(randomInt),
                     (map, randomInt) -> map.put(randomInt, "value"),
                     (map, randomInt) -> map.put(randomInt, null),
+                    (map, randomInt) -> map.putIfAbsent(randomInt, "absent"),
+                    (map, randomInt) -> map.putIfAbsent(randomInt, null),
+                    (map, randomInt) -> map.putIfAbsent(new BadHashClass(randomInt), "absent"),
+                    (map, randomInt) -> map.computeIfAbsent(randomInt, k -> "computed"),
+                    (map, randomInt) -> map.computeIfAbsent(randomInt, k -> null),
+                    (map, randomInt) -> map.computeIfAbsent(new BadHashClass(randomInt), k -> "computed"),
+                    (map, randomInt) -> map.computeIfAbsent(new BadHashClass(randomInt), k -> null),
                     (map, randomInt) -> map.put(EXISTING_VALUE, randomInt),
                     (map, randomInt) -> {
                         if (randomInt == 0) {
