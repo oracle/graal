@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.nodes.test;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.Set;
 
 import org.junit.Test;
@@ -36,6 +38,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.CompressBitsNode;
 import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.test.GraalTest;
@@ -50,6 +53,30 @@ public class IntegerStampFoldTest extends GraalTest {
     private static final int VALUE_LIMIT = 24;
 
     public IntegerStampFoldTest() {
+    }
+
+    @Test
+    public void testCompressEmptyStamp() {
+        for (int bits : new int[]{32, 64}) {
+            IntegerStamp value = IntegerStamp.create(bits, -10, -5);
+            IntegerStamp empty = value.empty();
+            assertEquals(empty, IntegerStamp.OPS.getCompress().foldStamp(value, empty));
+            assertEquals(empty, IntegerStamp.OPS.getCompress().foldStamp(empty, value));
+            assertEquals(empty, IntegerStamp.OPS.getCompress().foldStamp(empty, empty));
+        }
+    }
+
+    @Test
+    public void testCompressEmptyStampNode() {
+        for (int bits : new int[]{32, 64}) {
+            IntegerStamp value = IntegerStamp.create(bits, -10, -5);
+            IntegerStamp empty = value.empty();
+            ParameterNode valueNode = new ParameterNode(0, StampPair.createSingle(value));
+            ParameterNode emptyNode = new ParameterNode(1, StampPair.createSingle(empty));
+            assertEquals(empty, new CompressBitsNode(valueNode, emptyNode).stamp(NodeView.DEFAULT));
+            assertEquals(empty, new CompressBitsNode(emptyNode, valueNode).stamp(NodeView.DEFAULT));
+            assertEquals(empty, new CompressBitsNode(emptyNode, emptyNode).stamp(NodeView.DEFAULT));
+        }
     }
 
     @Test
