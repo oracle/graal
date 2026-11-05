@@ -500,6 +500,7 @@ Please also refer to the general description of [Reachability Metadata](Reachabi
 
 Entries in `downcalls`, `upcalls`, and `directUpcalls` can include a `condition` with a `typeReached` class name, as described in [Conditional Metadata Entries](ReachabilityMetadata.md#conditional-metadata-entries).
 When you use `native-image-utils generate` to process or merge configuration files, it preserves these conditions, function descriptors, target methods, and linker options.
+Equivalent registrations are compared by the contents of their linker options, including nested options such as `critical.allowHeapAccess`.
 Registrations with different conditions remain distinct; merging does not minimize registrations across conditions.
 Combining equivalent conditional and unconditional registrations preserves both conditions rather than producing indistinguishable unconditional duplicates.
 

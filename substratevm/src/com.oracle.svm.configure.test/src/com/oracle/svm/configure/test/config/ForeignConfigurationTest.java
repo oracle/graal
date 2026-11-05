@@ -70,6 +70,10 @@ import jdk.graal.compiler.util.json.JsonWriter;
 public class ForeignConfigurationTest {
     private static final ConfigurationFunctionDescriptor COMPARATOR = new ConfigurationFunctionDescriptor("jint", List.of("void*", "void*"));
     private static final Map<String, Object> OPTIONS = Map.of("captureCallState", true);
+    private static final String CRITICAL_DOWNCALL_METADATA = """
+                    {"foreign":{"downcalls":[{"returnType":"jlong","parameterTypes":["void*"],
+                      "options":{"critical":{"allowHeapAccess":true}}}]}}
+                    """;
 
     @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
@@ -185,6 +189,46 @@ public class ForeignConfigurationTest {
         }
         ForeignConfiguration expected = parseForeign(metadata("lib.Native")).copyAndMerge(parseForeign(metadata(null)));
         assertEquivalent(expected, parseForeign("{\"foreign\":" + actual + "}"));
+    }
+
+    @Test
+    public void nestedDowncallOptionsUseContentEquality() throws IOException {
+        ForeignConfiguration first = parseForeign(CRITICAL_DOWNCALL_METADATA);
+        ForeignConfiguration second = parseForeign(CRITICAL_DOWNCALL_METADATA);
+        assertEquivalent(first, first.copyAndIntersect(second));
+        Assert.assertTrue("Equivalent parsed registrations must subtract", first.copyAndSubtract(second).isEmpty());
+        ForeignConfiguration agentConfiguration = new ForeignConfiguration();
+        agentConfiguration.addDowncall("jlong", List.of("void*"), Map.of("critical", Map.of("allowHeapAccess", true)));
+        assertEquivalent(agentConfiguration, first);
+    }
+
+    @Test
+    public void generateMergesEquivalentNestedDowncallOptions() throws IOException {
+        assertForeignJson(foreignPart(CRITICAL_DOWNCALL_METADATA), foreignPart(generate(CRITICAL_DOWNCALL_METADATA, CRITICAL_DOWNCALL_METADATA)));
+    }
+
+    @Test
+    public void generateConditionalRetainsCommonNestedDowncallOptions() throws IOException {
+        MethodCallNode root = MethodCallNode.createRoot();
+        MethodInfoRepository methods = new MethodInfoRepository();
+        for (String caller : List.of("app.First", "app.Second")) {
+            MethodCallNode parent = child(root, methods, caller);
+            MethodCallNode shared = child(parent, methods, "lib.Shared");
+            shared.getConfiguration().getForeignConfiguration().addDowncall("jlong", List.of("void*"), Map.of("critical", Map.of("allowHeapAccess", true)));
+        }
+        Path partial = temporaryFolder.newFolder("partial").toPath();
+        Files.writeString(partial.resolve(ConfigurationFile.PARTIAL_CONFIGURATION_WITH_ORIGINS), print(new PartialConfigurationWithOrigins(root, methods)));
+        Path userCodeFilter = temporaryFolder.newFile("user-code-filter.json").toPath();
+        Files.writeString(userCodeFilter, "{\"rules\":[{\"includeClasses\":\"**\"}]}");
+        Path classNameFilter = temporaryFolder.newFile("class-name-filter.json").toPath();
+        Files.writeString(classNameFilter, "{\"rules\":[{\"excludeClasses\":\"**\"},{\"includeClasses\":\"lib.**\"}]}");
+        Path output = temporaryFolder.newFolder("conditional").toPath();
+        new ConfigurationGenerateConditionalsCommand().apply(List.of("--input-dir=" + partial, "--output-dir=" + output,
+                        "--user-code-filter=" + userCodeFilter, "--class-name-filter=" + classNameFilter).iterator());
+        ForeignConfiguration expected = new ForeignConfiguration();
+        expected.addDowncall(condition("lib.Shared"), new ConfigurationFunctionDescriptor("jlong", List.of("void*")), Map.of("critical", Map.of("allowHeapAccess", true)));
+        String actual = Files.readString(output.resolve(ConfigurationFile.REACHABILITY_METADATA.getFileName()));
+        assertEquivalent(expected, parseForeign(actual));
     }
 
     @Test

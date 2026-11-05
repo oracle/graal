@@ -26,6 +26,7 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -399,13 +400,23 @@ public final class ForeignConfiguration extends ConfigurationBase<ForeignConfigu
             return economicMapToJavaMap(map);
         }
 
-        private static Map<String, Object> economicMapToJavaMap(EconomicMap<String, Object> map) {
-            Map<String, Object> result = new HashMap<>();
-            MapCursor<String, Object> cursor = map.getEntries();
+        private static <K> Map<K, Object> economicMapToJavaMap(EconomicMap<K, ?> map) {
+            Map<K, Object> result = new HashMap<>();
+            MapCursor<K, ?> cursor = map.getEntries();
             while (cursor.advance()) {
-                result.put(cursor.getKey(), cursor.getValue());
+                result.put(cursor.getKey(), toJavaValue(cursor.getValue()));
             }
-            return result;
+            return Collections.unmodifiableMap(result);
+        }
+
+        private static Object toJavaValue(Object value) {
+            if (value instanceof EconomicMap<?, ?> map) {
+                return economicMapToJavaMap(map);
+            }
+            if (value instanceof List<?> list) {
+                return list.stream().map(UnresolvedForeignConfigurationParser::toJavaValue).toList();
+            }
+            return value;
         }
     }
 }
