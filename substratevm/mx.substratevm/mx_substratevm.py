@@ -880,8 +880,8 @@ def native_unittests_task(
         include_default_test_group=True,
         custom_batch=None):
     computed = ['--build-args'] + (extra_build_args or [])
-    if include_custom_test_groups:
-        computed = computed + ['--all']
+    if not include_custom_test_groups:
+        computed = computed + ['--exclude-custom']
     if not include_default_test_group:
         computed = computed + ['--custom-only']
     native_image_context_run(
@@ -1254,9 +1254,8 @@ def _native_junit(
     Builds and runs native JUnit images for the selected tests.
 
     Selected tests are grouped by their effective @NativeImageBuildArgs, and each group is built
-    into its own image. The default no-argument native-unittest flow keeps the run cheap by
-    excluding non-default groups, while explicit selectors or --all opt into the additional images
-    required by custom build arguments.
+    into its own image. All groups run by default. --exclude-custom selects the default group,
+    and --custom-only selects the custom groups.
     """
     build_args = build_args or []
     for key, value in get_java_properties().items():
@@ -1289,8 +1288,8 @@ def _native_junit(
             include_default_test_group
         )
         if skipped_custom_tests:
-            mx.log('Skipping tests that require custom @NativeImageBuildArgs in the default native-unittest run. '
-                   'Re-run with --all or select the tests explicitly: ' + ' '.join(skipped_custom_tests))
+            mx.log('Skipping tests that require custom @NativeImageBuildArgs because --exclude-custom was requested. '
+                   'Run without --exclude-custom to include them: ' + ' '.join(skipped_custom_tests))
         if not test_groups:
             mx.abort('No tests remain after applying native-unittest group filters.')
         if not include_default_test_group:
@@ -1369,8 +1368,6 @@ def _partition_native_unittest_groups(grouped_test_specs, include_custom_test_gr
     skipped_custom_tests = []
     for group_key, test_classes in grouped_test_specs:
         is_default_group = len(group_key) == 0
-        # The default no-argument command remains cheap by only running the empty-args group.
-        # Explicit selectors or --all opt into the extra images required by custom build args.
         if (is_default_group and include_default_test_group) or (not is_default_group and include_custom_test_groups):
             grouped_tests[group_key] = test_classes
         elif not is_default_group:
@@ -1434,7 +1431,7 @@ def _read_native_unittest_filter(masked_path):
 
 def _parse_native_unittest_args(cmdline_args):
     parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image.')
-    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image', '--test-classes-per-run', '--all', '--custom-only']
+    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image', '--test-classes-per-run', '--all', '--exclude-custom', '--custom-only']
     cmdline_args = [_mask(arg, all_args) for arg in cmdline_args]
     parser.add_argument(all_args[0], metavar='ARG', nargs='*', default=[])
     parser.add_argument(all_args[1], metavar='ARG', nargs='*', default=[])
@@ -1442,8 +1439,11 @@ def _parse_native_unittest_args(cmdline_args):
     parser.add_argument('--whitelist', help='run testcases specified in <file> only', metavar='<file>', type=_read_native_unittest_filter)
     parser.add_argument('-p', '--preserve-image', help='do not delete the generated native image', action='store_true')
     parser.add_argument('--test-classes-per-run', help='run N test classes per image run, instead of all tests at once', nargs=1, type=int)
-    parser.add_argument('--all', help='include tests that require custom @NativeImageBuildArgs and build one image per effective build-arg group', action='store_true')
-    parser.add_argument('--custom-only', help='exclude the default test group and include all custom build-argument groups (i.e., implies --all)', action='store_true')
+    group_selection = parser.add_mutually_exclusive_group()
+    # Retain --all for compatibility with commands written before all groups ran by default.
+    group_selection.add_argument('--all', help='run all selected build-argument groups (the default)', action='store_true')
+    group_selection.add_argument('--exclude-custom', help='run only tests without custom @NativeImageBuildArgs', action='store_true')
+    group_selection.add_argument('--custom-only', help='run only tests with custom @NativeImageBuildArgs', action='store_true')
     parser.add_argument('unittest_args', metavar='TEST_ARG', nargs='*')
     return parser.parse_args(cmdline_args)
 
@@ -1487,7 +1487,7 @@ def _run_native_unittest(native_image, pargs, custom_batch=None, configure_svm_t
         whitelist,
         pargs.preserve_image,
         test_classes_per_run,
-        include_custom_test_groups=pargs.all or pargs.custom_only or bool(selectors),
+        include_custom_test_groups=not pargs.exclude_custom,
         include_default_test_group=not pargs.custom_only,
         custom_batch=custom_batch,
         configure_svm_test_features=configure_svm_tests,
