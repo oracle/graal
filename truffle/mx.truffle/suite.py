@@ -317,6 +317,20 @@ suite = {
       "graalCompilerSourceEdition": "ignore",
     },
 
+    "com.oracle.truffle.polyglot.jdk22" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+      ],
+      "overlayTarget" : "com.oracle.truffle.polyglot",
+      "checkPackagePrefix" : "false",
+      "multiReleaseJarVersion" : "22",
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "22+",
+      "workingSets" : "API,Truffle",
+      "graalCompilerSourceEdition": "ignore",
+    },
+
     "com.oracle.truffle.runtime" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],

@@ -2487,6 +2487,10 @@ final class EngineAccessor extends Accessor {
             return ((PolyglotEngineImpl) polyglotEngine).getEngineLogger();
         }
 
+        @Override
+        public long getPlatformStackEnd() {
+            return JDKSupport.getPlatformStackEnd0();
+        }
     }
 
     private static class GuardedExecutableNode extends ExecutableNode {

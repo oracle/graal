@@ -126,7 +126,7 @@ final class PolyglotIsolateHostSupport {
              * On HotSpot, polyglot isolates running with the fallback Truffle runtime require
              * libtruffleattach to provide stack-limit support and terminating thread locals.
              * Loading libtruffleattach can fail for several reasons, such as a missing library,
-             * incorrect packaging, loading from multiple class loaders, or missing native-access
+             * incorrect packaging, loading from multiple class loaders on JDK older than JDK-22, or missing native-access
              * permissions. In that case isolate hosting cannot continue, so we abort and include
              * the original libtruffleattach initialization error in the failure message.
              */

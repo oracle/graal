@@ -364,7 +364,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         if (ImageInfo.inImageRuntimeCode()) {
             throw new AssertionError("Must not be called in native-image execution time");
         }
-        long platformStackEnd = getPlatformStackEnd0();
+        long platformStackEnd = DefaultRuntimeAccessor.ENGINE.getPlatformStackEnd();
         if (platformStackEnd == 0L) {
             throw new UnsupportedOperationException("Unable to determine platform stack end for the current thread.");
         }
@@ -439,6 +439,4 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
             }
         }
     }
-
-    private static native long getPlatformStackEnd0();
 }
