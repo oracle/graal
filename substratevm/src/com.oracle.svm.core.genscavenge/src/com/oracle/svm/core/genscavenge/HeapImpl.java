@@ -179,6 +179,10 @@ public final class HeapImpl extends Heap {
             getOldGeneration().clean(true, cleanFillerObjectMemory);
             getChunkProvider().cleanUnusedAlignedChunks();
         }
+
+        if (mode != Mode.LATENCY) {
+            gcImpl.cleanUnusedNativeMemory();
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
