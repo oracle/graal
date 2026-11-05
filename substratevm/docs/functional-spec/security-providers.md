@@ -329,6 +329,11 @@ retained and [§FS-002-security-providers.4.3](security-providers.md#43-jce-veri
 A missing implementation produces [`NoSuchAlgorithmException`][no-such-algorithm]; a JCE
 verification failure follows [§FS-002-security-providers.4.3](security-providers.md#43-jce-verification).
 
+A `Provider.Service` object retained from build time follows the same run-time metadata requirements
+as a service looked up at run time.
+Populating its implementation or constructor cache during image building does not register the
+implementation or its constructor and must not prevent image generation.
+
 ### 4.2 Programmatic Provider-List Changes
 
 [`Security.addProvider(Provider)`][security] and
