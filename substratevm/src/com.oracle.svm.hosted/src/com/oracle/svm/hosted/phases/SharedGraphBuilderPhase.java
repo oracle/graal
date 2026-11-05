@@ -999,11 +999,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected boolean canInlinePartialIntrinsicExit() {
-            return false;
-        }
-
-        @Override
         protected void genIf(ValueNode x, Condition cond, ValueNode y) {
             if (checkWordTypes()) {
                 if ((x.getStackKind() == JavaKind.Object && y.getStackKind() == getWordTypes().getWordKind()) ||

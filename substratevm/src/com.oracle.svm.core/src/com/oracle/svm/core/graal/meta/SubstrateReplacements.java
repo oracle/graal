@@ -25,8 +25,7 @@
 package com.oracle.svm.core.graal.meta;
 
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
-import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
-import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
+import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -141,7 +140,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
             }
 
             // Force inlining when parsing replacements
-            return createIntrinsicInlineInfo(method, defaultBytecodeProvider);
+            return createStandardInlineInfo(method);
         }
     }
 
@@ -243,10 +242,10 @@ public class SubstrateReplacements extends ReplacementsImpl {
             PEGraphDecoder graphDecoder = new PEGraphDecoder(SubstrateTarget.getArchitecture(), result, providers, null, snippetPlugins, new InlineInvokePlugin[0], parameterPlugin, null,
                             null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false) {
 
-                private final IntrinsicContext intrinsic = new IntrinsicContext(method, null, providers.getReplacements().getDefaultReplacementBytecodeProvider(), INLINE_AFTER_PARSING, false);
+                private final IntrinsicContext intrinsic = new IntrinsicContext(method, null, providers.getReplacements().getDefaultReplacementBytecodeProvider());
 
                 @Override
-                protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod, BytecodeProvider intrinsicBytecodeProvider) {
+                protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod) {
                     if (lookupMethod.equals(method)) {
                         assert !result.trackNodeSourcePosition() || encodedGraph.trackNodeSourcePosition();
                         return encodedGraph;
