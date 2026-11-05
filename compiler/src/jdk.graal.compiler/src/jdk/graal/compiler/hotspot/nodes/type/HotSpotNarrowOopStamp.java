@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,7 +74,7 @@ public final class HotSpotNarrowOopStamp extends NarrowOopStamp {
         if (other instanceof HotSpotObjectConstant) {
             return ((HotSpotObjectConstant) other).isCompressed();
         }
-        return true;
+        return HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(other);
     }
 
     public static Stamp mkStamp(CompressionOp op, Stamp input, CompressEncoding encoding) {
