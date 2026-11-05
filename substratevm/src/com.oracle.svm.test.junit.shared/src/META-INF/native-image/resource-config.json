@@ -2,7 +2,7 @@
   "resources": {
     "includes": [
       {
-        "pattern": "com/oracle/svm/configure/test/config/.*\\.json"
+        "pattern": "com/oracle/svm/test/junit/shared/configure/.*\\.json"
       }
     ]
   }

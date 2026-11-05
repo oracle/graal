@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2025, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -24,10 +24,10 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.junit.nativeimage.jfr;
 
 import com.oracle.svm.core.jfr.JfrEvent;
-import com.oracle.svm.test.jfr.events.StringEvent;
+import com.oracle.svm.test.junit.nativeimage.jfr.events.StringEvent;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 import org.junit.Test;

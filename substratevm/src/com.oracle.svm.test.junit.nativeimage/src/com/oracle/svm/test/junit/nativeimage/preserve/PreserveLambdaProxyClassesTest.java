@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.preserve;
+package com.oracle.svm.test.junit.nativeimage.preserve;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -48,7 +48,7 @@ import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
-import com.oracle.svm.test.NativeImageBuildArgs;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
                 "--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED",
@@ -56,9 +56,9 @@ import com.oracle.svm.test.NativeImageBuildArgs;
                 "--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jni.headers=ALL-UNNAMED",
                 "--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.c=ALL-UNNAMED",
                 "-H:+UnlockExperimentalVMOptions",
-                "-H:Preserve=package=com.oracle.svm.test.preserve",
+                "-H:Preserve=package=com.oracle.svm.test.junit.nativeimage.preserve",
                 "-H:-UnlockExperimentalVMOptions",
-                "--exact-reachability-metadata=com.oracle.svm.test.preserve"
+                "--exact-reachability-metadata=com.oracle.svm.test.junit.nativeimage.preserve"
 })
 public class PreserveLambdaProxyClassesTest {
     private static final String EXPECTED = "preserved lambda";

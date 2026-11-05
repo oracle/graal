@@ -25,7 +25,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jcmd;
+package com.oracle.svm.test.junit.nativeimage.jcmd;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;

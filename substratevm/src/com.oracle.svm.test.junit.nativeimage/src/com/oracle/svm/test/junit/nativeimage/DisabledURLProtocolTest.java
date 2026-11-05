@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,12 +37,13 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
                 "-H:+UnlockExperimentalVMOptions",
                 "-H:+AllowJRTFileSystem",
                 "-H:DisableURLProtocols=file,resource,disabled,jrt",
-                "--features=com.oracle.svm.test.DisabledURLProtocolTest$TestFeature"
+                "--features=com.oracle.svm.test.junit.nativeimage.DisabledURLProtocolTest$TestFeature"
 })
 public class DisabledURLProtocolTest {
     private static final String REGISTERED_RESOURCE = "resources/resource-test1.txt";
@@ -75,7 +76,7 @@ public class DisabledURLProtocolTest {
     @Test
     public void disabledProtocolIsRejectedBeforePropertyHandlerLookup() {
         String oldHandlerPackages = System.getProperty("java.protocol.handler.pkgs");
-        System.setProperty("java.protocol.handler.pkgs", "com.oracle.svm.test.protocol");
+        System.setProperty("java.protocol.handler.pkgs", "com.oracle.svm.test.junit.nativeimage.protocol");
         try {
             assertUnknownProtocol("disabled", () -> URI.create("disabled:/test").toURL());
         } finally {
@@ -105,8 +106,8 @@ public class DisabledURLProtocolTest {
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
             RuntimeResourceAccess.addResource(TestFeature.class.getModule(), REGISTERED_RESOURCE);
-            RuntimeReflection.register(com.oracle.svm.test.protocol.disabled.Handler.class);
-            RuntimeReflection.register(com.oracle.svm.test.protocol.disabled.Handler.class.getDeclaredConstructors());
+            RuntimeReflection.register(com.oracle.svm.test.junit.nativeimage.protocol.disabled.Handler.class);
+            RuntimeReflection.register(com.oracle.svm.test.junit.nativeimage.protocol.disabled.Handler.class.getDeclaredConstructors());
         }
     }
 }

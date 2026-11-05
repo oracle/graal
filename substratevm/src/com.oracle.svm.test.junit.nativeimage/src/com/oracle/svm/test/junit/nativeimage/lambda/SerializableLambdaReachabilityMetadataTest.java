@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.lambda;
+package com.oracle.svm.test.junit.nativeimage.lambda;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
@@ -38,12 +38,12 @@ import java.util.function.Function;
 
 import org.junit.Test;
 
-import com.oracle.svm.test.NativeImageBuildArgs;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
                 "-H:+UnlockExperimentalVMOptions",
-                "--exact-reachability-metadata=com.oracle.svm.test.lambda",
-                "-H:ConfigurationResourceRoots=com/oracle/svm/test/lambda/serializablemetadata",
+                "--exact-reachability-metadata=com.oracle.svm.test.junit.nativeimage.lambda",
+                "-H:ConfigurationResourceRoots=com/oracle/svm/test/junit/nativeimage/lambda/serializablemetadata",
                 "-H:-UnlockExperimentalVMOptions"
 })
 public class SerializableLambdaReachabilityMetadataTest {

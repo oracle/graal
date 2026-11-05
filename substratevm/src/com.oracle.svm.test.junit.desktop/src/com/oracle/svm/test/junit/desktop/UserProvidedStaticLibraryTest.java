@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.integrationtest;
+package com.oracle.svm.test.junit.desktop;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -45,12 +45,12 @@ import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import com.oracle.svm.hosted.jni.JNILibraryLinkagePlan;
-import com.oracle.svm.test.NativeImageBuildArgs;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
                 "-H:+UnlockExperimentalVMOptions",
                 "-H:JNILibraryLinkage=user_provided:static,user_missing:static?",
-                "--features=com.oracle.svm.integrationtest.UserProvidedStaticLibraryTest$TestFeature",
+                "--features=com.oracle.svm.test.junit.desktop.UserProvidedStaticLibraryTest$TestFeature",
                 "-H:-UnlockExperimentalVMOptions"
 })
 public class UserProvidedStaticLibraryTest {

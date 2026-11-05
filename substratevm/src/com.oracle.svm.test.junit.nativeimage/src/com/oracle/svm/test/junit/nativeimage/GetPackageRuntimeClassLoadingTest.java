@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
 import static java.lang.classfile.ClassFile.ACC_PUBLIC;
 import static java.lang.classfile.ClassFile.ACC_STATIC;
@@ -55,6 +55,8 @@ import org.graalvm.nativeimage.hosted.RuntimeSystemProperties;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.svm.test.api.NativeImageBuildArgs;
+
 /**
  * Tests boot-loader package visibility for classes loaded through {@code -Xbootclasspath/a:} after
  * image startup.
@@ -67,7 +69,7 @@ import org.junit.Test;
                 "--add-opens=java.base/jdk.internal.loader=ALL-UNNAMED",
                 "--enable-url-protocols=jar",
                 "--initialize-at-run-time=jdk.internal.loader.ClassLoaders",
-                "--features=com.oracle.svm.test.GetPackageRuntimeClassLoadingTest$TestFeature"
+                "--features=com.oracle.svm.test.junit.nativeimage.GetPackageRuntimeClassLoadingTest$TestFeature"
 })
 public class GetPackageRuntimeClassLoadingTest {
     private static final String EXPLODED_BOOT_APPEND_PACKAGE_NAME = "bootappend";

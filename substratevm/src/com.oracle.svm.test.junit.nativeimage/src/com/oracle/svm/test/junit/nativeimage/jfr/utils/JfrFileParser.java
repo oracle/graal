@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2021, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr.utils;
+package com.oracle.svm.test.junit.nativeimage.jfr.utils;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -45,26 +45,26 @@ import com.oracle.svm.core.jfr.JfrChunkFileWriter;
 import com.oracle.svm.core.jfr.JfrReservedEvent;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.JfrType;
-import com.oracle.svm.test.jfr.utils.poolparsers.AbstractSerializerParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.ClassConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.ClassLoaderConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.ConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.FrameTypeConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.GCCauseConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.GCNameConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.GCWhenConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.MethodConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.ModuleConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.MonitorInflationCauseConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.NmtCategoryConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.OldObjectConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.PackageConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.StacktraceConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.SymbolConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.ThreadConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.ThreadGroupConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.ThreadStateConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.VMOperationConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.AbstractSerializerParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.ClassConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.ClassLoaderConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.ConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.FrameTypeConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.GCCauseConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.GCNameConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.GCWhenConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.MethodConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.ModuleConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.MonitorInflationCauseConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.NmtCategoryConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.OldObjectConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.PackageConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.StacktraceConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.SymbolConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.ThreadConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.ThreadGroupConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.ThreadStateConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.VMOperationConstantPoolParser;
 
 public class JfrFileParser {
     private final Path path;

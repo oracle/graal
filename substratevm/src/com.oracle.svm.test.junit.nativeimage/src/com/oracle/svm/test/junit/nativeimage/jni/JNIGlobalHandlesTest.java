@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jni;
+package com.oracle.svm.test.junit.nativeimage.jni;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Isolate;
@@ -40,14 +40,14 @@ import org.junit.Test;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
-import com.oracle.svm.test.NativeImageBuildArgs;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
                 "--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED",
                 "--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jni=ALL-UNNAMED",
                 "--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jni.headers=ALL-UNNAMED",
                 "--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.c=ALL-UNNAMED",
-                "--initialize-at-build-time=com.oracle.svm.test.jni.JNIGlobalHandlesTest",
+                "--initialize-at-build-time=com.oracle.svm.test.junit.nativeimage.jni.JNIGlobalHandlesTest",
                 "-da:com.oracle.svm.core.jni..."
 })
 public class JNIGlobalHandlesTest {

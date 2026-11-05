@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2021, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.junit.nativeimage.jfr;
 
 import static org.junit.Assume.assumeTrue;
 
@@ -50,7 +50,7 @@ import org.junit.BeforeClass;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.shared.util.TimeUtils;
-import com.oracle.svm.test.jfr.utils.JfrFileParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.JfrFileParser;
 
 import jdk.jfr.Configuration;
 import jdk.jfr.Unsigned;

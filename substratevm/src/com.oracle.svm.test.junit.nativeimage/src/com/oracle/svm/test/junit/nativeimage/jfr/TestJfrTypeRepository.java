@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.junit.nativeimage.jfr;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -34,7 +34,7 @@ import java.util.List;
 
 import org.junit.Test;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
+import com.oracle.svm.test.junit.nativeimage.jfr.events.ClassEvent;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
@@ -97,7 +97,7 @@ public class TestJfrTypeRepository extends JfrRecordingTest {
         RecordedObject pkg = recordedClass.getValue("package");
         assertNotNull("App class should have a package", pkg);
         String pkgName = pkg.getValue("name");
-        assertEquals("com/oracle/svm/test/jfr", pkgName);
+        assertEquals("com/oracle/svm/test/junit/nativeimage/jfr", pkgName);
 
         RecordedObject module = pkg.getValue("module");
         assertNotNull("Package should reference a module", module);

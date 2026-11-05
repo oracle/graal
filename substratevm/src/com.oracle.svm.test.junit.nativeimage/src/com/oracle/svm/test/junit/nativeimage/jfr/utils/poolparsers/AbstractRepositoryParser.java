@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,9 +23,9 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr.utils.poolparsers;
+package com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers;
 
-import com.oracle.svm.test.jfr.utils.JfrFileParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.JfrFileParser;
 
 public abstract class AbstractRepositoryParser extends ConstantPoolParser {
     public AbstractRepositoryParser(JfrFileParser parser, long... reservedIds) {

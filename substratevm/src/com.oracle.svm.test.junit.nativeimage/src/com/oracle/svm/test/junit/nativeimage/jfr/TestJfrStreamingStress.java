@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.junit.nativeimage.jfr;
 
 import static org.junit.Assert.assertEquals;
 
@@ -35,9 +35,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
-import com.oracle.svm.test.jfr.events.ClassEvent;
-import com.oracle.svm.test.jfr.events.IntegerEvent;
-import com.oracle.svm.test.jfr.events.StringEvent;
+import com.oracle.svm.test.junit.nativeimage.jfr.events.ClassEvent;
+import com.oracle.svm.test.junit.nativeimage.jfr.events.IntegerEvent;
+import com.oracle.svm.test.junit.nativeimage.jfr.events.StringEvent;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;

@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.junit.nativeimage.jfr;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;

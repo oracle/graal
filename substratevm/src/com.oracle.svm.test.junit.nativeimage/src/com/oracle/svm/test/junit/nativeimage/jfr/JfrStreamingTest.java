@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -23,7 +23,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.junit.nativeimage.jfr;
 
 import static org.junit.Assert.assertTrue;
 
@@ -37,8 +37,8 @@ import java.util.function.Consumer;
 
 import org.junit.After;
 
-import com.oracle.svm.test.jfr.events.EndStreamEvent;
-import com.oracle.svm.test.jfr.events.StartStreamEvent;
+import com.oracle.svm.test.junit.nativeimage.jfr.events.EndStreamEvent;
+import com.oracle.svm.test.junit.nativeimage.jfr.events.StartStreamEvent;
 
 import jdk.jfr.consumer.RecordingStream;
 

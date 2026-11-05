@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -42,8 +42,10 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.junit.Test;
 
+import com.oracle.svm.test.api.NativeImageBuildArgs;
+
 @NativeImageBuildArgs({
-                "--features=com.oracle.svm.test.MethodHandlesLoopObservationTest$TestFeature"
+                "--features=com.oracle.svm.test.junit.nativeimage.MethodHandlesLoopObservationTest$TestFeature"
 })
 public class MethodHandlesLoopObservationTest {
     private static final int REPETITIONS = 100;

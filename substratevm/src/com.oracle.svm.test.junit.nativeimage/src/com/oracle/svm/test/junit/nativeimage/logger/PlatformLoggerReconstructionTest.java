@@ -22,11 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.logger;
+package com.oracle.svm.test.junit.nativeimage.logger;
 
 import org.junit.Test;
 
-import com.oracle.svm.test.NativeImageBuildArgs;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
                 "-H:+UnlockExperimentalVMOptions",

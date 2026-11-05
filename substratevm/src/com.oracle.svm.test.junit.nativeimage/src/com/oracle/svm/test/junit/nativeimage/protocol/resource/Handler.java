@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.protocol.resource;
+package com.oracle.svm.test.junit.nativeimage.protocol.resource;
 
 import java.net.URL;
 import java.net.URLConnection;

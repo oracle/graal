@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.protocol.disabled;
+package com.oracle.svm.test.junit.nativeimage.protocol.disabled;
 
 import java.io.IOException;
 import java.net.URL;

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.preserve;
+package com.oracle.svm.test.junit.nativeimage.preserve;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -42,7 +42,7 @@ import org.junit.Test;
 
 import com.oracle.svm.guest.staging.reflect.ReflectionModifiers;
 import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
-import com.oracle.svm.test.NativeImageBuildArgs;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 
 /**
  * Preserving an annotation element for reflective invocation must also preserve the corresponding
@@ -51,12 +51,12 @@ import com.oracle.svm.test.NativeImageBuildArgs;
  * proxy if the element was already registered for lookup.
  */
 @NativeImageBuildArgs({
-                "--features=com.oracle.svm.test.preserve.PreserveAnnotationProxyMethodsTest$RegisterAnnotationMethod",
+                "--features=com.oracle.svm.test.junit.nativeimage.preserve.PreserveAnnotationProxyMethodsTest$RegisterAnnotationMethod",
                 "--add-exports=org.graalvm.nativeimage.guest.staging/com.oracle.svm.guest.staging.reflect=ALL-UNNAMED",
                 "-H:+UnlockExperimentalVMOptions",
                 "-H:Preserve=package=java.lang.annotation",
                 "-H:-UnlockExperimentalVMOptions",
-                "--exact-reachability-metadata=com.oracle.svm.test.preserve"
+                "--exact-reachability-metadata=com.oracle.svm.test.junit.nativeimage.preserve"
 })
 public class PreserveAnnotationProxyMethodsTest {
     @Retention(RetentionPolicy.RUNTIME)

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.test;
+package com.oracle.svm.test.junit.hosted;
 
 import jdk.graal.compiler.core.test.VerifyPhase;
 import jdk.graal.compiler.graph.Node;

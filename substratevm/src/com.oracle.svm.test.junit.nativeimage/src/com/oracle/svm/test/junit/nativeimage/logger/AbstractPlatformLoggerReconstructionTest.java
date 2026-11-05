@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.logger;
+package com.oracle.svm.test.junit.nativeimage.logger;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -31,11 +31,11 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.junit.Assert;
 
-import com.oracle.svm.test.NativeImageBuildArgs;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 import com.oracle.svm.shared.util.ModuleSupport;
 
 @NativeImageBuildArgs({
-                "--features=com.oracle.svm.test.logger.AbstractPlatformLoggerReconstructionTest$TestFeature",
+                "--features=com.oracle.svm.test.junit.nativeimage.logger.AbstractPlatformLoggerReconstructionTest$TestFeature",
                 "--add-exports=java.base/sun.util.logging=ALL-UNNAMED"
 })
 abstract class AbstractPlatformLoggerReconstructionTest {
@@ -60,7 +60,7 @@ abstract class AbstractPlatformLoggerReconstructionTest {
     }
 
     private static final class BuildTimePlatformLoggerRoot {
-        private static final String LOGGER_NAME = "com.oracle.svm.test.logger.PlatformLoggerReconstructionTest";
+        private static final String LOGGER_NAME = "com.oracle.svm.test.junit.nativeimage.logger.PlatformLoggerReconstructionTest";
         private static final String ROGUE_LOGGER_NAME = LOGGER_NAME + ".rogue";
         private static final Object LOGGER = getPlatformLogger(LOGGER_NAME);
         private static final Object ROGUE_LOGGER = createUncachedPlatformLogger(ROGUE_LOGGER_NAME);

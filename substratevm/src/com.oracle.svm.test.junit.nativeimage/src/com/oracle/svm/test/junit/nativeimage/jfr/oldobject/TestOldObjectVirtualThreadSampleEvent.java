@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr.oldobject;
+package com.oracle.svm.test.junit.nativeimage.jfr.oldobject;
 
 import static org.junit.Assert.assertNotNull;
 

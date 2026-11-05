@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.junit.nativeimage.jfr;
 
 import com.oracle.svm.core.jfr.AbstractJfrEmergencyDumpSupport;
 import com.oracle.svm.core.jfr.JfrEmergencyDumpSupport;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.services;
+package com.oracle.svm.test.junit.nativeimage.services;
 
 import java.util.ServiceLoader;
 
@@ -59,7 +59,7 @@ public class DeletedServiceTest {
 
     @Delete
     @TargetClass(DeletedServiceA.class)
-    static final class Target_com_oracle_svm_test_services_DeletedServiceTest_DeletedServiceA {
+    static final class Target_com_oracle_svm_test_junit_nativeimage_services_DeletedServiceTest_DeletedServiceA {
     }
 
     /* JCA-non-compliant service. */
@@ -74,7 +74,7 @@ public class DeletedServiceTest {
 
     @Delete
     @TargetClass(DeletedServiceB.class)
-    static final class Target_com_oracle_svm_test_services_DeletedServiceTest_DeletedServiceB {
+    static final class Target_com_oracle_svm_test_junit_nativeimage_services_DeletedServiceTest_DeletedServiceB {
     }
 
     @Test

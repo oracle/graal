@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.foreign;
+package com.oracle.svm.test.junit.shared.foreign;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;

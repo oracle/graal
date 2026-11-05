@@ -23,7 +23,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jmx;
+package com.oracle.svm.test.junit.nativeimage.jmx;
 
 import java.lang.management.ManagementFactory;
 import java.util.List;

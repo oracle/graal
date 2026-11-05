@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.junit.nativeimage.jfr;
 
 import static org.junit.Assert.assertTrue;
 
@@ -44,7 +44,7 @@ import jdk.jfr.consumer.RecordedEvent;
 /**
  * This test checks if symbol table JFR trace IDs get reused across successive epochs. If they are
  * reused/duplicated, the validation step will fail because the trace ID key associated with
- * {@link com.oracle.svm.test.jfr.AbstractJfrTest.MonitorWaitHelper} will also be associated with
+ * {@link com.oracle.svm.test.junit.nativeimage.jfr.AbstractJfrTest.MonitorWaitHelper} will also be associated with
  * another value that was serialized during a prior epoch.
  */
 public class TestSymbolTraceIdUniqueness extends JfrRecordingTest {

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.preserve.incomplete;
+package com.oracle.svm.test.junit.nativeimage.preserve.incomplete;
 
 import java.io.Externalizable;
 import java.io.IOException;

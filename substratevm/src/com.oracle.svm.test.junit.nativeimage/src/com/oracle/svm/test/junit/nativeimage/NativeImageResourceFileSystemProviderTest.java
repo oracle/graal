@@ -23,17 +23,17 @@
  * questions.
  */
 
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
-import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR;
-import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR_WITH_SPACE;
-import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_EMPTY_DIR;
-import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
-import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
-import static com.oracle.svm.test.NativeImageResourceUtils.ROOT_DIRECTORY;
-import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToPath;
-import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURI;
-import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURL;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.RESOURCE_DIR;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.RESOURCE_DIR_WITH_SPACE;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.RESOURCE_EMPTY_DIR;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.RESOURCE_FILE_1;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.RESOURCE_FILE_2;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.ROOT_DIRECTORY;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.resourceNameToPath;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.resourceNameToURI;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.resourceNameToURL;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -70,6 +70,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.oracle.svm.test.api.AddExports;
 
 @AddExports("java.base/java.lang")
 public class NativeImageResourceFileSystemProviderTest {

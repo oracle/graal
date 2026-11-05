@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
 import java.lang.reflect.Array;
 
@@ -31,12 +31,14 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.svm.test.api.NativeImageBuildArgs;
+
 @NativeImageBuildArgs({
                 "-H:+UnlockExperimentalVMOptions",
                 "-H:+MetadataTracingSupport",
                 "-R:TraceMetadata=path=metadata-trace",
                 "-H:-UnlockExperimentalVMOptions",
-                "--features=com.oracle.svm.test.ArrayMetadataTracingTest$TestFeature"
+                "--features=com.oracle.svm.test.junit.nativeimage.ArrayMetadataTracingTest$TestFeature"
 })
 public class ArrayMetadataTracingTest {
 

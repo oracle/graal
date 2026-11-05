@@ -22,12 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.reflect;
+package com.oracle.svm.test.junit.nativeimage.reflect;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.svm.test.AddExports;
+import com.oracle.svm.test.api.AddExports;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 
 @AddExports("java.base/jdk.internal.reflect")

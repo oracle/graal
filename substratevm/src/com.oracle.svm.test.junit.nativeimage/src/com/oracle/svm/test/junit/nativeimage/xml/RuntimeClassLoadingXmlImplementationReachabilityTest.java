@@ -22,14 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.xml;
+package com.oracle.svm.test.junit.nativeimage.xml;
 
 import java.lang.reflect.Constructor;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.junit.Test;
 
-import com.oracle.svm.test.NativeImageBuildArgs;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
                 "--add-modules=java.xml",
@@ -37,7 +37,7 @@ import com.oracle.svm.test.NativeImageBuildArgs;
                 "-H:+AllowJRTFileSystem",
                 "-H:+RuntimeClassLoading",
                 "--initialize-at-run-time=jdk.internal.loader.ClassLoaders",
-                "--features=com.oracle.svm.test.xml.RuntimeClassLoadingXmlImplementationReachabilityTest$TestFeature"
+                "--features=com.oracle.svm.test.junit.nativeimage.xml.RuntimeClassLoadingXmlImplementationReachabilityTest$TestFeature"
 })
 public class RuntimeClassLoadingXmlImplementationReachabilityTest {
     private static final String TRANSFORMER_FACTORY_IMPL = "com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl";

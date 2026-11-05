@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertSame;
@@ -33,6 +33,7 @@ import org.junit.Test;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 
 /**
  * Tests of {@link com.oracle.svm.core.jdk.StackTraceUtils}.

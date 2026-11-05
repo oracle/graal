@@ -1,2 +1,2 @@
-com.oracle.svm.test.services.AbstractServiceLoaderTest$ConcreteService
-com.oracle.svm.test.services.AbstractServiceLoaderTest$AbstractService
+com.oracle.svm.test.junit.nativeimage.services.AbstractServiceLoaderTest$ConcreteService
+com.oracle.svm.test.junit.nativeimage.services.AbstractServiceLoaderTest$AbstractService

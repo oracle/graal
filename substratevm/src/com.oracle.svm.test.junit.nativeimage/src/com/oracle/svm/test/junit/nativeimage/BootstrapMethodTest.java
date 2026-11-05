@@ -23,7 +23,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
 import static java.lang.constant.ConstantDescs.CD_CallSite;
 import static java.lang.constant.ConstantDescs.CD_Class;
@@ -191,8 +191,8 @@ public class BootstrapMethodTest {
     }
 
     static byte[] generateClassBytes() {
-        ClassDesc testClassDesc = ClassDesc.of("com.oracle.svm.test.BootstrapMethodTest");
-        ClassDesc generatedClassDesc = ClassDesc.of("com.oracle.svm.test.BootstrapMethodTestGenerated");
+        ClassDesc testClassDesc = ClassDesc.of("com.oracle.svm.test.junit.nativeimage.BootstrapMethodTest");
+        ClassDesc generatedClassDesc = ClassDesc.of("com.oracle.svm.test.junit.nativeimage.BootstrapMethodTestGenerated");
 
         MethodTypeDesc indyBsmDesc = MethodTypeDesc.of(CD_CallSite, CD_MethodHandles_Lookup, CD_String, CD_MethodType);
         DirectMethodHandleDesc indyBsmHandle = MethodHandleDesc.ofMethod(

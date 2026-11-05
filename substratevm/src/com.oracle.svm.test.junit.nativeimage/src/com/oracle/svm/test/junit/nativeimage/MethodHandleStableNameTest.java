@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
 import static org.junit.Assert.assertTrue;
 
@@ -35,8 +35,10 @@ import java.lang.reflect.Method;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.junit.Test;
 
+import com.oracle.svm.test.api.NativeImageBuildArgs;
+
 @NativeImageBuildArgs({
-                "--features=com.oracle.svm.test.MethodHandleStableNameTest$TestFeature"
+                "--features=com.oracle.svm.test.junit.nativeimage.MethodHandleStableNameTest$TestFeature"
 })
 public class MethodHandleStableNameTest {
     private static final String METHOD_HANDLE_RENAMING_PROCESSOR = "com.oracle.svm.hosted.methodhandles.MethodHandleInvokerRenamingSubstitutionProcessor";

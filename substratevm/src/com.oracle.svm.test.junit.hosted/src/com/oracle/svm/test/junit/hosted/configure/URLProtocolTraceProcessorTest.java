@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.test.config;
+package com.oracle.svm.test.junit.hosted.configure;
 
 import java.io.StringReader;
 import java.lang.reflect.Constructor;

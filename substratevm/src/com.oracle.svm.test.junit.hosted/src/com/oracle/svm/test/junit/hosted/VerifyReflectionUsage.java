@@ -22,18 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.test;
+package com.oracle.svm.test.junit.hosted;
 
-import static com.oracle.svm.hosted.test.VerifyReflectionUsage.Justifications.CREMA_RUN_TIME_ONLY;
-import static com.oracle.svm.hosted.test.VerifyReflectionUsage.Justifications.GUEST_CONTEXT_ONLY;
-import static com.oracle.svm.hosted.test.VerifyReflectionUsage.Justifications.JDWP_RUN_TIME_ONLY;
-import static com.oracle.svm.hosted.test.VerifyReflectionUsage.Justifications.NI_HOSTED_IMPLEMENTATION;
-import static com.oracle.svm.hosted.test.VerifyReflectionUsage.Justifications.SHARED_CODE;
-import static com.oracle.svm.hosted.test.VerifyReflectionUsage.Justifications.SVM_CONFIGURE_TOOL;
-import static com.oracle.svm.hosted.test.VerifyReflectionUsage.Justifications.SVM_RUN_TIME_ONLY;
-import static com.oracle.svm.hosted.test.VerifyReflectionUsage.Justifications.SVM_TESTING_TOOL;
-import static com.oracle.svm.hosted.test.VerifyReflectionUsage.Justifications.TERMINUS_HELPER;
-import static com.oracle.svm.hosted.test.VerifyReflectionUsage.Justifications.TERMINUS_OBSOLETED;
+import static com.oracle.svm.test.junit.hosted.VerifyReflectionUsage.Justifications.CREMA_RUN_TIME_ONLY;
+import static com.oracle.svm.test.junit.hosted.VerifyReflectionUsage.Justifications.GUEST_CONTEXT_ONLY;
+import static com.oracle.svm.test.junit.hosted.VerifyReflectionUsage.Justifications.JDWP_RUN_TIME_ONLY;
+import static com.oracle.svm.test.junit.hosted.VerifyReflectionUsage.Justifications.NI_HOSTED_IMPLEMENTATION;
+import static com.oracle.svm.test.junit.hosted.VerifyReflectionUsage.Justifications.SHARED_CODE;
+import static com.oracle.svm.test.junit.hosted.VerifyReflectionUsage.Justifications.SVM_CONFIGURE_TOOL;
+import static com.oracle.svm.test.junit.hosted.VerifyReflectionUsage.Justifications.SVM_RUN_TIME_ONLY;
+import static com.oracle.svm.test.junit.hosted.VerifyReflectionUsage.Justifications.SVM_TESTING_TOOL;
+import static com.oracle.svm.test.junit.hosted.VerifyReflectionUsage.Justifications.TERMINUS_HELPER;
+import static com.oracle.svm.test.junit.hosted.VerifyReflectionUsage.Justifications.TERMINUS_OBSOLETED;
 
 import java.util.List;
 import java.util.ServiceLoader;

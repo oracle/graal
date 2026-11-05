@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -88,8 +88,8 @@ public class NativeImageResourceUtils {
             }
             RuntimeResourceAccess.addResource(resourceModule, DUPLICATE_RESOURCE_FILE, DUPLICATE_RESOURCE_CONTENT_1.getBytes(StandardCharsets.UTF_8));
             RuntimeResourceAccess.addResource(resourceModule, DUPLICATE_RESOURCE_FILE, DUPLICATE_RESOURCE_CONTENT_2.getBytes(StandardCharsets.UTF_8));
-            RuntimeReflection.register(com.oracle.svm.test.protocol.resource.Handler.class);
-            RuntimeReflection.register(com.oracle.svm.test.protocol.resource.Handler.class.getDeclaredConstructors());
+            RuntimeReflection.register(com.oracle.svm.test.junit.nativeimage.protocol.resource.Handler.class);
+            RuntimeReflection.register(com.oracle.svm.test.junit.nativeimage.protocol.resource.Handler.class.getDeclaredConstructors());
 
             /** Needed for {@link #testURLExternalFormEquivalence()} */
             for (Module module : ModuleLayer.boot().modules()) {

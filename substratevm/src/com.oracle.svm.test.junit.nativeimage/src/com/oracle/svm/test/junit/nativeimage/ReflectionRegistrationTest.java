@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -23,7 +23,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
@@ -42,6 +42,7 @@ import org.junit.Test;
 
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 
 import jdk.internal.misc.Unsafe;
 
@@ -184,7 +185,7 @@ public class ReflectionRegistrationTest {
 
     @NativeImageBuildArgs({
                     "--exact-reachability-metadata=com.oracle.svm.test",
-                    "--features=com.oracle.svm.test.ReflectionRegistrationTest$ExactReachabilityTest$TestFeature"
+                    "--features=com.oracle.svm.test.junit.nativeimage.ReflectionRegistrationTest$ExactReachabilityTest$TestFeature"
     })
     public static class ExactReachabilityTest {
         public static class TestFeature implements Feature {

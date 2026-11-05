@@ -1,6 +1,6 @@
 [
   {
-    "name" : "com.oracle.svm.test.recordannotations.F",
+    "name" : "com.oracle.svm.test.junit.shared.recordannotations.F",
     "allDeclaredConstructors" : true,
     "allPublicConstructors" : true,
     "allDeclaredMethods" : true,

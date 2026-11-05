@@ -23,24 +23,24 @@
  * questions.
  */
 
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
-import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR;
-import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR_WITH_SPACE;
-import static com.oracle.svm.test.NativeImageResourceUtils.DUPLICATE_RESOURCE_CONTENT_1;
-import static com.oracle.svm.test.NativeImageResourceUtils.DUPLICATE_RESOURCE_CONTENT_2;
-import static com.oracle.svm.test.NativeImageResourceUtils.DUPLICATE_RESOURCE_FILE;
-import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
-import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
-import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_3;
-import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_4;
-import static com.oracle.svm.test.NativeImageResourceUtils.SIMPLE_RESOURCE_DIR;
-import static com.oracle.svm.test.NativeImageResourceUtils.SYNTHETIC_RESOURCE_CONTENT;
-import static com.oracle.svm.test.NativeImageResourceUtils.SYNTHETIC_RESOURCE_FILE;
-import static com.oracle.svm.test.NativeImageResourceUtils.SYNTHETIC_RESOURCE_FILE_WITH_SPECIAL_CHARACTERS;
-import static com.oracle.svm.test.NativeImageResourceUtils.UNICODE_RESOURCE_FILES;
-import static com.oracle.svm.test.NativeImageResourceUtils.compareTwoURLs;
-import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURL;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.RESOURCE_DIR;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.RESOURCE_DIR_WITH_SPACE;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.DUPLICATE_RESOURCE_CONTENT_1;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.DUPLICATE_RESOURCE_CONTENT_2;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.DUPLICATE_RESOURCE_FILE;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.RESOURCE_FILE_1;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.RESOURCE_FILE_2;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.RESOURCE_FILE_3;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.RESOURCE_FILE_4;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.SIMPLE_RESOURCE_DIR;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.SYNTHETIC_RESOURCE_CONTENT;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.SYNTHETIC_RESOURCE_FILE;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.SYNTHETIC_RESOURCE_FILE_WITH_SPECIAL_CHARACTERS;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.UNICODE_RESOURCE_FILES;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.compareTwoURLs;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.resourceNameToURL;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -71,6 +71,7 @@ import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
 import com.oracle.svm.core.hub.registry.ClassRegistries;
+import com.oracle.svm.test.api.AddExports;
 
 import org.junit.Assert;
 import org.junit.Assume;
@@ -134,8 +135,8 @@ public class NativeImageResourceTest {
         String oldHandlerPackages = System.getProperty("java.protocol.handler.pkgs");
         try {
             System.setProperty("java.protocol.handler.pkgs", oldHandlerPackages == null || oldHandlerPackages.isEmpty()
-                            ? "com.oracle.svm.test.protocol"
-                            : oldHandlerPackages + "|com.oracle.svm.test.protocol");
+                            ? "com.oracle.svm.test.junit.nativeimage.protocol"
+                            : oldHandlerPackages + "|com.oracle.svm.test.junit.nativeimage.protocol");
             URL resourceURL = resourceNameToURL(RESOURCE_FILE_1, true);
             try (InputStream in = resourceURL.openStream()) {
                 Assert.assertNotEquals(-1, in.read());

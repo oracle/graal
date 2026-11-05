@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.junit.nativeimage.jfr;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -34,7 +34,7 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.svm.core.container.Container;
-import com.oracle.svm.test.jfr.events.ThreadEvent;
+import com.oracle.svm.test.junit.nativeimage.jfr.events.ThreadEvent;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;

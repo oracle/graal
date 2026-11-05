@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.junit.nativeimage.jfr;
 
 import static org.junit.Assert.assertEquals;
 
@@ -35,7 +35,7 @@ import java.util.List;
 
 import org.junit.Test;
 
-import com.oracle.svm.test.jfr.events.ClassEvent;
+import com.oracle.svm.test.junit.nativeimage.jfr.events.ClassEvent;
 
 import jdk.jfr.Configuration;
 import jdk.jfr.Recording;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -24,15 +24,15 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr.utils.poolparsers;
+package com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers;
 
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 
 import com.oracle.svm.core.jfr.JfrType;
-import com.oracle.svm.test.jfr.utils.JfrFileParser;
-import com.oracle.svm.test.jfr.utils.RecordingInput;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.JfrFileParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.RecordingInput;
 
 public final class OldObjectConstantPoolParser extends AbstractRepositoryParser {
     public OldObjectConstantPoolParser(JfrFileParser parser) {

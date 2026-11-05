@@ -10,7 +10,7 @@
       "name":"java.lang.invoke.SerializedLambda"
     },
     {
-      "name":"com.oracle.svm.test.AbstractClassSerializationTest"
+      "name":"com.oracle.svm.test.junit.shared.serialization.AbstractClassSerializationTest"
     },
     {
       "name":"java.lang.Integer"
@@ -22,7 +22,7 @@
       "name":"java.util.HashMap"
     },
     {
-      "name":"com.oracle.svm.test.proxy.ProxyHandler"
+      "name":"com.oracle.svm.test.junit.shared.proxy.ProxyHandler"
     },
     {
       "name":"java.lang.reflect.Proxy"
@@ -30,10 +30,10 @@
   ],
   "lambdaCapturingTypes":[
     {
-      "name":"com.oracle.svm.test.LambdaClassSerializationTest"
+      "name":"com.oracle.svm.test.junit.shared.serialization.LambdaClassSerializationTest"
     },
     {
-      "name":"com.oracle.svm.test.LambdaClassDeserializationTest$SerializeLambda"
+      "name":"com.oracle.svm.test.junit.shared.serialization.LambdaClassDeserializationTest$SerializeLambda"
     }
   ],
   "proxies":[

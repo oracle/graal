@@ -428,12 +428,12 @@ native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 # tests as well. Keep them limited to generic test support; do not register product-specific global
 # state or ImageSingleton markers here (for example anything that makes `svmjunit` look like a
 # `libjvm` image).
-_native_unittest_features = '--features=' + ','.join(('com.oracle.svm.test.ImageInfoTest$TestFeature',
-                                                      'com.oracle.svm.test.services.ServiceLoaderTest$TestFeature',
-                                                      'com.oracle.svm.test.services.SecurityServiceTest$TestFeature',
-                                                      'com.oracle.svm.test.ReflectionRegistrationTest$TestFeature',
-                                                      'com.oracle.svm.test.foreign.ForeignTests$TestFeature',
-                                                      'com.oracle.svm.test.BootstrapMethodTest$TestFeature'))
+_native_unittest_features = '--features=' + ','.join(('com.oracle.svm.test.junit.nativeimage.ImageInfoTest$TestFeature',
+                                                      'com.oracle.svm.test.junit.nativeimage.services.ServiceLoaderTest$TestFeature',
+                                                      'com.oracle.svm.test.junit.nativeimage.services.SecurityServiceTest$TestFeature',
+                                                      'com.oracle.svm.test.junit.nativeimage.ReflectionRegistrationTest$TestFeature',
+                                                      'com.oracle.svm.test.junit.nativeimage.foreign.ForeignTests$TestFeature',
+                                                      'com.oracle.svm.test.junit.nativeimage.BootstrapMethodTest$TestFeature'))
 
 IMAGE_ASSERTION_FLAGS = svm_experimental_options(['-H:+VerifyGraalGraphs', '-H:+VerifyPhases'])
 RUNTIME_CLASSLOADERS_INIT_ARG = '--initialize-at-run-time=jdk.internal.loader.ClassLoaders'
@@ -872,8 +872,8 @@ def _svm_unittest_feature_args():
         '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.libjvm=ALL-UNNAMED',
         '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.properties=ALL-UNNAMED',
         '--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
-        '-H:AdditionalSecurityProviders=com.oracle.svm.test.services.SecurityServiceTest$NoOpProvider,sun.security.pkcs11.SunPKCS11',
-        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.services.SecurityServiceTest$JCACompliantNoOpService',
+        '-H:AdditionalSecurityProviders=com.oracle.svm.test.junit.nativeimage.services.SecurityServiceTest$NoOpProvider,sun.security.pkcs11.SunPKCS11',
+        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.junit.nativeimage.services.SecurityServiceTest$JCACompliantNoOpService',
     ])
 
 
@@ -1033,7 +1033,7 @@ def runtime_classpath_resource_test_task(extra_build_args=None):
     # First exercise the regular embedded-resource tests with loader-aware resource lookup enabled.
     # This keeps their expected resource: URL semantics independent from the runtime classpath jar.
     native_unittest([
-        'com.oracle.svm.test.NativeImageResourceTest',
+        'com.oracle.svm.test.junit.nativeimage.NativeImageResourceTest',
         '--build-args',
     ] + build_args)
 
@@ -1043,7 +1043,7 @@ def runtime_classpath_resource_test_task(extra_build_args=None):
     # Then exercise runtime classpath lookup in isolation. The SVM tests jar is intentionally added
     # only to this image run, because it changes URL/resource behavior for embedded-resource tests.
     native_unittest([
-        'com.oracle.svm.test.NativeImageRuntimeClassPathResourceTest',
+        'com.oracle.svm.test.junit.nativeimage.NativeImageRuntimeClassPathResourceTest',
         '--build-args',
     ] + runtime_classpath_build_args + [
         '--run-args',
@@ -1058,11 +1058,11 @@ def java_desktop_integration_task(native_image, extra_build_args=None):
     build_args += svm_experimental_options(['-H:Preserve=module=java.desktop'])
     _native_unittest(native_image, [
         '--test-classes-per-run', '1',
-        'com.oracle.svm.integrationtest.HeadlessJavaDesktopTest',
-        'com.oracle.svm.integrationtest.NonHeadlessJavaDesktopTest',
-        'com.oracle.svm.integrationtest.DynamicJavaLibraryLinkageTest',
-        'com.oracle.svm.integrationtest.DynamicJDKLibraryLinkageTest',
-        'com.oracle.svm.integrationtest.UserProvidedStaticLibraryTest',
+        'com.oracle.svm.test.junit.desktop.HeadlessJavaDesktopTest',
+        'com.oracle.svm.test.junit.desktop.NonHeadlessJavaDesktopTest',
+        'com.oracle.svm.test.junit.desktop.DynamicJavaLibraryLinkageTest',
+        'com.oracle.svm.test.junit.desktop.DynamicJDKLibraryLinkageTest',
+        'com.oracle.svm.test.junit.desktop.UserProvidedStaticLibraryTest',
         '--build-args',
     ] + build_args)
 

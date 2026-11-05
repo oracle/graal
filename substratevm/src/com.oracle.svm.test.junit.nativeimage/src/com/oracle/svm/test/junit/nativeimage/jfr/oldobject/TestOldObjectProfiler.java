@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr.oldobject;
+package com.oracle.svm.test.junit.nativeimage.jfr.oldobject;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -39,7 +39,7 @@ import org.junit.Test;
 
 import com.oracle.svm.core.jfr.oldobject.JfrOldObject;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectProfiler;
-import com.oracle.svm.test.jfr.AbstractJfrTest;
+import com.oracle.svm.test.junit.nativeimage.jfr.AbstractJfrTest;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.jfr.Recording;

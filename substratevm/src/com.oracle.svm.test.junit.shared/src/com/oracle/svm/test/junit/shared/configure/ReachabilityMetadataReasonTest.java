@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.test.config;
+package com.oracle.svm.test.junit.shared.configure;
 
 import java.io.IOException;
 import java.io.StringReader;

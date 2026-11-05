@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
 import java.io.InputStream;
 import java.net.URI;
@@ -35,11 +35,13 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.svm.test.api.NativeImageBuildArgs;
+
 @NativeImageBuildArgs({
                 "-H:+UnlockExperimentalVMOptions",
                 "-H:+AllowJRTFileSystem",
                 "--enable-url-protocols=all",
-                "--features=com.oracle.svm.test.AllURLProtocolTest$TestFeature"
+                "--features=com.oracle.svm.test.junit.nativeimage.AllURLProtocolTest$TestFeature"
 })
 public class AllURLProtocolTest {
     private static final String EMBEDDED_JDK_MODULE_RESOURCE = "java/lang/Object.class";

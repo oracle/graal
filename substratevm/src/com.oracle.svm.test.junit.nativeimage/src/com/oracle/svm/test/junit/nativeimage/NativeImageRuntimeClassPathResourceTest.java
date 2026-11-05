@@ -23,9 +23,9 @@
  * questions.
  */
 
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
-import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
+import static com.oracle.svm.test.junit.nativeimage.NativeImageResourceUtils.RESOURCE_FILE_2;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,6 +38,8 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
+
+import com.oracle.svm.test.api.AddExports;
 
 import jdk.internal.loader.BuiltinClassLoader;
 

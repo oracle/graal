@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.preserve.incomplete;
+package com.oracle.svm.test.junit.nativeimage.preserve.incomplete;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,15 +32,15 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeSerialization;
 import org.junit.Test;
 
-import com.oracle.svm.test.NativeImageBuildArgs;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
-                "--features=com.oracle.svm.test.preserve.incomplete.PreserveIncompleteExternalizableTest$TestFeature",
-                "--initialize-at-build-time=com.oracle.svm.test.preserve.incomplete.PreserveIncompleteExternalizableTest$IncompleteClassLoader",
+                "--features=com.oracle.svm.test.junit.nativeimage.preserve.incomplete.PreserveIncompleteExternalizableTest$TestFeature",
+                "--initialize-at-build-time=com.oracle.svm.test.junit.nativeimage.preserve.incomplete.PreserveIncompleteExternalizableTest$IncompleteClassLoader",
 })
 public class PreserveIncompleteExternalizableTest {
-    private static final String INCOMPLETE_CLASS_NAME = "com.oracle.svm.test.preserve.incomplete.IncompleteExternalizable";
-    private static final String MISSING_CLASS_NAME = "com.oracle.svm.test.preserve.incomplete.MissingType";
+    private static final String INCOMPLETE_CLASS_NAME = "com.oracle.svm.test.junit.nativeimage.preserve.incomplete.IncompleteExternalizable";
+    private static final String MISSING_CLASS_NAME = "com.oracle.svm.test.junit.nativeimage.preserve.incomplete.MissingType";
 
     public static final class TestFeature implements Feature {
         @Override

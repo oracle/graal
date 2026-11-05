@@ -1210,7 +1210,7 @@ suite = {
             "testProject": True,
         },
 
-        "com.oracle.svm.hosted.test": {
+        "com.oracle.svm.test.junit.hosted": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -3089,7 +3089,7 @@ suite = {
           "subDir": "src",
           "relpath" : True,
           "dependencies" : [
-            "com.oracle.svm.hosted.test",
+            "com.oracle.svm.test.junit.hosted",
           ],
           "unittestConfig" : "svm-invariants-tests",
           "distDependencies": [

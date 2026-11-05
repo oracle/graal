@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
 import java.util.List;
 
@@ -30,7 +30,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.junit.Test;
 
-@NativeImageBuildArgs("--features=com.oracle.svm.test.FeatureSingletonCompatibilityTest$ExplicitFeature")
+import com.oracle.svm.test.api.NativeImageBuildArgs;
+
+@NativeImageBuildArgs("--features=com.oracle.svm.test.junit.nativeimage.FeatureSingletonCompatibilityTest$ExplicitFeature")
 public class FeatureSingletonCompatibilityTest {
     public static final class ExplicitFeature implements Feature {
         @Override

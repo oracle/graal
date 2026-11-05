@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.shared.methodhandles;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;

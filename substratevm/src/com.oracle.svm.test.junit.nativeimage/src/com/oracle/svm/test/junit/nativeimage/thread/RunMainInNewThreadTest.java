@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.thread;
+package com.oracle.svm.test.junit.nativeimage.thread;
 
 import java.util.Arrays;
 import java.util.List;
@@ -32,7 +32,7 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-import com.oracle.svm.test.NativeImageBuildArgs;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 
 /**
  * Verifies Java main thread semantics when application main runs on a launcher-created thread.

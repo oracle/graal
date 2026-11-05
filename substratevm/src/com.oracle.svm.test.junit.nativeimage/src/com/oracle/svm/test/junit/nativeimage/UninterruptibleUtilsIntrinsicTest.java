@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
 import static org.junit.Assert.assertEquals;
 
@@ -32,6 +32,7 @@ import org.junit.Test;
 
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 
 /**
  * Tests the native compiler markers in {@link UninterruptibleUtils} end to end.

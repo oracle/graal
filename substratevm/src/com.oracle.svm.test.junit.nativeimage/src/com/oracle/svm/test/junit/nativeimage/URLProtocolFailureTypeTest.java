@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -32,8 +32,9 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.core.hub.registry.ClassRegistries;
+import com.oracle.svm.test.api.NativeImageBuildArgs;
 
-@NativeImageBuildArgs("--features=com.oracle.svm.test.URLProtocolFailureTypeTest$HandlerClassOnlyFeature")
+@NativeImageBuildArgs("--features=com.oracle.svm.test.junit.nativeimage.URLProtocolFailureTypeTest$HandlerClassOnlyFeature")
 public class URLProtocolFailureTypeTest {
 
     @Test

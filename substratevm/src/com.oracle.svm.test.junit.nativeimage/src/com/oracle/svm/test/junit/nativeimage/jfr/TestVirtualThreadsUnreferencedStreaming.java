@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.junit.nativeimage.jfr;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -38,9 +38,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrType;
-import com.oracle.svm.test.jfr.events.StringEvent;
-import com.oracle.svm.test.jfr.utils.JfrFileParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.ThreadConstantPoolParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.events.StringEvent;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.JfrFileParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers.ThreadConstantPoolParser;
 
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordingStream;

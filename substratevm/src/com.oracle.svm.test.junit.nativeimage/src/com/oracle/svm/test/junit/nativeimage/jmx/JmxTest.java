@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -23,7 +23,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jmx;
+package com.oracle.svm.test.junit.nativeimage.jmx;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -67,7 +67,7 @@ import org.junit.Test;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
 import com.oracle.svm.hosted.c.util.FileUtils;
-import com.oracle.svm.test.AddExports;
+import com.oracle.svm.test.api.AddExports;
 
 import jdk.management.jfr.FlightRecorderMXBean;
 

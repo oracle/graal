@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr.utils.poolparsers;
+package com.oracle.svm.test.junit.nativeimage.jfr.utils.poolparsers;
 
 import static org.junit.Assert.assertFalse;
 
@@ -34,8 +34,8 @@ import org.graalvm.collections.EconomicSet;
 import org.junit.Assert;
 
 import com.oracle.svm.core.jfr.JfrType;
-import com.oracle.svm.test.jfr.utils.JfrFileParser;
-import com.oracle.svm.test.jfr.utils.RecordingInput;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.JfrFileParser;
+import com.oracle.svm.test.junit.nativeimage.jfr.utils.RecordingInput;
 
 public abstract class ConstantPoolParser {
     private final JfrFileParser parser;
