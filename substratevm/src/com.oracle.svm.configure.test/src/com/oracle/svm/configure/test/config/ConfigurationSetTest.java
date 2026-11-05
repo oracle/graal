@@ -42,21 +42,21 @@ public class ConfigurationSetTest {
     public void foreignOnlyDowncallIsNonempty() {
         ConfigurationSet set = new ConfigurationSet();
         set.getForeignConfiguration().addDowncall("jlong", List.of("void*"), Map.of());
-        Assert.assertFalse("A foreign-only downcall configuration is nonempty", set.isEmpty());
+        Assert.assertFalse("A foreign-only downcall configuration must not be empty", set.isEmpty());
     }
 
     @Test
     public void foreignOnlyUpcallIsNonempty() {
         ConfigurationSet set = new ConfigurationSet();
         set.getForeignConfiguration().addUpcall("jint", List.of("void*", "void*"), Map.of());
-        Assert.assertFalse("A foreign-only upcall configuration is nonempty", set.isEmpty());
+        Assert.assertFalse("A foreign-only upcall configuration must not be empty", set.isEmpty());
     }
 
     @Test
     public void foreignOnlyDirectUpcallIsNonempty() {
         ConfigurationSet set = new ConfigurationSet();
         set.getForeignConfiguration().addDirectUpcall("jint", List.of("void*", "void*"), Map.of(), "lib.Native", "compare");
-        Assert.assertFalse("A foreign-only direct upcall configuration is nonempty", set.isEmpty());
+        Assert.assertFalse("A foreign-only direct upcall configuration must not be empty", set.isEmpty());
     }
 
     @Test
