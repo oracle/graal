@@ -60,6 +60,7 @@ The selected scheme applies to embedded-resource URLs, URIs, URL handlers, and N
 
 Choose an unused scheme that starts with an ASCII letter and contains only ASCII letters, digits, `+`, `-`, or `.`.
 The image builder rejects empty or syntactically invalid scheme names.
+The schemes `file`, `jrt`, and `url` are reserved by the JDK and cannot be used for embedded resources.
 
 ## HTTPS Support
 Support for the `https` URL protocol relies on the Java Cryptography Architecture (JCA) framework.

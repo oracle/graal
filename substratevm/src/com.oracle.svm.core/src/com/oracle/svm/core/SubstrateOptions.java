@@ -801,8 +801,12 @@ public class SubstrateOptions {
     };
 
     private static void validateResourceProtocol(HostedOptionKey<String> optionKey) {
+        String scheme = optionKey.getValue();
+        // URL.of forbids overriding file and jrt handlers; URL parsing treats url: as a special prefix.
+        if (scheme.equals("file") || scheme.equals("jrt") || scheme.equals("url")) {
+            throw UserError.invalidOptionValue(optionKey, scheme, "The URI scheme is reserved by the JDK and cannot be used for embedded resources");
+        }
         try {
-            String scheme = optionKey.getValue();
             if (scheme.equals(new URI(scheme, "/", null).getScheme())) {
                 return;
             }
