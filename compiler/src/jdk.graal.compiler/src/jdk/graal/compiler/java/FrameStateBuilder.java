@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1116,7 +1116,11 @@ public final class FrameStateBuilder implements SideEffectsState {
         return result;
     }
 
-    private static boolean equals(ValueNode[] a, ValueNode[] b, int length) {
+    private static boolean equals(ValueNode[] a, ValueNode[] b) {
+        return a.length == b.length && prefixEquals(a, b, a.length);
+    }
+
+    private static boolean prefixEquals(ValueNode[] a, ValueNode[] b, int length) {
         for (int i = 0; i < length; ++i) {
             if (a[i] != b[i]) {
                 return false;
@@ -1147,11 +1151,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             if (other.graph != graph) {
                 return false;
             }
-            if (other.locals.length != locals.length) {
-                return false;
-            }
-            return equals(other.locals, locals, locals.length) && equals(other.stack, stack, stackSize) && equals(other.lockedObjects, lockedObjects, lockedObjects.length) &&
-                            equals(other.monitorIds, monitorIds, monitorIds.length);
+            return equals(other.locals, locals) && prefixEquals(other.stack, stack, stackSize) && equals(other.lockedObjects, lockedObjects) && equals(other.monitorIds, monitorIds);
         }
         return false;
     }
