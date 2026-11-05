@@ -230,15 +230,11 @@ public class CountedLoopInfo {
      * </pre>
      *
      * the limit checked IV will be a {@link DerivedOffsetInductionVariable} with the constant
-     * offset {@code 5}. In this case the {@link CountedLoopInfo#getBodyIV()} will be the
-     * {@link DerivedOffsetInductionVariable#getBase()} of the {@link #getLimitCheckedIV()}. This is
-     * the regular IV {@code i}. Most {@link #isInverted()} inverted loops have a shape where the
-     * limit checked IV is a {@link DerivedInductionVariable}.
+     * offset {@code 5}. For this head-counted loop, {@link #getBodyIV()} returns the same derived IV.
+     * In an inverted loop, the limit check may instead use the next iteration's value of
+     * {@link #getBodyIV()}.
      *
-     * @return the {@link InductionVariable} compared ({@link CompareNode}) to
-     *         {@link CountedLoopInfo#getLimit()}. If this loop is
-     *         {@link CountedLoopInfo#isInverted()} returns to next iteration iv based on
-     *         {@link CountedLoopInfo#getBodyIV()}.
+     * @return the {@link InductionVariable} compared to {@link #getLimit()} by the loop exit test
      */
     public InductionVariable getLimitCheckedIV() {
         return limitCheckedIV;
@@ -527,10 +523,12 @@ public class CountedLoopInfo {
     }
 
     /**
-     * @return true if the loop has constant bounds.
+     * @return true if the trip-count limit, body IV start, and limit-checked IV stride are constant.
      */
     public boolean isConstantMaxTripCount() {
-        return getTripCountLimit() instanceof ConstantNode && getLimitCheckedIV().isConstantInit() && getLimitCheckedIV().isConstantStride();
+        // Avoid constructing a derived IV start unless its inputs are constant.
+        return getTripCountLimit() instanceof ConstantNode && getBodyIV().isConstantInit() && getLimitCheckedIV().isConstantStride() &&
+                        getBodyIVStart() instanceof ConstantNode;
     }
 
     public UnsignedLong constantMaxTripCount() {
