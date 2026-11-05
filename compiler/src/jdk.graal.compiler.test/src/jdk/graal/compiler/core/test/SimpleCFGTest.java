@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -206,7 +206,7 @@ public class SimpleCFGTest extends GraalCompilerTest {
         AbstractBeginNode falseBegin = graph.add(new BeginNode());
         falseBegin.setNext(falseEnd);
 
-        IfNode ifNode = graph.add(new IfNode(null, trueBegin, falseBegin, BranchProbabilityData.unknown()));
+        IfNode ifNode = graph.add(new IfNode(null, trueBegin, falseBegin, BranchProbabilityData.injected(0.25)));
         graph.start().setNext(ifNode);
 
         AbstractMergeNode merge = graph.add(new MergeNode());
@@ -217,7 +217,8 @@ public class SimpleCFGTest extends GraalCompilerTest {
 
         dumpGraph(graph);
 
-        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(true).build();
+        ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).modifiableBlocks(true).connectBlocks(true).computeLoops(true).computeDominators(true).computePostdominators(true).computeFrequency(
+                        true).build();
 
         HIRBlock[] blocks = cfg.getBlocks();
         // check number of blocks
@@ -250,6 +251,13 @@ public class SimpleCFGTest extends GraalCompilerTest {
         assertPostdominator(blocks[1], blocks[3]);
         assertPostdominator(blocks[2], blocks[3]);
         assertPostdominator(blocks[3], null);
+
+        // Bypass the false-arm block without changing either edge probability.
+        blocks[2].delete();
+        Assert.assertSame(blocks[1], blocks[0].getSuccessorAt(0));
+        Assert.assertSame(blocks[3], blocks[0].getSuccessorAt(1));
+        Assert.assertEquals(0.25, blocks[0].getSuccessorProbabilityAt(0), 0.0);
+        Assert.assertEquals(0.75, blocks[0].getSuccessorProbabilityAt(1), 0.0);
     }
 
     public static void assertDominator(HIRBlock block, HIRBlock expectedDominator) {
