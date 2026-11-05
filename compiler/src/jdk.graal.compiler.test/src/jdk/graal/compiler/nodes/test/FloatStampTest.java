@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,9 @@ import jdk.graal.compiler.util.EconomicHashSet;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -440,4 +442,20 @@ public class FloatStampTest extends GraphTest {
             }
         }
     }
+
+    private static ArithmeticOpTable conversionTable(FloatConvertOp... conversions) {
+        return new ArithmeticOpTable(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                        null, null, null, null, null, conversions);
+    }
+
+    @Test
+    public void testReorderedFloatConversionsHaveEqualHashes() {
+        FloatConvertOp toInt = FloatStamp.OPS.getFloatConvert(FloatConvert.F2I);
+        FloatConvertOp toLong = FloatStamp.OPS.getFloatConvert(FloatConvert.F2L);
+        ArithmeticOpTable first = conversionTable(toInt, toLong);
+        ArithmeticOpTable reordered = conversionTable(toLong, toInt);
+        assertEquals(first, reordered);
+        assertEquals(first.hashCode(), reordered.hashCode());
+    }
+
 }
