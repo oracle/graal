@@ -128,9 +128,15 @@ assembly_instruction :
   | binary_op64
   | binary_op
   | imul_div
+  | fma_op
   | jump
   | int_value
   )
+  ;
+
+fma_op :
+  op=( 'vfmadd231ps' | 'vfmadd231pd' | 'vminps' | 'vminpd' | 'vmaxps' | 'vmaxpd' )
+  a=operand ',' b=operand ',' c=operand          { factory.createTernaryOperation($op.getText(), $a.op, $b.op, $c.op); }
   ;
 
 int_value :
