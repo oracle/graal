@@ -146,7 +146,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public MemoryAccessProvider getMemoryAccessProvider() {
-        return EmptyMemoryAccessProvider.SINGLETON;
+        return NonFoldingMemoryAccessProvider.SINGLETON;
     }
 
     @Override
