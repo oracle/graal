@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -57,6 +58,18 @@ public interface ReflectionHostedSupport {
     void retainReflectionFieldsAfterRuntimeMetadataEncoding();
 
     Map<AnalysisType, Map<AnalysisMethod, ConditionalRuntimeValue<Executable>>> getReflectionExecutables();
+
+    /**
+     * Returns the run-time availability of type-access registrations contributed in the current
+     * image layer, or {@code null} when this layer has no such registration.
+     */
+    RuntimeDynamicAccessMetadata getTypeRegistrationMetadata(Class<?> type);
+
+    /**
+     * Returns the run-time availability of executable-access registrations contributed in the
+     * current image layer, or {@code null} when this layer has no such registration.
+     */
+    RuntimeDynamicAccessMetadata getMethodRegistrationMetadata(Executable executable);
 
     /** Returns the original guest accessor constant, or {@link JavaConstant#NULL_POINTER} if absent. */
     JavaConstant getAccessor(AnalysisMethod method);

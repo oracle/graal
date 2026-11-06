@@ -185,9 +185,13 @@ public final class Support {
     }
 
     public static JNIObjectHandle getObjectArgument(JNIObjectHandle thread, int slot) {
+        return getObjectArgument(thread, 0, slot);
+    }
+
+    public static JNIObjectHandle getObjectArgument(JNIObjectHandle thread, int depth, int slot) {
         assert thread.notEqual(nullHandle()) || jvmtiVersion() != JvmtiInterface.JVMTI_VERSION_19 : "JDK-8292657";
         WordPointer handlePtr = StackValue.get(WordPointer.class);
-        if (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), thread, 0, slot, handlePtr) != JvmtiError.JVMTI_ERROR_NONE) {
+        if (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), thread, depth, slot, handlePtr) != JvmtiError.JVMTI_ERROR_NONE) {
             return nullHandle();
         }
         return handlePtr.read();
