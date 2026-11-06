@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -267,7 +267,7 @@ public final class ArithmeticOpTable {
         }
 
         this.hash = Objects.hash(neg, add, sub, mul, div, rem, not, and, or, xor, shl, shr, ushr, abs, sqrt, zeroExtend, signExtend, narrow, max, min, umax, umin, sadd, ssub, suadd, susub, fma,
-                        reinterpret, compress, expand, Arrays.hashCode(floatConvert));
+                        reinterpret, compress, expand, Arrays.hashCode(this.floatConvert));
     }
 
     @Override
@@ -559,12 +559,7 @@ public final class ArithmeticOpTable {
             return false;
         }
         ArithmeticOpTable that = (ArithmeticOpTable) obj;
-        if (opsEquals(that)) {
-            if (Arrays.equals(this.floatConvert, that.floatConvert)) {
-                return true;
-            }
-        }
-        return false;
+        return opsEquals(that) && Arrays.equals(this.floatConvert, that.floatConvert);
     }
 
     @Override
