@@ -63,6 +63,34 @@ public class CountedStripMiningRegressionTest extends GraalCompilerTest {
         return var0;
     }
 
+    /// Sums array elements while a countdown also contributes to the return value.
+    public static long countdownArrayLoop(int start, int[] array) {
+        long sum = 1;
+        int i = start & 15;
+        do {
+            sum += array[99 - i];
+            i--;
+        } while (i >= 0);
+        return i + sum;
+    }
+
+    /// Verifies that an increasing unsigned array index does not collapse its decreasing base IV.
+    @Test(timeout = 30_000)
+    public void testCountdownArrayLoop() {
+        int[] array = new int[100];
+        OptionValues options = new OptionValues(getInitialOptions(), CountedStripMiningPhase.Options.StripMineALot, true);
+        test(options, "countdownArrayLoop", 2, array);
+        for (int i = 0; i < array.length; i++) {
+            array[i] = i - 50;
+        }
+        // Small strips also exercise updates of the original counter across outer backedges.
+        OptionValues smallStrips = new OptionValues(options, CountedStripMiningPhase.Options.CountedStripMiningInnerLoopTrips, 2);
+        for (int start = 0; start < 16; start++) {
+            test(options, "countdownArrayLoop", start, array);
+            test(smallStrips, "countdownArrayLoop", start, array);
+        }
+    }
+
     public static int longIntLoop(int limit) {
         int result = 0;
         for (int i = 0; i < limit; i++) {
