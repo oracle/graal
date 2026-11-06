@@ -30,8 +30,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Documents the expected guest type represented by a builder-side value. This annotation is purely
- * informational and does not affect guest invocation, host-proxy conversion, or validation.
+ * Documents the expected guest type represented by a builder-side value, including parameters and
+ * return values of {@link GuestInvoked} methods. It can also be used outside guest-invoked
+ * callbacks. This annotation is informational and does not affect guest invocation, host-proxy
+ * conversion, or validation.
+ * Use a primitive class literal through {@link #value()}, such as {@code @GuestType(int.class)},
+ * when a builder-side value represents a guest primitive.
  *
  * A class literal identifies the expected guest type by name; it does not imply that host and guest
  * classes have the same identity or trigger guest type resolution. The string form can be used when
@@ -50,6 +54,8 @@ import java.lang.annotation.Target;
  *
  * An array type hint describes the guest array represented by a value, not a builder-side array of
  * values.
+ *
+ * @see GuestInvoked
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE_USE)
