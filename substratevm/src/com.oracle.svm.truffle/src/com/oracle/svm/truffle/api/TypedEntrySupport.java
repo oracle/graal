@@ -148,6 +148,7 @@ import jdk.graal.compiler.nodes.extended.UnboxNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderTool;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
@@ -393,7 +394,8 @@ public final class TypedEntrySupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerExactEntryPlugin(GraphBuilderConfiguration.Plugins plugins, Method[] entries) {
         for (Method entryMethod : entries) {
-            plugins.getInvocationPlugins().register(entryMethod.getDeclaringClass(), new RequiredInvocationPlugin(entryMethod.getName(), entryMethod.getParameterTypes()) {
+            /* Keep each entry's Java body as the compiled fallback; intrinsify only its callers. */
+            plugins.getInvocationPlugins().register(entryMethod.getDeclaringClass(), new RequiredInlineOnlyInvocationPlugin(entryMethod.getName(), entryMethod.getParameterTypes()) {
                 @Override
                 public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode[] arguments) {
                     TypedEntrySupport support = singleton();
