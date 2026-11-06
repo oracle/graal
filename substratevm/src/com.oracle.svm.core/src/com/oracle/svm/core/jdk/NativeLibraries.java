@@ -155,6 +155,7 @@ public abstract class NativeLibraries {
             String canonical = builtin ? file.getName() : file.getCanonicalPath();
             return addLibrary(canonical, builtin, initialize);
         } catch (IOException e) {
+            e.printStackTrace();
             return false;
         }
     }
