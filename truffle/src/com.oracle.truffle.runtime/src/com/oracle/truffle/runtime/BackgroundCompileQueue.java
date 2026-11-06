@@ -335,6 +335,9 @@ public class BackgroundCompileQueue {
                         DynamicCompilationThresholds dynamicCompilationThresholds) {
             super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory);
             this.dynamicCompilationThresholds = dynamicCompilationThresholds;
+            if (workQueue instanceof TraversingBlockingQueue traversingQueue) {
+                traversingQueue.onDiscard = this::taskFinished;
+            }
         }
 
         void flush(EngineData engine) {
@@ -397,7 +400,11 @@ public class BackgroundCompileQueue {
         @Override
         protected void afterExecute(Runnable r, Throwable t) {
             super.afterExecute(r, t);
-            allTargets.remove(r);
+            taskFinished(r);
+        }
+
+        private void taskFinished(Runnable task) {
+            allTargets.remove(task);
         }
 
         @Override
