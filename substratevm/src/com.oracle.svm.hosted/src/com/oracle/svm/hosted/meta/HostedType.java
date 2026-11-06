@@ -173,13 +173,17 @@ public abstract class HostedType extends HostedElement implements SharedType, Dy
     /**
      * A more precise subtype that can replace this type as the declared type of values.
      * <p>
-     * A {@code null} value means that this type is never instantiated and does not have any
-     * instantiated subtype, i.e., no value of this type can ever exist and the code using this type
-     * is unreachable. It is set to this type if this type is itself instantiated or has more than
-     * one instantiated direct subtype, i.e, this type cannot be strengthened.
+     * A {@code null} value means that no non-null value of this type or any subtype can exist,
+     * including through permitted extensions. Graph strengthening can then replace a nullable
+     * stamp with an always-null stamp or a non-null stamp with an empty stamp. The field is set to
+     * this type itself when no narrower bound can be justified.
      * <p>
      * In open-world analysis the field is set to this type itself for non-leaf types since we have
      * to assume that there may be some instantiated subtypes that we haven't seen yet.
+     * Uninstantiated non-core types with object storage also retain this type: even a final type
+     * can receive its first instance in a later layer. A complete subtype hierarchy does not
+     * establish a complete set of allocations. Preserving this bound does not mark the type as
+     * instantiated in analysis.
      */
     protected Object strengthenStampType = UNINITIALIZED;
 

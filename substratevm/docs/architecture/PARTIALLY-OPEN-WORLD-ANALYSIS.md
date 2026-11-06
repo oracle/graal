@@ -62,6 +62,10 @@ The completeness of parameter and return flows is a separate analysis property.
 
 **External allocation.** Knowing the complete type hierarchy does not establish which types extensions may instantiate.
 The analysis must represent those possible instances, including instances of known types that have no allocation site in analyzed code.
+A final non-core type can be reachable but uninstantiated in a shared layer's analysis, while an application layer creates its first instance and passes it to code compiled in the shared layer.
+Global type summaries used by graph strengthening must retain a valid bound for such values; the current absence of instances does not prove that a value is always null or that its use is unreachable.
+This obligation applies independently of guards that reject saturated flows or prevent strengthening from open-field state.
+Retaining a conservative global stamp does not register an allocation: recovery of a finite type approximation still requires coverage of every permitted runtime type as described below.
 
 **Flow completeness.** The guarantees above constrain permitted extensions.
 The analysis must also represent their possible effects at each program point.

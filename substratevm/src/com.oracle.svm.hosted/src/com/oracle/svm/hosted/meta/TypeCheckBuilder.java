@@ -54,9 +54,9 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.guest.staging.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.OpenTypeWorldFeature;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
 import jdk.graal.compiler.debug.Assertions;
@@ -592,7 +592,14 @@ public final class TypeCheckBuilder {
                      */
                     type.uniqueConcreteImplementation = type.isWordType() ? null : type;
                 } else {
-                    type.strengthenStampType = null;
+                    /*
+                     * A final type has no future subtypes, but application code can still create
+                     * its first instance in a later layer. The type may be known only through a method
+                     * signature and need not yet be reachable. Only core types have a closed set of
+                     * allocations in an open type world.
+                     */
+                    boolean mayBeInstantiatedLater = !isClosedTypeWorld && type.getStorageKind().isObject() && !type.getWrapped().getUniverse().hostVM().isCoreType(type.getWrapped());
+                    type.strengthenStampType = mayBeInstantiatedLater ? type : null;
                     type.uniqueConcreteImplementation = null;
                 }
             } else if (subtypeStampType.equals(type)) {
