@@ -286,28 +286,29 @@ public class HexCodeFile {
 
     public void writeTo(OutputStream out) {
         PrintStream ps = out instanceof PrintStream ? (PrintStream) out : new PrintStream(out);
-        ps.printf("Platform %s %d %s%n", isa, wordWidth, SECTION_DELIM);
+        // Avoid initializing locale data when compiler threads write diagnostics.
+        ps.printf("Platform %s %s %s%n", isa, wordWidth, SECTION_DELIM);
         ps.printf("HexCode %x %s %s%n", startAddress, HexCodeFile.hexCodeString(code), SECTION_DELIM);
 
         for (JumpTable table : jumpTables) {
-            ps.printf("JumpTable %d %s %d %d %s%n", table.position, table.entryFormat, table.low, table.high, SECTION_DELIM);
+            ps.printf("JumpTable %s %s %s %s %s%n", table.position, table.entryFormat, table.low, table.high, SECTION_DELIM);
         }
 
         for (LookupTable table : lookupTables) {
-            ps.printf("LookupTable %d %d %d %d %s%n", table.position, table.npairs, table.keySize, table.keySize, SECTION_DELIM);
+            ps.printf("LookupTable %s %s %s %s %s%n", table.position, table.npairs, table.keySize, table.keySize, SECTION_DELIM);
         }
 
         for (Map.Entry<Integer, List<String>> e : comments.entrySet()) {
             int pos = e.getKey();
             for (String comment : e.getValue()) {
-                ps.printf("Comment %d %s %s%n", pos, comment, SECTION_DELIM);
+                ps.printf("Comment %s %s %s%n", pos, comment, SECTION_DELIM);
             }
         }
 
         for (Map.Entry<Integer, List<String>> e : operandComments.entrySet()) {
             int pos = e.getKey();
             for (String comment : e.getValue()) {
-                ps.printf("OperandComment %d %s %s%n", pos, comment, SECTION_DELIM);
+                ps.printf("OperandComment %s %s %s%n", pos, comment, SECTION_DELIM);
             }
         }
         ps.flush();
