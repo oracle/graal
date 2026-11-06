@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,8 +35,18 @@ import java.lang.annotation.Target;
 public @interface BundleMember {
     Role role();
 
+    /// Prefix identifying path-valued entries inside a string option; other entries are unchanged.
+    String valuePrefix() default "";
+
+    /// Delimiter for those entries. An empty value uses the option's own delimiter.
+    String delimiter() default "";
+
     enum Role {
         Input,
+        /**
+         * A reference to an input captured by another option; does not capture new files.
+         */
+        InputReference,
         Output,
         Ignore
     }

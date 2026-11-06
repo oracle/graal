@@ -25,7 +25,6 @@
 
 package com.oracle.svm.shared.option;
 
-import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
@@ -35,7 +34,6 @@ import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -88,7 +86,18 @@ public abstract class OptionOrigin {
      * Depending on the specific kind of OptionOrigin the method to retrieve those values can
      * require different implementations.
      */
-    public List<String> getRedirectionValues(@SuppressWarnings("unused") Path valuesFile) throws IOException {
+    public List<String> getRedirectionValues(Path valuesFile) throws IOException {
+        return readRedirectionFile(valuesFile).lines().filter(line -> !line.isEmpty() && !line.startsWith("#")).toList();
+    }
+
+    /// Resolves a referenced path relative to this origin's container, retaining any leading `..` components.
+    public Path resolveRedirectionPath(Path valuesFile) {
+        Path originLocation = location();
+        return (originLocation == null ? valuesFile : originLocation.resolveSibling(valuesFile)).normalize();
+    }
+
+    /// Reads a redirection file relative to this origin, preserving its contents for argument-file parsing.
+    public String readRedirectionFile(@SuppressWarnings("unused") Path valuesFile) throws IOException {
         throw new IOException(new UnsupportedOperationException());
     }
 
@@ -153,22 +162,9 @@ public abstract class OptionOrigin {
         }
     }
 
-    static List<String> getRedirectionValuesFromPath(Path normalizedRedirPath) throws IOException {
+    static String readRedirectionFileFromPath(Path normalizedRedirPath) throws IOException {
         if (Files.isReadable(normalizedRedirPath)) {
-            try (BufferedReader reader = Files.newBufferedReader(normalizedRedirPath)) {
-                List<String> values = new ArrayList<>();
-                while (true) {
-                    String line = reader.readLine();
-                    if (line == null) {
-                        break;
-                    }
-                    if (line.isEmpty() || line.startsWith("#")) {
-                        continue;
-                    }
-                    values.add(line);
-                }
-                return values;
-            }
+            return Files.readString(normalizedRedirPath);
         }
         throw new FileNotFoundException("Unable to read file from " + normalizedRedirPath.toUri());
     }
@@ -289,9 +285,9 @@ final class MacroOptionOrigin extends OptionOrigin {
     }
 
     @Override
-    public List<String> getRedirectionValues(Path valuesFile) throws IOException {
-        var normalizedRedirPath = optionDirectory.resolve(valuesFile).normalize();
-        return getRedirectionValuesFromPath(normalizedRedirPath);
+    public String readRedirectionFile(Path valuesFile) throws IOException {
+        var normalizedRedirPath = optionDirectory.resolve(resolveRedirectionPath(valuesFile)).normalize();
+        return readRedirectionFileFromPath(normalizedRedirPath);
     }
 }
 
@@ -347,10 +343,15 @@ final class JarOptionOrigin extends URIOptionOrigin {
         location = Path.of(specific.substring(sep + 2));
     }
 
-    @SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification = "location()).getParent() is never null")
+    @Override
+    public Path resolveRedirectionPath(Path valuesFile) {
+        // ZIP paths treat both slash characters as separators, including on Unix.
+        return Path.of(super.resolveRedirectionPath(valuesFile).toString().replace('\\', '/')).normalize();
+    }
+
     @SuppressWarnings("try")
     @Override
-    public List<String> getRedirectionValues(Path valuesFile) throws IOException {
+    public String readRedirectionFile(Path valuesFile) throws IOException {
         URI jarFileURI = URI.create("jar:" + container());
         FileSystem probeJarFS;
         boolean cleanup = false;
@@ -364,9 +365,8 @@ final class JarOptionOrigin extends URIOptionOrigin {
             throw new IOException("Unable to create jar file system for " + jarFileURI);
         }
         try {
-            var normalizedRedirPath = location().getParent().resolve(valuesFile).normalize();
-            List<String> values = getRedirectionValuesFromPath(probeJarFS.getPath("/", normalizedRedirPath.toString()));
-            return values;
+            var normalizedRedirPath = resolveRedirectionPath(valuesFile);
+            return readRedirectionFileFromPath(probeJarFS.getPath("/", normalizedRedirPath.toString()));
         } finally {
             if (cleanup) {
                 probeJarFS.close();
@@ -393,10 +393,9 @@ final class DirectoryOptionOrigin extends URIOptionOrigin {
         location = originPath.subpath(metaInfPos, originPath.getNameCount());
     }
 
-    @SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification = "location()).getParent() is never null")
     @Override
-    public List<String> getRedirectionValues(Path valuesFile) throws IOException {
-        var normalizedRedirPath = Path.of(container()).resolve(location()).getParent().resolve(valuesFile).normalize();
-        return getRedirectionValuesFromPath(normalizedRedirPath);
+    public String readRedirectionFile(Path valuesFile) throws IOException {
+        var normalizedRedirPath = Path.of(container()).resolve(resolveRedirectionPath(valuesFile)).normalize();
+        return readRedirectionFileFromPath(normalizedRedirPath);
     }
 }
