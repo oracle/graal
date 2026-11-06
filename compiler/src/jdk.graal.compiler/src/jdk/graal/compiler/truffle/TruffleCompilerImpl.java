@@ -324,8 +324,19 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     // Hook for SVM
     protected TruffleTier newTruffleTier(OptionValues options) {
         return new TruffleTier(options,
-                        new InstrumentationSuite(partialEvaluator.instrumentationCfg, partialEvaluator.getInstrumentation()),
+                        newInstrumentationSuite(),
                         new PostPartialEvaluationSuite(options, TruffleCompilerOptions.IterativePartialEscape.getValue(options)));
+    }
+
+    /**
+     * Creates the instrumentation suite. The instrumentation access table
+     * ({@link TruffleCompilerOptions#InstrumentationTableSize} entries) is only allocated when
+     * branch or boundary instrumentation is enabled, since only those phases use it.
+     */
+    protected final InstrumentationSuite newInstrumentationSuite() {
+        InstrumentPhase.InstrumentationConfiguration cfg = partialEvaluator.instrumentationCfg;
+        boolean instrumented = cfg.instrumentBranches || cfg.instrumentBoundaries;
+        return new InstrumentationSuite(cfg, instrumented ? partialEvaluator.getInstrumentation() : null);
     }
 
     /**
