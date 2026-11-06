@@ -932,7 +932,7 @@ public abstract class OptimizedCallTarget extends RuntimeCallTarget implements T
         return initialized;
     }
 
-    private synchronized void initialize(boolean validate) {
+    synchronized void initialize(boolean validate) {
         if (!initialized) {
             if (isSourceCallTarget() && rootNode.isCloningAllowed() && !OptimizedRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
                 // We are the source CallTarget, so make a copy.

@@ -113,17 +113,19 @@ The cache store and load operations can be controlled using the following option
 * `--engine.TraceCache=<boolean>` Enables debug output.
 * `--engine.TraceCompilation=<boolean>` Prints forced compilations.
 
-The compilation of roots may be forced when an image is stored using the `--engine.CacheCompile=<policy>` option. The supported policies are:
+The `--engine.CacheCompile=<policy>` option controls compilation before persisting the engine.
+The supported policies are:
 
-* `none`: No compilations will be persisted, and existing compilations will be invalidated.
-* `compiled`: No compilations will be forced, but finished compilations will be persisted.
-* `hot`: All started compilations will be completed and then persisted. (default)
-* `aot`: All started, and AOT compilable roots will be forced to compile and persisted.
-* `executed`: All executed and all AOT compilable roots will be forced to compile.
+* `none`: Invalidate existing compilations and persist no compiled code.
+* `compiled`: Persist existing compiled code without forcing new compilations.
+  Cancel unfinished compilations and wait for them to terminate.
+* `hot` (default): Wait for pending compilations, then compile roots that meet the runtime compilation thresholds.
+  Also compile the parent roots of valid on-stack replacement (OSR) compilations.
+* `aot`: Like `hot`, plus uninitialized roots that support AOT preparation.
+* `executed`: Like `aot`, but compile initialized roots regardless of compilation thresholds.
 
-By default, all started compilations in the compile queue will be completed and then persisted.
-Whether a function root is AOT compilable is determined by the language.
-A language supports AOT by implementing `RootNode.prepareForAOT()`.
+OSR roots themselves are not forced to compile.
+Whether a root supports AOT preparation is determined by the language through `RootNode.prepareForAOT()`.
 
 An update policy can be specified if both load and store operations are set using the `--engine.CacheUpdate=<policy>` option.
 Available policies are:
