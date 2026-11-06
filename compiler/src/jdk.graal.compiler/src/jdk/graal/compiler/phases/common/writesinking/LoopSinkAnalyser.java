@@ -531,6 +531,16 @@ public class LoopSinkAnalyser {
             // Build the state to be used for further processing.
             BlockState loopState = new BlockState();
             analysis.inheritInto(cloneState(initialState), loopState, allowModifyGraph ? loopBegin.graph() : null);
+            for (CacheEntry key : initialState.getEntries()) {
+                CacheData incoming = initialState.getCacheData(key);
+                CacheData nested = analysis.data.getCacheData(key);
+                if (incoming.isConditional() && nested != null && nested.isConditional()) {
+                    // One loop guard cannot represent a write from either of two inner loops.
+                    // Forget the earlier candidates, but allow a later unconditional overwrite.
+                    sinkableNodes.removeKey(key.identity);
+                    loopState.getMovableWrites().killWritesUntil(key.identity, null, unit);
+                }
+            }
 
             // The initial state for the loop is complete, continue processing.
             ReentrantBlockIterator.LoopInfo<BlockState> loopInfo = ReentrantBlockIterator.processLoop(this, inner, loopState);

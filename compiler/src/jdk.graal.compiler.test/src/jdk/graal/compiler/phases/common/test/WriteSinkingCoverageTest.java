@@ -119,6 +119,19 @@ public class WriteSinkingCoverageTest extends GraalCompilerTest {
         return box.a;
     }
 
+    public static int adjacentInnerLoopsThenOverwriteSnippet(WriteSinkingCoverageBox box, int[] first, int[] second, int limit) {
+        for (int j = 0; j < limit; j++) {
+            for (int i = 0; i < first[j]; i++) {
+                box.a = i;
+            }
+            for (int i = 0; i < second[j]; i++) {
+                box.a = i + 10;
+            }
+            box.a = j + 100;
+        }
+        return box.a;
+    }
+
     public static int constantArraySnippet(int[] values, int limit) {
         for (int i = 0; i < limit; i++) {
             values[0] = i;
@@ -256,6 +269,14 @@ public class WriteSinkingCoverageTest extends GraalCompilerTest {
         assertLoopWritesDecrease("constantArraySnippet", null);
         test(writeSinkingOptions(), "simpleFieldSnippet", new WriteSinkingCoverageBox(), LOOP_LIMIT);
         test(writeSinkingOptions(), "constantArraySnippet", new int[]{0}, LOOP_LIMIT);
+    }
+
+    @Test
+    public void laterUnconditionalWriteStillSinksAfterAdjacentInnerLoops() {
+        OptionValues options = new OptionValues(writeSinkingOptions(), GraalOptions.GenLoopSafepoints, false);
+        assertLoopWritesDecrease("adjacentInnerLoopsThenOverwriteSnippet", options);
+        Result result = test(options, "adjacentInnerLoopsThenOverwriteSnippet", new WriteSinkingCoverageBox(), new int[]{0, 1, 0}, new int[]{0, 0, 1}, 3);
+        Assert.assertEquals(102, result.returnValue);
     }
 
     /**
