@@ -42,6 +42,7 @@ import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.util.UnsignedUtils;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
@@ -103,10 +104,16 @@ abstract class HeapAllocation {
             return result;
         }
 
+        return attemptAllocationLocked(minSize, requestedSize, actualSize);
+    }
+
+    @NeverInline("Keep locking and chunk acquisition out of allocation slow paths.")
+    @Uninterruptible(reason = "Returns uninitialized memory and acquires a lock without a thread state transition.", callerMustBe = true)
+    private Pointer attemptAllocationLocked(UnsignedWord minSize, UnsignedWord requestedSize, WordPointer actualSize) {
         JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {
-            // Another thread might already have allocated a new chunk.
-            result = attemptAllocationParallel(retainedChunk, minSize, requestedSize, actualSize);
+            /* Another thread might already have allocated a new chunk. */
+            Pointer result = attemptAllocationParallel(retainedChunk, minSize, requestedSize, actualSize);
             if (result.isNonNull()) {
                 return result;
             }

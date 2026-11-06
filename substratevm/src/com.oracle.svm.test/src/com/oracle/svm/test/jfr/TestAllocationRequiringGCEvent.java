@@ -59,7 +59,7 @@ public class TestAllocationRequiringGCEvent extends JfrRecordingTest {
     private static void validateEvents(List<RecordedEvent> events) {
         assertFalse(events.isEmpty());
         for (RecordedEvent event : events) {
-            checkTopStackFrame(event, "maybeCollectOnAllocation");
+            checkTopStackFrame(event, "collectOnAllocation");
         }
     }
 

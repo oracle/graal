@@ -46,6 +46,7 @@ public final class NoAllocationVerifier implements AutoCloseable {
     private static final FastThreadLocalObject<NoAllocationVerifier> openVerifiers = FastThreadLocalFactory.createObject(NoAllocationVerifier.class, "NoAllocationVerifier.openVerifiers");
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */
+    @NeverInline("Keep allocation failure diagnostics out of allocation slow paths.")
     public static RuntimeException exit(final String callSite, final String typeName) {
         Log.log().string("[NoAllocationVerifier detected disallowed allocation: ").string(callSite).string(": ").string(typeName).newline();
         if (openVerifiers.get() != null) {

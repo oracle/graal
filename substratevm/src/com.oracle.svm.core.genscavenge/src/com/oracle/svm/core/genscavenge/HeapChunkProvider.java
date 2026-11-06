@@ -44,6 +44,7 @@ import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicUnsigned;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.UnsignedUtils;
 
@@ -269,6 +270,7 @@ final class HeapChunkProvider {
 
     /** Acquire an UnalignedHeapChunk from the operating system. */
     @SuppressWarnings("static-method")
+    @NeverInline("Keep unaligned chunk acquisition and initialization out of allocation slow paths.")
     @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     UnalignedHeader produceUnalignedChunk(UnsignedWord objectSize) {
         UnsignedWord chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objectSize);

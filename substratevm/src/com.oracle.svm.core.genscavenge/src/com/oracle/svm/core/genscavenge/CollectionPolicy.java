@@ -54,9 +54,13 @@ public interface CollectionPolicy {
     void updateSizeParameters();
 
     /**
-     * During a slow-path allocation, determines whether to trigger a collection. Returning
-     * {@code true} will initiate a safepoint during which {@link #shouldCollectCompletely} will be
-     * called followed by the collection.
+     * Determines whether a slow-path allocation requires a collection. The result is rechecked
+     * before initiating a safepoint and before executing the collection because another GC in the
+     * meanwhile may have made the request unnecessary. Collecting policies must not allocate,
+     * block, or modify policy state here. They must support calls both before and during a safepoint.
+     * <p>
+     * A policy that never collects checks the heap limit and throws an {@link OutOfMemoryError}
+     * if it is exceeded. Otherwise, it returns {@code false}.
      */
     boolean shouldCollectOnAllocation();
 

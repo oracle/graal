@@ -40,6 +40,8 @@ import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.util.UnsignedUtils;
+import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
@@ -143,6 +145,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
+    @AlwaysInline("Keep the size initialization check inline in allocation slow paths.")
     public void ensureSizeParametersInitialized() {
         if (!sizes.isInitialized()) {
             updateSizeParameters();
@@ -166,6 +169,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
      * threads could overwrite more recent values with outdated values).
      */
     @Override
+    @NeverInline("Keep size calculations and locking out of allocation slow paths.")
     public void updateSizeParameters() {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {

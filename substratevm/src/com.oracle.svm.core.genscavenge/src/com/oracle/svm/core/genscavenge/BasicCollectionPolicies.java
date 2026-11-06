@@ -28,7 +28,9 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.guest.staging.core.heap.GCCause;
+import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
@@ -107,8 +109,13 @@ final class BasicCollectionPolicies {
     static final class NeverCollect extends BasicPolicy {
 
         @Override
+        @AlwaysInline("Keep the allocation GC check inline in allocation slow paths.")
         public boolean shouldCollectOnAllocation() {
-            throw VMError.shouldNotReachHere("Caller is supposed to be aware of never-collect policy");
+            UnsignedWord edenUsed = HeapImpl.getAccounting().getEdenUsedBytes();
+            if (edenUsed.aboveThan(getMaximumHeapSize())) {
+                throw OutOfMemoryUtil.heapSizeExceeded();
+            }
+            return false;
         }
 
         @Override
