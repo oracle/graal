@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,9 +41,9 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This class maintains a set of known values, identified by base object, locations and offset.
@@ -331,6 +331,7 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         return potentiallyAliasingIndexedAccesses(l1, l2, o1, o2, i1, i2, null);
     }
 
+    /// Checks whether indexed accesses can alias, using array stamps when `metaAccess` is non-null.
     public static boolean potentiallyAliasingIndexedAccesses(LocationIdentity l1, LocationIdentity l2, ValueNode o1, ValueNode o2, ValueNode i1, ValueNode i2, MetaAccessProvider metaAccess) {
         assert l1 != null;
         assert l2 != null;
@@ -417,17 +418,14 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         }
         if (metaAccess != null) {
             /*
-             * We know nothing about the objects or the indices of the accesses: the objects we are
-             * processing are not the same node, however this does not guarantee that they are not
-             * the same object (i.e. two parameters where the caller supplies the same array 2
-             * times), therefore we try to check for this by checking their types and ensuring they
-             * are not cross assignable
+             * Distinct graph values can refer to the same array even if neither declared type is
+             * assignable to the other: Serializable[] and Comparable[] can both denote String[].
+             * Intersecting stamps preserves such shared concrete subtypes, while still proving
+             * disjointness for incompatible concrete array types. A null-only intersection also
+             * contains no array on which an indexed access can complete.
              */
-            Stamp o1S = o1.stamp(NodeView.DEFAULT);
-            Stamp o2S = o2.stamp(NodeView.DEFAULT);
-            ResolvedJavaType t1 = o1S.javaType(metaAccess);
-            ResolvedJavaType t2 = o2S.javaType(metaAccess);
-            if (!t1.isAssignableFrom(t2) && !t2.isAssignableFrom(t1)) {
+            Stamp overlap = o1.stamp(NodeView.DEFAULT).join(o2.stamp(NodeView.DEFAULT));
+            if (overlap.isEmpty() || StampTool.isPointerAlwaysNull(overlap)) {
                 return false;
             }
         }
