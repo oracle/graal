@@ -24,16 +24,24 @@
  */
 package com.oracle.svm.hosted.ameta;
 
+import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
+
+import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 
-public final class EmptyMemoryAccessProvider implements MemoryAccessProvider {
+/**
+ * Declines constant folding from memory by returning {@code null} (value unavailable) for every
+ * read query. Queries are permitted but never inspect memory, including for compressed object
+ * references.
+ */
+public final class NonFoldingMemoryAccessProvider implements SubstrateMemoryAccessProvider {
 
-    public static final MemoryAccessProvider SINGLETON = new EmptyMemoryAccessProvider();
+    public static final MemoryAccessProvider SINGLETON = new NonFoldingMemoryAccessProvider();
 
-    private EmptyMemoryAccessProvider() {
+    private NonFoldingMemoryAccessProvider() {
     }
 
     @Override
@@ -43,6 +51,11 @@ public final class EmptyMemoryAccessProvider implements MemoryAccessProvider {
 
     @Override
     public JavaConstant readObjectConstant(Constant base, long displacement) {
+        return null;
+    }
+
+    @Override
+    public JavaConstant readNarrowObjectConstant(Constant baseConstant, long displacement, CompressEncoding encoding) {
         return null;
     }
 }
