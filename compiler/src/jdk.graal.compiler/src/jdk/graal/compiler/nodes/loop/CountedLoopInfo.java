@@ -502,15 +502,7 @@ public class CountedLoopInfo {
             min = getTripCountLimit();
         }
         if (isLimitIncluded) {
-            /*
-             * An inclusive loop enters when min <= max. Rewriting this as min < max + 1 can
-             * overflow at either signed or unsigned maxima: a downward loop starting at MAX would
-             * then appear unentered even when its limit is smaller. Callers may delete the entire
-             * body based on this answer, so test the reversed strict comparison without arithmetic
-             * and reject entry only when max < min is proven, retaining unknown cases.
-             */
-            LogicNode noEntryCheck = getCounterIntegerHelper().createCompareNode(max, min, NodeView.DEFAULT);
-            return !noEntryCheck.isTautology();
+            return inclusiveLoopMightBeEntered(min, max);
         }
 
         LogicNode entryCheck = getCounterIntegerHelper().createCompareNode(min, max, NodeView.DEFAULT);
@@ -521,6 +513,26 @@ public class CountedLoopInfo {
             // We don't know for sure that the loop can't be entered, so assume it can.
             return true;
         }
+    }
+
+    /// Determines whether an inclusive loop might enter by checking `min <= max` with the counter's
+    /// signed or unsigned ordering. For an upward loop, `min` is the body IV start and `max` is the
+    /// trip-count limit; for a downward loop, these roles are reversed. These names describe the
+    /// endpoints' roles, not their relative values: `min` can exceed `max` in an unentered loop.
+    ///
+    /// For example, `for (int i = Integer.MAX_VALUE; i >= Integer.MAX_VALUE - 2; i--)` has
+    /// `min = Integer.MAX_VALUE - 2` and `max = Integer.MAX_VALUE` and enters three times. Rewriting
+    /// `min <= max` as `min < max + 1` would wrap `max + 1` to `Integer.MIN_VALUE`, incorrectly
+    /// classifying the loop as unentered. The same problem occurs at unsigned maxima.
+    ///
+    /// Tests the reversed strict comparison `max < min` without arithmetic and rejects entry only
+    /// when that comparison is proven true. Unknown cases must retain the loop because callers may
+    /// delete its entire body when this method returns `false`.
+    ///
+    /// @return false if the inclusive loop can definitely not be entered, true otherwise
+    private boolean inclusiveLoopMightBeEntered(ValueNode min, ValueNode max) {
+        LogicNode noEntryCheck = getCounterIntegerHelper().createCompareNode(max, min, NodeView.DEFAULT);
+        return !noEntryCheck.isTautology();
     }
 
     /**
