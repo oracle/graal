@@ -478,19 +478,15 @@ public class CountedLoopInfo {
         return null;
     }
 
-    /**
-     * Determine if the loop might be entered. Returns {@code false} if we can tell statically that
-     * the loop cannot be entered; returns {@code true} if the loop might possibly be entered,
-     * including in the case where we cannot be sure statically.
-     *
-     * @return false if the loop can definitely not be entered, true otherwise
-     */
+    /// Determines if the loop might be entered. Returns `false` if the loop statically cannot be
+    /// entered; returns `true` if the loop might possibly be entered, including when the entry
+    /// condition cannot be determined statically.
+    ///
+    /// @return false if the loop can definitely not be entered, true otherwise
     public boolean loopMightBeEntered() {
         if (isInverted()) {
             return true;
         }
-        Stamp stamp = getLimitCheckedIV().valueNode().stamp(NodeView.DEFAULT);
-
         ValueNode max;
         ValueNode min;
         if (getLimitCheckedIV().direction() == InductionVariable.Direction.Up) {
@@ -506,10 +502,15 @@ public class CountedLoopInfo {
             min = getTripCountLimit();
         }
         if (isLimitIncluded) {
-            // Ensure the constant is value numbered in the graph. Don't add other nodes to the
-            // graph, they will be dead code.
-            StructuredGraph graph = getLimitCheckedIV().valueNode().graph();
-            max = BinaryArithmeticNode.add(max, ConstantNode.forIntegerStamp(stamp, 1, graph), NodeView.DEFAULT);
+            /*
+             * An inclusive loop enters when min <= max. Rewriting this as min < max + 1 can
+             * overflow at either signed or unsigned maxima: a downward loop starting at MAX would
+             * then appear unentered even when its limit is smaller. Callers may delete the entire
+             * body based on this answer, so test the reversed strict comparison without arithmetic
+             * and reject entry only when max < min is proven, retaining unknown cases.
+             */
+            LogicNode noEntryCheck = getCounterIntegerHelper().createCompareNode(max, min, NodeView.DEFAULT);
+            return !noEntryCheck.isTautology();
         }
 
         LogicNode entryCheck = getCounterIntegerHelper().createCompareNode(min, max, NodeView.DEFAULT);
