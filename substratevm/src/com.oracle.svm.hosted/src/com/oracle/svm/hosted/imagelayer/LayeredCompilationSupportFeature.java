@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,6 +80,20 @@ public class LayeredCompilationSupportFeature extends LayeredCompilationSupport 
             registerCompilationBehavior(aMethod, registration.behavior);
         }
         queueRegistrations = null;
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        if (ImageLayerBuildingSupport.buildingInitialLayer()) {
+            for (AnalysisMethod method : ((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse().getMethods()) {
+                if (method.isPinnedToInitialLayer() && !method.isStatic()) {
+                    UserError.guarantee(method.getDeclaringClass().isAnySubtypeInstantiated(),
+                                    "Method %s is pinned to the initial layer but has no instantiated receiver type. " +
+                                                    "Register concrete receiver types in the initial layer; receivers introduced only in later layers cannot satisfy pinning.",
+                                    method.format("%H.%n(%p)"));
+                }
+            }
+        }
     }
 
     @Override
