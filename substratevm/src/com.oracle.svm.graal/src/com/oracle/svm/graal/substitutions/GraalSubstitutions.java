@@ -34,7 +34,9 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -356,6 +358,15 @@ final class Target_jdk_graal_compiler_replacements_nodes_AMD64MathIntrinsicBinar
 @TargetClass(value = AMD64MathIntrinsicUnaryOp.class, onlyWith = AnyRuntimeCompilationEnabled.class)
 @SuppressWarnings({"unused"})
 final class Target_jdk_graal_compiler_replacements_nodes_AMD64MathIntrinsicUnaryOp {
+}
+
+@TargetClass(className = "jdk.graal.compiler.annotation.AnnotationValueType")
+final class Target_jdk_graal_compiler_annotation_AnnotationValueType {
+    // Checkstyle: stop
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    private static Map<?, ?> ANNOTATION_TYPES; // Reset the cache for image heap to prevent PBTI error
+    // Checkstyle: resume
 }
 
 @TargetClass(value = BasePhase.class, onlyWith = GraalCompilerFeature.IsEnabled.class)

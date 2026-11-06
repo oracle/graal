@@ -48,8 +48,10 @@ import org.graalvm.nativeimage.ProcessProperties;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.shared.util.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.Resources;
@@ -290,6 +292,9 @@ final class Target_java_lang_VirtualThread_Web {
 @TargetClass(java.lang.System.class)
 @SuppressWarnings("unused")
 final class Target_java_lang_System_Web {
+
+    /* Do not retain a Console instance connected to the image builder. */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) private static volatile Console cons;
 
     @Substitute
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

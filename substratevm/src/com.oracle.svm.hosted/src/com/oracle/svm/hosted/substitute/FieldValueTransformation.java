@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.heap.TypedConstant;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.fieldvaluetransformer.JavaConstantWrapper;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
@@ -41,6 +40,7 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.InterceptedField;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 
@@ -72,7 +72,7 @@ public class FieldValueTransformation {
         return fieldValueTransformer;
     }
 
-    public JavaConstant readValue(AnalysisField field, JavaConstant receiver) {
+    public JavaConstant readValue(InterceptedField field, JavaConstant receiver) {
         ReadLock readLock = valueCacheLock.readLock();
         try {
             readLock.lock();
@@ -107,7 +107,7 @@ public class FieldValueTransformation {
         }
     }
 
-    private JavaConstant computeValue(AnalysisField field, JavaConstant receiver) {
+    private JavaConstant computeValue(InterceptedField field, JavaConstant receiver) {
         var originalValue = fetchOriginalValue(field, receiver);
 
         VMError.guarantee(originalValue != null, "Original value must not be `null`. Use `JavaConstant.NULL_POINTER`instead");
@@ -119,7 +119,7 @@ public class FieldValueTransformation {
         return result;
     }
 
-    private void checkValue(JavaConstant newValue, AnalysisField field) {
+    private void checkValue(JavaConstant newValue, InterceptedField field) {
         if (newValue == null) {
             throw UserError.abort("JVMCIFieldValueTransformer must not return `null`. Use `JavaConstant.NULL_POINTER`instead");
         }
@@ -181,7 +181,8 @@ public class FieldValueTransformation {
         return newValue;
     }
 
-    protected JavaConstant fetchOriginalValue(AnalysisField aField, JavaConstant receiver) {
+    protected JavaConstant fetchOriginalValue(InterceptedField aField, JavaConstant receiver) {
+        /* InterceptedField can either be AnalysisField or PredictableBuildTimeInitializationField */
         ResolvedJavaField oField = OriginalFieldProvider.getOriginalField(aField);
         if (oField == null) {
             return JavaConstant.NULL_POINTER;

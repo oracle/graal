@@ -51,4 +51,6 @@ public interface FutureDefaultsOptionsSupport {
     boolean exactReflection();
 
     boolean explicitFeatureSingletonRegistration();
+
+    boolean predictableBuildTimeInitialization();
 }

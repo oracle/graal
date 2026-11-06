@@ -68,6 +68,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.HeapObjectReplacer;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.memory.BarrierType;
@@ -146,8 +147,24 @@ public class CGlobalDataFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
-        a.registerObjectReplacer(this::replaceObject);
+        a.registerObjectReplacer(new CGlobalDataObjectReplacer());
         ImageSingletons.add(CGlobalDataLoadPolicy.class, new CGlobalDataLoadPolicy());
+    }
+
+    private final class CGlobalDataObjectReplacer extends HeapObjectReplacer {
+        @Override
+        public Object replaceObject(Object object, boolean reachable) {
+            if (object instanceof CGlobalDataImpl<?> cglobal) {
+                if (appLayerCGlobalTracking != null) {
+                    cglobal = appLayerCGlobalTracking.getCanonicalRepresentation(cglobal);
+                }
+                if (reachable) {
+                    registerAsAccessedOrGet(cglobal, false);
+                }
+                return cglobal;
+            }
+            return object;
+        }
     }
 
     @Override
@@ -385,18 +402,6 @@ public class CGlobalDataFeature implements InternalFeature {
     public Collection<CGlobalDataInfo> getCGlobalDataInfos() {
         assert isLaidOut() : "Not laid out yet";
         return Collections.unmodifiableCollection(map.values());
-    }
-
-    private Object replaceObject(Object obj) {
-        if (obj instanceof CGlobalDataImpl<?> cglobal) {
-            if (appLayerCGlobalTracking != null) {
-                cglobal = appLayerCGlobalTracking.getCanonicalRepresentation(cglobal);
-            }
-            registerAsAccessedOrGet(cglobal, false);
-            return cglobal;
-        } else {
-            return obj;
-        }
     }
 
     private static CGlobalDataInfo assignCGlobalDataSize(Map.Entry<CGlobalDataImpl<?>, CGlobalDataInfo> entry, int wordSize) {

@@ -166,7 +166,7 @@ public class StandaloneConstantReflectionProvider implements ConstantReflectionP
     public final JavaConstant readFieldValue(ResolvedJavaField f, JavaConstant receiver) {
         AnalysisField field = (AnalysisField) f;
 
-        field.beforeFieldValueAccess();
+        field.markDeclaringClassAsReachable();
 
         if (field.equals(commonPoolField)) {
             /*

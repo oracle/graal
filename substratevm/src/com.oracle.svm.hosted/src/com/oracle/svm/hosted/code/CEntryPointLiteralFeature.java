@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.code;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
 import java.lang.reflect.Method;
-import java.util.function.Function;
 
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
@@ -46,6 +45,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.util.GuestAnnotationAccess;
+import com.oracle.svm.util.HeapObjectConstantReplacer;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -53,7 +53,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @AutomaticallyRegisteredFeature
 public class CEntryPointLiteralFeature implements InternalFeature {
 
-    class CEntryPointLiteralObjectReplacer implements Function<JavaConstant, JavaConstant> {
+    class CEntryPointLiteralObjectReplacer extends HeapObjectConstantReplacer {
         private final HostedValuesProvider hostedValuesProvider;
 
         /** Creates a replacer that canonicalizes changed word values with {@code hostedValuesProvider}. */
@@ -62,13 +62,17 @@ public class CEntryPointLiteralFeature implements InternalFeature {
         }
 
         @Override
-        public JavaConstant apply(JavaConstant source) {
+        public JavaConstant replaceConstant(JavaConstant source, boolean reachable) {
             if (!(source instanceof PatchedWordConstant patchedWord)) {
                 return source;
             }
             /* GR-79061: Migrate CEntryPointLiteralFeature to constant-native JVMCI handling. */
             if (!(patchedWord.getWord() instanceof CEntryPointLiteralCodePointer original)) {
                 return source;
+            }
+
+            if (!reachable) {
+                return CANNOT_REPLACE_MARKER;
             }
 
             Method reflectionMethod;
