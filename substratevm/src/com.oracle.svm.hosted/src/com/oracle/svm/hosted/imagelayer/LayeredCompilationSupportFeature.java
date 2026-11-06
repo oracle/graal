@@ -86,10 +86,9 @@ public class LayeredCompilationSupportFeature extends LayeredCompilationSupport 
     public void afterAnalysis(AfterAnalysisAccess access) {
         if (ImageLayerBuildingSupport.buildingInitialLayer()) {
             for (AnalysisMethod method : ((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse().getMethods()) {
-                if (method.isPinnedToInitialLayer() && !method.isStatic()) {
-                    UserError.guarantee(method.getDeclaringClass().isAnySubtypeInstantiated(),
-                                    "Method %s is pinned to the initial layer but has no instantiated receiver type. " +
-                                                    "Register concrete receiver types in the initial layer; receivers introduced only in later layers cannot satisfy pinning.",
+                if (method.isPinnedToInitialLayer() && !method.isStatic() && !method.getDeclaringClass().isAnySubtypeInstantiated()) {
+                    throw UserError.abort("Method %s is pinned to the initial layer but has no instantiated receiver type. " +
+                                    "Register concrete receiver types in the initial layer; receivers introduced only in later layers cannot satisfy pinning.",
                                     method.format("%H.%n(%p)"));
                 }
             }

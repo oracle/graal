@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,8 @@ package com.oracle.svm.core.c.enums;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.CodeUtil;
 import org.graalvm.word.impl.Word;
@@ -46,31 +48,37 @@ public abstract class CEnumRuntimeData {
         this.isCEnumTypeUnsigned = isCEnumTypeUnsigned;
     }
 
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final boolean enumToBoolean(Enum<?> value) {
         return enumToLong(value) != 0L;
     }
 
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final byte enumToByte(Enum<?> value) {
         return (byte) enumToLong(value);
     }
 
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final short enumToShort(Enum<?> value) {
         return (short) enumToLong(value);
     }
 
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final char enumToChar(Enum<?> value) {
         return (char) CodeUtil.zeroExtend(enumToLong(value), bytesInC * Byte.SIZE);
     }
 
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final int enumToInt(Enum<?> value) {
         return (int) enumToLong(value);
     }
 
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final long enumToLong(Enum<?> value) {
         if (value == null) {
@@ -79,12 +87,14 @@ public abstract class CEnumRuntimeData {
         return javaToC[value.ordinal()];
     }
 
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final SignedWord enumToSignedWord(Enum<?> value) {
         long result = enumToLong(value);
         return Word.signed(result);
     }
 
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final UnsignedWord enumToUnsignedWord(Enum<?> value) {
         long result = CodeUtil.zeroExtend(enumToLong(value), bytesInC * Byte.SIZE);
@@ -95,6 +105,7 @@ public abstract class CEnumRuntimeData {
      * Reduce the C value to the bits that fit into the C enum type. Then, sign- or zero-extend that
      * value to 64-bit so that it can be compared to the data in the image heap.
      */
+    @LayeredCompilationBehavior(Behavior.PINNED_TO_INITIAL_LAYER)
     public final Enum<?> longToEnum(long rawValue) {
         long lookupValue;
         if (isCEnumTypeUnsigned) {
