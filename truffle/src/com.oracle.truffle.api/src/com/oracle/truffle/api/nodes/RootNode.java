@@ -392,6 +392,11 @@ public abstract class RootNode extends ExecutableNode {
      * uninitialized copy from each initialized node.
      * </ul>
      *
+     * When this method is invoked during compilation preparation and this root node is associated
+     * with a {@link TruffleLanguage language}, that language is entered, but no language context is
+     * entered. In that case, {@link LanguageReference} can be used, but {@link ContextThreadLocal},
+     * {@link ContextLocal}, and {@link ContextReference} cannot be used.
+     *
      * @return an uninitialized copy of this root node if supported.
      * @throws UnsupportedOperationException if not supported
      * @see #isCloneUninitializedSupported()
@@ -583,9 +588,10 @@ public abstract class RootNode extends ExecutableNode {
      * for safety.
      * </ul>
      *
-     * Note that during the execution of this method, no language context is entered. Therefore, you
-     * cannot use {@link ContextThreadLocal}, {@link ContextLocal}, {@link LanguageReference}, or
-     * {@link ContextReference}.
+     * During the execution of this method, if this root node is associated with a
+     * {@link TruffleLanguage language}, that language is entered, but no language context is
+     * entered. In that case, {@link LanguageReference} can be used, but
+     * {@link ContextThreadLocal}, {@link ContextLocal}, and {@link ContextReference} cannot be used.
      *
      * @param rootCompilation <code>true</code> if this is a root compilation; <code>false</code> if
      *            inlining this root.
@@ -601,6 +607,19 @@ public abstract class RootNode extends ExecutableNode {
      */
     protected boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
         return true;
+    }
+
+    /**
+     * Visits nodes that may be cloned with this root node. The default implementation visits this
+     * root and its ordinary children. Overrides must invoke the superclass implementation before
+     * visiting additional node trees stored outside of ordinary child fields. Additional node trees
+     * must be visited at most once and must not be reachable through ordinary child fields.
+     *
+     * @param visitor the visitor invoked for each node
+     * @since 25.6
+     */
+    protected void visitCloneableNodes(NodeVisitor visitor) {
+        accept(visitor);
     }
 
     /**
