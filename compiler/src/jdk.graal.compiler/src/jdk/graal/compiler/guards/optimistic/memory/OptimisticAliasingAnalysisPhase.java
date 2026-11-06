@@ -644,12 +644,10 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
         return isAliasing;
     }
 
-    // Test aliasing between an access (which may be a read or a write) and a write. The write comes
-    // after the access iff writeAfterAccess is true. If useStrictObjectEquality is true, any
-    // accesses to the same object are considered aliasing; otherwise, analyze indices to find safe
-    // cases of writes after reads.
-    // Returns a LogicNode that evaluates to true if the accesses alias in a way that prevents
-    // vectorization.
+    /// Tests whether an access and a write can alias in a way that prevents vectorization. If
+    /// `useStrictObjectEquality` is true, accesses to the same object are considered aliasing;
+    /// otherwise, the access order and induction variables may establish independence between
+    /// iterations.
     private static <ValueAccess extends ValueNode & AddressableMemoryAccess> LogicNode testLoopAccessAliasing(Loop loop, ValueAccess access, WriteNode write,
                     boolean useStrictObjectEquality, ConstantReflectionProvider constantReflection) {
         StructuredGraph graph = loop.loopBegin().graph();
@@ -716,12 +714,24 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
 
             if (readIndex != null && readIndex.isConstantStride() && writeIndex != null && writeIndex.isConstantStride()) {
                 CanonicalCondition lessThanOp = CanonicalCondition.LT;
+                ValueNode readStart = readIndex.initNode();
+                ValueNode writeStart = writeIndex.initNode();
                 if (rawPointerComparison) {
                     lessThanOp = CanonicalCondition.BT;
+                    /*
+                     * Range overlap above is spatial; proving that writes only touch values
+                     * already read also needs the order of accesses across iterations. For
+                     * descending accesses, minima describe the last iteration, not the first.
+                     * Reads at 116, 108, 100 and writes at 108, 104, 100 have equal minima, but the
+                     * first write changes the next read. Compare first-iteration addresses to
+                     * preserve that dependence. Unlike heap indices, raw offsets must include
+                     * their potentially different bases before the unsigned comparison can
+                     * establish which access leads.
+                     */
+                    readStart = AddNode.create(accessBase, readStart, NodeView.DEFAULT);
+                    writeStart = AddNode.create(writeBase, writeStart, NodeView.DEFAULT);
                 } else {
                     assert accessLow == null && writeLow == null : accessLow + " " + writeLow;
-                    accessLow = readIndex.initNode();
-                    writeLow = writeIndex.initNode();
                 }
 
                 LogicNode badIndices;
@@ -731,18 +741,14 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
                 // greater than or equal to the initial write index and the write stride,
                 // respectively. The case for negative strides is symmetric.
                 if (readIndex.constantStride() > 0 && readIndex.constantStride() >= writeIndex.constantStride()) {
-                    badIndices = CompareNode.createCompareNode(graph, lessThanOp, accessLow, writeLow, constantReflection, NodeView.DEFAULT);
+                    badIndices = CompareNode.createCompareNode(graph, lessThanOp, readStart, writeStart, constantReflection, NodeView.DEFAULT);
                 } else if (readIndex.constantStride() < 0 && readIndex.constantStride() <= writeIndex.constantStride()) {
-                    badIndices = CompareNode.createCompareNode(graph, lessThanOp, writeLow, accessLow, constantReflection, NodeView.DEFAULT);
+                    badIndices = CompareNode.createCompareNode(graph, lessThanOp, writeStart, readStart, constantReflection, NodeView.DEFAULT);
                 } else {
                     // indices may cross
                     badIndices = LogicConstantNode.tautology(graph);
                 }
 
-                // When constantStride > 0:
-                // mayAlias is equivalent to (a == b) && (a.readIndex < a.writeIndex)
-                // When constantStride < 0:
-                // mayAlias is equivalent to (a == b) && (a.writeIndex < a.readIndex)
                 mayAlias = LogicNode.and(objectEquals, false, badIndices, false, BranchProbabilityNode.SLOW_PATH_PROFILE);
             }
         }
