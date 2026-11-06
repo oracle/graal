@@ -28,6 +28,7 @@ package jdk.graal.compiler.core.test;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.calc.UnsignedDivNode;
 import jdk.graal.compiler.options.OptionValues;
@@ -43,7 +44,7 @@ public class OptimizeDivAfterFrameStateAssignmentTest extends GraalCompilerTest 
 
     @Override
     protected Suites createSuites(OptionValues options) {
-        Suites suites = super.createSuites(options);
+        Suites suites = super.createSuites(new OptionValues(options, GraalOptions.OptimizeDiv, true));
         var midTier = suites.getMidTier();
         var position = midTier.findPhase(OptimizeDivPhase.class);
         var optimizeDiv = position.previous();
