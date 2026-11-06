@@ -305,6 +305,17 @@ public class HostedConfiguration {
         return providers;
     }
 
+    /**
+     * Requests hosted preparation of this analyzed method variant for separate compilation or
+     * inlining, without making it a root of normal image compilation. Clients must create and
+     * analyze all required variants before hosted parsing; this hook does not add analysis roots.
+     * Register every possible inlinee variant, including ones selected only after earlier inlining
+     * exposes a new caller/callee pair.
+     */
+    public boolean isAdditionalParseRoot(@SuppressWarnings("unused") HostedMethod method) {
+        return false;
+    }
+
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
         return new SVMMethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
     }

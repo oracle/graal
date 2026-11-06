@@ -794,8 +794,7 @@ public class CompileQueue {
                     }
                     continue;
                 }
-                if (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod) ||
-                                hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isSimplyImplementationInvoked()) {
+                if (isParseRoot(hMethod)) {
                     ensureParsed(hMethod, null, new EntryPointReason());
                 }
                 if (hMethod.wrapped.isVirtualRootMethod()) {
@@ -820,6 +819,27 @@ public class CompileQueue {
                 }
             }
         }
+    }
+
+    /** Identifies methods that need a hosted graph without relying on discovery from another graph. */
+    private static boolean isParseRoot(HostedMethod method) {
+        if (HostedConfiguration.instance().isAdditionalParseRoot(method)) {
+            // Clients request analyzed variants for separate compilation or later inlining.
+            return true;
+        }
+        if (method.isEntryPoint()) {
+            // Native entry points can be reached without a Java caller.
+            return true;
+        }
+        if (SubstrateCompilationDirectives.singleton().isForcedCompilation(method)) {
+            // An explicit compilation request also needs a prepared graph.
+            return true;
+        }
+        if (method.wrapped.isDirectRootMethod() && method.wrapped.isSimplyImplementationInvoked()) {
+            // Analysis roots need their implementation, unless an invocation plugin handles the call.
+            return true;
+        }
+        return false;
     }
 
     public boolean isRegisteredDeoptTarget(HostedMethod method) {
@@ -1517,6 +1537,7 @@ public class CompileQueue {
      * Compiles an additional method result without adding it to the normal image compilation map.
      */
     public final CompilationResult compileAdditionalMethod(DebugContext debug, HostedMethod method, CompileReason reason) {
+        VMError.guarantee(method.compilationInfo.getCompilationGraph() != null, "Additional compilation requires a method parsed during the normal parse phase: %s", method);
         return doCompile(debug, method, new SubstrateHostedCompilationIdentifier(method), reason);
     }
 
