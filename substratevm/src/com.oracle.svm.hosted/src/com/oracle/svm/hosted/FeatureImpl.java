@@ -112,6 +112,7 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestInvoked;
+import com.oracle.svm.util.GuestType;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
@@ -432,7 +433,7 @@ public class FeatureImpl {
          * @return a {@link JavaConstant} representing the guest {@code Set<Class<?>>} of reachable subtypes
          */
         @GuestInvoked
-        public JavaConstant reachableSubtypesAsSet(JavaConstant baseClass) {
+        public @GuestType(Set.class) JavaConstant reachableSubtypesAsSet(@GuestType(Class.class) JavaConstant baseClass) {
             GuestAccess guestAccess = GuestAccess.get();
             ResolvedJavaType baseType = guestAccess.getProviders().getConstantReflection().asJavaType(baseClass);
             if (baseType == null) {
@@ -450,7 +451,7 @@ public class FeatureImpl {
          * @return a {@link JavaConstant} representing the guest {@code Set<Executable>} of reachable overrides
          */
         @GuestInvoked
-        public JavaConstant reachableMethodOverridesAsSet(JavaConstant baseMethod) {
+        public @GuestType(Set.class) JavaConstant reachableMethodOverridesAsSet(@GuestType(Executable.class) JavaConstant baseMethod) {
             GuestAccess guestAccess = GuestAccess.get();
             ResolvedJavaMethod method = guestAccess.asResolvedJavaMethod(baseMethod);
             if (method == null) {
@@ -551,7 +552,7 @@ public class FeatureImpl {
          * @see org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess#registerObjectReplacer(Function)
          */
         @GuestInvoked
-        public void registerObjectReplacer(JavaConstant replacer) {
+        public void registerObjectReplacer(@GuestType(Function.class) JavaConstant replacer) {
             if (replacer == null || replacer.isNull()) {
                 throw UserError.abort("'registerObjectReplacer' called with a null replacer");
             }
@@ -628,7 +629,7 @@ public class FeatureImpl {
          * @see org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess#registerObjectReachabilityHandler(Consumer, Class)
          */
         @GuestInvoked
-        public void registerObjectReachabilityHandler(JavaConstant callback, ResolvedJavaType type) {
+        public void registerObjectReachabilityHandler(@GuestType(Consumer.class) JavaConstant callback, ResolvedJavaType type) {
             if (callback == null || callback.isNull()) {
                 throw UserError.abort("'registerObjectReachabilityHandler' called with a null callback");
             }
@@ -976,7 +977,7 @@ public class FeatureImpl {
          * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerFieldValueTransformer(java.lang.reflect.Field, FieldValueTransformer)
          */
         @GuestInvoked
-        public void registerFieldValueTransformer(ResolvedJavaField field, JavaConstant transformer) {
+        public void registerFieldValueTransformer(ResolvedJavaField field, @GuestType(FieldValueTransformer.class) JavaConstant transformer) {
             registerFieldValueTransformer(field, FieldValueInterceptionSupport.WrappedFieldValueTransformer.create(transformer));
         }
 
@@ -990,7 +991,7 @@ public class FeatureImpl {
          * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerReachabilityHandler(Consumer, Object...)
          */
         @GuestInvoked
-        public void registerReachabilityHandler(JavaConstant callback, JavaConstant elements) {
+        public void registerReachabilityHandler(@GuestType(Consumer.class) JavaConstant callback, @GuestType(Object[].class) JavaConstant elements) {
             if (callback == null || callback.isNull()) {
                 throw UserError.abort("'registerReachabilityHandler' called with a null callback");
             }
@@ -1011,7 +1012,7 @@ public class FeatureImpl {
          *            or {@code Executable} objects
          * @return the corresponding JVMCI types, fields, and methods
          */
-        private static Object[] decodeGuestReachabilityElements(JavaConstant elements) {
+        private static Object[] decodeGuestReachabilityElements(@GuestType(Object[].class) JavaConstant elements) {
             if (elements == null || elements.isNull()) {
                 throw UserError.abort("'registerReachabilityHandler' called with null elements; expected an Object[]");
             }
@@ -1062,7 +1063,7 @@ public class FeatureImpl {
          * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerMethodOverrideReachabilityHandler(BiConsumer, Executable)
          */
         @GuestInvoked
-        public void registerMethodOverrideReachabilityHandler(JavaConstant callback, ResolvedJavaMethod baseMethod) {
+        public void registerMethodOverrideReachabilityHandler(@GuestType(BiConsumer.class) JavaConstant callback, ResolvedJavaMethod baseMethod) {
             if (callback == null || callback.isNull()) {
                 throw UserError.abort("'registerMethodOverrideReachabilityHandler' called with a null callback");
             }
@@ -1082,7 +1083,7 @@ public class FeatureImpl {
          * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerSubtypeReachabilityHandler(BiConsumer, Class)
          */
         @GuestInvoked
-        public void registerSubtypeReachabilityHandler(JavaConstant callback, ResolvedJavaType baseType) {
+        public void registerSubtypeReachabilityHandler(@GuestType(BiConsumer.class) JavaConstant callback, ResolvedJavaType baseType) {
             if (callback == null || callback.isNull()) {
                 throw UserError.abort("'registerSubtypeReachabilityHandler' called with a null callback");
             }
@@ -1102,7 +1103,7 @@ public class FeatureImpl {
          * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerClassInitializerReachabilityHandler(Consumer, Class)
          */
         @GuestInvoked
-        public void registerClassInitializerReachabilityHandler(JavaConstant callback, ResolvedJavaType type) {
+        public void registerClassInitializerReachabilityHandler(@GuestType(Consumer.class) JavaConstant callback, ResolvedJavaType type) {
             if (callback == null || callback.isNull()) {
                 throw UserError.abort("'registerClassInitializerReachabilityHandler' called with a null callback");
             }

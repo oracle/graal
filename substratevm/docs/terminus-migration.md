@@ -122,6 +122,15 @@ Code must stop depending on builder-only helpers and compiler-only annotations u
 | Static builder helper such as `ImageLayerBuildingSupport` | Guest helper such as `GuestImageLayerBuildingSupport` | Use the guest helper from moved code so the moved code does not depend on builder-only packages. |
 | Builder read of a guest-owned static `RuntimeOptionKey` field | `GuestOptionKey.forField(...)` | Every `getValue()` reads in the guest context, avoiding a stale builder-side copy. |
 
+### Document Guest-to-Builder Proxy Contracts
+
+[`@GuestInvoked`](../src/com.oracle.svm.util/src/com/oracle/svm/util/GuestInvoked.java) marks a builder-side method called by the guest through a host proxy.
+Use [`@GuestType`](../src/com.oracle.svm.util/src/com/oracle/svm/util/GuestType.java) on guest values represented by builder-side parameters or return values when the expected type is useful.
+`@GuestType` is informational and also applies outside proxy callbacks.
+
+If a class literal becomes inaccessible, use `typeName` rather than adding a dependency just for the hint, for example `@GuestType(typeName = "com.example.guest.Node[]")`.
+Use `Class.getTypeName()` format: dots for packages, `$` for nested classes, and `[]` for arrays.
+
 ### Preserve Guest Module Encapsulation
 
 Never add an `opens` edge from `SVM_GUEST` or `SVM_GUEST_STAGING` to `org.graalvm.nativeimage.builder`.
