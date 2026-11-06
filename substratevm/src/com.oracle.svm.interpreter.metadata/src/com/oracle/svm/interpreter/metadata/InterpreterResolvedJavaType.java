@@ -35,6 +35,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateMetadata;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.meta.TypeCheckInfoProvider.TypeCheckInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.hub.DynamicHubUtils;
@@ -139,6 +140,12 @@ public abstract class InterpreterResolvedJavaType extends InterpreterAnnotated i
     @Override
     public final DynamicHub getHub() {
         return DynamicHub.fromClass(getJavaClass());
+    }
+
+    @Override
+    public final TypeCheckInfo getTypeCheckInfo() {
+        DynamicHub hub = getHub();
+        return new TypeCheckInfo(hub.getTypeCheckStart(), hub.getTypeCheckRange(), hub.getTypeCheckSlot());
     }
 
     public final boolean isWordType() {

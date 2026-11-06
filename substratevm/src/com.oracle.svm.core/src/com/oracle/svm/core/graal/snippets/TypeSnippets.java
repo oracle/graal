@@ -36,7 +36,9 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.unknownPro
 import java.util.Arrays;
 import java.util.Map;
 
+import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
+import com.oracle.svm.core.graal.meta.TypeCheckInfoProvider;
 import com.oracle.svm.core.graal.word.DynamicHubAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubUtils;
@@ -53,8 +55,11 @@ import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.SnippetAnchorNode;
 import jdk.graal.compiler.nodes.TypeCheckHints;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.java.ClassIsAssignableFromNode;
 import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
@@ -260,6 +265,32 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
         this.assignableTypeCheck = snippet(providers, TypeSnippets.class, "classIsAssignableFromSnippet");
     }
 
+    private static TypeCheckInfoProvider getTypeCheckInfoProvider(CoreProviders providers) {
+        return ((SubstrateMetaAccessExtensionProvider) providers.getMetaAccessExtensionProvider()).getTypeCheckInfoProvider();
+    }
+
+    /**
+     * Dynamic type checks read their metadata from the hub at run time. A compilation targeting a
+     * loaded image must retain these reads even for constant hubs: relocation changes the hub
+     * reference to its target-image counterpart, but cannot correct numbers already folded from the
+     * current build's hub. Hubs obtained from runtime inputs already belong to the running image.
+     * <p>
+     * When the compilation provider disallows folding, the opaque node hides the hub's identity
+     * through optimization. It is removed at the end of low tier, leaving the metadata loads without
+     * a runtime wrapper or indirection. This helper preserves the loads; it does not relocate hubs.
+     */
+    protected static ValueNode applyHubFoldingPolicy(ValueNode hub, CoreProviders providers) {
+        if (getTypeCheckInfoProvider(providers).canFoldHubMetadata()) {
+            return hub;
+        }
+        ValueNode opaque = hub.graph().addWithoutUnique(new OpaqueValueNode(hub));
+        /*
+         * Opaqueness also discards the non-null stamp required by the snippets. Restore only
+         * that existing guarantee, not the hub's identity. This Pi adds no runtime null check.
+         */
+        return hub.graph().addOrUniqueWithInputs(PiNode.create(opaque, StampFactory.objectNonNull()));
+    }
+
     protected class InstanceOfLowering extends InstanceOfSnippetsTemplates implements NodeLoweringProvider<FloatingNode> {
 
         public InstanceOfLowering(OptionValues options, Providers providers) {
@@ -279,10 +310,13 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
             InstanceOfNode node = (InstanceOfNode) replacer.instanceOf;
             TypeReference typeReference = node.type();
             SharedType type = (SharedType) typeReference.getType();
-            DynamicHub hub = DynamicHubUtils.getHub(type);
-
             SnippetTemplate.Arguments args;
             if (typeReference.isExact()) {
+                /*
+                 * Exact checks compare hub identities. Compilation for a loaded image must bind
+                 * this hub to that image's corresponding hub.
+                 */
+                DynamicHub hub = DynamicHubUtils.getHub(type);
                 args = new SnippetTemplate.Arguments(typeEquality, node.graph(), tool.getLoweringStage());
                 args.add("object", node.getValue());
                 args.add("trueValue", replacer.trueValue);
@@ -290,12 +324,13 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
                 args.add("allowsNull", node.allowsNull());
                 args.add("exactType", hub);
             } else {
-                args = makeArgumentsForInexactType(replacer, tool, node, type, hub);
+                args = makeArgumentsForInexactType(replacer, tool, node, type);
             }
             return args;
         }
 
-        protected SnippetTemplate.Arguments makeArgumentsForInexactType(InstanceOfUsageReplacer replacer, LoweringTool tool, InstanceOfNode node, SharedType type, DynamicHub hub) {
+        /** Builds subtype-check arguments using the compilation's metadata for the target {@code type}. */
+        protected SnippetTemplate.Arguments makeArgumentsForInexactType(InstanceOfUsageReplacer replacer, LoweringTool tool, InstanceOfNode node, SharedType type) {
             assert !type.isInterface() || type.getSingleImplementor() == null : "Canonicalization of InstanceOfNode produces exact type for single implementor";
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOf, node.graph(), tool.getLoweringStage());
             Hints hints = createHints(node);
@@ -305,9 +340,10 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
             args.add("trueValue", replacer.trueValue);
             args.add("falseValue", replacer.falseValue);
             args.add("allowsNull", node.allowsNull());
-            args.add("start", hub.getTypeCheckStart());
-            args.add("range", hub.getTypeCheckRange());
-            args.add("slot", hub.getTypeCheckSlot());
+            var typeCheckInfo = getTypeCheckInfoProvider(tool).getTypeCheckInfo(type);
+            args.add("start", typeCheckInfo.start());
+            args.add("range", typeCheckInfo.range());
+            args.add("slot", typeCheckInfo.slot());
             args.add("typeIDSlotOffset", knownOffsets.getTypeIDSlotsOffset());
             return args;
         }
@@ -354,7 +390,7 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
 
             } else {
                 SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOfDynamic, node.graph(), tool.getLoweringStage());
-                args.add("type", node.getMirrorOrHub());
+                args.add("type", applyHubFoldingPolicy(node.getMirrorOrHub(), tool));
                 args.add("object", node.getObject());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
@@ -384,8 +420,8 @@ public class TypeSnippets extends SubstrateTemplates implements Snippets {
             ClassIsAssignableFromNode node = (ClassIsAssignableFromNode) replacer.instanceOf;
 
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(assignableTypeCheck, node.graph(), tool.getLoweringStage());
-            args.add("type", node.getThisClass());
-            args.add("checkedHub", node.getOtherClass());
+            args.add("type", applyHubFoldingPolicy(node.getThisClass(), tool));
+            args.add("checkedHub", applyHubFoldingPolicy(node.getOtherClass(), tool));
             args.add("trueValue", replacer.trueValue);
             args.add("falseValue", replacer.falseValue);
             args.add("typeIDSlotOffset", knownOffsets.getTypeIDSlotsOffset());
