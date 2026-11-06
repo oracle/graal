@@ -491,6 +491,22 @@ public abstract class RootNode extends ExecutableNode {
         return target;
     }
 
+    final RootCallTarget initializeTarget(ExecutionSignature signature) {
+        Objects.requireNonNull(signature);
+        ReentrantLock l = getLazyLock();
+        l.lock();
+        try {
+            if (callTarget != null) {
+                throw CompilerDirectives.shouldNotReachHere("Call target already initialized");
+            }
+            RuntimeCallTarget target = NodeAccessor.RUNTIME.newCallTarget(null, this, signature);
+            setupCallTarget(target, "callTarget was set by newCallTarget but should not");
+            return target;
+        } finally {
+            l.unlock();
+        }
+    }
+
     private void setupCallTarget(RuntimeCallTarget callTarget, String message) {
         assert getLazyLock().isHeldByCurrentThread();
 

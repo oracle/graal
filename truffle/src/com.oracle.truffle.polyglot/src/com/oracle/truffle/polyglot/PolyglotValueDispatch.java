@@ -4916,7 +4916,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached InlinedBranchProfile invalidArgument,
                             @Cached InlinedBranchProfile arity,
                             @Cached InlinedBranchProfile unsupported) {
-                Object[] guestArguments = toGuestValues.execute(node, args);
+                Object[] guestArguments = toGuestValues.execute(node, args, 0);
                 try {
                     return executables.execute(receiver, guestArguments);
                 } catch (UnsupportedTypeException e) {
@@ -5054,7 +5054,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached InlinedBranchProfile arity,
                             @Cached InlinedBranchProfile invalidArgument,
                             @Cached InlinedBranchProfile unsupported) {
-                Object[] instantiateArguments = toGuestValues.execute(node, (Object[]) args[ARGUMENT_OFFSET]);
+                Object[] instantiateArguments = toGuestValues.execute(node, (Object[]) args[ARGUMENT_OFFSET], 0);
                 try {
                     return toHostValue.execute(node, context, instantiables.instantiate(receiver, instantiateArguments));
                 } catch (UnsupportedTypeException e) {
@@ -5131,7 +5131,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                             @Cached SharedInvokeNode sharedInvoke,
                             @Cached ToGuestValuesNode toGuestValues) {
                 String key = (String) args[ARGUMENT_OFFSET];
-                Object[] guestArguments = toGuestValues.execute(this, (Object[]) args[ARGUMENT_OFFSET + 1]);
+                Object[] guestArguments = toGuestValues.execute(this, (Object[]) args[ARGUMENT_OFFSET + 1], 0);
                 return sharedInvoke.executeShared(this, context, receiver, key, guestArguments);
             }
 

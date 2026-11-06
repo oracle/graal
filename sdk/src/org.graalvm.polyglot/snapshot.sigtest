@@ -618,6 +618,7 @@ supr java.lang.Object
 hfds rawType,type
 
 CLSS public final org.graalvm.polyglot.Value
+innr public abstract interface static !annotation Optimized
 innr public final static StringEncoding
 meth public !varargs org.graalvm.polyglot.Value execute(java.lang.Object[])
 meth public !varargs org.graalvm.polyglot.Value invokeMember(java.lang.String,java.lang.Object[])
@@ -730,6 +731,13 @@ meth public void writeBufferInt(java.nio.ByteOrder,long,int)
 meth public void writeBufferLong(java.nio.ByteOrder,long,long)
 meth public void writeBufferShort(java.nio.ByteOrder,long,short)
 supr java.lang.Object
+
+CLSS public abstract interface static !annotation org.graalvm.polyglot.Value$Optimized
+ outer org.graalvm.polyglot.Value
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
 
 CLSS public final static org.graalvm.polyglot.Value$StringEncoding
  outer org.graalvm.polyglot.Value

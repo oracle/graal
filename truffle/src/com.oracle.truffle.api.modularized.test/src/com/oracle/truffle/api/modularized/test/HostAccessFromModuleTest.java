@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -84,6 +85,42 @@ import com.oracle.truffle.api.nodes.RootNode;
 public class HostAccessFromModuleTest {
     static final String TEST_REPLACE_CLASS_NAME = "HostClassLoadingTestClazz1";
     private static final String TEST_REPLACE_QUALIFIED_CLASS_NAME = HostClassLoadingTestClass1.class.getPackage().getName() + ".HostClassLoadingTestClazz1";
+
+    @Value.Optimized
+    @HostAccess.Implementable
+    public interface GeneratedFunction {
+        int apply(int value);
+
+        default int twice(int value) {
+            return 2 * apply(value);
+        }
+    }
+
+    @Test
+    public void testGeneratedProxyFromModule() throws ReflectiveOperationException {
+        Assume.assumeTrue(HostAccessFromModuleTest.class.getModule().isNamed());
+        try (Context context = Context.create()) {
+            Value function = context.asValue((ProxyExecutable) arguments -> arguments[0].asInt() + 1);
+            GeneratedFunction proxy = function.as(GeneratedFunction.class);
+            assertEquals(42, proxy.apply(41));
+            assertEquals(84, proxy.twice(41));
+            assertEquals(function, Value.asValue(proxy));
+            Assert.assertTrue(proxy.equals(proxy));
+            proxy.hashCode();
+            Assert.assertNotNull(proxy.toString());
+            Class<?> baseClass = proxy.getClass().getSuperclass();
+            Assert.assertSame(TruffleLanguage.class.getModule(), baseClass.getModule());
+            Module truffleModule = baseClass.getModule();
+            String polyglotPackage = baseClass.getPackageName();
+            assertEquals("com.oracle.truffle.polyglot", polyglotPackage);
+            Assert.assertFalse(truffleModule.isExported(polyglotPackage));
+            Assert.assertTrue(truffleModule.isExported(polyglotPackage, proxy.getClass().getModule()));
+            Assert.assertFalse(truffleModule.isExported(polyglotPackage, ExportedToTestModuleClass.class.getModule()));
+            assertEquals(Modifier.PROTECTED | Modifier.FINAL, baseClass.getDeclaredField("languageContext").getModifiers());
+            assertEquals(Modifier.PROTECTED | Modifier.FINAL, baseClass.getDeclaredField("receiver").getModifiers());
+            Assert.assertThrows(IllegalAccessException.class, () -> ExportedToTestModuleClass.proxyHashCode(proxy));
+        }
+    }
 
     @Test
     public void testInAModule() {
