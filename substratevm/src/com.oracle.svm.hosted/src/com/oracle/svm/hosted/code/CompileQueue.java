@@ -75,6 +75,7 @@ import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.hosted.FeatureHandler;
+import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.ProgressReporter;
@@ -964,7 +965,7 @@ public class CompileQueue {
         if (!inliningPotential) {
             return;
         }
-        var providers = runtimeConfig.lookupBackend(method).getProviders();
+        var providers = selectCompilationProviders(method, runtimeConfig);
         var graph = method.compilationInfo.createGraph(debug, getCustomizedOptions(method, debug), CompilationIdentifier.INVALID_COMPILATION_ID, false);
         try (var _ = debug.scope("InlineTrivial", graph, method, this)) {
             var inliningPlugin = new TrivialInliningPlugin();
@@ -1230,7 +1231,7 @@ public class CompileQueue {
                             ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
         }
 
-        HostedProviders providers = (HostedProviders) config.lookupBackend(method).getProviders();
+        HostedProviders providers = selectCompilationProviders(method, config);
 
         StructuredGraph graph = graphTransplanter.transplantGraph(debug, method, reason);
         try (DebugContext.Scope _ = debug.scope("Parsing", graph, method, this)) {
@@ -1307,7 +1308,7 @@ public class CompileQueue {
 
     @SuppressWarnings("unused")
     protected void notifyBeforeEncode(HostedMethod method, StructuredGraph graph) {
-        HostedProviders providers = (HostedProviders) runtimeConfig.lookupBackend(method).getProviders();
+        HostedProviders providers = selectCompilationProviders(method, runtimeConfig);
         HighTierContext highTierContext = new HighTierContext(providers, null, CompileQueue.getOptimisticOpts());
 
         for (Policy policy : this.policies) {
@@ -1520,6 +1521,10 @@ public class CompileQueue {
         return doCompile(debug, method, new SubstrateHostedCompilationIdentifier(method), reason);
     }
 
+    private static HostedProviders selectCompilationProviders(HostedMethod method, RuntimeConfiguration config) {
+        return HostedConfiguration.instance().selectCompilationProviders(method, (HostedProviders) config.lookupBackend(method).getProviders());
+    }
+
     protected final CompilationResult doCompile(DebugContext debug, final HostedMethod method, CompilationIdentifier compilationIdentifier, CompileReason reason) {
         CompileFunction customFunction = method.compilationInfo.getCustomCompileFunction();
         if (customFunction != null) {
@@ -1629,7 +1634,7 @@ public class CompileQueue {
                 CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.getQualifiedName());
 
                 try (Indent _ = debug.logAndIndent("compile %s", method)) {
-                    Providers providers = backend.getProviders();
+                    Providers providers = selectCompilationProviders(method, config);
                     OptimisticOptimizations optimisticOpts = getOptimisticOpts();
                     GraalCompiler.compile(new GraalCompiler.Request<>(graph,
                                     method,
