@@ -128,6 +128,10 @@ public interface NodeGeneratorPlugs {
         };
     }
 
+    default CodeTree createPolymorphismReportingNode(FlatNodeGenFactory factory, FrameState frameState) {
+        return factory.createNodeAccess(frameState);
+    }
+
     default CodeTree createStateLoad(FlatNodeGenFactory factory, FrameState frameState, BitSet bitSet) {
         return factory.createInlinedAccess(frameState, null, CodeTreeBuilder.singleString("this." + bitSet.getName() + "_"), null);
     }
