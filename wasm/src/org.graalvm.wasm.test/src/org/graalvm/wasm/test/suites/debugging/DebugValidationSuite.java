@@ -45,10 +45,12 @@ import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.polyglot.Context;
@@ -60,6 +62,9 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.debugging.encoding.Attributes;
+import org.graalvm.wasm.debugging.encoding.Tags;
+import org.graalvm.wasm.debugging.parser.DebugParseUnit;
+import org.graalvm.wasm.debugging.parser.DebugParser;
 import org.graalvm.wasm.debugging.parser.DebugUtil;
 import org.graalvm.wasm.test.AbstractBinarySuite;
 import org.junit.Test;
@@ -842,6 +847,158 @@ public class DebugValidationSuite extends AbstractBinarySuite {
                         hexStringToByteArray("01 11 00 13 0F 10 0F 1B 0E 00 00 00")).addCustomSection(".debug_line",
                                         hexStringToByteArray("0F 00 00 00 04 00 09 00 00 00 00 01 00 00 00 00 00 00 00")).addCustomSection(".debug_str", hexStringToByteArray("2F")).build();
         runTest(data);
+    }
+
+    @Test
+    public void testUnsignedAttributeBlockLengths() {
+        final byte[] block1 = readAttributeBlockOrNull(0x0A, 0xFF, 0xFF);
+        assertNotNull(block1);
+        assertEquals(0xFF, block1.length);
+
+        final byte[] block2 = readAttributeBlockOrNull(0x03, 0x8000, 0x8000);
+        assertNotNull(block2);
+        assertEquals(0x8000, block2.length);
+    }
+
+    @Test
+    public void testTruncatedAttributeBlockLengthIsRejected() {
+        assertNull(readAttributeBlockOrNull(0x0A, 0xFF, 1));
+    }
+
+    @Test
+    public void testUnsignedLocationListLength() {
+        final int expressionLength = 0xED00;
+        final int sectionLength = 8 + 2 + expressionLength + 8;
+        final byte[] data = new byte[sectionLength];
+        setU32(data, 0, 1);
+        setU32(data, 4, 2);
+        data[8] = 0;
+        data[9] = (byte) 0xED;
+
+        final byte[] locations = new DebugParser(data).readLocationListOrNull(0, sectionLength, 0);
+        assertNotNull(locations);
+        assertEquals(expressionLength, locations.length);
+    }
+
+    @Test
+    public void testLocationListCannotCrossSectionBoundary() {
+        final int sectionLength = 26;
+        final int listOffset = 10;
+        final byte[] data = new byte[40];
+        setU32(data, listOffset, 1);
+        setU32(data, listOffset + 4, 2);
+        data[listOffset + 8] = 8;
+        data[listOffset + 9] = 0;
+        setU32(data, listOffset + 18, 0);
+
+        assertNull(new DebugParser(data).readLocationListOrNull(0, sectionLength, listOffset));
+    }
+
+    @Test
+    public void testIssue14702MalformedLocationListLength() throws IOException {
+        final byte[] data = hexStringToByteArray(
+                        "00 61 73 6d 01 00 00 00 01 06 01 60 01 7f 01 7f" +
+                                        "03 03 02 00 00 04 05 01 70 01 01 01 05 03 01 00" +
+                                        "01 07 30 03 06 6d 65 6d 6f 72 79 02 00 12 6c 6f" +
+                                        "6f 70 5f 77 68 69 6c 65 5f 63 6f 6c 6c 61 74 7a" +
+                                        "00 00 0e 6c 6f 6f 70 5f 64 6f 5f 64 69 67 69 74" +
+                                        "73 00 01 0a 86 01 02 4b 01 03 7f 20 00 41 ff 01" +
+                                        "71 41 35 6a 21 00 41 00 21 01 02 40 03 40 20 01" +
+                                        "41 01 6a 21 02 20 00 41 03 6c 41 01 6a 20 00 41" +
+                                        "01 76 20 00 41 01 71 1b 22 00 41 01 46 0d 01 20" +
+                                        "01 41 1f 49 21 03 20 02 21 01 20 03 0d 00 0b 0b" +
+                                        "20 02 0b 38 01 04 7f 41 00 21 01 02 40 03 40 20" +
+                                        "01 41 01 6a 21 02 20 00 41 06 6e 21 03 20 00 41" +
+                                        "06 49 0d 01 20 01 41 1f 49 21 04 20 03 21 00 20" +
+                                        "02 21 01 20 04 0d 00 0b 0b 20 02 0b 00 33 0a 2e" +
+                                        "64 65 62 75 67 5f 6c 6f 63 ff 00 00 00 00 0e 00" +
+                                        "00 00 04 00 ed 00 00 9f 45 00 00 00 5c 00 00 00" +
+                                        "04 00 ed 00 05 9f ef 00 00 00 fa 00 00 00 06 00" +
+                                        "ed 00 40 0d 2e 64 65 62 75 67 5f 61 62 62 72 65" +
+                                        "76 01 11 01 25 0e 13 05 03 0e 10 17 1b 0e 11 01" +
+                                        "55 17 00 00 02 24 3e 0b 0b 00 03 11 01 12 06 49" +
+                                        "13 00 00 05 34 00 02 17 03 0e 3a 0b 3b 0b 49 13" +
+                                        "00 00 00 00 52 0b 2e 64 65 62 75 67 5f 69 6e 66" +
+                                        "6f c3 00 00 00 04 00 00 00 00 00 04 01 89 00 00" +
+                                        "00 0c 00 7c 00 00 00 00 00 00 00 b0 00 00 00 00" +
+                                        "00 00 00 00 00 00 00 02 22 00 00 00 00 00 04 00" +
+                                        "00 00 01 02 bf 00 00 00 05 1e 00 00 00 1a 00 00" +
+                                        "00 01 03 26 00 00 00 00 1e 0d 2e 64 65 62 75 67" +
+                                        "5f 72 61 6e 67 65 73 4e 00 00 00 86 00 00 00 00" +
+                                        "00 00 00 00 00 00 00 00 bc 01 0a 2e 64 65 62 75" +
+                                        "67 5f 73 74 72 6c 6f 6f 70 5f 77 68 69 6c 65 5f" +
+                                        "63 6f 6c 6c 61 74 7a 00 6d 65 6d 63 70 79 00 78" +
+                                        "00 76 00 64 73 74 00 75 6e 73 69 67 6e 65 64 20" +
+                                        "69 6e 74 00 6d 65 6d 73 65 74 00 6c 6f 6f 70 5f" +
+                                        "64 6f 5f 64 69 67 69 74 73 00 73 74 65 70 73 00" +
+                                        "75 6e 73 69 67 6e 65 64 20 63 68 61 72 00 6e 00" +
+                                        "75 6e 73 69 67 6e 65 64 20 6c 6f 6e 67 00 6d 65" +
+                                        "6d 6d 6f 76 65 00 64 52 73 72 63 00 72 74 2e 63" +
+                                        "00 6c 6f 6f 70 5f 77 68 69 6c 65 2e 63 00 55 62" +
+                                        "75 6e 74 75 20 63 6c 61 6e 67 20 76 65 72 73 69" +
+                                        "6f 6e 20 31 34 2e 30 2e 30 2d 31 75 62 75 6e 74" +
+                                        "75 31 2e 31 00 2e 00 a2 01 0b 2e 64 65 62 75 67" +
+                                        "5f 6c 69 6e 65 96 00 00 00 04 00 24 00 00 00 01" +
+                                        "01 01 fb 0e 0d 00 01 01 01 01 00 00 00 01 00 00" +
+                                        "01 00 6c 6f 6f 70 5f 77 68 69 6c 65 2e 63 00 00" +
+                                        "00 00 00 00 05 00 05 02 4e 00 00 00 03 0c 01 05" +
+                                        "0b 0a e9 06 03 6e 3c 05 07 06 03 11 4a 06 03 6f" +
+                                        "3c 05 0e 06 03 13 4a 05 03 06 20 03 6d 2e 03 13" +
+                                        "4a 06 08 13 02 03 00 01 01 96 02 00 00 04 00 1c" +
+                                        "00 00 00 01 01 01 fb 0e 0d 00 01 01 01 01 00 00" +
+                                        "00 01 00 00 01 00 72 74 2e 63 00 00 00 00 00 00" +
+                                        "05 02 ff ff ff ff 14 05 03 0a 3f");
+        assertEquals(811, data.length);
+        runRuntimeTest(data, exports -> assertEquals(9, exports.getMember("loop_while_collatz").execute(27).asInt()));
+    }
+
+    private static byte[] readAttributeBlockOrNull(int form, int declaredLength, int availableLength) {
+        final byte[] data = createDebugDataWithBlockAttribute(form, declaredLength, availableLength);
+        final int debugInfoOffset = data.length - DebugUtil.CUSTOM_DATA_SIZE;
+        final DebugParseUnit unit = new DebugParser(data).readCompilationUnit(debugInfoOffset, 0);
+        if (unit == null) {
+            return null;
+        }
+        return unit.rootData().asByteArrayOrNull(Attributes.LOCATION);
+    }
+
+    private static byte[] createDebugDataWithBlockAttribute(int form, int declaredLength, int availableLength) {
+        final ByteArrayList info = new ByteArrayList();
+        addU32(info, 0); // unit length placeholder
+        addU16(info, 4); // version
+        addU32(info, 0); // debug_abbrev_offset
+        info.add((byte) 4); // address size
+        info.addUnsignedInt32(1); // compilation unit abbreviation index
+        if (form == 0x0A) {
+            info.add((byte) declaredLength);
+        } else if (form == 0x03) {
+            addU16(info, declaredLength);
+        } else {
+            throw new IllegalArgumentException("unsupported block form");
+        }
+        info.addRange(new byte[availableLength], 0, availableLength);
+        final byte[] infoBytes = info.toArray();
+        setU32(infoBytes, 0, infoBytes.length - 4);
+
+        final ByteArrayList abbrev = new ByteArrayList();
+        abbrev.addUnsignedInt32(1); // abbreviation index
+        abbrev.addUnsignedInt32(Tags.COMPILATION_UNIT); // DW_TAG_compile_unit
+        abbrev.add((byte) 0); // no children
+        addAttribute(abbrev, Attributes.LOCATION, form);
+        addAttribute(abbrev, 0, 0);
+        abbrev.addUnsignedInt32(0); // end of abbreviations
+        final byte[] abbrevBytes = abbrev.toArray();
+
+        final int debugInfoOffset = infoBytes.length + abbrevBytes.length;
+        final byte[] data = new byte[debugInfoOffset + DebugUtil.CUSTOM_DATA_SIZE];
+        System.arraycopy(infoBytes, 0, data, 0, infoBytes.length);
+        System.arraycopy(abbrevBytes, 0, data, infoBytes.length, abbrevBytes.length);
+        Arrays.fill(data, debugInfoOffset, debugInfoOffset + DebugUtil.CUSTOM_DATA_SIZE, (byte) 0xFF);
+        setU32(data, debugInfoOffset, infoBytes.length); // abbrev offset
+        setU32(data, debugInfoOffset + 4, abbrevBytes.length); // abbrev length
+        setU32(data, debugInfoOffset + 8, 0); // info offset
+        setU32(data, debugInfoOffset + 12, infoBytes.length); // info length
+        return data;
     }
 
     @Test
