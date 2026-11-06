@@ -42,6 +42,7 @@ import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.shared.util.VMError;
 
@@ -183,6 +184,15 @@ final class MarkStack {
     private Pointer getEntryAddress(int index) {
         Pointer firstEntry = ((Pointer) top).add(SizeOf.unsigned(Segment.class));
         return firstEntry.add(Word.unsigned(index).multiply(entrySize()));
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void clean() {
+        assert isEmpty();
+        if (top.isNonNull()) {
+            assert top.getNext().isNull();
+            UnmanagedMemoryUtil.fill((Pointer) top, Word.unsigned(SEGMENT_SIZE), (byte) 0);
+        }
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
