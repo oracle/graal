@@ -24,14 +24,10 @@
  */
 package jdk.graal.compiler.phases.common.priorityinline.nodes.devirtualization;
 
-import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
-
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
-import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -39,9 +35,7 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 
 import jdk.graal.compiler.phases.common.priorityinline.InliningProvider;
@@ -81,14 +75,7 @@ public abstract class MethodBasedDevirtualization extends ToDirectCallDevirtuali
         ObjectStamp piStamp;
         if (inliningProvider.isMethodForDevirtualizationInTable(originalTargetMethod(), virtualInvoke.getTargetMethod(), concreteMethod, receiverType)) {
             piStamp = StampFactory.objectNonNull(TypeReference.createWithoutAssumptions(dispatchedMethod().getDeclaringClass()));
-            if (!StampTool.isPointerNonNull(receiver)) {
-                LogicNode isNull = graph.unique(IsNullNode.create(receiver));
-                FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(isNull, NullCheckException, InvalidateReprofile, true));
-                nonNullReceiver = graph.unique(new PiNode(receiver, StampFactory.objectNonNull(), fixedGuard));
-                graph.addBeforeFixed(virtualInvoke.asFixedNode(), fixedGuard);
-            } else {
-                nonNullReceiver = receiver;
-            }
+            nonNullReceiver = InliningUtil.nonNullReceiver(virtualInvoke);
             final ResolvedJavaMethod checkedMethod = inliningProvider.methodForDevirtualizationCheck(originalTargetMethod(), virtualInvoke.getTargetMethod(), concreteMethod, receiverType);
             condition = inliningProvider.createMethodCheckCondition(coreProviders, graph, virtualInvoke, nonNullReceiver, checkedMethod, concreteMethod, receiverType);
             checkedReceiver = graph.addOrUnique(PiNode.create(nonNullReceiver, piStamp, invocationBlock));

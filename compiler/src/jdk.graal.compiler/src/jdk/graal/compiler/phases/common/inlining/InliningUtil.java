@@ -386,8 +386,8 @@ public class InliningUtil extends ValueMergeUtil {
         StructuredGraph graph = invokeNode.graph();
         final NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
 
-        assert inlineGraph.getGuardsStage().ordinal() >= graph.getGuardsStage().ordinal() : Assertions.errorMessageContext("inlineGraph", inlineGraph, "inline graph stage",
-                        inlineGraph.getGuardsStage(), "graph", graph, "graph.guardsStage", graph.getGuardsStage());
+        GraalError.guarantee(inlineGraph.getGuardsStage().reachedGuardsStage(graph.getGuardsStage()),
+                        "Incompatible guards stages when inlining %s (%s) into %s (%s)", inlineGraph, inlineGraph.getGuardsStage(), graph, graph.getGuardsStage());
         assert invokeNode.graph().isBeforeStage(StageFlag.FLOATING_READS) : "inline isn't handled correctly after floating reads phase";
 
         if (receiverNullCheck && !((MethodCallTargetNode) invoke.callTarget()).isStatic()) {
@@ -488,6 +488,8 @@ public class InliningUtil extends ValueMergeUtil {
         for (int i = 0; i < returnNodes.size(); i++) {
             returnNodes.set(i, (ReturnNode) duplicates.get(returnNodes.get(i)));
         }
+        // Processing missing exception states can delete an exceptional path and its returns.
+        returnNodes.removeIf(returnNode -> !returnNode.isAlive());
         for (Invoke exit : partialIntrinsicExits) {
             // A partial intrinsic exit must be replaced with a call to
             // the intrinsified method.
@@ -1119,7 +1121,6 @@ public class InliningUtil extends ValueMergeUtil {
             ValueNode oldReceiver = callTarget.arguments().get(0);
             ValueNode newReceiver = oldReceiver;
             if (newReceiver.getStackKind() == JavaKind.Object) {
-
                 if (invoke.getInvokeKind() == InvokeKind.Special) {
                     Stamp paramStamp = newReceiver.stamp(NodeView.DEFAULT);
                     Stamp stamp = paramStamp.join(StampFactory.object(TypeReference.create(graph.getAssumptions(), callTarget.targetMethod().getDeclaringClass())));
@@ -1133,6 +1134,9 @@ public class InliningUtil extends ValueMergeUtil {
                 }
 
                 if (!StampTool.isPointerNonNull(newReceiver)) {
+                    // Conservative receiver stamps can require a fixed guard even after guard lowering.
+                    GraalError.guarantee(graph.getGuardsStage().allowsGuardInsertion(),
+                                    "Cannot add a receiver null check in guards stage %s for %s with receiver %s", graph.getGuardsStage(), invoke, newReceiver);
                     LogicNode condition = graph.unique(IsNullNode.create(newReceiver));
                     FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
                     PiNode nonNullReceiver = graph.unique(new PiNode(newReceiver, StampFactory.objectNonNull(), fixedGuard));
