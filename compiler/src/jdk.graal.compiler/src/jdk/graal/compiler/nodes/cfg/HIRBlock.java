@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -734,7 +734,6 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             this.firstPredecessor = firstPredecessor;
         }
 
-        @SuppressWarnings("unchecked")
         public void setPredecessors(int firstPredecessor, int[] extraPredecessors) {
             this.firstPredecessor = firstPredecessor;
             this.extraPredecessors = extraPredecessors;
@@ -745,7 +744,6 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             firstSuccessorProbability = 1.0D;
         }
 
-        @SuppressWarnings("unchecked")
         public void setSuccessors(int firstSuccessor, int secondSuccessor, double firstSuccP, double secondSuccP) {
             this.firstSuccessor = firstSuccessor;
             this.secondSuccessor = secondSuccessor;
@@ -753,7 +751,6 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             this.secondSuccessorProbability = secondSuccP;
         }
 
-        @SuppressWarnings("unchecked")
         public void setSuccessors(int firstSuccessor, int secondSuccessor, int[] extraSuccessors, double firstSuccP, double secondSuccP, double[] restSuccP) {
             this.firstSuccessor = firstSuccessor;
             this.secondSuccessor = secondSuccessor;
@@ -780,7 +777,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             GraalError.guarantee(getSuccessorCount() == 1, "can only delete blocks with exactly one successor.");
             ModifiableBlock next = (ModifiableBlock) getSuccessorAt(0);
             int predecessorCount = getPredecessorCount();
-            for (int i = 0; i < getPredecessorCount(); i++) {
+            for (int i = 0; i < predecessorCount; i++) {
                 ModifiableBlock pred = (ModifiableBlock) getPredecessorAt(i);
                 int[] newPredSuccs = new int[pred.getSuccessorCount()];
                 double[] newPredSuccP = new double[pred.getSuccessorCount()];
@@ -788,11 +785,10 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
                     HIRBlock predSuccAt = pred.getSuccessorAt(j);
                     if (predSuccAt == this) {
                         newPredSuccs[j] = next.getId();
-                        newPredSuccP[j] = pred.getSuccessorProbabilityAt(0);
                     } else {
-                        newPredSuccP[j] = pred.getSuccessorProbabilityAt(j);
                         newPredSuccs[j] = predSuccAt.getId();
                     }
+                    newPredSuccP[j] = pred.getSuccessorProbabilityAt(j);
                 }
                 if (newPredSuccs.length == 1) {
                     pred.setSuccessor(newPredSuccs[0]);
@@ -823,7 +819,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             for (int i = 0; i < next.getPredecessorCount(); i++) {
                 HIRBlock curPred = next.getPredecessorAt(i);
                 if (curPred == this) {
-                    for (int j = 0; j < getPredecessorCount(); j++) {
+                    for (int j = 0; j < predecessorCount; j++) {
                         newPreds.add(getPredecessorAt(j));
                     }
                 } else {
