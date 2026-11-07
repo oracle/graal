@@ -38,6 +38,7 @@ import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -62,6 +63,11 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
     @Override
     public AnnotationSubstitutionProcessor getAnnotationSubstitutionProcessor() {
         return annotationSubstitutionProcessor;
+    }
+
+    @Override
+    public void processSnippetGraph(StructuredGraph graph) {
+        processGraph(graph);
     }
 
     @Override
