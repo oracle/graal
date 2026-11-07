@@ -285,7 +285,12 @@ public class CGlobalDataFeature implements InternalFeature {
         });
     }
 
-    CGlobalDataInfo getDataInfo(CGlobalDataImpl<?> data) {
+    /**
+     * Returns the registration for the given object, or null if that object is not registered.
+     * Does not register the object or resolve its canonical replacement.
+     * Can be called before layout, but offsets are available only after layout.
+     */
+    public CGlobalDataInfo getDataInfo(CGlobalData<?> data) {
         return map.get(data);
     }
 
