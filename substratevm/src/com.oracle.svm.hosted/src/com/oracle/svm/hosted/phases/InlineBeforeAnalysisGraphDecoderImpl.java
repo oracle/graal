@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -128,6 +128,13 @@ public class InlineBeforeAnalysisGraphDecoderImpl extends InlineBeforeAnalysisGr
 
     private Node handleIsStaticFinalFieldInitializedNode(IsStaticFinalFieldInitializedNode node) {
         var field = (AnalysisField) node.getField();
+        /*
+         * Like for static field loads, first make sure the results of the simulation of the
+         * declaring class initializer are available, compute them if necessary. Otherwise, the
+         * result depends on whether another analysis task has already published them, and the
+         * analysis non-deterministically sees the uninitialized value of the static final field.
+         */
+        processClassInitializer(field.getDeclaringClass());
         if (simulateClassInitializerSupport.isSimulatedOrInitializedAtBuildTime(field.getDeclaringClass())) {
             return ConstantNode.forBoolean(true);
         }
