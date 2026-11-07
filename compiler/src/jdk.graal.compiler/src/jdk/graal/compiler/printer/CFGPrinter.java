@@ -440,12 +440,12 @@ class CFGPrinter extends CompilationPrinter {
 
         @Override
         public void visitRange(int from, int to) {
-            out.printf("[%d, %d[", from, to);
+            out.printf("[%s, %s[", from, to);
         }
 
         @Override
         public void visitUsePos(int usePos, Object registerPriority) {
-            out.printf("%d %s ", usePos, registerPriority);
+            out.printf("%s %s ", usePos, registerPriority);
         }
 
         @Override
