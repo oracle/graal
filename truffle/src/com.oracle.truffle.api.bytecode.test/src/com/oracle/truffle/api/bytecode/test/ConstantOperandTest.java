@@ -159,13 +159,13 @@ public class ConstantOperandTest {
                     buffer.writeInt(i);
                 } else if (object instanceof Float f) {
                     buffer.writeByte(TAG_FLOAT);
-                    buffer.writeFloat(f);
+                    buffer.writeInt(Float.floatToRawIntBits(f));
                 } else if (object instanceof Long l) {
                     buffer.writeByte(TAG_LONG);
                     buffer.writeLong(l);
                 } else if (object instanceof Double d) {
                     buffer.writeByte(TAG_DOUBLE);
-                    buffer.writeDouble(d);
+                    buffer.writeLong(Double.doubleToRawLongBits(d));
                 } else if (object instanceof String s) {
                     buffer.writeByte(TAG_STRING);
                     buffer.writeUTF(s);
@@ -521,6 +521,27 @@ public class ConstantOperandTest {
     }
 
     @Test
+    public void testDoubleNaNConstants() {
+        long firstBits = 0x7ff8000000000001L;
+        long secondBits = 0x7ff8000000000002L;
+        ConstantOperandTestRootNode root = parse(b -> {
+            b.beginRoot();
+            b.beginIfThen();
+            b.emitLoadArgument(0);
+            b.beginReturn();
+            b.emitDoubleConstant(Double.longBitsToDouble(firstBits));
+            b.endReturn();
+            b.endIfThen();
+            b.beginReturn();
+            b.emitDoubleConstant(Double.longBitsToDouble(secondBits));
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(firstBits, Double.doubleToRawLongBits((Double) root.getCallTarget().call(true)));
+        assertEquals(secondBits, Double.doubleToRawLongBits((Double) root.getCallTarget().call(false)));
+    }
+
+    @Test
     public void testIntConstants() {
         for (int value : List.of(0, 42, -42, Integer.MAX_VALUE, Integer.MIN_VALUE)) {
             ConstantOperandTestRootNode root = parse(b -> {
@@ -572,6 +593,27 @@ public class ConstantOperandTest {
             assertEquals(value, root.getCallTarget().call());
             assertConstantOperand(value, root, "FloatConstantWithOperand");
         }
+    }
+
+    @Test
+    public void testFloatNaNConstants() {
+        int firstBits = 0x7fc00001;
+        int secondBits = 0x7fc00002;
+        ConstantOperandTestRootNode root = parse(b -> {
+            b.beginRoot();
+            b.beginIfThen();
+            b.emitLoadArgument(0);
+            b.beginReturn();
+            b.emitFloatConstant(Float.intBitsToFloat(firstBits));
+            b.endReturn();
+            b.endIfThen();
+            b.beginReturn();
+            b.emitFloatConstant(Float.intBitsToFloat(secondBits));
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(firstBits, Float.floatToRawIntBits((Float) root.getCallTarget().call(true)));
+        assertEquals(secondBits, Float.floatToRawIntBits((Float) root.getCallTarget().call(false)));
     }
 
     @Test

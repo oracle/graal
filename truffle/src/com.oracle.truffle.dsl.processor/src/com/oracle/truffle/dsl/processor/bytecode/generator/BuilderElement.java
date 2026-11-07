@@ -9430,15 +9430,16 @@ final class BuilderElement extends AbstractElement {
             method.addThrownType(type(IOException.class));
             CodeTreeBuilder b = method.createBuilder();
 
-            b.startDeclaration(declaredType(Integer.class), "index").startCall(objects, "get").string("object").end(2);
+            b.startDeclaration(type(Object.class), "key").startCall("ACCESS.getSerializationKey").string("object").end(2);
+            b.startDeclaration(declaredType(Integer.class), "index").startCall(objects, "get").string("key").end(2);
             b.startIf().string("index != null").end().startBlock();
             b.startReturn().string("index").end();
             b.end();
 
             b.startFor().type(this.asType()).string(" s = ").variable(outer).string("; s != null; s = ").field("s", outer).end().startBlock();
-            b.startDeclaration(declaredType(Integer.class), "outerIndex").startCall("s." + objects.getName(), "get").string("object").end(2);
+            b.startDeclaration(declaredType(Integer.class), "outerIndex").startCall("s." + objects.getName(), "get").string("key").end(2);
             b.startIf().string("outerIndex != null").end().startBlock();
-            b.startReturn().startCall("serializeOuterObject").string("object").string("s").string("outerIndex").end(2);
+            b.startReturn().startCall("serializeOuterObject").string("key").string("s").string("outerIndex").end(2);
             b.end();
             b.end();
 
@@ -9451,7 +9452,7 @@ final class BuilderElement extends AbstractElement {
 
             b.startIf().variable(outer).string(" == null").end().startBlock();
             b.startAssign("index").startCall(objects, "size").end(2);
-            b.startStatement().startCall(objects, "put").string("object").string("index").end(2);
+            b.startStatement().startCall(objects, "put").string("key").string("index").end(2);
             b.startStatement().startCall(buffer, "writeShort").staticReference(codeCreateObject).end(2);
             b.startStatement().startCall(callback, "serialize").string("this").variable(buffer).string("object").end(2);
             b.startReturn().string("index").end();
@@ -9473,7 +9474,7 @@ final class BuilderElement extends AbstractElement {
             b.startAssign("target").field("target", outer).end();
             b.end();
             b.startDeclaration(type(int.class), "targetIndex").startCall("target." + objects.getName(), "size").end(2);
-            b.startStatement().startCall("target." + objects.getName(), "put").string("object").string("targetIndex").end(2);
+            b.startStatement().startCall("target." + objects.getName(), "put").string("key").string("targetIndex").end(2);
             b.startStatement().startCall("target." + buffer.getName(), "writeShort").staticReference(codeCreateObject).end(2);
             b.startStatement().startCall("target." + buffer.getName(), "write").startCall(objectBytes, "toByteArray").end(3);
             b.startIf().startCall(objectBytes, "size").end().string(" > ").staticReference(maxObjectBytes).end().startBlock();
@@ -9482,20 +9483,20 @@ final class BuilderElement extends AbstractElement {
             b.startIf().string("target == this").end().startBlock();
             b.startReturn().string("targetIndex").end();
             b.end();
-            b.startReturn().startCall("serializeOuterObject").string("object").string("target").string("targetIndex").end(2);
+            b.startReturn().startCall("serializeOuterObject").string("key").string("target").string("targetIndex").end(2);
             return method;
         }
 
         private CodeExecutableElement createSerializeOuterObject() {
             CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "serializeOuterObject");
-            method.addParameter(new CodeVariableElement(type(Object.class), "object"));
+            method.addParameter(new CodeVariableElement(type(Object.class), "key"));
             method.addParameter(new CodeVariableElement(this.asType(), "target"));
             method.addParameter(new CodeVariableElement(type(int.class), "targetIndex"));
             method.addThrownType(type(IOException.class));
             CodeTreeBuilder b = method.createBuilder();
 
             b.startDeclaration(type(int.class), "index").startCall(objects, "size").end(2);
-            b.startStatement().startCall(objects, "put").string("object").string("index").end(2);
+            b.startStatement().startCall(objects, "put").string("key").string("index").end(2);
             b.startStatement().startCall(buffer, "writeShort").staticReference(codeCreateOuterObject).end(2);
             b.startStatement().startCall(buffer, "writeShort").string(BytecodeRootNodeElement.safeCastShort("target." + depth.getName())).end(2);
             b.startStatement().startCall(buffer, "writeInt").string("targetIndex").end(2);

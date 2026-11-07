@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -138,5 +138,28 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLCheckedAccess,
      * @since 24.2
      */
     public abstract <T> T uncheckedCast(Object arr, Class<T> clazz);
+
+    /**
+     * Returns a key for deduplicating serialized constants. {@link Float} and {@link Double}
+     * {@code NaN} values are replaced with wrappers that preserve NaN bit patterns.
+     *
+     * @since 25.6
+     */
+    @SuppressWarnings("static-method")
+    public final Object getSerializationKey(Object object) {
+        if (object instanceof Float f && f.isNaN()) {
+            return new FloatNaNKey(Float.floatToRawIntBits(f));
+        } else if (object instanceof Double d && d.isNaN()) {
+            return new DoubleNaNKey(Double.doubleToRawLongBits(d));
+        } else {
+            return object;
+        }
+    }
+
+    private record FloatNaNKey(int bits) {
+    }
+
+    private record DoubleNaNKey(long bits) {
+    }
 
 }

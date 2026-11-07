@@ -8,6 +8,7 @@ This section discusses how to employ these optimizations in Bytecode DSL interpr
 [Quickening](https://dl.acm.org/doi/10.1145/1869631.1869633) is a technique that rewrites an instruction with a specialized version that requires less work.
 The Bytecode DSL supports quickened instructions that handle a subset of the specializations defined by an operation.
 At the moment, these operation quickenings can only be specified manually using [`@ForceQuickening`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/ForceQuickening.java).
+They are also generated automatically in some cases to support [boxing elimination](#boxing-elimination).
 In the future, [tracing](#tracing) will be used to automatically infer useful quickenings.
 
 Consider the `Add` operation below as an example.
