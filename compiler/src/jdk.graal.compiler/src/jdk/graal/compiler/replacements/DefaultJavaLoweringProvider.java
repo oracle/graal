@@ -946,7 +946,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
          * INIT_MEMORY. This ensures that GC barrier assumptions aren't violated.
          */
         int[] emissionOrder = new int[virtualObjects.size()];
-        computeAllocationEmissionOrder(commit, emissionOrder);
+        computeAllocationEmissionOrder(commit, emissionOrder, valuePositions);
 
         List<AbstractNewObjectNode> recursiveLowerings = new ArrayList<>();
         ValueNode[] allocations = new ValueNode[virtualObjects.size()];
@@ -1079,7 +1079,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         }
     }
 
-    private static void computeAllocationEmissionOrder(CommitAllocationNode commit, int[] order) {
+    private static void computeAllocationEmissionOrder(CommitAllocationNode commit, int[] order, int[] valuePositions) {
         int size = commit.getVirtualObjects().size();
         boolean[] complete = new boolean[size];
         int cur = 0;
@@ -1091,13 +1091,13 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         boolean progress = true;
         while (progress) {
             progress = false;
-            int valuePos = 0;
             for (int objIndex = 0; objIndex < size; objIndex++) {
                 if (complete[objIndex]) {
                     continue;
                 }
                 VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
                 int entryCount = virtual.entryCount();
+                int valuePos = valuePositions[objIndex];
 
                 boolean allValuesAvailable = true;
                 for (int i = 0; i < entryCount; i++) {
