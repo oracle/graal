@@ -42,6 +42,7 @@ import jdk.graal.compiler.lir.gen.WriteBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ReinterpretNode;
@@ -138,14 +139,16 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
     @Override
     public void simplify(SimplifierTool tool) {
         if (!ordersMemoryAccesses()) {
-            if (tool.canonicalizeReads() && hasExactlyOneUsage() && next() instanceof WriteNode) {
-                WriteNode write = (WriteNode) next();
-                if (write.lastLocationAccess == this && write.getAddress() == getAddress() && getAccessStamp(NodeView.DEFAULT).isCompatible(write.getAccessStamp(NodeView.DEFAULT))) {
+            if (tool.canonicalizeReads()) {
+                WriteNode write = findOverwritingWrite();
+                if (write != null) {
                     write.setLastLocationAccess(getLastLocationAccess());
                     tool.addToWorkList(inputs());
                     tool.addToWorkList(next());
+                    tool.addToWorkList(write);
                     tool.addToWorkList(predecessor());
                     graph().removeFixed(this);
+                    return;
                 }
             }
             // reinterpret means nothing while writing - we simply write the bytes
@@ -167,6 +170,27 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
                 memoryOrder = MemoryOrderMode.RELEASE;
             }
         }
+    }
+
+    /**
+     * Finds a later write that overwrites this write without an intervening observation. Calls may
+     * be skipped only when interprocedural analysis proved that they cannot throw and that their
+     * accessed location does not overlap this write.
+     */
+    private WriteNode findOverwritingWrite() {
+        if (!hasExactlyOneUsage() || !(usages().first() instanceof WriteNode write) || write.lastLocationAccess != this || write.getAddress() != getAddress() ||
+                        !getAccessStamp(NodeView.DEFAULT).isCompatible(write.getAccessStamp(NodeView.DEFAULT))) {
+            return null;
+        }
+
+        FixedNode current = next();
+        while (current != write) {
+            if (!(current instanceof InvokeNode invoke) || !invoke.isGuaranteedNotToThrow() || invoke.getLocationIdentity().overlaps(getLocationIdentity())) {
+                return null;
+            }
+            current = invoke.next();
+        }
+        return write;
     }
 
     private static boolean followedByVolatileWrite(FixedWithNextNode start) {
