@@ -33,6 +33,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.shared.util.UnsignedUtils;
@@ -278,11 +279,22 @@ public final class JavaMemoryUtil {
         copyUnalignedLower(from, to, offset);
     }
 
+    /**
+     * The copy behind {@code Unsafe.copyMemory} and the JNI region functions. The caller does not
+     * say what it copies, so the element size is taken from the alignment, like HotSpot's
+     * {@code Copy::conjoint_memory_atomic}: a range whose start, end or size is odd can only hold
+     * single bytes and takes the byte copy; anything else keeps the word-granular copy that never
+     * tears a 2-, 4- or 8-byte element.
+     */
     @Uninterruptible(reason = "Memory is on the heap, copying must not be interrupted.")
     public static void copyOnHeap(Object srcBase, UnsignedWord srcOffset, Object destBase, UnsignedWord destOffset, UnsignedWord size) {
         Pointer fromPtr = Word.objectToUntrackedPointer(srcBase).add(srcOffset);
         Pointer toPtr = Word.objectToUntrackedPointer(destBase).add(destOffset);
-        UnmanagedMemoryUtil.copy(fromPtr, toPtr, size);
+        if (fromPtr.or(toPtr).or(size).and(1).notEqual(0)) {
+            copyBytes(fromPtr, toPtr, size);
+        } else {
+            UnmanagedMemoryUtil.copy(fromPtr, toPtr, size);
+        }
     }
 
     /**
@@ -703,8 +715,10 @@ public final class JavaMemoryUtil {
     }
 
     /**
-     * Copies between Java primitive arrays.
+     * Copies between Java primitive arrays. Uninterruptible itself so that the byte copy can be
+     * inlined here and a short copy costs one call, not two.
      */
+    @Uninterruptible(reason = "Arrays must not move")
     public static void copyPrimitiveArrayForward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
         assert length >= 0 : length;
         assert fromArray != null;
@@ -712,10 +726,14 @@ public final class JavaMemoryUtil {
 
         UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
         UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
-        UnsignedWord elementSize = Word.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
-        UnsignedWord size = elementSize.multiply(length);
+        int elementSize = LayoutEncoding.getArrayIndexScale(layoutEncoding);
+        UnsignedWord size = Word.unsigned(elementSize).multiply(length);
 
-        copyPrimitiveArrayForward(fromArray, fromOffset, toArray, toOffset, size);
+        if (elementSize == 1) {
+            copyByteArray(fromArray, fromOffset, toArray, toOffset, size);
+        } else {
+            copyPrimitiveArrayForward(fromArray, fromOffset, toArray, toOffset, size);
+        }
     }
 
     @IntrinsicCandidate
@@ -738,8 +756,10 @@ public final class JavaMemoryUtil {
     }
 
     /**
-     * Copies between Java primitive arrays.
+     * Copies between Java primitive arrays. Uninterruptible itself so that the byte copy can be
+     * inlined here and a short copy costs one call, not two.
      */
+    @Uninterruptible(reason = "Arrays must not move")
     public static void copyPrimitiveArrayBackward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
         assert length >= 0 : length;
         assert fromArray != null;
@@ -747,10 +767,14 @@ public final class JavaMemoryUtil {
 
         UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
         UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
-        UnsignedWord elementSize = Word.unsigned(LayoutEncoding.getArrayIndexScale(layoutEncoding));
-        UnsignedWord size = elementSize.multiply(length);
+        int elementSize = LayoutEncoding.getArrayIndexScale(layoutEncoding);
+        UnsignedWord size = Word.unsigned(elementSize).multiply(length);
 
-        copyPrimitiveArrayBackward(fromArray, fromOffset, toArray, toOffset, size);
+        if (elementSize == 1) {
+            copyByteArray(fromArray, fromOffset, toArray, toOffset, size);
+        } else {
+            copyPrimitiveArrayBackward(fromArray, fromOffset, toArray, toOffset, size);
+        }
     }
 
     @IntrinsicCandidate
@@ -765,6 +789,80 @@ public final class JavaMemoryUtil {
     public static void copyPrimitiveArrayBackward(Pointer fromPtr, Pointer toPtr, UnsignedWord size) {
         // See comment in copyPrimitiveArrayForward.
         UnmanagedMemoryUtil.copyBackward(fromPtr, toPtr, size);
+    }
+
+    /**
+     * Smallest byte copy handed to the C library. Below it, the loads and stores of
+     * {@link #copyBytes} inline into the caller and cost less than the call; from here on, the
+     * library's 16- and 32-byte vector moves win over 8-byte words.
+     */
+    private static final int BYTE_COPY_LIBC_THRESHOLD = 32;
+
+    /**
+     * Copies between arrays whose elements are single bytes ({@code byte[]}, {@code boolean[]});
+     * the ranges may overlap in either direction.
+     *
+     * A byte is the smallest unit the Java memory model asks us to keep whole, so this copy may use
+     * moves of any width at any alignment, including moves that overlap each other, and may hand the
+     * work to the C library's {@code memmove}, which uses the widest moves the CPU has (NEON, SVE).
+     * Arrays of wider elements keep the word-granular copies, which never tear an element.
+     */
+    @IntrinsicCandidate
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void copyByteArray(Object fromArray, UnsignedWord fromOffset, Object toArray, UnsignedWord toOffset, UnsignedWord size) {
+        Pointer fromPtr = Word.objectToUntrackedPointer(fromArray).add(fromOffset);
+        Pointer toPtr = Word.objectToUntrackedPointer(toArray).add(toOffset);
+        copyBytes(fromPtr, toPtr, size);
+    }
+
+    /**
+     * Copies {@code size} bytes with {@code memmove} semantics: the ranges may overlap in either
+     * direction. Short copies use two or four windows at both ends of the range (they overlap when
+     * the size is not a multiple of the window), with every load done before the first store, so
+     * there is no loop and no size-dependent tail code; the size tests form a balanced tree of at
+     * most three compares. Longer copies go to the C library.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void copyBytes(Pointer from, Pointer to, UnsignedWord size) {
+        if (size.belowThan(16)) {
+            if (size.belowThan(4)) {
+                if (size.belowThan(2)) {
+                    if (size.equal(1)) {
+                        to.writeByte(0, from.readByte(0));
+                    }
+                } else {
+                    UnsignedWord end = size.subtract(2);
+                    short a = from.readShort(0);
+                    short b = from.readShort(end);
+                    to.writeShort(0, a);
+                    to.writeShort(end, b);
+                }
+            } else if (size.belowThan(8)) {
+                UnsignedWord end = size.subtract(4);
+                int a = from.readInt(0);
+                int b = from.readInt(end);
+                to.writeInt(0, a);
+                to.writeInt(end, b);
+            } else {
+                UnsignedWord end = size.subtract(8);
+                long a = from.readLong(0);
+                long b = from.readLong(end);
+                to.writeLong(0, a);
+                to.writeLong(end, b);
+            }
+        } else if (size.belowThan(BYTE_COPY_LIBC_THRESHOLD)) {
+            UnsignedWord end = size.subtract(16);
+            long a0 = from.readLong(0);
+            long a1 = from.readLong(8);
+            long b0 = from.readLong(end);
+            long b1 = from.readLong(end.add(8));
+            to.writeLong(0, a0);
+            to.writeLong(8, a1);
+            to.writeLong(end, b0);
+            to.writeLong(end.add(8), b1);
+        } else {
+            LibC.memmove(to, from, size);
+        }
     }
 
     private JavaMemoryUtil() {
