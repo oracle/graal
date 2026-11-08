@@ -34,9 +34,12 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
@@ -126,6 +129,58 @@ public abstract class LLVMAdditionalIntrinsics {
                 }
             }
             return LLVMI16Vector.create(result);
+        }
+    }
+
+    /*
+     * llvm.masked.load/store on a contiguous base pointer (as opposed to
+     * gather/scatter's pointer vector). clang emits the v4f64 forms for Eigen's
+     * AVX2 LLT/triangular-solve tails; masked-off lanes must not be accessed.
+     */
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "vectorLength", type = int.class)
+    public abstract static class LLVMMaskedLoadF64Node extends LLVMBuiltin {
+
+        @Child private LLVMDoubleLoadNode load = LLVMDoubleLoadNode.create();
+
+        protected abstract int getVectorLength();
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMDoubleVector doLoad(LLVMPointer pointer, LLVMI1Vector mask, LLVMDoubleVector passthrough) {
+            assert mask.getLength() == getVectorLength();
+            assert passthrough.getLength() == getVectorLength();
+            double[] result = new double[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                result[i] = mask.getValue(i) ? load.executeWithTarget(pointer.increment(i * Double.BYTES)) : passthrough.getValue(i);
+            }
+            return LLVMDoubleVector.create(result);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "vectorLength", type = int.class)
+    public abstract static class LLVMMaskedStoreF64Node extends LLVMBuiltin {
+
+        @Child private LLVMDoubleStoreNode store = LLVMDoubleStoreNode.create();
+
+        protected abstract int getVectorLength();
+
+        @Specialization
+        @ExplodeLoop
+        protected Object doStore(LLVMDoubleVector values, LLVMPointer pointer, LLVMI1Vector mask) {
+            assert values.getLength() == getVectorLength();
+            assert mask.getLength() == getVectorLength();
+            for (int i = 0; i < getVectorLength(); i++) {
+                if (mask.getValue(i)) {
+                    store.executeWithTarget(pointer.increment(i * Double.BYTES), values.getValue(i));
+                }
+            }
+            return null;
         }
     }
 
