@@ -141,7 +141,14 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMNoOpNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAdditionalIntrinsicsFactory.LLVMCountTrailingElementsNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAdditionalIntrinsicsFactory.LLVMGetRoundingNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAdditionalIntrinsicsFactory.LLVMIntegerCompareNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAdditionalIntrinsicsFactory.LLVMFrexpNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAdditionalIntrinsicsFactory.LLVMMaskedGatherI32NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAdditionalIntrinsicsFactory.LLVMMaskedLoadF32NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAdditionalIntrinsicsFactory.LLVMMaskedLoadF64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAdditionalIntrinsicsFactory.LLVMMaskedLoadI32NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAdditionalIntrinsicsFactory.LLVMMaskedStoreF32NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAdditionalIntrinsicsFactory.LLVMMaskedStoreF64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAdditionalIntrinsicsFactory.LLVMMaskedStoreI32NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAdditionalIntrinsicsFactory.LLVMMaskedScatterI32NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAdditionalIntrinsicsFactory.LLVMSaturatingFptoSINodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMAdditionalIntrinsicsFactory.LLVMSetRoundingNodeGen;
@@ -165,6 +172,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorRed
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceAndNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceFAddNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceFMaxNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceFMinNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceFMulNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceMulNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceOrNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMVectorReduceFactory.LLVMVectorReduceSignedMaxNodeGen;
@@ -181,11 +190,20 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAEndNodeGen
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStartNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ComparisonNodeFactory.LLVMX86_CmpssNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionDoubleToFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionDoubleToIntNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionDoubleToIntVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionFloatToIntNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_ConversionFloatToIntVectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_MovmskpdNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNodeFactory.LLVMX86_Pmovmskb128NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_MissingBuiltin;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorAddSubNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorBlendvNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorHorizontalAddNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorHorizontalAddFloatNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorPackusdwNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorPblendvbNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_SSE_VectorMaxNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_SSE_VectorMaxsdNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_SSE_VectorMinNodeGen;
@@ -198,6 +216,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorM
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMinNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMinsdNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorPackNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorRoundNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorRsqrtNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorSquareRootNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMMetaLiteralNode;
 import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMDoubleLiteralNodeGen;
@@ -346,6 +366,7 @@ import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMExtractElementNodeFactor
 import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMExtractElementNodeFactory.LLVMI16ExtractElementNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMExtractElementNodeFactory.LLVMI1ExtractElementNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMExtractElementNodeFactory.LLVMI32ExtractElementNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMExtractElementNodeFactory.LLVMI128ExtractElementNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMExtractElementNodeFactory.LLVMI64ExtractElementNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMExtractElementNodeFactory.LLVMI8ExtractElementNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMInsertElementNodeFactory.LLVMDoubleInsertElementNodeGen;
@@ -462,6 +483,9 @@ public class BasicNodeFactory implements NodeFactory {
             }
         } else if (resultType instanceof PointerType || resultType instanceof FunctionType) {
             return LLVMI64ExtractElementNodeGen.create(vector, index);
+        } else if (resultType instanceof VariableBitWidthType && ((VariableBitWidthType) resultType).getBitSizeInt() == 128) {
+            // extractelement of an i128 lane (Eigen AVX predux high-lane extraction)
+            return LLVMI128ExtractElementNodeGen.create(vector, index);
         } else {
             throw new AssertionError(resultType + " is not supported for extractelement");
         }
@@ -1429,6 +1453,10 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMVectorReduceFAddNodeGen.create(args[1], args[2], len);
             case "reduce.fmax":
                 return LLVMVectorReduceFMaxNodeGen.create(args[1], len);
+            case "reduce.fmin":
+                return LLVMVectorReduceFMinNodeGen.create(args[1], len);
+            case "reduce.fmul":
+                return LLVMVectorReduceFMulNodeGen.create(args[1], args[2], len);
             case "reduce.mul":
                 return LLVMVectorReduceMulNodeGen.create(args[1], len);
             case "reduce.and":
@@ -1478,6 +1506,8 @@ public class BasicNodeFactory implements NodeFactory {
     private static final Pattern TYPED_INTRINSIC_PATTERN = Pattern.compile("^llvm\\.(?<op>[a-z0-9.]+)\\.(?<type>(v(?<vlen>[0-9]+))?(?<ptype>[if][0-9]+))");
     private static final Pattern VAR_BIT_OVERFLOW_INTRINSIC_PATTERN = Pattern.compile("^llvm\\.(?<signedness>[us])(?<op>add|sub|mul)\\.with\\.overflow\\.i(?<bits>[0-9]+)$");
     private static final Pattern VAR_BIT_CTPOP_INTRINSIC_PATTERN = Pattern.compile("^llvm\\.ctpop\\.i(?<bits>[0-9]+)$");
+    private static final Pattern FMULADD_VECTOR_INTRINSIC_PATTERN = Pattern.compile("^llvm\\.fmuladd\\.v(?<len>[0-9]+)f(?<bits>32|64)$");
+    private static final Pattern MASKED_LOADSTORE_INTRINSIC_PATTERN = Pattern.compile("^llvm\\.masked\\.(?<op>load|store)\\.v(?<len>[0-9]+)(?<etype>f32|f64|i32)\\.p0$");
 
     private static TypedBuiltinFactory getBuiltinFactory(String op, PrimitiveKind kind) {
         switch (op) {
@@ -1515,22 +1545,62 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMCMathsIntrinsics.getCosFactory(kind);
             case "round":
                 return LLVMCMathsIntrinsics.getRoundFactory(kind);
+            case "trunc":
+                return LLVMCMathsIntrinsics.getTruncFactory(kind);
+            case "nearbyint":
+                return LLVMCMathsIntrinsics.getNearbyintFactory(kind);
+            case "roundeven":
+                return LLVMCMathsIntrinsics.getRoundEvenFactory(kind);
             case "maxnum":
                 return LLVMCMathsIntrinsics.getMaxnumFactory(kind);
             case "minnum":
                 return LLVMCMathsIntrinsics.getMinnumFactory(kind);
+            case "maximum":
+                return LLVMCMathsIntrinsics.getMaximumFactory(kind);
+            case "minimum":
+                return LLVMCMathsIntrinsics.getMinimumFactory(kind);
             case "copysign":
                 return LLVMCMathsIntrinsics.getCopySignFactory(kind);
+            case "uadd.sat":
+                return getSaturatingArithmeticFactory(kind, LLVMArithmetic.UNSIGNED_ADD_SAT);
+            case "usub.sat":
+                return getSaturatingArithmeticFactory(kind, LLVMArithmetic.UNSIGNED_SUB_SAT);
+            case "sadd.sat":
+                return getSaturatingArithmeticFactory(kind, LLVMArithmetic.SIGNED_ADD_SAT);
+            case "ssub.sat":
+                return getSaturatingArithmeticFactory(kind, LLVMArithmetic.SIGNED_SUB_SAT);
             case "abs":
                 return LLVMCMathsIntrinsics.getAbsFactory(kind);
             case "fabs":
                 return LLVMCMathsIntrinsics.getFAbsFactory(kind);
+            case "fma":
+                return LLVMCMathsIntrinsics.getFmaFactory(kind);
             case "fshl":
                 return LLVMFunnelShiftNode.getFshlFactory(kind);
             case "fshr":
                 return LLVMFunnelShiftNode.getFshrFactory(kind);
             case "is.fpclass":
                 return LLVMIsFPClassNode.getIsFPClassFactory(kind);
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Builds a length-generic factory for the saturating integer add/sub intrinsics
+     * ({@code llvm.{s,u}{add,sub}.sat}). The scalar node is reused per lane by the generic
+     * {@link LLVMVectorArithmeticNode} wrapper, so every element type and vector width is covered
+     * through the single {@link #getTypedLLVMBuiltin} dispatch path.
+     */
+    private static TypedBuiltinFactory getSaturatingArithmeticFactory(PrimitiveKind kind, LLVMArithmetic.SaturatingArithmetic arithmetic) {
+        switch (kind) {
+            case I8:
+            case I16:
+            case I32:
+            case I64:
+                return TypedBuiltinFactory.vector(
+                                args -> LLVMSimpleArithmeticPrimitiveNodeGen.create(arithmetic, args[1], args[2]),
+                                (vectorSize, args) -> LLVMVectorArithmeticNodeGen.create(vectorSize, LLVMSimpleArithmeticPrimitiveNodeGen.create(arithmetic, null, null), args[1], args[2]));
             default:
                 return null;
         }
@@ -1583,6 +1653,51 @@ public class BasicNodeFactory implements NodeFactory {
         try {
             if (intrinsicName.startsWith("llvm.experimental.memset.pattern.")) {
                 return createMemsetPatternIntrinsic(declaration, args);
+            }
+            Matcher fmuladdVectorMatcher = FMULADD_VECTOR_INTRINSIC_PATTERN.matcher(intrinsicName);
+            if (fmuladdVectorMatcher.matches()) {
+                /*
+                 * llvm.fmuladd fusion is optional per the LLVM langref, so decomposing into
+                 * separate mul + add is spec-legal at any vector width. The loop vectorizer
+                 * emits arbitrary widths (v32f64 observed from clang 22 at -O2 on Eigen
+                 * matmul), so match the width generically instead of enumerating cases.
+                 */
+                int fmuladdLength = Integer.parseInt(fmuladdVectorMatcher.group("len"));
+                PrimitiveType fmuladdElementType = "32".equals(fmuladdVectorMatcher.group("bits")) ? PrimitiveType.FLOAT : PrimitiveType.DOUBLE;
+                VectorType fmuladdVectorType = new VectorType(fmuladdElementType, fmuladdLength);
+                LLVMExpressionNode fmuladdMulNode = createArithmeticOp(ArithmeticOperation.MUL, fmuladdVectorType, args[1], args[2]);
+                return createArithmeticOp(ArithmeticOperation.ADD, fmuladdVectorType, fmuladdMulNode, args[3]);
+            }
+            Matcher maskedMatcher = MASKED_LOADSTORE_INTRINSIC_PATTERN.matcher(intrinsicName);
+            if (maskedMatcher.matches()) {
+                /*
+                 * The loop/SLP vectorizer emits masked.load/store at arbitrary widths (v5f32,
+                 * v6f32 observed from clang on Eigen product kernels), so match the width and
+                 * element type generically instead of enumerating cases. Both load
+                 * (ptr, mask, passthru) and store (value, ptr, mask) pass their operands in
+                 * args[1..3].
+                 */
+                int maskedLength = Integer.parseInt(maskedMatcher.group("len"));
+                boolean isStore = "store".equals(maskedMatcher.group("op"));
+                String maskedEType = maskedMatcher.group("etype");
+                if (isStore) {
+                    switch (maskedEType) {
+                        case "f64":
+                            return LLVMMaskedStoreF64NodeGen.create(args[1], args[2], args[3], maskedLength);
+                        case "f32":
+                            return LLVMMaskedStoreF32NodeGen.create(args[1], args[2], args[3], maskedLength);
+                        default: // i32
+                            return LLVMMaskedStoreI32NodeGen.create(args[1], args[2], args[3], maskedLength);
+                    }
+                }
+                switch (maskedEType) {
+                    case "f64":
+                        return LLVMMaskedLoadF64NodeGen.create(args[1], args[2], args[3], maskedLength);
+                    case "f32":
+                        return LLVMMaskedLoadF32NodeGen.create(args[1], args[2], args[3], maskedLength);
+                    default: // i32
+                        return LLVMMaskedLoadI32NodeGen.create(args[1], args[2], args[3], maskedLength);
+                }
             }
             Matcher overflowMatcher = VAR_BIT_OVERFLOW_INTRINSIC_PATTERN.matcher(intrinsicName);
             if (overflowMatcher.matches()) {
@@ -1654,6 +1769,10 @@ public class BasicNodeFactory implements NodeFactory {
                     VectorType typeVec4f32 = new VectorType(PrimitiveType.FLOAT, 4);
                     LLVMExpressionNode vecMulNodeFloat4 = createArithmeticOp(ArithmeticOperation.MUL, typeVec4f32, args[1], args[2]);
                     return createArithmeticOp(ArithmeticOperation.ADD, typeVec4f32, vecMulNodeFloat4, args[3]);
+                case "llvm.fmuladd.v8f32":
+                    VectorType typeVec8f32 = new VectorType(PrimitiveType.FLOAT, 8);
+                    LLVMExpressionNode vecMulNodeFloat8 = createArithmeticOp(ArithmeticOperation.MUL, typeVec8f32, args[1], args[2]);
+                    return createArithmeticOp(ArithmeticOperation.ADD, typeVec8f32, vecMulNodeFloat8, args[3]);
                 case "llvm.fmuladd.v16f32":
                     VectorType typeVec16f32 = new VectorType(PrimitiveType.FLOAT, 16);
                     LLVMExpressionNode vecMulNodeFloat16 = createArithmeticOp(ArithmeticOperation.MUL, typeVec16f32, args[1], args[2]);
@@ -1674,6 +1793,10 @@ public class BasicNodeFactory implements NodeFactory {
                     VectorType typeVec8f64 = new VectorType(PrimitiveType.DOUBLE, 8);
                     LLVMExpressionNode vecMulNodeDouble8 = createArithmeticOp(ArithmeticOperation.MUL, typeVec8f64, args[1], args[2]);
                     return createArithmeticOp(ArithmeticOperation.ADD, typeVec8f64, vecMulNodeDouble8, args[3]);
+                case "llvm.fmuladd.v16f64":
+                    VectorType typeVec16f64 = new VectorType(PrimitiveType.DOUBLE, 16);
+                    LLVMExpressionNode vecMulNodeDouble16 = createArithmeticOp(ArithmeticOperation.MUL, typeVec16f64, args[1], args[2]);
+                    return createArithmeticOp(ArithmeticOperation.ADD, typeVec16f64, vecMulNodeDouble16, args[3]);
                 case "llvm.returnaddress":
                     return LLVMReturnAddressNodeGen.create(args[1]);
                 case "llvm.lifetime.start.p0":
@@ -1758,30 +1881,8 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.objectsize.i64.p0i8":
                 case "llvm.objectsize.i64":
                     return LLVMI64ObjectSizeNodeGen.create(args[1], args[2]);
-                case "llvm.uadd.sat.i8":
-                case "llvm.uadd.sat.i16":
-                case "llvm.uadd.sat.i32":
-                case "llvm.uadd.sat.i64":
-                    return LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.UNSIGNED_ADD_SAT, args[1], args[2]);
-                case "llvm.usub.sat.i8":
-                case "llvm.usub.sat.i16":
-                case "llvm.usub.sat.i32":
-                case "llvm.usub.sat.i64":
-                    return LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.UNSIGNED_SUB_SAT, args[1], args[2]);
-                case "llvm.sadd.sat.i8":
-                case "llvm.sadd.sat.i16":
-                case "llvm.sadd.sat.i32":
-                case "llvm.sadd.sat.i64":
-                    return LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.SIGNED_ADD_SAT, args[1], args[2]);
-                case "llvm.ssub.sat.i8":
-                case "llvm.ssub.sat.i16":
-                case "llvm.ssub.sat.i32":
-                case "llvm.ssub.sat.i64":
-                    return LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.SIGNED_SUB_SAT, args[1], args[2]);
-                case "llvm.ssub.sat.v8i16":
-                    return LLVMVectorArithmeticNodeGen.create(8, LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.SIGNED_SUB_SAT, null, null), args[1], args[2]);
-                case "llvm.sadd.sat.v8i16":
-                    return LLVMVectorArithmeticNodeGen.create(8, LLVMSimpleArithmeticPrimitiveNodeGen.create(LLVMArithmetic.SIGNED_ADD_SAT, null, null), args[1], args[2]);
+                // llvm.{s,u}{add,sub}.sat (scalar and vector, all widths) are handled
+                // length-generically via getSaturatingArithmeticFactory in getBuiltinFactory.
                 case "llvm.scmp.i32.i32":
                     return LLVMIntegerCompareNodeGen.create(args[1], args[2], true);
                 case "llvm.ucmp.i32.i32":
@@ -1792,8 +1893,19 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMCountTrailingElementsNodeGen.create(args[1], args[2], 4);
                 case "llvm.fptosi.sat.v2i9.v2f64":
                     return LLVMSaturatingFptoSINodeGen.create(args[1], 2, 9);
+                case "llvm.frexp.f32.i32":
+                case "llvm.frexp.f64.i32":
+                case "llvm.frexp.v8f32.v8i32":
+                case "llvm.frexp.v4f32.v4i32":
+                case "llvm.frexp.v4f64.v4i32":
+                case "llvm.frexp.v2f64.v2i32":
+                    // { significand, exponent } aggregate return: args[1] is the sret struct
+                    // pointer, args[2] the operand; field 1 (exponent) lives at this offset.
+                    return LLVMFrexpNodeGen.create(args[1], args[2], getIndexOffset(1, (AggregateType) declaration.getType().getReturnType()));
                 case "llvm.masked.gather.v4i32.v4p0":
                     return LLVMMaskedGatherI32NodeGen.create(args[1], args[2], args[3], 4);
+                // llvm.masked.load/store.v<N>f{32,64}.p0 are handled generically by
+                // MASKED_LOADSTORE_INTRINSIC_PATTERN above (any vector width).
                 case "llvm.masked.scatter.v4i32.v4p0":
                     return LLVMMaskedScatterI32NodeGen.create(args[1], args[2], args[3], 4);
                 case "llvm.set.rounding":
@@ -1836,21 +1948,40 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMX86_CmpssNodeGen.create(args[1], args[2], args[3]);
                 case "llvm.x86.sse2.cvtsd2si":
                     return LLVMX86_ConversionDoubleToIntNodeGen.create(args[1]);
+                case "llvm.x86.sse2.cvtpd2ps":
+                case "llvm.x86.avx.cvt.pd2.ps.256":
+                    return LLVMX86_ConversionDoubleToFloatNodeGen.create(args[1]);
+                case "llvm.x86.sse2.cvtps2dq":
+                case "llvm.x86.avx.cvt.ps2dq.256":
+                    return LLVMX86_ConversionFloatToIntVectorNodeGen.create(args[1], false);
+                case "llvm.x86.sse2.cvttps2dq":
+                case "llvm.x86.avx.cvtt.ps2dq.256":
+                    return LLVMX86_ConversionFloatToIntVectorNodeGen.create(args[1], true);
+                case "llvm.x86.sse2.cvtpd2dq":
+                case "llvm.x86.avx.cvt.pd2dq.256":
+                    return LLVMX86_ConversionDoubleToIntVectorNodeGen.create(args[1], false);
+                case "llvm.x86.sse2.cvttpd2dq":
+                case "llvm.x86.avx.cvtt.pd2dq.256":
+                    return LLVMX86_ConversionDoubleToIntVectorNodeGen.create(args[1], true);
                 case "llvm.x86.sse2.sqrt.pd":
                     return LLVMX86_VectorSquareRootNodeGen.create(args[1]);
                 case "llvm.x86.sse2.max.pd":
+                case "llvm.x86.avx.max.pd.256":
                     return LLVMX86_VectorMaxNodeGen.create(args[1], args[2]);
                 case "llvm.x86.sse2.max.sd":
                     return LLVMX86_VectorMaxsdNodeGen.create(args[1], args[2]);
                 case "llvm.x86.sse2.min.pd":
+                case "llvm.x86.avx.min.pd.256":
                     return LLVMX86_VectorMinNodeGen.create(args[1], args[2]);
                 case "llvm.x86.sse2.min.sd":
                     return LLVMX86_VectorMinsdNodeGen.create(args[1], args[2]);
                 case "llvm.x86.sse.max.ps":
+                case "llvm.x86.avx.max.ps.256":
                     return LLVMX86_SSE_VectorMaxNodeGen.create(args[1], args[2]);
                 case "llvm.x86.sse.max.ss":
                     return LLVMX86_SSE_VectorMaxsdNodeGen.create(args[1], args[2]);
                 case "llvm.x86.sse.min.ps":
+                case "llvm.x86.avx.min.ps.256":
                     return LLVMX86_SSE_VectorMinNodeGen.create(args[1], args[2]);
                 case "llvm.x86.sse.min.ss":
                     return LLVMX86_SSE_VectorMinsdNodeGen.create(args[1], args[2]);
@@ -1867,6 +1998,40 @@ public class BasicNodeFactory implements NodeFactory {
                     return LLVMX86_SSE2MultiplyHighWordsNodeGen.create(args[1], args[2]);
                 case "llvm.x86.sse2.pmulhu.w":
                     return LLVMX86_SSE2MultiplyHighUnsignedWordsNodeGen.create(args[1], args[2]);
+                case "llvm.x86.sse41.round.ps":
+                case "llvm.x86.sse41.round.pd":
+                case "llvm.x86.avx.round.ps.256":
+                case "llvm.x86.avx.round.pd.256":
+                    return LLVMX86_VectorRoundNodeGen.create(args[1], args[2]);
+                case "llvm.x86.sse.rsqrt.ps":
+                case "llvm.x86.avx.rsqrt.ps.256":
+                    return LLVMX86_VectorRsqrtNodeGen.create(args[1]);
+                case "llvm.x86.sse3.addsub.ps":
+                case "llvm.x86.sse3.addsub.pd":
+                case "llvm.x86.avx.addsub.ps.256":
+                case "llvm.x86.avx.addsub.pd.256":
+                    return LLVMX86_VectorAddSubNodeGen.create(args[1], args[2]);
+                case "llvm.x86.sse41.blendvpd":
+                case "llvm.x86.sse41.blendvps":
+                case "llvm.x86.avx.blendv.pd.256":
+                case "llvm.x86.avx.blendv.ps.256":
+                    return LLVMX86_VectorBlendvNodeGen.create(args[1], args[2], args[3]);
+                case "llvm.x86.sse41.pblendvb":
+                case "llvm.x86.avx2.pblendvb":
+                    return LLVMX86_VectorPblendvbNodeGen.create(args[1], args[2], args[3]);
+                case "llvm.x86.sse41.packusdw":
+                case "llvm.x86.avx2.packusdw":
+                    return LLVMX86_VectorPackusdwNodeGen.create(args[1], args[2]);
+                case "llvm.x86.ssse3.phadd.d.128":
+                case "llvm.x86.ssse3.phadd.w.128":
+                case "llvm.x86.avx2.phadd.d":
+                case "llvm.x86.avx2.phadd.w":
+                    return LLVMX86_VectorHorizontalAddNodeGen.create(args[1], args[2]);
+                case "llvm.x86.sse3.hadd.ps":
+                case "llvm.x86.sse3.hadd.pd":
+                case "llvm.x86.avx.hadd.ps.256":
+                case "llvm.x86.avx.hadd.pd.256":
+                    return LLVMX86_VectorHorizontalAddFloatNodeGen.create(args[1], args[2]);
                 default:
                     break;
             }
@@ -2068,6 +2233,9 @@ public class BasicNodeFactory implements NodeFactory {
             case "fcmp":
             case "fcmps":
                 return CommonNodeFactory.createComparison(getCompareOp(args[3]), retType, args[1], args[2]);
+            case "fma":
+                // Fused multiply-add; the two trailing FP-environment metadata args are ignored.
+                return LLVMCMathsIntrinsicsFactory.LLVMFmaNodeGen.create(args[1], args[2], args[3]);
             case "fmuladd":
                 LLVMExpressionNode mulNodeF80 = createArithmeticOp(ArithmeticOperation.MUL, retType, args[1], args[2]);
                 return createArithmeticOp(ArithmeticOperation.ADD, retType, mulNodeF80, args[3]);

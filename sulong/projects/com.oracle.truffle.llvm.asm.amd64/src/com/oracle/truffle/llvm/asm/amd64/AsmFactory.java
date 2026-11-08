@@ -181,6 +181,7 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD64SubqNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64SubNodeFactory.LLVMAMD64SubwNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64Ud2NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XgetbvNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XaddNodeFactory.LLVMAMD64XaddbNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XaddNodeFactory.LLVMAMD64XaddlNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.LLVMAMD64XaddNodeFactory.LLVMAMD64XaddqNodeGen;
@@ -221,6 +222,11 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInlineAssemblyRootNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_SSE_VectorMaxNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_SSE_VectorMinNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMaxNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_VectorMathNodeFactory.LLVMX86_VectorMinNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMStackSaveNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugTrapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ConversionNode;
@@ -505,11 +511,19 @@ public class AsmFactory {
             }
             case "cpuid": {
                 LLVMExpressionNode level = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("eax"));
+                LLVMExpressionNode subleaf = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("ecx"));
                 LLVMAMD64WriteValueNode eax = getRegisterStore("eax");
                 LLVMAMD64WriteValueNode ebx = getRegisterStore("ebx");
                 LLVMAMD64WriteValueNode ecx = getRegisterStore("ecx");
                 LLVMAMD64WriteValueNode edx = getRegisterStore("edx");
-                statements.add(LLVMAMD64CpuidNodeGen.create(eax, ebx, ecx, edx, level));
+                statements.add(LLVMAMD64CpuidNodeGen.create(eax, ebx, ecx, edx, level, subleaf));
+                break;
+            }
+            case "xgetbv": {
+                LLVMExpressionNode xcr = getOperandLoad(PrimitiveType.I32, new AsmRegisterOperand("ecx"));
+                LLVMAMD64WriteValueNode eax = getRegisterStore("eax");
+                LLVMAMD64WriteValueNode edx = getRegisterStore("edx");
+                statements.add(LLVMAMD64XgetbvNodeGen.create(eax, edx, xcr));
                 break;
             }
             case "ud2":
@@ -1331,6 +1345,49 @@ public class AsmFactory {
     }
 
     void createBinaryOperation(String operation, AsmOperand a, AsmOperand b) {
+        switch (operation) {
+            case "minps":
+            case "minpd":
+            case "maxps":
+            case "maxpd": {
+                /*
+                 * AT&T "{min,max}p? %a, %b" is Intel "{min,max}p? b, a", i.e.
+                 * b = MIN/MAX(b, a) on a packed float/double vector. This is the legacy
+                 * (non-VEX) SSE form of vminps/vmaxps; Eigen's pmin/pmax emit it when
+                 * targeting SSE (GCC bug 72867 workaround). Reuses the same vector min/max
+                 * nodes as the ternary VEX form; the destination b is also src1.
+                 */
+                Type sseMinmaxType = getType(b);
+                if (sseMinmaxType instanceof VectorType && b instanceof AsmArgumentOperand) {
+                    Argument sseMinmaxDstInfo = argInfo.get(((AsmArgumentOperand) b).getIndex());
+                    if (sseMinmaxDstInfo.isRegister()) {
+                        LLVMExpressionNode sseMinmaxSrc1 = getOperandLoad(sseMinmaxType, b);
+                        LLVMExpressionNode sseMinmaxSrc2 = getOperandLoad(getType(a), a);
+                        LLVMExpressionNode sseMinmaxResult;
+                        switch (operation) {
+                            case "minps":
+                                sseMinmaxResult = LLVMX86_SSE_VectorMinNodeGen.create(sseMinmaxSrc1, sseMinmaxSrc2);
+                                break;
+                            case "minpd":
+                                sseMinmaxResult = LLVMX86_VectorMinNodeGen.create(sseMinmaxSrc1, sseMinmaxSrc2);
+                                break;
+                            case "maxps":
+                                sseMinmaxResult = LLVMX86_SSE_VectorMaxNodeGen.create(sseMinmaxSrc1, sseMinmaxSrc2);
+                                break;
+                            default:
+                                sseMinmaxResult = LLVMX86_VectorMaxNodeGen.create(sseMinmaxSrc1, sseMinmaxSrc2);
+                                break;
+                        }
+                        statements.add(LLVMWriteNodeFactory.LLVMWriteVectorNodeGen.create(getRegisterSlot(sseMinmaxDstInfo.getRegister()), sseMinmaxResult));
+                        return;
+                    }
+                }
+                statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
+                return;
+            }
+            default:
+                break;
+        }
         LLVMExpressionNode srcA;
         LLVMExpressionNode srcB;
         LLVMExpressionNode out;
@@ -1697,6 +1754,74 @@ public class AsmFactory {
     }
 
     void createTernaryOperation(String operation, AsmOperand a, AsmOperand b, AsmOperand c) {
+        switch (operation) {
+            case "vfmadd231ps":
+            case "vfmadd231pd": {
+                /*
+                 * AT&T "vfmadd231p? %a, %b, %c" computes c = fma(a, b, c) per element;
+                 * emitted by Eigen's pmadd (AVX/PacketMath.h) when built with clang and
+                 * -mfma. The operands are "x"-constrained vector arguments living in
+                 * anonymous register slots; getOperandStore has no vector support, so
+                 * the destination slot is written directly with the same vector write
+                 * node getArguments uses for vector inputs.
+                 */
+                Type fmaVectorType = getType(c);
+                if (fmaVectorType instanceof VectorType && c instanceof AsmArgumentOperand) {
+                    Argument fmaDstInfo = argInfo.get(((AsmArgumentOperand) c).getIndex());
+                    if (fmaDstInfo.isRegister()) {
+                        LLVMExpressionNode fmaSrcA = getOperandLoad(getType(a), a);
+                        LLVMExpressionNode fmaSrcB = getOperandLoad(getType(b), b);
+                        LLVMExpressionNode fmaSrcC = getOperandLoad(fmaVectorType, c);
+                        int fmaVectorLength = ((VectorType) fmaVectorType).getNumberOfElementsInt();
+                        LLVMExpressionNode fmaResult = LLVMCMathsIntrinsicsFactory.LLVMFmaVectorNodeGen.create(fmaVectorLength, fmaSrcA, fmaSrcB, fmaSrcC);
+                        statements.add(LLVMWriteNodeFactory.LLVMWriteVectorNodeGen.create(getRegisterSlot(fmaDstInfo.getRegister()), fmaResult));
+                        return;
+                    }
+                }
+                statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
+                return;
+            }
+            case "vminps":
+            case "vminpd":
+            case "vmaxps":
+            case "vmaxpd": {
+                /*
+                 * AT&T "v{min,max}p? %a, %b, %c" is Intel "v{min,max}p? c, b, a", i.e.
+                 * c = MIN/MAX(src1 = b, src2 = a). Emitted by Eigen's pmin/pmax
+                 * (AVX/PacketMath.h) when built with clang (GCC bug 72867 workaround).
+                 * Reuses the vector min/max nodes backing llvm.x86.avx.{min,max}.*.
+                 */
+                Type minmaxVectorType = getType(c);
+                if (minmaxVectorType instanceof VectorType && c instanceof AsmArgumentOperand) {
+                    Argument minmaxDstInfo = argInfo.get(((AsmArgumentOperand) c).getIndex());
+                    if (minmaxDstInfo.isRegister()) {
+                        LLVMExpressionNode minmaxSrc2 = getOperandLoad(getType(a), a);
+                        LLVMExpressionNode minmaxSrc1 = getOperandLoad(getType(b), b);
+                        LLVMExpressionNode minmaxResult;
+                        switch (operation) {
+                            case "vminps":
+                                minmaxResult = LLVMX86_SSE_VectorMinNodeGen.create(minmaxSrc1, minmaxSrc2);
+                                break;
+                            case "vminpd":
+                                minmaxResult = LLVMX86_VectorMinNodeGen.create(minmaxSrc1, minmaxSrc2);
+                                break;
+                            case "vmaxps":
+                                minmaxResult = LLVMX86_SSE_VectorMaxNodeGen.create(minmaxSrc1, minmaxSrc2);
+                                break;
+                            default:
+                                minmaxResult = LLVMX86_VectorMaxNodeGen.create(minmaxSrc1, minmaxSrc2);
+                                break;
+                        }
+                        statements.add(LLVMWriteNodeFactory.LLVMWriteVectorNodeGen.create(getRegisterSlot(minmaxDstInfo.getRegister()), minmaxResult));
+                        return;
+                    }
+                }
+                statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
+                return;
+            }
+            default:
+                break;
+        }
         AsmOperand dst = c;
         LLVMExpressionNode srcA;
         LLVMExpressionNode srcB;

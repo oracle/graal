@@ -29,11 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.cast;
 
+import java.nio.ByteBuffer;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -41,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI128Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
@@ -849,6 +854,20 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop
+        protected LLVMI8Vector doFloatVector(LLVMFloatVector from) {
+            assert from.getLength() * Integer.BYTES == getVectorLength();
+            final byte[] vector = new byte[getVectorLength()];
+            for (int i = 0; i < getVectorLength() / Integer.BYTES; i++) {
+                int value = Float.floatToRawIntBits(from.getValue(i));
+                for (int j = 0; j < Integer.BYTES; j++) {
+                    vector[i * Integer.BYTES + j] = (byte) (((value >>> (j * Byte.SIZE)) & LLVMExpressionNode.I8_MASK));
+                }
+            }
+            return LLVMI8Vector.create(vector);
+        }
+
+        @Specialization
+        @ExplodeLoop
         protected LLVMI8Vector doDoubleVector(LLVMDoubleVector from) {
             assert from.getLength() * Long.BYTES == getVectorLength();
             final byte[] vector = new byte[getVectorLength()];
@@ -1207,6 +1226,22 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             }
             return LLVMI64Vector.create(vector);
         }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMI64Vector doFloatVector(LLVMFloatVector from) {
+            assert from.getLength() % FLOATS_PER_LONG == 0 : "invalid vector size";
+            assert from.getLength() / FLOATS_PER_LONG == getVectorLength();
+            final long[] vector = new long[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                long value = 0;
+                for (int j = 0; j < FLOATS_PER_LONG; j++) {
+                    value |= (Float.floatToRawIntBits(from.getValue(i * FLOATS_PER_LONG + j)) & LLVMExpressionNode.I32_MASK) << (j * Float.SIZE);
+                }
+                vector[i] = value;
+            }
+            return LLVMI64Vector.create(vector);
+        }
     }
 
     public abstract static class LLVMBitcastToPointerVectorNode extends LLVMToVectorNode {
@@ -1231,9 +1266,39 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        @ExplodeLoop
+        protected LLVMFloatVector doI64(long from) {
+            assert FLOATS_PER_LONG == getVectorLength();
+            final float[] vector = new float[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                vector[i] = Float.intBitsToFloat((int) ((from >>> (i * Float.SIZE)) & LLVMExpressionNode.I32_MASK));
+            }
+            return LLVMFloatVector.create(vector);
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected LLVMFloatVector doIVarBit(LLVMIVarBit from) {
+            assert from.getBitSize() == getVectorLength() * Float.SIZE;
+            ByteBuffer buffer = ByteBuffer.wrap(from.getBytes());
+            final float[] vector = new float[getVectorLength()];
+            for (int i = getVectorLength() - 1; i >= 0; i--) {
+                vector[i] = buffer.getFloat();
+            }
+            return LLVMFloatVector.create(vector);
+        }
+
+        @Specialization
         protected LLVMFloatVector doFloat(float from) {
             float[] vector = new float[]{from};
             return LLVMFloatVector.create(vector);
+        }
+
+        @Specialization
+        protected LLVMFloatVector doDouble(double from) {
+            // bitcast double -> <2 x float>: reinterpret the 64 bits as two floats
+            // (little-endian, low 32 bits = lane 0). clang emits this for std::complex<float>.
+            return doI64(Double.doubleToRawLongBits(from));
         }
 
         @Specialization
@@ -1336,6 +1401,22 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             return doDouble(Double.longBitsToDouble(from));
         }
 
+        /*
+         * Reverse of the wide-vector bitcast (e.g. i256 -> <4 x double>): getBytes()
+         * is big-endian, so the first double read is the highest-index element.
+         */
+        @Specialization
+        @TruffleBoundary
+        protected LLVMDoubleVector doIVarBit(LLVMIVarBit from) {
+            assert from.getBitSize() == getVectorLength() * Double.SIZE;
+            ByteBuffer buffer = ByteBuffer.wrap(from.getBytes());
+            final double[] vector = new double[getVectorLength()];
+            for (int i = getVectorLength() - 1; i >= 0; i--) {
+                vector[i] = buffer.getDouble();
+            }
+            return LLVMDoubleVector.create(vector);
+        }
+
         @Specialization
         protected LLVMDoubleVector doDouble(double from) {
             double[] vector = new double[]{from};
@@ -1415,7 +1496,7 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             for (int i = 0; i < getVectorLength(); i++) {
                 long value = 0;
                 for (int j = 0; j < FLOATS_PER_DOUBLE; j++) {
-                    value |= (Float.floatToIntBits(from.getValue(i * FLOATS_PER_DOUBLE + j)) & LLVMExpressionNode.I32_MASK) << (j * Integer.SIZE);
+                    value |= (Float.floatToRawIntBits(from.getValue(i * FLOATS_PER_DOUBLE + j)) & LLVMExpressionNode.I32_MASK) << (j * Integer.SIZE);
                 }
                 vector[i] = Double.longBitsToDouble(value);
             }
@@ -1437,6 +1518,89 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
         protected LLVMDoubleVector doDoubleVector(LLVMDoubleVector from) {
             assert from.getLength() == getVectorLength();
             return from;
+        }
+    }
+
+    /*
+     * bitcast to <N x i128>. clang emits this for Eigen's AVX predux, which reinterprets a 256-bit
+     * float/double register as <2 x i128> and extractelement's the high 128-bit lane. Each lane
+     * packs the source elements little-endian (the lowest-indexed source element in the low bits);
+     * LLVMIVarBit stores big-endian, so the highest-indexed element within a lane is written first.
+     * This is the exact inverse of LLVMBitcastTo{Double,Float}VectorNode.doIVarBit.
+     */
+    public abstract static class LLVMBitcastToI128VectorNode extends LLVMToVectorNode {
+
+        private static final int LANE_BITS = 128;
+        private static final int LANE_BYTES = LANE_BITS / Byte.SIZE;
+
+        private static void putLongBE(byte[] b, int off, long v) {
+            for (int k = 0; k < Long.BYTES; k++) {
+                b[off + k] = (byte) (v >>> (Long.SIZE - Byte.SIZE - k * Byte.SIZE));
+            }
+        }
+
+        private static void putIntBE(byte[] b, int off, int v) {
+            for (int k = 0; k < Integer.BYTES; k++) {
+                b[off + k] = (byte) (v >>> (Integer.SIZE - Byte.SIZE - k * Byte.SIZE));
+            }
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected LLVMI128Vector doDoubleVector(LLVMDoubleVector from) {
+            assert from.getLength() == getVectorLength() * 2;
+            LLVMIVarBit[] lanes = new LLVMIVarBit[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                byte[] b = new byte[LANE_BYTES];
+                putLongBE(b, 0, Double.doubleToRawLongBits(from.getValue(2 * i + 1)));
+                putLongBE(b, Long.BYTES, Double.doubleToRawLongBits(from.getValue(2 * i)));
+                lanes[i] = LLVMIVarBit.create(LANE_BITS, b, LANE_BITS, false);
+            }
+            return LLVMI128Vector.create(lanes);
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected LLVMI128Vector doFloatVector(LLVMFloatVector from) {
+            assert from.getLength() == getVectorLength() * 4;
+            LLVMIVarBit[] lanes = new LLVMIVarBit[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                byte[] b = new byte[LANE_BYTES];
+                for (int k = 0; k < 4; k++) {
+                    putIntBE(b, k * Integer.BYTES, Float.floatToRawIntBits(from.getValue(4 * i + (3 - k))));
+                }
+                lanes[i] = LLVMIVarBit.create(LANE_BITS, b, LANE_BITS, false);
+            }
+            return LLVMI128Vector.create(lanes);
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected LLVMI128Vector doI64Vector(LLVMI64Vector from) {
+            assert from.getLength() == getVectorLength() * 2;
+            LLVMIVarBit[] lanes = new LLVMIVarBit[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                byte[] b = new byte[LANE_BYTES];
+                putLongBE(b, 0, from.getValue(2 * i + 1));
+                putLongBE(b, Long.BYTES, from.getValue(2 * i));
+                lanes[i] = LLVMIVarBit.create(LANE_BITS, b, LANE_BITS, false);
+            }
+            return LLVMI128Vector.create(lanes);
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected LLVMI128Vector doI32Vector(LLVMI32Vector from) {
+            assert from.getLength() == getVectorLength() * 4;
+            LLVMIVarBit[] lanes = new LLVMIVarBit[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                byte[] b = new byte[LANE_BYTES];
+                for (int k = 0; k < 4; k++) {
+                    putIntBE(b, k * Integer.BYTES, from.getValue(4 * i + (3 - k)));
+                }
+                lanes[i] = LLVMIVarBit.create(LANE_BITS, b, LANE_BITS, false);
+            }
+            return LLVMI128Vector.create(lanes);
         }
     }
 }
