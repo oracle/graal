@@ -186,7 +186,7 @@ class LCOVPrinter {
         if (path == null) {
             /*
              * Sources created from characters have no path. LCOV consumers key records by SF, so
-             * use the URI, which is unique per source, instead of writing "null".
+             * use the source URI instead of writing "null".
              */
             path = source.getURI().toString();
         }

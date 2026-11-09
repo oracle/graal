@@ -25,6 +25,10 @@
 package com.oracle.truffle.tools.coverage.test;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -251,9 +255,38 @@ public final class CoverageTest {
         Source second = makeSource("ROOT(STATEMENT, STATEMENT)");
         Assert.assertNull(first.getPath());
         Assert.assertNull(second.getPath());
+        List<String> sourceFiles = getLCOVSourceFiles(first, second);
+        Assert.assertEquals(out.toString(), 2, sourceFiles.size());
+        Assert.assertTrue(out.toString(), sourceFiles.contains(first.getURI().toString()));
+        Assert.assertTrue(out.toString(), sourceFiles.contains(second.getURI().toString()));
+        Assert.assertNotEquals(sourceFiles.get(0), sourceFiles.get(1));
+    }
+
+    @Test
+    public void testLCOVSourceFileWithExplicitURI() {
+        Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(STATEMENT)", "test").uri(URI.create("memory:///coverage-source")).buildLiteral();
+        Assert.assertNull(source.getPath());
+        Assert.assertEquals(List.of(source.getURI().toString()), getLCOVSourceFiles(source));
+    }
+
+    @Test
+    public void testLCOVSourceFileWithPath() throws IOException {
+        Path path = Files.createTempFile("coverage-source", ".test");
+        try {
+            Source source = Source.newBuilder(InstrumentationTestLanguage.ID, path.toFile()).content("ROOT(STATEMENT)").build();
+            Assert.assertNotNull(source.getPath());
+            Assert.assertNotEquals(source.getURI().toString(), source.getPath());
+            Assert.assertEquals(List.of(source.getPath()), getLCOVSourceFiles(source));
+        } finally {
+            Files.delete(path);
+        }
+    }
+
+    private List<String> getLCOVSourceFiles(Source... sources) {
         try (Context context = Context.newBuilder().in(System.in).out(out).err(err).option(CoverageInstrument.ID, "true").option(CoverageInstrument.ID + ".Output", "lcov").build()) {
-            context.eval(first);
-            context.eval(second);
+            for (Source source : sources) {
+                context.eval(source);
+            }
         }
         List<String> sourceFiles = new ArrayList<>();
         for (String line : out.toString().split("\\R")) {
@@ -261,10 +294,7 @@ public final class CoverageTest {
                 sourceFiles.add(line.substring("SF:".length()));
             }
         }
-        Assert.assertEquals(out.toString(), 2, sourceFiles.size());
-        Assert.assertTrue(out.toString(), sourceFiles.contains(first.getURI().toString()));
-        Assert.assertTrue(out.toString(), sourceFiles.contains(second.getURI().toString()));
-        Assert.assertNotEquals(sourceFiles.get(0), sourceFiles.get(1));
+        return sourceFiles;
     }
 
     @TruffleLanguage.Registration(id = RootAndStatementInDifferentSources.ID, name = "RootAndStatementInDifferentSources", version = "0")
