@@ -29,8 +29,10 @@ import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOption
 
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.LayerVerifiedOption;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
@@ -42,7 +44,23 @@ public final class SubstrateGuestOptions {
     public static final HostedOptionKey<Boolean> InitializeVM = new HostedOptionKey<>(true);
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
+    public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L, null, SubstrateGuestOptions::validateStackSize);
+
+    private static void validateStackSize(RuntimeOptionKey<Long> option) {
+        if (SubstrateUtil.HOSTED) {
+            return;
+        }
+
+        long stackSize = option.getValue();
+        if (stackSize == 0) {
+            return;
+        }
+
+        long minimumStackSize = GuestStagingDependencyBridge.singleton().getJavaThreadMinimumUsableStackSize();
+        if (stackSize < minimumStackSize) {
+            throw RuntimeOptionValidation.invalidOptionValue(option, stackSize, "Java thread stack size is too small; specify at least " + minimumStackSize + " bytes");
+        }
+    }
 
     // @formatter:off
 

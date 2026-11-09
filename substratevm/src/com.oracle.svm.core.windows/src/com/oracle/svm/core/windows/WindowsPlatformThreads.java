@@ -53,9 +53,8 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.NumUtil;
 import com.oracle.svm.shared.util.VMError;
-
-import jdk.graal.compiler.core.common.NumUtil;
 
 @AutomaticallyRegisteredImageSingleton(PlatformThreads.class)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
@@ -69,7 +68,10 @@ public final class WindowsPlatformThreads extends PlatformThreads {
     protected IsolateThread doStartThread(Thread thread, long javaStackSize) {
         assert StackOverflowCheck.singleton().isYellowZoneAvailable();
 
-        int nativeStackSize = NumUtil.safeToUInt(javaStackSize);
+        if (!NumUtil.isUInt(javaStackSize)) {
+            return Word.nullPointer();
+        }
+        int nativeStackSize = (int) javaStackSize;
         int initFlag = 0;
         // If the caller requested a Java stack size, don't commit it all at once.
         if (nativeStackSize != 0) {
@@ -102,7 +104,7 @@ public final class WindowsPlatformThreads extends PlatformThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public OSThreadHandle startThreadUnmanaged(CFunctionPointer threadRoutine, PointerBase userData, long stackSize, boolean isJavaStackSize) {
         // _beginthreadex takes an unsigned int stack size; reject values that cannot be preserved.
-        if (stackSize > 0xFFFF_FFFFL) {
+        if (!NumUtil.isUInt(stackSize)) {
             return Word.nullPointer();
         }
         int initFlag = 0;

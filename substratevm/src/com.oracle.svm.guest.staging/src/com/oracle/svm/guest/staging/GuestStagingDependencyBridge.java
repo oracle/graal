@@ -61,6 +61,12 @@ public interface GuestStagingDependencyBridge {
     }
 
     /**
+     * Delegates to {@code com.oracle.svm.core.thread.PlatformThreads.getJavaThreadMinimumUsableStackSize()}.
+     * Remove this method when Java thread stack sizing moves to guest staging.
+     */
+    long getJavaThreadMinimumUsableStackSize();
+
+    /**
      * During the image build, get the backing array that will be nonmovable in the image heap.
      * <p>
      * Delegates to {@code com.oracle.svm.core.c.NonmovableArrays.getHostedArray(array)}.

@@ -70,6 +70,7 @@ import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.reflect.RuntimeConstantPoolImpl;
 import com.oracle.svm.core.reflect.RuntimeReflectionSupport;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
@@ -93,6 +94,11 @@ import jdk.graal.compiler.nodes.NamedLocationIdentity;
 @AutomaticallyRegisteredImageSingleton(GuestStagingDependencyBridge.class)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
 final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBridge {
+
+    @Override
+    public long getJavaThreadMinimumUsableStackSize() {
+        return PlatformThreads.getJavaThreadMinimumUsableStackSize();
+    }
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
