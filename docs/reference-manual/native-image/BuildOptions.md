@@ -127,6 +127,7 @@ The marker must match exactly; a marker on a later line does not enable the exte
 An option ending in `=...` starts an option-value continuation.
 Subsequent arguments within the file are joined with commas until an empty or whitespace-only line, another option ending in `=...`, or the end of the file.
 Comment-only lines do not end the continuation.
+Indentation does not affect continuation boundaries; options that do not end in `=...` are also consumed as continuation values.
 A continuation with no entries produces an empty option value.
 
 For example, _preserve.args_ can contain:
