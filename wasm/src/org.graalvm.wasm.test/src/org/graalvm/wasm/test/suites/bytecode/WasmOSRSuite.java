@@ -54,6 +54,7 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 public class WasmOSRSuite {
@@ -187,6 +188,91 @@ public class WasmOSRSuite {
             PolyglotException exception = Assert.assertThrows(PolyglotException.class,
                             () -> exports.getMember("_main").execute(OSR_TRIGGER_ITERATIONS));
             Assert.assertTrue(exception.isGuestException());
+        }
+    }
+
+    /**
+     * GR-81497: OSR into an inner loop can require irreducible-loop reconstruction. The operand
+     * retained below the inner loop gives its header a different stack height from the outer
+     * header, even though each bytecode offset has a consistent stack height.
+     */
+    @Test
+    public void testOSRInNestedLoopWithDifferentStackHeights() throws IOException, InterruptedException {
+        runNestedLoopOSR(true);
+    }
+
+    @Test
+    public void testOSRInNestedLoopWithSameStackHeight() throws IOException, InterruptedException {
+        runNestedLoopOSR(false);
+    }
+
+    private static void runNestedLoopOSR(boolean extraOperand) throws IOException, InterruptedException {
+        Assume.assumeTrue("Optimizing runtime is not available", Engine.supportsCompilation());
+        final ByteSequence binary = ByteSequence.create(compileWat("nested-loop-osr", """
+                        (module
+                            (func (export "run") (result i32)
+                                (local $remaining i32) (local $i i32) (local $sum i32)
+                                i32.const 2048
+                                local.set $remaining
+                                (loop $outer
+                                    local.get $remaining
+                                    i32.const 1
+                                    i32.sub
+                                    local.set $remaining
+                                    (block $skip_inner
+                                        ;; The outer loop can bypass the inner loop.
+                                        local.get $remaining
+                                        i32.const 1
+                                        i32.and
+                                        br_if $skip_inner
+                                        %s
+                                        i32.const 2
+                                        local.set $i
+                                        (loop $inner
+                                            local.get $sum
+                                            i32.const 1
+                                            i32.add
+                                            local.set $sum
+                                            local.get $i
+                                            i32.const 1
+                                            i32.sub
+                                            local.set $i
+                                            ;; Exit directly to the outer header or fall through.
+                                            local.get $remaining
+                                            i32.const 2
+                                            i32.and
+                                            if
+                                                local.get $i
+                                                i32.eqz
+                                                br_if $outer
+                                            end
+                                            local.get $i
+                                            br_if $inner
+                                        )
+                                        %s
+                                    )
+                                    local.get $remaining
+                                    br_if $outer
+                                )
+                                local.get $sum
+                            )
+                        )
+                        """.formatted(extraOperand ? "i32.const 42" : "", extraOperand ? "drop" : "")));
+        final Source source = Source.newBuilder(WasmLanguage.ID, binary, "nested-loop-osr").build();
+        var engineBuilder = Engine.newBuilder().allowExperimentalOptions(true);
+        engineBuilder.option("engine.Compilation", "true");
+        engineBuilder.option("engine.OSR", "true");
+        engineBuilder.option("engine.MultiTier", "false");
+        // The first OSR poll after 1024 loop iterations targets the inner loop. Keep ordinary
+        // compilation thresholds high so only the OSR compilation is exercised.
+        engineBuilder.option("engine.OSRCompilationThreshold", "1");
+        engineBuilder.option("engine.FirstTierCompilationThreshold", "1000000");
+        engineBuilder.option("engine.LastTierCompilationThreshold", "1000000");
+        engineBuilder.option("engine.BackgroundCompilation", "false");
+        engineBuilder.option("engine.CompilationFailureAction", "Throw");
+        try (Engine engine = engineBuilder.build(); Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
+            Value exports = context.eval(source).newInstance().getMember("exports");
+            Assert.assertEquals(2048, exports.getMember("run").execute().asInt());
         }
     }
 }
