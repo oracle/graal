@@ -254,7 +254,7 @@ final class BytecodeRootNodesImplElement extends AbstractElement {
         mergeSuppressWarnings(ex, "hiding");
         CodeTreeBuilder b = ex.createBuilder();
         b.startDeclaration(type(long.class), "maskedEncoding");
-        b.startStaticCall(parent.configEncoder.asType(), "decode").string("encoder").string("encoding").end();
+        b.startStaticCall(parent.configEncoder.asType(), "normalizeEncoding").string("encoder").string("encoding").end();
         b.end();
         b.declaration(type(long.class), "oldEncoding", "this.encoding");
         b.declaration(type(long.class), "newEncoding", "maskedEncoding | oldEncoding");

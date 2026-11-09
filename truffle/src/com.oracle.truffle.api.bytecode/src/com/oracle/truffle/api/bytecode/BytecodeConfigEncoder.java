@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,25 @@ public abstract class BytecodeConfigEncoder {
 
     protected static BytecodeConfigEncoder getEncoder(BytecodeConfig config) {
         return config.encoder;
+    }
+
+    /**
+     * Normalizes configuration bits for this interpreter. The default implementation leaves the
+     * encoding unchanged.
+     *
+     * @since 25.7
+     */
+    protected long normalizeEncoding(long encoding) {
+        return encoding;
+    }
+
+    /**
+     * Decodes a configuration from its encoding.
+     *
+     * @since 25.7
+     */
+    protected static BytecodeConfig decode(BytecodeConfigEncoder encoder, long encoding) {
+        return new BytecodeConfig(encoder, encoding);
     }
 
 }

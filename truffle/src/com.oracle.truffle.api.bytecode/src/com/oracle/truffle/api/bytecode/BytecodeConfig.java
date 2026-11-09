@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,9 @@ import com.oracle.truffle.api.instrumentation.Tag;
  * <p>
  * Instances of this class should be stored as static final constants. It is important for them to
  * be constant so partial evaluation can detect when reparsing is unnecessary.
+ * <p>
+ * Use {@link #matches(BytecodeConfig)} to compare configurations. Do not use {@link #equals(Object)},
+ * which compares object identity.
  *
  * @since 24.2
  */
@@ -112,6 +115,31 @@ public final class BytecodeConfig {
      */
     public static Builder newBuilder(BytecodeConfigEncoder encoder) {
         return new Builder(encoder);
+    }
+
+    /**
+     * Returns whether this configuration matches {@code other}. This method allows configs built
+     * for a particular interpreter to be compared with the generic singleton configurations
+     * declared in this class. For example, {MyRootNodeGen.newConfigBuilder().addSource().build()}
+     * matches the {@link #WITH_SOURCE} singleton. Configurations built by different interpreters
+     * never match, even if they logically describe the same metadata.
+     * <p>
+     * Use this method instead of {@link #equals(Object)} to compare configurations. Matching is
+     * symmetric but not transitive: a generic configuration can match configurations from two
+     * different interpreters that do not match each other.
+     *
+     * @since 25.7
+     */
+    public boolean matches(BytecodeConfig other) {
+        Objects.requireNonNull(other);
+        if (encoder != null && other.encoder != null && encoder != other.encoder) {
+            return false;
+        }
+        BytecodeConfigEncoder effectiveEncoder = encoder != null ? encoder : other.encoder;
+        if (effectiveEncoder == null) {
+            return encoding == other.encoding;
+        }
+        return effectiveEncoder.normalizeEncoding(encoding) == effectiveEncoder.normalizeEncoding(other.encoding);
     }
 
     /**

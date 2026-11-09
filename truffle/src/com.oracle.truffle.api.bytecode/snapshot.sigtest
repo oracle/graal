@@ -11,6 +11,7 @@ fld public final static com.oracle.truffle.api.bytecode.BytecodeConfig DEFAULT
 fld public final static com.oracle.truffle.api.bytecode.BytecodeConfig WITH_SOURCE
 fld public final static com.oracle.truffle.api.bytecode.BytecodeConfig WITH_SOURCE_CONTENT
 innr public final static Builder
+meth public boolean matches(com.oracle.truffle.api.bytecode.BytecodeConfig)
 meth public static com.oracle.truffle.api.bytecode.BytecodeConfig$Builder newBuilder(com.oracle.truffle.api.bytecode.BytecodeConfigEncoder)
 supr java.lang.Object
 hfds SOURCE_ENCODING,SOURCE_WITH_CONTENT_ENCODING,encoder,encoding
@@ -29,6 +30,8 @@ CLSS public abstract com.oracle.truffle.api.bytecode.BytecodeConfigEncoder
 cons protected init(java.lang.Object)
 meth protected abstract long encodeInstrumentation(java.lang.Class<?>)
 meth protected abstract long encodeTag(java.lang.Class<?>)
+meth protected long normalizeEncoding(long)
+meth protected static com.oracle.truffle.api.bytecode.BytecodeConfig decode(com.oracle.truffle.api.bytecode.BytecodeConfigEncoder,long)
 meth protected static com.oracle.truffle.api.bytecode.BytecodeConfigEncoder getEncoder(com.oracle.truffle.api.bytecode.BytecodeConfig)
 meth protected static long getEncoding(com.oracle.truffle.api.bytecode.BytecodeConfig)
 supr java.lang.Object
