@@ -40,6 +40,7 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jfr.events.JfrAllocationEvents;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
@@ -120,7 +121,9 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
             guaranteeAllocationAllowed("allocateInstance", hub);
 
             Object result = NativeGCAllocationSupport.singleton().allocateInstance0(hub);
-            return checkForOOME(result);
+            checkForOOME(result);
+            JfrAllocationEvents.emitSample(hub);
+            return result;
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
@@ -136,7 +139,9 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
             checkArrayLength(length);
 
             Object result = NativeGCAllocationSupport.singleton().allocateArray0(length, hub);
-            return checkForOOME(result);
+            checkForOOME(result);
+            JfrAllocationEvents.emitSample(hub);
+            return result;
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
@@ -152,7 +157,9 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
             checkArrayLength(length);
 
             Object result = NativeGCAllocationSupport.singleton().allocateStoredContinuation0(length, hub);
-            return checkForOOME(result);
+            checkForOOME(result);
+            JfrAllocationEvents.emitSample(hub);
+            return result;
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
@@ -171,7 +178,9 @@ public abstract class NativeGCAllocationSupport implements GCAllocationSupport {
             podReferenceMapTL.set(referenceMap);
             Object result = NativeGCAllocationSupport.singleton().allocatePod0(length, hub);
             podReferenceMapTL.set(null);
-            return checkForOOME(result);
+            checkForOOME(result);
+            JfrAllocationEvents.emitSample(hub);
+            return result;
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
