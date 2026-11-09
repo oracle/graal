@@ -24,11 +24,15 @@
  */
 package com.oracle.svm.hosted.dynamicaccess;
 
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.hosted.JNIAccessImpl;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestInvoked;
+import com.oracle.svm.util.GuestType;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
@@ -95,7 +99,7 @@ public final class JVMCIJNIAccessImpl implements JVMCIJNIAccess {
      * @param classes a {@link JavaConstant} representing the guest {@code Class<?>[]} to register
      */
     @GuestInvoked
-    public void registerClasses(JavaConstant condition, JavaConstant classes) {
+    public void registerClasses(@GuestType(AccessCondition.class) JavaConstant condition, @GuestType(Class[].class) JavaConstant classes) {
         register(condition, GuestAccess.get().asResolvedJavaTypes(classes));
     }
 
@@ -107,7 +111,7 @@ public final class JVMCIJNIAccessImpl implements JVMCIJNIAccess {
      * @param executables a {@link JavaConstant} representing the guest {@code Executable[]} to register
      */
     @GuestInvoked
-    public void registerExecutables(JavaConstant condition, JavaConstant executables) {
+    public void registerExecutables(@GuestType(AccessCondition.class) JavaConstant condition, @GuestType(Executable[].class) JavaConstant executables) {
         register(JVMCIAccessCondition.guestAccessCondition(condition), GuestAccess.get().asResolvedJavaMethods(executables));
     }
 
@@ -119,7 +123,7 @@ public final class JVMCIJNIAccessImpl implements JVMCIJNIAccess {
      * @param fields a {@link JavaConstant} representing the guest {@code Field[]} to register
      */
     @GuestInvoked
-    public void registerFields(JavaConstant condition, JavaConstant fields) {
+    public void registerFields(@GuestType(AccessCondition.class) JavaConstant condition, @GuestType(Field[].class) JavaConstant fields) {
         register(JVMCIAccessCondition.guestAccessCondition(condition), GuestAccess.get().asResolvedJavaFields(fields));
     }
 }

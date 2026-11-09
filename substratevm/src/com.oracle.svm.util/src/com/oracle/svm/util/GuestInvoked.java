@@ -32,12 +32,12 @@ import java.lang.annotation.Target;
 import jdk.graal.compiler.vmaccess.VMAccess;
 
 /**
- * Marks a host method invoked by the guest context through a host proxy (see
- * {@link VMAccess#createHostProxy}).
- * <p>
- * Users of this annotation must add a Javadoc to each annotated method. The Javadoc
- * must include an {@code @param} entry for every parameter, documenting the guest
- * type it represents, and a link to the corresponding guest interface method.
+ * Marks a host method called by the guest context through a host proxy (see
+ * {@link VMAccess#createHostProxy}). Use {@link GuestType} on parameters and return values that
+ * represent guest values when a useful expected guest type is known. The hint is informational.
+ * Each annotated method should link to the corresponding guest interface method.
+ *
+ * @see GuestType
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
