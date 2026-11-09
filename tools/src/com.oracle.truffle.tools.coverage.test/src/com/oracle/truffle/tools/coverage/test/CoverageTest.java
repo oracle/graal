@@ -270,6 +270,19 @@ public final class CoverageTest {
     }
 
     @Test
+    public void testLCOVSourceFileWithEmptyURI() {
+        Source first = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(STATEMENT)", "test").uri(URI.create("")).buildLiteral();
+        Source second = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(STATEMENT, STATEMENT)", "test").uri(URI.create("")).buildLiteral();
+        Assert.assertEquals("", first.getURI().toString());
+        Assert.assertEquals("", second.getURI().toString());
+        List<String> sourceFiles = getLCOVSourceFiles(first, second);
+        Assert.assertEquals(2, sourceFiles.size());
+        Assert.assertTrue(sourceFiles.contains(makeSource("ROOT(STATEMENT)").getURI().toString()));
+        Assert.assertTrue(sourceFiles.contains(makeSource("ROOT(STATEMENT, STATEMENT)").getURI().toString()));
+        Assert.assertNotEquals(sourceFiles.get(0), sourceFiles.get(1));
+    }
+
+    @Test
     public void testLCOVSourceFileWithPath() throws IOException {
         Path path = Files.createTempFile("coverage-source", ".test");
         try {

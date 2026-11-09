@@ -189,6 +189,10 @@ class LCOVPrinter {
              * use the source URI instead of writing "null".
              */
             path = source.getURI().toString();
+            if (path.isEmpty()) {
+                // An explicitly empty URI cannot identify an LCOV record. Use the default URI.
+                path = Source.newBuilder(source).uri(null).cached(false).build().getURI().toString();
+            }
         }
         out.println(SOURCE_FILE + path);
     }
