@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import java.util.List;
 
 import org.junit.Assert;
@@ -45,17 +47,27 @@ import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
+import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphDecoder;
 import jdk.graal.compiler.nodes.GraphEncoder;
+import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopExplosionKeyNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
+import jdk.graal.compiler.nodes.calc.NarrowNode;
+import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
+import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
+import jdk.graal.compiler.nodes.virtual.MaterializedObjectState;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectState;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -240,7 +252,7 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
                     }
 
                     default: {
-                        throw new IllegalStateException();
+                        throw shouldNotReachHere();
                     }
                 }
             }
@@ -349,7 +361,7 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
                         case 1:
                             return 42;
                         default:
-                            throw new IllegalStateException();
+                            throw shouldNotReachHere();
                     }
                 }
             }
@@ -439,7 +451,7 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
                             state.value++;
                             continue;
                         default:
-                            throw new IllegalStateException();
+                            throw shouldNotReachHere();
                     }
                 }
             }
@@ -479,7 +491,7 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
                         case 1:
                             return 42;
                         default:
-                            throw new IllegalStateException();
+                            throw shouldNotReachHere();
                     }
                 }
             }
@@ -771,7 +783,7 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
             opaqueAdd(2, 2);
             return -0x8000_0000L;
         } else {
-            throw new IllegalStateException();
+            throw shouldNotReachHere();
         }
     }
 
@@ -932,7 +944,7 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
                             state.inner.key = 1;
                             continue;
                         default:
-                            throw new IllegalStateException();
+                            throw shouldNotReachHere();
                     }
                 }
             }
@@ -1095,6 +1107,443 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
                     }
                 }
                 return bci;
+            }
+        };
+    }
+
+    @Test
+    public void deoptimizeWithPublishedObjects() {
+        // Deoptimize at each noninitial dispatcher entry and check the published identity before
+        // another interpreter transition can overwrite it.
+        int tested = 0;
+        for (int keyIndex = 1;; keyIndex++) {
+            RootNode root = publishedObjectProgram();
+            StructuredGraph graph = partialEval(root, new Object[5], new int[]{0, 5, 1});
+            IntegerSwitchNode dispatcher = null;
+            for (IntegerSwitchNode candidate : graph.getNodes().filter(IntegerSwitchNode.class)) {
+                if (candidate.value() instanceof ValuePhiNode phi && phi.merge() instanceof LoopBeginNode) {
+                    Assert.assertNull(dispatcher);
+                    dispatcher = candidate;
+                }
+            }
+            Assert.assertNotNull(dispatcher);
+            if (keyIndex == dispatcher.keyCount()) {
+                break;
+            }
+            FrameState state = ((ValuePhiNode) dispatcher.value()).merge().stateAfter();
+            Assert.assertTrue(state.virtualObjectMappings().filter(MaterializedObjectState.class).isNotEmpty());
+            int id = dispatcher.keyAt(keyIndex).asInt();
+            FixedGuardNode guard = graph.add(new FixedGuardNode(graph.addOrUnique(new IntegerEqualsNode(dispatcher.value(), ConstantNode.forInt(id, graph))),
+                            DeoptimizationReason.TransferToInterpreter, DeoptimizationAction.None, true));
+            guard.setStateBefore(state);
+            graph.addBeforeFixed(dispatcher, guard);
+            OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+            compile(target, graph);
+            int deopts = 0;
+            for (int entry = 0; entry < 2; entry++) {
+                for (int branch = 0; branch < 2; branch++) {
+                    Object[] published = new Object[5];
+                    int[] control = {entry, 10, branch};
+                    int resumed = (int) target.call(published, control);
+                    if (resumed != 0) {
+                        int expected = 0;
+                        for (int remaining = 10; remaining > control[1]; remaining--) {
+                            expected = switch (expected) {
+                                case 0, 3 -> entry == 0 ? 1 : 2;
+                                case 1 -> branch == 0 ? 2 : 3;
+                                case 2 -> 3;
+                                default -> throw new AssertionError(expected);
+                            };
+                        }
+                        Assert.assertNotEquals("Expected to leave compiled code at a noninitial entry", 0, expected);
+                        Assert.assertSame(published[expected], published[4]);
+                        deopts++;
+                    }
+                    Assert.assertTrue(target.isValid());
+                }
+            }
+            Assert.assertTrue("Expected deoptimization for dispatcher ID " + id, deopts > 0);
+            tested++;
+        }
+        Assert.assertTrue(tested > 0);
+    }
+
+    private static RootNode publishedObjectProgram() {
+        return new RootNode(null) {
+            @Override
+            @EarlyEscapeAnalysis
+            @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+            public Object execute(VirtualFrame frame) {
+                Object[] published = (Object[]) frame.getArguments()[0];
+                int[] control = (int[]) frame.getArguments()[1];
+                int key = 0;
+                // Publishing forces materialization; keep the same objects as identity witnesses.
+                Object zero = new Object();
+                Object one = new Object();
+                Object two = new Object();
+                Object three = new Object();
+                published[0] = zero;
+                published[1] = one;
+                published[2] = two;
+                published[3] = three;
+                Object value = zero;
+                key = CompilerDirectives.mergeExplodeKey(key);
+                while (true) {
+                    CompilerAsserts.partialEvaluationConstant(key);
+                    if (!CompilerDirectives.inCompiledCode()) {
+                        published[4] = value;
+                        return 1;
+                    }
+                    if (--control[1] == 0) {
+                        return 0;
+                    }
+                    if (key == 0 || key == 3) {
+                        if (control[0] == 0) {
+                            opaqueAdd(0, 1);
+                            key = 1;
+                            value = one;
+                            continue;
+                        } else {
+                            opaqueAdd(0, 2);
+                            key = 2;
+                            value = two;
+                            continue;
+                        }
+                    } else if (key == 1 && control[2] == 0) {
+                        opaqueAdd(1, 2);
+                        key = 2;
+                        value = two;
+                        continue;
+                    } else {
+                        opaqueAdd(2, 3);
+                        key = 3;
+                        value = three;
+                        continue;
+                    }
+                }
+            }
+        };
+    }
+
+    /**
+     * GR-81497: distinct interpreter BCIs can have different, individually constant stack
+     * pointers. Two entries to the 1 <-> 2 cycle require an irreducible-loop dispatcher, whose
+     * non-key state must not be required to match across those different BCIs.
+     */
+    @Test
+    public void irreducibleLoopWithVirtualStackPointer() {
+        RootNode root = virtualStackPointerProgram();
+        assertVirtualStackPointerResults(root.getCallTarget());
+        OptimizedCallTarget target = compileHelper("irreducibleLoopWithVirtualStackPointer", root, new Object[]{true, 2});
+        assertVirtualStackPointerResults(target);
+        Assert.assertTrue("Both entries must execute without interpreter fallback", target.isValid());
+    }
+
+    private static void assertVirtualStackPointerResults(CallTarget target) {
+        for (boolean enterAtOne : new boolean[]{true, false}) {
+            for (int transitions = 0; transitions <= 4; transitions++) {
+                int initialStackPointer = enterAtOne ? 65 : 66;
+                int expected = transitions % 2 == 0 ? initialStackPointer : 131 - initialStackPointer;
+                Assert.assertEquals(expected, target.call(enterAtOne, transitions));
+            }
+        }
+    }
+
+    static final class VirtualStackPointer {
+        int stackPointer;
+
+        @EarlyInline
+        VirtualStackPointer(int stackPointer) {
+            this.stackPointer = stackPointer;
+        }
+    }
+
+    private static RootNode virtualStackPointerProgram() {
+        return new RootNode(null) {
+            @Override
+            @EarlyEscapeAnalysis
+            @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+            public Object execute(VirtualFrame frame) {
+                LoopControl control = new LoopControl((boolean) frame.getArguments()[0], (int) frame.getArguments()[1]);
+                VirtualStackPointer state = new VirtualStackPointer(66);
+                CompilerDirectives.ensureVirtualized(state);
+                int bci = CompilerDirectives.mergeExplodeKey(0);
+                while (true) {
+                    CompilerAsserts.partialEvaluationConstant(bci);
+                    CompilerAsserts.partialEvaluationConstant(state.stackPointer);
+                    switch (bci) {
+                        case 0:
+                            if (enterAtOne(control)) {
+                                bci = 1;
+                                state.stackPointer = 65;
+                                // Keep the entries distinct instead of folding to a select.
+                                opaqueAdd(0, 1);
+                                continue;
+                            }
+                            bci = 2;
+                            state.stackPointer = 66;
+                            opaqueAdd(0, 2);
+                            continue;
+                        case 1:
+                            if (exitIrreducibleLoop(control)) {
+                                return state.stackPointer;
+                            }
+                            bci = 2;
+                            state.stackPointer = 66;
+                            continue;
+                        case 2:
+                            if (exitIrreducibleLoop(control)) {
+                                return state.stackPointer;
+                            }
+                            bci = 1;
+                            state.stackPointer = 65;
+                            continue;
+                        default:
+                            throw shouldNotReachHere();
+                    }
+                }
+            }
+        };
+    }
+
+    /**
+     * Deoptimize before the dispatch switch and immediately return the restored auxiliary state.
+     * Normal frame-state assignment supplies the guard's state; the test does not construct it.
+     */
+    @Test
+    public void irreducibleLoopDeoptimizationNeedsAuxiliaryPhis() {
+        assertIrreducibleLoopDeoptimizationState(true, true);
+    }
+
+    @Test
+    public void irreducibleLoopDeoptimizationNeedsVirtualPhis() {
+        assertIrreducibleLoopDeoptimizationState(true, false);
+    }
+
+    @Test
+    public void unmarkedIrreducibleLoopDeoptimizationNeedsVirtualPhis() {
+        assertIrreducibleLoopDeoptimizationState(false, false);
+    }
+
+    @Test
+    public void unmarkedIrreducibleLoopRejectsMultipleScalarVariables() {
+        BailoutException bailout = Assert.assertThrows(BailoutException.class, () -> assertIrreducibleLoopDeoptimizationState(false, true));
+        Assert.assertTrue(bailout.getMessage(), bailout.getMessage().contains("must have only one variable that is changed in loop"));
+    }
+
+    private void assertIrreducibleLoopDeoptimizationState(boolean markKey, boolean scalarAuxiliary) {
+        RootNode root = irreducibleNonKeyStateProgram(false, false, markKey, scalarAuxiliary);
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        StructuredGraph graph = partialEval(root, 0, 2);
+        IntegerSwitchNode dispatcher = null;
+        LoopBeginNode header = null;
+        for (IntegerSwitchNode candidate : graph.getNodes().filter(IntegerSwitchNode.class)) {
+            ValueNode keyValue = candidate.value();
+            if (keyValue instanceof NarrowNode narrow) {
+                keyValue = narrow.getValue();
+            }
+            if (keyValue instanceof ValuePhiNode phi && phi.merge() instanceof LoopBeginNode loopBegin) {
+                Assert.assertNull("Expected one irreducible-loop dispatcher", dispatcher);
+                dispatcher = candidate;
+                header = loopBegin;
+            }
+        }
+        Assert.assertNotNull("Missing irreducible-loop dispatcher", dispatcher);
+        Assert.assertSame("Deoptimize immediately after the synthetic header", header, dispatcher.predecessor());
+        // Do not let switch/guard optimization move deoptimization into a specialized entry,
+        // where constants in that entry's state could hide a broken shared header state.
+        ValueNode opaqueKey = graph.addWithoutUnique(new OpaqueValueNode(dispatcher.value()));
+        FixedGuardNode guard = graph.add(new FixedGuardNode(
+                        graph.addOrUnique(new IntegerEqualsNode(opaqueKey, ConstantNode.forInt(3, graph))),
+                        DeoptimizationReason.UnreachedCode, DeoptimizationAction.InvalidateRecompile, true));
+        graph.addBeforeFixed(dispatcher, guard);
+        compile(target, graph);
+        Assert.assertTrue(target.isValid());
+        // Reach key 3 with no transitions remaining and return before overwriting the restored
+        // values: 100 * key + auxiliary + state.value = 300 + (scalarAuxiliary ? 20 : 0) + 34.
+        // Without the scalar auxiliary, the unmarked path can infer a single dispatch variable,
+        // but it still needs to preserve the virtual field in its deoptimization state.
+        Object result = target.call(0, 2);
+        Assert.assertFalse("Expected deoptimization at the dispatcher", target.isValid());
+        Assert.assertEquals(300L + (scalarAuxiliary ? 20 : 0) + 34, result);
+    }
+
+    @Test
+    public void irreducibleLoopPreservesNonKeyState() {
+        assertIrreducibleNonKeyState(false);
+    }
+
+    @Test
+    public void irreducibleLoopPreservesNonKeyStateWithNestedKey() {
+        assertIrreducibleNonKeyState(true);
+    }
+
+    private void assertIrreducibleNonKeyState(boolean nestedKey) {
+        RootNode root = irreducibleNonKeyStateProgram(nestedKey);
+        assertIrreducibleNonKeyStateResults(root.getCallTarget());
+        OptimizedCallTarget target = compileHelper("irreducibleNonKeyState", root, new Object[]{0, 0});
+        assertIrreducibleNonKeyStateResults(target);
+        Assert.assertTrue(target.isValid());
+
+        // Deoptimize at the synthetic dispatcher, not in an entry's specialized body. Resume
+        // with each of its noninitial keys to check both scalar and virtual-object phi state.
+        int deoptimizedEntries = 0;
+        for (int keyIndex = 0;; keyIndex++) {
+            RootNode deoptRoot = irreducibleNonKeyStateProgram(nestedKey, true);
+            OptimizedCallTarget deoptTarget = (OptimizedCallTarget) deoptRoot.getCallTarget();
+            StructuredGraph graph = partialEval(deoptRoot, 0, 0);
+            IntegerSwitchNode dispatcher = null;
+            LoopBeginNode header = null;
+            for (IntegerSwitchNode candidate : graph.getNodes().filter(IntegerSwitchNode.class)) {
+                ValueNode keyValue = candidate.value();
+                if (keyValue instanceof NarrowNode narrow) {
+                    keyValue = narrow.getValue();
+                }
+                if (keyValue instanceof ValuePhiNode phi && phi.merge() instanceof LoopBeginNode loopBegin) {
+                    Assert.assertNull("Expected one irreducible-loop dispatcher", dispatcher);
+                    dispatcher = candidate;
+                    header = loopBegin;
+                }
+            }
+            Assert.assertNotNull("Missing irreducible-loop dispatcher", dispatcher);
+            if (keyIndex == dispatcher.keyCount()) {
+                break;
+            }
+            int key = dispatcher.keyAt(keyIndex).asInt();
+            if (key == 0) {
+                continue;
+            }
+            Assert.assertNotNull(header);
+            Assert.assertTrue("Dispatcher must preserve non-key state", header.phis().count() > 1);
+            FixedGuardNode guard = graph.add(new FixedGuardNode(
+                            graph.addOrUnique(new IntegerEqualsNode(dispatcher.value(), ConstantNode.forInt(key, graph))),
+                            DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, true));
+            guard.setStateBefore(header.stateAfter());
+            graph.addBeforeFixed(dispatcher, guard);
+            compile(deoptTarget, graph);
+            Assert.assertTrue(deoptTarget.isValid());
+            // Keep the code installed and try every exit position. In particular, exiting
+            // immediately after deoptimization must read the restored auxiliary values before
+            // another transition can overwrite them. Long.MIN_VALUE identifies calls that
+            // return in compiled code without visiting the guarded dispatcher entry.
+            Assert.assertTrue("Expected deoptimization at key " + key, assertIrreducibleNonKeyStateResults(deoptTarget, true) > 0);
+            Assert.assertTrue(deoptTarget.isValid());
+            deoptimizedEntries++;
+        }
+        Assert.assertTrue("Expected noninitial dispatcher entries", deoptimizedEntries > 0);
+    }
+
+    private static void assertIrreducibleNonKeyStateResults(CallTarget target) {
+        assertIrreducibleNonKeyStateResults(target, false);
+    }
+
+    private static int assertIrreducibleNonKeyStateResults(CallTarget target, boolean deoptimizationTest) {
+        int deoptimizations = 0;
+        int[][] keys = {
+                        {Integer.MIN_VALUE, Integer.MAX_VALUE, 3, Integer.MIN_VALUE, Integer.MAX_VALUE, 3},
+                        {Integer.MIN_VALUE, 3, Integer.MIN_VALUE, 3, Integer.MIN_VALUE, 3},
+                        {Integer.MIN_VALUE, 3, Integer.MAX_VALUE, 3, Integer.MAX_VALUE, 3}};
+        for (int entry = 0; entry < keys.length; entry++) {
+            for (int transitions = 0; transitions < keys[entry].length; transitions++) {
+                Object result = target.call(entry, transitions);
+                if (deoptimizationTest && result.equals(Long.MIN_VALUE)) {
+                    continue;
+                }
+                Assert.assertEquals(nonKeyStateResult(keys[entry][transitions]), result);
+                deoptimizations++;
+            }
+        }
+        return deoptimizations;
+    }
+
+    private static long nonKeyStateResult(int key) {
+        return 100L * key + ((long) key + 17) + (key + 31);
+    }
+
+    private static RootNode irreducibleNonKeyStateProgram(boolean nestedKey) {
+        return irreducibleNonKeyStateProgram(nestedKey, false);
+    }
+
+    private static RootNode irreducibleNonKeyStateProgram(boolean nestedKey, boolean reportCompiled) {
+        return irreducibleNonKeyStateProgram(nestedKey, reportCompiled, true, true);
+    }
+
+    private static RootNode irreducibleNonKeyStateProgram(boolean nestedKey, boolean reportCompiled, boolean markKey, boolean scalarAuxiliary) {
+        return new RootNode(null) {
+            @Override
+            @EarlyEscapeAnalysis
+            @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+            public Object execute(VirtualFrame frame) {
+                int entry = (int) frame.getArguments()[0];
+                LoopControl control = new LoopControl(false, (int) frame.getArguments()[1]);
+                VirtualState state = new VirtualState(0, 0);
+                CompilerDirectives.ensureVirtualized(state);
+                long key = 0;
+                long auxiliary = 0;
+                if (markKey) {
+                    if (nestedKey) {
+                        state.key = CompilerDirectives.mergeExplodeKey(state.key);
+                    } else {
+                        key = CompilerDirectives.mergeExplodeKey(key);
+                    }
+                }
+                while (true) {
+                    int currentKey = nestedKey ? state.key : (int) key;
+                    CompilerAsserts.partialEvaluationConstant(currentKey);
+                    if (currentKey != 0 && exitIrreducibleLoop(control)) {
+                        if (reportCompiled && CompilerDirectives.inCompiledCode()) {
+                            return Long.MIN_VALUE;
+                        }
+                        return 100L * currentKey + auxiliary + state.value;
+                    }
+                    switch (currentKey) {
+                        case 0:
+                            opaqueAdd(0, entry);
+                            key = Integer.MIN_VALUE;
+                            state.key = Integer.MIN_VALUE;
+                            auxiliary = scalarAuxiliary ? (long) Integer.MIN_VALUE + 17 : 0;
+                            state.value = Integer.MIN_VALUE + 31;
+                            continue;
+                        case Integer.MIN_VALUE:
+                            if (entry == 0) {
+                                opaqueAdd(1, 1);
+                                key = Integer.MAX_VALUE;
+                                state.key = Integer.MAX_VALUE;
+                                auxiliary = scalarAuxiliary ? (long) Integer.MAX_VALUE + 17 : 0;
+                                state.value = Integer.MAX_VALUE + 31;
+                                continue;
+                            }
+                            opaqueAdd(1, 2);
+                            key = 3;
+                            state.key = 3;
+                            auxiliary = scalarAuxiliary ? 20 : 0;
+                            state.value = 34;
+                            continue;
+                        case Integer.MAX_VALUE:
+                            key = 3;
+                            state.key = 3;
+                            auxiliary = scalarAuxiliary ? 20 : 0;
+                            state.value = 34;
+                            continue;
+                        case 3:
+                            if (entry == 2) {
+                                opaqueAdd(2, 1);
+                                key = Integer.MAX_VALUE;
+                                state.key = Integer.MAX_VALUE;
+                                auxiliary = scalarAuxiliary ? (long) Integer.MAX_VALUE + 17 : 0;
+                                state.value = Integer.MAX_VALUE + 31;
+                                continue;
+                            }
+                            opaqueAdd(2, 2);
+                            key = Integer.MIN_VALUE;
+                            state.key = Integer.MIN_VALUE;
+                            auxiliary = scalarAuxiliary ? (long) Integer.MIN_VALUE + 17 : 0;
+                            state.value = Integer.MIN_VALUE + 31;
+                            continue;
+                        default:
+                            throw shouldNotReachHere();
+                    }
+                }
             }
         };
     }
