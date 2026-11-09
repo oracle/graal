@@ -76,7 +76,7 @@ jobs:
       uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
       with:
         distribution: 'oracle'
-        java-version: '17' # Use Java 17 to build Quarkus as that's the lowest supported JDK version currently
+        java-version: '21' # Use Java 21 to build Quarkus as that's the lowest supported JDK version currently
     - name: Get latest Quarkus release
       run: |
         export QUARKUS_VERSION=main #$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
@@ -155,7 +155,7 @@ jobs:
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
         with:
           distribution: 'oracle'
-          java-version: '17'
+          java-version: '21'
       - name: Build with Maven
         if: startsWith(matrix.os-name, 'ubuntu')
         env:
