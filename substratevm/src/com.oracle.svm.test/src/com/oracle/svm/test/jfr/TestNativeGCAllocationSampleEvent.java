@@ -37,6 +37,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.NeverInline;
 
 import jdk.jfr.Recording;
@@ -49,7 +50,7 @@ public class TestNativeGCAllocationSampleEvent {
 
     @BeforeClass
     public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || HasJfrSupport.get());
+        assumeTrue("requires a native G1 image with JFR", ImageInfo.inImageRuntimeCode() && HasJfrSupport.get() && SubstrateOptions.useG1GC());
     }
 
     @Test
