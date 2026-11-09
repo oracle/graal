@@ -4,6 +4,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 25.6
 
+* (breaking-change) GR-79412: Changed automatic splitting to clone marked direct-call targets during root compilation preparation instead of direct-call execution. `RootNode.cloneUninitialized` is now invoked without an entered language context during automatic splitting; the root language remains entered, so implementations can still use `LanguageReference`. See [Splitting](docs/splitting/Splitting.md) for details.
+* GR-79412: Added `RootNode.visitCloneableNodes` so roots can expose node trees stored outside ordinary child fields.
+* GR-79412: The root node's language is now entered during root and inline compilation preparation, allowing implementations of `RootNode.prepareForCompilation` to use `LanguageReference`.
 * GR-80770: Added `TruffleOptions.DetailedAssertions` to opt into expensive assertions with `-Dtruffle.DetailedAssertions=true`, independently of inexpensive Java assertions.
 * GR-80881: Bytecode DSL: `Float` and `Double` constants are now compared by their raw bits, so distinct NaN payloads no longer share a constant-pool slot.
 * GR-80881: Bytecode DSL: `Float` and `Double` constants are now compared by their raw bits, so distinct NaN payloads no longer share a constant-pool slot.
