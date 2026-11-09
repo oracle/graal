@@ -80,8 +80,8 @@ public final class RuntimeStateTrimConfig {
         /**
          * Reclaim unused memory while limiting heap changes.
          *
-         * Performs a young collection, releases unused heap chunks, and avoids the full retained-heap cleanup
-         * performed by {@link #BALANCED} and {@link #SIZE}.
+         * Performs a young collection, releases unused heap chunks, uncommits unused heap
+         * memory, and cleans unused and filler-object memory.
          */
         CONSERVATIVE,
 
