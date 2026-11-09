@@ -750,6 +750,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         nativeLibraries.addDynamicLibrary("crypt32");
 
         JNIRegistrationSupport.singleton().registerJNILibrary("sunmscapi");
+
         registerForThrowNew(a, "java.security.cert.CertificateParsingException", "java.security.InvalidKeyException",
                         "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
                         "java.security.SignatureException", "java.lang.OutOfMemoryError");
@@ -1070,12 +1071,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             for (Service service : services) {
                 registerService(access, service);
             }
-            if (serviceType.equals(KEM_SERVICE)) {
+            if (!mode.explicitRegistration() && serviceType.equals(KEM_SERVICE)) {
                 registerHybridProviderServices(access);
             }
         }
     }
 
+    /** §FS-002-security-providers.6.3: Preserve JDK-internal services in compatibility modes. */
     private void registerHybridProviderServices(DuringAnalysisAccess access) {
         optionalType(access, "sun.security.ssl.HybridProvider").ifPresent(hybridProviderType -> {
             ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(hybridProviderType);
@@ -1086,7 +1088,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             for (Service service : provider.getServices()) {
                 registerService(access, service);
             }
-            registerProvider(access, provider);
+            catalogRegistrar.includeProviderForLegacyService(access, provider, RuntimeDynamicAccessMetadata.alwaysAvailable(false));
         });
     }
 

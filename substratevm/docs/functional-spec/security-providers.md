@@ -471,6 +471,8 @@ across image layers.
 Without `--future-defaults=metadata-security-provider-registration`, reachability of a supported JCA
 factory or security facade retains configured services of the corresponding type even when their
 provider classes lack reflection metadata.
+This includes services of JDK-internal providers used by the reached service, such as the TLS
+hybrid KEM provider when the selected JDK supplies it.
 For example, a reachable [`Signature.getInstance(runtimeAlgorithm)`][signature] can make configured
 [`Signature`][signature] services available, but the run-time value cannot retain another service
 type.
