@@ -369,7 +369,12 @@ public class VectorHashStepNode extends FoldVectorNode.BinaryMacroNode {
             long mulConst;
             if (mulCandidate instanceof LeftShiftNode || mulCandidate.getX() == accumulator) {
                 if (mulCandidate.getY().isJavaConstant() && mulCandidate.getY().stamp(NodeView.DEFAULT).isIntegerStamp()) {
-                    mulConst = mulCandidate.getY().asJavaConstant().asLong();
+                    if (mulCandidate instanceof LeftShiftNode shift) {
+                        // The multiplier is computed in long arithmetic even for an int shift.
+                        mulConst = shift.getConstantShiftAmount();
+                    } else {
+                        mulConst = mulCandidate.getY().asJavaConstant().asLong();
+                    }
                 } else {
                     // other operand of multiplication or shift needs to be a constant
                     return NO_HASH;
@@ -413,7 +418,7 @@ public class VectorHashStepNode extends FoldVectorNode.BinaryMacroNode {
                              *         \    /
                              *          Add
                              */
-                            mulConst += 1L << ((LeftShiftNode) other).getY().asJavaConstant().asLong();
+                            mulConst += 1L << ((LeftShiftNode) other).getConstantShiftAmount();
                         } else {
                             break;
                         }
@@ -439,9 +444,9 @@ public class VectorHashStepNode extends FoldVectorNode.BinaryMacroNode {
                              *          Sub
                              */
                             if (sub.getX().equals(mulCandidate)) {
-                                mulConst = mulConst - (1L << shift.getY().asJavaConstant().asLong());
+                                mulConst = mulConst - (1L << shift.getConstantShiftAmount());
                             } else {
-                                mulConst = (1L << shift.getY().asJavaConstant().asLong()) - mulConst;
+                                mulConst = (1L << shift.getConstantShiftAmount()) - mulConst;
                             }
                         } else {
                             break;

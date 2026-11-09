@@ -203,15 +203,6 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return getLIRGeneratorTool().moveSp(value);
     }
 
-    /**
-     * Clamp shift amounts into range 0 <= shiftamt < size according to JLS.
-     */
-    private static int getClampedShiftAmt(ShiftNode<?> op) {
-        int clampMask = op.getShiftAmountMask();
-        assert clampMask == 63 || clampMask == 31 : clampMask;
-        return op.getY().asJavaConstant().asInt() & clampMask;
-    }
-
     protected ComplexMatchResult emitBinaryShift(AArch64ArithmeticOp op, ValueNode value, ShiftNode<?> shift) {
         AArch64MacroAssembler.ShiftType shiftType = shiftTypeMap.get(shift.getClass());
         assert shiftType != null;
@@ -223,7 +214,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
             Variable result = gen.newVariable(LIRKind.combine(a, b));
             AllocatableValue x = moveSp(gen.asAllocatable(a));
             AllocatableValue y = moveSp(gen.asAllocatable(b));
-            int shiftAmount = getClampedShiftAmt(shift);
+            int shiftAmount = shift.getConstantShiftAmount();
             gen.append(new AArch64ArithmeticOp.BinaryShiftOp(op, result, x, y, shiftType, shiftAmount));
             return result;
         };
@@ -310,7 +301,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(Sub=op x (LeftShift=lshift (ZeroExtend=ext y) Constant))")
     public ComplexMatchResult mergeSignExtendByShiftIntoAddSub(BinaryNode op, LeftShiftNode lshift, ValueNode ext, ValueNode x, ValueNode y) {
         assert isNumericInteger(lshift);
-        int shiftAmt = getClampedShiftAmt(lshift);
+        int shiftAmt = lshift.getConstantShiftAmount();
         if (!isSupportedExtendedAddSubShift((IntegerConvertNode<?>) ext, shiftAmt)) {
             return null;
         }
@@ -331,7 +322,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(Sub=op x (LeftShift=lshift (And y Constant=constant) Constant))")
     public ComplexMatchResult mergeShiftDowncastIntoAddSub(BinaryNode op, LeftShiftNode lshift, ConstantNode constant, ValueNode x, ValueNode y) {
         assert isNumericInteger(lshift, constant);
-        int shiftAmt = getClampedShiftAmt(lshift);
+        int shiftAmt = lshift.getConstantShiftAmount();
         if (shiftAmt > 4) {
             return null;
         }
@@ -350,7 +341,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(Add=op x (RightShift=signExt (LeftShift y Constant=shiftConst) Constant=shiftConst))")
     @MatchRule("(Sub=op x (RightShift=signExt (LeftShift y Constant=shiftConst) Constant=shiftConst))")
     public ComplexMatchResult mergePairShiftIntoAddSub(BinaryNode op, RightShiftNode signExt, ValueNode x, ValueNode y) {
-        int signExtendAmt = getClampedShiftAmt(signExt);
+        int signExtendAmt = signExt.getConstantShiftAmount();
         int opSize = op.getStackKind().getBitCount();
         assert opSize == 32 || opSize == 64 : opSize;
 
@@ -368,11 +359,11 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(Add=op x (LeftShift=outerShift (RightShift=signExt (LeftShift y Constant=shiftConst) Constant=shiftConst) Constant))")
     @MatchRule("(Sub=op x (LeftShift=outerShift (RightShift=signExt (LeftShift y Constant=shiftConst) Constant=shiftConst) Constant))")
     public ComplexMatchResult mergeShiftedPairShiftIntoAddSub(BinaryNode op, LeftShiftNode outerShift, RightShiftNode signExt, ValueNode x, ValueNode y) {
-        int shiftAmt = getClampedShiftAmt(outerShift);
+        int shiftAmt = outerShift.getConstantShiftAmount();
         if (shiftAmt > 4) {
             return null;
         }
-        int signExtendAmt = getClampedShiftAmt(signExt);
+        int signExtendAmt = signExt.getConstantShiftAmount();
         int opSize = op.getStackKind().getBitCount();
         assert opSize == 32 || opSize == 64 : opSize;
 
@@ -399,7 +390,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         } else {
             LeftShiftNode shift = (LeftShiftNode) offset;
             zeroExtend = (ZeroExtendNode) shift.getX();
-            shiftAmt = getClampedShiftAmt(shift);
+            shiftAmt = shift.getConstantShiftAmount();
         }
         if (!isSupportedExtendedAddSubShift(zeroExtend, shiftAmt)) {
             return null;
@@ -444,7 +435,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         int maskSize = 64 - Long.numberOfLeadingZeros(mask);
 
         int shiftSize = shift.getStackKind().getBitCount();
-        int shiftAmt = getClampedShiftAmt((ShiftNode<?>) shift);
+        int shiftAmt = ((ShiftNode<?>) shift).getConstantShiftAmount();
         /*
          * The width of the insert/extract will be the bits which are not shifted out and/or not
          * part of the mask.
@@ -498,7 +489,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         JavaKind kind = shift.getStackKind();
         assert kind.getBitCount() == resultBits : Assertions.errorMessage(shift, value, kind);
 
-        int lsb = getClampedShiftAmt(shift);
+        int lsb = shift.getConstantShiftAmount();
         /*
          * Get the min value of the inputBits and post-shift bits (resultBits - lsb) as the bitfield
          * width. Note if (resultBits-lsb) is smaller than inputBits, the in reality no sign
@@ -520,8 +511,8 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         JavaKind opKind = rshift.getStackKind();
         int opSize = opKind.getBitCount();
 
-        int lshiftAmt = getClampedShiftAmt(lshift);
-        int rshiftAmt = getClampedShiftAmt((ShiftNode<?>) rshift);
+        int lshiftAmt = lshift.getConstantShiftAmount();
+        int rshiftAmt = ((ShiftNode<?>) rshift).getConstantShiftAmount();
 
         /*
          * Get the width of the bitField. It will be in the range 1 to 32(64).
@@ -569,8 +560,8 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         assert isNumericInteger(src);
         assert src.getStackKind() == op.getStackKind() && op.getStackKind() == x.getStackKind() : src + " " + op + " " + x;
 
-        int shiftAmt1 = getClampedShiftAmt((ShiftNode<?>) x);
-        int shiftAmt2 = getClampedShiftAmt((ShiftNode<?>) y);
+        int shiftAmt1 = ((ShiftNode<?>) x).getConstantShiftAmount();
+        int shiftAmt2 = ((ShiftNode<?>) y).getConstantShiftAmount();
         if (shiftAmt1 + shiftAmt2 == 0 && op instanceof OrNode) {
             assert shiftAmt1 == 0 && shiftAmt2 == 0 : shiftAmt1 + " " + shiftAmt2;
             /* No shift performed: for or operation, this is equivalent to original value */
@@ -686,7 +677,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(Negate (LeftShift=shift a Constant=b))")
     public ComplexMatchResult negShift(BinaryNode shift, ValueNode a, ConstantNode b) {
         assert isNumericInteger(a, b);
-        int shiftAmt = getClampedShiftAmt((ShiftNode<?>) shift);
+        int shiftAmt = ((ShiftNode<?>) shift).getConstantShiftAmount();
         AArch64Assembler.ShiftType shiftType = shiftTypeMap.get(shift.getClass());
         return builder -> {
             AllocatableValue src = moveSp(gen.asAllocatable(operand(a)));

@@ -761,7 +761,8 @@ public class Loop {
         if (op instanceof LeftShiftNode) {
             LeftShiftNode shift = (LeftShiftNode) op;
             if (shift.getX() == base && shift.getY().isConstant()) {
-                return ConstantNode.forIntegerStamp(base.stamp(NodeView.DEFAULT), 1L << shift.getY().asJavaConstant().asInt(), base.graph());
+                int shiftAmount = shift.getConstantShiftAmount();
+                return ConstantNode.forIntegerStamp(base.stamp(NodeView.DEFAULT), 1L << shiftAmount, base.graph());
             }
         }
         return null;
