@@ -109,7 +109,7 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
             return null;
         }
 
-        return null;
+        return methodProfile.getSwitchProbabilities(bci);
     }
 
     @Override
