@@ -130,6 +130,9 @@ Comment-only lines do not end the continuation.
 Indentation does not affect continuation boundaries; options that do not end in `=...` are also consumed as continuation values.
 A continuation with no entries produces an empty option value.
 
+Continuation headers are recognized after Java-style tokenization removes quotes, so `-H:IncludeResources="..."` also starts a continuation.
+To pass `...` as a literal option value, specify the option directly on the command line or in an argument file without the marker.
+
 For example, _preserve.args_ can contain:
 
 ```text
