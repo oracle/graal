@@ -40,7 +40,13 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
- * A set of providers, some of which may not be present (i.e., null).
+ * Bundles the services used to build, optimize, and lower compiler graphs, including metadata access,
+ * constant evaluation, replacements, and backend support. Phases receive these services together
+ * without depending directly on a particular runtime implementation.
+ * <p>
+ * Provider implementations also encode compilation policy, such as which values may be folded.
+ * Services used together must be compatible, and reusing graphs or other derived artifacts requires
+ * compatible provider behavior. Services not required by a consumer may be absent ({@code null}).
  */
 public class Providers implements CoreProviders {
 

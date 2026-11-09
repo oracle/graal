@@ -47,8 +47,17 @@ public class HostedProviders extends Providers {
     public HostedProviders(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
                     ForeignCallsProvider foreignCalls, LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
                     WordTypes wordTypes, PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, LoopsDataProvider loopsDataProvider) {
+        this(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection,
+                        wordTypes, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider, null);
+    }
+
+    private HostedProviders(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
+                    ForeignCallsProvider foreignCalls, LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
+                    WordTypes wordTypes, PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, LoopsDataProvider loopsDataProvider,
+                    GraphBuilderConfiguration.Plugins graphBuilderPlugins) {
         super(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider,
                         snippetReflection, wordTypes, loopsDataProvider);
+        this.graphBuilderPlugins = graphBuilderPlugins;
     }
 
     public GraphBuilderConfiguration.Plugins getGraphBuilderPlugins() {
@@ -60,23 +69,33 @@ public class HostedProviders extends Providers {
     }
 
     @Override
+    public HostedProviders copyWith(MetaAccessExtensionProvider substitution) {
+        assert this.getClass() == HostedProviders.class : "must override in " + getClass();
+        return new HostedProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), getLowerer(), getReplacements(), getStampProvider(),
+                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), substitution, getLoopsDataProvider(), getGraphBuilderPlugins());
+    }
+
+    @Override
     public HostedProviders copyWith(ConstantReflectionProvider substitution) {
         assert this.getClass() == HostedProviders.class : "must override in " + getClass();
         return new HostedProviders(getMetaAccess(), getCodeCache(), substitution, getConstantFieldProvider(), getForeignCalls(), getLowerer(), getReplacements(), getStampProvider(),
-                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider());
+                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider(),
+                        getGraphBuilderPlugins());
     }
 
     @Override
     public HostedProviders copyWith(ConstantFieldProvider substitution) {
         assert this.getClass() == HostedProviders.class : "must override in " + getClass();
         return new HostedProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), substitution, getForeignCalls(), getLowerer(), getReplacements(), getStampProvider(),
-                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider());
+                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider(),
+                        getGraphBuilderPlugins());
     }
 
     @Override
     public HostedProviders copyWith(Replacements substitution) {
         assert this.getClass() == HostedProviders.class : "must override in " + getClass();
         return new HostedProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), getLowerer(), substitution, getStampProvider(),
-                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider());
+                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider(),
+                        getGraphBuilderPlugins());
     }
 }
