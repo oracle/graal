@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.interpreter.ristretto.compile;
 
+import com.oracle.svm.interpreter.ristretto.RistrettoUtils;
 import com.oracle.svm.interpreter.ristretto.meta.RistrettoMetaAccess;
 
 import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
@@ -91,12 +93,28 @@ public class RistrettoParser extends BytecodeParser {
                 if (plugin.canBeDisabled()) {
                     return false;
                 }
+                if (hasCompiledEntry(targetMethod)) {
+                    /*
+                     * The image compiled the target (Object.clone, for one), so an ordinary call
+                     * carries the exception edge. Bailing out would leave a hot caller in the
+                     * interpreter for good.
+                     */
+                    return false;
+                }
                 throw new PermanentBailoutException("Ristretto cannot apply non-disableable invocation plugin for " +
                                 targetMethod.format("%H.%n(%p)") + " at bci " + currentBci +
                                 " because the invoke is covered by a local exception handler.");
             }
         }
         return super.tryInvocationPlugin(invokeKind, args, targetMethod, resultType);
+    }
+
+    private static boolean hasCompiledEntry(ResolvedJavaMethod targetMethod) {
+        try {
+            return RistrettoUtils.wasAOTCompiled(targetMethod);
+        } catch (GraalError notInterpreterMetadata) {
+            return false;
+        }
     }
 
     private static boolean isCompilerDirectivePluginTarget(ResolvedJavaMethod targetMethod) {
