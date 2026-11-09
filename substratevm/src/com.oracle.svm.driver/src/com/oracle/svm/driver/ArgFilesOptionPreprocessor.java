@@ -40,7 +40,8 @@ import com.oracle.svm.shared.option.OptionOrigin;
 public class ArgFilesOptionPreprocessor {
 
     private static final String DISABLE_AT_FILES_OPTION = "--disable-@files";
-    private static final String VALUE_CONTINUATIONS_HEADER = "# native-image: value-continuations";
+    private static final String DIRECTIVE_PREFIX = "# native-image:";
+    private static final String VALUE_CONTINUATIONS_HEADER = DIRECTIVE_PREFIX + " value-continuations";
 
     private boolean disableAtFiles = false;
 
@@ -98,6 +99,7 @@ public class ArgFilesOptionPreprocessor {
         char quoteChar;
         List<String> parts;
         String options;
+        Path file;
         boolean markBlankLines;
         boolean blankLineBeforeToken;
     }
@@ -121,6 +123,7 @@ public class ArgFilesOptionPreprocessor {
         ctx.cptr = 0;
         ctx.eob = options.length();
         ctx.options = options;
+        ctx.file = file;
         ctx.markBlankLines = expandOptionValues;
 
         while (true) {
@@ -191,6 +194,31 @@ public class ArgFilesOptionPreprocessor {
             }
         }
         return true;
+    }
+
+    private static void validateDirective(CTX_ARGS ctx, int commentStart) {
+        String options = ctx.options;
+        if (!options.startsWith(DIRECTIVE_PREFIX, commentStart)) {
+            return;
+        }
+        int lineStart = Math.max(options.lastIndexOf('\n', commentStart), options.lastIndexOf('\r', commentStart)) + 1;
+        if (!options.substring(lineStart, commentStart).isBlank()) {
+            // A directive must be a standalone comment, not a trailing comment on an argument.
+            return;
+        }
+        long line = options.substring(0, commentStart + 1).lines().count();
+        String location = ctx.file + ":" + line + ": ";
+        if (commentStart != 0) {
+            NativeImage.showError(location + "Native Image argument-file directives must start the first line. Move the directive before any leading comments or whitespace.");
+        }
+        int lineEnd = commentStart;
+        while (lineEnd < options.length() && options.charAt(lineEnd) != '\n' && options.charAt(lineEnd) != '\r') {
+            lineEnd++;
+        }
+        String directive = options.substring(commentStart, lineEnd);
+        if (!directive.equals(VALUE_CONTINUATIONS_HEADER)) {
+            NativeImage.showError(location + "Unknown argument-file setting: '" + directive.substring(DIRECTIVE_PREFIX.length()).stripLeading() + "'. Expected 'value-continuations'.");
+        }
     }
 
     // Ported from JDK11's java.base/share/native/libjli/args.c
@@ -293,6 +321,7 @@ public class ArgFilesOptionPreprocessor {
                     if (ctx.state == PARSER_STATE.IN_QUOTE) {
                         continue;
                     }
+                    validateDirective(ctx, nextc);
                     ctx.state = PARSER_STATE.IN_COMMENT;
                     anchor = nextc + 1;
                     break;

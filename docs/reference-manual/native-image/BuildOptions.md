@@ -122,7 +122,8 @@ These deprecated URL protocol options are omitted from the generated table; see 
 Native Image argument files use UTF-8 and follow the [Java launcher argument-file specification](https://docs.oracle.com/en/java/javase/25/docs/specs/man/java.html#java-command-line-argument-files).
 All of its syntax rules apply.
 To enable option-value continuations, put `# native-image: value-continuations` on the first line of the file.
-The marker must match exactly; a marker on a later line does not enable the extension.
+The marker must match exactly.
+A standalone `# native-image:` directive must start the first line; unknown settings or misplaced directives are errors.
 
 An option ending in `=...` starts an option-value continuation.
 Subsequent arguments within the file are joined with commas until an empty or whitespace-only line, another option ending in `=...`, or the end of the file.
