@@ -356,7 +356,7 @@ _reachability-metadata.json_
       "declaringClass": "FullyQualifiedLambdaDeclaringType",
       "declaringMethod": {
         "name": "declaringMethodName",
-        "parameterType": [
+        "parameterTypes": [
           "FullyQualifiedParameterType1",
           "...",
           "FullyQualifiedParameterType2"

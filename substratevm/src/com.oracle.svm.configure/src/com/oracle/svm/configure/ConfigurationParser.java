@@ -355,13 +355,10 @@ public abstract class ConfigurationParser {
     }
 
     protected ConfigurationMethodDescriptor parseMethod(EconomicMap<String, Object> methodJson) {
-        checkAttributes(methodJson, "method descriptor", List.of(NAME_KEY), List.of(PARAMETER_TYPES_KEY));
+        checkAttributes(methodJson, "method descriptor", List.of(NAME_KEY, PARAMETER_TYPES_KEY));
         String name = asString(methodJson.get(NAME_KEY));
-        List<NamedConfigurationTypeDescriptor> parameterTypes = null;
-        if (methodJson.containsKey(PARAMETER_TYPES_KEY)) {
-            List<?> parameterTypesStrings = asList(methodJson.get(PARAMETER_TYPES_KEY), "parameter types list");
-            parameterTypes = parameterTypesStrings.stream().map(s -> NamedConfigurationTypeDescriptor.fromJSONName(asString(s))).toList();
-        }
+        List<?> parameterTypesStrings = asList(methodJson.get(PARAMETER_TYPES_KEY), "parameter types list");
+        List<NamedConfigurationTypeDescriptor> parameterTypes = parameterTypesStrings.stream().map(s -> NamedConfigurationTypeDescriptor.fromJSONName(asString(s))).toList();
         return new ConfigurationMethodDescriptor(name, parameterTypes);
     }
 }
