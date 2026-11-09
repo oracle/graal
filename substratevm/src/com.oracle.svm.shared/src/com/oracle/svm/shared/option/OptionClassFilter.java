@@ -33,11 +33,20 @@ public class OptionClassFilter {
                     Set.of(OptionOrigin.commandLineAPIOptionOriginSingleton, OptionOrigin.commandLineNonAPIOptionOriginSingleton));
 
     private final Map<String, LinkedHashSet<OptionOrigin>> requireCompletePackageOrClass;
+    private final Map<String, LinkedHashSet<OptionOrigin>> requireCompletePackages;
+    private final Map<String, LinkedHashSet<OptionOrigin>> requireCompletePackageWildcards;
     private final LinkedHashSet<Module> requireCompleteModules;
     private boolean requireCompleteAll;
 
-    public OptionClassFilter(Map<String, LinkedHashSet<OptionOrigin>> requireCompletePackageOrClass, LinkedHashSet<Module> requireCompleteModules, boolean requireCompleteAll) {
+    public OptionClassFilter(
+                    Map<String, LinkedHashSet<OptionOrigin>> requireCompletePackageOrClass,
+                    Map<String, LinkedHashSet<OptionOrigin>> requireCompletePackages,
+                    Map<String, LinkedHashSet<OptionOrigin>> requireCompletePackageWildcards,
+                    LinkedHashSet<Module> requireCompleteModules,
+                    boolean requireCompleteAll) {
         this.requireCompletePackageOrClass = requireCompletePackageOrClass;
+        this.requireCompletePackages = requireCompletePackages;
+        this.requireCompletePackageWildcards = requireCompletePackageWildcards;
         this.requireCompleteModules = requireCompleteModules;
         this.requireCompleteAll = requireCompleteAll;
     }
@@ -59,7 +68,7 @@ public class OptionClassFilter {
             }
         }
 
-        LinkedHashSet<OptionOrigin> origins = isPackageOrClassIncluded(className);
+        LinkedHashSet<OptionOrigin> origins = requireCompletePackageOrClass.get(className);
         if (origins != null) {
             return origins;
         }
@@ -71,7 +80,20 @@ public class OptionClassFilter {
             return reasonCommandLine;
         }
 
-        return requireCompletePackageOrClass.get(packageName);
+        LinkedHashSet<OptionOrigin> origins = requireCompletePackageOrClass.get(packageName);
+        if (origins != null) {
+            return origins;
+        }
+        origins = requireCompletePackages.get(packageName);
+        if (origins != null) {
+            return origins;
+        }
+        for (Map.Entry<String, LinkedHashSet<OptionOrigin>> wildcard : requireCompletePackageWildcards.entrySet()) {
+            if (packageName.equals(wildcard.getKey()) || packageName.startsWith(wildcard.getKey() + ".")) {
+                return wildcard.getValue();
+            }
+        }
+        return null;
     }
 
     public String isModuleIncluded(String moduleName) {

@@ -2735,6 +2735,8 @@ if mx.is_linux():
 # Resolve JVMStat provider modules so their preserved protocol packages are available for runtime loading.
 lib_jvm_build_args = (
     ['--add-modules=jdk.internal.jvmstat,jdk.jstatd'] +
+    ['--link-at-build-time=module=' + module for module in lib_jvm_preserved_modules] +
+    ['--link-at-build-time=package=' + pkg for pkg in lib_jvm_preserved_packages] +
     svm_experimental_options(lib_jvm_experimental_build_args)
 )
 if mx.is_linux():
