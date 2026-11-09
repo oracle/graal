@@ -26,6 +26,8 @@ package jdk.graal.compiler.core.test;
 
 import org.junit.Test;
 
+import jdk.graal.compiler.core.common.calc.CanonicalCondition;
+import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -39,8 +41,10 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 import jdk.graal.compiler.nodes.calc.FloatEqualsNode;
 import jdk.graal.compiler.nodes.calc.FloatLessThanNode;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import jdk.graal.compiler.nodes.calc.IntegerNormalizeCompareNode;
@@ -123,6 +127,64 @@ public class CompareCanonicalizerTest extends GraalCompilerTest {
         assertTrue(lessThan.implies(true, equals).isUnknown());
         assertTrue(unorderedLessThan.implies(false, lessThan).isUnknown());
         assertTrue(lessThan.implies(true, unorderedLessThan).isUnknown());
+    }
+
+    @Test
+    public void testUnsignedIntToDoublePreservesOnlyUnsignedOrder() {
+        ParameterNode x = new ParameterNode(0, StampPair.createSingle(StampFactory.forKind(JavaKind.Int)));
+        ParameterNode y = new ParameterNode(1, StampPair.createSingle(StampFactory.forKind(JavaKind.Int)));
+        FloatConvertNode xConvert = new FloatConvertNode(FloatConvert.UI2D, x);
+        FloatConvertNode yConvert = new FloatConvertNode(FloatConvert.UI2D, y);
+
+        assertTrue(xConvert.isLossless());
+        assertTrue(xConvert.preservesOrder(CanonicalCondition.EQ));
+        assertFalse(xConvert.preservesOrder(CanonicalCondition.LT));
+        assertTrue(xConvert.preservesOrder(CanonicalCondition.BT));
+
+        LogicNode comparison = FloatLessThanNode.create(getConstantReflection(), getMetaAccess(), getInitialOptions(), Integer.SIZE,
+                        xConvert, yConvert, false, NodeView.DEFAULT);
+        assertTrue(comparison instanceof FloatLessThanNode);
+    }
+
+    @Test
+    public void testMixedSignedAndUnsignedFloatConversionsAreNotCanonicalizedTogether() {
+        ParameterNode x = new ParameterNode(0, StampPair.createSingle(StampFactory.forKind(JavaKind.Int)));
+        ParameterNode y = new ParameterNode(1, StampPair.createSingle(StampFactory.forKind(JavaKind.Int)));
+        FloatConvertNode signed = new FloatConvertNode(FloatConvert.I2D, x);
+        FloatConvertNode unsigned = new FloatConvertNode(FloatConvert.UI2D, y);
+
+        LogicNode mixedComparison = FloatEqualsNode.create(getConstantReflection(), getMetaAccess(), getInitialOptions(), Integer.SIZE,
+                        signed, unsigned, NodeView.DEFAULT);
+        assertTrue(mixedComparison instanceof FloatEqualsNode);
+
+        FloatConvertNode unsignedX = new FloatConvertNode(FloatConvert.UI2D, x);
+        FloatConvertNode unsignedY = new FloatConvertNode(FloatConvert.UI2D, y);
+        LogicNode sameConversionComparison = FloatEqualsNode.create(getConstantReflection(), getMetaAccess(), getInitialOptions(), Integer.SIZE,
+                        unsignedX, unsignedY, NodeView.DEFAULT);
+        assertTrue(sameConversionComparison instanceof IntegerEqualsNode);
+    }
+
+    @Test
+    public void testUnsignedFloatConversionConstantComparisonPreservesSignedOrder() {
+        ParameterNode intValue = new ParameterNode(0, StampPair.createSingle(StampFactory.forInteger(JavaKind.Int, 0, 1)));
+        FloatConvertNode ui2f = new FloatConvertNode(FloatConvert.UI2F, intValue);
+        assertTrue(ui2f.isLossless());
+        LogicNode ui2fComparison = FloatLessThanNode.create(getConstantReflection(), getMetaAccess(), getInitialOptions(), Integer.SIZE,
+                        ui2f, ConstantNode.forFloat(0x1.0p31f), false, NodeView.DEFAULT);
+        assertTrue(ui2fComparison instanceof FloatLessThanNode);
+
+        ParameterNode longValue = new ParameterNode(1, StampPair.createSingle(StampFactory.forInteger(JavaKind.Long, 0, 1)));
+        FloatConvertNode ul2d = new FloatConvertNode(FloatConvert.UL2D, longValue);
+        assertTrue(ul2d.isLossless());
+        LogicNode ul2dComparison = FloatLessThanNode.create(getConstantReflection(), getMetaAccess(), getInitialOptions(), Integer.SIZE,
+                        ul2d, ConstantNode.forDouble(0x1.0p63), false, NodeView.DEFAULT);
+        assertTrue(ul2dComparison instanceof FloatLessThanNode);
+
+        FloatConvertNode ul2f = new FloatConvertNode(FloatConvert.UL2F, longValue);
+        assertTrue(ul2f.isLossless());
+        LogicNode ul2fComparison = FloatLessThanNode.create(getConstantReflection(), getMetaAccess(), getInitialOptions(), Integer.SIZE,
+                        ul2f, ConstantNode.forFloat(0x1.0p63f), false, NodeView.DEFAULT);
+        assertTrue(ul2fComparison instanceof FloatLessThanNode);
     }
 
     public static boolean floatCompare(float a, float b) {
