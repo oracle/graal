@@ -10,6 +10,7 @@ This changelog summarizes major changes to GraalVM Native Image.
   Configured runtime option values are printed before application startup; effective values computed by subsystems can differ, such as the GC limit when `MaxHeapSize` is `0`.
   The listing contains the options available in the image, labels each entry `{native image}`, and reports origins as `{default}`, `{build-time}`, `{command line}`, or `{runtime}`.
   Output normally goes to standard error and respects Native Image log-file and callback routing.
+* (GR-80925) Fixed conditional foreign metadata collection in the Tracing Agent, including partial runs, and preservation of foreign conditions when generating or merging reachability metadata.
 * (GR-80731) Added runtime support for `IgnoreUnrecognizedVMOptions`, `UnlockDiagnosticVMOptions`.
 * (GR-80621) Added runtime support for `AbortVMOnCompilationFailure` through the Graal compiler's `CompilationFailureAction` option when runtime compilation is available.
 

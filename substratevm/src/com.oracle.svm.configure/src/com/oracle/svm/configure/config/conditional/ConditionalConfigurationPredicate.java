@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -105,20 +105,17 @@ public class ConditionalConfigurationPredicate implements TypeConfiguration.Pred
     }
 
     @Override
-    public boolean testDowncall(ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) {
-        // GR-64144: Not implemented with conditions yet
-        return true;
+    public boolean testDowncall(UnresolvedAccessCondition condition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) {
+        return !filter.includes(condition.getTypeName());
     }
 
     @Override
-    public boolean testUpcall(ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) {
-        // GR-64144: Not implemented with conditions yet
-        return true;
+    public boolean testUpcall(UnresolvedAccessCondition condition, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) {
+        return !filter.includes(condition.getTypeName());
     }
 
     @Override
-    public boolean testDirectUpcall(String clazz, String method, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) {
-        // GR-64144: Not implemented with conditions yet
-        return true;
+    public boolean testDirectUpcall(UnresolvedAccessCondition condition, String clazz, String method, ConfigurationFunctionDescriptor desc, Map<String, Object> linkerOptions) {
+        return !(filter.includes(condition.getTypeName()) && filter.includes(clazz));
     }
 }
