@@ -144,7 +144,7 @@ native-image -cp . GameOfLife -o gameoflife-default
 ```
 
 Now you can move on to building a PGO-enabled native image. 
-For that, you first need to build an "instrumented binary" that will produce a profile for the runtime behavior of the application by adding the `--pgo-instrumented` option and specifying a different name, as follows:
+For that, you first need to build an "instrumented binary" that will produce a profile for the runtime behavior of the application by adding the `--pgo-instrument` option and specifying a different name, as follows:
 ```bash
 native-image  --pgo-instrument -cp . GameOfLife -o gameoflife-instrumented
 ```
@@ -162,6 +162,15 @@ native-image -cp . GameOfLife -o gameoflife-pgo --pgo=gameoflife.iprof
 ```
 
 With all this in place, you can move on to the evaluating the runtime performance of the application running in the different modes.
+
+### Instrumenting a Shared Library
+
+When you build an instrumented shared library with `--shared --pgo-instrument`, profile dumping is disabled by default.
+To enable the profile dump hook, add `-H:+ProfilingEnableProfileDumpHooks` to the `native-image` build command.
+This option is experimental, so you might need to unlock experimental options when setting this flag.
+Unlike a native executable, a shared library runs inside a host process.
+Returning from a C host's `main` without tearing down the isolate does not write a profile.
+Calling `System.exit` from the shared library runs the dump hook but also terminates the host process.
 
 ## Evaluating Performance
 
