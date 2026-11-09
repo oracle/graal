@@ -254,6 +254,12 @@ public abstract class AbstractBinarySuite {
             names.add(name.getBytes(StandardCharsets.UTF_8));
         }
 
+        private void addMemoryExport(int memoryIndex, String name) {
+            types.add(getByte("02"));
+            indices.add(memoryIndex);
+            names.add(name.getBytes(StandardCharsets.UTF_8));
+        }
+
         private byte[] generateExportSection() {
             ByteArrayList b = new ByteArrayList();
             b.add(getByte("07"));
@@ -437,6 +443,11 @@ public abstract class AbstractBinarySuite {
 
         public BinaryBuilder addFunctionExport(int functionIndex, String name) {
             binaryExports.addFunctionExport(functionIndex, name);
+            return this;
+        }
+
+        public BinaryBuilder addMemoryExport(int memoryIndex, String name) {
+            binaryExports.addMemoryExport(memoryIndex, name);
             return this;
         }
 
