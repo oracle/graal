@@ -78,14 +78,6 @@ import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryFactory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
-
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
 import org.graalvm.wasm.struct.WasmStruct;
 import org.graalvm.wasm.types.AbstractHeapType;
 import org.graalvm.wasm.types.DefinedType;
@@ -96,6 +88,14 @@ import org.graalvm.wasm.types.ReferenceType;
 import org.graalvm.wasm.types.SubType;
 import org.graalvm.wasm.types.ValueType;
 import org.graalvm.wasm.types.VectorType;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -491,7 +491,7 @@ public class WebAssembly extends Dictionary {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "64-bit indexed tables require wasm.Memory64");
         }
         if (Long.compareUnsigned(initial, maximum) > 0) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds max memory size");
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds max table size");
         }
         if (Long.compareUnsigned(initial, JS_LIMITS.tableInstanceSizeLimit()) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min table size exceeds implementation limit");
@@ -501,6 +501,9 @@ public class WebAssembly extends Dictionary {
         }
         if (!refTypes && !ReferenceType.FUNCREF.equals(elemType)) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element type must be anyfunc. Enable wasm.BulkMemoryAndRefTypes to support other reference types");
+        }
+        if (!elemType.matchesValue(initialValue)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid initial value of table elements");
         }
         final int maxAllowedSize = (int) minUnsigned(maximum, Integer.toUnsignedLong(JS_LIMITS.tableInstanceSizeLimit()));
         return new WasmTable(initial, maximum, maxAllowedSize, (ReferenceType) elemType, initialValue, indexType64);
@@ -530,6 +533,9 @@ public class WebAssembly extends Dictionary {
     }
 
     public static long tableGrow(WasmTable table, long delta, Object ref) {
+        if (!table.elemType().matchesValue(ref)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid table element");
+        }
         final long result = table.grow(delta, ref);
         if (result == -1) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Cannot grow table above max limit");
