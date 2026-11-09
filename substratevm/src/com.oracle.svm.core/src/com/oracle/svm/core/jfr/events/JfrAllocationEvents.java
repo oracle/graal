@@ -76,7 +76,7 @@ public class JfrAllocationEvents {
 
     /** Emits a weighted sample after a native collector's allocation slow path. */
     @AlwaysInline("Keep allocation event checks inline in allocation slow paths.")
-    @Uninterruptible(reason = "Emits a JFR event from the uninterruptible allocation slowpath.")
+    @Uninterruptible(reason = "Emits a JFR event from the uninterruptible allocation slowpath.", callerMustBe = true)
     public static void emitSample(DynamicHub hub) {
         if (HasJfrSupport.get() && JfrEvent.ObjectAllocationSample.shouldEmit()) {
             /* Native collectors do not expose the TLAB size or the allocation kind here. */
