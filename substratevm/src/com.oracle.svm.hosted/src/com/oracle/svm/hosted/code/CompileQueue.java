@@ -100,7 +100,6 @@ import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.Assembler;
-import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.GraalCompiler;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
@@ -905,7 +904,7 @@ public class CompileQueue {
         }
 
         @Override
-        protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
+        protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method) {
             return ((HostedMethod) method).compilationInfo.getCompilationGraph().getEncodedGraph();
         }
 

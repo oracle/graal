@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
-import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.ValueNode;
 
@@ -62,23 +61,17 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
         public static final InlineInfo DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION = new InlineInfo();
 
         private final ResolvedJavaMethod methodToInline;
-        private final BytecodeProvider intrinsicBytecodeProvider;
 
         public static InlineInfo createStandardInlineInfo(ResolvedJavaMethod methodToInline) {
-            return new InlineInfo(methodToInline, null);
-        }
-
-        public static InlineInfo createIntrinsicInlineInfo(ResolvedJavaMethod methodToInline, BytecodeProvider intrinsicBytecodeProvider) {
-            return new InlineInfo(methodToInline, intrinsicBytecodeProvider);
+            return new InlineInfo(methodToInline);
         }
 
         private InlineInfo() {
-            this(null, null);
+            this(null);
         }
 
-        private InlineInfo(ResolvedJavaMethod methodToInline, BytecodeProvider intrinsicBytecodeProvider) {
+        private InlineInfo(ResolvedJavaMethod methodToInline) {
             this.methodToInline = methodToInline;
-            this.intrinsicBytecodeProvider = intrinsicBytecodeProvider;
         }
 
         /**
@@ -90,18 +83,6 @@ public interface InlineInvokePlugin extends GraphBuilderPlugin {
 
         public boolean allowsInlining() {
             return methodToInline != null;
-        }
-
-        /**
-         * Returns a provider for the bytecode that should be used in the intrinsic inlining. The
-         * bytecode represents the intrinsic implementation for the method returned by
-         * {@link #getMethodToInline()}.
-         *
-         * @return A non-null {@link BytecodeProvider} if the method to inline should be
-         *         intrinsified, or {@code null} if this is not an intrinsic inlining.
-         */
-        public BytecodeProvider getIntrinsicBytecodeProvider() {
-            return intrinsicBytecodeProvider;
         }
     }
 

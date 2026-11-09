@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@ package jdk.graal.compiler.hotspot;
 
 import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
 import static jdk.graal.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
-import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
+import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -231,7 +231,7 @@ public class SymbolicSnippetEncoder {
             }
 
             // Force inlining when parsing replacements
-            return createIntrinsicInlineInfo(method, originalReplacements.getDefaultReplacementBytecodeProvider());
+            return createStandardInlineInfo(method);
         }
 
         @Override
@@ -281,12 +281,11 @@ public class SymbolicSnippetEncoder {
         }
         // Dumps of the graph preparation step can be captured with -H:Dump=LibGraal:2 and
         // MethodFilter can be used to focus on particular snippets.
-        IntrinsicContext.CompilationContext contextToUse = IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
         try (DebugContext debug = snippetReplacements.openSnippetDebugContext("LibGraalBuildGraph_", method, options)) {
             StructuredGraph graph;
             try (DebugContext.Scope s = debug.scope("LibGraal", method)) {
                 graph = snippetReplacements.makeGraph(debug, snippetReplacements.getDefaultReplacementBytecodeProvider(), method, args, nonNullParameters, original,
-                                trackNodeSourcePosition, null, contextToUse);
+                                trackNodeSourcePosition, null);
 
                 // Check if all methods which should be inlined are really inlined.
                 for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
@@ -1035,11 +1034,6 @@ public class SymbolicSnippetEncoder {
         @Override
         public boolean shouldDeferPlugin(GeneratedInvocationPlugin plugin) {
             return plugin.isGeneratedFromFoldOrNodeIntrinsic();
-        }
-
-        @Override
-        protected boolean canInlinePartialIntrinsicExit() {
-            return false;
         }
 
         @Override

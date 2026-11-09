@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
-import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 import static jdk.vm.ci.code.BytecodeFrame.AFTER_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.AFTER_EXCEPTION_BCI;
 import static jdk.vm.ci.code.BytecodeFrame.BEFORE_BCI;
@@ -35,7 +34,6 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -44,8 +42,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * An intrinsic is a substitute implementation of a Java method (or a bytecode in the case of
- * snippets) that is itself implemented in Java. This interface provides information about the
- * intrinsic currently being processed by the graph builder.
+ * snippets) that is itself implemented in Java. This context provides information about the
+ * intrinsic currently being processed by the graph builder. Intrinsics are parsed as separate
+ * replacement graphs whose placeholder frame states are resolved when the graphs are inlined.
  *
  * When in the scope of an intrinsic, the graph builder does not check the value kinds flowing
  * through the JVM state since intrinsics can employ non-Java kinds to represent values such as raw
@@ -68,20 +67,17 @@ public class IntrinsicContext {
      */
     final BytecodeProvider bytecodeProvider;
 
-    final CompilationContext compilationContext;
-
     final boolean allowPartialIntrinsicArgumentMismatch;
 
-    public IntrinsicContext(ResolvedJavaMethod method, ResolvedJavaMethod intrinsic, BytecodeProvider bytecodeProvider, CompilationContext compilationContext) {
-        this(method, intrinsic, bytecodeProvider, compilationContext, false);
+    public IntrinsicContext(ResolvedJavaMethod method, ResolvedJavaMethod intrinsic, BytecodeProvider bytecodeProvider) {
+        this(method, intrinsic, bytecodeProvider, false);
     }
 
-    public IntrinsicContext(ResolvedJavaMethod method, ResolvedJavaMethod intrinsic, BytecodeProvider bytecodeProvider, CompilationContext compilationContext,
+    public IntrinsicContext(ResolvedJavaMethod method, ResolvedJavaMethod intrinsic, BytecodeProvider bytecodeProvider,
                     boolean allowPartialIntrinsicArgumentMismatch) {
         this.originalMethod = method;
         this.intrinsicMethod = intrinsic;
         this.bytecodeProvider = bytecodeProvider;
-        this.compilationContext = compilationContext;
         this.allowPartialIntrinsicArgumentMismatch = allowPartialIntrinsicArgumentMismatch;
     }
 
@@ -122,26 +118,6 @@ public class IntrinsicContext {
      */
     public boolean isCallToOriginal(ResolvedJavaMethod targetMethod) {
         return originalMethod.equals(targetMethod) || intrinsicMethod.equals(targetMethod);
-    }
-
-    public boolean isPostParseInlined() {
-        return compilationContext.equals(INLINE_AFTER_PARSING);
-    }
-
-    /**
-     * Denotes the compilation context in which an intrinsic is being parsed.
-     */
-    public enum CompilationContext {
-        /**
-         * An intrinsic is being processed when parsing an invoke bytecode that calls the
-         * intrinsified method.
-         */
-        INLINE_DURING_PARSING,
-
-        /**
-         * An intrinsic is being processed when inlining an {@link Invoke} in an existing graph.
-         */
-        INLINE_AFTER_PARSING
     }
 
     /**
@@ -227,7 +203,6 @@ public class IntrinsicContext {
 
     @Override
     public String toString() {
-        return "Intrinsic{original: " + originalMethod.format("%H.%n(%p)") + ", intrinsic: " + (intrinsicMethod != null ? intrinsicMethod.format("%H.%n(%p)") : "null") + ", context: " +
-                        compilationContext + "}";
+        return "Intrinsic{original: " + originalMethod.format("%H.%n(%p)") + ", intrinsic: " + (intrinsicMethod != null ? intrinsicMethod.format("%H.%n(%p)") : "null") + "}";
     }
 }
