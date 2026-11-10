@@ -13,6 +13,8 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-80925) Fixed conditional foreign metadata collection in the Tracing Agent, including partial runs, and preservation of foreign conditions when generating or merging reachability metadata.
 * (GR-80731) Added runtime support for `IgnoreUnrecognizedVMOptions`, `UnlockDiagnosticVMOptions`.
 * (GR-80621) Added runtime support for `AbortVMOnCompilationFailure` through the Graal compiler's `CompilationFailureAction` option when runtime compilation is available.
+* (GR-80603) Bundle format version is now 3.0, with numbered directories for captured inputs and output destinations allocated independently of input substitutions.
+  Older bundle formats remain readable.
 
 ## GraalVM 25.5 (Internal Version 25.5.5)
 

@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -103,14 +104,18 @@ public class ArchiveSupport {
     }
 
     public void expandJarToDir(Function<Path, Path> relativizeEntry, Path inputJarFilePath, Path outputDir, BooleanSupplier outputDirDeleted) {
+        expandJarToDir((root, name) -> relativizeEntry.apply(root.resolve(name)), inputJarFilePath, outputDir, outputDirDeleted);
+    }
+
+    /// Allows entry names to be materialized before the native filesystem interprets their characters.
+    public void expandJarToDir(BiFunction<Path, String, Path> resolveEntry, Path inputJarFilePath, Path outputDir, BooleanSupplier outputDirDeleted) {
         Path normalizedOutputDir = outputDir.toAbsolutePath().normalize();
         try {
             try (JarFile archive = new JarFile(inputJarFilePath.toFile())) {
                 Enumeration<JarEntry> jarEntries = archive.entries();
                 while (jarEntries.hasMoreElements() && !outputDirDeleted.getAsBoolean()) {
                     JarEntry jarEntry = jarEntries.nextElement();
-                    Path originalEntry = outputDir.resolve(jarEntry.getName());
-                    Path targetEntry = relativizeEntry.apply(originalEntry).toAbsolutePath().normalize();
+                    Path targetEntry = resolveEntry.apply(outputDir, jarEntry.getName()).toAbsolutePath().normalize();
                     try {
                         if (!targetEntry.startsWith(normalizedOutputDir)) {
                             throw VMError.shouldNotReachHere("Archive entry '" + jarEntry.getName() + "' resolves outside of " + normalizedOutputDir);

@@ -117,6 +117,51 @@ These deprecated URL protocol options are omitted from the generated table; see 
 
 <!-- END: build-options-table -->
 
+## Argument Files
+
+Native Image argument files use UTF-8 and follow the [Java launcher argument-file specification](https://docs.oracle.com/en/java/javase/25/docs/specs/man/java.html#java-command-line-argument-files).
+All of its syntax rules apply.
+To enable option-value continuations, put `# native-image: value-continuations` on the first line of the file.
+The marker must match exactly.
+A standalone `# native-image:` directive must start the first line; unknown settings or misplaced directives are errors.
+
+An option ending in `=...` starts an option-value continuation.
+Subsequent arguments within the file are joined with commas until an empty or whitespace-only line, another option ending in `=...`, or the end of the file.
+Comment-only lines do not end the continuation.
+Indentation does not affect continuation boundaries; options that do not end in `=...` are also consumed as continuation values.
+A continuation with no entries produces an empty option value.
+
+Continuation headers are recognized after Java-style tokenization removes quotes, so `-H:IncludeResources="..."` also starts a continuation.
+To pass `...` as a literal option value, specify the option directly on the command line or in an argument file without the marker.
+
+For example, _preserve.args_ can contain:
+
+```text
+# native-image: value-continuations
+
+# Library scope
+-H:Preserve=...
+    package=my.library.*
+    module=java.logging
+
+-H:IncludeResources=...
+    my/library/.*
+    my/application/.*
+```
+
+Running `native-image @preserve.args -cp classes Main` expands the file into:
+
+```text
+-H:Preserve=package=my.library.*,module=java.logging
+-H:IncludeResources=my/library/.*,my/application/.*
+```
+
+You can also use `@file` in the `Args` property of _native-image.properties_.
+File paths must be relative to the directory containing the properties file; for properties embedded in a JAR, the referenced file is read from the same JAR.
+For macro options, paths are relative to the macro option directory.
+References must stay within the containing class-path or module-path entry, or macro option directory; references that escape it are rejected.
+Expanded options retain the origin of the properties file and its restrictions.
+
 ## List of Useful Options
 
 There are some expert level options that a user may find useful or needed. For example, the option to dump graphs of the `native-image` builder, or to print various statistics during the build process.

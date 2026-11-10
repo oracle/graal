@@ -180,8 +180,8 @@ public class BundleLauncher {
 
         List<String> classpath = new ArrayList<>();
         if (Files.isDirectory(classPathDir)) {
-            try (Stream<Path> walk = Files.walk(classPathDir, 1)) {
-                walk.filter(path -> path.toString().endsWith(".jar") || Files.isDirectory(path))
+            try {
+                BundleLauncherUtil.getPathEntries(rootDir, classPathDir).stream()
                                 .map(path -> useContainer() ? Paths.get("/").resolve(rootDir.relativize(path)) : path)
                                 .map(Path::toString)
                                 .forEach(classpath::add);
@@ -195,8 +195,8 @@ public class BundleLauncher {
 
         List<String> modulePath = new ArrayList<>();
         if (Files.isDirectory(modulePathDir)) {
-            try (Stream<Path> walk = Files.walk(modulePathDir, 1)) {
-                walk.filter(path -> (Files.isDirectory(path) && !path.equals(modulePathDir)) || path.toString().endsWith(".jar"))
+            try {
+                BundleLauncherUtil.getPathEntries(rootDir, modulePathDir).stream()
                                 .map(path -> useContainer() ? Paths.get("/").resolve(rootDir.relativize(path)) : path)
                                 .map(Path::toString)
                                 .forEach(modulePath::add);
@@ -422,7 +422,7 @@ public class BundleLauncher {
                 Enumeration<JarEntry> jarEntries = archive.entries();
                 while (jarEntries.hasMoreElements() && !deleteBundleRoot.get()) {
                     JarEntry jarEntry = jarEntries.nextElement();
-                    Path bundleEntry = rootDir.resolve(jarEntry.getName()).toAbsolutePath().normalize();
+                    Path bundleEntry = rootDir.resolve(BundleLauncherUtil.materializePortablePath(jarEntry.getName())).toAbsolutePath().normalize();
                     try {
                         if (!bundleEntry.startsWith(normalizedRootDir)) {
                             throw new Error("Bundle entry '" + jarEntry.getName() + "' resolves outside of " + normalizedRootDir);

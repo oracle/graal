@@ -1813,6 +1813,7 @@ public class SubstrateOptions {
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     public static final HostedOptionKey<Boolean> UseOldMethodHandleIntrinsics = new HostedOptionKey<>(false);
 
+    @BundleMember(role = BundleMember.Role.InputReference, valuePrefix = "path=", delimiter = ",")//
     @Option(help = "file:doc-files/PreserveHelp.txt")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> Preserve = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
