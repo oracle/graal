@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -628,12 +628,12 @@ public class CodeInfoEncoder {
                     assert entry.referenceMap == null && (entry.frameData == null || entry.frameData.isDefaultFrameData) : entry;
                     entry.referenceMap = (ReferenceMapEncoder.Input) debugInfo.getReferenceMap();
                     entry.frameData = frameInfoEncoder.addDebugInfo(method, compilation, infopoint, totalFrameSize);
-                    if (DeoptimizationSupport.enabled() && LazyDeoptimization.getValue() && entry.frameData.frame.isDeoptEntry && infopoint instanceof Call call && call.target != null) {
+                    if (DeoptimizationSupport.enabled() && LazyDeoptimization.getValue() && entry.frameData.isDeoptEntry && infopoint instanceof Call call && call.target != null) {
                         ResolvedJavaMethod invokeTarget = (ResolvedJavaMethod) call.target;
                         JavaType returnType = invokeTarget.getSignature().getReturnType(null);
                         entry.deoptReturnValueIsObject = ((SharedType) returnType).getStorageKind().isObject();
                     }
-                    if (entry.frameData != null && entry.frameData.frame.isDeoptEntry) {
+                    if (entry.frameData != null && entry.frameData.isDeoptEntry) {
                         BytecodeFrame frame = debugInfo.frame();
                         long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), FrameState.StackState.of(frame));
                         added = deoptEntryBcis.add(encodedBci);
@@ -810,7 +810,7 @@ public class CodeInfoEncoder {
             writeEncodedFrameInfo(encodingBuffer, data, entryFlags, chunkDefaultFrameInfoIndex);
             writeFramePointerSaveAreaOffset(encodingBuffer, data, entryFlags);
 
-            if (DeoptimizationSupport.enabled() && LazyDeoptimization.getValue() && data.frameData != null && data.frameData.frame.isDeoptEntry) {
+            if (DeoptimizationSupport.enabled() && LazyDeoptimization.getValue() && data.frameData != null && data.frameData.isDeoptEntry) {
                 /*
                  * With lazy deoptimization, we have an extra byte in the code info, which keeps
                  * track for each deopt entry point whether it is at a call that returns an object.
@@ -1019,7 +1019,7 @@ public class CodeInfoEncoder {
         if (data.frameData == null) {
             return CodeInfoDecoder.FI_NO_INFO;
         } else if (TypeConversion.isS4(data.frameData.encodedFrameInfoIndex)) {
-            if (data.frameData.frame.isDeoptEntry) {
+            if (data.frameData.isDeoptEntry) {
                 return CodeInfoDecoder.FI_DEOPT_ENTRY_INDEX_S4;
             } else {
                 if (data.frameData.isDefaultFrameData) {
