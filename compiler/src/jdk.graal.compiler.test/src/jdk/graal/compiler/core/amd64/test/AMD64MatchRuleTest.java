@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,11 @@ package jdk.graal.compiler.core.amd64.test;
 
 import static org.junit.Assume.assumeTrue;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import jdk.graal.compiler.core.amd64.AMD64NodeMatchRules;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.core.test.MatchRuleTest;
 import jdk.graal.compiler.lir.LIR;
@@ -40,6 +42,9 @@ import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.CmpBranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.CmpConstBranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ControlFlow.CmpDataBranchOp;
 import jdk.graal.compiler.lir.amd64.AMD64Unary;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 
@@ -47,6 +52,69 @@ public class AMD64MatchRuleTest extends MatchRuleTest {
     @Before
     public void checkAMD64() {
         assumeTrue("skipping AMD64 specific test", getTarget().arch instanceof AMD64);
+    }
+
+    public static long rotateRight32Long(long value, int shift) {
+        return (value >>> shift) | (value << (32 - shift));
+    }
+
+    public static long rotateLeft32Long(long value, int shift) {
+        return (value << shift) | (value >>> (32 - shift));
+    }
+
+    public static long rotateRight64Long(long value, int shift) {
+        return (value >>> shift) | (value << (64 - shift));
+    }
+
+    public static long rotateLeft64Long(long value, int shift) {
+        return (value << shift) | (value >>> (64 - shift));
+    }
+
+    public static int rotateRight32Int(int value, int shift) {
+        return (value >>> shift) | (value << (32 - shift));
+    }
+
+    public static int rotateLeft32Int(int value, int shift) {
+        return (value << shift) | (value >>> (32 - shift));
+    }
+
+    @Test
+    public void testVariableRotateMatcher() {
+        AMD64NodeMatchRules rules = new AMD64NodeMatchRules(null);
+        for (String method : new String[]{"rotateRight32Long", "rotateRight32Int"}) {
+            StructuredGraph graph = parseEager(method, AllowAssumptions.YES);
+            int mask = graph.getParameter(0).getStackKind().getBitCount() - 1;
+            for (int delta : new int[]{32, 0, 64, -32, -64, -1, 1, 31, 63, 96, 128, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
+                ConstantNode constant = ConstantNode.forInt(delta, graph);
+                boolean isRotate = (delta & mask) == 0;
+                Assert.assertEquals(method + " right, delta=" + delta, isRotate,
+                                rules.rotateRightVariable(graph.getParameter(0), constant, graph.getParameter(1)) != null);
+                Assert.assertEquals(method + " left, delta=" + delta, isRotate,
+                                rules.rotateLeftVariable(graph.getParameter(0), graph.getParameter(1), constant) != null);
+            }
+        }
+    }
+
+    @Test
+    public void testVariableRotateLong() {
+        for (long value : new long[]{1, 0, Long.MIN_VALUE, Long.MAX_VALUE, -1, 0x0123456789ABCDEFL, 0x80000001L}) {
+            for (int shift : new int[]{0, 1, 5, 31, 32, 33, 63, 64, 65, -1, -65}) {
+                test("rotateRight32Long", value, shift);
+                test("rotateLeft32Long", value, shift);
+                test("rotateRight64Long", value, shift);
+                test("rotateLeft64Long", value, shift);
+            }
+        }
+    }
+
+    @Test
+    public void testVariableRotateInt() {
+        for (int value : new int[]{0, 1, Integer.MIN_VALUE, Integer.MAX_VALUE, -1, 0x01234567}) {
+            for (int shift : new int[]{-33, -1, 0, 1, 5, 31, 32, 33}) {
+                test("rotateRight32Int", value, shift);
+                test("rotateLeft32Int", value, shift);
+            }
+        }
     }
 
     public static int test1Snippet(TestClass o, TestClass b, TestClass c) {
