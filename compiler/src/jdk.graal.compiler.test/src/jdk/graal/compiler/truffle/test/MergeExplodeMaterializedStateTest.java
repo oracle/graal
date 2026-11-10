@@ -34,6 +34,7 @@ import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.FrameState;
@@ -56,7 +57,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * Decoder-level coverage for differing references in the mapping of a single virtual object.
  * Publishing objects in a Truffle root can instead produce distinct, invariant mappings and a
- * reference phi in a local. Install the precise mapping shape here.
+ * reference phi in a local. Install the precise mapping shape here and observe decoder-time copies.
  */
 public class MergeExplodeMaterializedStateTest extends GraalCompilerTest {
     // Bytecode local slots in dispatchSnippet, after its five parameters.
@@ -126,17 +127,28 @@ public class MergeExplodeMaterializedStateTest extends GraalCompilerTest {
         assertMaterializedObjectState(false);
     }
 
+    @SuppressWarnings("try")
     private void assertMaterializedObjectState(boolean markKey) {
         ResolvedJavaMethod method = getResolvedJavaMethod("dispatchSnippet");
         StructuredGraph original = parseEager(method, AllowAssumptions.YES);
         EncodedGraph encoded = GraphEncoder.encodeSingleGraph(original, getTarget().arch);
         StructuredGraph graph = new StructuredGraph.Builder(original.getOptions(), original.getDebug(), AllowAssumptions.YES).method(method).build();
         MaterializedStateDecoder decoder = new MaterializedStateDecoder(graph, markKey);
-        decoder.decodeExploded(encoded);
+        try (Graph.NodeEventScope scope = graph.trackNodeEvents(new Graph.NodeEventListener() {
+            @Override
+            public void nodeAdded(Node node) {
+                decoder.trackStateCopy(node);
+            }
+        })) {
+            decoder.decodeExploded(encoded);
+        }
         Assert.assertTrue("Expected multiple entry states", decoder.entryMappings.size() > 2);
         for (MaterializedObjectState mapping : decoder.entryMappings) {
             Assert.assertTrue("Entry states must retain their specialized references", mapping.materializedValue() instanceof ParameterNode);
         }
+        // One copy introduces the materialized-reference phi; one materializes the LoopBegin.
+        // Further entries must extend the phi without copying the dispatcher state again.
+        Assert.assertEquals(2, decoder.stateCopies);
         IntegerSwitchNode dispatcher = null;
         for (IntegerSwitchNode candidate : graph.getNodes().filter(IntegerSwitchNode.class)) {
             if (candidate.value() instanceof ValuePhiNode phi && phi.merge() instanceof LoopBeginNode) {
@@ -160,6 +172,8 @@ public class MergeExplodeMaterializedStateTest extends GraalCompilerTest {
     private final class MaterializedStateDecoder extends SimplifyingGraphDecoder {
         private final List<MaterializedObjectState> entryMappings = new ArrayList<>();
         private final boolean markKey;
+        private VirtualInstanceNode object;
+        private int stateCopies;
 
         MaterializedStateDecoder(StructuredGraph graph, boolean markKey) {
             super(getTarget().arch, graph, getProviders(), false);
@@ -200,7 +214,7 @@ public class MergeExplodeMaterializedStateTest extends GraalCompilerTest {
              * reconstruction so the test does not depend on escape-analysis heuristics.
              */
             Assert.assertEquals(markKey, methodScope.loopExplosionHeadKeyFilter != null);
-            VirtualInstanceNode object = graph.addWithoutUnique(new VirtualInstanceNode(getMetaAccess().lookupJavaType(Object.class), true));
+            object = graph.addWithoutUnique(new VirtualInstanceNode(getMetaAccess().lookupJavaType(Object.class), true));
             int bci = methodScope.loopExplosionHead.stateAfter().bci;
             for (Node node : methodScope.loopExplosionMerges) {
                 MergeNode merge = (MergeNode) node;
@@ -215,6 +229,14 @@ public class MergeExplodeMaterializedStateTest extends GraalCompilerTest {
                     merge.setStateAfter(copy);
                     entryMappings.add(mapping);
                 }
+            }
+        }
+
+        void trackStateCopy(Node node) {
+            if (node instanceof FrameState state && state.values().size() > OBJECT_LOCAL && state.values().get(OBJECT_LOCAL) == object &&
+                            state.values().get(KEY_LOCAL) instanceof ValuePhiNode phi && phi.merge() instanceof MergeNode merge && merge.stateAfter() != null &&
+                            merge.stateAfter().values().contains(phi)) {
+                stateCopies++;
             }
         }
     }

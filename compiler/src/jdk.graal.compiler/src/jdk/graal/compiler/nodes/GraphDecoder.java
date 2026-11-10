@@ -3752,7 +3752,9 @@ class LoopDetector implements Runnable {
 
         FrameState dispatchState = irreducibleLoopHandler.header.stateAfter();
         FrameState mergedState = mergeIrreducibleLoopState(dispatchState, loopState, loop.ends.size());
-        dispatchState.replaceAtUsages(mergedState);
+        if (mergedState != dispatchState) {
+            dispatchState.replaceAtUsages(mergedState);
+        }
 
         /* Disconnect the ends of our loop and re-connect them to the outermost loop header. */
         for (EndNode end : loop.ends) {
@@ -3767,23 +3769,45 @@ class LoopDetector implements Runnable {
     }
 
     /**
-     * The dispatcher represents different keys, not multiple occurrences of the same key. Unlike
-     * loop-explosion merging, it must therefore preserve differing non-key state as well. These
-     * phis are introduced after loop explosion, so they do not prevent specialization of the
-     * interpreter's accesses (for example, accesses indexed by a virtualized stack pointer).
+     * Unlike loop-explosion merging, which merges states for the same key, the irreducible-loop
+     * dispatcher combines states for distinct keys. Non-key state must agree for occurrences of
+     * the same key, but need not agree between distinct keys: for example, a stack pointer can be
+     * fixed for each BCI while having different values at different BCIs. The dispatcher therefore
+     * needs phis for differing non-key values as well as the key, preserving their correlation for
+     * deoptimization at the shared header. These phis are introduced after loop explosion, so they
+     * do not prevent specialization of the interpreter's accesses (for example, accesses indexed
+     * by a virtualized stack pointer).
      *
-     * Copy the frame state and any modified virtual-object mappings: the original entry states
-     * must retain their specialized values. Every phi gets one input per redirected backedge,
-     * including phis introduced for earlier entries and the dispatch key itself.
+     * Copy the frame state and modified virtual-object mappings only when introducing a new phi:
+     * the original entry states must retain their specialized values. Extending existing phis
+     * does not change the state or its mappings. Every phi gets one input per redirected
+     * backedge, including phis introduced for earlier entries and the dispatch key itself.
+     *
+     * @param dispatchState the current dispatcher header state; existing dispatcher phis referenced
+     *            by this state or its virtual-object mappings are extended in place
+     * @param entryState the specialized state for the loop entry being added to the dispatcher,
+     *            shared by all of its redirected backedges and left unchanged by this method
+     * @param newPredecessors the number of backedges being redirected from this entry to the
+     *            dispatcher; these must not yet have been added to the dispatcher header
+     * @return the merged dispatcher state: {@code dispatchState} if no state slot or object mapping
+     *         needs replacement, otherwise a copy containing the new phis and copied modified
+     *         object mappings
      */
     private FrameState mergeIrreducibleLoopState(FrameState dispatchState, FrameState entryState, int newPredecessors) {
         if (dispatchState.virtualObjectMappingCount() != entryState.virtualObjectMappingCount()) {
             throw bailout("cannot merge different virtual-object layouts in the irreducible-loop dispatcher");
         }
         EconomicMap<ValuePhiNode, ValueNode> inputs = EconomicMap.create(Equivalence.IDENTITY);
-        FrameState result = dispatchState.duplicate();
+        FrameState result = dispatchState;
         for (int i = 0; i < dispatchState.values().size(); i++) {
-            result.values().set(i, mergeIrreducibleLoopValue(dispatchState.values().get(i), entryState.values().get(i), inputs));
+            ValueNode current = dispatchState.values().get(i);
+            ValueNode value = mergeIrreducibleLoopValue(current, entryState.values().get(i), inputs);
+            if (value != current) {
+                if (result == dispatchState) {
+                    result = dispatchState.duplicate();
+                }
+                result.values().set(i, value);
+            }
         }
         for (int i = 0; i < dispatchState.virtualObjectMappingCount(); i++) {
             EscapeObjectState current = dispatchState.virtualObjectMappings().get(i);
@@ -3795,19 +3819,29 @@ class LoopDetector implements Runnable {
                 VirtualObjectState incomingVirtual = (VirtualObjectState) incoming;
                 VirtualObjectState merged = currentVirtual;
                 for (int j = 0; j < currentVirtual.values().size(); j++) {
-                    ValueNode value = mergeIrreducibleLoopValue(currentVirtual.values().get(j), incomingVirtual.values().get(j), inputs);
-                    if (value != currentVirtual.values().get(j)) {
+                    ValueNode currentValue = currentVirtual.values().get(j);
+                    ValueNode incomingValue = incomingVirtual.values().get(j);
+                    ValueNode value = mergeIrreducibleLoopValue(currentValue, incomingValue, inputs);
+                    if (value != currentValue) {
                         if (merged == currentVirtual) {
                             merged = currentVirtual.duplicateWithVirtualState();
                         }
                         merged.values().set(j, value);
                     }
                 }
-                result.virtualObjectMappings().set(i, merged);
+                if (merged != currentVirtual) {
+                    if (result == dispatchState) {
+                        result = dispatchState.duplicate();
+                    }
+                    result.virtualObjectMappings().set(i, merged);
+                }
             } else if (current instanceof MaterializedObjectState currentMaterialized) {
                 MaterializedObjectState incomingMaterialized = (MaterializedObjectState) incoming;
                 ValueNode value = mergeIrreducibleLoopValue(currentMaterialized.materializedValue(), incomingMaterialized.materializedValue(), inputs);
                 if (value != currentMaterialized.materializedValue()) {
+                    if (result == dispatchState) {
+                        result = dispatchState.duplicate();
+                    }
                     result.virtualObjectMappings().set(i, graph.addWithoutUnique(new MaterializedObjectState(current.object(), value)));
                 }
             } else {
