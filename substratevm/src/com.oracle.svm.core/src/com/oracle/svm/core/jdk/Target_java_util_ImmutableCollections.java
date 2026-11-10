@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,16 +30,25 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
 /**
- * Native Image uses an image-specific deterministic salt for iteration of the JDK immutable maps and
- * sets, making image output reproducible. The JDK uses a similar approach when dumping a CDS archive:
- * {@code ImmutableCollections} obtains a seed from {@code CDS.getRandomSeedForDumping()}, derived
- * from the JDK build and version, so the same JDK build produces the same archive. Outside CDS
- * dumping, the JDK falls back to {@code System.nanoTime()}. Native Image instead derives its salt
- * from the image build ID in {@code ImmutableCollectionsSupport.getSaltValue()}.
+ * Recomputes the JDK immutable collection iteration salt from the image build ID to remove a source
+ * of nondeterminism in generated code and image data. These substituted fields are treated as final:
+ * during ahead-of-time compilation, the compiler can embed {@code SALT32L} in generated code and fold
+ * branches that depend on {@code REVERSE}, selecting one traversal direction and eliminating the
+ * other. The image uses the same values at run time that the compiler assumed during compilation.
+ * Retaining the builder JVM's randomly initialized salt could produce different machine code and
+ * embedded constants in otherwise identical builds.
  *
- * The salt affects iteration order and can affect constant folding. A collection initialized at
- * build time may therefore be traversed with the builder JVM's salt, while iteration at image run
- * time uses the image-specific salt; any order captured during initialization can differ.
+ * This recomputation does not change the salt in the builder JVM. Class initializers executed there
+ * can capture a collection's iteration order using the builder's salt, while later iteration in the
+ * image uses the image-specific salt. Those captured results are not recomputed by this substitution
+ * and can disagree with run-time iteration. They can also retain nondeterminism from the builder, so
+ * this substitution alone does not make arbitrary build-time initialization reproducible.
+ *
+ * The JDK uses a similar approach for reproducible Class Data Sharing (CDS) archives: when running
+ * with {@code -Xshare:dump}, {@code ImmutableCollections} obtains a seed derived from the JDK build
+ * and version via {@code CDS.getRandomSeedForDumping()}. Outside static archive dumping, that method
+ * returns zero and the JDK falls back to {@code System.nanoTime()}. Native Image instead derives its
+ * salt from the image build ID in {@link ImmutableCollectionsSupport#getSaltValue()}.
  */
 @TargetClass(className = "java.util.ImmutableCollections")
 public final class Target_java_util_ImmutableCollections {

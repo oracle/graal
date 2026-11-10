@@ -41,10 +41,18 @@ Native Image initializes most JDK classes at build time, including the garbage c
 For all of the classes that are initialized at build time, Native Image gives proper support so that the semantics remain consistent despite class initialization occurring at build time.
 If you discover an issue with a JDK class behaving incorrectly because of class initialization at build time, please [report an issue](https://github.com/oracle/graal/issues/new).
 
-> Note: Build-time initialization does not guarantee the same behavior for state that depends on randomized JDK state.
-> Native Image uses an image-specific deterministic salt for iteration over `Set.of` and `Map.of` collections.
-> If a class initialized at build time captures the iteration order of one of these collections, that order can differ when the native executable iterates the same collection at run time.
-> Java does not specify these collection iteration orders, so compute any order you need at run time instead of storing a build-time snapshot.
+> Note: `Set.of` and `Map.of` collections have unspecified iteration orders.
+> Native Image derives a deterministic iteration salt from the image build ID to support reproducible builds.
+> During ahead-of-time compilation, the compiler can embed this salt in generated code and fold branches that depend on it, such as choosing a collection's traversal direction.
+> The native executable uses the same salt that the compiler assumed, avoiding differences in generated code and embedded constants caused by the builder JVM's randomly initialized salt.
+>
+> Class initializers executed at build time still run inside the builder JVM and can observe its salt.
+> If an initializer captures a collection's iteration order, that snapshot can differ from later iteration of the same collection in the native executable.
+> The substitution does not recompute captured snapshots, which can themselves retain nondeterminism from the builder.
+> It removes one source of build nondeterminism without guaranteeing reproducibility of arbitrary initializer results.
+>
+> If you need a snapshot to agree with later iteration, initialize both the collection and its snapshot at run time, for example by marking their holder class with `--initialize-at-run-time`.
+> If you need a defined iteration order, use a collection that explicitly guarantees that order.
 
 ## Automatic Initialization of Safe Classes
 
