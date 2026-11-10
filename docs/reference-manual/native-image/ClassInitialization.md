@@ -41,6 +41,11 @@ Native Image initializes most JDK classes at build time, including the garbage c
 For all of the classes that are initialized at build time, Native Image gives proper support so that the semantics remain consistent despite class initialization occurring at build time.
 If you discover an issue with a JDK class behaving incorrectly because of class initialization at build time, please [report an issue](https://github.com/oracle/graal/issues/new).
 
+> Note: Build-time initialization does not guarantee the same behavior for state that depends on randomized JDK state.
+> Native Image uses an image-specific deterministic salt for iteration over `Set.of` and `Map.of` collections.
+> If a class initialized at build time captures the iteration order of one of these collections, that order can differ when the native executable iterates the same collection at run time.
+> Java does not specify these collection iteration orders, so compute any order you need at run time instead of storing a build-time snapshot.
+
 ## Automatic Initialization of Safe Classes
 
 For application classes, Native Image tries to find classes that can be safely initialized at build time.
