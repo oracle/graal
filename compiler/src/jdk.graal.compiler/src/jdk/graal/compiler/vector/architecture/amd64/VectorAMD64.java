@@ -438,8 +438,8 @@ public final class VectorAMD64 extends VectorArchitecture {
     /**
      * Returns a stamp describing a representative input of the logic node. The bit width of this
      * stamp describes the width of the logic bitmasks produced by the vectorized version of the
-     * logic operation. Returns {@code null} short-circuiting operations that don't produce a simple
-     * result.
+     * logic operation. Returns {@code null} for operations without a representative vector element
+     * stamp.
      */
     private Stamp logicOperationStamp(LogicNode logicNode) {
         /* These cases should remain in sync with getSupportedVectorLogicLengthHelper. */
@@ -447,10 +447,9 @@ public final class VectorAMD64 extends VectorArchitecture {
             return compareNode.getX().stamp(NodeView.DEFAULT);
         } else if (logicNode instanceof IsNullNode) {
             return oopMaskStamp;
-        } else if (logicNode instanceof ShortCircuitOrNode) {
+        } else if (logicNode instanceof ShortCircuitOrNode || logicNode instanceof LogicConstantNode) {
+            /* Logic constants have a VoidStamp, which cannot describe vector elements. */
             return null;
-        } else if (logicNode instanceof LogicConstantNode) {
-            return logicNode.stamp(NodeView.DEFAULT);
         } else if (logicNode instanceof IntegerTestNode testNode) {
             return testNode.getX().stamp(NodeView.DEFAULT);
         } else {
