@@ -48,6 +48,37 @@ position = "last"
 [schema.kinds.FD]
 folders = ["docs/functional-spec/decisions"]
 
+# Every FD leads with its reason, then records the choice, tradeoffs and participants.
+[schema.kinds.FD.fields.reason]
+title = "Reason"
+presence = "must"
+position = "first"
+
+[schema.kinds.FD.fields.decision]
+title = "Decision"
+presence = "must"
+after = "reason"
+
+[schema.kinds.FD.fields.alternatives]
+title = "Alternatives Considered"
+presence = "must"
+after = "decision"
+
+[schema.kinds.FD.fields.consequences]
+title = "Consequences"
+presence = "must"
+after = "alternatives"
+
+[schema.kinds.FD.fields.participants]
+title = "Participants"
+presence = "must"
+after = "consequences"
+
+[schema.kinds.FD.fields.evidence]
+title = "Evidence and Discussion"
+presence = "may"
+after = "participants"
+
 [schema.kinds.AR]
 folders = ["src"]
 index = false

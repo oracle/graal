@@ -114,9 +114,9 @@ Registering only the constructor does not help when the JDK calls the factory.
 If the metadata has a condition, that condition also controls when the provider becomes available
 ([§FS-002-security-providers.design.1.4](security-providers.md#4-conditional-registration-signals)).
 This follows the decisions to use standard metadata without a provider-specific flag
-([§FD-001-hotspot-compatible-semantics-by-default.2](decisions/hotspot-compatible-semantics-by-default.md#2-decision))
+([§FD-001-hotspot-compatible-semantics-by-default.decision](decisions/hotspot-compatible-semantics-by-default.md#decision-decision))
 and make provider inclusion an explicit choice
-([§FD-002-reachability-independent-runtime-semantics.2](decisions/reachability-independent-runtime-semantics.md#2-decision)).
+([§FD-002-reachability-independent-runtime-semantics.decision](decisions/reachability-independent-runtime-semantics.md#decision-decision)).
 
 #### .2: Provider Construction
 
@@ -288,7 +288,7 @@ provider filters, and [`Security.getAlgorithms(String)`][security].
 These APIs enumerate usable providers and services.
 They neither expose a partially functional provider nor fail solely because another configured
 provider is unregistered, as required by
-[§FD-003-provider-enumeration-reports-usable-providers](decisions/provider-enumeration-reports-usable-providers.md#fd-003-provider-enumeration-reports-usable-providers-enumerate-only-usable-security-providers).
+[§FD-003-provider-enumeration-reports-usable-providers.decision](decisions/provider-enumeration-reports-usable-providers.md#decision-decision).
 [`Security.getProvider(String)`][security], JCA factories, [`ServiceLoader`][service-loader], and JDK
 default or fallback paths must not return that provider, one of its services, or an engine backed by
 it.
@@ -557,7 +557,7 @@ constructor of a public, concrete [`Provider`][provider] subtype, or a public st
 ordinary reflection metadata must let a native executable acquire the same provider through the
 same JDK API and use its services.
 Native Image must require neither a provider-specific option nor an application source change.
-This is the provider-specific form of [§FD-001-hotspot-compatible-semantics-by-default.2](decisions/hotspot-compatible-semantics-by-default.md#2-decision).
+This is the provider-specific form of [§FD-001-hotspot-compatible-semantics-by-default.decision](decisions/hotspot-compatible-semantics-by-default.md#decision-decision).
 The transition options in [§FS-002-security-providers.design.6](security-providers.md#6-transition-to-the-future-defaults) are the only temporary build
 options permitted.
 
@@ -627,7 +627,7 @@ configured provider list, lookup results, or service availability.
 Programmatic provider-list mutations are outside this domain because they intentionally change the
 list at run time.
 This is the provider-specific form of
-[§FD-002-reachability-independent-runtime-semantics.2](decisions/reachability-independent-runtime-semantics.md#2-decision).
+[§FD-002-reachability-independent-runtime-semantics.decision](decisions/reachability-independent-runtime-semantics.md#decision-decision).
 
 **Domain.** Pairs of builds differing by one reachable but unexecuted JCA factory or facade call,
 excluding the [`SecureRandom`][secure-random] acquisition paths in

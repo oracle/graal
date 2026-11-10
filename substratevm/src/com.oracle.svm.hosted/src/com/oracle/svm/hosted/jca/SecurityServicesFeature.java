@@ -145,24 +145,24 @@ import sun.security.x509.OIDMap;
 /// AR-004-security-providers: Security Provider Architecture
 ///
 /// The feature records at image build time which security providers the JDK may construct, which
-/// provider services reflection may instantiate, and which application-created providers JCE may
+/// provider services reflection may instantiate, and which application-supplied providers JCE may
 /// accept. Three analysis signals produce those results:
 ///
 /// ```text
-/// Build-time signal                    Recorded result
-/// -----------------------------------------------------------------------------
-/// selected construction invocation -> JDK-constructible provider + full catalog
-/// reachable JCA service (legacy) ----> provider + services of the reached type
-/// instantiated Provider subtype -----> application-provider verification only
+/// Build-time signal                       Recorded result
+/// ----------------------------------------------------------------------------------------
+/// JDK-selected construction invocation -> JDK-constructible provider + full catalog
+/// reachable JCA service (legacy)       -> provider + services of the reached type
+/// instantiated Provider subtype        -> application-supplied provider verification only
 /// ```
 ///
 /// At image build time, {@link SecurityServicesFeature#providerRegistrationPlan} interprets
 /// reflection metadata, and {@link SecurityProviderRegistrationPlanner#processNewProviders}
 /// combines it with instantiation signals. Complete plans go to
-/// {@link SecurityProviderCatalogRegistrar#includeProviderClass}; verification-only plans go to
-/// {@link SecurityProviderCatalogRegistrar#registerApplicationSuppliedProviderClass}. Legacy
+/// {@link SecurityProviderRegistrar#includeProviderClass}; verification-only plans go to
+/// {@link SecurityProviderRegistrar#registerApplicationSuppliedProviderClass}. Legacy
 /// {@link SecurityServicesFeature#registerService} inclusion bypasses the planner and goes directly
-/// to {@link SecurityProviderCatalogRegistrar#includeProviderForLegacyService}.
+/// to {@link SecurityProviderRegistrar#includeProviderForLegacyService}.
 ///
 /// At run time, {@link SecurityProviderRuntimeAccess#isJdkAcquirable} gates JDK-managed provider
 /// construction. Application-supplied provider objects instead use
@@ -173,37 +173,47 @@ import sun.security.x509.OIDMap;
 /// ## system-overview: System Overview
 ///
 /// <pre>
-/// reflection metadata -+  builder JVM, during static analysis
-/// Provider instances --+-> planner -> catalog registrar -> run-time manifest
-///                                                              | build/run boundary
-///                                                              v
-///          generated image:  acquisition filter <-- JDK-managed lookups
-///                                    JCE verification   <-- provider-object calls
-/// where: a hosted feature; behavior §FS-002; legacy retires per §AR-004.design.8
+/// BUILD TIME - builder JVM, during static analysis
+///
+///   Reflection metadata --+
+///                         +--> Registration planner
+///   Provider instances ---+             |
+///                                       v
+///                               Provider registrar
+///                                       |
+///                              records provider state
+///                                       |
+/// ----------------------- build/run boundary -----------------------
+///                                       |
+/// RUN TIME - generated image            v
+///
+///                         SecurityProviderRuntimeState
+///                              |               |
+///                              v               v
+///                      Acquisition filter   JCE verification
+///                              ^               ^
+///                              |               |
+///                       JDK-managed       Application-supplied
+///                       acquisition       provider calls
 /// </pre>
+///
+/// **Class Index**
+///
+/// - Provider instances: {@link Provider}.
+/// - Registration planner: {@link SecurityProviderRegistrationPlanner}.
+/// - Provider registrar: {@link SecurityProviderRegistrar}.
+/// - Provider state: {@link SecurityProviderRuntimeState}.
+/// - Acquisition filter: {@link SecurityProviderRuntimeAccess}.
+/// - JCE verification: {@link com.oracle.svm.core.jdk.JceProviderVerificationSupport
+///   JceProviderVerificationSupport}.
+///
+/// Provider behavior follows §FS-002-security-providers.
+/// Legacy support is retired as described in §AR-004-security-providers.design.8.
 ///
 /// ## terminology: Terminology
 ///
-/// A provider implementation class is a concrete {@link Provider} subtype.
-/// A service provider class is the type through which {@link java.util.ServiceLoader} constructs
-/// a provider; it can differ from the provider implementation class.
-/// A supported construction path is a public no-argument constructor of a public, concrete
-/// {@link Provider} subtype, or a public static no-argument {@code provider()} method of a public
-/// service provider class in an explicit module.
-/// A JDK-constructible provider is produced by a supported construction path.
-/// A registered provider has invocation metadata for the JDK-selected construction path, and that
-/// path is discoverable through the effective provider configuration or a {@link Provider} service
-/// declaration.
-/// A JDK-managed provider is created or discovered by the JDK; an application-supplied provider is
-/// an existing instance passed by application code.
-/// JDK-managed acquisition returns, reports, or selects a provider or service through configuration,
-/// {@link java.util.ServiceLoader}, factories, or default selection.
-/// The run-time provider list is the ordered list consulted by {@link java.security.Security}
-/// lookups and name-based JCA factories.
-/// A configured entry is a {@code security.provider.<n>} value, a provider class or provider name
-/// with an optional configuration argument.
-/// A retained service has its implementation and construction metadata in the executable; an
-/// available service is a retained service whose provider the call can select.
+/// Provider terminology follows §FS-002-security-providers.terminology.
+/// The following terms describe implementation details:
 ///
 /// - **Complete plan**: makes a provider JDK-constructible and registers its full service catalog.
 /// - **Verification-only plan**: records only the JCE verification outcome of an
@@ -215,21 +225,36 @@ import sun.security.x509.OIDMap;
 /// - **Provider mode**: a {@link SecurityProviderMode}; the {@code LEGACY_*} modes exist only for
 ///   §FS-002-security-providers.design.6.
 ///
-/// ## north-star: North Star
-///
-/// After the transition, the feature has one mode, {@code METADATA_RUN_TIME}: invocation metadata for
-/// a configured or service-declared provider's JDK-selected construction path makes it
-/// JDK-constructible, and instantiation of a
-/// {@link Provider} subtype is the only signal that records application-supplied verification.
-/// The planner, the catalog registrar, the run-time manifest, and the acquisition filter are the
-/// whole pipeline. {@link SecurityProviderMode}, {@link LegacySecurityProviderCompatibility}, the
-/// deprecated provider options, service-reachability inclusion, and the legacy substitution files
-/// are removed without editing any of those four components;
-/// §AR-004-security-providers.design.8 keeps that boundary.
-///
 /// ## design: Design
 ///
-/// The implemented design, including the transition modes that the north star retires.
+/// The design implements this reflection model while supporting the transition from legacy modes.
+///
+/// ### design.north-star: North Star
+///
+/// The goal is to make JDK-managed provider acquisition ordinary reflective construction.
+/// Security configuration chooses which providers the JDK requests; reflection metadata makes
+/// their JDK-selected constructors or {@code provider()} factories invocable in the executable.
+/// Type-only and query-only metadata do not permit construction
+/// (§FS-002-security-providers.design.1.1).
+///
+/// This reuses the Tracing Agent, library metadata, and missing-registration diagnostics without
+/// introducing a separate provider-registration category. The same model applies to other JDK
+/// services loaded by name: register the construction path the JDK uses. A separate category would
+/// add another inclusion switch for a provider that is already configured and constructible.
+/// To exclude a configured provider consistently across HotSpot and Native Image, remove it from
+/// the effective security configuration.
+///
+/// The intended end state is reflective construction in the JDK for built-in providers as well.
+/// A [JDK change](https://ol-bitbucket.us.oracle.com/projects/G/repos/labsjdk-ce/pull-requests/305)
+/// implementing reflective construction for built-in providers already exists.
+/// It is not a prerequisite for the current design.
+/// Retaining service catalogs and recording JCE verification outcomes remain Native Image work.
+///
+/// Coupling inclusion to invocation metadata is a deliberate tradeoff: metadata supplied for
+/// application reflection, including by a dependency, can enable a configured provider and its
+/// full service catalog, changing provider or algorithm selection. This does not guarantee the
+/// same available providers as HotSpot when metadata is missing.
+/// §FS-002-security-providers.design.6 describes migration between the modes.
 ///
 /// ### design.1: Supported Transition Modes
 ///
@@ -240,7 +265,7 @@ import sun.security.x509.OIDMap;
 /// an application cannot change image-build policy through a run-time system property. This
 /// realizes §FS-002-security-providers.design.6.
 ///
-/// ### design.2: Registration Chokepoint and Acquisition Filter
+/// ### design.2: Registration Chokepoint and Acquisition Eligibility
 ///
 /// {@link SecurityProviderRegistrationPlanner} converts reflection registrations and the
 /// transition-only compatibility signal into either a complete or verification-only plan.
@@ -250,27 +275,26 @@ import sun.security.x509.OIDMap;
 /// provider construction during the image build solely because the option names the provider. That
 /// bridge is confined to {@link LegacySecurityProviderCompatibility} and realizes
 /// §FS-002-security-providers.design.6.5.
-/// {@link SecurityProviderCatalogRegistrar#writeProviderManifest} is the sole production chokepoint
+/// {@link SecurityProviderRegistrar#writeProviderManifest} is the sole production chokepoint
 /// that writes JDK-managed provider eligibility or an application-supplied verification outcome to
 /// {@link SecurityProviderRuntimeState}. Registration metadata emitted while realizing a complete
 /// plan is an output and is not reinterpreted as a new application signal. A feature that adds a
 /// permanent JDK-managed acquisition signal must register reflective access and must not write the
 /// manifest directly. This structurally discharges §AR-004-security-providers.requirements.1.
 ///
-/// Every hosted-list filter, run-time-list decision, and direct JDK construction passes through
-/// {@link SecurityProviderRuntimeAccess#passesJdkAcquisitionFilter}. Run-time callers resolve
-/// eligibility from the layered manifest through
-/// {@link SecurityProviderRuntimeAccess#isJdkAcquirable}; the hosted list supplies the completed
-/// catalog plan. In explicit registration mode, the boundary rejects every provider for which the
-/// chokepoint did not record a complete, JDK-constructible plan. A transition-only legacy entry may
-/// instead expose the independently retained services of a provider named by the deprecated option.
-/// This structurally discharges
+/// Hosted-list filtering and run-time acquisition use eligibility produced by the registration
+/// chokepoint. The hosted list checks {@link SecurityProviderRegistrar#isUsed}; run-time-list
+/// decisions and direct JDK construction resolve eligibility from the layered manifest through
+/// {@link SecurityProviderRuntimeAccess#isJdkAcquirable}. In explicit registration mode, these
+/// checks reject every provider for which the chokepoint did not record a complete,
+/// JDK-constructible plan. A transition-only legacy entry may instead expose the independently
+/// retained services of a provider named by the deprecated option. This discharges
 /// §AR-004-security-providers.requirements.2.
 ///
 /// ### design.3: Hosted Registration Components
 ///
 /// {@link SecurityServicesFeature} coordinates the feature lifecycle. The registration planner owns
-/// provider intent and iteration-safe candidate processing. The catalog registrar constructs
+/// provider intent and iteration-safe candidate processing. The provider registrar constructs
 /// eligible providers, registers their service catalogs, and owns every production manifest write.
 /// {@link LegacySecurityProviderCompatibility} owns deprecated options and service-driven inclusion.
 /// Provider code accesses reflection registrations through a narrow query rather than the concrete
@@ -284,19 +308,20 @@ import sun.security.x509.OIDMap;
 /// construct the provider with the preserved JCE verification outcome. An application-supplied
 /// provider carries verification information derived from instantiation reachability without being
 /// marked as JDK-constructible or reflection-registered. Verification failures retain their original
-/// registration metadata and are considered only while that metadata is satisfied. The manifest is keyed by provider class
-/// name, as required by §FS-002-security-providers.design.4.3.
+/// registration metadata and are considered only while that metadata is satisfied.
+/// The manifest is keyed by provider implementation class name, as required by
+/// §FS-002-security-providers.design.4.3.
 ///
 /// ### design.5: Run-Time Access Services
 ///
 /// {@link SecurityProviderRuntimeState} owns manifest storage,
 /// {@link com.oracle.svm.core.jdk.BuiltInSecurityProviderLoader BuiltInSecurityProviderLoader} owns
-/// JDK aliases and construction, {@link SecurityProviderRuntimeAccess} owns the acquisition filter,
+/// JDK aliases and construction, {@link SecurityProviderRuntimeAccess} owns run-time eligibility checks,
 /// tracing, and missing-registration diagnostics, and
 /// {@link com.oracle.svm.core.jdk.JceProviderVerificationSupport JceProviderVerificationSupport}
 /// translates manifest outcomes to the JDK contract. Build-time-list filtering and run-time-list
 /// construction both consume eligibility produced by the same catalog-registration chokepoint.
-/// Run-time configured-list construction passes each {@code ProviderConfig} argument to
+/// Construction of a configured entry at run time passes its {@code ProviderConfig} argument to
 /// {@link Provider#configure} and retains the returned instance, preserving independent same-class
 /// entries. Provider construction metadata comes from reflective construction operations and
 /// supported cached-acquisition hooks. A cached lookup records its selected path without creating
@@ -321,17 +346,25 @@ import sun.security.x509.OIDMap;
 ///
 /// ### design.8: Retirement Boundary
 ///
+/// After the transition, the feature has one mode, {@code METADATA_RUN_TIME}: invocation metadata
+/// for a configured or service-declared provider's JDK-selected construction path makes it
+/// JDK-constructible, and instantiation of a {@link Provider} subtype is the only signal that records
+/// application-supplied verification. The planner, provider registrar, run-time manifest, and
+/// run-time access services remain. {@link SecurityProviderMode}, the deprecated provider options,
+/// {@link LegacySecurityProviderCompatibility}, service-reachability inclusion, and the legacy
+/// substitution files can then be removed without editing those four components.
+///
 /// Deprecated provider options and service-reachability inclusion are confined to
 /// {@link LegacySecurityProviderCompatibility}. Removing compatibility behavior does not change the
-/// planner, catalog registrar, run-time manifest, or planned-default substitutions. At run time,
+/// planner, provider registrar, run-time manifest, or planned-default substitutions. At run time,
 /// planned-default substitutions are grouped behind
 /// {@link com.oracle.svm.core.jdk.ExplicitSecurityProviderRegistration}; substitutions that preserve
 /// earlier build-time or run-time provider behavior use complementary legacy predicates. Mechanics
 /// whose bodies are identical in both run-time initialization modes remain shared. Targets used
 /// only for compatibility are isolated in legacy substitution files, so removing either mode does
 /// not require editing the planned-default or shared substitution bodies. The successful-selection
-/// substitution is also shared because tracing and provider-object validation apply independently
-/// of provider-list initialization mode.
+/// substitution is also shared because tracing and application-supplied provider validation apply
+/// independently of provider-list initialization mode.
 ///
 /// <p>
 /// This feature automatically registers security providers and their services for reflection and
@@ -371,18 +404,18 @@ import sun.security.x509.OIDMap;
 ///
 /// ### requirements.2: The Acquisition Boundary
 ///
-/// Every configured-list construction, provider lookup, and direct JDK construction path must pass
-/// through one acquisition filter. With explicit registration, the filter must reject any provider
-/// for which the registration chokepoint did not record a complete, JDK-constructible plan. In a
-/// legacy mode, the filter may also admit a provider named by the deprecated additional-provider
-/// option under §FS-002-security-providers.design.6.5; that provider exposes only services retained by the
-/// applicable legacy rules.
+/// Every configured-list construction, provider lookup, and direct JDK construction path must
+/// enforce eligibility produced by the registration chokepoint. With explicit registration, these
+/// checks must reject any provider for which the chokepoint did not record a complete,
+/// JDK-constructible plan. In a legacy mode, these checks may also admit a provider named by the
+/// deprecated additional-provider option under §FS-002-security-providers.design.6.5; that provider
+/// exposes only services retained by the applicable legacy rules.
 ///
 /// ### requirements.3: Application-Supplied Verification
 ///
 /// For every concrete {@link Provider} subtype that analysis marks instantiated, whether through
 /// reachable allocation or an image-heap instance, the feature must record successful JCE
-/// recognition by provider class. The resulting manifest entry with the
+/// recognition by provider implementation class. The resulting manifest entry with the
 /// {@code APPLICATION_SUPPLIED_ONLY} acquisition kind must not register reflective construction,
 /// make the provider JDK-constructible, retain services that no independent signal retains, or
 /// inherit the verification outcome of a configured-list instance of the same class.
@@ -504,14 +537,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private final Map<Class<?>, List<Class<?>>> providerConstructionClasses = new HashMap<>();
     private final Map<Class<?>, Integer> providerConstructionOrder = new HashMap<>();
     private final List<ServiceProviderFactoryCandidate> unresolvedServiceProviderFactories = new ArrayList<>();
-    private SecurityProviderCatalogRegistrar catalogRegistrar;
+    private SecurityProviderRegistrar providerRegistrar;
     private ReflectionHostedSupport reflectionHostedSupport;
     private boolean preserveAll;
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         mode = SecurityProviderMode.current();
-        catalogRegistrar = new SecurityProviderCatalogRegistrar(this, buildTimeProvidersByClassName);
+        providerRegistrar = new SecurityProviderRegistrar(this, buildTimeProvidersByClassName);
 
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), true, "java.base", "sun.security.ssl");
@@ -654,7 +687,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                 if (mode.explicitRegistration()) {
                     providerPlanner.requestCompleteProvider(providerClass);
                 } else {
-                    catalogRegistrar.includeLegacyRequestedProviderClass(providerClass);
+                    providerRegistrar.includeLegacyRequestedProviderClass(providerClass);
                 }
             }
         });
@@ -747,7 +780,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     public boolean shouldRemoveProvider(Provider p) {
-        return p == null || !SecurityProviderRuntimeAccess.passesJdkAcquisitionFilter(catalogRegistrar.isUsed(p));
+        return p == null || !providerRegistrar.isUsed(p);
     }
 
     private static void traceRemovedProviders(List<Provider> removedProviders) {
@@ -920,14 +953,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             /* §FS-002-security-providers.design.6.1:
              * Resolve configured names independently because a token may be a provider name or a
              * ServiceLoader descriptor. */
-            SecurityProviderCatalogRegistrar.recordConfiguredProvider(provider);
+            SecurityProviderRegistrar.recordConfiguredProvider(provider);
             // Configured providers can predate the subtype handler.
             // §FS-002-security-providers.design.1.1: Reflection registration still controls
             // inclusion.
             addCandidateProviderClass(provider.getClass());
         }
-        // §FS-002-security-providers.design.1.1, §FS-002-security-providers.design.1.2:
-        // Inventory the configured acquisition path without constructing another provider instance.
+        // Inventory the configured acquisition path without constructing another provider instance
+        // (§FS-002-security-providers.design.1.1, §FS-002-security-providers.design.1.2).
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), ProviderList.class);
         Object[] configurations = ReflectionUtil.readField(ProviderList.class, "configs", Providers.getProviderList());
         for (Object configuration : configurations) {
@@ -954,8 +987,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         BeforeAnalysisAccessImpl accessImpl = (BeforeAnalysisAccessImpl) access;
         accessImpl.getImageClassLoader().classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
             if (serviceName.equals(Provider.class.getName())) {
-                // §FS-002-security-providers.design.6.2:
-                // Inventory descriptors without executing provider code.
+                // Inventory descriptors without executing provider code
+                // (§FS-002-security-providers.design.6.2).
                 int descriptorOrder = 0;
                 for (String serviceProviderClassName : providers) {
                     Class<?> serviceProviderClass = access.findClassByName(serviceProviderClassName);
@@ -1059,18 +1092,18 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             if (mode.explicitRegistration() && serviceType.equals(SECURE_RANDOM_SERVICE)) {
                 registerSecureRandomProvidersFromPlatformSignal();
             }
-            // §FS-002-security-providers.design.6.3:
-            // Service reachability is a compatibility inclusion signal.
+            // Service reachability is a compatibility inclusion signal
+            // (§FS-002-security-providers.design.6.3).
             doRegisterServices(access, trigger, serviceType);
         }
     }
 
     /**
      * SecureRandom acquisition supplies a platform-owned conditional registration signal. The
-     * registered providers follow the ordinary complete-provider processing path.
+     * registered providers follow the ordinary complete-provider processing path
+     * (§FS-002-security-providers.design.1.5).
      */
     private void registerSecureRandomProvidersFromPlatformSignal() {
-        // §FS-002-security-providers.design.1.5
         EconomicSet<Service> services = availableServices.get(SECURE_RANDOM_SERVICE);
         if (services == null) {
             return;
@@ -1111,7 +1144,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             for (Service service : provider.getServices()) {
                 registerService(access, service);
             }
-            catalogRegistrar.includeProviderForLegacyService(access, provider, RuntimeDynamicAccessMetadata.alwaysAvailable(false));
+            providerRegistrar.includeProviderForLegacyService(access, provider, RuntimeDynamicAccessMetadata.alwaysAvailable(false));
         });
     }
 
@@ -1213,8 +1246,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     Exception getProviderVerificationResult(Provider provider) {
-        // §FS-002-security-providers.design.4.3
-        // Class registration establishes successful verification for an application provider.
+        // Class registration establishes successful verification for an application provider
+        // (§FS-002-security-providers.design.4.3).
         if (!buildTimeProvidersByClassName.containsKey(provider.getClass().getName())) {
             return null;
         }
@@ -1241,8 +1274,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
-    // §FS-002-security-providers.design.1.2 and §FS-002-security-providers.design.1.3:
-    // Use the preferred construction path and retain the complete valid, resolvable catalog.
+    /**
+     * Use the preferred construction path and retain the complete valid, resolvable catalog
+     * (§FS-002-security-providers.design.1.2 and §FS-002-security-providers.design.1.3).
+     */
     boolean isLoadableProviderClass(DuringAnalysisAccess access, Class<?> providerClass) {
         if (!ProviderConstruction.isProviderImplementationClass(providerClass)) {
             return false;
@@ -1269,7 +1304,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             if (provider != null && provider.getClass().equals(providerClass)) {
                 Integer descriptorOrder = providerConstructionOrder.get(constructionClass);
                 if (descriptorOrder != null) {
-                    SecurityProviderCatalogRegistrar.recordServiceLoadedConfiguredProvider(provider, constructionClass, descriptorOrder);
+                    SecurityProviderRegistrar.recordServiceLoadedConfiguredProvider(provider, constructionClass, descriptorOrder);
                 }
                 registerConfiguredProviderConstructionCandidates(provider, constructionClass);
                 return provider;
@@ -1291,7 +1326,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         for (Class<?> constructionClass : getJdkProviderConstructionClasses(provider.getClass())) {
             Integer descriptorOrder = providerConstructionOrder.get(constructionClass);
             if (descriptorOrder != null) {
-                SecurityProviderCatalogRegistrar.recordServiceLoadedConfiguredProvider(provider, constructionClass, descriptorOrder);
+                SecurityProviderRegistrar.recordServiceLoadedConfiguredProvider(provider, constructionClass, descriptorOrder);
             }
         }
     }
@@ -1320,8 +1355,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             return new ProviderInstantiation(null, null);
         }
         try {
-            // §FS-002-security-providers.design.1.2
-            // A qualifying provider() method precedes the constructor.
+            // A qualifying provider() method precedes the constructor
+            // (§FS-002-security-providers.design.1.2).
             Method providerMethod = findProviderMethod(serviceProviderClass);
             if (providerMethod != null) {
                 Object value = providerMethod.invoke(null);
@@ -1373,22 +1408,22 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             constructionClasses = getProviderConstructionClasses(providerClass);
         }
         for (Class<?> constructionClass : constructionClasses) {
-            // §FS-002-security-providers.design.6.1
-            // Open non-exported JDK provider packages only to the run-time list loader.
+            // Open non-exported JDK provider packages only to the run-time list loader
+            // (§FS-002-security-providers.design.6.1).
             ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, SecurityProviderRuntimeAccess.class, constructionClass);
             if (mode.explicitRegistration() || !constructionClass.equals(providerClass)) {
                 registerSelectedConstructionPath(constructionClass, metadata);
             } else {
-                // §FS-002-security-providers.design.6.3
-                // Legacy inclusion registers every public constructor.
+                // Legacy inclusion registers every public constructor
+                // (§FS-002-security-providers.design.6.3).
                 InternalReflectiveAccess.singleton().register(AccessCondition.unconditional(), providerClass.getConstructors());
             }
         }
     }
 
     void registerService(DuringAnalysisAccess a, Service service) {
-        // §FS-002-security-providers.design.6.3
-        // Explicit mode disables service-driven provider inclusion.
+        // Explicit mode disables service-driven provider inclusion
+        // (§FS-002-security-providers.design.6.3).
         RuntimeDynamicAccessMetadata metadata = RuntimeDynamicAccessMetadata.alwaysAvailable(false);
         if (mode.explicitRegistration()) {
             SecurityProviderRegistrationPlanner.RegistrationPlan plan = providerRegistrationPlan(service.getProvider().getClass());
@@ -1402,7 +1437,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         if (!mode.explicitRegistration()) {
             // §FS-002-security-providers.design.6.3: Retain the selected service and its provider,
             // not unrelated services from the same provider catalog.
-            catalogRegistrar.includeProviderForLegacyService(a, service.getProvider(), metadata);
+            providerRegistrar.includeProviderForLegacyService(a, service.getProvider(), metadata);
         }
     }
 
@@ -1508,8 +1543,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
-    // §FS-002-security-providers.design.1.2
-    /** Only a public nullary constructor is a construction path. */
+    /**
+     * Only a public nullary constructor is a construction path
+     * (§FS-002-security-providers.design.1.2).
+     */
     private static Constructor<?> findNullaryConstructor(Class<?> providerClass) {
         Constructor<?> constructor = ReflectionUtil.lookupConstructor(true, providerClass);
         return ProviderConstruction.isQualifyingConstructor(constructor) ? constructor : null;
@@ -1582,8 +1619,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         // Consume concurrent plans in the serialized feature pass.
         if (providerPlanner.processNewProviders(
                         this::providerRegistrationPlan,
-                        (providerClass, metadata) -> catalogRegistrar.includeProviderClass(access, providerClass, metadata),
-                        SecurityProviderCatalogRegistrar::registerApplicationSuppliedProviderClass) || resolvedServiceProviderFactory) {
+                        (providerClass, metadata) -> providerRegistrar.includeProviderClass(access, providerClass, metadata),
+                        SecurityProviderRegistrar::registerApplicationSuppliedProviderClass) || resolvedServiceProviderFactory) {
             // Request the extra pass here, not from the concurrent reachability callback.
             access.requireAnalysisIteration();
         }

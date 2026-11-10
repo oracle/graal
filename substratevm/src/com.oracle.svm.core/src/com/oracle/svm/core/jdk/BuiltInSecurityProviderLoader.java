@@ -46,8 +46,11 @@ public final class BuiltInSecurityProviderLoader {
         return SecurityProviderCatalog.isDirectlyConstructible(providerNameOrClassName);
     }
 
-    // §FS-002-security-providers.design.2.1, §FS-002-security-providers.design.3.3
-    // §FS-002-security-providers.design.6.1
+    /**
+     * Loads an eligible built-in provider by name or class name, returning null for an unknown or
+     * omitted provider (§FS-002-security-providers.design.2.1,
+     * §FS-002-security-providers.design.3.3, §FS-002-security-providers.design.6.1).
+     */
     public static Provider load(String providerNameOrClassName, Debug debug) {
         String providerClassName = getProviderClassName(providerNameOrClassName);
         if (providerClassName == null) {
@@ -83,8 +86,8 @@ public final class BuiltInSecurityProviderLoader {
     private static Provider loadReflectively(String providerClassName, Debug debug) {
         try {
             Class<?> providerClass = Class.forName(GraalDirectives.opaque(providerClassName));
-            // §FS-002-security-providers.design.1.2
-            // Use the same construction path the build-time rule chose.
+            // Use the same construction path the build-time rule chose
+            // (§FS-002-security-providers.design.1.2).
             return SecurityProviderRuntimeAccess.constructProvider(providerClass);
         } catch (ReflectiveOperationException ex) {
             if (debug != null) {

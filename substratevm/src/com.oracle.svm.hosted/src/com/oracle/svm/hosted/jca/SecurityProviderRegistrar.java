@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.jca;
 import java.security.Provider;
 import java.security.Provider.Service;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,16 +36,28 @@ import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import com.oracle.svm.core.jdk.SecurityProviderRuntimeState.AcquisitionKind;
 import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.shared.collections.ConcurrentIdentityHashMap;
 
 /**
- * Realizes complete provider plans and writes their service catalog and run-time manifest.
+ * Registers security providers, their service metadata, and run-time eligibility.
  */
-final class SecurityProviderCatalogRegistrar {
+final class SecurityProviderRegistrar {
+    /** Provides provider construction, verification, and reflection and service registration. */
     private final SecurityServicesFeature feature;
+    /**
+     * Configured build-time provider instances grouped by implementation class name. Retaining every
+     * instance allows registration to include services from differently configured instances of the
+     * same class. Shared with the feature that populates it.
+     */
     private final Map<String, List<Provider>> buildTimeProvidersByClassName;
-    private final Set<Provider> usedProviders = Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<>()));
+    /**
+     * Provider instances included during analysis, used to filter providers retained in the image.
+     * Identity comparison keeps distinct instances separate even when their properties are equal;
+     * the concurrent backing map supports concurrent analysis callbacks.
+     */
+    private final Set<Provider> usedProviders = Collections.newSetFromMap(new ConcurrentIdentityHashMap<>());
 
-    SecurityProviderCatalogRegistrar(SecurityServicesFeature feature, Map<String, List<Provider>> buildTimeProvidersByClassName) {
+    SecurityProviderRegistrar(SecurityServicesFeature feature, Map<String, List<Provider>> buildTimeProvidersByClassName) {
         this.feature = feature;
         this.buildTimeProvidersByClassName = buildTimeProvidersByClassName;
     }
@@ -73,8 +84,8 @@ final class SecurityProviderCatalogRegistrar {
             }
             providers = List.of(feature.instantiateProviderImplementation(providerClass));
         }
-        // §FS-002-security-providers.design.1.3:
-        // Register every configured instance and the union of their service metadata.
+        // Register every configured instance and the union of their service metadata
+        // (§FS-002-security-providers.design.1.3).
         for (Provider provider : providers) {
             registerProvider(access, provider, metadata);
             for (Service service : provider.getServices()) {

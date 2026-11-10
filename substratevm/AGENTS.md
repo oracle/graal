@@ -100,6 +100,13 @@ Declarations are heading lines `# <ID>: …` in markdown. In a code doc-comment 
   - field reason must · first · titled `Reason for Existence`
   - field terminology must · after reason · titled `Terminology`
   - field requirements must · last · titled `Requirements`
+- **FD**
+  - field reason must · first · titled `Reason`
+  - field decision must · after reason · titled `Decision`
+  - field alternatives must · after decision · titled `Alternatives Considered`
+  - field consequences must · after alternatives · titled `Consequences`
+  - field participants must · after consequences · titled `Participants`
+  - field evidence may · after participants · titled `Evidence and Discussion`
 - **AR**
   - field system-overview must · first · titled `System Overview`
   - field terminology must · after system-overview · titled `Terminology`

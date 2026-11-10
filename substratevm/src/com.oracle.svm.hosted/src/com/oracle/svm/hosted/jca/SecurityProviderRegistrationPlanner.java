@@ -33,7 +33,6 @@ import java.util.function.Function;
 
 import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 
-// §AR-004-security-providers.requirements.1
 /**
  * Tracks provider-registration intent separately from the reflection metadata that realizes it.
  *

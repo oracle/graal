@@ -45,14 +45,16 @@ import com.oracle.svm.shared.util.ReflectionUtil;
  */
 @TargetClass(className = "sun.security.jca.GetInstance")
 final class Target_sun_security_jca_GetInstance_Tracing {
-    // §FS-002-security-providers.design.5.1
-    /** Enforce registration and trace cached SPI and provider types after successful construction. */
+    /**
+     * Enforce registration and trace cached SPI and provider types after successful construction
+     * (§FS-002-security-providers.design.5.1).
+     */
     @Substitute
     @TargetElement(onlyWith = JDKWithoutSecurityProviderReflection.class)
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/java.base/share/classes/sun/security/jca/GetInstance.java#L243-L253")
     public static void checkSuperClass(Provider.Service service, Class<?> subClass, Class<?> superClass) throws NoSuchAlgorithmException {
-        // §FS-002-security-providers.design.3.1 and §FS-002-security-providers.design.4.1:
-        // A provider-object factory call must fail before it exposes an unregistered provider.
+        // A provider-object factory call must fail before it exposes an unregistered provider
+        // (§FS-002-security-providers.design.3.1 and §FS-002-security-providers.design.4.1).
         SecurityProviderRuntimeAccess.requireRegisteredProvider(service.getProvider());
         if (superClass != null && !superClass.isAssignableFrom(subClass)) {
             // Checkstyle: allow inconsistent exceptions and errors (JDK-compatible message)

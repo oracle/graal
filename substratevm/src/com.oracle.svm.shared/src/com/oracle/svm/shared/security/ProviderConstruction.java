@@ -69,20 +69,19 @@ public final class ProviderConstruction {
 
     /**
      * Returns whether {@code providerClass} satisfies the class requirements of the constructor
-     * path.
+     * path (§FS-002-security-providers.design.1.2).
      */
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L763-L785")
     public static boolean isProviderConstructorClass(Class<?> providerClass) {
-        // §FS-002-security-providers.design.1.2
         return isProviderImplementationClass(providerClass) && Modifier.isPublic(providerClass.getModifiers());
     }
 
     /**
-     * Returns whether {@code constructor} is a supported public no-argument construction path.
+     * Returns whether {@code constructor} is a supported public no-argument construction path
+     * (§FS-002-security-providers.design.1.2).
      */
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L620-L631")
     public static boolean isQualifyingConstructor(Constructor<?> constructor) {
-        // §FS-002-security-providers.design.1.2
         return constructor != null && Modifier.isPublic(constructor.getModifiers()) && constructor.getParameterCount() == 0 &&
                         isProviderConstructorClass(constructor.getDeclaringClass());
     }
@@ -90,14 +89,13 @@ public final class ProviderConstruction {
     /**
      * Returns whether {@code method} is a supported {@code provider()} construction path: public,
      * static, nullary, returning a {@link Provider} subtype, and declared by a public class in an
-     * explicit module.
+     * explicit module (§FS-002-security-providers.design.1.2).
      *
      * The declaring class itself need not be a {@link Provider} subtype, because a factory method
      * supplies the instance in place of the constructor.
      */
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L583-L612")
     public static boolean isQualifyingProviderMethod(Method method) {
-        // §FS-002-security-providers.design.1.2
         if (method == null || !PROVIDER_METHOD_NAME.equals(method.getName())) {
             return false;
         }

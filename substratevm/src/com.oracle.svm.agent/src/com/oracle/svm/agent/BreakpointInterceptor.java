@@ -804,8 +804,10 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    // §FS-002-security-providers.design.5.1
-    /** Retain a service implementation cached by {@code Provider.Service}. */
+    /**
+     * Retain a service implementation cached by {@code Provider.Service}
+     * (§FS-002-security-providers.design.5.1).
+     */
     private static void traceCachedSecurityServiceImplementation(JNIEnvironment jni, JNIObjectHandle thread, JNIObjectHandle service, JNIObjectHandle callerClass,
                     InterceptedState state) {
         NativeImageAgentJNIHandleSet handles = agent.handles();
@@ -940,8 +942,10 @@ final class BreakpointInterceptor {
         clearException(jni);
     }
 
-    // §FS-002-security-providers.design.5.1
-    /** Trace a provider that was cached before a Security API lookup. */
+    /**
+     * Trace a provider that was cached before a Security API lookup
+     * (§FS-002-security-providers.design.5.1).
+     */
     private static boolean getCachedSecurityProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         if (agent.handles().sunSecurityJcaProviderConfigProvider.isNull()) {
             return true;
@@ -1155,8 +1159,10 @@ final class BreakpointInterceptor {
         return isJdkSecurityImplementation(className);
     }
 
-    // §FS-002-security-providers.design.5.1
-    /** Retain construction for a successfully acquired JDK provider. */
+    /**
+     * Retain construction for a successfully acquired JDK provider
+     * (§FS-002-security-providers.design.5.1).
+     */
     private static void traceJdkConstructibleSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider, JNIObjectHandle callerClass, InterceptedState state) {
         JNIObjectHandle providerClass = Support.callObjectMethod(jni, provider, agent.handles().javaLangObjectGetClass);
         if (clearException(jni)) {
@@ -1176,8 +1182,10 @@ final class BreakpointInterceptor {
         }
     }
 
-    // §FS-002-security-providers.design.5.1
-    /** JDK-managed provider lookup traces provider type access. */
+    /**
+     * JDK-managed provider lookup traces provider type access
+     * (§FS-002-security-providers.design.5.1).
+     */
     private static void traceSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider, boolean validResult, JNIObjectHandle callerClass, InterceptedState state) {
         if (!validResult) {
             return;

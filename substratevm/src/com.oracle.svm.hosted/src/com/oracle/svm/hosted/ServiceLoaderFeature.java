@@ -238,14 +238,10 @@ public class ServiceLoaderFeature implements InternalFeature {
             if (serviceProvidersToSkip.contains(provider)) {
                 continue;
             }
-            /*
-             * Security provider service descriptors are preserved, but the provider classes are
-             * registered for reflection only by explicit reflection metadata or
-             * SecurityServicesFeature. If no such metadata is present, ServiceLoader will report
-             * the regular Class.forName failure at run time.
-             */
+            // Keep descriptors; reflection requires explicit metadata or SecurityServicesFeature.
+            // Otherwise, ServiceLoader reports Class.forName failure at run time
+            // (§FS-002-security-providers.design.6.2).
             if (isSecurityProviderService) {
-                // §FS-002-security-providers.design.6.2
                 registerProviderForRuntimeResourceAccess(access, provider, registeredProviders);
                 continue;
             }

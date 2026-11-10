@@ -84,8 +84,10 @@ final class Target_java_security_Security_SecPropLoader_ExplicitRegistration {
     }
 }
 
-// §FS-002-security-providers.design.2.1 and §FS-002-security-providers.design.3.1:
-// Reject an unregistered SUN provider before the JDK SecureRandom fallback can expose it.
+/**
+ * Reject an unregistered SUN provider before the JDK SecureRandom fallback can expose it
+ * (§FS-002-security-providers.design.2.1 and §FS-002-security-providers.design.3.1).
+ */
 @TargetClass(className = "sun.security.jca.Providers", onlyWith = ExplicitSecurityProviderRegistration.class)
 final class Target_sun_security_jca_Providers_ExplicitRegistration {
     @Alias

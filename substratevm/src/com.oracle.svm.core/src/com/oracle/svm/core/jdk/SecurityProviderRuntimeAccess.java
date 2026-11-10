@@ -43,15 +43,12 @@ public final class SecurityProviderRuntimeAccess {
     private SecurityProviderRuntimeAccess() {
     }
 
-    // §AR-004-security-providers.design.2
-    /** Apply the single JDK-acquisition filter to hosted or run-time eligibility state. */
-    public static boolean passesJdkAcquisitionFilter(boolean eligible) {
-        return eligible;
-    }
-
-    /** Resolve and filter a provider class through the layered run-time manifest. */
+    /**
+     * Resolve JDK construction eligibility from the layered run-time manifest
+     * (§AR-004-security-providers.design.2).
+     */
     public static boolean isJdkAcquirable(String providerClassName) {
-        return passesJdkAcquisitionFilter(SecurityProviderRuntimeState.isJdkConstructible(providerClassName));
+        return SecurityProviderRuntimeState.isJdkConstructible(providerClassName);
     }
 
     /** §FS-002-security-providers.design.3.1 and §FS-002-security-providers.design.4.1. */
@@ -67,8 +64,10 @@ public final class SecurityProviderRuntimeAccess {
         }
     }
 
-    // §FS-002-security-providers.design.6.1
-    /** Load an already-resolved ServiceLoader provider directly. */
+    /**
+     * Load an already-resolved ServiceLoader provider directly
+     * (§FS-002-security-providers.design.6.1).
+     */
     public static Provider loadRegisteredConfiguredProvider(String providerName, String providerClassName, String constructionClassName, String argument) {
         Provider candidate;
         try {
@@ -89,8 +88,10 @@ public final class SecurityProviderRuntimeAccess {
         return validateConfiguredProvider(providerName, providerClassName, constructionClassName, candidate);
     }
 
-    // §FS-002-security-providers.design.1.2
-    /** Apply a configured entry's argument and retain the returned provider instance. */
+    /**
+     * Apply a configured entry's argument and retain the returned provider instance
+     * (§FS-002-security-providers.design.1.2).
+     */
     static Provider configureProvider(Provider candidate, String argument) {
         return candidate != null && !argument.isEmpty() ? candidate.configure(argument) : candidate;
     }
@@ -124,8 +125,10 @@ public final class SecurityProviderRuntimeAccess {
                         cause);
     }
 
-    // §FS-002-security-providers.design.1.2
-    /** Construct a provider through the path the JDK would use. */
+    /**
+     * Construct a provider through the path the JDK would use
+     * (§FS-002-security-providers.design.1.2).
+     */
     public static Provider constructProvider(Class<?> providerClass) throws ReflectiveOperationException {
         Method providerMethod = findProviderMethod(providerClass);
         if (providerMethod != null) {
@@ -156,9 +159,12 @@ public final class SecurityProviderRuntimeAccess {
     @NeverInline("Keep the provider class name unknown to static analysis without an opaque compiler node.")
     public static void reportMissingRegistration(String providerClassName) {
         String remediation = missingRegistrationRemediation();
-        if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+        // §FS-002-security-providers.design.3.3: Configured omissions use reflection diagnostics
+        // even when the application has not opted into exact metadata reporting.
+        boolean explicitRegistration = FutureDefaultsOptions.metadataSecurityProviderRegistration();
+        if (explicitRegistration || MissingRegistrationUtils.throwMissingRegistrationErrors()) {
             StackTraceElement responsibleClass = findExactMetadataCaller();
-            if (responsibleClass != null) {
+            if (explicitRegistration || responsibleClass != null) {
                 SecurityProviderRuntimeState.ConstructionPath path = SecurityProviderRuntimeState.getConstructionForDiagnostics(providerClassName);
                 if (path != null) {
                     MissingReflectionRegistrationUtils.reportProviderConstructionAccess(providerClassName, path.className(), path.methodName(), responsibleClass);
@@ -179,20 +185,12 @@ public final class SecurityProviderRuntimeAccess {
             return;
         }
         SecurityProviderRuntimeState.ConfiguredProviderInfo configuredProvider = SecurityProviderRuntimeState.getConfiguredProviderForDiagnostics(providerName);
-        String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(providerName);
         String providerClassName = configuredProvider != null ? configuredProvider.providerClassName() : null;
-        // §FS-002-security-providers.design.3.3: Provider-object-only plans remain ordinary list
-        // misses.
-        boolean applicationSuppliedOnly = isApplicationSuppliedOnlyDiagnostic(providerClassName, builtInProviderClassName);
-        if (providerClassName != null && !isJdkAcquirable(providerClassName) &&
-                        !applicationSuppliedOnly) {
+        // §FS-002-security-providers.design.3.3: Direct object use does not register a configured
+        // provider's construction path, including when its registration condition is unmet.
+        if (providerClassName != null && !isJdkAcquirable(providerClassName)) {
             reportMissingRegistration(providerClassName);
         }
-    }
-
-    static boolean isApplicationSuppliedOnlyDiagnostic(String providerClassName, String builtInProviderClassName) {
-        return providerClassName != null && builtInProviderClassName == null &&
-                        SecurityProviderRuntimeState.isApplicationSuppliedOnly(providerClassName);
     }
 
     private static StackTraceElement findExactMetadataCaller() {
@@ -212,8 +210,10 @@ public final class SecurityProviderRuntimeAccess {
                         "Add qualifying metadata and rebuild with --future-defaults=metadata-security-provider-registration.";
     }
 
-    // §FS-002-security-providers.design.5.1
-    /** Successful service selection traces its JDK-managed provider and SPI. */
+    /**
+     * Successful service selection traces its JDK-managed provider and SPI
+     * (§FS-002-security-providers.design.5.1).
+     */
     public static void traceServiceSelection(Provider provider, Class<?> serviceClass) {
         if (MetadataTracer.enabled()) {
             traceJdkProviderLookup(provider);

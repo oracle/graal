@@ -55,19 +55,52 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
+/**
+ * Provider registration and JCE verification state recorded at build time and consulted at run
+ * time by {@link SecurityProviderRuntimeAccess} and {@link JceProviderVerificationSupport}.
+ * Entries are keyed by provider implementation class name, rather than provider name or instance.
+ * Configured names and diagnostic construction paths are stored separately from eligibility.
+ * <p>
+ * Each image layer owns its registrations. Run-time lookups combine active entries across all
+ * layers; the hosted callbacks carry forward configuration needed to validate extension layers.
+ */
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SecurityProviderRuntimeState.LayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
 public final class SecurityProviderRuntimeState {
+    /** Whether an active provider registration also permits JDK-managed construction. */
     public enum AcquisitionKind {
+        /**
+         * Records JCE recognition and verification without the JDK-managed construction allowed by
+         * {@link #JDK_CONSTRUCTIBLE}. For example, an application can supply its own provider:
+         *
+         * <pre>{@code
+         * Provider provider = new CustomProvider(configuration);
+         * Mac mac = Mac.getInstance("HmacSHA256", provider);
+         * }</pre>
+         *
+         * Programmatic insertion via {@code Security.addProvider(provider)} remains allowed. This
+         * kind registers neither reflective construction nor the service catalog; service
+         * implementations still need metadata (§FS-002-security-providers.design.4.1 and
+         * §FS-002-security-providers.design.4.3). No manifest entry means no recorded outcome.
+         */
         APPLICATION_SUPPLIED_ONLY,
+        /** The active registration also permits the JDK-selected constructor or provider factory. */
         JDK_CONSTRUCTIBLE
     }
 
+    /** Active registration state; a null verification failure denotes successful recognition. */
     public record ProviderInfo(AcquisitionKind acquisitionKind, Exception verificationFailure) {
     }
 
     private record ConditionalVerificationFailure(RuntimeDynamicAccessMetadata metadata, Exception exception) {
     }
 
+    /**
+     * Recognition and JDK construction have separate conditions: an unconditional application
+     * allocation must not activate a conditional construction registration. Verification failures
+     * retain their own conditions so that recognizing an application-supplied object does not
+     * activate a failure belonging to an inactive configured-provider registration
+     * (§FS-002-security-providers.design.4.3).
+     */
     private record ConditionalProviderInfo(RuntimeDynamicAccessMetadata registrationMetadata,
                     RuntimeDynamicAccessMetadata jdkConstructionMetadata, List<ConditionalVerificationFailure> verificationFailures) {
         Exception activeVerificationFailure() {
@@ -91,13 +124,17 @@ public final class SecurityProviderRuntimeState {
         }
     }
 
+    /** Names used for diagnostics only; {@code <init>} denotes a constructor. */
     public record ConstructionPath(String className, String methodName) {
     }
 
     /** §FS-002-security-providers.design.3.3: Diagnostic paths grant no eligibility and retain no classes. */
     private final EconomicMap<String, ConstructionPath> constructionPathsForDiagnostics = ImageHeapMap.createNonLayeredMap();
 
+    /** Per-class registrations whose conditions are evaluated when the provider is used. */
     private final EconomicMap<String, ConditionalProviderInfo> providerInfos = ImageHeapMap.createNonLayeredMap();
+
+    /** Configured names or implementation class names mapped to ordered resolution candidates. */
     private final EconomicMap<String, List<ConfiguredProviderInfo>> configuredProviders = ImageHeapMap.createNonLayeredMap();
 
     /** Build-time configuration used to validate extension layers. */
@@ -125,8 +162,11 @@ public final class SecurityProviderRuntimeState {
         return LayeredImageSingletonSupport.singleton().lookup(SecurityProviderRuntimeState.class, false, true);
     }
 
+    /**
+     * Records provider service descriptors while rejecting additions to a previous layer's entries
+     * (§FS-002-security-providers.design.6.2).
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
-    // §FS-002-security-providers.design.6.2
     public void registerServiceProviders(Set<String> providers) {
         if (!previousServiceProviders.isEmpty()) {
             Set<String> additionalProviders = new TreeSet<>(providers);
@@ -143,6 +183,10 @@ public final class SecurityProviderRuntimeState {
         return MultiLayeredImageSingleton.getAllLayers(SecurityProviderRuntimeState.class);
     }
 
+    /**
+     * Adds a registration to this layer, preserving independent recognition, construction, and
+     * verification-failure conditions when the same implementation class is registered again.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
     public synchronized void registerProvider(String providerClassName, AcquisitionKind acquisitionKind, Exception verificationFailure, RuntimeDynamicAccessMetadata metadata) {
         RuntimeDynamicAccessMetadata constructionMetadata = acquisitionKind == AcquisitionKind.JDK_CONSTRUCTIBLE ? metadata : null;
@@ -179,12 +223,12 @@ public final class SecurityProviderRuntimeState {
         return null;
     }
 
-    /** Records the first ServiceLoader declaration that resolves a provider name. */
+    /** Records ordered ServiceLoader candidates under both provider and implementation names. */
     @Platforms(Platform.HOSTED_ONLY.class)
     public synchronized void registerServiceLoadedConfiguredProvider(String providerName, String providerClassName, String constructionClassName, int descriptorOrder) {
         registerServiceLoadedConfiguredProviderKey(providerName, providerClassName, constructionClassName, descriptorOrder);
-        // §FS-002-security-providers.design.6.1
-        // Security properties accept either the provider name or its implementation class name.
+        // Security properties accept either the provider name or its implementation class name
+        // (§FS-002-security-providers.design.6.1).
         registerServiceLoadedConfiguredProviderKey(providerClassName, providerClassName, constructionClassName, descriptorOrder);
     }
 
@@ -233,6 +277,7 @@ public final class SecurityProviderRuntimeState {
         return new ConditionalProviderInfo(registrationMetadata, constructionMetadata, List.copyOf(verificationFailures));
     }
 
+    /** Construction eligibility is additive across layers; an active failure survives success. */
     private static ProviderInfo mergeActive(ProviderInfo oldInfo, ProviderInfo newInfo) {
         if (oldInfo == null || newInfo == null) {
             return oldInfo != null ? oldInfo : newInfo;
@@ -244,6 +289,10 @@ public final class SecurityProviderRuntimeState {
         return new ProviderInfo(acquisitionKind, verificationFailure);
     }
 
+    /**
+     * Combines active registrations for the object's implementation class across image layers.
+     * Returns null if no recorded registration condition is satisfied.
+     */
     public static ProviderInfo getProviderInfo(Provider provider) {
         return getProviderInfo(provider.getClass().getName());
     }
@@ -263,6 +312,10 @@ public final class SecurityProviderRuntimeState {
         return result;
     }
 
+    /**
+     * Tests construction conditions independently of recognition: an existing application-supplied
+     * object can be usable while the configured provider's construction condition is unsatisfied.
+     */
     static boolean isJdkConstructible(String providerClassName) {
         for (SecurityProviderRuntimeState state : singletons()) {
             ConditionalProviderInfo info = state.providerInfos.get(providerClassName);
@@ -271,12 +324,6 @@ public final class SecurityProviderRuntimeState {
             }
         }
         return false;
-    }
-
-    /** Whether the active plan permits only use through an application-supplied provider object. */
-    static boolean isApplicationSuppliedOnly(String providerClassName) {
-        ProviderInfo info = getProviderInfo(providerClassName);
-        return info != null && info.acquisitionKind() == AcquisitionKind.APPLICATION_SUPPLIED_ONLY;
     }
 
     /** §FS-002-security-providers.design.1.2: Select the first active descriptor candidate in order. */
@@ -333,6 +380,10 @@ public final class SecurityProviderRuntimeState {
         return null;
     }
 
+    /**
+     * Persists configuration for extension-layer validation. Provider registrations remain in each
+     * layer's image heap and are combined by run-time lookups rather than copied into a new layer.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
     static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
         private static final String PROPERTY_KEYS = "securityPropertyKeys";
@@ -361,8 +412,8 @@ public final class SecurityProviderRuntimeState {
                     Set<String> changedKeys = new TreeSet<>(keys);
                     changedKeys.addAll(singleton.initialProperties.keySet());
                     changedKeys.removeIf(key -> Objects.equals(previousProperties.get(key), singleton.initialProperties.get(key)));
-                    // §FS-002-security-providers.design.6.1
-                    /* Static-final JDK fields can retain security-property values from the base. */
+                    // Static-final JDK fields can retain security-property values from the base
+                    // (§FS-002-security-providers.design.6.1).
                     UserError.guarantee(changedKeys.isEmpty(),
                                     "Security properties differ between image layers: %s. Use the same java.security configuration when building every layer.",
                                     String.join(", ", changedKeys));

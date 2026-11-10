@@ -108,8 +108,8 @@ public final class Target_sun_security_jca_ProviderConfig {
             String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(provName);
             String providerClassName = configuredProviderClassName != null ? configuredProviderClassName
                             : builtInProviderClassName != null ? builtInProviderClassName : provName;
-            // §FS-002-security-providers.design.6.1
-            // Omit unregistered providers from the run-time list.
+            // Omit unregistered providers from the run-time list
+            // (§FS-002-security-providers.design.6.1).
             if (!SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName)) {
                 return null;
             }
