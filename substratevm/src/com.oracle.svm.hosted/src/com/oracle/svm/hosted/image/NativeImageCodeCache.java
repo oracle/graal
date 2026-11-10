@@ -121,6 +121,7 @@ import jdk.graal.compiler.code.DataSection;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -668,6 +669,30 @@ public abstract class NativeImageCodeCache {
         }
 
         assert verifyMethods(debug, hUniverse, codeInfoEncoder, imageCodeInfo, hostedConstantAccess);
+    }
+
+    /**
+     * Releases debug payload after all {@code afterCompilation} feature callbacks have consumed
+     * it. Runtime code info has already been encoded by this point. Reconstructing standard
+     * infopoints adds some allocation work, and this cleanup makes {@code afterCompilation} the
+     * final supported consumer boundary unless native debug-info generation or compiler dumps need
+     * the payload later.
+     */
+    public void clearCompilationDebugInfo() {
+        if (SubstrateOptions.useDebugInfoGeneration()) {
+            return;
+        }
+        /*
+         * The post-patching dump can disassemble code and read infopoint debug annotations. Retain
+         * them whenever dumping is configured: the filter may only enable a later scope, and CFG
+         * dumps can be requested without PrintBackendCFG through CodeGen/CodeInstall filters.
+         */
+        if (DebugOptions.Dump.getValue(HostedOptionValues.singleton().get()) != null) {
+            return;
+        }
+        for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+            pair.getRight().clearInfopointDebugInfo();
+        }
     }
 
     protected HostedImageCodeInfo installCodeInfo(SnippetReflectionProvider snippetReflection, CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder,

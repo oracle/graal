@@ -218,13 +218,15 @@ public class CompilationResult {
 
     private final DataSection dataSection = new DataSection();
 
-    private final EconomicSet<Call> invalidCallDeoptimizationStates = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
-    private final List<Infopoint> infopoints = new ArrayList<>();
+    private EconomicSet<Call> invalidCallDeoptimizationStates = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+    private List<Infopoint> infopoints = new ArrayList<>();
     /** Null means released, as opposed to a compilation that never recorded any mappings. */
     private List<SourceMapping> sourceMapping = new ArrayList<>();
     private final List<DataPatch> dataPatches = new ArrayList<>();
     private final List<ExceptionHandler> exceptionHandlers = new ArrayList<>();
     private final List<CodeMark> marks = new ArrayList<>();
+
+    private boolean infopointDebugInfoCleared;
 
     private int totalFrameSize = -1;
     private int maxInterpreterFrameSize = -1;
@@ -593,6 +595,7 @@ public class CompilationResult {
      */
     public void addInfopoint(Infopoint infopoint) {
         checkOpen();
+        checkInfopointDebugInfoNotCleared();
         infopoints.add(infopoint);
     }
 
@@ -604,6 +607,7 @@ public class CompilationResult {
      */
     public void recordCallInvalidForDeoptimization(Call call) {
         checkOpen();
+        checkInfopointDebugInfoNotCleared();
         invalidCallDeoptimizationStates.add(call);
     }
 
@@ -678,17 +682,21 @@ public class CompilationResult {
     }
 
     public boolean isValidCallDeoptimizationState(Call call) {
+        checkInfopointDebugInfoNotCleared();
         return call != null && !invalidCallDeoptimizationStates.contains(call);
     }
 
     /**
+     * Returns infopoints while their debug information is available. Code patching that does not
+     * inspect debug information can use {@link #getInfopointsForCodeEmission()} after debug-info
+     * release.
+     *
      * @return the list of infopoints, sorted by {@link Site#pcOffset}
+     * @throws IllegalStateException after {@link #clearInfopointDebugInfo()}
      */
     public List<Infopoint> getInfopoints() {
-        if (infopoints.isEmpty()) {
-            return emptyList();
-        }
-        return unmodifiableList(infopoints);
+        checkInfopointDebugInfoNotCleared();
+        return getInfopointsForCodeEmission();
     }
 
     /**
@@ -830,13 +838,13 @@ public class CompilationResult {
     public void resetForEmittingCode() {
         checkOpen();
         // reset collections
-        infopoints.clear();
+        infopoints = new ArrayList<>();
         sourceMapping = new ArrayList<>();
         dataPatches.clear();
         exceptionHandlers.clear();
         marks.clear();
         dataSection.clear();
-        invalidCallDeoptimizationStates.clear();
+        invalidCallDeoptimizationStates = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         if (annotations != null) {
             annotations.clear();
         }
@@ -847,6 +855,7 @@ public class CompilationResult {
         speculationLog = null;
         methods = null;
         bytecodeSize = 0;
+        infopointDebugInfoCleared = false;
     }
 
     public void clearInfopoints() {
@@ -872,6 +881,67 @@ public class CompilationResult {
     private void checkSourceMappingsNotCleared() {
         if (sourceMapping == null) {
             throw new IllegalStateException("Source mappings were released for " + this);
+        }
+    }
+
+    /**
+     * Returns sites for code patching only. Debug information may already have been released and
+     * must not be inspected through this accessor. Consumers needing debug information must use
+     * {@link #getInfopoints()}, which rejects access after debug-info release.
+     */
+    public List<Infopoint> getInfopointsForCodeEmission() {
+        return infopoints.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(infopoints);
+    }
+
+    /**
+     * Clears the debug payload of {@link Call} and {@link ImplicitExceptionDispatch} sites while
+     * preserving their code-patching and relocation fields. Other infopoints, including plain
+     * {@link Infopoint} instances and custom subtypes, are left unchanged unless a subclass extends
+     * {@link #withoutDebugInfo(Infopoint)}. This is permitted after
+     * {@link #close(OptionValues)} and may be repeated. Callers must finish encoding runtime
+     * metadata and all debug-info consumers first; in particular, deoptimization-state queries
+     * are rejected afterward. Code patching must use {@link #getInfopointsForCodeEmission()}.
+     * Previously obtained views retain their original infopoints and debug information. They must
+     * be dropped by their consumers before that data can be reclaimed. Preserving these views costs
+     * a copy of the reference list in addition to the stripped replacements. Debug graphs are not copied.
+     */
+    public void clearInfopointDebugInfo() {
+        if (infopointDebugInfoCleared) {
+            return;
+        }
+        // Preserve old views and iterators rather than exposing stripped replacements through them.
+        ArrayList<Infopoint> emissionInfopoints = new ArrayList<>(infopoints);
+        for (int i = 0; i < infopoints.size(); i++) {
+            Infopoint infopoint = infopoints.get(i);
+            if (infopoint.debugInfo != null) {
+                emissionInfopoints.set(i, withoutDebugInfo(infopoint));
+            }
+        }
+        infopoints = emissionInfopoints;
+        invalidCallDeoptimizationStates = null;
+        infopointDebugInfoCleared = true;
+    }
+
+    /**
+     * Returns a replacement without debug information for a known infopoint type, or the original
+     * infopoint for an unsupported type. Called by {@link #clearInfopointDebugInfo()} only for sites
+     * with non-null debug information. Overrides must preserve the concrete type, position, reason
+     * and all non-debug fields of any additional types they handle, and leave unknown types intact.
+     */
+    protected Infopoint withoutDebugInfo(Infopoint infopoint) {
+        if (infopoint instanceof Call call) {
+            return new Call(call.target, call.pcOffset, call.size, call.direct, null);
+        } else if (infopoint instanceof ImplicitExceptionDispatch dispatch) {
+            return new ImplicitExceptionDispatch(dispatch.pcOffset, dispatch.dispatchOffset, null);
+        } else {
+            // Keep other infopoints unchanged rather than assuming their debug payload is unused.
+            return infopoint;
+        }
+    }
+
+    private void checkInfopointDebugInfoNotCleared() {
+        if (infopointDebugInfoCleared) {
+            throw new IllegalStateException("Infopoint debug information was released for " + this);
         }
     }
 
@@ -971,6 +1041,7 @@ public class CompilationResult {
      * Duplicates the sites between {@code codeStart} and {@code codeEnd} with an offset.
      */
     public void duplicateSites(int codeStart, CompilationResultWatermark watermarkAtCodeStart, int codeEnd, CompilationResultWatermark watermarkAtCodeEnd, int offset) {
+        checkInfopointDebugInfoNotCleared();
         assert verifySites(codeStart, watermarkAtCodeStart, codeEnd, watermarkAtCodeEnd) : Assertions.errorMessage(codeStart, codeEnd);
         for (int i = watermarkAtCodeStart.infopointsSize; i < watermarkAtCodeEnd.infopointsSize; i++) {
             Infopoint infoPoint = infopoints.get(i);

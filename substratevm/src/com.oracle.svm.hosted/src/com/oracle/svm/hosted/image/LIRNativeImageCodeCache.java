@@ -263,7 +263,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     curPos = align(curPos, trampolineSupport.getTrampolineAlignment());
                     curPos = addOffset(curPos, trampolineSupport.getTrampolineSize());
                 }
-                for (Infopoint infopoint : compilation.getInfopoints()) {
+                for (Infopoint infopoint : compilation.getInfopointsForCodeEmission()) {
                     if (infopoint instanceof Call && ((Call) infopoint).direct) {
                         Call call = (Call) infopoint;
                         HostedMethod callee = (HostedMethod) call.target;
@@ -383,7 +383,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     private void processDirectCallSites(HostedMethod method, CompilationResult compilation, Map<Integer, HostedPatcher> patches) {
         Map<HostedMethod, Integer> trampolineOffsetMap = trampolineMap.get(method);
         int compStart = method.getCodeAddressOffset();
-        for (Infopoint infopoint : compilation.getInfopoints()) {
+        for (Infopoint infopoint : compilation.getInfopointsForCodeEmission()) {
             if (infopoint instanceof Call call && ((Call) infopoint).direct) {
                 // NOTE that for the moment, we don't make static calls to external
                 // (e.g. native) functions. So every static call site has a target

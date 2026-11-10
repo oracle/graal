@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,12 @@
 package com.oracle.svm.core.graal.code;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.vm.ci.code.site.Infopoint;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -40,6 +42,18 @@ public abstract class SharedCompilationResult extends CompilationResult {
 
     public SharedCompilationResult(CompilationIdentifier compilationId, String name) {
         super(compilationId, name);
+    }
+
+    @Override
+    protected Infopoint withoutDebugInfo(Infopoint infopoint) {
+        /*
+         * The hosted cleanup runs after runtime deopt metadata and feature callbacks have consumed
+         * these frames. Preserve the deopt marker, but do not assume subclasses have no other state.
+         */
+        if (infopoint.getClass() == DeoptEntryInfopoint.class) {
+            return new DeoptEntryInfopoint(infopoint.pcOffset, null);
+        }
+        return super.withoutDebugInfo(infopoint);
     }
 
     public int getFrameSize() {
