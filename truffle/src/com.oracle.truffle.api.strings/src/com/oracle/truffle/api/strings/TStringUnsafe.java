@@ -125,15 +125,15 @@ final class TStringUnsafe {
         }
     }
 
-    static int byteArrayBaseOffset() {
+    static long byteArrayBaseOffset() {
         return Unsafe.ARRAY_BYTE_BASE_OFFSET;
     }
 
-    static int charArrayBaseOffset() {
+    static long charArrayBaseOffset() {
         return Unsafe.ARRAY_CHAR_BASE_OFFSET;
     }
 
-    static int intArrayBaseOffset() {
+    static long intArrayBaseOffset() {
         return Unsafe.ARRAY_INT_BASE_OFFSET;
     }
 

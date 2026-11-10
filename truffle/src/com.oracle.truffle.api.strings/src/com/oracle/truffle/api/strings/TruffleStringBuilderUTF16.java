@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,13 @@ package com.oracle.truffle.api.strings;
 public final class TruffleStringBuilderUTF16 extends TruffleStringBuilder {
 
     TruffleStringBuilderUTF16(int initialSize) {
-        super(TruffleString.Encoding.UTF_16, initialSize, TSCodeRange.get7Bit());
+        super(TruffleString.Encoding.UTF_16, checkInitialSize(initialSize), TSCodeRange.get7Bit());
+    }
+
+    private static int checkInitialSize(int initialSize) {
+        if (initialSize > TStringConstants.MAX_ARRAY_SIZE_S1) {
+            throw InternalErrors.outOfMemory();
+        }
+        return initialSize;
     }
 }
