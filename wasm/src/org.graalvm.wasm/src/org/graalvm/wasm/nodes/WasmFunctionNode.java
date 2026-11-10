@@ -265,6 +265,8 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         OSRInterpreterState osrInterpreterState = (OSRInterpreterState) interpreterState;
         int line = osrInterpreterState.lineNumber();
         int activeLegacyCatchCount = osrInterpreterState.activeLegacyCatchCount();
+        WasmFrame.normalizeOSRLocals(osrFrame, codeEntry);
+        WasmFrame.clearDeadOSRStackSlots(osrFrame, stackPointer);
         return executeBodyFromOffset(instance, osrFrame, offset, stackPointer, line, activeLegacyCatchCount);
     }
 

@@ -46,6 +46,7 @@ import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.vector.Vector128;
 import org.graalvm.wasm.vector.Vector128Ops;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -180,6 +181,85 @@ public abstract class WasmFrame {
                     pushReference(frame, i, WasmConstant.NULL);
                 }
             }
+        }
+    }
+
+    /**
+     * Canonicalizes local slots, including parameters, at OSR entry without changing their
+     * values. The default OSR transfer copies raw static slots, including stale values in their
+     * unused primitive or object storage. Each local is read using its validated type before the
+     * slot is cleared and rewritten, restoring its typed representation and clearing unused storage.
+     * This avoids redundant frame-state phis when the imported state merges with typed writes in
+     * compiled loops.
+     *
+     * Unlike operand stack slots, local slots have fixed types supplied by the code entry. Only
+     * locals are normalized here; operand stack and reserved catch slots are left untouched.
+     *
+     * @param frame the frame containing the OSR entry state
+     * @param codeEntry the validated code entry defining the local count and types
+     */
+    @ExplodeLoop
+    public static void normalizeOSRLocals(VirtualFrame frame, WasmCodeEntry codeEntry) {
+        int localCount = codeEntry.localCount();
+        CompilerAsserts.partialEvaluationConstant(localCount);
+        for (int i = 0; i < localCount; i++) {
+            int type = codeEntry.localType(i);
+            switch (type) {
+                case WasmType.I32_TYPE -> {
+                    int value = frame.getIntStatic(i);
+                    frame.clearStatic(i);
+                    pushInt(frame, i, value);
+                }
+                case WasmType.I64_TYPE -> {
+                    long value = frame.getLongStatic(i);
+                    frame.clearStatic(i);
+                    pushLong(frame, i, value);
+                }
+                case WasmType.F32_TYPE -> {
+                    float value = frame.getFloatStatic(i);
+                    frame.clearStatic(i);
+                    pushFloat(frame, i, value);
+                }
+                case WasmType.F64_TYPE -> {
+                    double value = frame.getDoubleStatic(i);
+                    frame.clearStatic(i);
+                    pushDouble(frame, i, value);
+                }
+                case WasmType.V128_TYPE -> {
+                    Object value = frame.getObjectStatic(i);
+                    frame.clearStatic(i);
+                    pushVector128(frame, i, value);
+                }
+                default -> {
+                    assert WasmType.isReferenceType(type);
+                    Object value = frame.getObjectStatic(i);
+                    frame.clearStatic(i);
+                    pushReference(frame, i, value);
+                }
+            }
+        }
+    }
+
+    /**
+     * Clears the unused indexed-frame tail at OSR entry. The default OSR transfer imports
+     * the entire frame, while interpreter pops can leave stale primitive values in dead stack slots.
+     * Clearing slots from {@code stackPointer} to the end of the frame makes their representation
+     * consistent with compiled pops and avoids tracking those stale values in loop frame states.
+     * Locals, reserved catch slots, and live operands below {@code stackPointer} are preserved.
+     *
+     * The entry stack pointer and frame slot count must be partial-evaluation constants so that the
+     * clearing loop can be fully exploded.
+     *
+     * @param frame the frame containing the OSR entry state
+     * @param stackPointer the first unused operand stack slot, expressed as an indexed-frame slot
+     */
+    @ExplodeLoop
+    public static void clearDeadOSRStackSlots(VirtualFrame frame, int stackPointer) {
+        CompilerAsserts.partialEvaluationConstant(stackPointer);
+        int slotCount = frame.getFrameDescriptor().getNumberOfSlots();
+        CompilerAsserts.partialEvaluationConstant(slotCount);
+        for (int slot = stackPointer; slot < slotCount; slot++) {
+            drop(frame, slot);
         }
     }
 }
