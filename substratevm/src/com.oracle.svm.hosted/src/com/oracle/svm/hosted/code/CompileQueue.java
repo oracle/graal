@@ -75,6 +75,7 @@ import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.hosted.FeatureHandler;
+import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.ProgressReporter;
@@ -367,7 +368,9 @@ public class CompileQueue {
 
         @Override
         public void run(DebugContext debug) {
-            result = doCompile(debug, method, compilationIdentifier, reason);
+            CompilationResult compilation = doCompile(debug, method, compilationIdentifier, reason);
+            HostedConfiguration.instance().handleSourceMappingsAfterCompilation(method, compilation);
+            result = compilation;
         }
 
         @Override
@@ -1543,7 +1546,6 @@ public class CompileQueue {
                 } else {
                     throw t;
                 }
-
             }
         }
     }

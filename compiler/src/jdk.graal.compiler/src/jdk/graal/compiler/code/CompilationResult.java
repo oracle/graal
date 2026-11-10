@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -220,7 +220,8 @@ public class CompilationResult {
 
     private final EconomicSet<Call> invalidCallDeoptimizationStates = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
     private final List<Infopoint> infopoints = new ArrayList<>();
-    private final List<SourceMapping> sourceMapping = new ArrayList<>();
+    /** Null means released, as opposed to a compilation that never recorded any mappings. */
+    private List<SourceMapping> sourceMapping = new ArrayList<>();
     private final List<DataPatch> dataPatches = new ArrayList<>();
     private final List<ExceptionHandler> exceptionHandlers = new ArrayList<>();
     private final List<CodeMark> marks = new ArrayList<>();
@@ -608,6 +609,7 @@ public class CompilationResult {
 
     public void recordSourceMapping(int startOffset, int endOffset, NodeSourcePosition sourcePosition) {
         checkOpen();
+        checkSourceMappingsNotCleared();
         sourceMapping.add(new SourceMapping(startOffset, endOffset, sourcePosition));
     }
 
@@ -790,12 +792,11 @@ public class CompilationResult {
 
     /**
      * @return the list of {@link SourceMapping}s
+     * @throws IllegalStateException after {@link #clearSourceMappings()}
      */
     public List<SourceMapping> getSourceMappings() {
-        if (sourceMapping.isEmpty()) {
-            return emptyList();
-        }
-        return unmodifiableList(sourceMapping);
+        checkSourceMappingsNotCleared();
+        return sourceMapping.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(sourceMapping);
     }
 
     /**
@@ -830,7 +831,7 @@ public class CompilationResult {
         checkOpen();
         // reset collections
         infopoints.clear();
-        sourceMapping.clear();
+        sourceMapping = new ArrayList<>();
         dataPatches.clear();
         exceptionHandlers.clear();
         marks.clear();
@@ -850,6 +851,28 @@ public class CompilationResult {
 
     public void clearInfopoints() {
         infopoints.clear();
+    }
+
+    /**
+     * Clears source mappings while preserving the rest of the compilation result. This is permitted
+     * after {@link #close(OptionValues)} because it does not change generated code. Callers must
+     * ensure that all consumers have either finished or recorded the data they need. Subsequent
+     * source-mapping access is rejected rather than returning an indistinguishable empty list.
+     * Previously obtained views retain their mappings; callers must drop those references to allow
+     * reclamation. This guards owner access, not independently retained data.
+     *
+     * @throws IllegalStateException if source mappings were already cleared
+     */
+    public void clearSourceMappings() {
+        checkSourceMappingsNotCleared();
+        // Detach instead of silently emptying a view held by another consumer.
+        sourceMapping = null;
+    }
+
+    private void checkSourceMappingsNotCleared() {
+        if (sourceMapping == null) {
+            throw new IllegalStateException("Source mappings were released for " + this);
+        }
     }
 
     private void checkOpen() {

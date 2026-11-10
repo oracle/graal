@@ -26,17 +26,18 @@ package jdk.graal.compiler.core.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+
+import org.junit.Test;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.code.CompilationResult.CodeComment;
 import jdk.graal.compiler.code.CompilationResult.CodeMark;
 import jdk.graal.compiler.code.CompilationResult.JumpTable;
 import jdk.graal.compiler.code.HexCodeFile;
-import org.junit.Test;
 
 public class CompilationResultTest {
-
     @SuppressWarnings("unlikely-arg-type")
     @Test
     public void testCodeComment() {
@@ -93,6 +94,35 @@ public class CompilationResultTest {
         assertFalse(result.equals(resultDifferent));
         assertFalse(result.equals(this));
         assertTrue(result.toString().length() > 0); // test for NPE
+    }
+
+    @Test
+    public void testClearSourceMappingsAfterClose() {
+        CompilationResult result = new CompilationResult("testresult");
+        result.setTargetCode(new byte[8], 8);
+        result.recordSourceMapping(0, 8, null);
+        var mappings = result.getSourceMappings();
+        result.close(null);
+        result.clearSourceMappings();
+        assertEquals(1, mappings.size());
+        assertEquals(8, result.getTargetCodeSize());
+        assertEquals(8, result.getTargetCode().length);
+        assertThrows(IllegalStateException.class, result::getSourceMappings);
+        assertThrows(IllegalStateException.class, result::clearSourceMappings);
+    }
+
+    @Test
+    public void testResetRestoresSourceMappings() {
+        CompilationResult result = new CompilationResult("testresult");
+        result.recordSourceMapping(0, 1, null);
+        var oldMappings = result.getSourceMappings();
+        result.clearSourceMappings();
+        result.resetForEmittingCode();
+        result.recordSourceMapping(0, 2, null);
+        assertEquals(1, result.getSourceMappings().size());
+        assertEquals(2, result.getSourceMappings().getFirst().getEndOffset());
+        assertEquals(1, oldMappings.size());
+        assertEquals(1, oldMappings.getFirst().getEndOffset());
     }
 
     private static final class TestMarkId implements CompilationResult.MarkId {

@@ -72,15 +72,18 @@ import com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.util.GuestAnnotationAccess;
 
+import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.DebugContext;
@@ -279,6 +282,37 @@ public class HostedConfiguration {
 
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll) {
         return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll, Collections.emptyList());
+    }
+
+    /**
+     * Handles source mappings after a successful normal compile task, including fallback results.
+     * Preserves derived data and releases the originals unless a later phase needs them. Not called
+     * for caller-owned {@link CompileQueue#compileAdditionalMethod} results.
+     */
+    public final void handleSourceMappingsAfterCompilation(HostedMethod method, CompilationResult result) {
+        if (!requiresSourceMappingsAfterCompilation()) {
+            preserveSourceMappingData(method, result);
+            result.clearSourceMappings();
+        }
+    }
+
+    /**
+     * Describes readers of the original mappings after compilation. New late readers must extend
+     * this policy before using the mappings; the build report alone only needs a compact snapshot.
+     * The policy must remain stable while compilation workers are active.
+     */
+    protected boolean requiresSourceMappingsAfterCompilation() {
+        /* Default native debug info uses infopoints, not source mappings. */
+        return SubstrateOptions.useDebugInfoGeneration() && SubstrateOptions.DebugCodeInfoUseSourceMappings.getValue(HostedOptionValues.singleton().get());
+    }
+
+    /**
+     * Preserves derived data without retaining the mappings or their source positions. Invoked only
+     * when no late reader needs the originals, avoiding duplicate storage for retaining builds.
+     * Concurrent calls operate on distinct compilation results, but implementations must protect
+     * shared aggregation state and leave the result's mappings intact on error.
+     */
+    protected void preserveSourceMappingData(@SuppressWarnings("unused") HostedMethod method, @SuppressWarnings("unused") CompilationResult result) {
     }
 
     /**
