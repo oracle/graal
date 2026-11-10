@@ -75,7 +75,11 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
      * {@code i - (limit - 1)}.
      */
     protected final boolean baseIsSubtrahend;
-    /** The operator is independent of the canonicalized shape of a copied value node. */
+    /**
+     * Whether this IV combines its base and stored offset using subtraction.
+     * Preserved across copies because canonicalization can rewrite the value
+     * as an addition without changing the stored offset.
+     */
     private final boolean subtract;
     protected final ValueNode offset;
     protected final BinaryArithmeticNode<?> value;
