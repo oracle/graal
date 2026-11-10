@@ -1005,7 +1005,8 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public void dumpMetadata(ImageHeapLayoutInfo heapLayout) {
-        reasonSupport.dumpMetadata(heapLayout, getObjects());
+        /* Earlier layers have no partition or relative offset in this layer's heap layout. */
+        reasonSupport.dumpMetadata(heapLayout, () -> getCurrentLayerObjects().iterator());
     }
 
     private long getSize(Object object, HostedType type) {
