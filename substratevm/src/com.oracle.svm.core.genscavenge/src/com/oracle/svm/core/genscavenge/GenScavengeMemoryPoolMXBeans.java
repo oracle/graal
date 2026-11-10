@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -34,6 +34,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
@@ -131,7 +132,9 @@ public class GenScavengeMemoryPoolMXBeans {
             return memoryUsage(Word.zero());
         }
 
-        private static UnsignedWord getCurrentUsage() {
+        @Override
+        @Uninterruptible(reason = "Prevent a GC from changing the queried heap accounting data.")
+        UnsignedWord getCurrentUsage() {
             return HeapImpl.getAccounting().getEdenUsedBytes();
         }
     }
@@ -170,7 +173,13 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Override
         public MemoryUsage getCollectionUsage() {
-            return memoryUsage(HeapImpl.getAccounting().getSurvivorUsedBytes());
+            return memoryUsage(getCurrentUsage());
+        }
+
+        @Override
+        @Uninterruptible(reason = "Prevent a GC from changing the queried heap accounting data.")
+        UnsignedWord getCurrentUsage() {
+            return HeapImpl.getAccounting().getSurvivorUsedBytes();
         }
     }
 
@@ -208,7 +217,13 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Override
         public MemoryUsage getCollectionUsage() {
-            return memoryUsage(HeapImpl.getAccounting().getOldUsedBytes());
+            return memoryUsage(getCurrentUsage());
+        }
+
+        @Override
+        @Uninterruptible(reason = "Prevent a GC from changing the queried heap accounting data.")
+        UnsignedWord getCurrentUsage() {
+            return HeapImpl.getAccounting().getOldUsedBytes();
         }
     }
 
@@ -248,6 +263,12 @@ public class GenScavengeMemoryPoolMXBeans {
         @Override
         public MemoryUsage getCollectionUsage() {
             return memoryUsage(Word.zero());
+        }
+
+        @Override
+        @Uninterruptible(reason = "Prevent a GC from changing the queried heap accounting data.")
+        UnsignedWord getCurrentUsage() {
+            return HeapImpl.getAccounting().getUsedBytes();
         }
     }
 }
