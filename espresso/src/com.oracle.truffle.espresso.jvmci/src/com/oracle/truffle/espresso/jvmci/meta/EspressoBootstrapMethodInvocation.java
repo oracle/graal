@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,16 +42,24 @@ public final class EspressoBootstrapMethodInvocation implements ConstantPool.Boo
     private final String name;
     private final JavaConstant type;
     private final List<JavaConstant> staticArguments;
+    private final int[] staticArgumentIndices;
+    private final int methodHandleIndex;
     private final int cpi;
     private final AbstractEspressoConstantPool constantPool;
 
-    public EspressoBootstrapMethodInvocation(boolean indy, AbstractEspressoResolvedJavaMethod method, String name, JavaConstant type, JavaConstant[] staticArguments, int cpi,
-                    AbstractEspressoConstantPool constantPool) {
+    /**
+     * Takes ownership of the freshly allocated argument arrays. Callers must not modify them after
+     * construction.
+     */
+    public EspressoBootstrapMethodInvocation(boolean indy, AbstractEspressoResolvedJavaMethod method, String name, JavaConstant type, JavaConstant[] staticArguments, int[] staticArgumentIndices,
+                    int cpi, int methodHandleIndex, AbstractEspressoConstantPool constantPool) {
         this.indy = indy;
         this.method = method;
         this.name = name;
         this.type = type;
-        this.staticArguments = Collections.unmodifiableList(Arrays.asList(staticArguments));
+        this.staticArguments = staticArguments == null ? null : Collections.unmodifiableList(Arrays.asList(staticArguments));
+        this.staticArgumentIndices = staticArgumentIndices;
+        this.methodHandleIndex = methodHandleIndex;
         this.cpi = cpi;
         this.constantPool = constantPool;
     }
@@ -59,6 +67,11 @@ public final class EspressoBootstrapMethodInvocation implements ConstantPool.Boo
     @Override
     public AbstractEspressoResolvedJavaMethod getMethod() {
         return method;
+    }
+
+    @Override
+    public int getMethodHandleIndex() {
+        return methodHandleIndex;
     }
 
     @Override
@@ -78,12 +91,29 @@ public final class EspressoBootstrapMethodInvocation implements ConstantPool.Boo
 
     @Override
     public List<JavaConstant> getStaticArguments() {
+        if (staticArguments == null) {
+            throw new IllegalStateException("Static arguments are unavailable for a non-resolving bootstrap method invocation");
+        }
         return staticArguments;
+    }
+
+    @Override
+    public int[] getStaticArgumentIndices() {
+        return staticArgumentIndices.clone();
+    }
+
+    private void checkInvokeDynamicIndex() {
+        // A rewritten operand packs the pool index in the high half and the site index in the low half.
+        // A plain pool index has no high half and cannot identify an invokedynamic call site.
+        if (cpi == -1 || (cpi >>> 16) == 0) {
+            throw new IllegalStateException("No rewritten invokedynamic index is available");
+        }
     }
 
     @Override
     public void resolve() {
         if (isInvokeDynamic()) {
+            checkInvokeDynamicIndex();
             constantPool.loadReferencedType(cpi, INVOKEDYNAMIC);
         } else {
             constantPool.lookupConstant(cpi, true);
@@ -93,6 +123,7 @@ public final class EspressoBootstrapMethodInvocation implements ConstantPool.Boo
     @Override
     public JavaConstant lookup() {
         if (isInvokeDynamic()) {
+            checkInvokeDynamicIndex();
             return constantPool.lookupAppendix(cpi, INVOKEDYNAMIC);
         } else {
             return (JavaConstant) constantPool.lookupConstant(cpi, false);
@@ -102,14 +133,18 @@ public final class EspressoBootstrapMethodInvocation implements ConstantPool.Boo
     @Override
     public String toString() {
         StringJoiner joiner = new StringJoiner(", ", "[", "]");
-        for (JavaConstant arg : staticArguments) {
-            joiner.add(argumentAsString(arg));
+        if (staticArguments != null) {
+            for (JavaConstant arg : staticArguments) {
+                joiner.add(argumentAsString(arg));
+            }
         }
         return "BootstrapMethod[" + (indy ? "indy" : "condy") +
-                        ", method:" + method.format("%H.%n(%p)") +
+                        ", method:" + (method == null ? null : method.format("%H.%n(%p)")) +
                         ", name: " + name +
-                        ", type: " + type.toValueString() +
-                        ", static arguments:" + joiner;
+                        ", type: " + (type == null ? null : type.toValueString()) +
+                        ", method handle index: " + methodHandleIndex +
+                        ", static arguments:" + (staticArguments == null ? "unavailable" : joiner) +
+                        ", static argument indices:" + Arrays.toString(staticArgumentIndices) + "]";
     }
 
     private static String argumentAsString(JavaConstant arg) {

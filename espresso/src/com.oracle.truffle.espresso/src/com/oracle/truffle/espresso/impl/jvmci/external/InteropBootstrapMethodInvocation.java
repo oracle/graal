@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,12 +79,16 @@ public final class InteropBootstrapMethodInvocation implements TruffleObject, Bo
                         ReadMember.NAME,
                         ReadMember.BOOTSTRAP_METHOD,
                         ReadMember.CPI,
+                        ReadMember.METHOD_HANDLE_INDEX,
+                        ReadMember.STATIC_ARGUMENT_INDICES,
         };
         ALL_MEMBERS = new KeysArray<>(members);
         ALL_MEMBERS_SET = Set.of(members);
     }
 
     private final int entryCpi;
+    private int methodHandleIndex;
+    private int[] staticArgumentIndices;
     private Object[] staticArguments;
     private boolean isIndy;
     private Method bootstrapMethod;
@@ -116,7 +120,7 @@ public final class InteropBootstrapMethodInvocation implements TruffleObject, Bo
     }
 
     @Override
-    public void finalize(boolean finalIsIndy, Method finalBootstrapMethod, Symbol<Name> finalName, StaticObject finalType) {
+    public void finalize(boolean finalIsIndy, Method finalBootstrapMethod, Symbol<Name> finalName, StaticObject finalType, int finalMethodHandleIndex, int[] finalStaticArgumentIndices) {
         assert !this.isIndy;
         assert this.bootstrapMethod == null;
         assert this.name == null;
@@ -125,10 +129,12 @@ public final class InteropBootstrapMethodInvocation implements TruffleObject, Bo
         this.bootstrapMethod = finalBootstrapMethod;
         this.name = finalName;
         this.type = finalType;
+        this.methodHandleIndex = finalMethodHandleIndex;
+        this.staticArgumentIndices = finalStaticArgumentIndices;
     }
 
     boolean isInitialised() {
-        return this.bootstrapMethod != null;
+        return this.staticArgumentIndices != null;
     }
 
     @ExportMessage
@@ -138,6 +144,20 @@ public final class InteropBootstrapMethodInvocation implements TruffleObject, Bo
         static final String NAME = "name";
         static final String BOOTSTRAP_METHOD = "bootstrapMethod";
         static final String CPI = "cpi";
+        static final String METHOD_HANDLE_INDEX = "methodHandleIndex";
+        static final String STATIC_ARGUMENT_INDICES = "staticArgumentIndices";
+
+        @Specialization(guards = "METHOD_HANDLE_INDEX.equals(member)")
+        static int methodHandleIndex(InteropBootstrapMethodInvocation receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            return receiver.methodHandleIndex;
+        }
+
+        @Specialization(guards = "STATIC_ARGUMENT_INDICES.equals(member)")
+        static Object staticArgumentIndices(InteropBootstrapMethodInvocation receiver, @SuppressWarnings("unused") String member) {
+            assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
+            return new StaticArgumentIndices(receiver.staticArgumentIndices);
+        }
 
         @Specialization(guards = "TYPE.equals(member)")
         static StaticObject type(InteropBootstrapMethodInvocation receiver, @SuppressWarnings("unused") String member) {
@@ -158,9 +178,9 @@ public final class InteropBootstrapMethodInvocation implements TruffleObject, Bo
         }
 
         @Specialization(guards = "BOOTSTRAP_METHOD.equals(member)")
-        static Method bootstrapMethod(InteropBootstrapMethodInvocation receiver, @SuppressWarnings("unused") String member) {
+        static Object bootstrapMethod(InteropBootstrapMethodInvocation receiver, @SuppressWarnings("unused") String member) {
             assert EspressoLanguage.get(null).isExternalJVMCIEnabled();
-            return receiver.bootstrapMethod;
+            return receiver.bootstrapMethod == null ? StaticObject.NULL : receiver.bootstrapMethod;
         }
 
         @Specialization(guards = "CPI.equals(member)")
@@ -175,9 +195,42 @@ public final class InteropBootstrapMethodInvocation implements TruffleObject, Bo
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    static final class StaticArgumentIndices implements TruffleObject {
+        private final int[] indices;
+
+        StaticArgumentIndices(int[] indices) {
+            this.indices = indices;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return indices.length;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return 0 <= index && index < indices.length;
+        }
+
+        @ExportMessage
+        int readArrayElement(long index) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(index)) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            return indices[(int) index];
+        }
+    }
+
     @ExportMessage
     long getArraySize() {
-        return staticArguments.length;
+        return staticArguments == null ? 0 : staticArguments.length;
     }
 
     @ExportMessage
@@ -197,9 +250,8 @@ public final class InteropBootstrapMethodInvocation implements TruffleObject, Bo
     }
 
     @ExportMessage
-    @SuppressWarnings("static-method")
     public boolean hasArrayElements() {
-        return true;
+        return staticArguments != null;
     }
 
     @ExportMessage

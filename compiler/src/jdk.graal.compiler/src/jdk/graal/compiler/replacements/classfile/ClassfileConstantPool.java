@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,8 +36,10 @@ import jdk.graal.compiler.options.LibGraalSupport;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.ClassRef;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.ExecutableRef;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.FieldRef;
+import jdk.graal.compiler.replacements.classfile.ClassfileConstant.MemberRef;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.Primitive;
 import jdk.graal.compiler.replacements.classfile.ClassfileConstant.Utf8;
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -155,6 +157,12 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public JavaField lookupField(int index, ResolvedJavaMethod method, int opcode) {
+        if (opcode == -1 || opcode == Bytecodes.LDC || opcode == Bytecodes.LDC_W) {
+            if (getTag(index) != Tag.METHODHANDLE) {
+                throw new IllegalArgumentException("constant pool tag at index " + index + " is " + getTag(index) + " but expected METHODHANDLE for an ldc opcode");
+            }
+            throw new GraalError("METHODHANDLE entries not supported in " + ClassfileBytecodeProvider.class.getSimpleName());
+        }
         return get(FieldRef.class, index).resolve(this, opcode);
     }
 
@@ -163,6 +171,12 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
         if (opcode == Bytecodes.INVOKEDYNAMIC) {
             throw new GraalError("INVOKEDYNAMIC not supported by" + ClassfileBytecodeProvider.class.getSimpleName());
         }
+        if (opcode == -1 || opcode == Bytecodes.LDC || opcode == Bytecodes.LDC_W) {
+            if (getTag(index) != Tag.METHODHANDLE) {
+                throw new IllegalArgumentException("constant pool tag at index " + index + " is " + getTag(index) + " but expected METHODHANDLE for an ldc opcode");
+            }
+            throw new GraalError("METHODHANDLE entries not supported in " + ClassfileBytecodeProvider.class.getSimpleName());
+        }
         return get(ExecutableRef.class, index).resolve(this, opcode);
     }
 
@@ -170,6 +184,12 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
     public JavaMethod lookupMethod(int index, int opcode, ResolvedJavaMethod caller) {
         if (opcode == Bytecodes.INVOKEDYNAMIC) {
             throw new GraalError("INVOKEDYNAMIC not supported by" + ClassfileBytecodeProvider.class.getSimpleName());
+        }
+        if (opcode == -1 || opcode == Bytecodes.LDC || opcode == Bytecodes.LDC_W) {
+            if (getTag(index) != Tag.METHODHANDLE) {
+                throw new IllegalArgumentException("constant pool tag at index " + index + " is " + getTag(index) + " but expected METHODHANDLE for an ldc opcode");
+            }
+            throw new GraalError("METHODHANDLE entries not supported in " + ClassfileBytecodeProvider.class.getSimpleName());
         }
         ResolvedJavaMethod result = get(ExecutableRef.class, index).resolve(this, opcode);
         if (result != null && result.getName().equals("getEventWriter") && result.getDeclaringClass().getName().equals("Ljdk/jfr/internal/event/EventWriterFactory;")) {
@@ -193,31 +213,51 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public JavaType lookupReferencedType(int index, int opcode) {
+        int classIndex;
         switch (opcode) {
+            case -1:
+                Tag tag = getTag(index);
+                classIndex = switch (tag) {
+                    case DYNAMIC -> throw new GraalError("DYNAMIC entries not supported in " + ClassfileBytecodeProvider.class.getSimpleName());
+                    case CLASS -> index;
+                    case FIELD_REF, METHOD_REF, INTERFACE_METHOD_REF -> get(MemberRef.class, index).classIndex;
+                    case METHODHANDLE -> throw new GraalError("METHODHANDLE entries not supported in " + ClassfileBytecodeProvider.class.getSimpleName());
+                    default -> throw JVMCIError.shouldNotReachHere("Unexpected constant pool tag: " + tag);
+                };
+                break;
             case Bytecodes.CHECKCAST:
             case Bytecodes.INSTANCEOF:
             case Bytecodes.NEW:
             case Bytecodes.ANEWARRAY:
             case Bytecodes.MULTIANEWARRAY:
+                classIndex = index;
+                break;
             case Bytecodes.LDC:
             case Bytecodes.LDC_W:
             case Bytecodes.LDC2_W:
-                return get(ClassRef.class, index).resolve(this);
+                if (getTag(index) == Tag.DYNAMIC) {
+                    throw new GraalError("DYNAMIC entries not supported in " + ClassfileBytecodeProvider.class.getSimpleName());
+                }
+                classIndex = index;
+                break;
             case Bytecodes.GETSTATIC:
             case Bytecodes.PUTSTATIC:
             case Bytecodes.GETFIELD:
             case Bytecodes.PUTFIELD:
                 FieldRef f = get(FieldRef.class, index);
-                return get(ClassRef.class, f.classIndex).resolve(this);
+                classIndex = f.classIndex;
+                break;
             case Bytecodes.INVOKEVIRTUAL:
             case Bytecodes.INVOKESPECIAL:
             case Bytecodes.INVOKESTATIC:
             case Bytecodes.INVOKEINTERFACE:
                 ExecutableRef e = get(ExecutableRef.class, index);
-                return get(ClassRef.class, e.classIndex).resolve(this);
+                classIndex = e.classIndex;
+                break;
             default:
                 throw GraalError.shouldNotReachHere("Unexpected opcode: " + opcode); // ExcludeFromJacocoGeneratedReport
         }
+        return get(ClassRef.class, classIndex).resolve(this);
     }
 
     @Override
@@ -226,7 +266,7 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
     }
 
     @Override
-    public Signature lookupSignature(int index) {
+    public Signature lookupSignature(int index, int opcode) {
         throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
@@ -259,5 +299,37 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
             return null;
         }
         throw GraalError.shouldNotReachHereUnexpectedValue(opcode); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public int decodeIndex(int rawIndex, int opcode) {
+        if (opcode == Bytecodes.INVOKEDYNAMIC) {
+            return rawIndex >>> 16;
+        }
+        return rawIndex;
+    }
+
+    @Override
+    public Tag getTag(int cpi) {
+        if (cpi < 1 || cpi >= entries.length) {
+            throw new IndexOutOfBoundsException(cpi);
+        }
+        ClassfileConstant c = entries[cpi];
+        return c == null ? Tag.INVALID : Tag.fromValue(c.tag);
+    }
+
+    @Override
+    public String lookupName(int cpi, int opcode) {
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public int lookupMethodHandleReferenceKind(int cpi) {
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    public int lookupMethodHandleReferenceIndex(int cpi) {
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 }

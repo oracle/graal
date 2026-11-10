@@ -200,7 +200,7 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
 
     @Override
     public Object lookupConstant(int cpi, boolean resolve) {
-        final Tag tag = tagAt(cpi);
+        final ConstantPool.Tag tag = tagAt(cpi);
         return switch (tag) {
             case INTEGER -> JavaConstant.forInt(this.intAt(cpi));
             case FLOAT -> JavaConstant.forFloat(this.floatAt(cpi));
@@ -292,6 +292,23 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
             return SubstrateObjectConstant.forObject(referenceConstant.getReferent());
         }
         return appendix;
+    }
+
+    @Override
+    public int decodeIndex(int rawIndex, int opcode) {
+        if (opcode == INVOKEDYNAMIC) {
+            // The rewritten operand packs the pool index in the high half and the site index in the low half.
+            return rawIndex >>> 16;
+        }
+        return rawIndex;
+    }
+
+    @Override
+    public jdk.vm.ci.meta.ConstantPool.Tag getTag(int cpi) {
+        if (cpi < 1 || cpi >= length()) {
+            throw new IndexOutOfBoundsException(cpi);
+        }
+        return jdk.vm.ci.meta.ConstantPool.Tag.fromValue(byteTagAt(cpi));
     }
 
     @VisibleForSerialization
@@ -406,7 +423,22 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
     }
 
     @Override
-    public Signature lookupSignature(int cpi) {
+    public String lookupName(int cpi, int opcode) {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public Signature lookupSignature(int cpi, int opcode) {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public int lookupMethodHandleReferenceKind(int cpi) {
+        throw VMError.intentionallyUnimplemented();
+    }
+
+    @Override
+    public int lookupMethodHandleReferenceIndex(int cpi) {
         throw VMError.intentionallyUnimplemented();
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -687,7 +687,6 @@ public final class Meta extends ContextAccessImpl
         java_lang_invoke_MemberName_flags = java_lang_invoke_MemberName.requireDeclaredField(Names.flags, Types._int);
 
         java_lang_invoke_MethodHandle = knownKlass(Types.java_lang_invoke_MethodHandle);
-        java_lang_invoke_MethodHandle_asFixedArity = java_lang_invoke_MethodHandle.requireDeclaredMethod(Names.asFixedArity, Signatures.MethodHandle);
         java_lang_invoke_MethodHandle_form = java_lang_invoke_MethodHandle.requireDeclaredField(Names.form, Types.java_lang_invoke_LambdaForm);
 
         java_lang_invoke_MethodHandles = knownKlass(Types.java_lang_invoke_MethodHandles);
@@ -1785,7 +1784,6 @@ public final class Meta extends ContextAccessImpl
     public final Field java_lang_invoke_MemberName_flags;
 
     public final ObjectKlass java_lang_invoke_MethodHandle;
-    public final Method java_lang_invoke_MethodHandle_asFixedArity;
     public final Field java_lang_invoke_MethodHandle_form;
 
     public final ObjectKlass java_lang_invoke_DirectMethodHandle;
@@ -2346,7 +2344,7 @@ public final class Meta extends ContextAccessImpl
 
             EspressoBootstrapMethodInvocation = knownKlass(Types.com_oracle_truffle_espresso_jvmci_meta_EspressoBootstrapMethodInvocation);
             EspressoBootstrapMethodInvocation_init = EspressoBootstrapMethodInvocation.requireDeclaredMethod(Names._init_,
-                            Signatures._void_boolean_AbstractEspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array_int_AbstractEspressoConstantPool);
+                            Signatures._void_boolean_AbstractEspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array_int_array_int_int_AbstractEspressoConstantPool);
 
             Services = knownKlass(Types.jdk_vm_ci_services_Services);
             Services_openJVMCITo = Services.requireDeclaredMethod(Names.openJVMCITo, Signatures._void_Module);

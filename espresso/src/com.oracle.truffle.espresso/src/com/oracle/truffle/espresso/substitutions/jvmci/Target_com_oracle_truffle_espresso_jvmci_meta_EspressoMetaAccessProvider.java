@@ -83,6 +83,17 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProv
         }
     }
 
+    static StaticObject toJVMCIType(Klass klass, Meta meta) {
+        if (klass.isArray()) {
+            StaticObject jvmciMirror = meta.jvmci.EspressoResolvedArrayType.allocateInstance(meta.getContext());
+            ArrayKlass arrayKlass = (ArrayKlass) klass;
+            meta.jvmci.EspressoResolvedArrayType_init.invokeDirectSpecial(jvmciMirror, toJVMCIElementalType(arrayKlass.getElementalType(), meta), arrayKlass.getDimension(), arrayKlass.mirror());
+            return jvmciMirror;
+        } else {
+            return toJVMCIElementalType(klass, meta);
+        }
+    }
+
     static StaticObject toJVMCIObjectType(Klass klass, DirectCallNode objectTypeConstructor, DirectCallNode arrayTypeConstructor, DirectCallNode forBasicType, EspressoContext context, Meta meta) {
         if (klass.isArray()) {
             StaticObject jvmciMirror = meta.jvmci.EspressoResolvedArrayType.allocateInstance(context);

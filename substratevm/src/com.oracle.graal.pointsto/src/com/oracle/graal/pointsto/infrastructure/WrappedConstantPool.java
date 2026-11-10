@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,8 +112,18 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     }
 
     @Override
-    public ResolvedSignature<?> lookupSignature(int cpi) {
-        return universe.lookup(wrapped.lookupSignature(cpi), defaultAccessingClass);
+    public ResolvedSignature<?> lookupSignature(int cpi, int opcode) {
+        return universe.lookup(wrapped.lookupSignature(cpi, opcode), defaultAccessingClass);
+    }
+
+    @Override
+    public int lookupMethodHandleReferenceKind(int cpi) {
+        return wrapped.lookupMethodHandleReferenceKind(cpi);
+    }
+
+    @Override
+    public int lookupMethodHandleReferenceIndex(int cpi) {
+        return wrapped.lookupMethodHandleReferenceIndex(cpi);
     }
 
     @Override
@@ -122,8 +132,23 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     }
 
     @Override
+    public int decodeIndex(int rawIndex, int opcode) {
+        return wrapped.decodeIndex(rawIndex, opcode);
+    }
+
+    @Override
+    public Tag getTag(int cpi) {
+        return wrapped.getTag(cpi);
+    }
+
+    @Override
     public String lookupUtf8(int cpi) {
         return wrapped.lookupUtf8(cpi);
+    }
+
+    @Override
+    public String lookupName(int cpi, int opcode) {
+        return wrapped.lookupName(cpi, opcode);
     }
 
     @Override
@@ -156,8 +181,8 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     }
 
     @Override
-    public BootstrapMethodInvocation lookupBootstrapMethodInvocation(int cpi, int opcode) {
-        BootstrapMethodInvocation bootstrapMethodInvocation = wrapped.lookupBootstrapMethodInvocation(cpi, opcode);
+    public BootstrapMethodInvocation lookupBootstrapMethodInvocation(int cpi, int opcode, boolean resolve) {
+        BootstrapMethodInvocation bootstrapMethodInvocation = wrapped.lookupBootstrapMethodInvocation(cpi, opcode, resolve);
         if (bootstrapMethodInvocation != null) {
             return new WrappedBootstrapMethodInvocation(bootstrapMethodInvocation);
         }
@@ -179,7 +204,21 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
         @Override
         public ResolvedJavaMethod getMethod() {
-            return universe.lookup(wrapped.getMethod());
+            ResolvedJavaMethod method = wrapped.getMethod();
+            if (method == null) {
+                return null;
+            }
+            return universe.lookup(method);
+        }
+
+        @Override
+        public int getMethodHandleIndex() {
+            return wrapped.getMethodHandleIndex();
+        }
+
+        @Override
+        public int[] getStaticArgumentIndices() {
+            return wrapped.getStaticArgumentIndices();
         }
 
         @Override

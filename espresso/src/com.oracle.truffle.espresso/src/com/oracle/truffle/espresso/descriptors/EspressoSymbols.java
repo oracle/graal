@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -860,7 +860,6 @@ public class EspressoSymbols {
         // MethodHandle
         public static final Symbol<Name> invoke = SYMBOLS.putName("invoke");
         public static final Symbol<Name> invokeExact = SYMBOLS.putName("invokeExact");
-        public static final Symbol<Name> asFixedArity = SYMBOLS.putName("asFixedArity");
         public static final Symbol<Name> member = SYMBOLS.putName("member");
         // VarHandles
         public static final Symbol<Name> getStaticFieldFromBaseAndOffset = SYMBOLS.putName("getStaticFieldFromBaseAndOffset");
@@ -1479,10 +1478,10 @@ public class EspressoSymbols {
         public static final Symbol<Signature> PrimitiveConstant_float = SYMBOLS.putSignature(Types.jdk_vm_ci_meta_PrimitiveConstant, Types._float);
         public static final Symbol<Signature> PrimitiveConstant_double = SYMBOLS.putSignature(Types.jdk_vm_ci_meta_PrimitiveConstant, Types._double);
         public static final Symbol<Signature> PrimitiveConstant_char_long = SYMBOLS.putSignature(Types.jdk_vm_ci_meta_PrimitiveConstant, Types._char, Types._long);
-        public static final Symbol<Signature> _void_boolean_AbstractEspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array_int_AbstractEspressoConstantPool = SYMBOLS.putSignature(
+        public static final Symbol<Signature> _void_boolean_AbstractEspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array_int_array_int_int_AbstractEspressoConstantPool = SYMBOLS.putSignature(
                         Types._void,
                         Types._boolean, Types.com_oracle_truffle_espresso_jvmci_meta_AbstractEspressoResolvedJavaMethod, Types.java_lang_String, Types.jdk_vm_ci_meta_JavaConstant,
-                        Types.jdk_vm_ci_meta_JavaConstant_array, Types._int, Types.com_oracle_truffle_espresso_jvmci_meta_AbstractEspressoConstantPool);
+                        Types.jdk_vm_ci_meta_JavaConstant_array, Types._int_array, Types._int, Types._int, Types.com_oracle_truffle_espresso_jvmci_meta_AbstractEspressoConstantPool);
         public static final Symbol<Signature> UnresolvedJavaType_String = SYMBOLS.putSignature(Types.jdk_vm_ci_meta_UnresolvedJavaType, Types.java_lang_String);
 
         public static final Symbol<Signature> _void_sun_misc_Signal = SYMBOLS.putSignature(Types._void, Types.sun_misc_Signal);
