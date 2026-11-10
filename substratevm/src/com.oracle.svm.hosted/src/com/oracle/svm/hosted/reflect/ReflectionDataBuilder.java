@@ -1917,8 +1917,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     /// This class encapsulates the remaining accesses to core reflection performed by
-    /// [ReflectionDataBuilder].
-    /// This class should eventually disappear once GR-72109 is unblocked.
+    /// [ReflectionDataBuilder]. GR-72109 tracks replacing them with JVMCI equivalents, after which
+    /// this class can disappear.
     private record ClassAccess(AnalysisMetaAccess metaAccess) {
 
         private Collection<AnalysisType> filterClasses(Class<?>[] classes) {
