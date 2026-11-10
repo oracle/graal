@@ -37,9 +37,16 @@ import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
 import jdk.graal.compiler.api.replacements.Fold;
 
 /**
- * Core-side support for {@link RuntimeMetadataDecoder}, including metadata accessor lookup,
- * constant-pool layer resolution, and annotation-error decoding. Image-layer dependencies stay here
- * so the decoder contract can reside in guest staging.
+ * Provides metadata accessor lookup, constant-pool layer selection, and annotation-error decoding
+ * for {@code RuntimeMetadataDecoderImpl} and the annotation-parser substitutions.
+ * <p>
+ * These helpers were extracted from {@link RuntimeMetadataDecoder}, including the singleton lookup
+ * formerly in its nested {@code MetadataAccessor}, when the decoder contract moved to guest staging.
+ * They remain separate to keep image-layer support and compiler folding dependencies out of that
+ * contract.
+ * <p>
+ * Reconsider the split if guest-side facilities can provide the required layer-aware lookup and
+ * folding behavior; the extraction does not establish that this support class is temporary.
  */
 public final class RuntimeMetadataDecoderSupport {
     private RuntimeMetadataDecoderSupport() {

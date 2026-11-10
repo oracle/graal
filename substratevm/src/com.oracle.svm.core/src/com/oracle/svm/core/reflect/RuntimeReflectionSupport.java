@@ -34,7 +34,19 @@ import com.oracle.svm.espresso.classfile.ConstantPool.Tag;
 import com.oracle.svm.espresso.classfile.attributes.MethodParametersAttribute;
 import com.oracle.svm.guest.staging.reflect.target.ReflectionObjectFactory;
 
-/** Core-side support for reflection metadata whose representation is specific to runtime-loaded classes. */
+/**
+ * Converts Espresso method-parameter metadata into reflection {@link Parameter} objects for
+ * runtime-loaded classes. The guest-staging {@code Executable} substitution calls this support
+ * through {@code GuestStagingDependencyBridge}.
+ * <p>
+ * This conversion was extracted from {@code RuntimeLoadedExecutableParameterHelper.asReflectParameters}
+ * in {@code Target_java_lang_reflect_Executable.java} when that substitution moved to guest staging.
+ * It remains separate because reading the metadata requires Espresso's
+ * {@link MethodParametersAttribute} and constant pool, obtained through {@link CremaSupport}.
+ * <p>
+ * Reconsider this boundary when those metadata and constant-pool operations are available to guest
+ * code without the current dependency constraints; removal is not established.
+ */
 public final class RuntimeReflectionSupport {
     private RuntimeReflectionSupport() {
     }
