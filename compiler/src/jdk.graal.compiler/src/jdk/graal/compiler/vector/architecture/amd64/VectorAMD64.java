@@ -518,6 +518,8 @@ public final class VectorAMD64 extends VectorArchitecture {
 
     @Override
     public int getSupportedVectorPermuteLength(Stamp elementStamp, int maxLength) {
+        /* We round the length upwards to a power of two, which must not overflow. */
+        GraalError.guarantee(maxLength <= (1 << 30), "Maximum vector length exceeds 1 << 30 elements: %s", maxLength);
         if (!hasMinimumVectorizationRequirements(maxLength)) {
             return 1;
         }
@@ -545,6 +547,8 @@ public final class VectorAMD64 extends VectorArchitecture {
 
     @Override
     public int getSupportedVectorBlendLength(Stamp elementStamp, int maxLength) {
+        /* We round the length upwards to a power of two, which must not overflow. */
+        GraalError.guarantee(maxLength <= (1 << 30), "Maximum vector length exceeds 1 << 30 elements: %s", maxLength);
         if (!hasMinimumVectorizationRequirements(maxLength)) {
             return 1;
         }
