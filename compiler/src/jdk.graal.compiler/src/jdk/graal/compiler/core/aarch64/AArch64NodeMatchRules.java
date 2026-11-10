@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -885,7 +885,8 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(If (IntegerLessThan=lessNode x Constant=y))")
     public ComplexMatchResult checkNegativeAndBranch(IfNode root, IntegerLessThanNode lessNode, ValueNode x, ConstantNode y) {
         assert isNumericInteger(x);
-        if (y.isJavaConstant() && (0 == y.asJavaConstant().asLong()) && lessNode.condition().equals(CanonicalCondition.LT)) {
+        // IntegerLessThan is matched commutatively, but only x < 0 is a sign-bit test.
+        if (lessNode.getY() == y && y.isJavaConstant() && (0 == y.asJavaConstant().asLong()) && lessNode.condition().equals(CanonicalCondition.LT)) {
             return emitBitTestAndBranch(root.falseSuccessor(), root.trueSuccessor(), x,
                             1.0 - root.getTrueSuccessorProbability(), x.getStackKind().getBitCount() - 1);
         }
