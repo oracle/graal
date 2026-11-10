@@ -146,17 +146,24 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
         return linkedField.getParserField().getAttributes();
     }
 
-    @SuppressWarnings("unchecked")
     public final Symbol<ModifiedUTF8> getGenericSignature() {
         if (genericSignature == null) {
-            SignatureAttribute attr = getAttribute(SignatureAttribute.NAME, SignatureAttribute.class);
-            if (attr == null) {
-                genericSignature = ModifiedUTF8.fromSymbol(getType());
-            } else {
-                genericSignature = (Symbol<ModifiedUTF8>) pool.utf8At(attr.getSignatureIndex(), "generic signature");
-            }
+            Symbol<ModifiedUTF8> rawSignature = getRawGenericSignature();
+            genericSignature = rawSignature != null ? rawSignature : ModifiedUTF8.fromSymbol(getType());
         }
         return genericSignature;
+    }
+
+    /**
+     * Returns the Signature attribute value, or {@code null} when the attribute is absent. Unlike
+     * {@link #getGenericSignature()}, this method does not substitute the field descriptor.
+     * Reflection mirrors require the nullable raw value to match HotSpot semantics and distinguish
+     * an absent Signature attribute from an explicitly present signature equal to the descriptor.
+     */
+    @SuppressWarnings("unchecked")
+    public final Symbol<ModifiedUTF8> getRawGenericSignature() {
+        SignatureAttribute attr = getAttribute(SignatureAttribute.NAME, SignatureAttribute.class);
+        return attr == null ? null : (Symbol<ModifiedUTF8>) pool.utf8At(attr.getSignatureIndex(), "generic signature");
     }
 
     /**
@@ -1048,7 +1055,7 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
                             /* modifiers */ getModifiers(),
                             /* trustedFinal */ isTrustedFinal(),
                             /* slot */ getSlot(),
-                            /* signature */ meta.toGuestString(getGenericSignature()),
+                            /* signature */ meta.toGuestString(getRawGenericSignature()),
                             /* annotations */ runtimeVisibleAnnotations);
         } else {
             meta.java_lang_reflect_Field_init.invokeDirectSpecial(
@@ -1058,7 +1065,7 @@ public class Field extends Member<Type> implements FieldRef, TruffleObject, Fiel
                             /* type */ resolveTypeKlass().mirror(),
                             /* modifiers */ getModifiers(),
                             /* slot */ getSlot(),
-                            /* signature */ meta.toGuestString(getGenericSignature()),
+                            /* signature */ meta.toGuestString(getRawGenericSignature()),
                             /* annotations */ runtimeVisibleAnnotations);
         }
         meta.java_lang_reflect_Field_0vmField.setHiddenObject(instance, this);

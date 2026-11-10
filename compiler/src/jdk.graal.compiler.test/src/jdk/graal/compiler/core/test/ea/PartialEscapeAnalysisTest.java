@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.TypeSystemTest;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ReturnNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.extended.UnboxNode;
@@ -41,7 +42,9 @@ import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.nodes.virtual.CommitAllocationNode;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
+import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -397,5 +400,31 @@ public class PartialEscapeAnalysisTest extends EATestBase {
             TypeSystemTest.outputGraph(graph, snippet + ": " + e.getMessage());
             throw e;
         }
+    }
+
+    /**
+     * Both unboxes read the same loop phi. PEA must handle the condition becoming constant when it
+     * processes the second unbox, including when the backedge changes the phi's object state.
+     */
+    public static void booleanLoopSnippet(boolean initial) {
+        Boolean value = initial;
+        while (true) {
+            if ((value ^ Boolean.TRUE) ^ value) {
+                break;
+            }
+            value = Boolean.FALSE;
+        }
+    }
+
+    /**
+     * Run PEA directly so that other optimizations do not fold the condition before PEA sees it.
+     * Read elimination exposes the common input of the two unboxes after materialization.
+     */
+    @Test
+    public void testBooleanLoop() {
+        StructuredGraph g = parseEager("booleanLoopSnippet", StructuredGraph.AllowAssumptions.YES);
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        canonicalizer.apply(g, getDefaultHighTierContext());
+        new PartialEscapePhase(true, true, canonicalizer, null, g.getOptions()).apply(g, getDefaultHighTierContext());
     }
 }
