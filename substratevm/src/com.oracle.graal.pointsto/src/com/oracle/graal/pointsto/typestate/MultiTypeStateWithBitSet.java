@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.typestate;
 
 import java.util.BitSet;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -125,6 +126,9 @@ public non-sealed class MultiTypeStateWithBitSet extends MultiTypeState {
         }
 
         public Integer nextSetBit() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
             int next = current;
             current = typesBitSet.nextSetBit(current + 1);
             return next;
