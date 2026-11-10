@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, 2021, Arm Limited and affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,6 +26,7 @@
 
 package jdk.graal.compiler.core.aarch64.test;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.aarch64.AArch64BitFieldOp;
 import org.junit.Test;
@@ -136,6 +137,56 @@ public class AArch64BitFieldTest extends AArch64MatchRuleTest {
     @Test
     public void testInsertLong() {
         testAndCheckLIR("insertLong", "invalidInsertLong", 0xdeadbeefdeadbeefL);
+    }
+
+    // Keep the zero shift opaque until the end of low tier so that canonicalization does not
+    // remove the shift before the bitfield insert match rules see it.
+    public static int signedInsertIntZeroShift(int input) {
+        return ((short) input) << GraalDirectives.opaque(0);
+    }
+
+    public static long signedInsertLongZeroShift(long input) {
+        return ((long) (short) input) << GraalDirectives.opaque(0);
+    }
+
+    public static int unsignedInsertIntZeroShift(int input) {
+        return (input & 0xffff) << GraalDirectives.opaque(0);
+    }
+
+    public static long unsignedInsertLongZeroShift(long input) {
+        return (input & 0xffffL) << GraalDirectives.opaque(0);
+    }
+
+    @Test
+    public void testSignedInsertIntZeroShift() {
+        for (int input : new int[]{0, 0x7fff, 0x8000, -1, 0xcafebabe, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
+            test("signedInsertIntZeroShift", input);
+        }
+        checkLIR("signedInsertIntZeroShift", predicate, 1);
+    }
+
+    @Test
+    public void testSignedInsertLongZeroShift() {
+        for (long input : new long[]{0, 0x7fff, 0x8000, -1, 0xdeadbeefdeadbeefL, Long.MIN_VALUE, Long.MAX_VALUE}) {
+            test("signedInsertLongZeroShift", input);
+        }
+        checkLIR("signedInsertLongZeroShift", predicate, 1);
+    }
+
+    @Test
+    public void testUnsignedInsertIntZeroShift() {
+        for (int input : new int[]{0, 0x7fff, 0x8000, -1, 0xcafebabe, Integer.MIN_VALUE, Integer.MAX_VALUE}) {
+            test("unsignedInsertIntZeroShift", input);
+        }
+        checkLIR("unsignedInsertIntZeroShift", predicate, 1);
+    }
+
+    @Test
+    public void testUnsignedInsertLongZeroShift() {
+        for (long input : new long[]{0, 0x7fff, 0x8000, -1, 0xdeadbeefdeadbeefL, Long.MIN_VALUE, Long.MAX_VALUE}) {
+            test("unsignedInsertLongZeroShift", input);
+        }
+        checkLIR("unsignedInsertLongZeroShift", predicate, 1);
     }
 
     // Tests for unsigned bitfield move, with integration of zero extend (I2L) operation.
