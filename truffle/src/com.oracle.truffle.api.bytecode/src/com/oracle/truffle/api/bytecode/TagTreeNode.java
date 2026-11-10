@@ -113,16 +113,16 @@ public abstract class TagTreeNode extends Node implements TagTree {
     }
 
     /**
-     * Creates a default scope implementation based of this tag tree node. The scope returned
-     * represents the default scope implementation in use without any configuration in
-     * {@link GenerateBytecode}. The scope respects your interpreter's choice of
-     * {@link GenerateBytecode#enableBlockScoping() block/root scoping}. Use this method if the
-     * default scope implementation is usable for your language but other methods in
-     * {@link NodeLibrary} need to be implemented differently.
+     * Creates a default scope implementation based on this tag tree node. The scope returned
+     * exposes the live locals at the given location in the program (respecting the configured
+     * {@link GenerateBytecode#enableBlockScoping() scoping mode}). It uses the {@code name}s
+     * supplied at local declaration time, falling back on generic names when unavailable.
      * <p>
-     * The scope used for a tag tree node can be customized by setting
-     * {@link GenerateBytecode#tagTreeNodeLibrary()} and overriding
-     * {@link NodeLibrary#getScope(Object, Frame, boolean)}.
+     * This is the default scope used by Bytecode DSL interpreters. The scope can be customized by
+     * setting {@link GenerateBytecode#tagTreeNodeLibrary()} to a class that exports
+     * {@link NodeLibrary#getScope(Object, Frame, boolean)} for {@link TagTreeNode}. Your library
+     * can use this method if the default scope implementation is appropriate for your language but
+     * other methods in {@link NodeLibrary} need to be implemented differently.
      *
      * @since 24.2
      */
