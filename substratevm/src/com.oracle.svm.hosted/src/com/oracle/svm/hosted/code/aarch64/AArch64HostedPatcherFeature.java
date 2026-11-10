@@ -105,7 +105,7 @@ class SingleInstructionHostedPatcher extends CompilationResult.CodeAnnotation im
     }
 
     @Override
-    public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
+    public void relocate(Reference ref, RelocatableBuffer codeBuffer, int compStart) {
         /*
          * Right now relocations need to have the ability to access a value via a PC-relative 32 bit
          * immediate, which is too big for a single instruction. Instead, either adrp/ldr, adrp/add,
@@ -141,10 +141,10 @@ class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
     }
 
     @Override
-    public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
+    public void relocate(Reference ref, RelocatableBuffer codeBuffer, int compStart) {
         int siteOffset = compStart + macroInstruction.instructionPosition;
 
-        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, ref);
+        codeBuffer.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, ref);
         siteOffset += 4;
         RelocationKind secondRelocation;
         switch (macroInstruction.srcSize) {
@@ -166,7 +166,7 @@ class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
             default:
                 throw VMError.shouldNotReachHere("Unknown macro instruction src size of " + macroInstruction.srcSize);
         }
-        relocs.addRelocationWithoutAddend(siteOffset, secondRelocation, ref);
+        codeBuffer.addRelocationWithoutAddend(siteOffset, secondRelocation, ref);
     }
 
     @Uninterruptible(reason = ".")
@@ -196,7 +196,7 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
     }
 
     @Override
-    public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
+    public void relocate(Reference ref, RelocatableBuffer codeBuffer, int compStart) {
         Object relocVal = ref;
         if (ref instanceof ConstantReference constantRef) {
             VMConstant constant = constantRef.getConstant();
@@ -212,10 +212,10 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
         }
 
         int siteOffset = compStart + macroInstruction.instructionPosition;
-        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, relocVal);
+        codeBuffer.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, relocVal);
 
         siteOffset += 4;
-        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, relocVal);
+        codeBuffer.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, relocVal);
     }
 
     @Uninterruptible(reason = ".")
@@ -247,7 +247,7 @@ class AArch64HostedCGlobalDataIndirectReferencePatcher extends CompilationResult
     }
 
     @Override
-    public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
+    public void relocate(Reference ref, RelocatableBuffer codeBuffer, int compStart) {
         throw VMError.shouldNotReachHere("Indirect CGlobalData access through image heap should be patched during image generation.");
     }
 
@@ -297,7 +297,7 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
     }
 
     @Override
-    public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
+    public void relocate(Reference ref, RelocatableBuffer codeBuffer, int compStart) {
         /*
          * The relocation site is the start of some instruction, which is some offset into the
          * method, which is some offset into the text section (a.k.a. code cache). The offset we get
@@ -334,9 +334,9 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
                     continue;
                 }
                 if (i == lastMovIndex) {
-                    relocs.addRelocationWithoutAddend(siteOffset, relocations[i], ref);
+                    codeBuffer.addRelocationWithoutAddend(siteOffset, relocations[i], ref);
                 } else {
-                    relocs.addRelocationWithoutAddend(siteOffset, noCheckRelocations[i], ref);
+                    codeBuffer.addRelocationWithoutAddend(siteOffset, noCheckRelocations[i], ref);
                 }
                 siteOffset = siteOffset + 4;
             }

@@ -135,7 +135,7 @@ public class WebImageCodeCache extends NativeImageCodeCache {
     }
 
     @Override
-    public void patchMethods(DebugContext debug, RelocatableBuffer relocs, ObjectFile objectFile) {
+    public void patchMethods(DebugContext debug, RelocatableBuffer codeBuffer, ObjectFile objectFile) {
 
     }
 

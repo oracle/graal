@@ -148,7 +148,7 @@ class AMD64HostedPatcher extends CompilationResult.CodeAnnotation implements Hos
     }
 
     @Override
-    public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
+    public void relocate(Reference ref, RelocatableBuffer codeBuffer, int compStart) {
         /*
          * The relocation site is some offset into the instruction, which is some offset into the
          * method, which is some offset into the text section (a.k.a. code cache). The offset we get
@@ -164,7 +164,7 @@ class AMD64HostedPatcher extends CompilationResult.CodeAnnotation implements Hos
              * be followed by additional instruction bytes, such as an immediate operand.
              */
             long addend = operandToNextInstruction();
-            relocs.addRelocationWithAddend((int) siteOffset, RelocationKind.getPCRelative(annotation.operandSize), addend, ref);
+            codeBuffer.addRelocationWithAddend((int) siteOffset, RelocationKind.getPCRelative(annotation.operandSize), addend, ref);
         } else if (ref instanceof ConstantReference constantReference) {
             VMConstant constant = constantReference.getConstant();
             if (constant instanceof SubstrateMethodPointerConstant methodPointerConstant) {
@@ -176,10 +176,10 @@ class AMD64HostedPatcher extends CompilationResult.CodeAnnotation implements Hos
                 RelocationKind kindPCRelative = RelocationKind.getPCRelative(annotation.operandSize);
                 // lea instruction using rip relative addressing, account for additional offset
                 long addend = -operandToNextInstruction();
-                relocs.addRelocationWithAddend((int) siteOffset, kindPCRelative, addend, pointer);
+                codeBuffer.addRelocationWithAddend((int) siteOffset, kindPCRelative, addend, pointer);
             } else {
                 RelocationKind kindDirect = RelocationKind.getDirect(annotation.operandSize);
-                relocs.addRelocationWithoutAddend((int) siteOffset, kindDirect, constantReference);
+                codeBuffer.addRelocationWithoutAddend((int) siteOffset, kindDirect, constantReference);
             }
         } else {
             throw VMError.shouldNotReachHere("Unknown type of reference in code");

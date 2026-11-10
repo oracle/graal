@@ -304,9 +304,9 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     @Override
-    public void patchMethods(DebugContext debug, RelocatableBuffer relocs, ObjectFile objectFile) {
+    public void patchMethods(DebugContext debug, RelocatableBuffer codeBuffer, ObjectFile objectFile) {
         Element rodataSection = objectFile.elementForName(SectionName.RODATA.getFormatDependentName(objectFile.getFormat()));
-        Element dataSection = objectFile.elementForName(SectionName.DATA.getFormatDependentName(objectFile.getFormat()));
+        Element rwdataSection = objectFile.elementForName(SectionName.DATA.getFormatDependentName(objectFile.getFormat()));
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             CompilationResult result = pair.getRight();
             for (DataPatch dataPatch : result.getDataPatches()) {
@@ -319,7 +319,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
                     String symbolName = (String) dataPatch.note;
                     if (data.symbolName == null && objectFile.getOrCreateSymbolTable().getSymbol(symbolName) == null) {
-                        objectFile.createDefinedSymbol(symbolName, dataSection, info.getOffset() + RWDATA_CGLOBALS_PARTITION_OFFSET, 0, false, true, true);
+                        objectFile.createDefinedSymbol(symbolName, rwdataSection, info.getOffset() + RWDATA_CGLOBALS_PARTITION_OFFSET, 0, false, true, true);
                     }
                 } else if (dataPatch.reference instanceof DataSectionReference) {
                     DataSectionReference reference = (DataSectionReference) dataPatch.reference;

@@ -55,7 +55,6 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
-import jdk.vm.ci.code.site.Reference;
 
 public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
@@ -213,7 +212,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         }
     }
 
-    protected static int align(int current, int alignment) {
+    private static int align(int current, int alignment) {
         VMError.guarantee(current >= 0 && alignment > 0 && NumUtil.isUnsignedPowerOf2(alignment), "invalid argument %d - %d", current, alignment);
         int result = NumUtil.roundUp(current, alignment);
         if (result < current) {
@@ -314,18 +313,17 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     /**
-     * Patch references from code to other code and constant data. Generate relocation information
-     * in the process. More patching can be done, and correspondingly fewer relocation records
-     * generated, if the caller passes a non-null rodataDisplacementFromText.
+     * Apply patches to compiled code, e.g., for image-heap accesses, direct calls, or references to
+     * the data section. This can add relocations to the provided code buffer.
      *
-     * @param relocs a relocation map
+     * @param codeBuffer code buffer to which relocations can be added
      */
     @Override
-    public void patchMethods(DebugContext debug, RelocatableBuffer relocs, ObjectFile objectFile) {
-        patchMethods(debug, relocs, getOrderedCompilations());
+    public void patchMethods(DebugContext debug, RelocatableBuffer codeBuffer, ObjectFile objectFile) {
+        patchMethods(debug, codeBuffer, getOrderedCompilations());
     }
 
-    protected void patchMethods(DebugContext debug, RelocatableBuffer relocs, List<Pair<HostedMethod, CompilationResult>> methodCompilations) {
+    protected void patchMethods(DebugContext debug, RelocatableBuffer codeBuffer, List<Pair<HostedMethod, CompilationResult>> methodCompilations) {
         /*
          * Patch instructions which reference code or data by address.
          *
@@ -348,17 +346,17 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
          * between the vaddrs. So, if we're generating a shared library or executable (i.e.
          * something with vaddrs), we always know the offset of our data from our code (and
          * vice-versa). BUT if we're generating relocatable code, we don't know that yet. In that
-         * case, the caller will pass a null rodataDisplacecmentFromText, and we behave accordingly
-         * by generating extra relocation records.
+         * case, relocation records are generated instead.
          */
+        DeadlockWatchdog watchdog = DeadlockWatchdog.singleton();
         for (Pair<HostedMethod, CompilationResult> entry : methodCompilations) {
-            DeadlockWatchdog.singleton().recordActivity();
+            watchdog.recordActivity();
             HostedMethod method = entry.getLeft();
             CompilationResult compilation = entry.getRight();
             Map<Integer, HostedPatcher> patches = mapPatchingLocations(compilation);
             processImageHeapConstantsReferences(compilation, patches);
             processDirectCallSites(method, compilation, patches);
-            processDataReferences(relocs, method, compilation, patches);
+            processDataReferences(codeBuffer, method, compilation, patches);
             verifyAllPatchesApplied(debug, method, compilation, patches);
         }
     }
@@ -407,10 +405,9 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         }
     }
 
-    protected void processDataReferences(RelocatableBuffer relocs, HostedMethod method, CompilationResult compilation, Map<Integer, HostedPatcher> patches) {
+    private void processDataReferences(RelocatableBuffer codeBuffer, HostedMethod method, CompilationResult compilation, Map<Integer, HostedPatcher> patches) {
         for (DataPatch dataPatch : compilation.getDataPatches()) {
             assert dataPatch.note == null : "Unexpected note: " + dataPatch.note;
-            Reference ref = dataPatch.reference;
             var patcher = patches.remove(dataPatch.pcOffset);
             assert patcher != null : String.format("No patcher associated with the data patch reference: %s", dataPatch);
             /*
@@ -419,12 +416,12 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
              * PC, or (3) directly patched accesses to other sections via base address located in
              * the image heap.
              */
-            processDataPatch(relocs, method, compilation, ref, patcher);
+            processDataPatch(codeBuffer, method, compilation, dataPatch, patcher);
         }
     }
 
-    protected void processDataPatch(RelocatableBuffer buffer, HostedMethod method, @SuppressWarnings("unused") CompilationResult compilation, Reference reference, HostedPatcher patcher) {
-        patcher.relocate(reference, buffer, method.getCodeAddressOffset());
+    protected void processDataPatch(RelocatableBuffer codeBuffer, HostedMethod method, @SuppressWarnings("unused") CompilationResult compilation, DataPatch dataPatch, HostedPatcher patcher) {
+        patcher.relocate(dataPatch.reference, codeBuffer, method.getCodeAddressOffset());
     }
 
     private static void processImageHeapConstantsReferences(CompilationResult compilation, Map<Integer, HostedPatcher> patches) {

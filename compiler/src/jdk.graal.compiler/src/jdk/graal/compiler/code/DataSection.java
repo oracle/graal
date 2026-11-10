@@ -108,6 +108,15 @@ public final class DataSection implements Iterable<Data> {
             return size;
         }
 
+        /**
+         * Returns the reference assigned when this data is inserted into a {@link DataSection}, or
+         * {@code null} if it has not been inserted. The reference offset is assigned when the
+         * owning data section is closed.
+         */
+        public DataSectionReference getReference() {
+            return ref;
+        }
+
         @Override
         public int hashCode() {
             // Data instances should not be used as hash map keys
