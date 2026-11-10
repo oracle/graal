@@ -32,6 +32,7 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapObjectSorter;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.hosted.webimage.wasmgc.codegen.WasmGCHeapWriter;
+import com.oracle.svm.shared.util.VMError;
 
 /**
  * Partition implementation for the WasmGC image heap.
@@ -52,7 +53,7 @@ public class WasmGCPartition implements ImageHeapPartition {
      * serialize objects into a binary format.
      */
     private final boolean isPseudo;
-    private final List<ImageHeapObject> objects = new ArrayList<>();
+    private List<ImageHeapObject> objects = new ArrayList<>();
 
     /**
      * Size of this partition in bytes.
@@ -82,11 +83,17 @@ public class WasmGCPartition implements ImageHeapPartition {
     }
 
     public void sortObjects(ImageHeapObjectSorter sorter) {
-        sorter.sort(this, objects);
+        sorter.sort(this, getObjects());
     }
 
     public List<ImageHeapObject> getObjects() {
+        VMError.guarantee(objects != null, "Image heap partition objects were released.");
         return objects;
+    }
+
+    void releaseObjectReferences() {
+        VMError.guarantee(objects != null, "Image heap partition objects were already released.");
+        objects = null;
     }
 
     @Override
@@ -107,7 +114,7 @@ public class WasmGCPartition implements ImageHeapPartition {
     }
 
     public void assign(ImageHeapObject obj) {
-        objects.add(obj);
+        getObjects().add(obj);
         obj.setHeapPartition(this);
     }
 }

@@ -56,6 +56,12 @@ public class WebImageWasmGCCodeCache extends WebImageCodeCache {
     }
 
     @Override
+    protected boolean requiresEmbeddedConstantsAfterHeapConstruction() {
+        // WasmGCHeapWriter later uses the embedded roots to select objects requiring Wasm globals.
+        return true;
+    }
+
+    @Override
     public void buildRuntimeMetadata(DebugContext debug, SnippetReflectionProvider snippetReflectionProvider) {
         super.buildRuntimeMetadata(debug, snippetReflectionProvider);
 

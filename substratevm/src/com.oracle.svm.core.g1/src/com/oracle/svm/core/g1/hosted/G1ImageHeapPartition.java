@@ -29,10 +29,11 @@ import java.util.ArrayList;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapObjectSorter;
 import com.oracle.svm.core.image.ImageHeapPartition;
+import com.oracle.svm.shared.util.VMError;
 
 public class G1ImageHeapPartition implements ImageHeapPartition {
     private final String name;
-    private final ArrayList<ImageHeapObject> objects = new ArrayList<>();
+    private ArrayList<ImageHeapObject> objects = new ArrayList<>();
     private final boolean writable;
 
     private long size = -1L;
@@ -59,16 +60,22 @@ public class G1ImageHeapPartition implements ImageHeapPartition {
     }
 
     public void assign(ImageHeapObject info) {
-        objects.add(info);
+        getObjects().add(info);
         info.setHeapPartition(this);
     }
 
     void sortObjects(ImageHeapObjectSorter sorter, G1ImageHeapObjectComparator comparator) {
-        sorter.sort(this, objects, comparator);
+        sorter.sort(this, getObjects(), comparator);
     }
 
     public ArrayList<ImageHeapObject> getObjects() {
+        VMError.guarantee(objects != null, "Image heap partition objects were released.");
         return objects;
+    }
+
+    void releaseObjectReferences() {
+        VMError.guarantee(objects != null, "Image heap partition objects were already released.");
+        objects = null;
     }
 
     @Override

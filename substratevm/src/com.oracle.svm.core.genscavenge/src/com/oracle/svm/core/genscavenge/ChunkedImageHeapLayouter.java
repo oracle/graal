@@ -262,11 +262,22 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
 
     @Override
     public void writeMetadata(ByteBuffer imageHeapBytes, long imageHeapOffsetInBuffer) {
+        VMError.guarantee(allocator != null, "Image heap layout metadata is not available.");
         long layoutToBufferOffsetAddend = imageHeapOffsetInBuffer - startOffset;
         ImageHeapChunkWriter writer = SubstrateUtil.HOSTED ? new HostedImageHeapChunkWriter(imageHeapBytes, layoutToBufferOffsetAddend)
                         : new RuntimeImageHeapChunkWriter(imageHeapBytes, layoutToBufferOffsetAddend);
         writeHeaders(writer, allocator.getAlignedChunks());
         writeHeaders(writer, allocator.getUnalignedChunks());
+    }
+
+    @Override
+    public void releaseObjectReferences() {
+        VMError.guarantee(allocator != null, "Image heap layout metadata is not available or was already released.");
+        for (ChunkedImageHeapPartition partition : partitions) {
+            partition.releaseObjectReferences();
+        }
+        /* The allocator owns its chunks, so dropping it also releases their object lists. */
+        allocator = null;
     }
 
     private static void writeHeaders(ImageHeapChunkWriter writer, List<? extends Chunk> chunks) {

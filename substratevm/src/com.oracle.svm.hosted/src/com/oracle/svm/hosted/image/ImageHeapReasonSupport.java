@@ -417,6 +417,15 @@ public class ImageHeapReasonSupport {
     public void dumpMetadata(@SuppressWarnings("unused") ImageHeapLayoutInfo heapLayout, @SuppressWarnings("unused") Iterable<NativeImageHeap.ObjectInfo> objects) {
         // no metadata to dump
     }
+
+    /**
+     * Releases reverse references from inclusion reasons to image-heap objects. Called with the
+     * final heap-model release, after reason serialization and {@code beforeImageWrite} callbacks.
+     * Layers and connected-components reports retain the model and do not call this method.
+     */
+    public void releaseObjectReferences() {
+        /* The default implementation does not retain inclusion reasons. */
+    }
 }
 
 /**

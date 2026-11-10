@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,7 +84,9 @@ import com.oracle.svm.guest.staging.meta.MethodOffset;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.HostedConfiguration;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.ameta.SVMHostedValueProvider;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -103,6 +105,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.meta.UniverseBuilder;
+import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
@@ -111,6 +114,7 @@ import com.oracle.svm.util.OriginalClassProvider;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.debug.DebugOptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -154,23 +158,24 @@ public final class NativeImageHeap implements ImageHeap {
      * The constants stored in the image heap are always uncompressed. The same object info is
      * returned whenever the map is queried regardless of the compressed flag value.
      */
-    private final EconomicMap<JavaConstant, ObjectInfo> objects = EconomicMap.create();
+    private EconomicMap<JavaConstant, ObjectInfo> objects = EconomicMap.create();
+    private int objectCountAfterRelease = -1;
 
     /** Objects that must not be written to the native image heap. */
-    private final Set<Object> blacklist = Collections.newSetFromMap(new IdentityHashMap<>());
+    private Set<Object> blacklist = Collections.newSetFromMap(new IdentityHashMap<>());
 
     /** A map from hosted classes to classes that have hybrid layouts in the native image heap. */
-    private final Map<HostedClass, HybridLayout> hybridLayouts = new HashMap<>();
+    private Map<HostedClass, HybridLayout> hybridLayouts = new HashMap<>();
 
     /** A Map to build what will be the String intern map in the native image heap. */
-    private final Map<String, String> internedStrings = new HashMap<>();
+    private Map<String, String> internedStrings = new HashMap<>();
 
     // Phase variables.
     private final Phase addObjectsPhase = Phase.factory();
     private final Phase internStringsPhase = Phase.factory();
 
     /** A queue of objects that need to be added to the native image heap, to avoid recursion. */
-    private final Deque<AddObjectData> addObjectWorklist = new ArrayDeque<>();
+    private Deque<AddObjectData> addObjectWorklist = new ArrayDeque<>();
 
     /**
      * Actually adding an object to the image heap can be delayed until later, e.g., to add certain
@@ -179,10 +184,10 @@ public final class NativeImageHeap implements ImageHeap {
      * {@link ObjectInfo} has been added. This work list stores such pending operations. This is
      * currently used for interned strings, which are all added late to improve locality.
      */
-    private final List<AddLateToObjectReachabilityInfoData> addLateToObjectReachabilityInfoWorklist = new ArrayList<>();
+    private List<AddLateToObjectReachabilityInfoData> addLateToObjectReachabilityInfoWorklist = new ArrayList<>();
 
     /** Constants for objects that are known to be immutable in the image heap. */
-    private final Set<ImageHeapConstant> knownImmutableObjects = new HashSet<>();
+    private Set<ImageHeapConstant> knownImmutableObjects = new HashSet<>();
 
     /** For diagnostic purpose only. */
     Map<ObjectInfo, ObjectReachabilityInfo> objectReachabilityInfo = null;
@@ -210,15 +215,15 @@ public final class NativeImageHeap implements ImageHeap {
 
     @Override
     public Iterable<ObjectInfo> getObjects() {
-        return objects.getValues();
+        return requireObjectInfos().getValues();
     }
 
     public Stream<ObjectInfo> streamObjects() {
-        return StreamSupport.stream(objects.getValues().spliterator(), false);
+        return StreamSupport.stream(requireObjectInfos().getValues().spliterator(), false);
     }
 
     public int getObjectCount() {
-        return objects.size();
+        return objects != null ? objects.size() : objectCountAfterRelease;
     }
 
     private Stream<ObjectInfo> getCurrentLayerObjects() {
@@ -226,25 +231,33 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public int getCurrentLayerObjectCount() {
-        return (int) getCurrentLayerObjects().count();
+        /* The object map is only released for non-layered images, where every object is local. */
+        return objects != null ? (int) getCurrentLayerObjects().count() : objectCountAfterRelease;
     }
 
     public ObjectInfo getObjectInfo(Object obj) {
         JavaConstant constant = hUniverse.getSnippetReflection().forObject(obj);
         VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
-        return objects.get(CompressibleConstant.uncompress(constant));
+        return requireObjectInfos().get(CompressibleConstant.uncompress(constant));
     }
 
     public ObjectInfo getConstantInfo(JavaConstant constant) {
         VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
-        return objects.get(CompressibleConstant.uncompress(constant));
+        return requireObjectInfos().get(CompressibleConstant.uncompress(constant));
+    }
+
+    private EconomicMap<JavaConstant, ObjectInfo> requireObjectInfos() {
+        VMError.guarantee(objects != null, "Image heap object metadata was released after image writing preparation.");
+        return objects;
     }
 
     protected HybridLayout getHybridLayout(HostedClass clazz) {
+        VMError.guarantee(hybridLayouts != null, "Hybrid layouts were released after heap writing.");
         return hybridLayouts.get(clazz);
     }
 
     protected boolean isBlacklisted(Object obj) {
+        VMError.guarantee(blacklist != null, "Heap blacklist was released after heap writing.");
         return blacklist.contains(obj);
     }
 
@@ -332,6 +345,82 @@ public final class NativeImageHeap implements ImageHeap {
         addObjectsPhase.disallow();
         assert addObjectWorklist.isEmpty() : "Heap model finalized with pending objects: " + addObjectWorklist.size();
         assert addLateToObjectReachabilityInfoWorklist.isEmpty() : "Heap model finalized with pending late constants: " + addLateToObjectReachabilityInfoWorklist.size();
+        /*
+         * Object discovery is closed here. The remaining heap-layout and heap-write phases use the
+         * ObjectInfo entries in objects; discovery worklists and construction-only caches are no
+         * longer consulted.
+         */
+        clearAddObjectsState();
+    }
+
+    private void clearAddObjectsState() {
+        /* Discovery is closed: unlike reusable collections, these fields have no later readers. */
+        addObjectWorklist = null;
+        addLateToObjectReachabilityInfoWorklist = null;
+        internedStrings = null;
+        knownImmutableObjects = null;
+    }
+
+    void clearWriteHeapState() {
+        /*
+         * The writer still consults the blacklist assertion and hybrid layouts while emitting object
+         * contents. Once the heap contents have been written, this state is no longer needed.
+         * Diagnostics may retain inclusion reasons without retaining these write-only caches.
+         */
+        VMError.guarantee(blacklist != null && hybridLayouts != null, "Heap-write state was already released.");
+        clearObjectInclusionReasonsAfterHeapWrite();
+        blacklist = null;
+        hybridLayouts = null;
+    }
+
+    /**
+     * Clears diagnostic object-inclusion chains after the heap writer has emitted all object and
+     * static-field contents. Image layers, heap diagnostics and native-debug logging continue to
+     * consume these chains.
+     */
+    private void clearObjectInclusionReasonsAfterHeapWrite() {
+        /*
+         * NativeImageDebugInfoProvider logs provenance in beforeImageWrite. Conservatively keep
+         * reasons for native-debug logging, without extending their lifetime for ordinary -g builds.
+         */
+        if (ImageLayerBuildingSupport.buildingImageLayer() ||
+                        NativeImageOptions.PrintHeapHistogram.getValue() ||
+                        ImageHeapConnectedComponentsFeature.Options.PrintImageHeapConnectedComponents.getValue() ||
+                        (SubstrateOptions.useDebugInfoGeneration() && DebugOptions.Log.getValue(HostedOptionValues.singleton().get()) != null)) {
+            return;
+        }
+        DeadlockWatchdog watchdog = DeadlockWatchdog.singleton();
+        int visited = 0;
+        for (ObjectInfo info : requireObjectInfos().getValues()) {
+            if ((visited++ & 1023) == 0) {
+                watchdog.recordActivity();
+            }
+            info.clearMainReason();
+        }
+    }
+
+    /**
+     * Releases the complete image-heap model once all consumers that inspect heap contents have
+     * finished. The object-file writer and linker only consume the already-written object-file
+     * sections, so they do not need {@link ObjectInfo} or its construction metadata.
+     * <p>
+     * Image layers persist heap metadata after image creation, and connected-components reporting
+     * traverses the model in {@code afterImageWrite}; both therefore retain the model.
+     * Object counts and scalar partition metadata remain available after release. Once released,
+     * object lookups, iteration, and a second release are invalid.
+     */
+    void releaseAfterImageWritePreparation() {
+        if (ImageLayerBuildingSupport.buildingImageLayer() || ImageHeapConnectedComponentsFeature.Options.PrintImageHeapConnectedComponents.getValue()) {
+            return;
+        }
+
+        VMError.guarantee(objectReachabilityInfo == null, "Heap reachability data is only retained for connected-components reporting.");
+        VMError.guarantee(objects != null, "Image heap object metadata was already released.");
+
+        objectCountAfterRelease = objects.size();
+        reasonSupport.releaseObjectReferences();
+        heapLayouter.releaseObjectReferences();
+        objects = null;
     }
 
     /**
@@ -383,7 +472,7 @@ public final class NativeImageHeap implements ImageHeap {
 
     /** Registers {@code object} as immutable. */
     public void registerAsImmutable(ImageHeapConstant object) {
-        assert addObjectsPhase.isBefore() : "Registering immutable object too late: phase: " + addObjectsPhase.toString();
+        VMError.guarantee(addObjectsPhase.isBefore(), "Registering immutable object after heap construction started: %s", addObjectsPhase);
         AnalysisError.guarantee(object != null && object.isBackedByHostedObject(), "Cannot register a null or unbacked image heap constant as immutable: %s", object);
         registerImageHeapConstantAsImmutable(object);
     }
@@ -398,7 +487,7 @@ public final class NativeImageHeap implements ImageHeap {
      * array elements as immutable.
      */
     public void registerAsImmutable(ImageHeapConstant root, Predicate<ImageHeapConstant> includeObject) {
-        assert addObjectsPhase.isBefore() : "Registering immutable object too late: phase: " + addObjectsPhase.toString();
+        VMError.guarantee(addObjectsPhase.isBefore(), "Registering immutable object after heap construction started: %s", addObjectsPhase);
         AnalysisError.guarantee(root != null && root.isBackedByHostedObject(), "Cannot register a null or unbacked image heap constant as immutable: %s", root);
         Deque<ImageHeapConstant> worklist = new ArrayDeque<>();
         Set<ImageHeapConstant> registeredObjects = new HashSet<>();
@@ -466,7 +555,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public void addConstant(final JavaConstant constant, boolean immutableFromParent, final Object reason) {
-        assert addObjectsPhase.isAllowed() : "Objects cannot be added at phase: " + addObjectsPhase.toString() + " with reason: " + reason;
+        VMError.guarantee(addObjectsPhase.isAllowed(), "Objects can only be added during heap construction. Phase: %s, reason: %s", addObjectsPhase, reason);
         VMError.guarantee(!(constant instanceof ImageHeapRelocatableConstant), "ImageHeapRelocatableConstants cannot be added to the image heap: %s", constant);
 
         if (constant.getJavaKind().isPrimitive() || constant.isNull() || hMetaAccess.isInstanceOf(constant, WordBase.class)) {
@@ -894,7 +983,7 @@ public final class NativeImageHeap implements ImageHeap {
         VMError.guarantee(add instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", add);
         VMError.guarantee(!CompressibleConstant.isCompressed(add), "Constants added to the image heap must be uncompressed.");
         ObjectInfo info = new ObjectInfo((ImageHeapConstant) add, size, clazz, identityHashCode, reason);
-        ObjectInfo previous = objects.putIfAbsent(add, info);
+        ObjectInfo previous = requireObjectInfos().putIfAbsent(add, info);
         VMError.guarantee(previous == null, "Found an existing object info associated to constant %s", add);
         return info;
     }
@@ -1024,6 +1113,8 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public final class ObjectInfo implements ImageHeapObject {
+        private static final Object RELEASED_REASON = new Object();
+
         private final ImageHeapConstant constant;
         private final HostedClass clazz;
         private final long size;
@@ -1035,7 +1126,7 @@ public final class NativeImageHeap implements ImageHeap {
          *
          * @see ImageHeapReasonSupport
          */
-        private final Object reason;
+        private Object reason;
 
         ObjectInfo(ImageHeapConstant constant, long size, HostedClass clazz, int identityHashCode, Object reason) {
             assert !(constant instanceof ImageHeapRelocatableConstant) : constant;
@@ -1129,7 +1220,14 @@ public final class NativeImageHeap implements ImageHeap {
         }
 
         public Object getMainReason() {
+            VMError.guarantee(reason != RELEASED_REASON, "Object inclusion reason was released.");
             return this.reason;
+        }
+
+        private void clearMainReason() {
+            /* A sentinel avoids adding a lifecycle field to every image heap object. */
+            VMError.guarantee(reason != RELEASED_REASON, "Object inclusion reason was already released.");
+            reason = RELEASED_REASON;
         }
 
         @Override
@@ -1274,6 +1372,7 @@ public final class NativeImageHeap implements ImageHeap {
             return ObjectReachabilityGroup.Other.flag;
         }
     }
+
 }
 
 /**
