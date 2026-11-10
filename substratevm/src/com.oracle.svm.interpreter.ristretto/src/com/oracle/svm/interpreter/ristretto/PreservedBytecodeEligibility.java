@@ -217,6 +217,9 @@ final class PreservedBytecodeEligibility {
                         }
                     }
                     ResolvedJavaMethod bootstrapMethod = bootstrap.getMethod();
+                    if (bootstrapMethod == null) {
+                        return "its invokedynamic at BCI " + bci + " has no representable bootstrap method";
+                    }
                     if (!BootstrapMethodConfiguration.singleton().isIndyAllowedAtBuildTime(bootstrapMethod)) {
                         return "its invokedynamic at BCI " + bci + " uses non-allowlisted bootstrap " + bootstrapMethod.format("%H.%n(%p)");
                     }
