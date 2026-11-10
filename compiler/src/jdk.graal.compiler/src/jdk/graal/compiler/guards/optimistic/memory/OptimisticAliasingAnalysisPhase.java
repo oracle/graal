@@ -722,11 +722,18 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
                      * Range overlap above is spatial; proving that writes only touch values
                      * already read also needs the order of accesses across iterations. For
                      * descending accesses, minima describe the last iteration, not the first.
-                     * Reads at 116, 108, 100 and writes at 108, 104, 100 have equal minima, but the
-                     * first write changes the next read. Compare first-iteration addresses to
-                     * preserve that dependence. Unlike heap indices, raw offsets must include
-                     * their potentially different bases before the unsigned comparison can
-                     * establish which access leads.
+                     *
+                     * @formatter:off
+                     * With base 0x100 and i descending from 2 to 0:
+                     *   reads  at base + 8*i: 0x110, 0x108, 0x100
+                     *   writes at base + 4*i: 0x108, 0x104, 0x100
+                     * Both sequences have minimum address 0x100, but the first write
+                     * overwrites the next iteration's read at 0x108.
+                     * @formatter:on
+                     *
+                     * Compare first-iteration addresses to preserve that dependence. Unlike heap
+                     * indices, raw offsets must include their potentially different bases before
+                     * the unsigned comparison can establish which access leads.
                      */
                     readStart = AddNode.create(accessBase, readStart, NodeView.DEFAULT);
                     writeStart = AddNode.create(writeBase, writeStart, NodeView.DEFAULT);
