@@ -70,7 +70,21 @@ public @interface LayeredCompilationBehavior {
 
         /**
          * Method is pinned to the initial layer, meaning it has to be analyzed and compiled in this
-         * specific layer.
+         * specific layer. The method must be concrete, but its declaring class may be abstract.
+         * Registration supplies declared parameter states, including null for reference parameters,
+         * so callers in later layers are not restricted to the inputs of initial-layer callers.
+         *
+         * For an instance method on a concrete class, registration also marks that class as
+         * instantiated. For an instance method on an abstract class, concrete receiver types must
+         * be instantiated or explicitly registered as instantiated during initial-layer analysis.
+         * The abstract holder is never instantiated. A build with no concrete receiver fails;
+         * forcing analysis of the body alone does not establish valid receiver or parameter states.
+         * Static methods do not require receivers.
+         *
+         * Pinning does not instantiate subclasses introduced in later layers or exempt their calls
+         * from layer-completeness checks. Any receiver types and state needed by the compiled method
+         * must be covered by initial-layer analysis. Use ordinary type/method inclusion instead when
+         * compilation may wait for a receiver in a later layer.
          */
         PINNED_TO_INITIAL_LAYER,
     }

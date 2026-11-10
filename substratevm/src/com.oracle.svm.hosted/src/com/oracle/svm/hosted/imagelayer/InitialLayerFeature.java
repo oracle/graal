@@ -43,6 +43,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
 import com.oracle.svm.core.c.enums.CEnumArrayLookup;
 import com.oracle.svm.core.c.enums.CEnumMapLookup;
+import com.oracle.svm.core.c.enums.CEnumNoLookup;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
@@ -163,6 +164,7 @@ public class InitialLayerFeature implements InternalFeature {
         metaAccess.lookupJavaType(RuntimeCodeInfoMemory.SizeCounters.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(CEnumArrayLookup.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(CEnumMapLookup.class).registerAsInstantiated("Core type");
+        metaAccess.lookupJavaType(CEnumNoLookup.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(PerfVariability.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(PerfUnit.class).registerAsInstantiated("Core type");
 
