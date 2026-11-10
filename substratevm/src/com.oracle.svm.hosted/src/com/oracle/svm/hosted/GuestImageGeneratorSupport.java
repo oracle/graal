@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.GuestImageSingletonSupport;
 import com.oracle.svm.core.SubstrateTarget;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.ArgsSupport;
@@ -53,6 +54,7 @@ import com.oracle.svm.util.JVMCIReflectionUtil;
 
 import jdk.graal.compiler.vmaccess.InvocationException;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -291,7 +293,7 @@ final class GuestImageGeneratorSupport {
                             JavaConstant.forInt(layout.getHubOffset()),
                             JavaConstant.forInt(layout.getFirstFieldOffset()),
                             JavaConstant.forInt(layout.getArrayLengthOffset()),
-                            JavaConstant.forInt(layout.getArrayBaseOffset(Byte.BYTES)),
+                            JavaConstant.forInt(ObjectLayoutCompilerSupport.getArrayBaseOffset(layout, JavaKind.Byte)),
                             JavaConstant.forInt(headerIdentityHashOffset),
                             guestIdentityHashMode,
                             JavaConstant.forInt(layout.getIdentityHashCodeNumBits()),
