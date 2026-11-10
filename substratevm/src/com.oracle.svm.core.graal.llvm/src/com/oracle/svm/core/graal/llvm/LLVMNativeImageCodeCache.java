@@ -304,7 +304,15 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     @Override
-    public void patchMethods(DebugContext debug, RelocatableBuffer codeBuffer, ObjectFile objectFile) {
+    public void patchAndWriteCode(DebugContext debug, RelocatableBuffer buffer, ObjectFile objectFile, boolean releaseCodeEmissionState) {
+        patchMethods(objectFile);
+        /* Code is written at link stage; only the relocation metadata is emitted here. */
+        if (releaseCodeEmissionState) {
+            clearCodeEmissionState(getOrderedCompilations());
+        }
+    }
+
+    private void patchMethods(ObjectFile objectFile) {
         Element rodataSection = objectFile.elementForName(SectionName.RODATA.getFormatDependentName(objectFile.getFormat()));
         Element rwdataSection = objectFile.elementForName(SectionName.DATA.getFormatDependentName(objectFile.getFormat()));
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
@@ -377,11 +385,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                 return 0;
             }
         };
-    }
-
-    @Override
-    public void writeCode(RelocatableBuffer buffer) {
-        /* Do nothing, code is written at link stage */
     }
 
     @Override

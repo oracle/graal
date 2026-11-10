@@ -264,8 +264,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     curPos = addOffset(curPos, trampolineSupport.getTrampolineSize());
                 }
                 for (Infopoint infopoint : compilation.getInfopointsForCodeEmission()) {
-                    if (infopoint instanceof Call && ((Call) infopoint).direct) {
-                        Call call = (Call) infopoint;
+                    if (infopoint instanceof Call call && call.direct) {
                         HostedMethod callee = (HostedMethod) call.target;
 
                         if (trampolines.containsKey(callee)) {
@@ -318,11 +317,6 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
      *
      * @param codeBuffer code buffer to which relocations can be added
      */
-    @Override
-    public void patchMethods(DebugContext debug, RelocatableBuffer codeBuffer, ObjectFile objectFile) {
-        patchMethods(debug, codeBuffer, getOrderedCompilations());
-    }
-
     protected void patchMethods(DebugContext debug, RelocatableBuffer codeBuffer, List<Pair<HostedMethod, CompilationResult>> methodCompilations) {
         /*
          * Patch instructions which reference code or data by address.
@@ -353,12 +347,16 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             watchdog.recordActivity();
             HostedMethod method = entry.getLeft();
             CompilationResult compilation = entry.getRight();
-            Map<Integer, HostedPatcher> patches = mapPatchingLocations(compilation);
-            processImageHeapConstantsReferences(compilation, patches);
-            processDirectCallSites(method, compilation, patches);
-            processDataReferences(codeBuffer, method, compilation, patches);
-            verifyAllPatchesApplied(debug, method, compilation, patches);
+            patchMethod(debug, codeBuffer, method, compilation);
         }
+    }
+
+    private void patchMethod(DebugContext debug, RelocatableBuffer relocs, HostedMethod method, CompilationResult compilation) {
+        Map<Integer, HostedPatcher> patches = mapPatchingLocations(compilation);
+        processImageHeapConstantsReferences(compilation, patches);
+        processDirectCallSites(method, compilation, patches);
+        processDataReferences(relocs, method, compilation, patches);
+        verifyAllPatchesApplied(debug, method, compilation, patches);
     }
 
     /**
@@ -384,7 +382,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         Map<HostedMethod, Integer> trampolineOffsetMap = trampolineMap.get(method);
         int compStart = method.getCodeAddressOffset();
         for (Infopoint infopoint : compilation.getInfopointsForCodeEmission()) {
-            if (infopoint instanceof Call call && ((Call) infopoint).direct) {
+            if (infopoint instanceof Call call && call.direct) {
                 // NOTE that for the moment, we don't make static calls to external
                 // (e.g. native) functions. So every static call site has a target
                 // which is also in the code cache (a.k.a. a section-local call).
@@ -448,52 +446,61 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     @Override
-    public void writeCode(RelocatableBuffer buffer) {
-        writeCode(buffer, getOrderedCompilations());
+    public void patchAndWriteCode(DebugContext debug, RelocatableBuffer buffer, ObjectFile objectFile, boolean releaseCodeEmissionState) {
+        patchAndWriteCode(debug, buffer, getOrderedCompilations(), releaseCodeEmissionState);
     }
 
-    protected void writeCode(RelocatableBuffer buffer, List<Pair<HostedMethod, CompilationResult>> methodCompilations) {
+    /**
+     * Patches and writes one compilation at a time. If no late consumer needs its emission state,
+     * release it before relocation data for all remaining compilations has accumulated.
+     */
+    protected void patchAndWriteCode(DebugContext debug, RelocatableBuffer buffer, List<Pair<HostedMethod, CompilationResult>> methodCompilations, boolean releaseCodeEmissionState) {
         ByteBuffer bufferBytes = buffer.getByteBuffer();
         int startPos = bufferBytes.position();
-        /*
-         * Compilation start offsets are relative to the beginning of the code cache (since the heap
-         * size is not fixed at the time they are computed). This is just startPos, i.e. we start
-         * emitting the code wherever the buffer is positioned when we're called.
-         */
         for (Pair<HostedMethod, CompilationResult> compilationPair : methodCompilations) {
+            DeadlockWatchdog.singleton().recordActivity();
             HostedMethod method = compilationPair.getLeft();
             CompilationResult compilation = compilationPair.getRight();
-
-            bufferBytes.position(startPos + method.getCodeAddressOffset());
-            bufferBytes.put(compilation.getTargetCode(), 0, compilation.getTargetCodeSize());
-
-            int curPos = bufferBytes.position();
-            List<Pair<HostedMethod, Integer>> trampolines = orderedTrampolineMap.get(method);
-            if (trampolines != null) {
-                // need to write the trampoline info here
-                HostedDirectCallTrampolineSupport trampolineSupport = HostedDirectCallTrampolineSupport.singleton();
-                int trampolineSize = trampolineSupport.getTrampolineSize();
-                for (Pair<HostedMethod, Integer> trampoline : trampolines) {
-                    // align to start of trampoline
-                    for (int i = curPos; i < NumUtil.roundUp(curPos, trampolineSupport.getTrampolineAlignment()); i++) {
-                        bufferBytes.put(CODE_FILLER_BYTE);
-                    }
-                    curPos = bufferBytes.position();
-                    assert curPos == trampoline.getRight();
-
-                    byte[] trampolineCode = trampolineSupport.createTrampoline(target, trampoline.getLeft(), curPos);
-                    assert trampolineCode.length == trampolineSize;
-
-                    bufferBytes.put(trampolineCode, 0, trampolineSize);
-                    curPos += trampolineSize;
-                }
-            }
-
-            for (int i = curPos; i < NumUtil.roundUp(curPos, SubstrateOptions.buildTimeCodeAlignment()); i++) {
-                bufferBytes.put(CODE_FILLER_BYTE);
+            patchMethod(debug, buffer, method, compilation);
+            writeCompilationCode(bufferBytes, startPos, method, compilation);
+            if (releaseCodeEmissionState) {
+                /* Final bytes and relocations now reside in the buffer; no late readers remain. */
+                compilation.clearCodeEmissionState();
             }
         }
         bufferBytes.position(startPos);
+    }
+
+    private void writeCompilationCode(ByteBuffer bufferBytes, int startPos, HostedMethod method, CompilationResult compilation) {
+        /* Method offsets are relative to the code cache, not the start of the output buffer. */
+        bufferBytes.position(startPos + method.getCodeAddressOffset());
+        bufferBytes.put(compilation.getTargetCode(), 0, compilation.getTargetCodeSize());
+
+        int curPos = bufferBytes.position();
+        List<Pair<HostedMethod, Integer>> trampolines = orderedTrampolineMap.get(method);
+        if (trampolines != null) {
+            // need to write the trampoline info here
+            HostedDirectCallTrampolineSupport trampolineSupport = HostedDirectCallTrampolineSupport.singleton();
+            int trampolineSize = trampolineSupport.getTrampolineSize();
+            for (Pair<HostedMethod, Integer> trampoline : trampolines) {
+                // align to start of trampoline
+                for (int i = curPos; i < NumUtil.roundUp(curPos, trampolineSupport.getTrampolineAlignment()); i++) {
+                    bufferBytes.put(CODE_FILLER_BYTE);
+                }
+                curPos = bufferBytes.position();
+                assert curPos == trampoline.getRight();
+
+                byte[] trampolineCode = trampolineSupport.createTrampoline(target, trampoline.getLeft(), curPos);
+                assert trampolineCode.length == trampolineSize;
+
+                bufferBytes.put(trampolineCode, 0, trampolineSize);
+                curPos += trampolineSize;
+            }
+        }
+
+        for (int i = curPos; i < NumUtil.roundUp(curPos, SubstrateOptions.buildTimeCodeAlignment()); i++) {
+            bufferBytes.put(CODE_FILLER_BYTE);
+        }
     }
 
     @Override

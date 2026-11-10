@@ -43,6 +43,7 @@ import jdk.graal.compiler.code.CompilationResult.JumpTable;
 import jdk.graal.compiler.code.HexCodeFile;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.site.Call;
+import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.ImplicitExceptionDispatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
@@ -88,7 +89,7 @@ public class CompilationResultTest {
     public void debugCleanupPreservesPreviouslyReturnedViews() {
         CompilationResult result = new CompilationResult("retained-debug-info");
         DebugInfo debugInfo = new DebugInfo(null);
-        result.recordCall(0, 5, null, debugInfo, true);
+        Call call = result.recordCall(0, 5, null, debugInfo, true);
         result.recordImplicitException(8, 16, debugInfo);
         List<Infopoint> retained = result.getInfopoints();
         List<Infopoint> original = List.copyOf(retained);
@@ -108,6 +109,9 @@ public class CompilationResultTest {
         }
         result.clearInfopointDebugInfo();
         assertSame(stripped.getFirst(), result.getInfopointsForCodeEmission().getFirst());
+        result.clearCodeEmissionState();
+        assertSame(call, retained.getFirst());
+        assertSame(debugInfo, retained.getFirst().debugInfo);
     }
 
     @Test
@@ -308,6 +312,147 @@ public class CompilationResultTest {
         assertEquals(2, result.getSourceMappings().getFirst().getEndOffset());
         assertEquals(1, oldMappings.size());
         assertEquals(1, oldMappings.getFirst().getEndOffset());
+    }
+
+    @Test
+    public void testClearCodeEmissionStateAfterClose() {
+        CompilationResult result = new CompilationResult("testresult");
+        result.setTargetCode(new byte[16], 8);
+        result.recordInfopoint(0, null, InfopointReason.SAFEPOINT);
+        result.recordExceptionHandler(1, 2);
+        result.recordMark(3, new TestMarkId());
+        result.addAnnotation(new CodeComment(4, "test"));
+        result.recordDataPatch(5, new DataSectionReference());
+        Call call = result.recordCall(6, 1, null, null, false);
+        result.recordCallInvalidForDeoptimization(call);
+        result.recordSourceMapping(0, 8, null);
+        var mapping = result.getSourceMappings().getFirst();
+        assertEquals(1, result.getDataPatches().size());
+        var infopoints = result.getInfopoints();
+        var patches = result.getDataPatches();
+        var handlers = result.getExceptionHandlers();
+        var marks = result.getMarks();
+        var annotations = result.getCodeAnnotations();
+        result.close(null);
+
+        result.clearCodeEmissionState();
+
+        assertEquals(2, infopoints.size());
+        assertEquals(1, patches.size());
+        assertEquals(1, handlers.size());
+        assertEquals(1, marks.size());
+        assertEquals(1, annotations.size());
+        assertEquals(8, result.getTargetCodeSize());
+        assertThrows(IllegalStateException.class, result::getTargetCode);
+        assertThrows(IllegalStateException.class, result::getInfopoints);
+        assertThrows(IllegalStateException.class, result::getInfopointsForCodeEmission);
+        assertThrows(IllegalStateException.class, result::getDataPatches);
+        assertThrows(IllegalStateException.class, result::getExceptionHandlers);
+        assertThrows(IllegalStateException.class, result::getMarks);
+        assertThrows(IllegalStateException.class, result::getCodeAnnotations);
+        assertThrows(IllegalStateException.class, result::getCodeSignature);
+        assertThrows(IllegalStateException.class, () -> result.isValidCallDeoptimizationState(call));
+        assertThrows(IllegalStateException.class, result::clearInfopoints);
+        assertThrows(IllegalStateException.class, result::clearInfopointDebugInfo);
+        assertThrows(IllegalStateException.class, result::clearCodeEmissionState);
+        assertThrows(IllegalStateException.class, result::resetForEmittingCode);
+        // Source mappings have an independent final consumer, such as perf profiling.
+        assertSame(mapping, result.getSourceMappings().getFirst());
+        result.clearSourceMappings();
+        assertThrows(IllegalStateException.class, result::getSourceMappings);
+    }
+
+    @Test
+    public void testMutationsRejectReleasedCodeEmissionState() {
+        CompilationResult result = new CompilationResult("released-open-result");
+        var start = result.getSitesWatermark(0, 0);
+        Call call = result.recordCall(0, 1, null, null, false);
+        var end = result.getSitesWatermark(0, 0);
+        result.clearCodeEmissionState();
+
+        assertThrows(IllegalStateException.class, () -> result.setTargetCode(new byte[8], 8));
+        assertThrows(IllegalStateException.class, () -> result.addAnnotation(new CodeComment(0, "late annotation")));
+        assertThrows(IllegalStateException.class, () -> result.recordMark(0, new TestMarkId()));
+        assertThrows(IllegalStateException.class, () -> result.recordDataPatch(0, new DataSectionReference()));
+        assertThrows(IllegalStateException.class, () -> result.recordDataPatchWithNote(0, new DataSectionReference(), "late patch"));
+        assertThrows(IllegalStateException.class, () -> result.recordExceptionHandler(0, 1));
+        assertThrows(IllegalStateException.class, () -> result.recordCall(0, 1, null, null, false));
+        assertThrows(IllegalStateException.class, () -> result.recordCallInvalidForDeoptimization(call));
+        assertThrows(IllegalStateException.class, () -> result.recordInfopoint(0, null, InfopointReason.SAFEPOINT));
+        assertThrows(IllegalStateException.class, () -> result.recordImplicitException(0, 1, null));
+        assertThrows(IllegalStateException.class, () -> result.getSitesWatermark(0, 0));
+        assertThrows(IllegalStateException.class, () -> result.duplicateSites(0, start, 1, end, 1));
+    }
+
+    @Test
+    public void testResetRestoresCodeEmissionState() {
+        CompilationResult result = new CompilationResult("testresult");
+        Call oldCall = result.recordCall(0, 1, null, null, false);
+        result.recordCallInvalidForDeoptimization(oldCall);
+        result.recordDataPatch(1, new DataSectionReference());
+        result.recordSourceMapping(0, 8, null);
+        result.setTargetCode(new byte[8], 8);
+        result.clearCodeEmissionState();
+        result.clearSourceMappings();
+
+        // Open results can be reset for another emission attempt after releasing either payload.
+        result.resetForEmittingCode();
+        assertEquals(0, result.getTargetCodeSize());
+        assertTrue(result.getInfopoints().isEmpty());
+        assertTrue(result.getDataPatches().isEmpty());
+        assertTrue(result.getExceptionHandlers().isEmpty());
+        assertTrue(result.getMarks().isEmpty());
+        assertTrue(result.getCodeAnnotations().isEmpty());
+        assertTrue(result.getSourceMappings().isEmpty());
+        assertTrue(result.isValidCallDeoptimizationState(oldCall));
+
+        byte[] code = new byte[16];
+        result.setTargetCode(code, 12);
+        result.recordCall(0, 1, null, null, false);
+        result.recordDataPatch(1, new DataSectionReference());
+        result.recordExceptionHandler(2, 3);
+        result.recordMark(4, new TestMarkId());
+        result.addAnnotation(new CodeComment(5, "second emission"));
+        result.recordSourceMapping(0, 12, null);
+        result.close(null);
+        assertSame(code, result.getTargetCode());
+        assertEquals(12, result.getTargetCodeSize());
+        assertEquals(1, result.getInfopoints().size());
+        assertEquals(1, result.getDataPatches().size());
+        assertEquals(1, result.getExceptionHandlers().size());
+        assertEquals(1, result.getMarks().size());
+        assertEquals(1, result.getCodeAnnotations().size());
+        assertEquals(1, result.getSourceMappings().size());
+        result.clearCodeEmissionState();
+        assertThrows(IllegalStateException.class, result::getTargetCode);
+    }
+
+    @Test
+    public void testResetPreservesRetainedCollections() {
+        CompilationResult result = new CompilationResult("testresult");
+        result.recordInfopoint(0, null, InfopointReason.SAFEPOINT);
+        result.recordDataPatch(1, new DataSectionReference());
+        result.recordExceptionHandler(2, 3);
+        result.recordMark(4, new TestMarkId());
+        result.addAnnotation(new CodeComment(5, "first emission"));
+        result.recordSourceMapping(0, 8, null);
+        var views = List.of(result.getInfopoints(), result.getDataPatches(), result.getExceptionHandlers(),
+                        result.getMarks(), result.getCodeAnnotations(), result.getSourceMappings());
+        var originals = views.stream().map(List::getFirst).toList();
+
+        result.resetForEmittingCode();
+        result.recordInfopoint(8, null, InfopointReason.SAFEPOINT);
+        result.recordDataPatch(9, new DataSectionReference());
+        result.recordExceptionHandler(10, 11);
+        result.recordMark(12, new TestMarkId());
+        result.addAnnotation(new CodeComment(13, "second emission"));
+        result.recordSourceMapping(0, 16, null);
+
+        for (int i = 0; i < views.size(); i++) {
+            assertEquals(1, views.get(i).size());
+            assertSame(originals.get(i), views.get(i).getFirst());
+        }
+        assertEquals(16, result.getSourceMappings().getFirst().getEndOffset());
     }
 
     private static final class TestMarkId implements CompilationResult.MarkId {

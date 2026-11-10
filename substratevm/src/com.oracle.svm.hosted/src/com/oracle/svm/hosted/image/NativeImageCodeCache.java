@@ -170,7 +170,7 @@ public abstract class NativeImageCodeCache {
 
     protected final Platform targetPlatform;
 
-    protected final DataSection dataSection;
+    protected DataSection dataSection;
 
     private final Map<Constant, Object> constantReasons = new HashMap<>();
 
@@ -183,6 +183,8 @@ public abstract class NativeImageCodeCache {
         compilationsMap = null;
         orderedCompilations = null;
         deterministicCompilationUnitOrderForConstantLayout = null;
+        /* Constants and their relocations are already in the object-file sections. */
+        dataSection = null;
     }
 
     @SuppressWarnings("this-escape")//
@@ -858,14 +860,23 @@ public abstract class NativeImageCodeCache {
     }
 
     /**
-     * Apply patches to compiled code, e.g., for image-heap accesses, direct calls, or references to
-     * the data section. This can add relocations to the provided code buffer.
-     *
-     * @param codeBuffer code buffer to which relocations can be added
+     * Patches and writes code, optionally releasing code-emission state. Callers may request release
+     * only when no later consumers such as debug-info generation or platform unwind metadata remain.
+     * Backends may release each compilation immediately after writing it, while relocations are
+     * accumulating, or retain their own patching and writing phases internally.
      */
-    public abstract void patchMethods(DebugContext debug, RelocatableBuffer codeBuffer, ObjectFile objectFile);
+    public abstract void patchAndWriteCode(DebugContext debug, RelocatableBuffer buffer, ObjectFile objectFile, boolean releaseCodeEmissionState);
 
-    public abstract void writeCode(RelocatableBuffer buffer);
+    /**
+     * Clears per-compilation state after all target code bytes and relocation records have been
+     * emitted. Callers must first exclude later consumers such as debug-info generation and
+     * platform unwind metadata.
+     */
+    protected static void clearCodeEmissionState(List<Pair<HostedMethod, CompilationResult>> compilations) {
+        for (Pair<HostedMethod, CompilationResult> pair : compilations) {
+            pair.getRight().clearCodeEmissionState();
+        }
+    }
 
     public void writeConstants(NativeImageHeapWriter writer, RelocatableBuffer buffer) {
         dataSection.buildDataSection(buffer.getByteBuffer(), (position, constant) -> {
