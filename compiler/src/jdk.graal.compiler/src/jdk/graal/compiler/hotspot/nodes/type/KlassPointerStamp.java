@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,8 +70,10 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
     @Override
     public void accept(Visitor v) {
         super.accept(v);
-        v.visitLong(encoding.getBase());
-        v.visitInt(encoding.getShift());
+        if (isCompressed()) {
+            v.visitLong(encoding.getBase());
+            v.visitInt(encoding.getShift());
+        }
     }
 
     @Override
@@ -93,10 +95,10 @@ public final class KlassPointerStamp extends MetaspacePointerStamp {
 
     @Override
     public boolean isCompatible(Constant constant) {
-        if (constant instanceof HotSpotMetaspaceConstant) {
-            return ((HotSpotMetaspaceConstant) constant).asResolvedJavaType() != null;
+        if (constant instanceof HotSpotMetaspaceConstant metaspaceConstant) {
+            return metaspaceConstant.asResolvedJavaType() != null && metaspaceConstant.isCompressed() == isCompressed();
         } else {
-            return super.isCompatible(constant);
+            return nullConstant().equals(constant);
         }
     }
 
