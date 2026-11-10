@@ -60,4 +60,9 @@ public class ArrayMetadataTracingTest {
     public void testNewInstanceNegativeLengthPrecedesInvalidComponentType() {
         Assert.assertThrows(NegativeArraySizeException.class, () -> Array.newInstance(void.class, -1));
     }
+
+    @Test
+    public void testMultiArrayNewInstanceWithVoidComponentFailsAtRuntime() {
+        Assert.assertThrows(IllegalArgumentException.class, () -> Array.newInstance(void.class, new int[]{1}));
+    }
 }
