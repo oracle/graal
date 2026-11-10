@@ -32,9 +32,12 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.lang.reflect.RecordComponent;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Collection;
@@ -136,7 +139,10 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaMethod java_lang_Class_forName = lookupMethod(java_lang_Class, "forName", String.class, boolean.class, ClassLoader.class);
     public final ResolvedJavaMethod java_lang_Class_getAnnotation = lookupMethod(java_lang_Class, "getAnnotation", Class.class);
     public final ResolvedJavaMethod java_lang_Class_getClassLoader = lookupMethod(java_lang_Class, "getClassLoader");
+    public final ResolvedJavaMethod java_lang_Class_getGenericSignature0 = lookupMethod(java_lang_Class, "getGenericSignature0");
     public final ResolvedJavaMethod java_lang_Class_getNestMembers = lookupMethod(java_lang_Class, "getNestMembers");
+    public final ResolvedJavaMethod java_lang_Class_getRecordComponents = lookupMethod(java_lang_Class, "getRecordComponents");
+    public final ResolvedJavaMethod java_lang_Class_getSigners = lookupMethod(java_lang_Class, "getSigners");
     public final ResolvedJavaMethod java_lang_Class_getModifiers = lookupMethod(java_lang_Class, "getModifiers");
     public final ResolvedJavaMethod java_lang_Class_getResourceAsStream = lookupMethod(java_lang_Class, "getResourceAsStream", String.class);
 
@@ -208,10 +214,21 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
     public final ResolvedJavaMethod java_lang_reflect_Array_newArray = lookupMethod(java_lang_reflect_Array, "newArray", Class.class, int.class);
 
     public final ResolvedJavaType java_lang_reflect_Executable = lookupType(Executable.class);
+    public final ResolvedJavaMethod java_lang_reflect_Executable_getExceptionTypes = lookupMethod(java_lang_reflect_Executable, "getExceptionTypes");
 
     public final ResolvedJavaType java_lang_reflect_Field = lookupType(Field.class);
+    public final ResolvedJavaMethod java_lang_reflect_Field_getGenericSignature = lookupMethod(java_lang_reflect_Field, "getGenericSignature");
     public final ResolvedJavaMethod java_lang_reflect_Field_setAccessible = lookupMethod(java_lang_reflect_Field, "setAccessible", boolean.class);
     public final ResolvedJavaMethod java_lang_reflect_Field_set = lookupMethod(java_lang_reflect_Field, "set", Object.class, Object.class);
+
+    public final ResolvedJavaType java_lang_reflect_Method = lookupType(Method.class);
+    public final ResolvedJavaMethod java_lang_reflect_Method_getGenericSignature = lookupMethod(java_lang_reflect_Method, "getGenericSignature");
+
+    public final ResolvedJavaType java_lang_reflect_Constructor = lookupType(Constructor.class);
+    public final ResolvedJavaMethod java_lang_reflect_Constructor_getSignature = lookupMethod(java_lang_reflect_Constructor, "getSignature");
+
+    public final ResolvedJavaType java_lang_reflect_RecordComponent = lookupType(RecordComponent.class);
+    public final ResolvedJavaMethod java_lang_reflect_RecordComponent_getGenericSignature = lookupMethod(java_lang_reflect_RecordComponent, "getGenericSignature");
 
     public final ResolvedJavaType java_lang_System = lookupType(System.class);
     public final ResolvedJavaMethod java_lang_System_arraycopy = lookupMethod(java_lang_System, "arraycopy", Object.class, int.class, Object.class, int.class, int.class);
