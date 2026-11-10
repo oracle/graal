@@ -30,13 +30,16 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
 /**
- * This substitution is necessary in order to make native images deterministic. We substitute Java
- * safety feature, which based on SALT32L value randomize iteration through a map and set data
- * structures to make sure no implementation relies on iteration order.
+ * Native Image uses an image-specific deterministic salt for iteration of the JDK immutable maps and
+ * sets, making image output reproducible. The JDK uses a similar approach when dumping a CDS archive:
+ * {@code ImmutableCollections} obtains a seed from {@code CDS.getRandomSeedForDumping()}, derived
+ * from the JDK build and version, so the same JDK build produces the same archive. Outside CDS
+ * dumping, the JDK falls back to {@code System.nanoTime()}. Native Image instead derives its salt
+ * from the image build ID in {@code ImmutableCollectionsSupport.getSaltValue()}.
  *
- * Depending on salt value constant folding will pick a different branch and eliminate the other so
- * the code can look slightly different. Since anyway the SALT32L value is the same for one native
- * image this will just help to make native images fully deterministic.
+ * The salt affects iteration order and can affect constant folding. A collection initialized at
+ * build time may therefore be traversed with the builder JVM's salt, while iteration at image run
+ * time uses the image-specific salt; any order captured during initialization can differ.
  */
 @TargetClass(className = "java.util.ImmutableCollections")
 public final class Target_java_util_ImmutableCollections {
