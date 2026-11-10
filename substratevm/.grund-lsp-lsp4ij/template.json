@@ -1,0 +1,58 @@
+{
+  "env": {
+    "includeSystemEnvironmentVariables": true,
+    "variables": {
+      "GRUND_LSP_LSP4IJ_EXECUTABLE": "grund-lsp",
+      "GRUND_LSP_LSP4IJ_QUOTE": "\""
+    }
+  },
+  "fileTypeMappings": [
+    {
+      "fileType": {
+        "patterns": [
+          "*.md"
+        ]
+      },
+      "languageId": "markdown"
+    },
+    {
+      "fileType": {
+        "patterns": [
+          "*.java"
+        ]
+      },
+      "languageId": "java"
+    },
+    {
+      "fileType": {
+        "patterns": [
+          "*.sh"
+        ]
+      },
+      "languageId": "shellscript"
+    },
+    {
+      "fileType": {
+        "patterns": [
+          "*.bash"
+        ]
+      },
+      "languageId": "shellscript"
+    },
+    {
+      "fileType": {
+        "patterns": [
+          "*.zsh"
+        ]
+      },
+      "languageId": "shellscript"
+    }
+  ],
+  "id": "grund-lsp",
+  "name": "grund LSP",
+  "programArgs": {
+    "default": "sh -c \"set -f; IFS=; exec $GRUND_LSP_LSP4IJ_EXECUTABLE\"",
+    "windows": "cmd /D /V:OFF /S /C \"%GRUND_LSP_LSP4IJ_QUOTE%%GRUND_LSP_LSP4IJ_EXECUTABLE%%GRUND_LSP_LSP4IJ_QUOTE%\""
+  },
+  "workingDir": "$PROJECT_DIR$"
+}

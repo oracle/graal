@@ -1,0 +1,9 @@
+{
+  "format": {
+    "onTypeFormatting": {
+      "serverSide": {
+        "enabled": true
+      }
+    }
+  }
+}
