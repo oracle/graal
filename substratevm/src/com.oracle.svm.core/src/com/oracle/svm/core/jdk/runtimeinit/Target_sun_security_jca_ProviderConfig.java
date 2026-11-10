@@ -95,10 +95,11 @@ public final class Target_sun_security_jca_ProviderConfig {
                 if (selectedProvider == null || configuredProvider != null && selectedProvider == configuredProvider) {
                     return provider;
                 }
-                // §FS-002-security-providers.1.5: Reevaluate a cached name after activation.
+                // §FS-002-security-providers.design.1.4: Reevaluate a cached name after activation.
                 provider = null;
             }
-            // §FS-002-security-providers.1.5: Retry budgets belong to the selected descriptor.
+            // §FS-002-security-providers.design.1.4: Retry budgets belong to the selected
+            // descriptor.
             if (selectedProvider != configuredProvider) {
                 selectedProvider = configuredProvider;
                 tries = 0;
@@ -107,7 +108,7 @@ public final class Target_sun_security_jca_ProviderConfig {
             String builtInProviderClassName = BuiltInSecurityProviderLoader.getProviderClassName(provName);
             String providerClassName = configuredProviderClassName != null ? configuredProviderClassName
                             : builtInProviderClassName != null ? builtInProviderClassName : provName;
-            // §FS-002-security-providers.6.1
+            // §FS-002-security-providers.design.6.1
             // Omit unregistered providers from the run-time list.
             if (!SecurityProviderRuntimeAccess.isJdkAcquirable(providerClassName)) {
                 return null;
@@ -135,7 +136,7 @@ public final class Target_sun_security_jca_ProviderConfig {
                     isLoading = true;
                     tries++;
                     if (configuredProviderClassName != null) {
-                        /* §FS-002-security-providers.1.2, §FS-002-security-providers.6.1:
+                        /* §FS-002.design.1.2, §FS-002.design.6.1:
                          * ordered retained descriptors, with the JDK ServiceLoader recursion and
                          * retry state machine. */
                         selectedProvider = configuredProvider;

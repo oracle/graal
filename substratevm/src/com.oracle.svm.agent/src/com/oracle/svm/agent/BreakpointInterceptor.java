@@ -751,7 +751,7 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    /** §FS-002-security-providers.5.1: Tag only an insertion that reached list publication. */
+    /** §FS-002-security-providers.design.5.1: Tag only an insertion that reached list publication. */
     private static boolean publishApplicationSuppliedSecurityProvider(@SuppressWarnings("unused") JNIEnvironment jni, JNIObjectHandle thread,
                     @SuppressWarnings("unused") Breakpoint bp,
                     InterceptedState state) {
@@ -787,7 +787,7 @@ final class BreakpointInterceptor {
     }
 
     /**
-     * §FS-002-security-providers.5.1: Trace the provider and service selected for instantiation.
+     * §FS-002-security-providers.design.5.1: Trace the provider and service selected for instantiation.
      */
     private static boolean newSecurityServiceInstance(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         JNIObjectHandle service = getReceiver(thread);
@@ -804,7 +804,7 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    // §FS-002-security-providers.5.1
+    // §FS-002-security-providers.design.5.1
     /** Retain a service implementation cached by {@code Provider.Service}. */
     private static void traceCachedSecurityServiceImplementation(JNIEnvironment jni, JNIObjectHandle thread, JNIObjectHandle service, JNIObjectHandle callerClass,
                     InterceptedState state) {
@@ -841,7 +841,7 @@ final class BreakpointInterceptor {
             if (clearException(jni)) {
                 return;
             }
-            /* §FS-002-security-providers.5.1: A populated constructorCache records the JDK's
+            /* §FS-002-security-providers.design.5.1: A populated constructorCache records the JDK's
              * no-argument fallback, even when this engine declares a parameter type. */
             if (getObjectArgument(thread, 1).equal(nullHandle()) && parameterClass.notEqual(nullHandle())) {
                 JNIObjectHandle constructorCache = jniFunctions().getGetObjectField().invoke(jni, service, handles.javaSecurityProviderServiceConstructorCache);
@@ -940,7 +940,7 @@ final class BreakpointInterceptor {
         clearException(jni);
     }
 
-    // §FS-002-security-providers.5.1
+    // §FS-002-security-providers.design.5.1
     /** Trace a provider that was cached before a Security API lookup. */
     private static boolean getCachedSecurityProvider(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
         if (agent.handles().sunSecurityJcaProviderConfigProvider.isNull()) {
@@ -1033,7 +1033,7 @@ final class BreakpointInterceptor {
                         method.equal(handles.javaSecurityRemoveProvider);
     }
 
-    /** §FS-002-security-providers.5.1: Cross only contiguous Provider.Service helper frames. */
+    /** §FS-002-security-providers.design.5.1: Cross only contiguous Provider.Service helper frames. */
     private static JNIObjectHandle findProviderServiceCaller(JNIEnvironment jni, InterceptedState state) {
         NativeImageAgentJNIHandleSet handles = agent.handles();
         for (int depth = 1; depth < MAX_SECURITY_STACK_DEPTH; depth++) {
@@ -1067,7 +1067,7 @@ final class BreakpointInterceptor {
         return nullHandle();
     }
 
-    /** §FS-002-security-providers.5.1: Attribute ProviderConfig's real reflection to its caller. */
+    /** §FS-002-security-providers.design.5.1: Attribute ProviderConfig's real reflection to its caller. */
     private static JNIObjectHandle reflectionCallerClass(JNIEnvironment jni, InterceptedState state) {
         JNIObjectHandle externalCaller = findExternalProviderConfigCaller(jni, state);
         return externalCaller.notEqual(nullHandle()) ? externalCaller : state.getDirectCallerClass();
@@ -1139,7 +1139,7 @@ final class BreakpointInterceptor {
                         className.startsWith("com.oracle.security.ucrypto.");
     }
 
-    /** §FS-002-security-providers.5.1: Cross all JDK runtime-module intermediaries. */
+    /** §FS-002-security-providers.design.5.1: Cross all JDK runtime-module intermediaries. */
     private static boolean isJdkRuntimeClass(JNIEnvironment jni, JNIObjectHandle clazz, String className) {
         NativeImageAgentJNIHandleSet handles = agent.handles();
         if (handles.javaLangClassGetModule.isNonNull()) {
@@ -1155,7 +1155,7 @@ final class BreakpointInterceptor {
         return isJdkSecurityImplementation(className);
     }
 
-    // §FS-002-security-providers.5.1
+    // §FS-002-security-providers.design.5.1
     /** Retain construction for a successfully acquired JDK provider. */
     private static void traceJdkConstructibleSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider, JNIObjectHandle callerClass, InterceptedState state) {
         JNIObjectHandle providerClass = Support.callObjectMethod(jni, provider, agent.handles().javaLangObjectGetClass);
@@ -1176,7 +1176,7 @@ final class BreakpointInterceptor {
         }
     }
 
-    // §FS-002-security-providers.5.1
+    // §FS-002-security-providers.design.5.1
     /** JDK-managed provider lookup traces provider type access. */
     private static void traceSecurityProvider(JNIEnvironment jni, JNIObjectHandle provider, boolean validResult, JNIObjectHandle callerClass, InterceptedState state) {
         if (!validResult) {
@@ -2423,7 +2423,7 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::upcallStub)
     };
 
-    /** §FS-002-security-providers.5.1: Retain cached acquisition and mutation attribution on every JDK. */
+    /** §FS-002-security-providers.design.5.1: Retain cached acquisition and mutation attribution on every JDK. */
     private static final BreakpointSpecification[] SECURITY_PROVIDER_ACQUISITION_BREAKPOINT_SPECIFICATIONS = {
                     brk("sun/security/jca/Providers", "setProviderList", "(Lsun/security/jca/ProviderList;)V",
                                     BreakpointInterceptor::publishApplicationSuppliedSecurityProvider),

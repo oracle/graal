@@ -110,7 +110,7 @@ final class Target_java_security_Provider_Service {
 
     /**
      * A retained service must resolve its implementation using run-time metadata
-     * (§FS-002-security-providers.4.1). Builder lookups can populate this cache after analysis;
+     * (§FS-002-security-providers.design.4.1). Builder lookups can populate this cache after analysis;
      * retaining it can introduce unanalyzed types or bypass missing-registration checks.
      */
     @Alias //

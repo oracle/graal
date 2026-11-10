@@ -56,7 +56,7 @@ public class RuntimeCompilationSecurityProviderTest {
         }
     }
 
-    /** §FS-002-security-providers.1.4: Tests the internal-runtime-randomness branch. */
+    /** §FS-002-security-providers.design.1.5: Tests the internal-runtime-randomness branch. */
     @Test
     public void testRuntimeCompilationRandomnessRegistersSunProvider() {
         Provider provider = Security.getProvider("SUN");

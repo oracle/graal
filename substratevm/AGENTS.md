@@ -97,7 +97,8 @@ Declarations are heading lines `# <ID>: …` in markdown. In a code doc-comment 
 `grund check` holds each declaration of these kinds to these fields, as `grund schema` lists them:
 
 - **FS**
-  - field terminology must · first · titled `Terminology`
+  - field reason must · first · titled `Reason for Existence`
+  - field terminology must · after reason · titled `Terminology`
   - field requirements must · last · titled `Requirements`
 - **AR**
   - field system-overview must · first · titled `System Overview`

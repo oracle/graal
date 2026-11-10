@@ -51,7 +51,7 @@ final class Target_java_security_Security_ExplicitRegistration {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
     static Properties props;
 
-    /** §FS-002-security-providers.3.3: Keep omission diagnostics outside ProviderList mutation. */
+    /** §FS-002-security-providers.design.3.3: Keep omission diagnostics outside ProviderList mutation. */
     @Substitute
     public static Provider getProvider(String name) {
         Provider provider = sun.security.jca.Providers.getProviderList().getProvider(name);
@@ -61,7 +61,7 @@ final class Target_java_security_Security_ExplicitRegistration {
         return SecurityProviderRuntimeAccess.traceJdkProviderLookup(provider);
     }
 
-    /** §FS-002-security-providers.4.2: Insert relative to providers visible to the application. */
+    /** §FS-002-security-providers.design.4.2: Insert relative to providers visible to the application. */
     @Substitute
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.2-b20/src/java.base/share/classes/java/security/Security.java#L469-L478")
     public static synchronized int insertProviderAt(Provider provider, int position) {
@@ -84,7 +84,7 @@ final class Target_java_security_Security_SecPropLoader_ExplicitRegistration {
     }
 }
 
-// §FS-002-security-providers.2.1 and §FS-002-security-providers.3.1:
+// §FS-002-security-providers.design.2.1 and §FS-002-security-providers.design.3.1:
 // Reject an unregistered SUN provider before the JDK SecureRandom fallback can expose it.
 @TargetClass(className = "sun.security.jca.Providers", onlyWith = ExplicitSecurityProviderRegistration.class)
 final class Target_sun_security_jca_Providers_ExplicitRegistration {
@@ -176,7 +176,7 @@ final class Target_sun_security_jca_ProviderList_ExplicitRegistration {
 }
 
 final class SecurityProviderListSupport {
-    /** §FS-002-security-providers.4.2: Translate an API position through visible providers. */
+    /** §FS-002-security-providers.design.4.2: Translate an API position through visible providers. */
     static sun.security.jca.ProviderList insertAtVisiblePosition(sun.security.jca.ProviderList providerList, Provider provider, int position) {
         Target_sun_security_jca_ProviderList_ExplicitRegistration targetProviderList = SubstrateUtil.cast(providerList,
                         Target_sun_security_jca_ProviderList_ExplicitRegistration.class);
@@ -192,7 +192,8 @@ final class SecurityProviderListSupport {
         int currentVisibleIndex = 0;
         int lastActiveRawIndex = -1;
         for (int rawIndex = 0; rawIndex < targetProviderList.configs.length && currentVisibleIndex < activeProviders.length; rawIndex++) {
-            // §FS-002-security-providers.4.2: Match only a successfully loaded configuration.
+            // §FS-002-security-providers.design.4.2: Match only a successfully loaded
+            // configuration.
             if (targetProviderList.configs[rawIndex].provider == activeProviders[currentVisibleIndex]) {
                 if (currentVisibleIndex == visibleIndex) {
                     rawInsertionIndex = rawIndex;
@@ -232,7 +233,7 @@ final class SecurityProviderListSupport {
 
 @TargetClass(className = "sun.security.jca.GetInstance", onlyWith = ExplicitSecurityProviderRegistration.class)
 final class Target_sun_security_jca_GetInstance_ExplicitRegistration {
-    /** §FS-002-security-providers.3.3: Named factories diagnose at their acquisition boundary. */
+    /** §FS-002-security-providers.design.3.3: Named factories diagnose at their acquisition boundary. */
     @Substitute
     public static Provider.Service getService(String type, String algorithm, String providerName)
                     throws NoSuchAlgorithmException, NoSuchProviderException {

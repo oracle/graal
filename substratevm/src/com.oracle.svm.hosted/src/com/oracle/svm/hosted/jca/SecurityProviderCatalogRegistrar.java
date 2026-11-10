@@ -73,7 +73,7 @@ final class SecurityProviderCatalogRegistrar {
             }
             providers = List.of(feature.instantiateProviderImplementation(providerClass));
         }
-        // §FS-002-security-providers.1.3:
+        // §FS-002-security-providers.design.1.3:
         // Register every configured instance and the union of their service metadata.
         for (Provider provider : providers) {
             registerProvider(access, provider, metadata);
@@ -85,7 +85,7 @@ final class SecurityProviderCatalogRegistrar {
         }
     }
 
-    /** §FS-002-security-providers.6.5: Retain legacy eligibility without constructing a provider. */
+    /** §FS-002-security-providers.design.6.5: Retain legacy eligibility without constructing a provider. */
     void includeLegacyRequestedProviderClass(Class<?> providerClass) {
         RuntimeDynamicAccessMetadata metadata = RuntimeDynamicAccessMetadata.alwaysAvailable(false);
         feature.registerProviderConstructionPaths(providerClass, metadata);
@@ -103,7 +103,7 @@ final class SecurityProviderCatalogRegistrar {
         }
     }
 
-    /** §FS-002-security-providers.6.3: Include one provider without its whole catalog. */
+    /** §FS-002-security-providers.design.6.3: Include one provider without its whole catalog. */
     void includeProviderForLegacyService(DuringAnalysisAccess access, Provider provider, RuntimeDynamicAccessMetadata metadata) {
         registerProvider(access, provider, metadata);
     }
@@ -129,8 +129,9 @@ final class SecurityProviderCatalogRegistrar {
     }
 
     static void registerApplicationSuppliedProviderClass(Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
-        // §FS-002-security-providers.4.3: Instantiation establishes application verification.
-        // A configured instance of the class must not leak failure into provider-object use.
+        // §FS-002-security-providers.design.4.3: Instantiation establishes application
+        // verification. A configured instance of the class must not leak failure into
+        // provider-object use.
         writeProviderManifest(providerClass.getName(), AcquisitionKind.APPLICATION_SUPPLIED_ONLY, null, metadata);
     }
 

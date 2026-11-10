@@ -1,74 +1,24 @@
 # FS-002-security-providers: JCA Security Provider Registration and Run-Time Access
 
-The JDK defines its security-provider list through the `security.provider.<n>` security properties,
-and HotSpot can load every configured provider on demand.
-Native Image cannot simply treat every configured entry as an inclusion signal: a closed-world
-executable would then retain every provider and its complete service catalog, even when the
-application never uses them.
-To avoid that executable-size cost, Native Image uses two independent inputs for a JDK-managed
-provider: a `security.provider.<n>` property determines its position in the
-[run-time provider list](#terminology3-run-time-provider-list), and invocation metadata for the JDK-selected
-construction path must be [registered for reflection](#terminology1-registered-providers-and-services)
-at build time to include the provider and its services.
-Only providers that satisfy both conditions are constructed and exposed through JDK-managed lookup
-at run time; once included, they behave as they do on HotSpot.
-[`Security.addProvider(Provider)`][security] and
-[`Security.insertProviderAt(Provider, int)`][security] do not require reflection metadata for the
-supplied provider class because both APIs accept an existing provider instance.
-Native Image still establishes the provider's Java Cryptography Extension (JCE) verification
-outcome at build time and retains metadata for service implementations that JCA constructs
-reflectively.
+## reason: Reason for Existence
 
-For example, assume Bouncy Castle is on the class path and the effective _java.security_
-configuration contains:
-
-```properties
-security.provider.13=org.bouncycastle.jce.provider.BouncyCastleProvider
-```
-
-Register invocation of the provider constructor in _reachability-metadata.json_:
-
-```json
-{
-  "reflection": [
-    {
-      "type": "org.bouncycastle.jce.provider.BouncyCastleProvider",
-      "methods": [{ "name": "<init>", "parameterTypes": [] }]
-    }
-  ]
-}
-```
-
-Only with both entries, [`Security.getProvider("BC")`][security] returns the Bouncy Castle provider.
-Without the reflection entry, the same lookup throws an actionable
-[`java.lang.SecurityException`][security-exception]
-that identifies `org.bouncycastle.jce.provider.BouncyCastleProvider` as the unregistered provider
-class and directs the user to reflection metadata.
-Without the `security.provider.13` property, the lookup returns `null` because reflection metadata
-does not install the provider.
-The application can install it explicitly with the standard JDK API:
+A JCA factory can select its algorithm at run time:
 
 ```java
-Security.addProvider(new BouncyCastleProvider());
+java.security.Signature.getInstance(args[0]);
 ```
 
-The Tracing Agent collects provider construction metadata when it observes JDK-managed acquisition
-and service metadata when it observes a JCA factory use ([§FS-002-security-providers.5](security-providers.md#5-tracing-metadata)).
-As on HotSpot, a `security.provider.<n>` property installs the provider during provider-list
-initialization, and an application can instead install an existing instance with
-[`Security.addProvider`][security] or [`Security.insertProviderAt`][security].
-
-[§FS-002-security-providers.6](security-providers.md#6-transition-to-the-future-defaults) defines the future-default options that select this
-behavior during the transition from service-driven provider inclusion and build-time provider-list
-initialization.
-The implementation is described by [§AR-004-security-providers](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java).
+Retaining all 12 configured JDK security providers and their service catalogs grows Hello World
+from 6.07 MiB to 26.94 MiB on Linux x86-64 with Oracle GraalVM 25.6.0-dev and `-O2`.
+Provider reflection metadata limits inclusion to the intended providers
+([§FS-002-security-providers.design.1.1](security-providers.md#1-qualifying-reflection-metadata)).
 
 ## terminology: Terminology
 
 This specification uses the [common notation](README.md#notation) and the default package
 [`java.security`][java-security].
 
-### terminology.1: Registered Providers and Services
+**Registered Providers and Services**
 
 - **Provider implementation class**: a concrete [`Provider`][provider] subtype.
 - **Service provider class**: the type through which [`ServiceLoader`][service-loader] constructs a
@@ -76,90 +26,131 @@ This specification uses the [common notation](README.md#notation) and the defaul
 - **Supported construction path**: a public no-argument constructor of a public, concrete
   [`Provider`][provider] subtype, or a public static no-argument [`provider()`][service-loader]
   method of a public service provider class in an explicit module.
+- **JDK-selected constructor**: the public no-argument constructor of a public, concrete
+  provider class that the JDK uses when no qualifying `provider()` factory takes precedence.
 - **JDK-constructible**: produced by a supported construction path.
 - **Registered**: invocation of the JDK-selected construction path is covered by ordinary
   reflection metadata, and that path is discoverable through the effective security-provider
   configuration or a `java.security.Provider` service declaration.
 
-### terminology.2: JDK-Managed Providers and Acquisition
+**JDK-Managed Providers and Acquisition**
 
 - **JDK-managed provider**: a provider the JDK creates or discovers.
 - **Application-supplied provider**: an existing instance passed by application code.
 - **JDK-managed acquisition**: any JDK path that returns, reports, or selects a provider or service,
   including configuration, [`ServiceLoader`][service-loader], factories, and default selection.
 
-### terminology.3: Run-Time Provider List
+**Run-Time Provider List**
 
 - **Run-time provider list**: the ordered list consulted by [`Security`][security] lookups and
   name-based JCA factories.
 - **Configured entry**: a `security.provider.<n>` value, a provider class or provider name with an
   optional configuration argument.
 
-### terminology.4: Service Availability
+**Service Availability**
 
 - **Retained service**: a service whose implementation and construction metadata are in the
   executable.
 - **Available service**: a retained service whose provider the call can select.
 
-## 1. Registration Semantics
+## design: Design
 
-### 1.1 Qualifying Reflection Metadata
+Native Image separates including a provider in the executable from installing it in the run-time
+provider list.
+Reflection metadata for the JDK-selected constructor or `provider()` factory includes a configured
+or service-declared provide r and its complete service catalog ([§FS-002-security-providers.design.1.3](security-providers.md#3-registration-effects)).
+The `security.provider.<n>` properties determine which providers the JDK installs and their order
+([§FS-002-security-providers.design.1.2](security-providers.md#2-provider-construction)).
 
-Ordinary reflection metadata registers a provider only when it permits invocation of the
-construction path selected by the JDK: its public no-argument constructor, or the public static
-`provider()` factory in an explicit module when that factory takes precedence.
-The path must be discoverable through the effective `security.provider.<n>` configuration or a
-`java.security.Provider` service declaration.
-Type-only metadata, query-only metadata, metadata for a constructor displaced by a selected factory,
-and invocation metadata for an unconfigured, undeclared application provider retain their ordinary
-reflection meaning; they do not cause provider construction, full-catalog retention, or JDK-managed
-eligibility.
-For a configured provider, qualifying invocation metadata makes
-[`Security.getProvider(String)`][security] return the provider and makes its retained algorithms
-usable through calls such as [`Signature.getInstance(String, String)`][signature].
-Metadata for only a service implementation class does neither.
-Conditional metadata has the behavior in [§FS-002-security-providers.1.5](security-providers.md#15-conditional-registration-signals).
-Using ordinary reflection metadata instead of a provider-specific flag follows
-[§FD-001-hotspot-compatible-semantics-by-default.2](decisions/hotspot-compatible-semantics-by-default.md#2-decision).
-Deriving registration from explicit metadata instead of incidental JCA reachability follows
-[§FD-002-reachability-independent-runtime-semantics.2](decisions/reachability-independent-runtime-semantics.md#2-decision).
+For example, suppose Bouncy Castle is on the class path and its provider name is `BC`.
+Its configuration property is:
 
-### 1.2 Provider Construction
+```properties
+security.provider.13=org.bouncycastle.jce.provider.BouncyCastleProvider
+```
 
-Native Image constructs a JDK-managed provider through the same supported path as
-[`ServiceLoader`][service-loader]:
-a public no-argument constructor, or the public static no-argument
-[`provider()`][service-loader] method of a service provider class in a named module.
-When both apply, [`provider()`][service-loader] takes precedence (JLS 7.7.4).
-A factory may return a subclass of its declared return type, including a concrete return type.
-The actual returned class determines provider identity and catalog retention.
-For a configured entry with an argument, construction includes the subsequent
-[`Provider.configure(argument)`][provider] call and uses its return value, even when that provider
-has a different name or implementation class.
-When a configured token is a provider name rather than a class name, Native Image tries eligible
-_META-INF/services/java.security.Provider_ declarations in descriptor order and uses the first
-successfully constructed provider whose pre-configuration name matches the token.
-An ambiguous provider name never falls back to treating that token as a binary class name.
-Each configured entry is independent, so two entries for the same provider class can produce
-distinct provider instances, names, and service catalogs while retaining their configured relative
-order.
-The run-time provider list contains registered configured providers in configured relative order.
-Existing instances are inserted at the positions specified by the [`Security`][security] API, as
-defined in [§FS-002-security-providers.4.2](security-providers.md#42-programmatic-provider-list-changes).
-Provider registration does not install a provider, and insertion does not register one.
-Provider-list initialization is distinct from class initialization (JLS 12.4).
-A private or parameterized constructor and a class-path `provider()` method do not qualify.
-A service descriptor is passive inventory: discovering it does not initialize or instantiate its
-declaration class.
-Native Image invokes a descriptor construction path during image generation only after qualifying
-invocation metadata activates that selected path.
-A reflectively accessible provider without a qualifying invocation path is not returned by
-[`Security.getProvider(String)`][security]; application code can still supply an existing instance
-under [§FS-002-security-providers.4](security-providers.md#4-programmatically-supplied-providers).
-If invoking a selected path during the image build fails or returns the wrong provider class, the
-build fails with a diagnostic naming the provider and construction failure.
+The reflection entry permits invocation of `BouncyCastleProvider`'s public no-argument constructor.
+The two inputs have independent effects:
 
-### 1.3 Registration Effects
+| Security property | Constructor metadata | `Security.getProvider("BC")` |
+| --- | --- | --- |
+| Present | Present | Returns the provider. |
+| Present | Missing | Reports missing reflection metadata ([§FS-002-security-providers.design.3.3](security-providers.md#3-missing-reflection-registration)). |
+| Missing | Present | Returns `null`: metadata does not install the provider. |
+
+You can obtain or use the provider in three ways:
+
+- `Security.getProvider("BC")` retrieves the installed provider.
+- `Signature.getInstance("SHA256withRSA", "BC")` uses a service from the installed provider.
+- `Signature.getInstance("SHA256withRSA", new BouncyCastleProvider())` uses the supplied instance
+  without installing it or requiring provider-class reflection metadata.
+
+These factory overloads follow [§FS-002-security-providers.design.2.3](security-providers.md#3-algorithm-selection).
+To make an existing instance available to name-based calls,
+`Security.addProvider(new BouncyCastleProvider())` installs it
+without provider-class reflection metadata ([§FS-002-security-providers.design.4.2](security-providers.md#2-programmatic-provider-list-changes)).
+Its services still need reflection metadata ([§FS-002-security-providers.design.4.1](security-providers.md#1-provider-object-factory-calls)), and Native Image
+records the provider's JCE verification result at build time ([§FS-002-security-providers.design.4.3](security-providers.md#3-jce-verification)).
+
+The implementation is described by [§AR-004-security-providers](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java).
+
+### .1: Registration Semantics
+
+#### .1: Qualifying Reflection Metadata
+
+To include a provider and its services, Native Image needs two things:
+
+1. **A way to find the provider:** a `security.provider.<n>` property or a
+   `java.security.Provider` service declaration.
+2. **Permission to create it:** reflection metadata that allows calling the constructor or factory
+   method the JDK uses.
+
+Usually, you register the provider's public no-argument constructor.
+For Bouncy Castle, this lets the JDK create a `BouncyCastleProvider`.
+If the JDK uses a public static no-argument `provider()` method from an explicit module, register
+that method instead.
+Registering only the constructor does not help when the JDK calls the factory.
+
+If the metadata has a condition, that condition also controls when the provider becomes available
+([§FS-002-security-providers.design.1.4](security-providers.md#4-conditional-registration-signals)).
+This follows the decisions to use standard metadata without a provider-specific flag
+([§FD-001-hotspot-compatible-semantics-by-default.2](decisions/hotspot-compatible-semantics-by-default.md#2-decision))
+and make provider inclusion an explicit choice
+([§FD-002-reachability-independent-runtime-semantics.2](decisions/reachability-independent-runtime-semantics.md#2-decision)).
+
+#### .2: Provider Construction
+
+Native Image creates a JDK-managed provider through a public no-argument constructor or,
+in a named module, a public static no-argument `provider()` method.
+The method takes precedence when both exist, following the rules of [`ServiceLoader`][service-loader]
+([JLS 7.7.4](https://docs.oracle.com/javase/specs/jls/se25/html/jls-7.html#jls-7.7.4)).
+Private or parameterized constructors and `provider()` methods on the class path do not qualify.
+
+Native Image calls the selected constructor or method at build time only when reflection metadata
+allows the call.
+Listing the class in a service descriptor alone does not initialize it or create a provider.
+If the call fails or returns the wrong provider class, Native Image stops the build and reports
+which provider failed and why.
+
+A factory may return a subclass of its declared return type.
+For a configuration entry with an argument, Native Image then calls [`Provider.configure(argument)`][provider].
+It uses the object returned by that call, even if its name or class differs from the original.
+Native Image retains the final object's name, actual class, and services.
+
+For a provider configured by name, such as `BC`, Native Image tries eligible entries in
+_META-INF/services/java.security.Provider_ in their listed order.
+It selects the first provider it can create with that name, before calling `configure`.
+It never treats an ambiguous provider name as a class name.
+
+Configuration entries are independent: entries for the same class can produce separate objects
+with different names and services.
+Registered providers stay in configuration order at run time.
+Instances added by the application follow the [`Security`][security] API's positioning rules
+([§FS-002-security-providers.design.4.2](security-providers.md#2-programmatic-provider-list-changes)).
+Initializing the provider list and initializing provider classes are separate operations
+([JLS 12.4](https://docs.oracle.com/javase/specs/jls/se25/html/jls-12.html#jls-12.4)).
+
+#### .3: Registration Effects
 
 Registering a JDK-constructible provider retains its selected construction path, every valid and
 resolvable service in its catalog, the service construction metadata, and its JCE verification
@@ -176,96 +167,121 @@ Registration alone does not install the provider: without a matching `security.p
 [`Security.getProvider(provider.getName())`][security] returns `null` until the application inserts
 an instance.
 
-### 1.4 SecureRandom Providers
+#### .4: Conditional Registration Signals
+
+A configured provider becomes available when the condition on its reflection metadata is met.
+The same condition controls its constructor or factory, services, and recorded verification result.
+Until then, JDK lookups do not construct or select that provider.
+
+For example, suppose Bouncy Castle is configured as `BC`, and its constructor metadata contains
+`"condition": {"typeReached": "com.example.Signing"}`.
+Assume `Signing` is initialized at run time and no other registration enables `BC`.
+The condition is met when `Signing` or one of its subtypes begins initialization.
+
+| Method | Condition not met | Condition met |
+| --- | --- | --- |
+| [`Security.getProvider("BC")`][security] | Throws [`MissingReflectionRegistrationError`][missing-reflection-registration-error]. | Returns `BC`. |
+| [`Signature.getInstance("SHA256withRSA", "BC")`][signature] | Throws [`MissingReflectionRegistrationError`][missing-reflection-registration-error]. | Uses `BC`'s signing service. |
+| [`Security.getProviders()`][security] | Omits `BC`. | Includes `BC` in configured order. |
+| [`Security.getProviders("Signature.SHA256withRSA")`][security] | Omits `BC`; returns `null` if no other provider matches. | Includes `BC` among the matching providers. |
+| [`Security.getAlgorithms("Signature")`][security] | Reports only algorithms from other active providers. | Also reports `BC`'s signature algorithms. |
+| [`Signature.getInstance("SHA256withRSA")`][signature] | Uses another active provider, or throws [`NoSuchAlgorithmException`][no-such-algorithm] if none supplies the algorithm. | May use `BC`, following provider order. |
+
+Activation works even if an earlier call initialized the provider list while the condition was unmet.
+Subsequent lookups see the provider; arrays returned by earlier calls do not change.
+Once met, the condition stays met.
+If the condition type is unreachable at build time, this metadata contributes no provider or services.
+If activation makes an earlier service descriptor eligible, Native Image tries it even if a later
+candidate was already cached or had exhausted its construction retries.
+The newly selected descriptor starts with a fresh retry budget.
+
+#### .5: SecureRandom Providers
+
+[`SecureRandom`][secure-random] is used throughout the JDK and libraries, often indirectly.
+Its providers are therefore registered automatically when the application uses it.
 
 Reachability of a [`SecureRandom`][secure-random] constructor or
 [`SecureRandom.getInstance`][secure-random] call registers the configured providers that supply
 [`SecureRandom`][secure-random], without application reflection metadata for those providers.
 The provider is then visible through [`Security`][security] if its `security.provider.<n>` entry
-installs it, and its complete catalog has the effects of [§FS-002-security-providers.1.3](security-providers.md#13-registration-effects).
+installs it, and its complete catalog has the effects of [§FS-002-security-providers.design.1.3](security-providers.md#3-registration-effects).
 If no configured provider supplies this service, the rule registers nothing; a provider-object
 `getInstance` call can still use an application-supplied provider with service metadata.
 Native Image's internal random source triggers this rule only in an image that includes runtime
 compilation, which consumes that source.
 
-### 1.5 Conditional Registration Signals
+### .2: Provider Lookup and Use
 
-A condition on provider metadata gates the provider, its construction path, services, and
-verification outcome as one unit.
-Before the condition becomes active, [`Security.getProviders()`][security] omits the configured
-provider, and a name-based factory cannot select it.
-After activation, [`Security.getProvider(String)`][security] returns it at its configured position
-and its retained services become usable.
-The result is the same whether [`Security.getProviders()`][security] initialized the list before or
-after activation, and an active condition never becomes inactive.
-When activation selects an earlier descriptor, its construction receives a fresh retry budget even
-if the previously selected candidate exhausted its retries.
+At run time, JCA selects providers from the provider list, unless an application passes a provider
+object directly.
+In either case, the required service implementation and reflection metadata must be included in
+the executable.
 
-## 2. Permitted Run-Time Access
+#### .1: Provider Discovery
 
-### 2.1 JDK-Managed Acquisition
+The JDK can use a configured provider once it is registered, its construction path is supported,
+and its registration conditions are met.
+This includes default and fallback provider selection.
+Providers with service declarations can also be discovered through
+[`ServiceLoader.load(Provider.class)`][service-loader].
+[`SecureRandom`][secure-random] additionally follows [§FS-002-security-providers.design.1.5](security-providers.md#5-securerandom-providers).
 
-A configured, registered, JDK-constructible provider can be returned by
-[`Security.getProvider(String)`][security] and
-[`ServiceLoader.load(Provider.class)`][service-loader], selected by calls such as
-[`Signature.getInstance(String)`][signature] or
-[`Signature.getInstance(String, String)`][signature], and used by JDK default
-or fallback selection.
-The engine's [`getProvider()`][signature] returns the selected provider.
-[`SecureRandom`][secure-random] additionally follows [§FS-002-security-providers.1.4](security-providers.md#14-securerandom-providers).
+##### .1: GSS Mechanism Discovery
 
-#### 2.1.1 GSS Mechanism Discovery
+[`GSSManager.getInstance().getMechs()`][gss-manager] reports mechanisms supplied by available
+providers whose GSS service implementations are included in the executable.
+Mechanisms supplied only by unavailable providers do not appear in the result.
 
-[`GSSManager.getInstance().getMechs()`][gss-manager] reports a mechanism when an available provider
-supplies its retained GSS mechanism service.
-It does not report a mechanism supplied only by an unavailable provider.
+##### .2: SASL Client Creation
 
-#### 2.1.2 SASL Client Creation
+[`Sasl.createSaslClient(...)`][sasl] uses included SASL client factories from available providers.
+It returns `null` when none supplies a service for any of the requested mechanisms.
 
-[`Sasl.createSaslClient(mechanisms, authorizationId, protocol, serverName, properties, callbackHandler)`][sasl]
-can select only a retained SASL client-factory service from an available provider.
-It returns `null` when none of the requested mechanisms has such a service.
+##### .3: SASL Server Creation
 
-#### 2.1.3 SASL Server Creation
+[`Sasl.createSaslServer(...)`][sasl] uses included SASL server factories from available providers.
+It returns `null` when none supplies a service for the requested mechanism.
 
-[`Sasl.createSaslServer(mechanism, protocol, serverName, properties, callbackHandler)`][sasl] can
-select only a retained SASL server-factory service from an available provider.
-It returns `null` when the requested mechanism has no such service.
+#### .2: Provider Lookup
 
-### 2.2 Provider List Lookups
+[`Security.getProvider(name)`][security] looks up a provider by name in the run-time provider list.
+[`Security.getProviders()`][security] returns the active providers in order.
+The filtering overloads, [`Security.getProviders(String)`][security] and
+[`Security.getProviders(Map)`][security], return matching providers from that list.
+[`Security.getAlgorithms(service)`][security] reports their available algorithms.
+These lookups use the same provider list as JCA factories.
 
-[`Security.getProvider(String)`][security] and the [`Security.getProviders`][security] overloads
-operate on the run-time provider list from [§FS-002-security-providers.terminology.3](security-providers.md#terminology3-run-time-provider-list).
-After [`Security.addProvider(provider)`][security] succeeds,
-[`Security.getProvider(provider.getName())`][security] returns
-that same object even when its class has no reflection metadata.
-[`Security.getProviders(String)`][security], [`Security.getProviders(Map)`][security], and
-[`Security.getAlgorithms(String)`][security] report only providers and retained services present in
-that list.
+#### .3: Algorithm Selection
 
-### 2.3 JCA Factories and Security-Service Facades
+The factory overload determines how a provider is selected:
 
-[`Signature.getInstance(algorithm)`][signature] selects a retained service from the run-time provider
-list, and [`Signature.getInstance(algorithm, providerName)`][signature] restricts selection to the
-named list entry.
-[`Signature.getInstance(algorithm, provider)`][signature] instead uses the supplied object without
-installing it or requiring provider-class reflection metadata.
+| Call | Provider selection |
+| --- | --- |
+| [`Signature.getInstance(algorithm)`][signature] | Searches the provider list in order. |
+| [`Signature.getInstance(algorithm, providerName)`][signature] | Uses the named provider from the list. |
+| [`Signature.getInstance(algorithm, provider)`][signature] | Uses the supplied object directly, without adding it to the list. |
+
 Equivalent overloads on other JCA factories follow the same rules.
-Changing an algorithm string at run time can select only services already retained in the
-executable; it cannot add another provider or service.
+The resulting engine's [`getProvider()`][signature] returns the selected provider.
+Changing the algorithm name at run time can select another included implementation; it cannot add
+providers or algorithms to the executable.
 
-### 2.4 Programmatic Access
+#### .4: Adding and Removing Providers
 
-An application can use an existing provider immediately with a provider-object factory.
-It can make the same object available to name-based lookup by calling
-[`Security.addProvider(Provider)`][security] or
-[`Security.insertProviderAt(Provider, int)`][security], and remove it with
-[`Security.removeProvider(String)`][security].
-[§FS-002-security-providers.4](security-providers.md#4-programmatically-supplied-providers) gives the metadata and verification rules.
+[`Security.addProvider(provider)`][security] and
+[`Security.insertProviderAt(provider, position)`][security] add an existing instance to the provider list.
+After successful insertion, name-based lookups return that same object.
+[`Security.removeProvider(name)`][security] removes it from the list
+([§FS-002-security-providers.design.4.2](security-providers.md#2-programmatic-provider-list-changes)).
 
-## 3. Prohibited Run-Time Access and Errors
+Supplying or inserting an existing instance requires no reflection metadata for the provider class.
+Its services still require their implementation metadata
+([§FS-002-security-providers.design.4.1](security-providers.md#1-provider-object-factory-calls)) and, where applicable,
+successful JCE verification ([§FS-002-security-providers.design.4.3](security-providers.md#3-jce-verification)).
 
-### 3.1 Unregistered Providers
+### .3: Prohibited Run-Time Access and Errors
+
+#### .1: Unregistered Providers
 
 A configured but unregistered provider is omitted from [`Security.getProviders()`][security],
 provider filters, and [`Security.getAlgorithms(String)`][security].
@@ -280,21 +296,34 @@ Making a factory call reachable, adding a _META-INF/services/java.security.Provi
 passing a different algorithm string at run time cannot change that result after the executable is
 built.
 
-### 3.2 Standard Unavailable Results
+#### .2: Standard Unavailable Results
 
-[`Signature.getInstance(algorithm, missingProviderName)`][signature] throws
-[`NoSuchProviderException`][no-such-provider] when the name is absent from the run-time provider
-list.
+When an explicit lookup names a configured provider whose registration is missing or whose condition
+is unmet, [`Security.getProvider(name)`][security] and
+[`Signature.getInstance(algorithm, providerName)`][signature] throw
+[`MissingReflectionRegistrationError`][missing-reflection-registration-error]
+([§FS-002-security-providers.design.3.3](security-providers.md#3-missing-reflection-registration)).
+A provider omitted for this reason is not treated as an unknown provider.
+
+For a name that does not identify an available provider or an omitted configured provider,
+[`Security.getProvider(name)`][security] returns `null`, and
+[`Signature.getInstance(algorithm, providerName)`][signature] throws
+[`NoSuchProviderException`][no-such-provider].
+Removing a registered provider from the run-time list also gives these standard unavailable results.
+
 [`Signature.getInstance(missingAlgorithm)`][signature] throws
-[`NoSuchAlgorithmException`][no-such-algorithm] when no list entry has a retained implementation,
-and [`Signature.getInstance(missingAlgorithm, provider)`][signature] throws the same
-exception when the supplied object lacks one.
+[`NoSuchAlgorithmException`][no-such-algorithm] when no active provider supplies the algorithm.
+The overloads that take a provider name or object throw the same exception when that provider
+is available but lacks the requested algorithm.
 A provider-object overload does not throw merely because the provider is absent from the list.
 
-### 3.3 Missing Reflection Registration
+#### .3: Missing Reflection Registration
 
-When [`Security.getProvider(String)`][security] or a JCA factory causes the JDK to reflectively load
-an unregistered configured provider, acquisition fails before returning the provider.
+An explicit lookup of a configured provider fails with
+[`MissingReflectionRegistrationError`][missing-reflection-registration-error] when the provider lacks
+qualifying reflection metadata or its registration condition is unmet.
+This applies to [`Security.getProvider(String)`][security] and JCA factories given a provider name,
+before they return a provider or service.
 This diagnostic applies only with explicit provider registration enabled. Legacy modes preserve
 their earlier lookup results and exceptions for providers omitted from the Native Image provider
 list.
@@ -303,11 +332,10 @@ the user to register invocation of the JDK-selected constructor or factory in _r
 There is no provider-specific metadata format or provider-specific missing-metadata error type.
 The diagnostic lookup is side-effect-free: it does not construct or cache the omitted provider and
 does not change subsequent enumeration, duplicate detection, insertion, or factory behavior.
-An implementation retained only for provider-object use under [§FS-002-security-providers.4](security-providers.md#4-programmatically-supplied-providers)
-is not diagnosed by a name lookup: until the application inserts an instance,
-[`Security.getProvider(String)`][security] returns `null`.
-This exception does not suppress the diagnostic for a configured built-in provider merely because
-application code also makes provider-object use of its implementation class reachable.
+Direct use of an existing provider object does not satisfy a configured entry's registration
+requirement or suppress its missing-registration diagnostic.
+An unconfigured application-supplied provider remains absent from name-based lookup until the
+application inserts it ([§FS-002-security-providers.design.4.2](security-providers.md#2-programmatic-provider-list-changes)).
 The diagnostic resolver uses only recorded configured entries; a built-in alias alone does not
 establish that a provider was configured or is available on the current platform.
 An unconfigured built-in name and an arbitrary unknown name return `null`.
@@ -317,24 +345,24 @@ If reflective construction is attempted,
 [`MissingReflectionRegistrationError`][missing-reflection-registration-error] remains the top-level
 failure and is not wrapped as a provider-configuration error.
 
-## 4. Programmatically Supplied Providers
+### .4: Programmatically Supplied Providers
 
-### 4.1 Provider-Object Factory Calls
+#### .1: Provider-Object Factory Calls
 
 After application code constructs a provider, a call such as
 [`Signature.getInstance(algorithm, provider)`][signature] does not require reflection metadata for
 the provider class and does not add the provider to the run-time list.
 The call succeeds when the service implementation and its required construction metadata are
-retained and [§FS-002-security-providers.4.3](security-providers.md#43-jce-verification) permits use.
+retained and [§FS-002-security-providers.design.4.3](security-providers.md#3-jce-verification) permits use.
 A missing implementation produces [`NoSuchAlgorithmException`][no-such-algorithm]; a JCE
-verification failure follows [§FS-002-security-providers.4.3](security-providers.md#43-jce-verification).
+verification failure follows [§FS-002-security-providers.design.4.3](security-providers.md#3-jce-verification).
 
 A `Provider.Service` object retained from build time follows the same run-time metadata requirements
 as a service looked up at run time.
 Populating its implementation or constructor cache during image building does not register the
 implementation or its constructor and must not prevent image generation.
 
-### 4.2 Programmatic Provider-List Changes
+#### .2: Programmatic Provider-List Changes
 
 [`Security.addProvider(Provider)`][security] and
 [`Security.insertProviderAt(Provider, int)`][security] do not require
@@ -351,14 +379,25 @@ application-supplied provider with the same name nor shift its visible insertion
 Insertion retains no additional service implementation, so a missing service still produces
 [`NoSuchAlgorithmException`][no-such-algorithm].
 
-### 4.3 JCE Verification
+#### .3: JCE Verification
+
+Native Image records JCE verification outcomes at **build time** for each included provider class.
+For configured providers available in the build-time provider list, it invokes the build JDK's
+`JceSecurity.getVerificationResult` and retains success or the verification exception by provider
+class.
+The build JDK determines the authentication policy, including whether it requires a trusted JCE
+signature.
+Application-supplied-only provider classes follow the successful-recognition rule below.
+At run time, JCE factories consult the recorded outcome instead of verifying the provider JAR again.
+Direct construction of a provider, including through reflection, does not itself enforce this JCE
+verification outcome.
 
 [`Cipher`][cipher], [`Mac`][mac], and other factories that require JCE provider verification may
 construct a service only when Native Image recorded successful build-time verification for that
 provider class.
 A failed outcome makes the factory throw [`SecurityException`][security-exception]; a missing
 outcome produces the missing-registration failure from
-[§FS-002-security-providers.3.3](security-providers.md#33-missing-reflection-registration).
+[§FS-002-security-providers.design.3.3](security-providers.md#3-missing-reflection-registration).
 In either case, the factory fails before it constructs the service implementation.
 This rule applies equally to a JDK-managed provider and an application-supplied provider; the latter
 still requires no provider-class reflection metadata.
@@ -371,102 +410,94 @@ the same class are merged; unconditional application verification does not activ
 configured-instance failure.
 The implementation-specific recognition rule is [§AR-004-security-providers.requirements.3](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java).
 
-## 5. Tracing Metadata
+### .5: Tracing Metadata
 
-### 5.1 Provider and Service Coverage
+#### .1: Provider and Service Coverage
 
-Provider construction under tracing records the actual reflection operations.
-Successful JDK-managed acquisition also retains the selected construction invocation for a cached
-provider when the acquisition hook can identify that path, including built-in providers cached
-before tracing starts.
-Acquisition hooks must not grant a provider visited only while searching for a different result.
-Ordinary reflection tracing can still record construction that the JDK actually attempts while
-searching or filtering.
-These hooks remain until cached and selective acquisition round trips have equivalent coverage.
-Tracing a factory call or [`Provider.Service.newInstance(Object)`][provider-service] records the
-actual implementation and constructor operations needed to repeat each service construction that
-the JDK attempts. This includes a candidate that is constructed before a later initialization or
-selection step rejects it.
-Rebuilding with only the generated metadata must reproduce the observed factory selection when
-explicit provider registration is enabled and its construction or supported cached acquisition occurred under tracing.
-Tracing [`Security.addProvider`][security], [`Security.insertProviderAt`][security], or
-[`Security.removeProvider`][security] does not record provider-class metadata merely because the
-call receives an existing object.
-Selecting an application-supplied object later does not record its provider class: the object was
-not reflectively constructed by the provider-list operation.
-This also applies to built-in provider objects returned from cached name lookups and enumeration.
-For a cached service implementation, tracing records the constructor the JDK actually cached,
-including a no-argument constructor selected after a parameterized-constructor probe failed.
-Security operations reached through JDK runtime modules are attributed to the first non-JDK caller,
-including calls mediated by non-security JDK classes or platform provider modules.
-An application [`Class.forName`][class], reflective constructor call, or reflective service
-construction is traced by the ordinary reflection rules.
+The Tracing Agent records the reflection operations needed to repeat provider and service
+construction, including attempts that the JDK later rejects.
+For a cached service, it records the cached constructor, including a no-argument constructor
+selected after a parameterized-constructor probe failed.
 
-### 5.2 Observational Transparency
+Successful JDK-managed acquisition also records the selected construction path when the agent can
+identify it, even for a built-in provider cached before tracing starts.
+It does not register other providers merely visited during the search, though actual reflective
+construction attempts are still traced.
+With explicit provider registration enabled, rebuilding with only this metadata must reproduce
+the observed factory selection after traced construction or supported cached acquisition.
 
-With tracing enabled, a provider lookup, factory call, or provider-list mutation has the same return
-value, exception, provider order, and application-visible side effects as the same call without
-tracing.
-The tracer does not repeat the operation or initialize an unselected provider or service.
-Reflection and resource access performed inside the application's actual call is still recorded.
+Passing an existing provider to [`Security.addProvider`][security],
+[`Security.insertProvideterAt`][security], or [`Security.removeProvider`][security] does not record
+its class for reflection.
+Neither does later selecting that application-supplied object, even if a cached lookup or
+enumeration originally returned it as a built-in provider.
 
-## 6. Transition to the Future Defaults
+Ordinary reflection rules cover application [`Class.forName`][class] calls, reflective constructor
+calls, and service construction through factories or
+[`Provider.Service.newInstance(Object)`][provider-service].
+Security operations through JDK modules are attributed to the first non-JDK caller, including calls
+through non-security JDK classes and platform provider modules.
 
-[§FS-002-security-providers.1](security-providers.md#1-registration-semantics) through [§FS-002-security-providers.5](security-providers.md#5-tracing-metadata) specify the planned
-default behavior.
-The following build-time options select it while earlier behaviors remain available.
-Explicit provider registration implies run-time provider-list initialization.
+#### .2: Observational Transparency
 
-With configuration, metadata, and mode fixed, adding reachable but unexecuted application code
-does not change provider availability or ordering, except for the documented `SecureRandom` rule.
-Switching to metadata-driven registration can change those results with otherwise unchanged metadata:
-constructor or factory invocation metadata collected for application reflection can enable a
-configured provider, while type-only and query-only entries no longer enable its complete catalog.
-When migrating, register the selected constructor or factory for every intended configured provider,
-and remove unwanted providers from the effective security configuration.
-Switching back to a legacy mode restores service-reachability inclusion and can expose providers
-omitted by metadata-driven registration.
+Tracing preserves return values, exceptions, provider order, and application-visible side effects
+of provider lookups, factory calls, and provider-list changes.
+The agent records reflection and resource access inside the actual call without repeating it or
+initializing an unselected provider or service.
 
-### 6.1 Run-Time Provider-List Initialization
+### .6: Transition to the Future Defaults
 
-With `--future-defaults=run-time-initialize-security-providers`, Native Image initializes the list
-when [`Security`][security] first needs it at run time.
-[`Security.getProviders()`][security] contains only registered entries from the build-time
-`security.provider.<n>` configuration and preserves their relative order.
-[`Security.getProvider(String)`][security] constructs an entry through its retained path and fails
-with an actionable diagnostic if that path fails or returns the wrong implementation.
-Every configured construction path uses the JDK recursion guard and retry counter, including a path
-resolved from retained descriptor inventory.
-Recursive loading returns no provider for that attempt, and repeated failures stop at the JDK retry
-limit rather than retrying indefinitely.
-`--future-defaults=metadata-security-provider-registration` enables this behavior implicitly.
-When building a layered image with run-time provider initialization, every layer must use the same
-initial security properties. The builder rejects changes and identifies the affected keys.
+[§FS-002-security-providers.design.1](security-providers.md#1-registration-semantics) through [§FS-002-security-providers.design.5](security-providers.md#5-tracing-metadata) describe the planned defaults.
+Until then, you can enable them with:
 
-### 6.2 Provider Service Descriptors
+- `--future-defaults=metadata-security-provider-registration`: requires provider registration through
+  metadata and also enables run-time provider-list initialization.
+- `--future-defaults=run-time-initialize-security-providers`: initializes the provider list at run time
+  while keeping service-driven inclusion unless explicit registration is also enabled.
 
-A class-path _META-INF/services/java.security.Provider_ descriptor does not register its provider
-for reflection.
-Without provider reflection metadata, [`ServiceLoader.load(Provider.class)`][service-loader] does not
-return the described provider.
-With that metadata, it can return the provider only when [`ServiceLoader`][service-loader] access to
-[`Provider`][provider] is reachable and therefore retains the descriptor.
-Descriptor discovery preserves declaration order without instantiating declarations that have no
-active provider-registration signal.
+With configuration, metadata, and mode fixed, reachable but unexecuted application code does not
+change provider availability or order, except for the documented `SecureRandom` rule.
+Changing modes can change availability: constructor or factory invocation metadata can register a
+configured provider, while type-only and query-only metadata cannot include its full service catalog.
+To migrate, register the JDK-selected constructor or factory for each intended provider and remove
+unwanted providers from the security configuration.
+Returning to a legacy mode restores service-driven inclusion and may expose additional providers.
+
+#### .1: Run-Time Provider-List Initialization
+
+With `--future-defaults=run-time-initialize-security-providers`, Native Image initializes the provider
+list when [`Security`][security] first needs it at run time.
+The list contains only registered entries from the build-time `security.provider.<n>` configuration,
+in their original order.
+[`Security.getProvider(String)`][security] uses the registered construction path and reports an
+actionable error if construction fails or returns the wrong implementation.
+
+All configured paths, including those found through service descriptors, use the JDK recursion guard
+and retry limit.
+Recursive loading returns no provider for that attempt; repeated failures stop at the retry limit.
+For layered images, every layer must use the same initial security properties.
+The builder rejects changes and names the affected keys.
+
+#### .2: Provider Service Descriptors
+
+A class-path _META-INF/services/java.security.Provider_ descriptor does not itself register providers.
+[`ServiceLoader.load(Provider.class)`][service-loader] returns a described provider only when its
+reflection metadata is present and reachable `ServiceLoader` access retains the descriptor.
+Discovery preserves declaration order and does not instantiate unregistered providers.
+
 `-H:ServiceLoaderFeatureExcludeServices=java.security.Provider` disables automatic descriptor retention
-and removes provider entries from the services catalog in every mode, including explicit provider
-registration; qualifying reflection metadata alone does not override the exclusion.
-Only explicit-registration mode registers a negative resource query for an absent provider
-descriptor; both legacy modes preserve the ordinary resource-query behavior. The negative query
-permits an absent descriptor to return no resource, but does not suppress a descriptor retained by
-an independent reachable use. In particular, run-time provider initialization can itself retain
-the descriptor in a legacy mode, so an opaque query may find it without explicit resource metadata.
+and removes provider entries from the services catalog in every mode.
+Reflection metadata does not override this exclusion.
 
-An extension layer cannot add providers to a provider service descriptor already retained by an
-earlier layer. The builder rejects these additions because service files cannot yet be extended
-across image layers.
+Explicit-registration mode allows queries for an absent descriptor without resource metadata.
+Legacy modes use ordinary resource-query rules; run-time provider initialization can itself retain
+the descriptor and make it visible without explicit resource metadata.
+In every mode, a descriptor retained by an independent reachable use remains visible.
 
-### 6.3 Earlier Service-Driven Inclusion Behavior
+An extension layer cannot add providers to a descriptor retained by an earlier layer.
+The builder rejects such additions because service files cannot yet be extended across image layers.
+
+#### .3: Earlier Service-Driven Inclusion Behavior
 
 Without `--future-defaults=metadata-security-provider-registration`, reachability of a supported JCA
 factory or security facade retains configured services of the corresponding type even when their
@@ -480,18 +511,18 @@ Likewise, reachability of [`GSSManager.getInstance().getMechs()`][gss-manager],
 [`Sasl.createSaslClient(...)`][sasl], or [`Sasl.createSaslServer(...)`][sasl] can retain the configured
 GSS mechanism, SASL client-factory, or SASL server-factory services, respectively.
 With `--future-defaults=metadata-security-provider-registration`, the same call can select only
-providers registered under [§FS-002-security-providers.1.1](security-providers.md#11-qualifying-reflection-metadata), except for the
-[`SecureRandom`][secure-random] rule in [§FS-002-security-providers.1.4](security-providers.md#14-securerandom-providers).
-Neither mode changes the programmatic rules in [§FS-002-security-providers.4](security-providers.md#4-programmatically-supplied-providers).
+providers registered under [§FS-002-security-providers.design.1.1](security-providers.md#1-qualifying-reflection-metadata), except for the
+[`SecureRandom`][secure-random] rule in [§FS-002-security-providers.design.1.5](security-providers.md#5-securerandom-providers).
+Neither mode changes the programmatic rules in [§FS-002-security-providers.design.4](security-providers.md#4-programmatically-supplied-providers).
 
-### 6.4 Earlier Build-Time Initialization Behavior
+#### .4: Earlier Build-Time Initialization Behavior
 
 Without `--future-defaults=run-time-initialize-security-providers`, Native Image retains the earlier
 behavior that initializes the configured provider list during the image build.
 Provider-constructor side effects therefore occur during the build, and the executable starts with
 the resulting provider-list state.
 
-### 6.5 Deprecated Additional-Provider Option
+#### .5: Deprecated Additional-Provider Option
 
 `-H:AdditionalSecurityProviders=<provider-class>` remains accepted with a deprecation warning during
 the transition.
@@ -506,7 +537,7 @@ In legacy run-time provider-list initialization mode, naming a provider does not
 the provider during the image build.
 The JDK constructs a configured provider through its retained path at run time, and only services
 retained through legacy service-driven inclusion or independent metadata are available.
-In legacy build-time provider-list initialization mode, [§FS-002-security-providers.6.4](security-providers.md#64-earlier-build-time-initialization-behavior)
+In legacy build-time provider-list initialization mode, [§FS-002-security-providers.design.6.4](security-providers.md#4-earlier-build-time-initialization-behavior)
 still permits configured-provider construction during the image build.
 The option does not install an otherwise unconfigured provider and does not change provider order.
 Replacing it with ordinary reflection metadata requires explicit provider registration until that
@@ -520,12 +551,14 @@ Universal implementation obligations are stated by [§AR-004-security-providers.
 
 ### requirements.1: Construction Parity
 
-**Requirement.** For every provider the JDK can construct on HotSpot through a supported path from
-[§FS-002-security-providers.terminology.1](security-providers.md#terminology1-registered-providers-and-services), ordinary reflection metadata must let a native
-executable acquire the same provider through the same JDK API and use its services.
+**Requirement.** For every provider the JDK can construct on HotSpot through a public no-argument
+constructor of a public, concrete [`Provider`][provider] subtype, or a public static no-argument
+[`provider()`][service-loader] method of a public service provider class in an explicit module,
+ordinary reflection metadata must let a native executable acquire the same provider through the
+same JDK API and use its services.
 Native Image must require neither a provider-specific option nor an application source change.
 This is the provider-specific form of [§FD-001-hotspot-compatible-semantics-by-default.2](decisions/hotspot-compatible-semantics-by-default.md#2-decision).
-The transition options in [§FS-002-security-providers.6](security-providers.md#6-transition-to-the-future-defaults) are the only temporary build
+The transition options in [§FS-002-security-providers.design.6](security-providers.md#6-transition-to-the-future-defaults) are the only temporary build
 options permitted.
 
 **Domain.** A public provider constructor on the class path; a provider method in an explicit module;
@@ -537,12 +570,12 @@ recursive construction; and repeated failing construction.
 ### requirements.2: Metadata Closure
 
 **Requirement.** The only signals that register a JDK-managed provider are the ordinary reflection
-signals in [§FS-002-security-providers.1.1](security-providers.md#11-qualifying-reflection-metadata) and the platform signal in
-[§FS-002-security-providers.1.4](security-providers.md#14-securerandom-providers).
+signals in [§FS-002-security-providers.design.1.1](security-providers.md#1-qualifying-reflection-metadata) and the platform signal in
+[§FS-002-security-providers.design.1.5](security-providers.md#5-securerandom-providers).
 Native Image must introduce no provider-specific metadata category, configuration file, permanent
 option, or missing-metadata exception.
 Instantiation reachability used to verify an application-supplied provider under
-[§FS-002-security-providers.4.3](security-providers.md#43-jce-verification) is not a provider-registration signal and must not grant JDK-managed
+[§FS-002-security-providers.design.4.3](security-providers.md#3-jce-verification) is not a provider-registration signal and must not grant JDK-managed
 acquisition or retain services.
 
 **Domain.** The reachability-metadata schema, Native Image option list, provider-path exception types,
@@ -551,7 +584,7 @@ and the architecture chokepoints in [§AR-004-security-providers.requirements](.
 ### requirements.3: Diagnostic Sufficiency
 
 **Requirement.** A failure caused by missing provider registration must identify the provider
-implementation class by binary name and supply ordinary reflection metadata that makes the same
+implementation class by name and supply ordinary reflection metadata that makes the same
 operation succeed after one rebuild.
 For a provider with a supported construction path, the same entry must enable the provider and its
 services.
@@ -563,15 +596,17 @@ provider-list mutation.
 
 ### requirements.4: No Exposure of an Unregistered Provider
 
-**Requirement.** An unregistered JDK-managed provider must not become observable through any path in
-[§FS-002-security-providers.terminology.2](security-providers.md#terminology2-jdk-managed-providers-and-acquisition).
+**Requirement.** An unregistered provider that the JDK creates or discovers must not be returned,
+reported, or selected through configuration, [`ServiceLoader`][service-loader], factories, or
+default selection.
 A provider must not supply a JCE-verified service unless Native Image recorded a successful
 build-time verification outcome for its class.
 Failure must precede application receipt of any provider, service, engine, or facade representing
 the unavailable provider.
 
-**Domain.** The enumerated acquisition paths in [§FS-002-security-providers.terminology.2](security-providers.md#terminology2-jdk-managed-providers-and-acquisition),
-with unenumerated paths covered by [§AR-004-security-providers.requirements.2](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java).
+**Domain.** JDK paths that return, report, or select a provider or service, including configuration,
+[`ServiceLoader`][service-loader], factories, and default selection, with unenumerated paths covered
+by [§AR-004-security-providers.requirements.2](../../src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/jca/SecurityServicesFeature.java).
 
 ### requirements.5: Standard Semantics Modulo Registration
 
@@ -596,11 +631,11 @@ This is the provider-specific form of
 
 **Domain.** Pairs of builds differing by one reachable but unexecuted JCA factory or facade call,
 excluding the [`SecureRandom`][secure-random] acquisition paths in
-[§FS-002-security-providers.1.4](security-providers.md#14-securerandom-providers).
+[§FS-002-security-providers.design.1.5](security-providers.md#5-securerandom-providers).
 
 ### requirements.7: Transition Compatibility
 
-**Requirement.** Every supported combination in [§FS-002-security-providers.6](security-providers.md#6-transition-to-the-future-defaults) must be
+**Requirement.** Every supported combination in [§FS-002-security-providers.design.6](security-providers.md#6-transition-to-the-future-defaults) must be
 specified and selected at build time, and the earlier behavior must remain selectable without an
 application source change.
 In legacy run-time provider-list initialization mode, the deprecated additional-provider option must
@@ -638,12 +673,13 @@ condition.
 condition permits.
 An unreachable build-time condition contributes nothing; an unsatisfied run-time condition exposes
 neither the provider nor derived construction, service, or verification effects.
-After activation, the provider and all effects in [§FS-002-security-providers.1.3](security-providers.md#13-registration-effects) must become
+After activation, the provider and all effects in [§FS-002-security-providers.design.1.3](security-providers.md#3-registration-effects) must become
 observable independent of when the provider list was initialized.
 
-**Domain.** Each signal shape in [§FS-002-security-providers.1.1](security-providers.md#11-qualifying-reflection-metadata), combined with an
+**Domain.** Each signal shape in [§FS-002-security-providers.design.1.1](security-providers.md#1-qualifying-reflection-metadata), combined with an
 unconditional entry, a build-time condition, and an unsatisfied and satisfied run-time condition,
-observed across the acquisition surface in [§FS-002-security-providers.terminology.2](security-providers.md#terminology2-jdk-managed-providers-and-acquisition).
+observed across JDK paths that return, report, or select a provider or service through
+configuration, [`ServiceLoader`][service-loader], factories, or default selection.
 
 [cipher]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/javax/crypto/Cipher.html
 [class]: https://docs.oracle.com/en/java/javase/25/docs/api/java.base/java/lang/Class.html

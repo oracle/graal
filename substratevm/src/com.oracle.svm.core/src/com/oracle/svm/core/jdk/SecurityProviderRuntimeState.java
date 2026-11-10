@@ -94,7 +94,7 @@ public final class SecurityProviderRuntimeState {
     public record ConstructionPath(String className, String methodName) {
     }
 
-    /** §FS-002-security-providers.3.3: Diagnostic paths grant no eligibility and retain no classes. */
+    /** §FS-002-security-providers.design.3.3: Diagnostic paths grant no eligibility and retain no classes. */
     private final EconomicMap<String, ConstructionPath> constructionPathsForDiagnostics = ImageHeapMap.createNonLayeredMap();
 
     private final EconomicMap<String, ConditionalProviderInfo> providerInfos = ImageHeapMap.createNonLayeredMap();
@@ -126,7 +126,7 @@ public final class SecurityProviderRuntimeState {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    // §FS-002-security-providers.6.2
+    // §FS-002-security-providers.design.6.2
     public void registerServiceProviders(Set<String> providers) {
         if (!previousServiceProviders.isEmpty()) {
             Set<String> additionalProviders = new TreeSet<>(providers);
@@ -183,7 +183,7 @@ public final class SecurityProviderRuntimeState {
     @Platforms(Platform.HOSTED_ONLY.class)
     public synchronized void registerServiceLoadedConfiguredProvider(String providerName, String providerClassName, String constructionClassName, int descriptorOrder) {
         registerServiceLoadedConfiguredProviderKey(providerName, providerClassName, constructionClassName, descriptorOrder);
-        // §FS-002-security-providers.6.1
+        // §FS-002-security-providers.design.6.1
         // Security properties accept either the provider name or its implementation class name.
         registerServiceLoadedConfiguredProviderKey(providerClassName, providerClassName, constructionClassName, descriptorOrder);
     }
@@ -279,7 +279,7 @@ public final class SecurityProviderRuntimeState {
         return info != null && info.acquisitionKind() == AcquisitionKind.APPLICATION_SUPPLIED_ONLY;
     }
 
-    /** §FS-002-security-providers.1.2: Select the first active descriptor candidate in order. */
+    /** §FS-002-security-providers.design.1.2: Select the first active descriptor candidate in order. */
     public static ConfiguredProviderInfo getConfiguredProvider(String providerName) {
         for (SecurityProviderRuntimeState state : singletons()) {
             List<ConfiguredProviderInfo> candidates = state.configuredProviders.get(providerName);
@@ -294,7 +294,7 @@ public final class SecurityProviderRuntimeState {
         return null;
     }
 
-    /** §FS-002-security-providers.3.3: Resolve diagnostics without constructing a provider. */
+    /** §FS-002-security-providers.design.3.3: Resolve diagnostics without constructing a provider. */
     public static ConfiguredProviderInfo getConfiguredProviderForDiagnostics(String providerName) {
         for (SecurityProviderRuntimeState state : singletons()) {
             List<ConfiguredProviderInfo> candidates = state.configuredProviders.get(providerName);
@@ -361,7 +361,7 @@ public final class SecurityProviderRuntimeState {
                     Set<String> changedKeys = new TreeSet<>(keys);
                     changedKeys.addAll(singleton.initialProperties.keySet());
                     changedKeys.removeIf(key -> Objects.equals(previousProperties.get(key), singleton.initialProperties.get(key)));
-                    // §FS-002-security-providers.6.1
+                    // §FS-002-security-providers.design.6.1
                     /* Static-final JDK fields can retain security-property values from the base. */
                     UserError.guarantee(changedKeys.isEmpty(),
                                     "Security properties differ between image layers: %s. Use the same java.security configuration when building every layer.",

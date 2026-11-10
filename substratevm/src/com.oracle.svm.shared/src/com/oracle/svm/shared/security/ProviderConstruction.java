@@ -56,11 +56,10 @@ public final class ProviderConstruction {
     }
 
     /**
-     * Returns whether {@code providerClass} can be a provider implementation class. A provider
+     * Returns whether {@code providerClass} is a concrete {@link Provider} subtype. A provider
      * method can return an instance of a non-public implementation class.
      */
     public static boolean isProviderImplementationClass(Class<?> providerClass) {
-        // §FS-002-security-providers.terminology.1
         if (providerClass == null || providerClass.isArray() || providerClass.isPrimitive() || providerClass.isInterface()) {
             return false;
         }
@@ -74,7 +73,7 @@ public final class ProviderConstruction {
      */
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L763-L785")
     public static boolean isProviderConstructorClass(Class<?> providerClass) {
-        // §FS-002-security-providers.1.2
+        // §FS-002-security-providers.design.1.2
         return isProviderImplementationClass(providerClass) && Modifier.isPublic(providerClass.getModifiers());
     }
 
@@ -83,7 +82,7 @@ public final class ProviderConstruction {
      */
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L620-L631")
     public static boolean isQualifyingConstructor(Constructor<?> constructor) {
-        // §FS-002-security-providers.1.2
+        // §FS-002-security-providers.design.1.2
         return constructor != null && Modifier.isPublic(constructor.getModifiers()) && constructor.getParameterCount() == 0 &&
                         isProviderConstructorClass(constructor.getDeclaringClass());
     }
@@ -98,7 +97,7 @@ public final class ProviderConstruction {
      */
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L583-L612")
     public static boolean isQualifyingProviderMethod(Method method) {
-        // §FS-002-security-providers.1.2
+        // §FS-002-security-providers.design.1.2
         if (method == null || !PROVIDER_METHOD_NAME.equals(method.getName())) {
             return false;
         }

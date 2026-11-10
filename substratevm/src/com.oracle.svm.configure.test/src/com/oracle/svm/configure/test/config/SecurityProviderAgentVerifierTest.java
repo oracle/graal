@@ -89,9 +89,9 @@ public class SecurityProviderAgentVerifierTest {
         Assert.assertNull("Provider-list mutation unexpectedly recorded the supplied provider",
                         reflectionConfiguration.get(UnresolvedAccessCondition.unconditional(),
                                         NamedConfigurationTypeDescriptor.fromReflectionName(SecurityProviderAgentTest.ProgrammaticallyAddedProvider.class.getName())));
-        /* §FS-002-security-providers.5.1: Other security operations performed by the test harness
-         * may legitimately record configured providers. This test isolates the supplied object
-         * passed to the mutation API, which must not be recorded merely because it was inserted. */
+        /* §FS-002-security-providers.design.5.1: Harness operations may legitimately record
+         * configured providers. This test isolates the supplied object passed to the mutation API,
+         * which must not be recorded merely because it was inserted. */
     }
 
     @Test
