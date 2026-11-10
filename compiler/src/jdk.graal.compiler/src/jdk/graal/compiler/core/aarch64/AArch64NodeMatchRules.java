@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -437,8 +437,8 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
      */
     private ComplexMatchResult unsignedBitFieldHelper(JavaKind finalOpKind, BinaryNode shift, ValueNode value, ConstantNode maskNode, int andOpSize) {
         long mask = maskNode.asJavaConstant().asLong() & CodeUtil.mask(andOpSize);
-        if (!CodeUtil.isPowerOf2(mask + 1)) {
-            /* MaskNode isn't a mask: initial assumption doesn't hold true */
+        if (mask == 0 || !CodeUtil.isPowerOf2(mask + 1)) {
+            /* The mask must describe a nonempty bitfield of consecutive low bits. */
             return null;
         }
         int maskSize = 64 - Long.numberOfLeadingZeros(mask);

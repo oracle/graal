@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, 2021, Arm Limited and affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,6 +26,7 @@
 
 package jdk.graal.compiler.core.aarch64.test;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.aarch64.AArch64BitFieldOp;
 import org.junit.Test;
@@ -34,6 +35,47 @@ import java.util.function.Predicate;
 
 public class AArch64BitFieldTest extends AArch64MatchRuleTest {
     private static final Predicate<LIRInstruction> predicate = op -> (op instanceof AArch64BitFieldOp);
+
+    // Keep the zero mask opaque until after the last canonicalization so the match rules see it.
+    public static int zeroMaskExtractInt(int input) {
+        return (input >>> 1) & GraalDirectives.opaque(0);
+    }
+
+    @Test
+    public void testZeroMaskExtractInt() {
+        test("zeroMaskExtractInt", -1);
+        checkLIR("zeroMaskExtractInt", predicate, 0);
+    }
+
+    public static long zeroMaskExtractLong(long input) {
+        return (input >>> 1) & GraalDirectives.opaque(0L);
+    }
+
+    @Test
+    public void testZeroMaskExtractLong() {
+        test("zeroMaskExtractLong", -1L);
+        checkLIR("zeroMaskExtractLong", predicate, 0);
+    }
+
+    public static int zeroMaskInsertInt(int input) {
+        return (input & GraalDirectives.opaque(0)) << 3;
+    }
+
+    @Test
+    public void testZeroMaskInsertInt() {
+        test("zeroMaskInsertInt", -1);
+        checkLIR("zeroMaskInsertInt", predicate, 0);
+    }
+
+    public static long zeroMaskInsertLong(long input) {
+        return (input & GraalDirectives.opaque(0L)) << 3;
+    }
+
+    @Test
+    public void testZeroMaskInsertLong() {
+        test("zeroMaskInsertLong", -1L);
+        checkLIR("zeroMaskInsertLong", predicate, 0);
+    }
 
     private void testAndCheckLIR(String method, String negativeMethod, Object input) {
         testAndCheckLIR(method, input);
