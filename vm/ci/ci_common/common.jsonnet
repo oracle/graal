@@ -169,7 +169,7 @@ local devkits = graal_common.devkits;
       };
 
       if os == 'windows' && arch == 'amd64' then
-          java_deps(edition) + (if (java_version == 'latest') then self.svm_common_windows_amd64("Latest") else self.svm_common_windows_amd64(java_version)) + self.js_windows_common + graal_common.deps.sulong
+          java_deps(edition) + (if (java_version == 'latest') then self.svm_common_windows_amd64("Latest") else self.svm_common_windows_amd64(java_version)) + self.js_windows_common + graal_common.deps.sulong + graal_common.deps.espresso
       else if (os == 'darwin' && arch == 'aarch64') || (os == 'linux') then
           java_deps(edition) + self.full_vm_build
       else
