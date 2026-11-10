@@ -613,8 +613,20 @@ public final class NativeImageHeap implements ImageHeap {
 
     private void addToObjectReachabilityInfo(ObjectInfo existing, Object reason) {
         if (objectReachabilityInfo != null) {
-            objectReachabilityInfo.get(existing).addReason(reason);
+            objectReachabilityInfo.get(existing).addReason(reachabilityReason(reason));
         }
+    }
+
+    private Object referenceReason(ObjectInfo source, Object inclusionReason) {
+        return objectReachabilityInfo == null ? inclusionReason : new ObjectReferenceReason(source, inclusionReason);
+    }
+
+    private static Object inclusionReason(Object reason) {
+        return reason instanceof ObjectReferenceReason reference ? reference.inclusionReason() : reason;
+    }
+
+    private static Object reachabilityReason(Object reason) {
+        return reason instanceof ObjectReferenceReason reference ? reference.source() : reason;
     }
 
     private int computeIdentityHashCode(JavaConstant constant) {
@@ -705,7 +717,7 @@ public final class NativeImageHeap implements ImageHeap {
             msg.append("Image heap writing found an object whose type was not marked as instantiated by the static analysis: ");
             msg.append(type.toJavaName(true)).append("  (").append(type).append(")");
             msg.append(System.lineSeparator()).append("  reachable through:").append(System.lineSeparator());
-            reasonSupport.fillReasonStack(msg, reason);
+            reasonSupport.fillReasonStack(msg, inclusionReason(reason));
             VMError.shouldNotReachHere(msg.toString());
         }
 
@@ -780,7 +792,7 @@ public final class NativeImageHeap implements ImageHeap {
                 return;
             }
             try {
-                recursiveAddObject(hub, false, addReason);
+                recursiveAddObject(hub, false, referenceReason(info, addReason));
                 // Recursively add all the fields of the object.
                 final boolean fieldsAreImmutable = hMetaAccess.isInstanceOf(constant, String.class);
                 for (HostedField field : clazz.getInstanceFields(true)) {
@@ -816,7 +828,7 @@ public final class NativeImageHeap implements ImageHeap {
                                     patched = true;
                                 } else {
                                     Object fieldReason = reasonSupport.fieldAccess(addReason, field);
-                                    recursiveAddConstant(fieldValueConstant, fieldsAreImmutable, fieldReason);
+                                    recursiveAddConstant(fieldValueConstant, fieldsAreImmutable, referenceReason(info, fieldReason));
                                 }
                                 references = true;
                             }
@@ -831,7 +843,7 @@ public final class NativeImageHeap implements ImageHeap {
                     written = written || ((field.isWritten() || !field.isValueAvailable(constant)) && !field.isFinal() && !fieldRelocatable);
                 }
                 if (hybridArray instanceof Object[]) {
-                    relocatable = addArrayElements((Object[]) hybridArray, relocatable, addReason);
+                    relocatable = addArrayElements((Object[]) hybridArray, relocatable, addReason, info);
                     references = true;
                 }
             } catch (AnalysisError.TypeNotFoundError ex) {
@@ -848,10 +860,10 @@ public final class NativeImageHeap implements ImageHeap {
                 return;
             }
             try {
-                recursiveAddObject(hub, false, addReason);
+                recursiveAddObject(hub, false, referenceReason(info, addReason));
                 if (hMetaAccess.isInstanceOf(constant, Object[].class)) {
                     VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
-                    var result = addConstantArrayElements(constant, length, false, addReason);
+                    var result = addConstantArrayElements(constant, length, false, addReason, info);
                     references = true;
                     relocatable = result.relocatable();
                     patched = result.patched();
@@ -951,7 +963,7 @@ public final class NativeImageHeap implements ImageHeap {
             msg.append("object: ").append(object).append("  of class: ").append(object.getClass().getTypeName());
         }
         msg.append(System.lineSeparator()).append("  reachable through:").append(System.lineSeparator());
-        reasonSupport.fillReasonStack(msg, reason);
+        reasonSupport.fillReasonStack(msg, inclusionReason(reason));
         throw UserError.abort("%s", msg);
     }
 
@@ -1022,7 +1034,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     // Deep-copy an array from the host heap to the model of the native image heap.
-    private boolean addArrayElements(Object[] array, boolean otherFieldsRelocatable, Object reason) {
+    private boolean addArrayElements(Object[] array, boolean otherFieldsRelocatable, Object reason, ObjectInfo source) {
         boolean relocatable = otherFieldsRelocatable;
         for (int idx = 0; idx < array.length; idx++) {
             Object element = array[idx];
@@ -1031,7 +1043,7 @@ public final class NativeImageHeap implements ImageHeap {
                 relocatable = relocatable || isRelocatableValue(value);
             }
             Object elementReason = reasonSupport.arrayAccess(reason, idx);
-            recursiveAddObject(value, false, elementReason);
+            recursiveAddObject(value, false, referenceReason(source, elementReason));
         }
         return relocatable;
     }
@@ -1040,7 +1052,7 @@ public final class NativeImageHeap implements ImageHeap {
 
     }
 
-    private AddConstantArrayResult addConstantArrayElements(JavaConstant array, int length, boolean otherFieldsRelocatable, Object reason) {
+    private AddConstantArrayResult addConstantArrayElements(JavaConstant array, int length, boolean otherFieldsRelocatable, Object reason, ObjectInfo source) {
         boolean relocatable = otherFieldsRelocatable;
         boolean patched = false;
         for (int idx = 0; idx < length; idx++) {
@@ -1053,7 +1065,7 @@ public final class NativeImageHeap implements ImageHeap {
                 patched = true;
             } else {
                 Object elementReason = reasonSupport.arrayAccess(reason, idx);
-                recursiveAddConstant(value, false, elementReason);
+                recursiveAddConstant(value, false, referenceReason(source, elementReason));
             }
         }
         return new AddConstantArrayResult(relocatable, patched);
@@ -1139,9 +1151,9 @@ public final class NativeImageHeap implements ImageHeap {
             this.size = size;
             this.identityHashCode = identityHashCode;
 
-            this.reason = reasonSupport.objectInclusionReason(this, reason, hMetaAccess, hConstantReflection);
+            this.reason = reasonSupport.objectInclusionReason(this, inclusionReason(reason), hMetaAccess, hConstantReflection);
             if (objectReachabilityInfo != null) {
-                objectReachabilityInfo.put(this, new ObjectReachabilityInfo(this, reason));
+                objectReachabilityInfo.put(this, new ObjectReachabilityInfo(this, reachabilityReason(reason)));
             }
         }
 
@@ -1364,8 +1376,7 @@ public final class NativeImageHeap implements ImageHeap {
                 return ObjectReachabilityGroup.InternedStringsTable.flag;
             } else if (reason.equals(reasonSupport.resource())) {
                 return ObjectReachabilityGroup.Resources.flag;
-            } else if (reasonSupport.isObject(reason)) {
-                ObjectInfo r = reasonSupport.getObject(reason);
+            } else if (reason instanceof ObjectInfo r) {
                 return additionalReasonInfoHashMap.get(r).getObjectReachabilityGroup();
             } else if (reasonSupport.isStaticField(reason) || reasonSupport.isMethod(reason)) {
                 return ObjectReachabilityGroup.MethodOrStaticField.flag;
@@ -1374,6 +1385,13 @@ public final class NativeImageHeap implements ImageHeap {
         }
     }
 
+    /*
+     * Profiling paths may aggregate several objects. Connected-components diagnostics need the
+     * actual source of each edge instead. Allocate this wrapper only while those diagnostics run;
+     * the worklist unwraps it into the existing per-object reachability information.
+     */
+    private record ObjectReferenceReason(ObjectInfo source, Object inclusionReason) {
+    }
 }
 
 /**

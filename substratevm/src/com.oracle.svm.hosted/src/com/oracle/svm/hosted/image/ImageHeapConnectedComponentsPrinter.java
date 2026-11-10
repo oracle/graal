@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -148,11 +148,8 @@ public class ImageHeapConnectedComponentsPrinter {
             objectInfoGraph.addNode(objectInfo);
             ObjectReachabilityInfo reachabilityInfo = heap.objectReachabilityInfo.get(objectInfo);
             for (Object referencesToThisObject : reachabilityInfo.getAllReasons()) {
-                if (reasonSupport.isObject(referencesToThisObject)) {
-                    ObjectInfo info = reasonSupport.getObject(referencesToThisObject);
-                    if (objects.contains(info)) {
-                        objectInfoGraph.connect(info, objectInfo);
-                    }
+                if (referencesToThisObject instanceof ObjectInfo info && objects.contains(info)) {
+                    objectInfoGraph.connect(info, objectInfo);
                 }
             }
         }
@@ -361,14 +358,15 @@ public class ImageHeapConnectedComponentsPrinter {
     private void printObjectsToJson(JsonWriter writer, Collection<ObjectInfo> objects) throws IOException {
         for (Iterator<ObjectInfo> iterator = objects.iterator(); iterator.hasNext();) {
             ObjectInfo objectInfo = iterator.next();
-            Object reason = objectInfo.getMainReason();
+            /* Use the exact incoming edge, not a potentially shared profiling path. */
+            Object reason = heap.objectReachabilityInfo.get(objectInfo).getAllReasons().iterator().next();
             writer.append('{');
             writer.quote("className").append(':').quote(objectInfo.getObjectClass().getName()).append(',');
             writer.quote("identityHashCode").append(':').quote(String.valueOf(objectInfo.getIdentityHashCode())).append(',');
             writer.quote("constantValue").append(':').quote(constantAsRawString(bb, objectInfo.getConstant())).append(',');
             writer.quote("reason").append(":{");
-            writer.quote("kind").append(':').quote(reasonSupport.kind(reason)).append(',');
-            writer.quote("value").append(':').quote(reasonSupport.value(reason));
+            writer.quote("kind").append(':').quote(reason instanceof ObjectInfo ? "object" : reasonSupport.kind(reason)).append(',');
+            writer.quote("value").append(':').quote(reason instanceof ObjectInfo info ? String.valueOf(info.getIdentityHashCode()) : reasonSupport.value(reason));
             writer.append('}');
             writer.append('}');
             if (iterator.hasNext()) {
