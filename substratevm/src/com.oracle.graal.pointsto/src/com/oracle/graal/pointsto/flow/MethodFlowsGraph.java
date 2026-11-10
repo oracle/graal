@@ -31,6 +31,7 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
@@ -230,6 +231,9 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
 
             @Override
             public TypeFlow<?> next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
                 TypeFlow<?> current = next;
                 assert withinMethod(current) : "Flow " + current + " has source " + current.source + " that is not a part of " + method;
                 next = findNext();
