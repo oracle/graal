@@ -419,7 +419,8 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         if (metaAccess != null) {
             /*
              * Distinct graph values can refer to the same array even if neither declared type is
-             * assignable to the other: Serializable[] and Comparable[] can both denote String[].
+             * assignable to the other: for example, Serializable[] and Comparable[] can both denote
+             * String[].
              * Intersecting stamps preserves such shared concrete subtypes, while still proving
              * disjointness for incompatible concrete array types. A null-only intersection also
              * contains no array on which an indexed access can complete.

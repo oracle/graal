@@ -42,6 +42,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.MulNode;
+import jdk.graal.compiler.nodes.calc.SignExtendNode;
 import jdk.graal.compiler.nodes.debug.BlackholeNode;
 import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
@@ -69,16 +70,26 @@ public class OptimisticRawAliasingTest extends GraalCompilerTest {
 
     /// Builds the alias condition for equal-base reads and writes in either iteration order.
     private LogicNode aliasCondition(boolean descending, int writeScale) throws Exception {
+        return aliasCondition(descending, 8, writeScale, 100, 100);
+    }
+
+    /// Models different offset scales and bases, including addresses near the unsigned boundary.
+    private LogicNode aliasCondition(boolean descending, long readScale, long writeScale, long readBase, long writeBase) throws Exception {
         StructuredGraph graph = parseEager(descending ? "descendingLoop" : "ascendingLoop", AllowAssumptions.NO);
         BlackholeNode anchor = graph.getNodes().filter(BlackholeNode.class).first();
         Assert.assertNotNull("fixed body marker must survive parsing", anchor);
         ValueNode counter = anchor.getValue();
-        ValueNode readOffset = graph.addOrUnique(new MulNode(counter, ConstantNode.forLong(8, graph)));
+        ValueNode readOffset = graph.addOrUnique(new MulNode(counter, ConstantNode.forLong(readScale, graph)));
         ValueNode writeOffset = graph.addOrUnique(new MulNode(counter, ConstantNode.forLong(writeScale, graph)));
-        ValueNode base = ConstantNode.forLong(100, graph);
-        ReadNode read = graph.add(new ReadNode(graph.unique(new OffsetAddressNode(base, readOffset)), LocationIdentity.any(),
+        return aliasCondition(graph, readOffset, writeOffset, readBase, writeBase, 3);
+    }
+
+    /// Builds raw accesses whose write consumes the read, without touching native memory.
+    private LogicNode aliasCondition(StructuredGraph graph, ValueNode readOffset, ValueNode writeOffset, long readBase, long writeBase, long expectedTripCount) throws Exception {
+        BlackholeNode anchor = graph.getNodes().filter(BlackholeNode.class).first();
+        ReadNode read = graph.add(new ReadNode(graph.unique(new OffsetAddressNode(ConstantNode.forLong(readBase, graph), readOffset)), LocationIdentity.any(),
                         StampFactory.forKind(JavaKind.Int), BarrierType.NONE, MemoryOrderMode.PLAIN));
-        WriteNode write = graph.add(new WriteNode(graph.unique(new OffsetAddressNode(base, writeOffset)), LocationIdentity.any(),
+        WriteNode write = graph.add(new WriteNode(graph.unique(new OffsetAddressNode(ConstantNode.forLong(writeBase, graph), writeOffset)), LocationIdentity.any(),
                         read, BarrierType.NONE, MemoryOrderMode.PLAIN));
         graph.addBeforeFixed(anchor, read);
         graph.addAfterFixed(read, write);
@@ -87,11 +98,11 @@ public class OptimisticRawAliasingTest extends GraalCompilerTest {
         Assert.assertEquals(1, data.countedLoops().size());
         Loop loop = data.countedLoops().get(0);
         Assert.assertTrue(loop.counted().counterNeverOverflows());
-        Assert.assertEquals(new UnsignedLong(3), loop.counted().constantMaxTripCount());
+        Assert.assertEquals(new UnsignedLong(expectedTripCount), loop.counted().constantMaxTripCount());
         Assert.assertTrue(loop.whole().nodes().contains(read));
         Assert.assertTrue(loop.whole().nodes().contains(write));
-        Assert.assertEquals(descending ? -8 : 8, loop.getInductionVariables().get(readOffset).constantStride());
-        Assert.assertEquals(descending ? -writeScale : writeScale, loop.getInductionVariables().get(writeOffset).constantStride());
+        Assert.assertTrue(loop.getInductionVariables().get(readOffset).isConstantStride());
+        Assert.assertTrue(loop.getInductionVariables().get(writeOffset).isConstantStride());
         Method method = OptimisticAliasingAnalysisPhase.class.getDeclaredMethod("testLoopAccessAliasing", Loop.class,
                         ValueNode.class, WriteNode.class, boolean.class, ConstantReflectionProvider.class);
         method.setAccessible(true);
@@ -114,5 +125,51 @@ public class OptimisticRawAliasingTest extends GraalCompilerTest {
         Assert.assertTrue(aliasCondition(false, 8).isContradiction());
         Assert.assertTrue(aliasCondition(false, 4).isContradiction());
         Assert.assertTrue(aliasCondition(false, 16).isTautology());
+    }
+
+    /// Supplies the counter range for addresses that overflow before widening to long.
+    public static void descendingIntLoop() {
+        for (int i = 2; i >= -1; i--) {
+            GraalDirectives.blackhole(i);
+        }
+    }
+
+    /// Preserves dependence when the first read offset overflows in int arithmetic.
+    @Test
+    public void descendingRawOffsetsCannotWrapBeforeWidening() throws Exception {
+        Assert.assertTrue(widenedIntAliasCondition(false).isTautology());
+        Assert.assertTrue(widenedIntAliasCondition(true).isTautology());
+    }
+
+    /// Models overflow in either the read or write offset, before its conversion to long.
+    private LogicNode widenedIntAliasCondition(boolean overflowWrite) throws Exception {
+        StructuredGraph graph = parseEager("descendingIntLoop", AllowAssumptions.NO);
+        ValueNode counter = graph.getNodes().filter(BlackholeNode.class).first().getValue();
+        ValueNode intReadOffset = graph.addOrUnique(new MulNode(counter, ConstantNode.forInt(0x40000000, graph)));
+        ValueNode readOffset = graph.addOrUnique(new SignExtendNode(intReadOffset, Long.SIZE));
+        ValueNode longCounter = graph.addOrUnique(new SignExtendNode(counter, Long.SIZE));
+        ValueNode writeOffset = graph.addOrUnique(new MulNode(longCounter, ConstantNode.forLong(0x40000000L, graph)));
+        // The first read wraps to 0x80000000, below the first write at 0x140000000.
+        // The next read jumps up to 0x140000000 and consumes that overwritten value.
+        if (overflowWrite) {
+            return aliasCondition(graph, writeOffset, readOffset, 0xC0000000L, 0x100000000L, 4);
+        }
+        return aliasCondition(graph, readOffset, writeOffset, 0x100000000L, 0xC0000000L, 4);
+    }
+
+    /// Rejects offsets that overflow at the first or last iteration in long arithmetic.
+    @Test
+    public void rawOffsetsCannotWrapInLongArithmetic() throws Exception {
+        long scale = 0x4000000000000000L;
+        Assert.assertTrue(aliasCondition(true, scale, scale, 100, 100).isTautology());
+        Assert.assertTrue(aliasCondition(false, scale, scale, 100, 100).isTautology());
+    }
+
+    /// Rejects unsigned address ranges that wrap after adding the base or the access width.
+    @Test
+    public void rawAddressRangesCannotWrap() throws Exception {
+        Assert.assertTrue(aliasCondition(true, 8, 8, -8, -8).isTautology());
+        Assert.assertTrue(aliasCondition(true, 8, 8, -17, -17).isTautology());
+        Assert.assertTrue(aliasCondition(true, 8, 8, -32, -32).isContradiction());
     }
 }
