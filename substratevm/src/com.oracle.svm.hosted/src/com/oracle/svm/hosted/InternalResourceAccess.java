@@ -53,12 +53,12 @@ public final class InternalResourceAccess implements ResourceAccess {
     @Override
     public void register(AccessCondition condition, Module module, String pattern) {
         Objects.requireNonNull(pattern, "Resource pattern cannot be null. Please ensure that all values you register are not null.");
-        if (pattern.replace("\\*", "").contains("*")) {
-            String moduleName = module == null ? null : module.getName();
-            rrsInstance.addGlob(condition, moduleName, pattern, "Registered from API");
-        } else {
-            rrsInstance.addResource(condition, module, pattern.replace("\\*", "*"), "Registered from API");
-        }
+        /*
+         * Exact paths are globs too. Retain their metadata so a covered miss in a parent loader
+         * does not prevent delegation from finding the registered resource in the application loader.
+         */
+        String moduleName = module == null ? null : module.getName();
+        rrsInstance.addGlob(condition, moduleName, pattern, "Registered from API");
     }
 
     @Override

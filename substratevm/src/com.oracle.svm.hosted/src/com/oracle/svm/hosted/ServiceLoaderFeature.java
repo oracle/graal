@@ -43,9 +43,11 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.LayeredSecurityProvidersSupport;
+import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.jca.SecurityProviderMode;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
@@ -87,6 +89,7 @@ import sun.util.locale.provider.LocaleDataMetaInfo;
  */
 @AutomaticallyRegisteredFeature
 public class ServiceLoaderFeature implements InternalFeature {
+    private static final String SECURITY_PROVIDER_SERVICE_RESOURCE = "META-INF/services/" + java.security.Provider.class.getName();
 
     public static class Options {
         @Option(help = "Automatically register services for run-time lookup using ServiceLoader", type = OptionType.Expert) //
@@ -145,6 +148,7 @@ public class ServiceLoaderFeature implements InternalFeature {
                     "jdk.jshell.execution.impl.ConsoleImpl$ConsoleProviderImpl");
 
     private final EconomicSet<String> serviceProvidersToSkip = EconomicSet.create(SKIPPED_PROVIDERS);
+    private SecurityProviderMode securityProviderMode;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -153,7 +157,8 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
+        securityProviderMode = SecurityProviderMode.current();
+        if (securityProviderMode.legacyBuildTime()) {
             servicesToSkip.add(java.security.Provider.class.getName());
         }
         if (!FutureDefaultsOptions.resourceBundlesInitializedAtRunTime()) {
@@ -166,7 +171,20 @@ public class ServiceLoaderFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        // §FS-002-security-providers.design.6.2 Permit an absent descriptor without including its
+        // providers. §FS-002-security-providers.design.6.2: Only explicit mode owns the
+        // descriptor-preservation rule.
+        if (securityProviderMode.explicitRegistration()) {
+            Resources.currentLayer().registerNegativeQuery(access.getApplicationClassLoader().getUnnamedModule(), SECURITY_PROVIDER_SERVICE_RESOURCE);
+        }
         accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
+            if (securityProviderMode.explicitRegistration() && serviceName.equals(java.security.Provider.class.getName()) && !servicesToSkip.contains(serviceName)) {
+                ResolvedJavaType serviceClass = accessImpl.findTypeByName(serviceName);
+                if (serviceClass != null) {
+                    access.registerReachabilityHandler(a -> preserveSecurityProviderDescriptors(a, providers), serviceClass);
+                }
+                return;
+            }
             Collection<String> providersToSkip = providers;
             try {
                 if (!servicesToSkip.contains(serviceName)) {
@@ -201,45 +219,42 @@ public class ServiceLoaderFeature implements InternalFeature {
         });
     }
 
+    private void preserveSecurityProviderDescriptors(DuringAnalysisAccess access, Collection<String> providers) {
+        LinkedHashSet<String> registeredProviders = new LinkedHashSet<>();
+        for (String provider : providers) {
+            if (!serviceProvidersToSkip.contains(provider)) {
+                registerProviderForRuntimeResourceAccess(access, provider, registeredProviders);
+            }
+        }
+        registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(),
+                        java.security.Provider.class.getName(), registeredProviders);
+    }
+
     void handleServiceClassIsReachable(DuringAnalysisAccess access, ResolvedJavaType serviceProvider, Collection<String> providers) {
         FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
+        boolean isSecurityProviderService = serviceProvider.equals(accessImpl.getMetaAccess().lookupJavaType(java.security.Provider.class));
         LinkedHashSet<String> registeredProviders = new LinkedHashSet<>();
         for (String provider : providers) {
             if (serviceProvidersToSkip.contains(provider)) {
                 continue;
             }
-            if (serviceProvider.equals(accessImpl.getMetaAccess().lookupJavaType(java.security.Provider.class)) &&
-                            !LayeredSecurityProvidersSupport.currentLayer().isUserRequestedSecurityProvider(provider)) {
-                LayeredSecurityProvidersSupport.currentLayer().markSecurityProviderAsNotLoaded(provider);
-            } else {
-                registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
+            // Keep descriptors; reflection requires explicit metadata or SecurityServicesFeature.
+            // Otherwise, ServiceLoader reports Class.forName failure at run time
+            // (§FS-002-security-providers.design.6.2).
+            if (isSecurityProviderService) {
+                registerProviderForRuntimeResourceAccess(access, provider, registeredProviders);
+                continue;
             }
+            registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
         }
         registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(), serviceProvider.toClassName(), registeredProviders);
     }
 
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/util/ServiceLoader.java#L745-L793")
     public static void registerProviderForRuntimeReflectionAccess(DuringAnalysisAccess access, String provider, Set<String> registeredProviders) {
-        FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
         /* Make provider reflectively instantiable */
-        ResolvedJavaType providerClass;
-        try {
-            providerClass = accessImpl.findTypeByName(provider);
-        } catch (UnsupportedPlatformException e) {
-            return;
-        } catch (DeletedElementException e) {
-            /* Disallow services with implementation classes that are marked as @Deleted */
-            return;
-        }
-
-        if (providerClass == null || providerClass.isArray() || providerClass.isPrimitive()) {
-            return;
-        }
-        if (!accessImpl.getHostVM().platformSupported(providerClass)) {
-            return;
-        }
-        if (((Inflation) accessImpl.getBigBang()).getAnnotationSubstitutionProcessor().isDeleted(providerClass)) {
-            /* Disallow services with implementation classes that are marked as @Deleted */
+        ResolvedJavaType providerClass = findServiceProviderType(access, provider);
+        if (providerClass == null) {
             return;
         }
 
@@ -288,10 +303,38 @@ public class ServiceLoaderFeature implements InternalFeature {
         registeredProviders.add(provider);
     }
 
+    private static void registerProviderForRuntimeResourceAccess(DuringAnalysisAccess access, String provider, Set<String> registeredProviders) {
+        if (findServiceProviderType(access, provider) != null) {
+            registeredProviders.add(provider);
+        }
+    }
+
+    private static ResolvedJavaType findServiceProviderType(DuringAnalysisAccess access, String provider) {
+        FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
+        ResolvedJavaType providerClass;
+        try {
+            providerClass = accessImpl.findTypeByName(provider);
+        } catch (UnsupportedPlatformException | DeletedElementException e) {
+            return null;
+        }
+
+        if (providerClass == null || providerClass.isArray() || providerClass.isPrimitive()) {
+            return null;
+        }
+        if (!accessImpl.getHostVM().platformSupported(providerClass)) {
+            return null;
+        }
+        if (((Inflation) accessImpl.getBigBang()).getAnnotationSubstitutionProcessor().isDeleted(providerClass)) {
+            /* Disallow services with implementation classes that are marked as @Deleted */
+            return null;
+        }
+        return providerClass;
+    }
+
     public static void registerProviderForRuntimeResourceAccess(Module module, String serviceProviderName, Set<String> registeredProviders) {
         if (!registeredProviders.isEmpty()) {
             if (serviceProviderName.equals(java.security.Provider.class.getName()) && FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
-                LayeredSecurityProvidersSupport.currentLayer().registerServiceProviders(registeredProviders);
+                SecurityProviderRuntimeState.currentLayer().registerServiceProviders(registeredProviders);
             }
             String serviceResourceLocation = "META-INF/services/" + serviceProviderName;
             byte[] serviceFileData = String.join("\n", registeredProviders).getBytes(StandardCharsets.UTF_8);

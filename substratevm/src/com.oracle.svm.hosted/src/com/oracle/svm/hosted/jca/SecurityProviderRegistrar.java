@@ -1,0 +1,153 @@
+/*
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.svm.hosted.jca;
+
+import java.security.Provider;
+import java.security.Provider.Service;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+
+import com.oracle.svm.core.jdk.SecurityProviderRuntimeState.AcquisitionKind;
+import com.oracle.svm.core.jdk.SecurityProviderRuntimeState;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.shared.collections.ConcurrentIdentityHashMap;
+
+/**
+ * Registers security providers, their service metadata, and run-time eligibility.
+ */
+final class SecurityProviderRegistrar {
+    /** Provides provider construction, verification, and reflection and service registration. */
+    private final SecurityServicesFeature feature;
+    /**
+     * Configured build-time provider instances grouped by implementation class name. Retaining every
+     * instance allows registration to include services from differently configured instances of the
+     * same class. Shared with the feature that populates it.
+     */
+    private final Map<String, List<Provider>> buildTimeProvidersByClassName;
+    /**
+     * Provider instances included during analysis, used to filter providers retained in the image.
+     * Identity comparison keeps distinct instances separate even when their properties are equal;
+     * the concurrent backing map supports concurrent analysis callbacks.
+     */
+    private final Set<Provider> usedProviders = Collections.newSetFromMap(new ConcurrentIdentityHashMap<>());
+
+    SecurityProviderRegistrar(SecurityServicesFeature feature, Map<String, List<Provider>> buildTimeProvidersByClassName) {
+        this.feature = feature;
+        this.buildTimeProvidersByClassName = buildTimeProvidersByClassName;
+    }
+
+    boolean isUsed(Provider provider) {
+        return usedProviders.contains(provider);
+    }
+
+    static void recordConfiguredProvider(Provider provider) {
+        SecurityProviderRuntimeState.currentLayer().registerConfiguredProviderName(provider.getName(), provider.getClass().getName());
+    }
+
+    static void recordServiceLoadedConfiguredProvider(Provider provider, Class<?> constructionClass, int descriptorOrder) {
+        SecurityProviderRuntimeState.currentLayer().registerServiceLoadedConfiguredProvider(
+                        provider.getName(), provider.getClass().getName(), constructionClass.getName(), descriptorOrder);
+    }
+
+    void includeProviderClass(DuringAnalysisAccess access, Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
+        List<Provider> providers = buildTimeProvidersByClassName.get(providerClass.getName());
+        if (providers == null) {
+            if (!feature.isLoadableProviderClass(access, providerClass)) {
+                registerApplicationSuppliedProviderClass(providerClass, metadata);
+                return;
+            }
+            providers = List.of(feature.instantiateProviderImplementation(providerClass));
+        }
+        // Register every configured instance and the union of their service metadata
+        // (§FS-002-security-providers.design.1.3).
+        for (Provider provider : providers) {
+            registerProvider(access, provider, metadata);
+            for (Service service : provider.getServices()) {
+                if (SecurityServicesFeature.isValid(service)) {
+                    feature.registerService(access, service, metadata);
+                }
+            }
+        }
+    }
+
+    /** §FS-002-security-providers.design.6.5: Retain legacy eligibility without constructing a provider. */
+    void includeLegacyRequestedProviderClass(Class<?> providerClass) {
+        RuntimeDynamicAccessMetadata metadata = RuntimeDynamicAccessMetadata.alwaysAvailable(false);
+        feature.registerProviderConstructionPaths(providerClass, metadata);
+        SecurityProviderRuntimeState.currentLayer().registerConfiguredProviderName(providerClass.getName(), providerClass.getName());
+        List<Provider> providers = buildTimeProvidersByClassName.get(providerClass.getName());
+        if (providers == null) {
+            writeProviderManifest(providerClass.getName(), AcquisitionKind.JDK_CONSTRUCTIBLE, null, metadata);
+            return;
+        }
+        for (Provider provider : providers) {
+            usedProviders.add(provider);
+            provider.entrySet();
+            recordConfiguredProvider(provider);
+            writeProviderManifest(providerClass.getName(), AcquisitionKind.JDK_CONSTRUCTIBLE, feature.getProviderVerificationResult(provider), metadata);
+        }
+    }
+
+    /** §FS-002-security-providers.design.6.3: Include one provider without its whole catalog. */
+    void includeProviderForLegacyService(DuringAnalysisAccess access, Provider provider, RuntimeDynamicAccessMetadata metadata) {
+        registerProvider(access, provider, metadata);
+    }
+
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private void registerProvider(DuringAnalysisAccess access, Provider provider, RuntimeDynamicAccessMetadata metadata) {
+        usedProviders.add(provider);
+        feature.registerForReflection(provider.getClass(), metadata);
+        if (feature.isLoadableProviderClass(access, provider.getClass())) {
+            feature.registerProviderConstructionPaths(provider.getClass(), metadata);
+        }
+        /* Trigger initialization of lazy field java.security.Provider.entrySet. */
+        provider.entrySet();
+
+        String providerClassName = provider.getClass().getName();
+        Exception verificationFailure = feature.getProviderVerificationResult(provider);
+        recordConfiguredProvider(provider);
+        feature.recordServiceLoadedConfiguredProvider(provider);
+        AcquisitionKind acquisitionKind = feature.isLoadableProviderClass(access, provider.getClass())
+                        ? AcquisitionKind.JDK_CONSTRUCTIBLE
+                        : AcquisitionKind.APPLICATION_SUPPLIED_ONLY;
+        writeProviderManifest(providerClassName, acquisitionKind, verificationFailure, metadata);
+    }
+
+    static void registerApplicationSuppliedProviderClass(Class<?> providerClass, RuntimeDynamicAccessMetadata metadata) {
+        // §FS-002-security-providers.design.4.3: Instantiation establishes application
+        // verification. A configured instance of the class must not leak failure into
+        // provider-object use.
+        writeProviderManifest(providerClass.getName(), AcquisitionKind.APPLICATION_SUPPLIED_ONLY, null, metadata);
+    }
+
+    /** The sole production chokepoint that writes provider eligibility into the run-time manifest. */
+    private static void writeProviderManifest(String providerClassName, AcquisitionKind acquisitionKind, Exception verificationFailure, RuntimeDynamicAccessMetadata metadata) {
+        SecurityProviderRuntimeState.currentLayer().registerProvider(providerClassName, acquisitionKind, verificationFailure, metadata);
+    }
+}

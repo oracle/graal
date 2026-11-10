@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -90,6 +90,7 @@ public class ResourcesHelper {
         return entry != null && entry != Resources.NEGATIVE_QUERY_MARKER && entry != Resources.MISSING_METADATA_MARKER;
     }
 
+    /** Report and trace a final miss after both embedded and run-time resources were searched. */
     static void reportMissingEmbeddedResourceMetadata(ClassLoader loader, String resourceName) {
         Objects.requireNonNull(resourceName);
         Resources.getAtRuntime(loader, resourceName, false);
