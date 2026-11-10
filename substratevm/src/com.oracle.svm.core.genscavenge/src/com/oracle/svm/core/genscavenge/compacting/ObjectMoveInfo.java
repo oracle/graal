@@ -33,8 +33,10 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
+import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
+import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.remset.AlignedChunkRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
 import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
@@ -173,7 +175,7 @@ public final class ObjectMoveInfo {
      * @see AlignedHeapChunk#walkObjects
      */
     @Uninterruptible(reason = CORE_GC_CODE)
-    public static void walkObjectsForFixup(AlignedHeapChunk.AlignedHeader chunk, ObjectFixupVisitor visitor) {
+    public static void walkObjectsForFixup(AlignedHeapChunk.AlignedHeader chunk, Space space, ObjectFixupVisitor visitor) {
         FirstObjectTable.initializeTable(AlignedChunkRememberedSet.getFirstObjectTableStart(chunk), AlignedChunkRememberedSet.getFirstObjectTableSize());
 
         Pointer p = AlignedHeapChunk.getObjectsStart(chunk);
@@ -204,7 +206,7 @@ public final class ObjectMoveInfo {
                 visitor.visitObject(obj);
                 p = p.add(objSize);
             }
-            if (nextObjSeq.isNonNull() && AlignedHeapChunk.mustSweep(chunk)) {
+            if (nextObjSeq.isNonNull() && GCImpl.getGCImpl().mustSweep(chunk, space)) {
                 // We will write a filler object here, add the location to the first object table.
                 assert p.belowThan(nextObjSeq);
                 UnsignedWord offset = p.subtract(AlignedHeapChunk.getObjectsStart(chunk));

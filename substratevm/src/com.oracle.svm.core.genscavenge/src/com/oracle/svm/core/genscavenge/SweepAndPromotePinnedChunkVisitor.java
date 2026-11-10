@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,7 +58,7 @@ public final class SweepAndPromotePinnedChunkVisitor implements AlignedHeapChunk
         Space originalSpace = HeapChunk.getSpace(chunk);
         assert originalSpace.isFromSpace();
 
-        if (!AlignedHeapChunk.mustSweep(chunk)) {
+        if (!GCImpl.getGCImpl().mustSweep(chunk, originalSpace)) {
             return;
         }
 
@@ -145,7 +145,7 @@ public final class SweepAndPromotePinnedChunkVisitor implements AlignedHeapChunk
 
         boolean fromYoung = originalSpace.isYoungSpace();
         boolean completeCollection = GCImpl.getGCImpl().isCompleteCollection();
-        GCImpl.getGCImpl().promoteAlignedChunkWithPinnedObjectsBeforeSweeping(chunk);
+        GCImpl.getGCImpl().promoteAlignedChunkWithPinnedObjectsBeforeSweeping(chunk, originalSpace);
         Space space = HeapChunk.getSpace(chunk);
         assert space.isToSpace() || (space.isCompactingOldSpace() && !completeCollection && fromYoung);
         boolean rememberedSet = SerialGCOptions.useRememberedSet() && space.isOldSpace();

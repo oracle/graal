@@ -158,12 +158,8 @@ public final class AlignedHeapChunk {
         return HeapChunk.getTopOffset(that).equal(getObjectsStartOffset());
     }
 
-    /**
-     * Determines whether the chunk, if collected, must be swept rather than have its live objects
-     * compacted or copied. This does not change during a garbage collection.
-     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean mustSweep(AlignedHeader that) {
+    public static boolean hasPinnedObjects(AlignedHeader that) {
         return that.getObjectPinCount() != 0 || that.getAllPinned();
     }
 

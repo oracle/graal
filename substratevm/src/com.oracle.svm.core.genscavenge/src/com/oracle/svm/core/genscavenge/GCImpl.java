@@ -574,6 +574,28 @@ public final class GCImpl implements GC {
     }
 
     /**
+     * Determines whether {@code chunk} must be swept rather than have its live objects compacted or copied.
+     *
+     * {@code originalSpace} is the chunk's current space and passed in here because it's generally
+     * readily available in callers. In a full compacting collection, this is already the old
+     * generation space. In other kinds of collections, the chunk has not been promoted yet and
+     * still resides in a from-space.
+     */
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean mustSweep(AlignedHeader chunk, Space originalSpace) {
+        assert originalSpace == HeapChunk.getSpace(chunk);
+        assert originalSpace.isFromSpace() || (completeCollection && originalSpace.isCompactingOldSpace());
+        if (AlignedHeapChunk.hasPinnedObjects(chunk)) {
+            return true;
+        }
+
+        return SerialGCOptions.PinSurvivorSpaceObjectsDuringYoungGC.getValue() &&
+                        !completeCollection &&
+                        !originalSpace.isEdenSpace();
+    }
+
+    /**
      * Whether the current collection is intended to be more aggressive as a last resort to avoid an
      * out of memory condition.
      */
@@ -1064,8 +1086,8 @@ public final class GCImpl implements GC {
             assert !SerialGCOptions.useCompactingOldGen() || !completeCollection || originalSpace.isMetaspace();
             return original;
         }
-        if (isAligned && AlignedHeapChunk.mustSweep((AlignedHeader) originalChunk)) {
-            mark(original);
+        if (isAligned && mustSweep((AlignedHeader) originalChunk, originalSpace)) {
+            mark(original, originalSpace);
             return original;
         }
 
@@ -1103,15 +1125,15 @@ public final class GCImpl implements GC {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE, mayBeInlined = true)
-    void mark(Object obj) {
+    void mark(Object obj, Space space) {
         if (SerialGCOptions.useCompactingOldGen() && completeCollection) {
-            assert HeapChunk.getEnclosingHeapChunk(obj).getSpace().isCompactingOldSpace();
+            assert space.isCompactingOldSpace();
         } else {
             // Only objects in aligned chunks containing pinned objects may be marked.
             AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunk(obj);
-            assert AlignedHeapChunk.mustSweep(chunk);
+            assert mustSweep(chunk, space);
             // Chunks with marked objects must remain in From spaces in original gen until sweeping.
-            Space space = chunk.getSpace();
+            assert space == HeapChunk.getSpace(chunk);
             assert space.isFromSpace();
             assert space.isYoungSpace() || (completeCollection && space.isOldSpace());
         }
@@ -1154,9 +1176,8 @@ public final class GCImpl implements GC {
     }
 
     @Uninterruptible(reason = Uninterruptible.CORE_GC_CODE)
-    void promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeader chunk) {
-        assert AlignedHeapChunk.mustSweep(chunk);
-        Space originalSpace = HeapChunk.getSpace(chunk);
+    void promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeader chunk, Space originalSpace) {
+        assert mustSweep(chunk, originalSpace);
         HeapImpl heap = HeapImpl.getHeapImpl();
         boolean promoted = false;
         if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {

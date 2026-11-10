@@ -54,7 +54,7 @@ public class ObjectPromoter {
         assert ObjectHeaderImpl.isAlignedObject(original);
         assert originalSpace.isFromSpace() || (originalSpace == targetSpace && targetSpace.isCompactingOldSpace());
 
-        Object copy = copyAlignedObject(original, targetSpace);
+        Object copy = doCopyAlignedObject(original, originalSpace, targetSpace);
         if (copy != null) {
             ObjectHeaderImpl.installForwardingPointer(original, copy);
         }
@@ -63,11 +63,11 @@ public class ObjectPromoter {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
-    private static Object copyAlignedObject(Object originalObj, Space targetSpace) {
+    private static Object doCopyAlignedObject(Object originalObj, Space originalSpace, Space targetSpace) {
         assert VMOperation.isGCInProgress();
         assert ObjectHeaderImpl.isAlignedObject(originalObj);
         assert !ObjectHeaderImpl.isMarked(originalObj) : "must never copy a marked object";
-        assert !AlignedHeapChunk.mustSweep(AlignedHeapChunk.getEnclosingChunk(originalObj));
+        assert !GCImpl.getGCImpl().mustSweep(AlignedHeapChunk.getEnclosingChunk(originalObj), originalSpace);
 
         UnsignedWord originalSize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, false);
         UnsignedWord copySize = originalSize;
@@ -124,7 +124,7 @@ public class ObjectPromoter {
     @Uninterruptible(reason = CORE_GC_CODE)
     static void promoteAlignedChunkWithPinnedObjectsBeforeSweeping(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace, Space targetSpace) {
         assert targetSpace != originalSpace && originalSpace.isFromSpace();
-        assert AlignedHeapChunk.mustSweep(chunk);
+        assert GCImpl.getGCImpl().mustSweep(chunk, originalSpace);
 
         originalSpace.extractAlignedHeapChunk(chunk);
         targetSpace.appendAlignedHeapChunk(chunk);
@@ -159,8 +159,11 @@ public class ObjectPromoter {
         Pointer result = Word.nullPointer();
         /* Fast-path: try allocating in the last chunk. */
         AlignedHeapChunk.AlignedHeader oldChunk = targetSpace.getLastAlignedHeapChunk();
-        if (oldChunk.isNonNull() && !AlignedHeapChunk.mustSweep(oldChunk)) {
-            /* Not copying into swept chunks: live objects in them must be marked. */
+        if (oldChunk.isNonNull() && !AlignedHeapChunk.hasPinnedObjects(oldChunk)) {
+            /*
+             * Not copying into chunks with pinned objects to avoid future fragmentation and
+             * sweeping effort. All-pinned chunks can also have uncommitted pages.
+             */
             result = AlignedHeapChunk.tryAllocateMemory(oldChunk, objectSize);
         }
         if (result.isNonNull()) {
