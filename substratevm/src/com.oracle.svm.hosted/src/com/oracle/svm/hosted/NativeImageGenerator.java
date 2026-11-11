@@ -693,8 +693,9 @@ public class NativeImageGenerator {
                 BuildPhaseProviderImpl.markHostedUniverseBuilt();
                 ClassInitializationSupport classInitializationSupport = bb.getHostVM().getClassInitializationSupport();
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(hMetaAccess);
+                SubstrateReplacements analysisReplacements = (SubstrateReplacements) bb.getProviders(MethodVariant.ORIGINAL_METHOD).getReplacements();
                 runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess,
-                                bb.getProviders(MethodVariant.ORIGINAL_METHOD), classInitializationSupport, platformConfig,
+                                analysisReplacements, classInitializationSupport, platformConfig,
                                 bb.getSnippetReflectionProvider()).build();
                 if (GraalConfiguration.hostedInstance() instanceof HostedGraalConfiguration hostedGraalConfiguration) {
                     hostedGraalConfiguration.setRuntimeConfiguration(runtimeConfiguration);
@@ -1076,8 +1077,8 @@ public class NativeImageGenerator {
                     installJavaMainSupport(javaMainClass, javaMainMethod);
                 }
 
-                Providers originalProviders = GuestAccess.get().getProviders();
-                MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
+                Providers guestProviders = GuestAccess.get().getProviders();
+                MetaAccessProvider originalMetaAccess = guestProviders.getMetaAccess();
 
                 ClassLoaderSupportImpl classLoaderSupport = new ClassLoaderSupportImpl(loader.classLoaderSupport);
                 ImageSingletons.add(ClassLoaderSupport.class, classLoaderSupport);
@@ -1196,8 +1197,8 @@ public class NativeImageGenerator {
                 SVMHost hostVM = (SVMHost) aUniverse.hostVM();
                 ((ConditionalConfigurationRegistry) ImageSingletons.lookup(RuntimeSerializationSupport.class)).setHostVM(hostVM);
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(aMetaAccess);
-                HostedProviders aProviders = createHostedProviders(target, aUniverse, originalProviders, platformConfig, aMetaAccess, classInitializationSupport);
-                aUniverse.hostVM().initializeProviders(aProviders);
+                HostedProviders analysisProviders = createAnalysisProviders(target, aUniverse, guestProviders, platformConfig, aMetaAccess, classInitializationSupport);
+                aUniverse.hostVM().initializeProviders(analysisProviders);
 
                 SimulateClassInitializerSupport simulateClassInitializerSupport = hostVM.createSimulateClassInitializerSupport(aMetaAccess);
                 ImageSingletons.add(SimulateClassInitializerSupport.class, simulateClassInitializerSupport);
@@ -1205,7 +1206,7 @@ public class NativeImageGenerator {
                     imageLayerWriter.setSimulateClassInitializerSupport(simulateClassInitializerSupport);
                 }
 
-                bb = createBigBang(debug, options, aUniverse, aMetaAccess, aProviders, annotationSubstitutions);
+                bb = createBigBang(debug, options, aUniverse, aMetaAccess, analysisProviders, annotationSubstitutions);
                 aUniverse.setBigBang(bb);
                 if (imageLayerLoader != null) {
                     imageLayerLoader.initNodeClassMap();
@@ -1219,13 +1220,13 @@ public class NativeImageGenerator {
                 } else {
                     aScanningObserver = new ReachabilityObjectScanner(aMetaAccess);
                 }
-                ImageHeapScanner heapScanner = new SVMImageHeapScanner(bb, imageHeap, aMetaAccess, aProviders.getSnippetReflection(),
-                                aProviders.getConstantReflection(), aScanningObserver, hostedValuesProvider);
+                ImageHeapScanner heapScanner = new SVMImageHeapScanner(bb, imageHeap, aMetaAccess, analysisProviders.getSnippetReflection(),
+                                analysisProviders.getConstantReflection(), aScanningObserver, hostedValuesProvider);
                 aUniverse.setHeapScanner(heapScanner);
                 if (imageLayerWriter != null) {
                     imageLayerWriter.setImageHeap(imageHeap);
                 }
-                ((HostedSnippetReflectionProvider) aProviders.getSnippetReflection()).setHeapScanner(heapScanner);
+                ((HostedSnippetReflectionProvider) analysisProviders.getSnippetReflection()).setHeapScanner(heapScanner);
                 if (imageLayerLoader != null) {
                     imageLayerLoader.postFutureBigbangTasks();
                 }
@@ -1254,7 +1255,7 @@ public class NativeImageGenerator {
                     compilerInvoker.verifyCompiler();
                 }
 
-                nativeLibraries = setupNativeLibraries(aProviders, cEnumProcessor, classInitializationSupport, debug);
+                nativeLibraries = setupNativeLibraries(analysisProviders, cEnumProcessor, classInitializationSupport, debug);
                 ImageSingletons.add(NativeLibraries.class, nativeLibraries);
 
                 try (Indent _ = debug.logAndIndent("process startup initializers")) {
@@ -1265,7 +1266,7 @@ public class NativeImageGenerator {
                 BuildPhaseProviderImpl.markSetupFinished();
 
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
-                                new SubstrateClassInitializationPlugin(hostVM), this.isStubBasedPluginsSupported(), aProviders);
+                                new SubstrateClassInitializationPlugin(hostVM), this.isStubBasedPluginsSupported(), analysisProviders);
 
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                     HostedImageLayerBuildingSupport.registerBaseLayerTypes(bb, loader.guestTypes);
@@ -1437,7 +1438,7 @@ public class NativeImageGenerator {
 
     public static void initializeBigBang(Inflation bb, OptionValues options, FeatureHandler featureHandler, NativeLibraries nativeLibraries, DebugContext debug,
                     AnalysisMetaAccess aMetaAccess, SubstitutionProcessor substitutions, ImageClassLoader loader, boolean initForeignCalls, ClassInitializationPlugin classInitializationPlugin,
-                    boolean supportsStubBasedPlugins, HostedProviders aProviders) {
+                    boolean supportsStubBasedPlugins, HostedProviders analysisProviders) {
         SubstrateReplacements aReplacements = (SubstrateReplacements) bb.getProviders(MethodVariant.ORIGINAL_METHOD).getReplacements();
         AnalysisUniverse aUniverse = bb.getUniverse();
 
@@ -1469,9 +1470,9 @@ public class NativeImageGenerator {
             registerRootElements(bb);
 
             SubstrateTarget target = SubstrateTarget.singleton();
-            NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
+            NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, analysisProviders, aMetaAccess, aUniverse, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
                             bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, target, supportsStubBasedPlugins);
-            registerReplacements(debug, featureHandler, null, aProviders, true, initForeignCalls, new GraphEncoder(target.arch));
+            registerReplacements(debug, featureHandler, null, analysisProviders, true, initForeignCalls, new GraphEncoder(target.arch));
 
             performSnippetGraphAnalysis(bb, aReplacements, options, Function.identity());
         }
@@ -1571,8 +1572,8 @@ public class NativeImageGenerator {
         }
     }
 
-    private static HostedProviders createHostedProviders(TargetDescription target, AnalysisUniverse aUniverse,
-                    Providers originalProviders, SubstratePlatformConfigurationProvider platformConfig, AnalysisMetaAccess aMetaAccess, ClassInitializationSupport classInitializationSupport) {
+    private static HostedProviders createAnalysisProviders(TargetDescription target, AnalysisUniverse aUniverse,
+                    Providers guestProviders, SubstratePlatformConfigurationProvider platformConfig, AnalysisMetaAccess aMetaAccess, ClassInitializationSupport classInitializationSupport) {
 
         ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider(aMetaAccess, null);
         AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aMetaAccess, (SVMHost) aUniverse.hostVM());
@@ -1589,22 +1590,23 @@ public class NativeImageGenerator {
 
         StampProvider aStampProvider = new SubstrateStampProvider(aMetaAccess);
 
-        HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, null, aStampProvider, aSnippetReflection,
-                        aWordTypes, platformConfig, aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
+        HostedProviders analysisProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, null, aStampProvider,
+                        aSnippetReflection,
+                        aWordTypes, platformConfig, aMetaAccessExtensionProvider, guestProviders.getLoopsDataProvider());
 
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        SubstrateReplacements aReplacements = new SubstrateReplacements(aProviders, bytecodeProvider, target, new SubstrateGraphMakerFactory());
-        aProviders = (HostedProviders) aReplacements.getProviders();
-        assert aReplacements == aProviders.getReplacements();
+        SubstrateReplacements aReplacements = new SubstrateReplacements(analysisProviders, bytecodeProvider, target, new SubstrateGraphMakerFactory());
+        analysisProviders = (HostedProviders) aReplacements.getProviders();
+        assert aReplacements == analysisProviders.getReplacements();
 
-        return aProviders;
+        return analysisProviders;
     }
 
-    private static Inflation createBigBang(DebugContext debug, OptionValues options, AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, HostedProviders aProviders,
+    private static Inflation createBigBang(DebugContext debug, OptionValues options, AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, HostedProviders analysisProviders,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor) {
-        SnippetReflectionProvider snippetReflectionProvider = aProviders.getSnippetReflection();
-        ConstantReflectionProvider constantReflectionProvider = aProviders.getConstantReflection();
-        WordTypes wordTypes = aProviders.getWordTypes();
+        SnippetReflectionProvider snippetReflectionProvider = analysisProviders.getSnippetReflection();
+        ConstantReflectionProvider constantReflectionProvider = analysisProviders.getConstantReflection();
+        WordTypes wordTypes = analysisProviders.getWordTypes();
         String reason = "included by " + SubstrateOptionsParser.commandArgument(LayerCreate, "");
         ClassInclusionPolicy classInclusionPolicy = ImageLayerBuildingSupport.buildingSharedLayer() ? new ClassInclusionPolicy.SharedLayerImageInclusionPolicy(reason) : null;
         if (PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(options)) {

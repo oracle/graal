@@ -29,6 +29,7 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
+import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedConstantFieldProvider;
@@ -57,14 +58,14 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfigurationBuilder {
 
     private final HostedUniverse universe;
-    private final HostedProviders analysisProviders;
+    private final SubstrateReplacements analysisReplacements;
 
     public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess,
-                    HostedProviders analysisProviders, ClassInitializationSupport classInitializationSupport, SubstratePlatformConfigurationProvider platformConfig,
+                    SubstrateReplacements analysisReplacements, ClassInitializationSupport classInitializationSupport, SubstratePlatformConfigurationProvider platformConfig,
                     SnippetReflectionProvider snippetReflection) {
         super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, classInitializationSupport, platformConfig, snippetReflection);
         this.universe = universe;
-        this.analysisProviders = analysisProviders;
+        this.analysisReplacements = analysisReplacements;
     }
 
     @Override
@@ -93,7 +94,7 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     @Override
     protected Replacements createReplacements(Providers p) {
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        return new HostedReplacements(universe, p, SubstrateTarget.singleton(), analysisProviders, bytecodeProvider);
+        return new HostedReplacements(universe, p, SubstrateTarget.singleton(), analysisReplacements, bytecodeProvider);
     }
 
     @Override
