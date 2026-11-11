@@ -92,9 +92,9 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     }
 
     @Override
-    protected Replacements createReplacements(Providers p) {
+    protected Replacements createReplacements(Providers providers) {
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        return new HostedReplacements(universe, p, SubstrateTarget.singleton(), analysisReplacements, bytecodeProvider);
+        return new HostedReplacements(universe, providers, SubstrateTarget.singleton(), analysisReplacements, bytecodeProvider);
     }
 
     @Override
