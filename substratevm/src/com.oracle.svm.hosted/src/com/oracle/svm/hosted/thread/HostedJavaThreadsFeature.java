@@ -32,6 +32,7 @@ import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+import com.oracle.svm.core.deopt.RuntimeAssumptionSupport;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.fieldvaluetransformer.NewInstanceOfFixedClassFieldValueTransformer;
@@ -162,6 +163,9 @@ public class HostedJavaThreadsFeature extends JavaThreadsFeature {
         registerDeferredThreadField(access, "java.util.concurrent.locks.AbstractQueuedSynchronizer$Node", "waiter");
         registerDeferredThreadField(access, "java.util.concurrent.locks.AbstractQueuedLongSynchronizer$Node", "waiter");
         registerDeferredThreadField(access, "java.util.concurrent.locks.ReentrantReadWriteLock$Sync", "firstReader");
+
+        // Analysis can observe a hosted worker as the transient runtime-assumption lock owner.
+        registerDeferredThreadField(access, RuntimeAssumptionSupport.class.getName(), "lockHolder");
 
         var trackerType = GuestAccess.get().lookupType(jdk.internal.misc.ThreadTracker.class);
         resetThreadTracker(access, "java.net.URL$ThreadTrackHolder", "TRACKER", trackerType);
