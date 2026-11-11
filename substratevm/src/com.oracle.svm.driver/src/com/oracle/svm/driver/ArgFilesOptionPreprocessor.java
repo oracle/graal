@@ -30,8 +30,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.StringJoiner;
 
 import com.oracle.svm.hosted.util.JDKArgsUtils;
@@ -41,7 +43,19 @@ public class ArgFilesOptionPreprocessor {
 
     private static final String DISABLE_AT_FILES_OPTION = "--disable-@files";
     private static final String DIRECTIVE_PREFIX = "# native-image:";
-    private static final String VALUE_CONTINUATIONS_HEADER = DIRECTIVE_PREFIX + " value-continuations";
+    private static final String VALUE_CONTINUATIONS_SETTING = "value-continuations";
+    private static final String RECURSIVE_ARGUMENT_FILES_SETTING = "recursive-argument-files";
+    private static final int MAX_ARGUMENT_FILE_NESTING = 64;
+
+    private record ArgumentFileSettings(boolean valueContinuations, boolean recursiveArgumentFiles) {
+        private static final ArgumentFileSettings DEFAULT = new ArgumentFileSettings(false, false);
+    }
+
+    private record ParsedArgumentFile(List<String> arguments, ArgumentFileSettings settings) {
+    }
+
+    private record ActiveArgumentFile(String identity, String displayPath) {
+    }
 
     private boolean disableAtFiles = false;
 
@@ -63,23 +77,108 @@ public class ArgFilesOptionPreprocessor {
                 return List.of(argWithoutAt);
             }
             Path argFile = Paths.get(argWithoutAt);
-            if (origin != null) {
-                if (argFile.isAbsolute()) {
-                    NativeImage.showError("Argument file '" + argFile + "' must be relative to " + origin);
-                }
-                // Check before JAR filesystem resolution, which would discard leading '..' components.
-                Path relativeToContainer = origin.resolveRedirectionPath(argFile);
-                if (relativeToContainer.getRoot() != null || relativeToContainer.startsWith("..")) {
-                    NativeImage.showError("Argument file '" + argFile + "' referenced by " + origin + " escapes its containing directory or JAR");
-                }
-            }
-            List<String> arguments = readArgFile(argFile, origin);
-            List<String> result = new ArrayList<>();
-            arguments.forEach(arg -> addArg(result, arg));
-            return result;
+            return processArgumentFile(argFile, origin, null, new ArrayList<>());
         }
 
         return List.of(currentArg);
+    }
+
+    private List<String> processArgumentFile(Path argFile, OptionOrigin origin, Path includingFile, List<ActiveArgumentFile> activeFiles) {
+        Path resolvedFile = resolveArgumentFile(argFile, origin, includingFile);
+        String identity = getArgumentFileIdentity(resolvedFile, origin);
+        int cycleStart = -1;
+        for (int i = 0; i < activeFiles.size(); i++) {
+            if (activeFiles.get(i).identity().equals(identity)) {
+                cycleStart = i;
+                break;
+            }
+        }
+        if (cycleStart >= 0) {
+            StringJoiner chain = new StringJoiner(" -> ");
+            for (int i = cycleStart; i < activeFiles.size(); i++) {
+                chain.add(activeFiles.get(i).displayPath());
+            }
+            chain.add(displayArgumentFile(resolvedFile, origin));
+            NativeImage.showError("Argument-file inclusion cycle detected: " + chain);
+        }
+        if (activeFiles.size() >= MAX_ARGUMENT_FILE_NESTING) {
+            StringJoiner chain = new StringJoiner(" -> ");
+            activeFiles.forEach(file -> chain.add(file.displayPath()));
+            chain.add(displayArgumentFile(resolvedFile, origin));
+            NativeImage.showError("Argument-file inclusion exceeds the maximum nesting depth of " + MAX_ARGUMENT_FILE_NESTING + ": " + chain);
+        }
+
+        activeFiles.add(new ActiveArgumentFile(identity, displayArgumentFile(resolvedFile, origin)));
+        try {
+            ParsedArgumentFile parsed = readArgFile(resolvedFile, origin);
+            List<String> result = new ArrayList<>();
+            for (String argument : parsed.arguments()) {
+                if (parsed.settings().recursiveArgumentFiles() && !disableAtFiles && argument.startsWith("@")) {
+                    String referencedFile = argument.substring(1);
+                    if (referencedFile.startsWith("@")) {
+                        // An escaped @argument is literal and is not expanded recursively.
+                        addArg(result, referencedFile);
+                    } else {
+                        result.addAll(processArgumentFile(Paths.get(referencedFile), origin, resolvedFile, activeFiles));
+                    }
+                } else {
+                    addArg(result, argument);
+                }
+            }
+            return result;
+        } finally {
+            activeFiles.remove(activeFiles.size() - 1);
+        }
+    }
+
+    private static Path resolveArgumentFile(Path argFile, OptionOrigin origin, Path includingFile) {
+        if (origin != null && argFile.isAbsolute()) {
+            NativeImage.showError("Argument file '" + argFile + "' must be relative to " + origin);
+        }
+        Path resolved = argFile;
+        if (includingFile != null) {
+            Path parent = includingFile.getParent();
+            if (parent != null) {
+                resolved = parent.resolve(argFile);
+            }
+        }
+        resolved = resolved.normalize();
+        if (origin != null) {
+            // Check before JAR filesystem resolution, which would discard leading '..' components.
+            Path relativeToContainer = origin.resolveRedirectionPath(resolved);
+            if (relativeToContainer.getRoot() != null || relativeToContainer.startsWith("..")) {
+                NativeImage.showError("Argument file '" + argFile + "' referenced by " + origin + " escapes its containing directory or JAR");
+            }
+        }
+        return resolved;
+    }
+
+    private static String getArgumentFileIdentity(Path argFile, OptionOrigin origin) {
+        if (origin == null) {
+            return canonicalPath(argFile).toString();
+        }
+        Path relativeToContainer = origin.resolveRedirectionPath(argFile);
+        if (origin.container() != null && "file".equals(origin.container().getScheme())) {
+            Path container = Path.of(origin.container());
+            if (Files.isDirectory(container)) {
+                return canonicalPath(container.resolve(relativeToContainer)).toString();
+            }
+            return canonicalPath(container) + "!/" + relativeToContainer.toString().replace('\\', '/');
+        }
+        return origin + "!/" + relativeToContainer.toString().replace('\\', '/');
+    }
+
+    private static Path canonicalPath(Path path) {
+        Path normalized = path.toAbsolutePath().normalize();
+        try {
+            return normalized.toRealPath();
+        } catch (IOException ignored) {
+            return normalized;
+        }
+    }
+
+    private static String displayArgumentFile(Path argFile, OptionOrigin origin) {
+        return origin == null ? argFile.toString() : origin + " -> " + argFile;
     }
 
     // Ported from JDK11's java.base/share/native/libjli/args.c
@@ -105,7 +204,7 @@ public class ArgFilesOptionPreprocessor {
     }
 
     // Ported from JDK11's java.base/share/native/libjli/args.c
-    private static List<String> readArgFile(Path file, OptionOrigin origin) {
+    private static ParsedArgumentFile readArgFile(Path file, OptionOrigin origin) {
         List<String> arguments = new ArrayList<>();
 
         String options = null;
@@ -115,7 +214,7 @@ public class ArgFilesOptionPreprocessor {
             NativeImage.showError("Cannot read argument file '" + file + "'", e);
         }
 
-        boolean expandOptionValues = options.lines().findFirst().orElse("").equals(VALUE_CONTINUATIONS_HEADER);
+        ArgumentFileSettings settings = getArgumentFileSettings(options, file);
         CTX_ARGS ctx = new CTX_ARGS();
         ctx.state = PARSER_STATE.FIND_NEXT;
         ctx.parts = new ArrayList<>(4);
@@ -124,7 +223,7 @@ public class ArgFilesOptionPreprocessor {
         ctx.eob = options.length();
         ctx.options = options;
         ctx.file = file;
-        ctx.markBlankLines = expandOptionValues;
+        ctx.markBlankLines = settings.valueContinuations();
 
         while (true) {
             String token = nextToken(ctx);
@@ -144,7 +243,42 @@ public class ArgFilesOptionPreprocessor {
                 arguments.add(String.join("", ctx.parts));
             }
         }
-        return expandOptionValues ? expandOptionValueContinuations(arguments) : arguments;
+        List<String> expanded = settings.valueContinuations() ? expandOptionValueContinuations(arguments) : arguments;
+        return new ParsedArgumentFile(expanded, settings);
+    }
+
+    private static ArgumentFileSettings getArgumentFileSettings(String options, Path file) {
+        String firstLine = options.lines().findFirst().orElse("");
+        if (firstLine.startsWith(DIRECTIVE_PREFIX)) {
+            return parseDirective(firstLine, file, 1);
+        }
+        return ArgumentFileSettings.DEFAULT;
+    }
+
+    private static ArgumentFileSettings parseDirective(String directive, Path file, long line) {
+        String settingText = directive.substring(DIRECTIVE_PREFIX.length());
+        String reportedSettings = settingText.stripLeading();
+        if (!settingText.startsWith(" ")) {
+            NativeImage.showError(file + ":" + line + ": Unknown argument-file setting: '" + reportedSettings + "'. Expected '" + VALUE_CONTINUATIONS_SETTING + "' or '" +
+                            RECURSIVE_ARGUMENT_FILES_SETTING + "'.");
+        }
+        String[] settingNames = settingText.substring(1).split(" ", -1);
+        Set<String> seen = new HashSet<>();
+        boolean valueContinuations = false;
+        boolean recursiveArgumentFiles = false;
+        for (String settingName : settingNames) {
+            if (settingName.isEmpty() || !seen.add(settingName)) {
+                NativeImage.showError(file + ":" + line + ": Unknown argument-file setting: '" + reportedSettings + "'. Expected '" + VALUE_CONTINUATIONS_SETTING + "' or '" +
+                                RECURSIVE_ARGUMENT_FILES_SETTING + "'.");
+            }
+            switch (settingName) {
+                case VALUE_CONTINUATIONS_SETTING -> valueContinuations = true;
+                case RECURSIVE_ARGUMENT_FILES_SETTING -> recursiveArgumentFiles = true;
+                default -> NativeImage.showError(file + ":" + line + ": Unknown argument-file setting: '" + settingName + "'. Expected '" + VALUE_CONTINUATIONS_SETTING + "' or '" +
+                                RECURSIVE_ARGUMENT_FILES_SETTING + "'.");
+            }
+        }
+        return new ArgumentFileSettings(valueContinuations, recursiveArgumentFiles);
     }
 
     /// Expands the option-value sections enabled by the file's first-line marker after Java-style tokenization.
@@ -216,9 +350,7 @@ public class ArgFilesOptionPreprocessor {
             lineEnd++;
         }
         String directive = options.substring(commentStart, lineEnd);
-        if (!directive.equals(VALUE_CONTINUATIONS_HEADER)) {
-            NativeImage.showError(location + "Unknown argument-file setting: '" + directive.substring(DIRECTIVE_PREFIX.length()).stripLeading() + "'. Expected 'value-continuations'.");
-        }
+        parseDirective(directive, ctx.file, line);
     }
 
     // Ported from JDK11's java.base/share/native/libjli/args.c
