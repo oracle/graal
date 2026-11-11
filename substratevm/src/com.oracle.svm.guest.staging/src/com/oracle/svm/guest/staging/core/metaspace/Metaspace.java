@@ -29,6 +29,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.shared.ShouldBe;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
@@ -82,8 +83,9 @@ public interface Metaspace {
      * Allocates a {@code DynamicHub} and zeroes all its fields. Typically, there should be no need
      * to call this method directly and {@code DynamicHub#allocate} should be used instead.
      * <p>
-     * The return type should be restored to {@code DynamicHub} once it moves to guest staging (GR-78110).
+     * Restore the annotated return type when DynamicHub moves to guest staging (GR-78110).
      */
+    @ShouldBe(typeName = "com.oracle.svm.core.hub.DynamicHub")
     Object allocateDynamicHub(int numVTableEntries);
 
     /** Allocates a byte array. */

@@ -33,6 +33,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.AlwaysInline;
+import com.oracle.svm.shared.ShouldBe;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.shared.meta.GuestFold;
@@ -49,8 +50,8 @@ import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
  * During garbage collection, the object header may hold a forwarding reference to the new location
  * of this instance if the object has been moved by the collector.
  * <p>
- * DynamicHub parameters and return types are temporarily represented by {@code Object}. Restore
- * {@code DynamicHub} types when DynamicHub moves to guest staging (GR-78110).
+ * GR-78110 tracks restoring the annotated types when the required declarations become visible from
+ * guest staging.
  */
 public abstract class ObjectHeader {
     protected static final String INLINE_INITIALIZE_HEADER_INIT_REASON = "Methods that write to INIT_LOCATION must be inlined into a caller that emits an ALLOCATION_INIT barrier.";
@@ -68,16 +69,12 @@ public abstract class ObjectHeader {
      * Returns an encoded hub pointer that can be used when writing the object header of an image
      * heap object. Note that the returned value is not necessarily the full object header.
      * <p>
-     * The object parameter should become {@code ImageHeapObject} when ImageHeapObject and
-     * ImageHeapPartition move to shared code (GR-78110).
+     * Restore the annotated parameter type when ImageHeapObject and ImageHeapPartition move to
+     * shared code (GR-78110).
      */
-    public abstract long encodeHubPointerForImageHeap(Object obj, long hubOffsetFromHeapBase);
+    public abstract long encodeHubPointerForImageHeap(@ShouldBe(typeName = "com.oracle.svm.core.image.ImageHeapObject") Object obj, long hubOffsetFromHeapBase);
 
-    /**
-     * The {@code hub} parameter is expected to be a {@code DynamicHub}. Change its type to
-     * {@code DynamicHub} when DynamicHub moves to guest staging (GR-78110).
-     */
-    public abstract Word encodeAsTLABObjectHeader(Object hub);
+    public abstract Word encodeAsTLABObjectHeader(@ShouldBe(typeName = "com.oracle.svm.core.hub.DynamicHub") Object hub);
 
     /**
      * Compute an object header of a TLAB object from the offset of the {@code DynamicHub} from the
@@ -93,25 +90,25 @@ public abstract class ObjectHeader {
      */
     public abstract int constantHeaderSize();
 
-    public abstract Word encodeAsUnmanagedObjectHeader(Object hub);
+    public abstract Word encodeAsUnmanagedObjectHeader(@ShouldBe(typeName = "com.oracle.svm.core.hub.DynamicHub") Object hub);
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public abstract void verifyDynamicHubOffset(long offsetFromHeapBase);
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public boolean verifyDynamicHubOffset(Object hub) {
+    public boolean verifyDynamicHubOffset(@ShouldBe(typeName = "com.oracle.svm.core.hub.DynamicHub") Object hub) {
         long offsetFromHeapBase = Word.objectToUntrackedPointer(hub).subtract(KnownIntrinsics.heapBase()).rawValue();
         verifyDynamicHubOffset(offsetFromHeapBase);
         return true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Object dynamicHubFromObjectHeader(Word header) {
+    public @ShouldBe(typeName = "com.oracle.svm.core.hub.DynamicHub") Object dynamicHubFromObjectHeader(Word header) {
         return extractPotentialDynamicHubFromHeader(header).toObject();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static Object readDynamicHubFromObject(Object o) {
+    public static @ShouldBe(typeName = "com.oracle.svm.core.hub.DynamicHub") Object readDynamicHubFromObject(Object o) {
         return GuestStagingDependencyBridge.singleton().readHub(o);
     }
 
@@ -122,7 +119,7 @@ public abstract class ObjectHeader {
     public abstract Word readHeaderFromObject(Object o);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public Object readDynamicHubFromPointer(Pointer ptr) {
+    public @ShouldBe(typeName = "com.oracle.svm.core.hub.DynamicHub") Object readDynamicHubFromPointer(Pointer ptr) {
         Word header = readHeaderFromPointer(ptr);
         return dynamicHubFromObjectHeader(header);
     }

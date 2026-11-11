@@ -131,6 +131,15 @@ Use [`@GuestType`](../src/com.oracle.svm.util/src/com/oracle/svm/util/GuestType.
 If a class literal becomes inaccessible, use `typeName` rather than adding a dependency just for the hint, for example `@GuestType(typeName = "com.example.guest.Node[]")`.
 Use `Class.getTypeName()` format: dots for packages, `$` for nested classes, and `[]` for arrays.
 
+### Document Temporary Declaration Types
+
+Use [`@ShouldBe`](../src/com.oracle.svm.shared/src/com/oracle/svm/shared/ShouldBe.java) when a declaration temporarily uses a less precise Java type because its intended type is not visible from the migrated module.
+Specify `typeName` using `Class.getTypeName()` format, for example `@ShouldBe(typeName = "com.example.runtime.Node") Object node`, and keep the migration condition and tracking issue nearby.
+Unlike `@GuestType`, which describes the guest type represented by a builder-side value, `@ShouldBe` describes the future source type of the annotated declaration.
+
+Use `@ShouldBe` only when the current value is still an instance of the intended type.
+Do not use it when a temporary API changes the value representation, such as replacing an object with an offset, or combines multiple eventual types or overloads; preserve a precise migration comment instead.
+
 ### Preserve Guest Module Encapsulation
 
 Never add an `opens` edge from `SVM_GUEST` or `SVM_GUEST_STAGING` to `org.graalvm.nativeimage.builder`.
