@@ -51,11 +51,6 @@ public class OptionClassFilter {
         this.requireCompleteAll = requireCompleteAll;
     }
 
-    public Object isIncluded(Class<?> clazz) {
-        Module module = clazz.getModule();
-        return isIncluded(module.isNamed() ? module.getName() : null, clazz.getPackageName(), clazz.getName());
-    }
-
     public Object isIncluded(String moduleName, String packageName, String className) {
         if (requireCompleteAll) {
             return reasonCommandLine;
