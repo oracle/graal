@@ -599,7 +599,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
 
     @MatchRule("(Or (LeftShift value (Sub Constant=delta shiftAmount)) (UnsignedRightShift value shiftAmount))")
     public ComplexMatchResult rotateRightVariable(ValueNode value, ConstantNode delta, ValueNode shiftAmount) {
-        if (delta.asJavaConstant().asLong() == 0 || delta.asJavaConstant().asLong() == 32) {
+        if ((delta.asJavaConstant().asLong() & (value.getStackKind().getBitCount() - 1)) == 0) {
             return builder -> getArithmeticLIRGenerator().emitRor(operand(value), operand(shiftAmount));
         }
         return null;
@@ -607,7 +607,7 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
 
     @MatchRule("(Or (LeftShift value shiftAmount) (UnsignedRightShift value (Sub Constant=delta shiftAmount)))")
     public ComplexMatchResult rotateLeftVariable(ValueNode value, ValueNode shiftAmount, ConstantNode delta) {
-        if (delta.asJavaConstant().asLong() == 0 || delta.asJavaConstant().asLong() == 32) {
+        if ((delta.asJavaConstant().asLong() & (value.getStackKind().getBitCount() - 1)) == 0) {
             return builder -> getArithmeticLIRGenerator().emitRol(operand(value), operand(shiftAmount));
         }
         return null;
