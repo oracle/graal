@@ -1203,6 +1203,9 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
         }
 
         protected boolean foldGuard(DeoptimizingGuard thisGuard, DeoptimizingGuard otherGuard, boolean outcome, Stamp guardedValueStamp, ConditionalEliminationUtil.GuardRewirer rewireGuardFunction) {
+            if (!ConditionalEliminationUtil.mayRewriteToGuard(otherGuard)) {
+                return false;
+            }
             DeoptimizationAction action = mergeActions(otherGuard.getAction(), thisGuard.getAction());
             if (action != null && Objects.equals(otherGuard.getSpeculation(), thisGuard.getSpeculation())) {
                 LogicNode condition = (LogicNode) thisGuard.getCondition().copyWithInputs();
