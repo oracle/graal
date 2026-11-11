@@ -24,10 +24,15 @@
  */
 package com.oracle.svm.core.hub;
 
+import com.oracle.svm.core.graal.meta.TypeCheckInfoProvider.TypeCheckInfo;
+
 /**
  * Provides access to the {@link DynamicHub} associated with type metadata.
  */
 public interface DynamicHubProvider {
 
     DynamicHub getHub();
+
+    /** The physical type-check constants associated with this type. */
+    TypeCheckInfo getTypeCheckInfo();
 }

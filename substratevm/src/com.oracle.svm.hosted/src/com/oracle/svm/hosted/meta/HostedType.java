@@ -40,6 +40,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
+import com.oracle.svm.core.graal.meta.TypeCheckInfoProvider.TypeCheckInfo;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.OriginalClassProvider;
 
@@ -268,6 +269,12 @@ public abstract class HostedType extends HostedElement implements SharedType, Dy
     public short getTypeCheckStart() {
         assert SubstrateOptions.useClosedTypeWorldHubLayout();
         return typeCheckStart;
+    }
+
+    @Override
+    public TypeCheckInfo getTypeCheckInfo() {
+        assert SubstrateOptions.useClosedTypeWorldHubLayout();
+        return new TypeCheckInfo(typeCheckStart, typeCheckRange, typeCheckSlot);
     }
 
     public short getTypeCheckRange() {

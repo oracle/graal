@@ -28,6 +28,7 @@ package com.oracle.svm.core.graal.code;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.core.hub.DynamicHubUtils;
+import com.oracle.svm.core.graal.meta.TypeCheckInfoProvider;
 
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -38,6 +39,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
+    /**
+     * Returns this compilation's Native Image type-check policy. It belongs in this extension
+     * because generic compiler lowering does not consume Native Image hub metadata.
+     */
+    public TypeCheckInfoProvider getTypeCheckInfoProvider() {
+        return TypeCheckInfoProvider.DEFAULT;
+    }
 
     /**
      * Runtime-loaded bytecode may ask for a storage kind before its referenced type has been

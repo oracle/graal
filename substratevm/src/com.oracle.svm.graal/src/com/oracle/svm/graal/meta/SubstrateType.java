@@ -39,6 +39,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.SubstrateTarget;
+import com.oracle.svm.core.graal.meta.TypeCheckInfoProvider.TypeCheckInfo;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubUtils;
@@ -135,6 +136,12 @@ public class SubstrateType implements SharedType, DynamicHubProvider, RuntimeAnn
     @Override
     public boolean isWordType() {
         return WordBase.class.isAssignableFrom(DynamicHub.toClass(hub));
+    }
+
+    @Override
+    public TypeCheckInfo getTypeCheckInfo() {
+        DynamicHub typeHub = getHub();
+        return new TypeCheckInfo(typeHub.getTypeCheckStart(), typeHub.getTypeCheckRange(), typeHub.getTypeCheckSlot());
     }
 
     @Override

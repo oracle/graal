@@ -233,6 +233,14 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         }
 
         /**
+         * Allows specific identity-hash queries that preserve object identities without folding an
+         * operation into a compiler graph. Overrides must restrict exceptions to individual methods.
+         */
+        public boolean isIdentityHashCodeQueryAllowed(ResolvedJavaMethod caller) {
+            return false;
+        }
+
+        /**
          * Makes edits to the list of verifiers to be run.
          */
         @SuppressWarnings("unused")
@@ -386,6 +394,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyArchUsageInPlugins());
         verifiers.add(new VerifyStatelessPhases());
         verifiers.add(new VerifyProfileMethodUsage());
+        verifiers.add(new VerifyIdentityHashCodeUsage(tool));
         verifiers.add(new VerifyMemoryKillCheck());
         verifiers.add(new VerifySnippetProbabilities());
         verifiers.add(new VerifyPluginFrameState());

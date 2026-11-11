@@ -43,6 +43,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.objectfile.ObjectFile;
@@ -72,6 +73,7 @@ import com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
@@ -287,6 +289,20 @@ public class HostedConfiguration {
      * methods.
      */
     public void afterCompileQueue(@SuppressWarnings("unused") DebugContext debug, @SuppressWarnings("unused") CompileQueue compileQueue) {
+    }
+
+    /**
+     * Selects providers for post-analysis hosted graph preparation and compilation of a method variant.
+     * Implementations must be thread-safe, leave the supplied providers unchanged, and preserve
+     * backend compatibility.
+     *
+     * Selected providers must be compatible with previously prepared graphs and snippets, including
+     * template-cache sharing. This hook cannot undo earlier folding or specialization.
+     *
+     * @return the supplied providers, or a compatible bundle with selected services replaced
+     */
+    public HostedProviders selectCompilationProviders(@SuppressWarnings("unused") HostedMethod method, HostedProviders providers) {
+        return providers;
     }
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
