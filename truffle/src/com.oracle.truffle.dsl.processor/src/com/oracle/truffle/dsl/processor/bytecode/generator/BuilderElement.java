@@ -851,7 +851,12 @@ final class BuilderElement extends AbstractElement {
                 b.startStatement();
                 b.string("node.").string(var.getSimpleName().toString());
                 b.string(" = ");
-                if (ElementUtils.needsCastTo(type(Object.class), var.asType())) {
+                TypeMirror fieldType = var.asType();
+                if (ElementUtils.needsCastTo(type(Object.class), fieldType)) {
+                    TypeElement fieldTypeElement = ElementUtils.castTypeElement(fieldType);
+                    if (fieldTypeElement != null && !fieldTypeElement.getTypeParameters().isEmpty()) {
+                        mergeSuppressWarnings(method, "unchecked");
+                    }
                     b.cast(var.asType());
                 }
                 b.string("context.consts.get(buffer.readInt())");

@@ -45,23 +45,40 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.bytecode.TagTree;
 import com.oracle.truffle.api.bytecode.TagTreeNode;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
+import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.bytecode.test.TagTest.TagTestInstrumentation;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -73,6 +90,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.WriteVariableTag;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -84,14 +102,27 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
+@RunWith(Parameterized.class)
 public class InstrumentationNodeObjectTest {
 
-    private static BytecodeRootNodes<MetadataRoot> parse(Source source, BytecodeConfig config) {
-        return MetadataRootGen.create(MetadataLanguage.REF.get(null), config, b -> {
+    @Parameters(name = "serialize={0}")
+    public static List<Boolean> getParameters() {
+        return List.of(false, true);
+    }
+
+    @Parameter public boolean serialize;
+
+    private BytecodeRootNodes<MetadataRoot> parse(Source source, BytecodeConfig config) {
+        BytecodeParser<MetadataRootGen.Builder> parser = b -> {
+            Map<SectionTagKey, TagMetadata> nodeObjectMetadata = new HashMap<>();
             b.beginSource(source);
             b.beginSourceSection(0, source.getLength());
             b.beginRoot();
             BytecodeLocal local = b.createLocal("x", null);
+
+            // Store metadata keyed on the source range + tag so the root can resolve it from the TagRootTree.
+            nodeObjectMetadata.put(new SectionTagKey(0, 6, WriteVariableTag.class), new WriteVariableMetadata("x", 0));
+            // x = 42
             b.beginSourceSection(0, 6);
             b.beginTag(WriteVariableTag.class);
             b.beginStoreLocal(local);
@@ -102,6 +133,8 @@ public class InstrumentationNodeObjectTest {
             b.endTag(WriteVariableTag.class);
             b.endSourceSection();
             b.beginReturn();
+
+            nodeObjectMetadata.put(new SectionTagKey(8, 1, ReadVariableTag.class), new ReadVariableMetadata("x"));
             b.beginSourceSection(8, 1);
             b.beginTag(ExpressionTag.class);
             b.beginTag(ReadVariableTag.class);
@@ -110,10 +143,121 @@ public class InstrumentationNodeObjectTest {
             b.endTag(ExpressionTag.class);
             b.endSourceSection();
             b.endReturn();
-            b.endRoot();
+            b.endRoot().setNodeObjectMetadata(Map.copyOf(nodeObjectMetadata));
             b.endSourceSection();
             b.endSource();
-        });
+        };
+        MetadataLanguage language = MetadataLanguage.REF.get(null);
+        if (serialize) {
+            return doRoundTrip(language, config, parser);
+        }
+        return MetadataRootGen.create(language, config, parser);
+    }
+
+    private static BytecodeRootNodes<MetadataRoot> doRoundTrip(MetadataLanguage language, BytecodeConfig config, BytecodeParser<MetadataRootGen.Builder> parser) {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try {
+            MetadataRootGen.serialize(new DataOutputStream(output), SERIALIZER, parser);
+        } catch (IOException ex) {
+            throw new AssertionError(ex);
+        }
+        byte[] serialized = output.toByteArray();
+        Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(serialized));
+        try {
+            return MetadataRootGen.deserialize(language, config, input, DESERIALIZER);
+        } catch (IOException ex) {
+            throw new AssertionError(ex);
+        }
+    }
+
+    private static final byte TYPE_INT = 0;
+    private static final byte TYPE_STRING = 1;
+    private static final byte TYPE_SOURCE = 2;
+    private static final byte TYPE_METADATA_MAP = 3;
+    private static final byte TYPE_SECTION_TAG_KEY = 4;
+    private static final byte TYPE_READ_VARIABLE_METADATA = 5;
+    private static final byte TYPE_WRITE_VARIABLE_METADATA = 6;
+
+    private static final BytecodeSerializer SERIALIZER = (context, buffer, object) -> serializeObject(buffer, object);
+
+    private static void serializeObject(DataOutput buffer, Object object) throws IOException {
+        if (object instanceof Integer value) {
+            buffer.writeByte(TYPE_INT);
+            buffer.writeInt(value);
+        } else if (object instanceof String value) {
+            buffer.writeByte(TYPE_STRING);
+            buffer.writeUTF(value);
+        } else if (object instanceof Source source) {
+            buffer.writeByte(TYPE_SOURCE);
+            buffer.writeUTF(source.getLanguage());
+            buffer.writeUTF(source.getName());
+            buffer.writeUTF(source.getCharacters().toString());
+        } else if (object instanceof Map<?, ?> map) {
+            buffer.writeByte(TYPE_METADATA_MAP);
+            buffer.writeInt(map.size());
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                serializeObject(buffer, entry.getKey());
+                serializeObject(buffer, entry.getValue());
+            }
+        } else if (object instanceof SectionTagKey sectionTagKey) {
+            buffer.writeByte(TYPE_SECTION_TAG_KEY);
+            buffer.writeInt(sectionTagKey.charIndex());
+            buffer.writeInt(sectionTagKey.charLength());
+            if (sectionTagKey.tag() == ReadVariableTag.class) {
+                buffer.writeByte(0);
+            } else if (sectionTagKey.tag() == WriteVariableTag.class) {
+                buffer.writeByte(1);
+            } else {
+                throw new AssertionError("Unsupported tag " + sectionTagKey.tag());
+            }
+        } else if (object instanceof ReadVariableMetadata metadata) {
+            buffer.writeByte(TYPE_READ_VARIABLE_METADATA);
+            buffer.writeUTF(metadata.name());
+        } else if (object instanceof WriteVariableMetadata metadata) {
+            buffer.writeByte(TYPE_WRITE_VARIABLE_METADATA);
+            buffer.writeUTF(metadata.name());
+            buffer.writeInt(metadata.charIndex());
+        } else {
+            throw new AssertionError("Unsupported serialization object " + object);
+        }
+    }
+
+    private static final BytecodeDeserializer DESERIALIZER = (context, buffer) -> deserializeObject(buffer);
+
+    private static Object deserializeObject(DataInput buffer) throws IOException {
+        return switch (buffer.readByte()) {
+            case TYPE_INT -> buffer.readInt();
+            case TYPE_STRING -> buffer.readUTF();
+            case TYPE_SOURCE -> {
+                String language = buffer.readUTF();
+                String name = buffer.readUTF();
+                String characters = buffer.readUTF();
+                yield Source.newBuilder(language, characters, name).build();
+            }
+            case TYPE_METADATA_MAP -> {
+                int size = buffer.readInt();
+                Map<SectionTagKey, TagMetadata> metadata = new HashMap<>();
+                for (int i = 0; i < size; i++) {
+                    SectionTagKey key = (SectionTagKey) deserializeObject(buffer);
+                    TagMetadata value = (TagMetadata) deserializeObject(buffer);
+                    metadata.put(key, value);
+                }
+                yield Map.copyOf(metadata);
+            }
+            case TYPE_SECTION_TAG_KEY -> {
+                int charIndex = buffer.readInt();
+                int charLength = buffer.readInt();
+                Class<? extends Tag> tag = switch (buffer.readByte()) {
+                    case 0 -> ReadVariableTag.class;
+                    case 1 -> WriteVariableTag.class;
+                    default -> throw new AssertionError("Unsupported tag code");
+                };
+                yield new SectionTagKey(charIndex, charLength, tag);
+            }
+            case TYPE_READ_VARIABLE_METADATA -> new ReadVariableMetadata(buffer.readUTF());
+            case TYPE_WRITE_VARIABLE_METADATA -> new WriteVariableMetadata(buffer.readUTF(), buffer.readInt());
+            default -> throw new AssertionError("Unsupported serialization type");
+        };
     }
 
     @Test
@@ -232,7 +376,7 @@ public class InstrumentationNodeObjectTest {
         }
     }
 
-    @GenerateBytecode(languageClass = MetadataLanguage.class, enableTagInstrumentation = true, enableRootTagging = false, enableRootBodyTagging = false, enableUncachedInterpreter = true)
+    @GenerateBytecode(languageClass = MetadataLanguage.class, enableTagInstrumentation = true, enableRootTagging = false, enableRootBodyTagging = false, enableUncachedInterpreter = true, enableSerialization = true)
     public abstract static class MetadataRoot extends RootNode implements BytecodeRootNode {
         protected MetadataRoot(MetadataLanguage language, FrameDescriptor descriptor) {
             super(language, descriptor);
@@ -246,13 +390,25 @@ public class InstrumentationNodeObjectTest {
             }
         }
 
+        Map<SectionTagKey, TagMetadata> nodeObjectMetadata = null;
+
+        private void setNodeObjectMetadata(Map<SectionTagKey, TagMetadata> nodeObjectMetadata) {
+            this.nodeObjectMetadata = nodeObjectMetadata;
+        }
+
         @Override
         public Object getInstrumentationNodeObject(TagTreeNode node) {
             assertSame(this, node.getRootNode());
-            if (node.hasTag(ReadVariableTag.class) || node.hasTag(WriteVariableTag.class)) {
-                SourceSection section = node.getSourceSection();
-                return new Descriptor(node.hasTag(ReadVariableTag.class) ? ReadVariableTag.NAME : WriteVariableTag.NAME,
-                                new Symbol("x", section.getSource().createSection(section.getCharIndex(), 1)));
+            SourceSection section = node.getSourceSection();
+            if (section != null) {
+                if (node.hasTag(ReadVariableTag.class)) {
+                    TagMetadata metadata = nodeObjectMetadata.get(new SectionTagKey(section.getCharIndex(), section.getCharLength(), ReadVariableTag.class));
+                    return new Descriptor(ReadVariableTag.NAME, metadata.toInteropObject(section));
+                }
+                if (node.hasTag(WriteVariableTag.class)) {
+                    TagMetadata metadata = nodeObjectMetadata.get(new SectionTagKey(section.getCharIndex(), section.getCharLength(), WriteVariableTag.class));
+                    return new Descriptor(WriteVariableTag.NAME, metadata.toInteropObject(section));
+                }
             }
             return BytecodeRootNode.super.getInstrumentationNodeObject(node);
         }
@@ -270,9 +426,31 @@ public class InstrumentationNodeObjectTest {
         }
     }
 
+    record SectionTagKey(int charIndex, int charLength, Class<? extends Tag> tag) {
+    }
+
+    interface TagMetadata {
+        TruffleObject toInteropObject(SourceSection section);
+    }
+
+    record ReadVariableMetadata(String name) implements TagMetadata {
+        @Override
+        public TruffleObject toInteropObject(SourceSection section) {
+            return new Symbol(name, section);
+        }
+    }
+
+    record WriteVariableMetadata(String name, int charIndex) implements TagMetadata {
+        @Override
+        public TruffleObject toInteropObject(SourceSection section) {
+            // The source section of the variable differs from the section of the write.
+            return new Symbol(name, section.getSource().createSection(charIndex, name.length()));
+        }
+    }
+
     @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings("static-method")
-    record Descriptor(String key, Symbol symbol) implements TruffleObject {
+    record Descriptor(String key, Object value) implements TruffleObject {
         @ExportMessage
         boolean hasMembers() {
             return true;
@@ -293,7 +471,7 @@ public class InstrumentationNodeObjectTest {
             if (!isMemberReadable(name)) {
                 throw UnknownIdentifierException.create(name);
             }
-            return symbol;
+            return value;
         }
     }
 
