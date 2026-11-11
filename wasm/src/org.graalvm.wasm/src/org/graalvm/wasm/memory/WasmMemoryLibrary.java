@@ -40,16 +40,17 @@
  */
 package org.graalvm.wasm.memory;
 
-import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.LibraryFactory;
-import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.constants.Sizes;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+
+import org.graalvm.wasm.constants.Sizes;
+
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.nodes.Node;
 
 @GenerateLibrary(dynamicDispatchEnabled = false, pushEncapsulatingNode = false)
 public abstract class WasmMemoryLibrary extends Library {

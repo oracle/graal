@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes to the WebAssembly engine implemented in GraalVM (GraalWasm).
 
+## Version 25.6
+* GraalWasm contexts now enforce single-threaded access. Concurrent WebAssembly execution must use separate polyglot contexts.
+
 ## Version 25.4.4
 
 * Implemented the [Tail Call](https://github.com/WebAssembly/tail-call) proposal. This feature is enabled by default and can be disabled with the experimental option `--wasm.TailCalls=false`. The feature comes with an optimization that transforms direct recursive calls (functions calling themselves) into loops. This optimization is enabled by default and can be disabled with the experimental option `--wasm.TailCallLoops=false`.
