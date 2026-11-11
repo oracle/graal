@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -144,6 +144,13 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         Register tmp1 = asRegister(offsetAValue);
         Register tmp2 = asRegister(offsetBValue);
 
+        Label nonEmpty = new Label();
+        Label returnLabel = new Label();
+        masm.testlAndJcc(length, length, ConditionFlag.NotZero, nonEmpty, false);
+        masm.xorl(result, result);
+        masm.jmp(returnLabel);
+        masm.bind(nonEmpty);
+
         // add byte offset to array pointers
         masm.leaq(arrayA, new AMD64Address(arrayA, asRegister(offsetAValue), Stride.S1));
         masm.leaq(arrayB, new AMD64Address(arrayB, asRegister(offsetBValue), Stride.S1));
@@ -170,6 +177,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
             masm.bind(done);
         }
 
+        masm.bind(returnLabel);
         masm.resetAvxEncoding(oldEncoding);
     }
 
