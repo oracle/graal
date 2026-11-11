@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,7 +79,6 @@ import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.configure.ConfigurationFiles;
-import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ResourceLoaderKeys;
 import com.oracle.svm.core.jdk.Resources;
@@ -90,6 +89,7 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.CompressedGlobTrie;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobTrieNode;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.dynamicaccessinference.DynamicAccessInferenceLog;
@@ -234,6 +234,7 @@ public class ResourcesFeature implements InternalFeature {
         public void addResources(AccessCondition condition, String pattern, Object origin) {
             try {
                 resourcePatternWorkSet.add(new ConditionalPattern(condition, pattern, origin));
+                registerTypeReachedTracking(condition);
             } catch (UnsupportedOperationException e) {
                 throw UserError.abort("Resource registration should be performed before beforeAnalysis phase.");
             }
@@ -244,6 +245,19 @@ public class ResourcesFeature implements InternalFeature {
             String canonicalGlob = NativeImageResourcePathRepresentation.toCanonicalForm(glob);
             String resolvedGlob = GlobUtils.transformToTriePath(canonicalGlob, module);
             globWorkSet.add(new ConditionalPattern(condition, resolvedGlob, origin));
+            registerTypeReachedTracking(condition);
+        }
+
+        /**
+         * A pattern can match resources only in a later layer. Its condition must already be
+         * tracked when compiling this layer, even if no resource currently matches.
+         */
+        private void registerTypeReachedTracking(AccessCondition condition) {
+            VMError.guarantee(condition instanceof TypeReachabilityCondition, "Condition must be TypeReachabilityCondition.");
+            TypeReachabilityCondition typeReachabilityCondition = (TypeReachabilityCondition) condition;
+            if (typeReachabilityCondition.isRuntimeChecked() && !typeReachabilityCondition.isAlwaysTrue()) {
+                classInitializationSupport.addForTypeReachedTracking(GuestAccess.get().lookupType(typeReachabilityCondition.getType()));
+            }
         }
 
         @Override
@@ -257,9 +271,7 @@ public class ResourcesFeature implements InternalFeature {
             if (!typeReachabilityCondition.isRuntimeChecked() && !typeReachabilityCondition.isAlwaysTrue()) {
                 return;
             }
-            if (!typeReachabilityCondition.isAlwaysTrue()) {
-                classInitializationSupport.addForTypeReachedTracking(GuestAccess.get().lookupType(typeReachabilityCondition.getType()));
-            }
+            registerTypeReachedTracking(condition);
 
             Resources.currentLayer().addResourceCondition(module, resourcePath, condition, preserved);
         }
