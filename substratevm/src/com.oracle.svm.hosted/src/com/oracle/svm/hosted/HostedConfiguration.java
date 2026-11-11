@@ -316,6 +316,21 @@ public class HostedConfiguration {
         return false;
     }
 
+    /**
+     * Selects the method variant whose graph may be inlined into {@code caller}. The selection does
+     * not change the destination of a call that remains uninlined. Return the callee itself by
+     * default, or another variant of the same Java method with compatible analysis and providers.
+     *
+     * Clients must create and analyze every possible variant, and request its hosted preparation
+     * through {@link #isAdditionalParseRoot} unless it is already a normal parse root. Selection can
+     * occur for calls exposed by earlier inlining; this hook neither prepares graphs nor repairs
+     * earlier specialization.
+     * Implementations must be thread-safe and return a consistent selection for each caller/callee.
+     */
+    public HostedMethod selectInlineeMethod(@SuppressWarnings("unused") HostedMethod caller, HostedMethod callee) {
+        return callee;
+    }
+
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
         return new SVMMethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
     }

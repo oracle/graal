@@ -901,8 +901,10 @@ public class CompileQueue {
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-            if (makeInlineDecision((HostedMethod) b.getMethod(), (HostedMethod) method) && b.recursiveInliningDepth(method) == 0) {
-                return InlineInfo.createStandardInlineInfo(method);
+            HostedMethod caller = (HostedMethod) b.getMethod();
+            HostedMethod inlinee = makeInlineDecision(caller, (HostedMethod) method);
+            if (inlinee != null && b.recursiveInliningDepth(inlinee) == 0) {
+                return InlineInfo.createStandardInlineInfo(inlinee);
             } else {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
@@ -976,7 +978,7 @@ public class CompileQueue {
          */
         boolean inliningPotential = false;
         for (var invokeInfo : method.compilationInfo.getCompilationGraph().getInvokeInfos()) {
-            if (invokeInfo.getInvokeKind().isDirect() && makeInlineDecision(method, invokeInfo.getTargetMethod())) {
+            if (invokeInfo.getInvokeKind().isDirect() && makeInlineDecision(method, invokeInfo.getTargetMethod()) != null) {
                 inliningPotential = true;
                 break;
             }
@@ -1022,29 +1024,31 @@ public class CompileQueue {
         }
     }
 
-    private boolean makeInlineDecision(HostedMethod method, HostedMethod callee) {
-        if (!LayeredImageOptions.UseSharedLayerStrengthenedGraphs.getValue() && callee.compilationInfo.getCompilationGraph() == null) {
+    /** Returns the selected inlinee variant, or {@code null} when inlining is declined. */
+    private HostedMethod makeInlineDecision(HostedMethod method, HostedMethod callee) {
+        HostedMethod inlinee = selectInlineeMethod(method, callee);
+        if (!LayeredImageOptions.UseSharedLayerStrengthenedGraphs.getValue() && inlinee.compilationInfo.getCompilationGraph() == null) {
             /*
              * We have compiled this method in a prior layer or this method's compilation is delayed
              * to the application layer, but don't have the graph available here.
              */
             assert callee.isCompiledInPriorLayer() || callee.wrapped.isDelayed() : method;
-            return false;
+            return null;
         }
         if (InterpreterSupport.isEnabled() && InterpreterSupport.singleton().isInterpreterBytecodeHandlerStub(method) && isBytecodeHandlerStubTarget(method, callee)) {
             VMError.guarantee(callee.canBeInlined(), "Bytecode handler target must be inlinable into its generated stub: %s", callee);
-            return true;
+            return inlinee;
         }
         if (universe.hostVM().neverInlineTrivial(method.getWrapped(), callee.getWrapped())) {
-            return false;
+            return null;
         }
         if (callee.shouldBeInlined()) {
-            return true;
+            return inlinee;
         }
-        if (optionAOTTrivialInline && callee.compilationInfo.isTrivialMethod() && !method.compilationInfo.isTrivialInliningDisabled()) {
-            return true;
+        if (optionAOTTrivialInline && inlinee.compilationInfo.isTrivialMethod() && !method.compilationInfo.isTrivialInliningDisabled()) {
+            return inlinee;
         }
-        return false;
+        return null;
     }
 
     /**
@@ -1539,6 +1543,21 @@ public class CompileQueue {
     public final CompilationResult compileAdditionalMethod(DebugContext debug, HostedMethod method, CompileReason reason) {
         VMError.guarantee(method.compilationInfo.getCompilationGraph() != null, "Additional compilation requires a method parsed during the normal parse phase: %s", method);
         return doCompile(debug, method, new SubstrateHostedCompilationIdentifier(method), reason);
+    }
+
+    /**
+     * Selects an existing variant of {@code callee} for inlining into {@code caller}, using
+     * {@link HostedConfiguration#selectInlineeMethod}. The selected variant must represent the same
+     * Java method. This selects the graph to inline without changing the destination of a call
+     * that remains uninlined.
+     */
+    public static HostedMethod selectInlineeMethod(HostedMethod caller, HostedMethod callee) {
+        HostedMethod inlinee = HostedConfiguration.instance().selectInlineeMethod(caller, callee);
+        VMError.guarantee(inlinee != null && inlinee.getMethodVariant(MethodVariant.ORIGINAL_METHOD).equals(callee.getMethodVariant(MethodVariant.ORIGINAL_METHOD)),
+                        "Inlining selection must return an existing variant of %s for caller %s", callee, caller);
+        VMError.guarantee(inlinee.equals(callee) || inlinee.compilationInfo.getCompilationGraph() != null,
+                        "Selected inlinee variant %s for caller %s was not prepared; register all possible variants with isAdditionalParseRoot", inlinee, caller);
+        return inlinee;
     }
 
     private static HostedProviders selectCompilationProviders(HostedMethod method, RuntimeConfiguration config) {
