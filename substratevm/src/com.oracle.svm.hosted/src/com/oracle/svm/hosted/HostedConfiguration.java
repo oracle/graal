@@ -299,6 +299,11 @@ public class HostedConfiguration {
      * Selected providers must be compatible with previously prepared graphs and snippets, including
      * template-cache sharing. This hook cannot undo earlier folding or specialization.
      *
+     * Hosted inlining requires identical selected provider services and graph-builder plugins for
+     * caller and selected inlinee. Copies sharing those services remain compatible. Importing an
+     * incompatible graph fails, including for forced inlining. Each backend may retain its original
+     * calling-convention code cache.
+     *
      * @return the supplied providers, or a compatible bundle with selected services replaced
      */
     public HostedProviders selectCompilationProviders(@SuppressWarnings("unused") HostedMethod method, HostedProviders providers) {

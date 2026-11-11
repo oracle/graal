@@ -307,6 +307,7 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
             assert targetMethod instanceof HostedMethod;
             HostedMethod caller = (HostedMethod) invoke.asNode().graph().method();
             HostedMethod inlinee = CompileQueue.selectInlineeMethod(caller, (HostedMethod) targetMethod);
+            CompileQueue.verifyInliningProviders((HostedMethod) root.getReadonlySubgraph().method(), inlinee, runtimeConfig);
 
             GraphCache<ResolvedJavaMethod, StructuredGraph> selectedGraphCache = getGraphCache(inOOMEProtectedInlineContext);
             GraphCache.Ref<ResolvedJavaMethod, StructuredGraph> ref = UseGraphCache.getValue(getOptions()) ? selectedGraphCache.getRef(inlinee) : null;

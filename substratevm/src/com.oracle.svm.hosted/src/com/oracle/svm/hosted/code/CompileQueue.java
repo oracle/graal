@@ -928,6 +928,7 @@ public class CompileQueue {
 
         @Override
         protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method) {
+            verifyInliningProviders((HostedMethod) graph.method(), (HostedMethod) method, runtimeConfig);
             return ((HostedMethod) method).compilationInfo.getCompilationGraph().getEncodedGraph();
         }
 
@@ -1558,6 +1559,48 @@ public class CompileQueue {
         VMError.guarantee(inlinee.equals(callee) || inlinee.compilationInfo.getCompilationGraph() != null,
                         "Selected inlinee variant %s for caller %s was not prepared; register all possible variants with isAdditionalParseRoot", inlinee, caller);
         return inlinee;
+    }
+
+    /** Fails before importing a graph prepared under incompatible compilation assumptions. */
+    public static void verifyInliningProviders(HostedMethod caller, HostedMethod inlinee, RuntimeConfiguration config) {
+        VMError.guarantee(hasCompatibleCompilationProviders(caller, inlinee, config),
+                        "Incompatible compilation providers when inlining %s into %s; select a compatible prepared method variant or explicitly disable this inline", inlinee, caller);
+    }
+
+    /**
+     * Prepared graphs already contain decisions made with the callee's providers. Decoding with
+     * the caller's providers cannot undo them. Require identical services before importing such
+     * a graph, allowing the backend's original calling-convention code cache to differ.
+     */
+    private static boolean hasCompatibleCompilationProviders(HostedMethod caller, HostedMethod callee, RuntimeConfiguration config) {
+        HostedProviders callerProviders = selectCompilationProviders(caller, config);
+        HostedProviders calleeProviders = selectCompilationProviders(callee, config);
+        return hasCompatibleCodeCache(caller, callee, callerProviders, calleeProviders, config) &&
+                        callerProviders.getGraphBuilderPlugins() == calleeProviders.getGraphBuilderPlugins() &&
+                        callerProviders.getMetaAccess() == calleeProviders.getMetaAccess() &&
+                        callerProviders.getConstantReflection() == calleeProviders.getConstantReflection() &&
+                        callerProviders.getConstantFieldProvider() == calleeProviders.getConstantFieldProvider() &&
+                        callerProviders.getForeignCalls() == calleeProviders.getForeignCalls() &&
+                        callerProviders.getLowerer() == calleeProviders.getLowerer() &&
+                        callerProviders.getReplacements() == calleeProviders.getReplacements() &&
+                        callerProviders.getStampProvider() == calleeProviders.getStampProvider() &&
+                        callerProviders.getSnippetReflection() == calleeProviders.getSnippetReflection() &&
+                        callerProviders.getWordTypes() == calleeProviders.getWordTypes() &&
+                        callerProviders.getPlatformConfigurationProvider() == calleeProviders.getPlatformConfigurationProvider() &&
+                        callerProviders.getMetaAccessExtensionProvider() == calleeProviders.getMetaAccessExtensionProvider() &&
+                        callerProviders.getLoopsDataProvider() == calleeProviders.getLoopsDataProvider();
+    }
+
+    /**
+     * Accepts identical code caches, or each method's original backend code cache. Native-entry
+     * and Java backends use different calling conventions, but inlining imports a graph rather
+     * than machine code: the caller's backend compiles the combined graph. Other provider services
+     * must still match.
+     */
+    private static boolean hasCompatibleCodeCache(HostedMethod caller, HostedMethod callee, HostedProviders callerProviders, HostedProviders calleeProviders, RuntimeConfiguration config) {
+        return callerProviders.getCodeCache() == calleeProviders.getCodeCache() ||
+                        callerProviders.getCodeCache() == config.lookupBackend(caller).getProviders().getCodeCache() &&
+                                        calleeProviders.getCodeCache() == config.lookupBackend(callee).getProviders().getCodeCache();
     }
 
     private static HostedProviders selectCompilationProviders(HostedMethod method, RuntimeConfiguration config) {
