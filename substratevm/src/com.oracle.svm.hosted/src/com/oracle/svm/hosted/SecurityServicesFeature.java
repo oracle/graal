@@ -403,6 +403,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         if (isMscapiModulePresent) {
             access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig,
                             type(access, "sun.security.mscapi.SunMSCAPI"));
+            JNIRegistrationSupport.singleton().addLibraryRegistrationHandler(SecurityServicesFeature::registerSunMSCAPILibraryDependencies);
         }
 
         if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
@@ -525,12 +526,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
-        NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) a).getNativeLibraries();
-        /* Library sunmscapi depends on ncrypt and crypt32. */
-        nativeLibraries.addDynamicLibrary("ncrypt");
-        nativeLibraries.addDynamicLibrary("crypt32");
-
         JNIRegistrationSupport.singleton().registerJNILibrary("sunmscapi");
+
         registerForThrowNew(a, "java.security.cert.CertificateParsingException", "java.security.InvalidKeyException",
                         "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
                         "java.security.SignatureException", "java.lang.OutOfMemoryError");
@@ -551,6 +548,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             a.registerReachabilityHandler(SecurityServicesFeature::registerCPublicKeyOf,
                             method(a, "sun.security.mscapi.CSignature", "importECPublicKey", String.class, byte[].class, int.class),
                             method(a, "sun.security.mscapi.CSignature", "importPublicKey", String.class, byte[].class, int.class));
+        }
+    }
+
+    private static void registerSunMSCAPILibraryDependencies(String library) {
+        if (library.equals("sunmscapi")) {
+            NativeLibraries nativeLibraries = NativeLibraries.singleton();
+            /* Library sunmscapi depends on ncrypt and crypt32. */
+            nativeLibraries.addDynamicLibrary("ncrypt");
+            nativeLibraries.addDynamicLibrary("crypt32");
         }
     }
 
