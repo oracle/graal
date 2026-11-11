@@ -251,7 +251,6 @@ public abstract class PlatformThreads {
                     for (int i = 0; i < javaThreadIds.length; i++) {
                         if (JavaThreads.getThreadId(javaThread) == javaThreadIds[i]) {
                             result[i] = Heap.getHeap().getThreadAllocatedMemory(isolateThread);
-                            break;
                         }
                     }
                 }
