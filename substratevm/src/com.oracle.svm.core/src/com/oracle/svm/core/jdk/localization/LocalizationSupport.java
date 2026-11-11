@@ -25,14 +25,17 @@
 
 package com.oracle.svm.core.jdk.localization;
 
+import static com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport.substituteLoadLookupEnabled;
 import static com.oracle.svm.shared.util.StringUtil.toDotSeparated;
 import static com.oracle.svm.shared.util.StringUtil.toSlashSeparated;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -53,14 +56,14 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
-import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.metadata.MetadataTracer;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.StringUtil;
@@ -72,11 +75,14 @@ import sun.util.resources.Bundles;
 
 /**
  * Holder for localization information that is computed during image generation and used at run
- * time.
+ * time. Each layer installs its selected implementation under that implementation's concrete key.
+ * Runtime queries combine locales, charsets and bundle registrations across layers. The application
+ * layer supplies the default charset through {@link DefaultCharsetSingleton}. All layers must use
+ * the same lookup mode.
  *
  * For more details, see LocalizationFeature
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
 public class LocalizationSupport {
 
     public final Map<String, Charset> charsets = new HashMap<>();
@@ -89,22 +95,55 @@ public class LocalizationSupport {
 
     private final Bundles.Strategy strategy = getLocaleDataStrategy();
 
-    public final Charset defaultCharset;
+    private final EconomicMap<String, RuntimeDynamicAccessMetadata> registeredBundles = ImageHeapMap.createNonLayeredMap();
 
-    private final EconomicMap<String, RuntimeDynamicAccessMetadata> registeredBundles = ImageHeapMap.create("registeredBundles");
-
-    public LocalizationSupport(EconomicSet<Locale> locales, Charset defaultCharset) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public LocalizationSupport(EconomicSet<Locale> locales) {
         this.allLocales = locales.toArray(new Locale[locales.size()]);
-        this.defaultCharset = defaultCharset;
         this.supportedLanguageTags = getLanguageTags(locales);
     }
 
-    public boolean substituteLoadLookup() {
-        return false;
+    protected static LocalizationSupport[] getAllLayers() {
+        return substituteLoadLookupEnabled() ? BundleContentSubstitutedLocalizationSupport.getAllLayers() : MultiLayeredImageSingleton.getAllLayers(LocalizationSupport.class);
     }
 
-    public Map<String, Object> getBundleContentOf(Object bundle) {
-        throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + bundle.getClass());
+    public static Locale[] getAllLocales() {
+        EconomicSet<Locale> allLocales = EconomicSet.create();
+        for (LocalizationSupport localizationSupport : getAllLayers()) {
+            for (Locale locale : localizationSupport.allLocales) {
+                allLocales.add(locale);
+            }
+        }
+        return allLocales.toArray(new Locale[allLocales.size()]);
+    }
+
+    public static Set<String> getSupportedLanguageTags() {
+        Set<String> languageTags = new HashSet<>();
+        for (LocalizationSupport localizationSupport : getAllLayers()) {
+            for (String tag : localizationSupport.supportedLanguageTags) {
+                languageTags.add(tag);
+            }
+        }
+        return languageTags;
+    }
+
+    public static Iterable<Charset> getAllCharsets() {
+        List<Charset> allCharsets = new ArrayList<>();
+        for (LocalizationSupport localizationSupport : getAllLayers()) {
+            allCharsets.addAll(localizationSupport.charsets.values());
+        }
+        return allCharsets;
+    }
+
+    public static Charset getCharset(String name) {
+        var localizationSupports = getAllLayers();
+        for (int i = localizationSupports.length - 1; i >= 0; i--) {
+            Charset charset = localizationSupports[i].charsets.get(name);
+            if (charset != null) {
+                return charset;
+            }
+        }
+        return null;
     }
 
     private static Bundles.Strategy getLocaleDataStrategy() {
@@ -229,25 +268,20 @@ public class LocalizationSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    @SuppressWarnings("unused")
-    protected void onClassBundlePrepared(Class<?> bundleClass) {
+    protected void onClassBundlePrepared(@SuppressWarnings("unused") Class<?> bundleClass) {
 
     }
 
     @SuppressWarnings("unused")
     public boolean shouldSubstituteLoadLookup(String className) {
-        /*- By default, keep the original code */
+        /* By default, keep the original code. */
         return false;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("unused")
     public void prepareNonCompliant(Class<?> clazz) throws ReflectiveOperationException {
-        /*- By default, there is nothing to do */
-    }
-
-    @SuppressWarnings("unused")
-    public boolean isNotIncluded(String bundleName) {
-        return false;
+        /* By default, there is nothing to do. */
     }
 
     public void prepareClassResourceBundle(@SuppressWarnings("unused") String basename, Class<?> bundleClass) {
@@ -285,19 +319,27 @@ public class LocalizationSupport {
         registeredBundles.put(baseName, RuntimeDynamicAccessMetadata.addCondition(current, condition, true).withPreserved(newPreserved));
     }
 
-    public boolean isRegisteredBundleLookup(String baseName, Locale locale, Object controlOrStrategy) {
+    public static boolean isRegisteredBundleLookup(String baseName, Locale locale, Object controlOrStrategy) {
         if (baseName == null || locale == null || controlOrStrategy == null) {
             /* Those cases will throw a NullPointerException before any lookup */
             return true;
         }
-        RuntimeDynamicAccessMetadata dynamicAccessMetadata = registeredBundles.get(baseName);
-        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata)) {
+        boolean registered = false;
+        boolean metadataMissing = true;
+        boolean metadataPreserved = false;
+        var localizationSupports = getAllLayers();
+        for (int i = localizationSupports.length - 1; i >= 0; i--) {
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = localizationSupports[i].registeredBundles.get(baseName);
+            if (dynamicAccessMetadata != null) {
+                metadataMissing = false;
+                metadataPreserved |= dynamicAccessMetadata.isPreserved();
+                registered |= dynamicAccessMetadata.satisfied();
+            }
+        }
+        if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(metadataMissing, metadataPreserved)) {
             MetadataTracer.singleton().traceResourceBundle(baseName);
         }
-        if (dynamicAccessMetadata != null) {
-            return dynamicAccessMetadata.satisfied();
-        }
-        return false;
+        return registered;
     }
 
     private static EconomicSet<String> getLanguageTags(EconomicSet<Locale> locales) {

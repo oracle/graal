@@ -30,15 +30,13 @@ import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 
 import jdk.internal.util.ReferencedKeyMap;
 import sun.util.locale.BaseLocale;
@@ -73,7 +71,7 @@ final class Target_java_util_ResourceBundle_Control {
          * given loader and accessible to the given caller.
          */
         String bundleName = toBundleName(baseName, locale);
-        if (format.equals("java.class") && ImageSingletons.lookup(LocalizationSupport.class).isNotIncluded(bundleName)) {
+        if (format.equals("java.class") && BundleContentSubstitutedLocalizationSupport.isNotIncluded(bundleName)) {
             return null;
         }
         var bundle = newBundle0(bundleName, format, loader, reload);

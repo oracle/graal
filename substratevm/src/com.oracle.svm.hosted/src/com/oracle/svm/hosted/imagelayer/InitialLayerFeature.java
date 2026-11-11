@@ -59,6 +59,8 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.jdk.localization.bundles.DelayedBundle;
+import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jni.JNITestingBackdoor;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes;
 import com.oracle.svm.core.jvmstat.PerfUnit;
@@ -76,6 +78,7 @@ import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -167,6 +170,10 @@ public class InitialLayerFeature implements InternalFeature {
         metaAccess.lookupJavaType(CEnumNoLookup.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(PerfVariability.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(PerfUnit.class).registerAsInstantiated("Core type");
+        if (LocalizationFeature.Options.LocalizationSubstituteLoadLookup.getValue()) {
+            metaAccess.lookupJavaType(ExtractedBundle.class).registerAsInstantiated("Core type");
+            metaAccess.lookupJavaType(DelayedBundle.class).registerAsInstantiated("Core type");
+        }
 
         registerAllTypes(metaAccess.lookupJavaType(JNIFunctionPointerTypes.class), t -> t.registerAsReachable("Core type"));
         registerAllTypes(metaAccess.lookupJavaType(CEntryPointOptions.class), t -> t.registerAsReachable("Core type"));

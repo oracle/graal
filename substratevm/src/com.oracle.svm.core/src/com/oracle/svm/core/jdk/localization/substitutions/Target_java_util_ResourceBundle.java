@@ -32,8 +32,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -130,7 +128,7 @@ final class ResourceBundleMissingRegistrationSupport {
 
     static boolean shouldReport(String baseName, Locale locale, Control control) {
         return !RuntimeClassLoading.isSupported() &&
-                        !ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control);
+                        !LocalizationSupport.isRegisteredBundleLookup(baseName, locale, control);
     }
 }
 
