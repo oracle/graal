@@ -68,6 +68,7 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -653,6 +654,19 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
     }
 
     @Test
+    public void unmarkedLongVariablesOutsideIntRangeInIrreducibleLoops() {
+        for (long thirdKey : new long[]{(long) Integer.MAX_VALUE + 1, (long) Integer.MIN_VALUE - 1, Long.MIN_VALUE, Long.MAX_VALUE}) {
+            assertLongKeyProgram("unmarkedLongVariablesOutsideIntRangeInIrreducibleLoops", longKeyProgram(false, true, false, thirdKey), true, thirdKey);
+        }
+    }
+
+    @Test
+    public void unmarkedNestedLongVariableInIrreducibleLoop() {
+        // All differing state is virtual: there is no differing top-level scalar to infer a key.
+        assertLongKeyProgram("unmarkedNestedLongVariableInIrreducibleLoop", longKeyProgram(true, true, false), true);
+    }
+
+    @Test
     public void longKeysAboveIntRangeInIrreducibleLoopsFail() {
         assertOutOfRangeLongKeysFail((long) Integer.MAX_VALUE + 1);
     }
@@ -666,7 +680,6 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
         for (boolean nested : new boolean[]{false, true}) {
             assertOutOfRangeLongKeyFails(longKeyProgram(nested, true, true, key), key);
         }
-        assertOutOfRangeLongKeyFails(longKeyProgram(false, true, false, key), key);
     }
 
     private void assertOutOfRangeLongKeyFails(RootNode root, long key) {
@@ -686,22 +699,26 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
     }
 
     private void assertLongKeyProgram(String name, RootNode root, boolean irreducible) {
-        assertLongKeyResults(root.getCallTarget(), irreducible);
+        assertLongKeyProgram(name, root, irreducible, HIGH_LONG_KEY);
+    }
+
+    private void assertLongKeyProgram(String name, RootNode root, boolean irreducible, long thirdKey) {
+        assertLongKeyResults(root.getCallTarget(), irreducible, thirdKey);
         OptimizedCallTarget target = compileHelper(name, root, new Object[]{0, 0});
-        assertLongKeyResults(target, irreducible);
+        assertLongKeyResults(target, irreducible, thirdKey);
         Assert.assertTrue("Long-key dispatch must not invalidate the compiled target", target.isValid());
     }
 
     private static final long HIGH_LONG_KEY = 1L << 30;
 
-    private static void assertLongKeyResults(CallTarget target, boolean irreducible) {
+    private static void assertLongKeyResults(CallTarget target, boolean irreducible, long thirdKey) {
         long[][] keysByEntry = {
-                        {-0x8000_0000L, 0x7fff_ffffL, HIGH_LONG_KEY, -0x8000_0000L, 0x7fff_ffffL, HIGH_LONG_KEY},
-                        {-0x8000_0000L, HIGH_LONG_KEY, -0x8000_0000L, HIGH_LONG_KEY, -0x8000_0000L, HIGH_LONG_KEY},
-                        {-0x8000_0000L, HIGH_LONG_KEY, 0x7fff_ffffL, HIGH_LONG_KEY, 0x7fff_ffffL, HIGH_LONG_KEY}};
+                        {-0x8000_0000L, 0x7fff_ffffL, thirdKey, -0x8000_0000L, 0x7fff_ffffL, thirdKey},
+                        {-0x8000_0000L, thirdKey, -0x8000_0000L, thirdKey, -0x8000_0000L, thirdKey},
+                        {-0x8000_0000L, thirdKey, 0x7fff_ffffL, thirdKey, 0x7fff_ffffL, thirdKey}};
         for (int entry = 0; entry < keysByEntry.length; entry++) {
             for (int transitions = 0; transitions < keysByEntry[entry].length; transitions++) {
-                long expected = irreducible ? keysByEntry[entry][transitions] : HIGH_LONG_KEY;
+                long expected = irreducible ? keysByEntry[entry][transitions] : thirdKey;
                 Assert.assertEquals(expected, target.call(entry, transitions));
             }
         }
@@ -717,7 +734,7 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
             public Object execute(VirtualFrame frame) {
                 int entry = (int) frame.getArguments()[0];
                 LoopControl control = new LoopControl(false, (int) frame.getArguments()[1]);
-                return nested ? executeNested(entry, control, irreducible, thirdKey) : executeScalar(entry, control, irreducible, markKey, thirdKey);
+                return nested ? executeNested(entry, control, irreducible, markKey, thirdKey) : executeScalar(entry, control, irreducible, markKey, thirdKey);
             }
 
             @EarlyEscapeAnalysis
@@ -741,10 +758,12 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
 
             @EarlyEscapeAnalysis
             @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
-            private static long executeNested(int entry, LoopControl control, boolean irreducible, long thirdKey) {
+            private static long executeNested(int entry, LoopControl control, boolean irreducible, boolean markKey, long thirdKey) {
                 NestedLongVirtualState state = new NestedLongVirtualState(new LongVirtualState(0L));
                 LongVirtualState alias = state.inner;
-                state.inner.key = CompilerDirectives.mergeExplodeKey(state.inner.key);
+                if (markKey) {
+                    state.inner.key = CompilerDirectives.mergeExplodeKey(state.inner.key);
+                }
                 while (true) {
                     CompilerAsserts.partialEvaluationConstant(state.inner.key);
                     if (state.inner.key != 0L) {
@@ -1115,60 +1134,62 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
     public void deoptimizeWithPublishedObjects() {
         // Deoptimize at each noninitial dispatcher entry and check the published identity before
         // another interpreter transition can overwrite it.
-        int tested = 0;
-        for (int keyIndex = 1;; keyIndex++) {
-            RootNode root = publishedObjectProgram();
-            StructuredGraph graph = partialEval(root, new Object[5], new int[]{0, 5, 1});
-            IntegerSwitchNode dispatcher = null;
-            for (IntegerSwitchNode candidate : graph.getNodes().filter(IntegerSwitchNode.class)) {
-                if (candidate.value() instanceof ValuePhiNode phi && phi.merge() instanceof LoopBeginNode) {
-                    Assert.assertNull(dispatcher);
-                    dispatcher = candidate;
-                }
-            }
-            Assert.assertNotNull(dispatcher);
-            if (keyIndex == dispatcher.keyCount()) {
-                break;
-            }
-            FrameState state = ((ValuePhiNode) dispatcher.value()).merge().stateAfter();
-            Assert.assertTrue(state.virtualObjectMappings().filter(MaterializedObjectState.class).isNotEmpty());
-            int id = dispatcher.keyAt(keyIndex).asInt();
-            FixedGuardNode guard = graph.add(new FixedGuardNode(graph.addOrUnique(new IntegerEqualsNode(dispatcher.value(), ConstantNode.forInt(id, graph))),
-                            DeoptimizationReason.TransferToInterpreter, DeoptimizationAction.None, true));
-            guard.setStateBefore(state);
-            graph.addBeforeFixed(dispatcher, guard);
-            OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
-            compile(target, graph);
-            int deopts = 0;
-            for (int entry = 0; entry < 2; entry++) {
-                for (int branch = 0; branch < 2; branch++) {
-                    Object[] published = new Object[5];
-                    int[] control = {entry, 10, branch};
-                    int resumed = (int) target.call(published, control);
-                    if (resumed != 0) {
-                        int expected = 0;
-                        for (int remaining = 10; remaining > control[1]; remaining--) {
-                            expected = switch (expected) {
-                                case 0, 3 -> entry == 0 ? 1 : 2;
-                                case 1 -> branch == 0 ? 2 : 3;
-                                case 2 -> 3;
-                                default -> throw new AssertionError(expected);
-                            };
-                        }
-                        Assert.assertNotEquals("Expected to leave compiled code at a noninitial entry", 0, expected);
-                        Assert.assertSame(published[expected], published[4]);
-                        deopts++;
+        for (boolean mark : new boolean[]{false, true}) {
+            int tested = 0;
+            for (int keyIndex = 1;; keyIndex++) {
+                RootNode root = publishedObjectProgram(mark);
+                StructuredGraph graph = partialEval(root, new Object[5], new int[]{0, 5, 1});
+                IntegerSwitchNode dispatcher = null;
+                for (IntegerSwitchNode candidate : graph.getNodes().filter(IntegerSwitchNode.class)) {
+                    if (candidate.value() instanceof ValuePhiNode phi && phi.merge() instanceof LoopBeginNode) {
+                        Assert.assertNull(dispatcher);
+                        dispatcher = candidate;
                     }
-                    Assert.assertTrue(target.isValid());
                 }
+                Assert.assertNotNull(dispatcher);
+                if (keyIndex == dispatcher.keyCount()) {
+                    break;
+                }
+                FrameState state = ((ValuePhiNode) dispatcher.value()).merge().stateAfter();
+                Assert.assertTrue(state.virtualObjectMappings().filter(MaterializedObjectState.class).isNotEmpty());
+                int id = dispatcher.keyAt(keyIndex).asInt();
+                FixedGuardNode guard = graph.add(new FixedGuardNode(graph.addOrUnique(new IntegerEqualsNode(dispatcher.value(), ConstantNode.forInt(id, graph))),
+                                DeoptimizationReason.TransferToInterpreter, DeoptimizationAction.None, true));
+                guard.setStateBefore(state);
+                graph.addBeforeFixed(dispatcher, guard);
+                OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+                compile(target, graph);
+                int deopts = 0;
+                for (int entry = 0; entry < 2; entry++) {
+                    for (int branch = 0; branch < 2; branch++) {
+                        Object[] published = new Object[5];
+                        int[] control = {entry, 10, branch};
+                        int resumed = (int) target.call(published, control);
+                        if (resumed != 0) {
+                            int expected = 0;
+                            for (int remaining = 10; remaining > control[1]; remaining--) {
+                                expected = switch (expected) {
+                                    case 0, 3 -> entry == 0 ? 1 : 2;
+                                    case 1 -> branch == 0 ? 2 : 3;
+                                    case 2 -> 3;
+                                    default -> throw new AssertionError(expected);
+                                };
+                            }
+                            Assert.assertNotEquals("Expected to leave compiled code at a noninitial entry", 0, expected);
+                            Assert.assertSame(published[expected], published[4]);
+                            deopts++;
+                        }
+                        Assert.assertTrue(target.isValid());
+                    }
+                }
+                Assert.assertTrue("Expected deoptimization for dispatcher ID " + id, deopts > 0);
+                tested++;
             }
-            Assert.assertTrue("Expected deoptimization for dispatcher ID " + id, deopts > 0);
-            tested++;
+            Assert.assertTrue(tested > 0);
         }
-        Assert.assertTrue(tested > 0);
     }
 
-    private static RootNode publishedObjectProgram() {
+    private static RootNode publishedObjectProgram(boolean mark) {
         return new RootNode(null) {
             @Override
             @EarlyEscapeAnalysis
@@ -1187,7 +1208,9 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
                 published[2] = two;
                 published[3] = three;
                 Object value = zero;
-                key = CompilerDirectives.mergeExplodeKey(key);
+                if (mark) {
+                    key = CompilerDirectives.mergeExplodeKey(key);
+                }
                 while (true) {
                     CompilerAsserts.partialEvaluationConstant(key);
                     if (!CompilerDirectives.inCompiledCode()) {
@@ -1326,9 +1349,8 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
     }
 
     @Test
-    public void unmarkedIrreducibleLoopRejectsMultipleScalarVariables() {
-        BailoutException bailout = Assert.assertThrows(BailoutException.class, () -> assertIrreducibleLoopDeoptimizationState(false, true));
-        Assert.assertTrue(bailout.getMessage(), bailout.getMessage().contains("must have only one variable that is changed in loop"));
+    public void unmarkedIrreducibleLoopDeoptimizationNeedsAuxiliaryPhis() {
+        assertIrreducibleLoopDeoptimizationState(false, true);
     }
 
     private void assertIrreducibleLoopDeoptimizationState(boolean markKey, boolean scalarAuxiliary) {
@@ -1352,17 +1374,36 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
         Assert.assertSame("Deoptimize immediately after the synthetic header", header, dispatcher.predecessor());
         // Do not let switch/guard optimization move deoptimization into a specialized entry,
         // where constants in that entry's state could hide a broken shared header state.
-        ValueNode opaqueKey = graph.addWithoutUnique(new OpaqueValueNode(dispatcher.value()));
+        ValueNode key = dispatcher.value();
+        if (!markKey) {
+            // Synthetic selector IDs do not identify interpreter BCIs. Find the actual long key
+            // phi by its unique input 3 (the auxiliary long has input 20 at that entry).
+            key = null;
+            for (ValueNode value : header.stateAfter().values()) {
+                if (value instanceof ValuePhiNode phi && phi.getStackKind() == JavaKind.Long) {
+                    for (ValueNode input : phi.values()) {
+                        if (input.isJavaConstant() && input.asJavaConstant().asLong() == 3) {
+                            Assert.assertTrue(key == null || key == phi);
+                            key = phi;
+                            break;
+                        }
+                    }
+                }
+            }
+            Assert.assertNotNull("Missing interpreter key phi", key);
+            Assert.assertNotSame("The selector must be separate from the interpreter state", dispatcher.value(), key);
+        }
+        ValueNode opaqueKey = graph.addWithoutUnique(new OpaqueValueNode(key));
         FixedGuardNode guard = graph.add(new FixedGuardNode(
-                        graph.addOrUnique(new IntegerEqualsNode(opaqueKey, ConstantNode.forInt(3, graph))),
+                        graph.addOrUnique(new IntegerEqualsNode(opaqueKey, ConstantNode.forIntegerKind(key.getStackKind(), 3, graph))),
                         DeoptimizationReason.UnreachedCode, DeoptimizationAction.InvalidateRecompile, true));
         graph.addBeforeFixed(dispatcher, guard);
         compile(target, graph);
         Assert.assertTrue(target.isValid());
         // Reach key 3 with no transitions remaining and return before overwriting the restored
         // values: 100 * key + auxiliary + state.value = 300 + (scalarAuxiliary ? 20 : 0) + 34.
-        // Without the scalar auxiliary, the unmarked path can infer a single dispatch variable,
-        // but it still needs to preserve the virtual field in its deoptimization state.
+        // Both marked and synthetic-ID dispatchers must preserve scalar and virtual fields
+        // independently of the selector used for dispatch.
         Object result = target.call(0, 2);
         Assert.assertFalse("Expected deoptimization at the dispatcher", target.isValid());
         Assert.assertEquals(300L + (scalarAuxiliary ? 20 : 0) + 34, result);
@@ -1376,6 +1417,15 @@ public class MergeExplodeKeyTest extends PartialEvaluationTest {
     @Test
     public void irreducibleLoopPreservesNonKeyStateWithNestedKey() {
         assertIrreducibleNonKeyState(true);
+    }
+
+    @Test
+    public void unmarkedIrreducibleLoopPreservesScalarAndVirtualState() {
+        RootNode root = irreducibleNonKeyStateProgram(false, false, false, true);
+        assertIrreducibleNonKeyStateResults(root.getCallTarget());
+        OptimizedCallTarget target = compileHelper("unmarkedIrreducibleLoopPreservesScalarAndVirtualState", root, new Object[]{0, 0});
+        assertIrreducibleNonKeyStateResults(target);
+        Assert.assertTrue(target.isValid());
     }
 
     private void assertIrreducibleNonKeyState(boolean nestedKey) {

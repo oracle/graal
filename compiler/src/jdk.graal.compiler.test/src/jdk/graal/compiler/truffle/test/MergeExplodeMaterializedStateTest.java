@@ -148,7 +148,9 @@ public class MergeExplodeMaterializedStateTest extends GraalCompilerTest {
         }
         // One copy introduces the materialized-reference phi; one materializes the LoopBegin.
         // Further entries must extend the phi without copying the dispatcher state again.
-        Assert.assertEquals(2, decoder.stateCopies);
+        // With synthetic IDs, the first copy installs the key phi after registration and is
+        // not observed by trackStateCopy, which counts copies already containing that phi.
+        Assert.assertEquals(markKey ? 2 : 1, decoder.stateCopies);
         IntegerSwitchNode dispatcher = null;
         for (IntegerSwitchNode candidate : graph.getNodes().filter(IntegerSwitchNode.class)) {
             if (candidate.value() instanceof ValuePhiNode phi && phi.merge() instanceof LoopBeginNode) {
@@ -157,8 +159,10 @@ public class MergeExplodeMaterializedStateTest extends GraalCompilerTest {
             }
         }
         Assert.assertNotNull(dispatcher);
-        ValuePhiNode keyPhi = (ValuePhiNode) dispatcher.value();
-        FrameState state = keyPhi.merge().stateAfter();
+        ValuePhiNode selectorPhi = (ValuePhiNode) dispatcher.value();
+        FrameState state = selectorPhi.merge().stateAfter();
+        ValuePhiNode keyPhi = (ValuePhiNode) state.values().get(KEY_LOCAL);
+        Assert.assertSame(selectorPhi.merge(), keyPhi.merge());
         MaterializedObjectState mapping = (MaterializedObjectState) state.virtualObjectMappingAt(0);
         Assert.assertTrue(mapping.materializedValue() instanceof ValuePhiNode);
         ValuePhiNode objectPhi = (ValuePhiNode) mapping.materializedValue();
