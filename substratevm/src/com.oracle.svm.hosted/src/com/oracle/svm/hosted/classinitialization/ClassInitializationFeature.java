@@ -63,13 +63,15 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.GuestType;
 import com.oracle.svm.util.JVMCIReflectionUtil;
-import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticallyRegisteredFeature
@@ -271,8 +273,10 @@ public class ClassInitializationFeature implements InternalFeature {
                  * the class initialization status of the JDK because the application cannot know
                  * which JDK classes are safe for initialization at image build time.
                  */
+                GuestAccess guestAccess = GuestAccess.get();
+                JavaConstant platformClassLoader = guestAccess.invokeStatic(guestAccess.elements.java_lang_ClassLoader_getPlatformClassLoader);
                 List<String> unspecifiedClasses = classInitializationSupport.classesWithKind(RUN_TIME).stream()
-                                .filter(ClassInitializationFeature::shouldCheckInitializationPolicy)
+                                .filter(type -> shouldCheckInitializationPolicy(type, platformClassLoader))
                                 .filter(c -> classInitializationSupport.specifiedInitKindFor(c) == null)
                                 .map(JVMCIReflectionUtil::getTypeName)
                                 .filter(name -> !name.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING))
@@ -286,17 +290,14 @@ public class ClassInitializationFeature implements InternalFeature {
         }
     }
 
-    private static boolean shouldCheckInitializationPolicy(ResolvedJavaType type) {
+    private static boolean shouldCheckInitializationPolicy(ResolvedJavaType type, @GuestType(ClassLoader.class) JavaConstant platformLoader) {
         /*
-         * GR-71192: Since this is an after-analysis diagnostic, unwrap the guest type to preserve
-         * the existing class-loader check until JVMCI exposes class-loader metadata.
          * GuestTypes.isUserType instead classifies types by the path container from which they were
          * discovered, which is not equivalent to distinguishing application class loaders from
          * bootstrap and platform class loaders.
          */
-        Class<?> clazz = OriginalClassProvider.getJavaClass(type);
-        ClassLoader classLoader = clazz.getClassLoader();
-        if (classLoader == null || classLoader == ClassLoader.getPlatformClassLoader()) {
+        JavaConstant classLoader = JVMCIReflectionUtil.getClassLoader(type);
+        if (classLoader.isNull() || classLoader.equals(platformLoader)) {
             return false;
         }
 
@@ -305,7 +306,7 @@ public class ClassInitializationFeature implements InternalFeature {
          * application class loader. Exclude them by module name so the assertion remains limited to
          * application classes.
          */
-        Module module = clazz.getModule();
+        ResolvedJavaModule module = JVMCIReflectionUtil.getModule(type);
         if (module.isNamed()) {
             String moduleName = module.getName();
             if (moduleName.startsWith("java.") || moduleName.startsWith("jdk.")) {
