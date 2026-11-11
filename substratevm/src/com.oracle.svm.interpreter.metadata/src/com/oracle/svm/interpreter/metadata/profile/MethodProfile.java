@@ -412,7 +412,9 @@ public final class MethodProfile {
     }
 
     public JavaTypeProfile getTypeProfile(int bci) {
-        return getAtBCI(bci, TypeProfile.class).toTypeProfile();
+        // Generic profile consumers query every BCI, including those without a profile cell.
+        TypeProfile typeProfile = getAtBCI(bci, TypeProfile.class);
+        return typeProfile == null ? null : typeProfile.toTypeProfile();
     }
 
     public TriState getNullSeen(int bci) {
@@ -421,7 +423,8 @@ public final class MethodProfile {
     }
 
     public double getBranchTakenProbability(int bci) {
-        return getAtBCI(bci, BranchProfile.class).takenProfile();
+        BranchProfile branchProfile = getAtBCI(bci, BranchProfile.class);
+        return branchProfile == null ? -1D : branchProfile.takenProfile();
     }
 
     public void profileType(int bci, ResolvedJavaType type) {

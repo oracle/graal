@@ -46,7 +46,7 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
 
     @Override
     public int getCodeSize() {
-        return 0;
+        return methodProfile.getMethod().getCodeSize();
     }
 
     @Override
