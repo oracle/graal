@@ -399,6 +399,13 @@ public abstract class MovableWriteMergeProcessor<State extends MovableWriteMerge
             boolean conditional = false;
             if (iter == null || !iter.hasNext() || !key.equals(iter.get())) {
                 // Key is not present in the branch: we conditionally sink.
+                for (int i = 1; i < states.size(); i++) {
+                    if (states.get(i).getCacheData(key).isConditional()) {
+                        // A write conditional on an inner loop cannot be guarded by this loop's
+                        // backedge alone: the inner loop may not execute in any iteration.
+                        break outer;
+                    }
+                }
                 conditional = true;
                 conditionalSinks.add(key);
             } else {
