@@ -27,15 +27,55 @@ package jdk.graal.compiler.replacements.test;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.core.common.type.FloatStamp;
+import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.SqrtNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import jdk.vm.ci.code.InstalledCode;
 
 public class MathPowHalfTest extends GraalCompilerTest {
 
     public static double clampedPower(double x) {
         return Math.pow(Math.max(x, -0.0D), 0.5D);
+    }
+
+    private static void checkCanonicalization(FloatStamp stamp, boolean expectSqrt) {
+        ParameterNode x = new ParameterNode(0, StampPair.createSingle(stamp));
+        ValueNode half = ConstantNode.forDouble(0.5D);
+        BinaryMathIntrinsicNode pow = (BinaryMathIntrinsicNode) BinaryMathIntrinsicNode.create(x, half, BinaryOperation.POW);
+        ValueNode canonical = pow.canonical(null, x, half);
+        if (expectSqrt) {
+            Assert.assertTrue(canonical instanceof SqrtNode);
+            Assert.assertSame(x, ((SqrtNode) canonical).getValue());
+        } else {
+            Assert.assertSame(pow, canonical);
+        }
+    }
+
+    @Test
+    public void testEmptyStamp() {
+        checkCanonicalization(FloatStamp.createEmpty(64), false);
+    }
+
+    @Test
+    public void testPositiveStamp() {
+        checkCanonicalization(FloatStamp.create(64, 1.0D, 4.0D, true), true);
+    }
+
+    @Test
+    public void testNegativeStamp() {
+        checkCanonicalization(FloatStamp.create(64, -4.0D, -1.0D, true), false);
+    }
+
+    @Test
+    public void testNaNStamp() {
+        checkCanonicalization(FloatStamp.create(64, Double.NaN, Double.NaN, false), false);
     }
 
     @Override

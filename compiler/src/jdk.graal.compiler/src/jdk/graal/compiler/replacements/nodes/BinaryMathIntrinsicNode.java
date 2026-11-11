@@ -162,7 +162,7 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements LIRLowe
                     // x**0.5 = sqrt(x)
                     // Note that Math.pow(Double.MAX_VALUE, 0.5) returns different value than
                     // Math.sqrt(Double.MAX_VALUE) until Java 17.
-                    if (yValue == 0.5D && forX.stamp(view) instanceof FloatStamp xStamp && xStamp.lowerBound() >= 0.0D) {
+                    if (yValue == 0.5D && forX.stamp(view) instanceof FloatStamp xStamp && xStamp.hasValues() && xStamp.lowerBound() >= 0.0D) {
                         // FloatStamp does not distinguish +0.0 from -0.0. Unlike sqrt, pow(x, 0.5)
                         // returns +0.0 for -0.0, so clear the sign if zero is possible.
                         ValueNode base = xStamp.lowerBound() == 0.0D ? AbsNode.create(forX, view) : forX;
