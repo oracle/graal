@@ -893,28 +893,30 @@ public abstract class ImageHeapScanner {
     }
 
     /**
-     * Returns true if the provided {@code object} has an {@link ImageHeapConstant} representation,
-     * meaning it is a candidate to be installed in the image heap.
+     * Returns true if the provided {@code constant} has an {@link ImageHeapConstant}
+     * representation, meaning it is a candidate to be installed in the image heap.
      */
-    public boolean hasImageHeapConstant(Object object) {
-        var javaConstant = asConstant(Objects.requireNonNull(object));
-        return imageHeap.getSnapshot(javaConstant) instanceof ImageHeapConstant;
+    public boolean hasImageHeapConstant(JavaConstant constant) {
+        return imageHeap.getSnapshot(Objects.requireNonNull(constant)) instanceof ImageHeapConstant;
     }
 
     /**
-     * Returns true if the provided {@code object} was seen as reachable by the static analysis.
+     * Returns true if the object represented by {@code constant} was seen as reachable by the
+     * static analysis.
      */
-    public boolean isObjectReachable(Object object) {
-        return checkObject(object, ImageHeapConstant::isReachable);
+    public boolean isObjectReachable(JavaConstant constant) {
+        return checkConstant(Objects.requireNonNull(constant), ImageHeapConstant::isReachable);
     }
 
-    public boolean isObjectInSharedLayer(Object object) {
-        return checkObject(object, ImageHeapConstant::isInSharedLayer);
+    /**
+     * Returns whether the object represented by {@code constant} comes from a shared image layer.
+     */
+    public boolean isObjectInSharedLayer(JavaConstant constant) {
+        return checkConstant(Objects.requireNonNull(constant), ImageHeapConstant::isInSharedLayer);
     }
 
-    public boolean checkObject(Object object, Predicate<ImageHeapConstant> predicate) {
-        var javaConstant = asConstant(Objects.requireNonNull(object));
-        Object existingTask = imageHeap.getSnapshot(javaConstant);
+    private boolean checkConstant(JavaConstant constant, Predicate<ImageHeapConstant> predicate) {
+        Object existingTask = imageHeap.getSnapshot(constant);
         if (existingTask instanceof ImageHeapConstant imageHeapConstant) {
             return predicate.test(imageHeapConstant);
         }

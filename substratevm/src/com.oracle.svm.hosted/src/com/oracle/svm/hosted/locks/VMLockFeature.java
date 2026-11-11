@@ -53,7 +53,9 @@ final class VMLockFeature implements InternalFeature {
         } else {
             /* Extension layers must not add any extra VMLockingPrimitives. */
             ImageHeapScanner imageHeapScanner = ((DuringSetupAccessImpl) access).getBigBang().getUniverse().getHeapScanner();
-            access.registerObjectReachabilityHandler((obj) -> VMError.guarantee(imageHeapScanner.isObjectInSharedLayer(obj),
+            var hostedValuesProvider = imageHeapScanner.getHostedValuesProvider();
+            // GR-78175: Move VM and platform locking runtime to guest staging.
+            access.registerObjectReachabilityHandler((obj) -> VMError.guarantee(imageHeapScanner.isObjectInSharedLayer(hostedValuesProvider.forObject(obj)),
                             "A VMLockingPrimitive is added in an extension layer, which is unsupported: %s", obj), VMLockingPrimitive.class);
         }
     }
