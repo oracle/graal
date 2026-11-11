@@ -34,6 +34,10 @@ However, a loop that summarizes values over an array uses a non-constant time de
 This typically means that safepoints are best polled at the end of loops and at the end of function or method calls to cover recursion.
 In addition, any guest language code that blocks the execution, like guest language locks, need to use the  `TruffleSafepoint.setBlocked(Interrupter)` API to allow cooperative polling of safepoints while the thread is waiting.
 
+Calls to `@TruffleBoundary` methods do not introduce implicit guest safepoints in compiled guest code.
+If you need a safepoint at a specific call site, use `TruffleSafepoint.pollHere(Node)` explicitly.
+Compiled guest code automatically polls only at compilation-root returns and loop backedges.
+
 Please read more details on what steps language implementations need to take to support thread local actions in the [javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleSafepoint.html).
 
 ## Thread Local Actions
