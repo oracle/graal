@@ -55,16 +55,27 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 
+/**
+ * Builds the AOT compilation configuration for the hosted universe.
+ */
 public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfigurationBuilder {
 
-    private final HostedUniverse universe;
+    /**
+     * Universe used by the compilation providers after analysis.
+     */
+    private final HostedUniverse hostedUniverse;
+
+    /**
+     * Source of snippets parsed before analysis, reused by {@link HostedReplacements} after metadata
+     * transplantation into the hosted universe.
+     */
     private final SubstrateReplacements analysisReplacements;
 
-    public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess,
+    public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse hostedUniverse, HostedMetaAccess metaAccess,
                     SubstrateReplacements analysisReplacements, ClassInitializationSupport classInitializationSupport, SubstratePlatformConfigurationProvider platformConfig,
                     SnippetReflectionProvider snippetReflection) {
         super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, classInitializationSupport, platformConfig, snippetReflection);
-        this.universe = universe;
+        this.hostedUniverse = hostedUniverse;
         this.analysisReplacements = analysisReplacements;
     }
 
@@ -78,12 +89,12 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     @Override
     protected ConstantReflectionProvider createConstantReflectionProvider() {
-        return new HostedConstantReflectionProvider(universe, (HostedMetaAccess) metaAccess, classInitializationSupport);
+        return new HostedConstantReflectionProvider(hostedUniverse, (HostedMetaAccess) metaAccess, classInitializationSupport);
     }
 
     @Override
     protected ConstantFieldProvider createConstantFieldProvider() {
-        return new HostedConstantFieldProvider(metaAccess, universe.hostVM());
+        return new HostedConstantFieldProvider(metaAccess, hostedUniverse.hostVM());
     }
 
     @Override
@@ -94,7 +105,7 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     @Override
     protected Replacements createReplacements(Providers providers) {
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        return new HostedReplacements(universe, providers, SubstrateTarget.singleton(), analysisReplacements, bytecodeProvider);
+        return new HostedReplacements(hostedUniverse, providers, SubstrateTarget.singleton(), analysisReplacements, bytecodeProvider);
     }
 
     @Override
