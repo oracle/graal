@@ -26,6 +26,8 @@ To accommodate this requirement, a short-term "relevant supertype" is used, as w
 * Relevant supertypes of types initialized at build time must also be initialized at build time.
 * Relevant subtypes of types initialized at runtime must also be initialized at runtime.
 * No instances of classes that are initialized at runtime must be present in the executable.
+* With `--future-defaults=predictable-build-time-initialization`, a class initialized at build time must not reference instances of run-time initialized classes, directly or indirectly, through its static fields,
+  even if reachability analysis does not mark those instances as reachable.
 
 To enjoy the complete out-of-the-box experience of Native Image and still get the benefits of build-time initialization, Native Image does two things:
 * [Build-Time Initialization](#build-time-initialization)
@@ -40,6 +42,16 @@ The goal is to have as many classes as possible initialized at build time, yet k
 Native Image initializes most JDK classes at build time, including the garbage collector, important JDK classes, and the deoptimizer.
 For all of the classes that are initialized at build time, Native Image gives proper support so that the semantics remain consistent despite class initialization occurring at build time.
 If you discover an issue with a JDK class behaving incorrectly because of class initialization at build time, please [report an issue](https://github.com/oracle/graal/issues/new).
+
+### Verification of Objects Referenced by Static Fields
+
+By default, Native Image verifies that objects included in the executable's image heap are instances of build-time initialized classes and are allowed in the image heap.
+
+With `--future-defaults=predictable-build-time-initialization`, this verification extends to any object referenced directly
+or indirectly by static fields of build-time initialized classes that could become part of the image heap.
+This makes reporting of class initialization violations more reliable, as these errors are no longer masked by reachability.
+If an object is found to be an instance of a run-time initialized class, the build fails with an error showing a path from a 
+build-time initialized class to the offending object and suggesting how to resolve the violation.
 
 ## Automatic Initialization of Safe Classes
 

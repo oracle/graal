@@ -144,7 +144,7 @@ final class Target_jdk_internal_module_ModuleReferences_JarModuleReader {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.None, isFinal = false) JarFile jf;
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.None, isFinal = false) URI uri;
 
-    @Inject String runtimeModuleName;
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset, isFinal = false) String runtimeModuleName;
 
     @Alias
     @TargetElement(name = "newJarFile")

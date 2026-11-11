@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,6 +69,7 @@ public class InteropNodesProcessor extends BaseProcessor {
     private static final String SHAREABLE = "com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable";
 
     private static final String INTEROP_NODES = "com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes";
+    private static final String INTEROP_KLASSES_DISPATCH = "com.oracle.truffle.espresso.meta.InteropKlassesDispatch";
     private static final String INTEROP_MESSAGE_FACTORIES = "com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactories";
     private static final String INTEROP_MESSAGE_FACTORY = "com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory";
     private static final String INTEROP_MESSAGE = "com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage";
@@ -184,9 +185,13 @@ public class InteropNodesProcessor extends BaseProcessor {
                         .withAnnotation(new AnnotationBuilder(COLLECT).withValue("value", INTEROP_NODES + ".class", false).withValue("getter",
                                         INSTANCE_GETTER).withLineBreak()) //
                         .withSuperClass(interopNodes.getQualifiedName().toString()) //
-                        // Factory declaration
+                        /*
+                         * Use the dispatch mapping directly. Calling through InteropMessageFactories
+                         * would initialize its collector while this generated class is still being
+                         * initialized, before INSTANCE has been assigned.
+                         */
                         .withField(new FieldBuilder(FACTORY_CLASS_NAME, FACTORY_FIELD_NAME).withQualifiers(new ModifierBuilder().asStatic().asFinal().asPrivate()).withDeclaration(
-                                        new StatementBuilder().addContent("new ", FACTORY_CLASS_NAME, "(", INTEROP_MESSAGE_FACTORIES, ".dispatchToId(", cls.getSimpleName(), ".class)", ")")))
+                                        new StatementBuilder().addContent("new ", FACTORY_CLASS_NAME, "(", INTEROP_KLASSES_DISPATCH, ".dispatchToId(", cls.getSimpleName(), ".class)", ")")))
                         // Singleton implementation
                         .withField(new FieldBuilder(interopNodes, INSTANCE).withQualifiers(new ModifierBuilder().asStatic().asFinal().asPrivate()).withDeclaration(
                                         new StatementBuilder().addContent("new " + clsName + "()"))) //

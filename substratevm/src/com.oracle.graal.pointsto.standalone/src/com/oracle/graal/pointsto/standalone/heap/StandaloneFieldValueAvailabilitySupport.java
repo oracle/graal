@@ -117,7 +117,7 @@ public final class StandaloneFieldValueAvailabilitySupport {
     }
 
     private boolean staticFieldSnapshottingAllowed(AnalysisField field) {
-        field.beforeFieldValueAccess();
+        field.markDeclaringClassAsReachable();
         if (!field.isStatic()) {
             return true;
         }

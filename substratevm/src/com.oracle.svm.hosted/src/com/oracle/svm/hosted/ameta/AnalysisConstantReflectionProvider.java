@@ -314,6 +314,13 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             return null;
         }
 
+        /*
+         * For TypeData to be retrieved using getOrComputeData, the declaring class must be marked as reachable.
+         * Previously, this was performed by fieldValueInterceptionSupport.isValueAvailable, but that is no longer
+         * the case.
+         */
+        field.markDeclaringClassAsReachable();
+
         VMError.guarantee(receiver == null || receiver instanceof ImageHeapConstant, "Expected ImageHeapConstant, found: %s", receiver);
         JavaConstant value = null;
         if (returnSimulatedValues) {

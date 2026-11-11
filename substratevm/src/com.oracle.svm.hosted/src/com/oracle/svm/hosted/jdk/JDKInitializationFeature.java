@@ -90,6 +90,9 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         if (FutureDefaultsOptions.resourceBundlesInitializedAtRunTime()) {
             rci.initializeAtRunTime("java.text.BreakIterator", FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);
             rci.initializeAtRunTime("java.text.BreakIterator$BreakIteratorCache", FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);
+
+            /* PBTI will find its static fields when resource bundles are initialized at run-time */
+            // rci.initializeAtRunTime("com.oracle.svm.core.jdk.localization.substitutions.Util_java_text_BreakIterator", FutureDefaultsOptions.RUN_TIME_INITIALIZE_RESOURCE_BUNDLES_REASON);
         }
         rci.initializeAtBuildTime("java.time", JDK_CLASS_REASON);
         // see HijrahChronologyFeature for more details
@@ -106,7 +109,18 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         rci.initializeAtBuildTime("javax.naming", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.net", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.tools", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("javax.xml", JDK_CLASS_REASON);
+
+        /* Legacy Java EE APIs use javax.xml.bind, rpc, soap, and ws, but are not part of the JDK. */
+        rci.initializeAtBuildTime("javax.xml.XMLConstants", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.catalog", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.crypto", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.datatype", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.namespace", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.parsers", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.stream", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.transform", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.validation", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml.xpath", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("jdk.management.jfr.internal.FlightRecorderMXBeanProvider$SingleMBeanComponent", "Ends up in the image heap with -H:Preserve=all");
 
@@ -188,6 +202,12 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         rci.initializeAtBuildTime("java.awt.font.TextAttribute", "Required for sun.text.bidi.BidiBase.NumericShapings");
         rci.initializeAtBuildTime("java.awt.font.NumericShaper", "Required for sun.text.bidi.BidiBase.NumericShapings");
         rci.initializeAtBuildTime("java.awt.font.JavaAWTFontAccessImpl", "Required for sun.text.bidi.BidiBase.NumericShapings");
+        rci.initializeAtRunTime("sun.awt.X11.XDragAndDropProtocols", "Initializes X11 peer state");
+        rci.initializeAtRunTime("sun.awt.X11.XRootWindow$LazyHolder", "Initializes the X11 root window");
+        rci.initializeAtRunTime("sun.awt.screencast.ScreencastHelper", "Loads native libraries and initializes AWT");
+        rci.initializeAtRunTime("sun.awt.screencast.ScreencastHelper$TimerHolder", "Starts a timer thread");
+        rci.initializeAtRunTime("sun.awt.screencast.TokenStorage", "Creates a file watcher and captures host-specific token storage");
+        rci.initializeAtRunTime("sun.font.HBShaper", "Contains native memory segments");
 
         /* FileSystemProviders related */
         if (FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime()) {
@@ -226,7 +246,10 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
             rci.initializeAtBuildTime("sun.nio.fs.WindowsPath", "Allow WindowsPath objects in the image heap (" + FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON + ")");
         }
 
-        rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
+        /* com.sun.xml.bind, ws, etc. are third-party packages and shouldn't be initialized at build-time */
+        rci.initializeAtBuildTime("com.sun.xml.internal", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("org.xml.sax", JDK_CLASS_REASON);
+        /* Maybe org.w3c.dom should also be marked as build-time initialized here. */
         rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
 

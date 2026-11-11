@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -63,7 +63,6 @@ import jdk.graal.compiler.options.Option;
  * behaviours that identify an original source for addition to the cache and for verifying that a
  * cached file is not out of date with respect to its original.
  */
-
 public class SourceCache {
 
     private static final class SourceRoots {
