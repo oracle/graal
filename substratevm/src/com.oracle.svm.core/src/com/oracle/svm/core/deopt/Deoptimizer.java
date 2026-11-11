@@ -86,6 +86,7 @@ import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.util.VMError;
 
@@ -1723,7 +1724,7 @@ public final class Deoptimizer {
         private final int sizeofUncompressedReference = FrameAccess.uncompressedReferenceSize();
         private final int arrayBaseOffset = ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.Byte);
 
-        private static final ArrayIndexOutOfBoundsException arrayIndexOutOfBoundsException = new ArrayIndexOutOfBoundsException("TargetContent.offsetCheck");
+        private static final ArrayIndexOutOfBoundsException arrayIndexOutOfBoundsException = PreallocatedExceptions.createArrayIndexOutOfBoundsException("TargetContent.offsetCheck");
 
         /* Check that an offset is in range. */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

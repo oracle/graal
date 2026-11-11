@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,6 +75,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
 
@@ -120,15 +121,15 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
 
     protected static final String UNCOMMIT_FAILED_ERROR_MSG = "Failed while uncommitting memory. " +
                     "This error may occur if the operating system's memory mapping limit is too low (see vm.max_map_count on Linux). Please increase this limit and try again.";
-    private static final OutOfMemoryError NODE_ALLOCATION_FAILED = new OutOfMemoryError("Could not allocate node for free list, OS may be out of memory.");
-    private static final HeapChunkAllocationException ALIGNED_OUT_OF_ADDRESS_SPACE = new HeapChunkAllocationException(
+    private static final OutOfMemoryError NODE_ALLOCATION_FAILED = PreallocatedExceptions.createOutOfMemoryError("Could not allocate node for free list, OS may be out of memory.");
+    private static final HeapChunkAllocationException ALIGNED_OUT_OF_ADDRESS_SPACE = PreallocatedExceptions.prepare(new HeapChunkAllocationException(
                     "Could not allocate an aligned heap chunk because the heap address space is exhausted. " +
                                     "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize). If compressed references limit the maximum address space size, typically to 32 GB, consider " +
-                                    "re-building the image with compressed references disabled ('-H:-UseCompressedReferences').");
-    private static final HeapChunkAllocationException UNALIGNED_OUT_OF_ADDRESS_SPACE = new HeapChunkAllocationException(
+                                    "re-building the image with compressed references disabled ('-H:-UseCompressedReferences')."));
+    private static final HeapChunkAllocationException UNALIGNED_OUT_OF_ADDRESS_SPACE = PreallocatedExceptions.prepare(new HeapChunkAllocationException(
                     "Could not allocate an unaligned heap chunk because the heap address space is exhausted. " +
                                     "Consider increasing the address space size (see option -XX:ReservedAddressSpaceSize). If compressed references limit the maximum address space size, typically to 32 GB, consider " +
-                                    "re-building the image with compressed references disabled ('-H:-UseCompressedReferences').");
+                                    "re-building the image with compressed references disabled ('-H:-UseCompressedReferences')."));
 
     /**
      * This mutex is used by the GC and the application. The application may hold this mutex only in

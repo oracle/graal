@@ -34,13 +34,14 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 
 final class ObjectTraversal {
     interface Callback {
         void traverseReference(Object from, Object to);
     }
 
-    private static final BufferOverflowException BUFFER_OVERFLOW_EXCEPTION = new BufferOverflowException();
+    private static final BufferOverflowException BUFFER_OVERFLOW_EXCEPTION = PreallocatedExceptions.prepare(new BufferOverflowException());
 
     private final Function<Object, ObjectReferencesWalker> walkerProvider;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,15 +43,18 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
 public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
     private static final String SYSTEM_OUT_OF_MEMORY_MSG = "Either the OS/container is out of memory or another system-level resource limit was reached (such as the number of memory mappings).";
-    static final HeapChunkAllocationException ALIGNED_CHUNK_COMMIT_FAILED = new HeapChunkAllocationException("Could not commit an aligned heap chunk. " + SYSTEM_OUT_OF_MEMORY_MSG);
-    static final HeapChunkAllocationException UNALIGNED_CHUNK_COMMIT_FAILED = new HeapChunkAllocationException("Could not commit an unaligned heap chunk. " + SYSTEM_OUT_OF_MEMORY_MSG);
-    protected static final OutOfMemoryError METASPACE_CHUNK_COMMIT_FAILED = new OutOfMemoryError("Could not commit a metaspace chunk. " + SYSTEM_OUT_OF_MEMORY_MSG);
+    static final HeapChunkAllocationException ALIGNED_CHUNK_COMMIT_FAILED = PreallocatedExceptions.prepare(new HeapChunkAllocationException("Could not commit an aligned heap chunk. " +
+                    SYSTEM_OUT_OF_MEMORY_MSG));
+    static final HeapChunkAllocationException UNALIGNED_CHUNK_COMMIT_FAILED = PreallocatedExceptions.prepare(new HeapChunkAllocationException("Could not commit an unaligned heap chunk. " +
+                    SYSTEM_OUT_OF_MEMORY_MSG));
+    protected static final OutOfMemoryError METASPACE_CHUNK_COMMIT_FAILED = PreallocatedExceptions.createOutOfMemoryError("Could not commit a metaspace chunk. " + SYSTEM_OUT_OF_MEMORY_MSG);
 
     @Fold
     public static ChunkBasedCommittedMemoryProvider get() {

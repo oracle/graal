@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 
 /**
  * A preallocated heap chunk allocation failure. Allocation code throws this exception to unwind
@@ -47,7 +48,7 @@ final class HeapChunkAllocationException extends RuntimeException {
     @Platforms(Platform.HOSTED_ONLY.class)
     HeapChunkAllocationException(String message) {
         super(message);
-        outOfMemoryError = new OutOfMemoryError(message);
+        outOfMemoryError = PreallocatedExceptions.createOutOfMemoryError(message);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

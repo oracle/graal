@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
-import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.jfr.Target_jdk_jfr_internal_JVM_Util.jfrNotSupportedException;
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.util.List;
 
@@ -43,6 +43,7 @@ import com.oracle.svm.core.container.OperatingSystem;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.util.PlatformTimeUtils;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
@@ -694,7 +695,8 @@ public final class Target_jdk_jfr_internal_JVM {
 }
 
 class Target_jdk_jfr_internal_JVM_Util {
-    private static final UnsupportedOperationException CACHED_EXCEPTION = new UnsupportedOperationException(VMInspectionOptions.getJfrNotSupportedMessage() + ' ' + ImplicitExceptions.NO_STACK_MSG);
+    private static final UnsupportedOperationException CACHED_EXCEPTION = PreallocatedExceptions.createUnsupportedOperationException(VMInspectionOptions.getJfrNotSupportedMessage() + ' ' +
+                    ImplicitExceptions.NO_STACK_MSG);
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static UnsupportedOperationException jfrNotSupportedException() {

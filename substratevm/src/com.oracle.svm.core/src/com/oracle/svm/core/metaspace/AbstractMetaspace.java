@@ -46,6 +46,7 @@ import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -57,7 +58,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 public abstract class AbstractMetaspace implements Metaspace {
     private static final String OUT_OF_METASPACE_MSG = "Could not allocate a metaspace chunk because the metaspace is exhausted.\nMaximum metaspace size can be adjusted at build-time with " +
                     "'" + SubstrateOptionsParser.commandArgument(SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize, "<size in MB>m") + "'.";
-    private static final OutOfMemoryError OUT_OF_METASPACE = new OutOfMemoryError(OUT_OF_METASPACE_MSG);
+    private static final OutOfMemoryError OUT_OF_METASPACE = PreallocatedExceptions.createOutOfMemoryError(OUT_OF_METASPACE_MSG);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected AbstractMetaspace() {

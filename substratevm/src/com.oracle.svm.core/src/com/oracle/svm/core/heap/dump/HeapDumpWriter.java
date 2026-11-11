@@ -101,6 +101,7 @@ import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.VMError;
@@ -1523,7 +1524,7 @@ public class HeapDumpWriter {
 
     static final class HeapDumpException extends RuntimeException {
         @Serial private static final long serialVersionUID = 1;
-        private static final HeapDumpException SINGLETON = new HeapDumpException();
+        private static final HeapDumpException SINGLETON = PreallocatedExceptions.prepare(new HeapDumpException());
 
         private HeapDumpError error;
 

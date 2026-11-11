@@ -2003,6 +2003,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
+                "SVM_GUEST_STAGING",
                 "SVM_SHARED",
             ],
             "requiresConcealed" : {

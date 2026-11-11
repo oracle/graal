@@ -37,6 +37,7 @@ import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -48,7 +49,7 @@ import com.oracle.svm.shared.util.SubstrateUtil;
  */
 @DuplicatedInNativeCode
 final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisitor {
-    private static final UnreachableObjectsException UNREACHABLE_OBJECTS_EXCEPTION = new UnreachableObjectsException();
+    private static final UnreachableObjectsException UNREACHABLE_OBJECTS_EXCEPTION = PreallocatedExceptions.prepare(new UnreachableObjectsException());
 
     @Platforms(Platform.HOSTED_ONLY.class)
     RuntimeCodeCacheReachabilityAnalyzer() {
