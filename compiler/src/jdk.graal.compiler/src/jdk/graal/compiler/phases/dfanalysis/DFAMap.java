@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -427,7 +428,7 @@ public final class DFAMap<LE_TYPE> {
             sb.append(" }");
         } else {
             for (ValueUpdate<LE_TYPE> ud : trace) {
-                sb.append("\n    %s <<%s>> %s (with cause %s)".formatted(ud.node(), ud.action().name().toLowerCase(), ud.elem(), Arrays.toString(ud.reason())));
+                sb.append("\n    %s <<%s>> %s (with cause %s)".formatted(ud.node(), ud.action().name().toLowerCase(Locale.ROOT), ud.elem(), Arrays.toString(ud.reason())));
             }
             sb.append("\n}");
         }

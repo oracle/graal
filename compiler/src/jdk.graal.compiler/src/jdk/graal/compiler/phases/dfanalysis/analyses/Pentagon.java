@@ -37,6 +37,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.ValueProxy;
 import jdk.graal.compiler.util.CollectionsUtil;
 import jdk.graal.compiler.util.EconomicHashSet;
 import jdk.vm.ci.code.CodeUtil;
@@ -300,8 +301,53 @@ public sealed interface Pentagon {
             this.strictUpperBounds = strictUpperBounds;
         }
 
+        /**
+         * A {@link ValueProxy} has the same value as its original node. This returns the root of a
+         * chain of proxies, which serves as the canonical name of a value. Bound sets may refer to
+         * the same value via different proxies (e.g., multiple inferred facts for the same node),
+         * therefore all membership checks on bound sets compare alias roots instead of nodes.
+         */
+        private static ValueNode aliasRoot(ValueNode node) {
+            ValueNode cur = node;
+            while (cur instanceof ValueProxy proxy) {
+                cur = proxy.getOriginalNode();
+            }
+            return cur;
+        }
+
+        /**
+         * Checks whether {@code set} contains {@code node} or any other node with the same alias
+         * root.
+         */
+        private static boolean containsWithAlias(Set<ValueNode> set, ValueNode node) {
+            if (set.contains(node)) {
+                return true;
+            }
+            /*
+             * If we did not find node in the set, we walk back the (usually short) aliasing chain
+             * of node and exit early if we found a match.
+             */
+            ValueNode root = node;
+            while (root instanceof ValueProxy proxy) {
+                root = proxy.getOriginalNode();
+                if (set.contains(root)) {
+                    return true;
+                }
+            }
+            /*
+             * Finally, we trace all elements back to their alias roots and check there. There is no
+             * need to check along the chain, since root is an alias root.
+             */
+            for (ValueNode elem : set) {
+                if (aliasRoot(elem) == root) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public static boolean isLowerEqual(ValueNode lower, IntegerPentagon lowerPtg, ValueNode upper, IntegerPentagon upperPtg) {
-            if (lowerPtg.range.upperBound() <= upperPtg.range.lowerBound() || upperPtg.lowerBounds.contains(lower)) {
+            if (lowerPtg.range.upperBound() <= upperPtg.range.lowerBound() || containsWithAlias(upperPtg.lowerBounds, lower)) {
                 return true;
             }
             return isLowerThan(lowerPtg, upper, upperPtg);
@@ -312,11 +358,22 @@ public sealed interface Pentagon {
                 // we cannot prove anything for unrestricted inputs
                 return false;
             }
-            if (lowerPtg.range.upperBound() < upperPtg.range.lowerBound() || lowerPtg.strictUpperBounds.contains(upper)) {
+            if (lowerPtg.range.upperBound() < upperPtg.range.lowerBound() || containsWithAlias(lowerPtg.strictUpperBounds, upper)) {
                 return true;
             }
+            if (lowerPtg.strictUpperBounds.isEmpty() || upperPtg.lowerBounds.isEmpty()) {
+                return false;
+            }
+            /*
+             * To prove lower < sub <= upper, we check if lower.subs intersects upper.lbs while
+             * considering aliasing through proxies, by using the respective alias roots.
+             */
+            Set<ValueNode> lbRoots = new EconomicHashSet<>(upperPtg.lowerBounds.size());
+            for (ValueNode lb : upperPtg.lowerBounds) {
+                lbRoots.add(aliasRoot(lb));
+            }
             for (ValueNode sub : lowerPtg.strictUpperBounds) {
-                if (upperPtg.lowerBounds.contains(sub)) {
+                if (lbRoots.contains(aliasRoot(sub))) {
                     return true;
                 }
             }

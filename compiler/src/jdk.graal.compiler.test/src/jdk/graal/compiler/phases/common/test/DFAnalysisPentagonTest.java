@@ -26,13 +26,13 @@
 package jdk.graal.compiler.phases.common.test;
 
 import org.junit.Test;
-
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.dfanalysis.DFAnalysis;
 import jdk.graal.compiler.phases.dfanalysis.analyses.PentagonalAnalysisPhase;
+import jdk.graal.compiler.vector.phases.LoopVectorizationPhase;
 
 public class DFAnalysisPentagonTest extends DFAnalysisBaseTest {
 
@@ -114,10 +114,10 @@ public class DFAnalysisPentagonTest extends DFAnalysisBaseTest {
     @DFATestSnippet(anchors = 1, deopts = 1)
     public static void loopPentagonSnippet(int[] a) {
         // the only remaining deopt should be the null check for a
-        for (int i = 1; i < a.length; i++) {
+        for (int i = 1; i < a.length; i += 2) {
             // this anchor forces a singular blackhole, it stays
             GraalDirectives.controlFlowAnchor();
-            GraalDirectives.blackhole(a[i] + a[i - 1]);
+            GraalDirectives.blackhole(a[i - 1] + a[i]);
         }
     }
 
@@ -130,11 +130,13 @@ public class DFAnalysisPentagonTest extends DFAnalysisBaseTest {
                         GraalOptions.OptReadElimination, false,
                         GraalOptions.PartialUnroll, false,
                         GraalOptions.ConditionalElimination, false,
-                        LoopPeelingPhase.Options.IterativePeelingLimit, 1);
+                        LoopPeelingPhase.Options.IterativePeelingLimit, 1,
+                        LoopVectorizationPhase.Options.VectorizeLoops, false);
+        // loop vectorization removes the deopt in the loop, which we want to assert existence of
         test(opt, "rubyLoopObjectConstSnippet", 100);
     }
 
-    @DFATestSnippet(loops = 1, anchors = 0, deopts = 1)
+    @DFATestSnippet(anchors = 0, deopts = 1, returns = "a!# java.lang.Object")
     public static Object rubyLoopObjectConstSnippet(int limit) {
         return DFAnalysisLSCCPTest.rubyLoopObjectConstPattern(limit);
     }

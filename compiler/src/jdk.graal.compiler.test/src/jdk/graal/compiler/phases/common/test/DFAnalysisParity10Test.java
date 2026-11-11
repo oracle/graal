@@ -99,10 +99,17 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
      * 1, control flow analysis is needed alongside the value flow analysis. The {@link DFAnalysis}
      * framework takes care of this control flow analysis internally.
      */
-    @DFATestSnippet(anchors = 0, returns = "i32 [1]")
+    @DFATestSnippet(anchors = 1, returns = "i32 [1]")
     public static int exampleSnippet(int a) {
         int ctr = a;
-        int x = 10;
+        int x;
+        if ((a & 1) == 0) {
+            x = 10;
+            /* needed to prevent a ConditionalNode, this anchor stays */
+            GraalDirectives.controlFlowAnchor();
+        } else {
+            x = 20;
+        }
         /* x is parity 10 */
         do {
             /* loop for an unknown amount of iterations */
@@ -622,10 +629,17 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
         test("parity10Snippet", 5);
     }
 
-    @DFATestSnippet(anchors = 1, returns = "i32 [1]")
+    @DFATestSnippet(anchors = 2, returns = "i32 [1]")
     public static int parity10Snippet(int a) {
         int ctr = a;
-        int x = 10;
+        int x;
+        if ((a & 1) == 0) {
+            x = 10;
+            /* needed to prevent a ConditionalNode, this anchor stays */
+            GraalDirectives.controlFlowAnchor();
+        } else {
+            x = 20;
+        }
         /* x is parity 10 */
         do {
             if (x % 10 != 0) {
@@ -663,10 +677,17 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
         test("notParity10Snippet", 5);
     }
 
-    @DFATestSnippet(anchors = 1, returns = "i32 [2]")
+    @DFATestSnippet(anchors = 2, returns = "i32 [2]")
     public static int notParity10Snippet(int a) {
         int ctr = a;
-        int x = 10;
+        int x;
+        if ((a & 1) == 0) {
+            x = 10;
+            /* needed to prevent a ConditionalNode, this anchor stays */
+            GraalDirectives.controlFlowAnchor();
+        } else {
+            x = 20;
+        }
         /* x is parity 10 */
         do {
             if (x % 10 != 0) {
@@ -704,10 +725,17 @@ public class DFAnalysisParity10Test extends DFAnalysisBaseTest {
         test("inferParity10Snippet", 5, 10);
     }
 
-    @DFATestSnippet(anchors = 0, returns = "i32 [1]")
+    @DFATestSnippet(anchors = 1, returns = "i32 [1]")
     public static int inferParity10Snippet(int a, int b) {
         int ctr = a;
-        int x = 10;
+        int x;
+        if ((a & 1) == 0) {
+            x = 10;
+            /* needed to prevent a ConditionalNode, this anchor stays */
+            GraalDirectives.controlFlowAnchor();
+        } else {
+            x = 20;
+        }
         /* x is parity 10 */
         do {
             if (x % 10 != 0) {

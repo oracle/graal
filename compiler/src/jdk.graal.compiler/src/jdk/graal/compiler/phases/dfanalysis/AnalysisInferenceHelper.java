@@ -799,9 +799,7 @@ final class AnalysisInferenceHelper {
         final ControlFlowGraph cfg = analysis.cfg;
         final AnalysisDomainDefinition<T> domain = analysis.domain;
         final EconomicMap<ValueNode, EconomicSet<Pair<ValueNode, AbstractBeginNode>>> attemptedInferences = analysis.attemptedInferences;
-
-        // we know at this point that this inference node is unique
-        InferredFactNode<T> iFactNode = graph.addWithoutUnique(new InferredFactNode<>(analysis.elementType, domain, generator, value, branch, fact));
+        InferredFactNode<T> iFactNode = graph.addOrUnique(new InferredFactNode<>(analysis.elementType, domain, generator, value, branch, fact));
         inserter.accept(iFactNode);
         if (attemptedInferences.containsKey(value)) {
             // collect all attempted inferences for 'value' and the (maybe newly inserted)

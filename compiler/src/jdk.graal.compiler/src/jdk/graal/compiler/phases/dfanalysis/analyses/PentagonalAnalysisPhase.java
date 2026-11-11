@@ -1179,12 +1179,11 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                     if ((evalCnt == widenAfter) && prelim instanceof IntegerPentagon iPtg) {
                         /*
                          * This is a special widening heuristic to catch non-overflowing counted
-                         * loops. Instead of jumping to UNRESTRICTED, we look at the change of the
-                         * possible counter value since the last iteration and jump to a value one
-                         * such step below maxvalue. This allows for one more step in the loop to be
-                         * calculated, which is then hopefully followed by an exit condition that
-                         * prevents an overflow, assuming no overflow happened before. Consider the
-                         * following example:
+                         * loops. Instead of jumping to UNRESTRICTED, we keep the stable lower bound
+                         * and widen the growing upper bound to the maximum value of the type. The
+                         * loop condition then restricts the counter inside the loop body such that
+                         * the increment cannot overflow, which makes the widened range a fixed
+                         * point. Consider the following example:
                          */
                         /*-
                          * Object[] myArray = getArray();
@@ -1195,12 +1194,15 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                         /*
                          * Here 'i' is 0 in the first iteration, [0..2] in the second, [0..4] in the
                          * third and so on. Using the special heuristic we do not widen to
-                         * UNRESTRICTED. Instead, we widen to [0..intmax-2]. Evaluating the loop
-                         * again adds another step the range, yielding [0..intmax]. An inference for
-                         * the loop condition then restricts the interval back to [0..intmax-2].
-                         * Reevaluating the loop phi, we see that we reached a fixed point that
-                         * explicitly excludes an integer overflow. This would not be possible
-                         * without this heuristic.
+                         * UNRESTRICTED. Instead, we widen to [0..intmax]. Inside the loop body, the
+                         * inference for the loop condition restricts 'i' to [0..intmax-2], so 'i +
+                         * 2' cannot overflow and yields [2..intmax]. Merging this with the initial
+                         * value 0 yields [0..intmax] again, i.e., a fixed point that explicitly
+                         * excludes an integer overflow. If the loop condition does not restrict the
+                         * counter, the increment may overflow and the next evaluation falls back to
+                         * the generic widening below. Note that the phi itself always includes the
+                         * value after the last increment, therefore widening to anything below
+                         * intmax would never reach a fixed point.
                          */
                         if (iPtg.range.lowerBound() >= 0) {
                             // positive integer
@@ -1208,9 +1210,9 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                             if (iPtg.range.lowerBound() == lastStep.range.lowerBound()) {
                                 // this may be a loop variable that counts upwards
                                 int bits = iPtg.range.getBits();
-                                long upper = CodeUtil.maxValue(bits) - (iPtg.range.upperBound() - lastStep.range.upperBound());
+                                long upper = CodeUtil.maxValue(bits);
                                 if (upper > iPtg.range.upperBound()) {
-                                    // given the last step, it looks like there will be another step
+                                    // the upper bound is growing, widen it to the type maximum
                                     IntegerStamp wideAttempt = IntegerStamp.create(bits, iPtg.range.lowerBound(), upper, 0, CodeUtil.mask(bits));
                                     if (stampWeaker(phi.stamp(NodeView.DEFAULT), wideAttempt)) {
                                         // we actually have meaningful information gain here

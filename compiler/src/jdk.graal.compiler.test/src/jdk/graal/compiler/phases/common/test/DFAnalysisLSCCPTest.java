@@ -30,7 +30,6 @@ import static jdk.graal.compiler.api.directives.GraalDirectives.injectBranchProb
 import java.util.Random;
 
 import org.junit.Test;
-
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.loop.phases.LoopPeelingPhase;
@@ -38,6 +37,7 @@ import jdk.graal.compiler.nodes.test.ShortCircuitOrNodeTest;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.dfanalysis.DFAnalysis;
 import jdk.graal.compiler.phases.dfanalysis.analyses.LSCCPPhase;
+import jdk.graal.compiler.vector.phases.LoopVectorizationPhase;
 
 public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
 
@@ -414,11 +414,12 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
 
     @Test
     public void doubleWhetstoneBenchmarkLoop() {
-        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.PartialUnroll, false);
+        OptionValues opt = new OptionValues(getInitialOptions(),
+                        GraalOptions.PartialUnroll, false);
         test(opt, "doubleWhetstoneBenchmarkLoopSnippet", 5);
     }
 
-    @DFATestSnippet(loops = 1, deopts = 0)
+    @DFATestSnippet(deopts = 0)
     public static double[] doubleWhetstoneBenchmarkLoopSnippet(int a) {
         double[] e1 = new double[4];
         int iterations = 210 * a;
@@ -633,7 +634,7 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
         test(opt, "inferInLoopSnippet", min, max);
     }
 
-    @DFATestSnippet(loops = 1, returns = "i32 [77]")
+    @DFATestSnippet
     public static int inferInLoopSnippet(int min, int max) {
         int counter = 0;
         int i;
@@ -824,11 +825,13 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
                         GraalOptions.OptReadElimination, false,
                         GraalOptions.FullUnroll, false,
                         GraalOptions.ConditionalElimination, false,
-                        LoopPeelingPhase.Options.IterativePeelingLimit, 1);
+                        LoopPeelingPhase.Options.IterativePeelingLimit, 1,
+                        LoopVectorizationPhase.Options.VectorizeLoops, false);
+        // loop vectorization removes the deopt in the loop, which we want to assert existence of
         test(opt, "rubyLoopNullConstSnippet", 100);
     }
 
-    @DFATestSnippet(loops = 1, anchors = 3, deopts = 2)
+    @DFATestSnippet(anchors = 3, deopts = 2)
     public static Object rubyLoopNullConstSnippet(int limit) {
         return rubyLoopNullConstPattern(limit);
     }
@@ -874,11 +877,13 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
                         GraalOptions.OptReadElimination, false,
                         GraalOptions.PartialUnroll, false,
                         GraalOptions.ConditionalElimination, false,
-                        LoopPeelingPhase.Options.IterativePeelingLimit, 1);
+                        LoopPeelingPhase.Options.IterativePeelingLimit, 1,
+                        LoopVectorizationPhase.Options.VectorizeLoops, false);
+        // loop vectorization removes the deopt in the loop, which we want to assert existence of
         test(opt, "rubyLoopObjectConstSnippet", 100);
     }
 
-    @DFATestSnippet(loops = 1, anchors = 1, deopts = 2)
+    @DFATestSnippet(anchors = 1, deopts = 2, returns = "a java.lang.Object")
     public static Object rubyLoopObjectConstSnippet(int limit) {
         return rubyLoopObjectConstPattern(limit);
     }
