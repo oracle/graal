@@ -422,6 +422,9 @@ public abstract class VMThreads {
         try {
             removeFromThreadList(thread);
             PlatformThreads.detach(thread);
+
+            /* Record the thread's allocated bytes before heap detachment releases its allocation buffers. */
+            PlatformThreads.recordAllocatedBytesOfDetachedThread(thread);
             Heap.getHeap().detachThread(thread);
 
             /*

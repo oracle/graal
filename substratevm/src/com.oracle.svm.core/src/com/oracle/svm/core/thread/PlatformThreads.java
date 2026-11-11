@@ -141,6 +141,12 @@ public abstract class PlatformThreads {
      */
     private final UninterruptibleUtils.AtomicInteger unattachedStartedThreads = new UninterruptibleUtils.AtomicInteger(0);
 
+    /** Maximum reported total of allocated bytes, retained so reported totals never decrease. */
+    private static final UninterruptibleUtils.AtomicLong maxReportedTotalAllocatedBytes = new UninterruptibleUtils.AtomicLong(0);
+
+    /** Bytes allocated by detached threads. Protected by {@link ThreadsLock}. */
+    private static long allocatedBytesOfDetachedThreads;
+
     /** The default group for new Threads that are attached without an explicit group. */
     final ThreadGroup mainGroup;
     /** The root group for all threads. */
@@ -236,6 +242,55 @@ public abstract class PlatformThreads {
                 isolateThread = VMThreads.nextThread(isolateThread);
             }
             return -1;
+        } finally {
+            ThreadsLock.unlockRead();
+        }
+    }
+
+    /**
+     * Returns an approximation of the heap bytes allocated by live and detached threads.
+     * <p>
+     * TLAB allocations can temporarily be counted twice if a reader sees the updated cumulative
+     * count before the retired TLAB descriptor is cleared. A later sample can therefore be smaller.
+     * To keep results from decreasing, this method retains the maximum reported total even after
+     * the allocating thread exits. This can preserve an overestimate until further allocations make
+     * up the difference.
+     * <p>
+     * If the computed total wraps to a negative value, the maximum reported total is returned.
+     * The counters continue wrapping. A later positive total can replace the maximum reported total
+     * if it is larger. The counters do not saturate at {@link Long#MAX_VALUE}.
+     */
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.5.1+0/src/hotspot/share/services/management.cpp#L2093-L2126")
+    public static long getTotalThreadAllocatedBytes() {
+        long totalAllocatedBytes = computeTotalThreadAllocatedBytes();
+
+        /* Unlike HotSpot's MonitoringSupport_lock, an atomic update protects the maximum reported total. */
+        long previousMaxReportedTotalAllocatedBytes;
+        do {
+            previousMaxReportedTotalAllocatedBytes = maxReportedTotalAllocatedBytes.get();
+            if (totalAllocatedBytes <= previousMaxReportedTotalAllocatedBytes) {
+                return previousMaxReportedTotalAllocatedBytes;
+            }
+        } while (!maxReportedTotalAllocatedBytes.compareAndSet(previousMaxReportedTotalAllocatedBytes, totalAllocatedBytes));
+
+        return totalAllocatedBytes;
+    }
+
+    private static long computeTotalThreadAllocatedBytes() {
+        /*
+         * Unlike HotSpot's thread-list handle, our threads lock protects both list removal and
+         * allocation accounting in VMThreads.detachThread. A reader cannot miss a thread between its
+         * removal from the list and the update to the detached-thread allocation total.
+         */
+        ThreadsLock.lockRead();
+        try {
+            long totalAllocatedBytes = allocatedBytesOfDetachedThreads;
+            for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
+                long allocatedBytes = Heap.getHeap().getThreadAllocatedMemory(thread);
+                totalAllocatedBytes += allocatedBytes;
+            }
+
+            return totalAllocatedBytes;
         } finally {
             ThreadsLock.unlockRead();
         }
@@ -587,6 +642,12 @@ public abstract class PlatformThreads {
     }
 
     @Uninterruptible(reason = "Thread is detaching and holds the ThreadsLock with exclusive write access.")
+    static void recordAllocatedBytesOfDetachedThread(IsolateThread vmThread) {
+        assert ThreadsLock.hasExclusiveWriteAccess();
+        allocatedBytesOfDetachedThreads += Heap.getHeap().getThreadAllocatedMemory(vmThread);
+    }
+
+    @Uninterruptible(reason = "Thread is detaching or the isolate is being torn down.")
     public static void detach(IsolateThread vmThread) {
         Thread thread = currentThread.get(vmThread);
         if (thread != null) {
