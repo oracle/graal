@@ -894,6 +894,91 @@ public class DebugValidationSuite extends AbstractBinarySuite {
 
     @Test
     public void testIssue14702MalformedLocationListLength() throws IOException {
+        /*
+         * (module
+         *   (type (func (param i32) (result i32)))
+         *   (func (export "loop_while_collatz") (param i32) (result i32)
+         *     (local i32 i32 i32)
+         *     local.get 0
+         *     i32.const 255
+         *     i32.and
+         *     i32.const 53
+         *     i32.add
+         *     local.set 0
+         *     i32.const 0
+         *     local.set 1
+         *     block
+         *       loop
+         *         local.get 1
+         *         i32.const 1
+         *         i32.add
+         *         local.set 2
+         *         local.get 0
+         *         i32.const 3
+         *         i32.mul
+         *         i32.const 1
+         *         i32.add
+         *         local.get 0
+         *         i32.const 1
+         *         i32.shr_u
+         *         local.get 0
+         *         i32.const 1
+         *         i32.and
+         *         select
+         *         local.tee 0
+         *         i32.const 1
+         *         i32.eq
+         *         br_if 1
+         *         local.get 1
+         *         i32.const 31
+         *         i32.lt_u
+         *         local.set 3
+         *         local.get 2
+         *         local.set 1
+         *         local.get 3
+         *         br_if 0
+         *       end
+         *     end
+         *     local.get 2)
+         *   (func (export "loop_do_digits") (param i32) (result i32)
+         *     (local i32 i32 i32 i32)
+         *     i32.const 0
+         *     local.set 1
+         *     block
+         *       loop
+         *         local.get 1
+         *         i32.const 1
+         *         i32.add
+         *         local.set 2
+         *         local.get 0
+         *         i32.const 6
+         *         i32.div_u
+         *         local.set 3
+         *         local.get 0
+         *         i32.const 6
+         *         i32.lt_u
+         *         br_if 1
+         *         local.get 1
+         *         i32.const 31
+         *         i32.lt_u
+         *         local.set 4
+         *         local.get 3
+         *         local.set 0
+         *         local.get 2
+         *         local.set 1
+         *         local.get 4
+         *         br_if 0
+         *       end
+         *     end
+         *     local.get 2)
+         *   (table 1 1 funcref)
+         *   (memory 1)
+         *   (export "memory" (memory 0)))
+         *
+         * DWARF v4 data follows the code. The final .debug_loc entry declares a 0xED00-byte
+         * location expression that runs past the 40-byte section, while the other sections
+         * describe the two source files and functions in the original module.
+         */
         final byte[] data = hexStringToByteArray(
                         "00 61 73 6d 01 00 00 00 01 06 01 60 01 7f 01 7f" +
                                         "03 03 02 00 00 04 05 01 70 01 01 01 05 03 01 00" +
