@@ -131,6 +131,9 @@ public final class MethodProfile {
             if (Bytecodes.isProfiledIfBranch(opcode)) {
                 allProfiles.add(new BranchProfile(bci));
             }
+            if (opcode == Bytecodes.TABLESWITCH || opcode == Bytecodes.LOOKUPSWITCH) {
+                allProfiles.add(new SwitchProfile(bci, switchNumberOfCases(code, bci, opcode)));
+            }
             if (Bytecodes.isTypeProfiled(opcode)) {
                 allProfiles.add(new TypeProfile(bci, ristrettoTypeSupplier));
             }
@@ -411,6 +414,16 @@ public final class MethodProfile {
         }
     }
 
+    @NeverInline("Keep switch profiling machinery out of bytecode-handler stubs")
+    public void profileSwitch(int bci, int caseIndex) {
+        getAtBCI(bci, SwitchProfile.class).counts[caseIndex]++;
+    }
+
+    public double[] getSwitchProbabilities(int bci) {
+        SwitchProfile profile = getAtBCI(bci, SwitchProfile.class);
+        return profile == null ? null : profile.probabilities();
+    }
+
     public JavaTypeProfile getTypeProfile(int bci) {
         // Generic profile consumers query every BCI, including those without a profile cell.
         TypeProfile typeProfile = getAtBCI(bci, TypeProfile.class);
@@ -588,6 +601,40 @@ public final class MethodProfile {
         @Override
         public InterpreterProfile reset() {
             return new BackedgeProfile(bci);
+        }
+    }
+
+    /**
+     * Counts switch keys separately even when they share a successor. The final slot is default.
+     */
+    private static final class SwitchProfile extends InterpreterProfile {
+        private final long[] counts;
+
+        SwitchProfile(int bci, int caseCount) {
+            super(bci);
+            counts = new long[caseCount + 1];
+        }
+
+        double[] probabilities() {
+            double[] snapshot = new double[counts.length];
+            double total = 0;
+            for (int i = 0; i < counts.length; i++) {
+                snapshot[i] = counts[i];
+                total += snapshot[i];
+            }
+            if (total == 0) {
+                return null;
+            }
+            // Normalize the same snapshot, since interpreter threads may still update the counters.
+            for (int i = 0; i < snapshot.length; i++) {
+                snapshot[i] /= total;
+            }
+            return snapshot;
+        }
+
+        @Override
+        public InterpreterProfile reset() {
+            return new SwitchProfile(bci, counts.length - 1);
         }
     }
 

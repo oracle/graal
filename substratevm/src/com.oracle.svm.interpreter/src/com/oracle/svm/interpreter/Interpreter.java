@@ -3217,6 +3217,10 @@ public final class Interpreter {
             } else {
                 targetBCI = TableSwitch.uncheckedDefaultTarget(frame.code, curBCI);
             }
+            if (virtualStack.getState() == STATE_PROFILING) {
+                int caseIndex = low <= index && index <= high ? index - low : high - low + 1;
+                profileSwitch(frame.methodProfile, curBCI, caseIndex);
+            }
             virtualStack.pop1(frame, false);
             return finishJump(curBCI, targetBCI, frame, virtualStack);
         }
@@ -3235,12 +3239,18 @@ public final class Interpreter {
                 } else if (midVal > key) {
                     high = mid - 1;
                 } else {
+                    if (virtualStack.getState() == STATE_PROFILING) {
+                        profileSwitch(frame.methodProfile, curBCI, mid);
+                    }
                     virtualStack.pop1(frame, false);
                     return finishJump(curBCI, curBCI + LookupSwitch.uncheckedOffsetAt(frame.code, curBCI, mid), frame, virtualStack);
                 }
             }
 
             virtualStack.pop1(frame, false);
+            if (virtualStack.getState() == STATE_PROFILING) {
+                profileSwitch(frame.methodProfile, curBCI, LookupSwitch.uncheckedNumberOfCases(frame.code, curBCI));
+            }
             return finishJump(curBCI, LookupSwitch.uncheckedDefaultTarget(frame.code, curBCI), frame, virtualStack);
         }
 
@@ -3734,6 +3744,13 @@ public final class Interpreter {
         assert SubstrateOptions.useRistretto();
         assert methodProfile != null;
         methodProfile.profileReceiver((int) bci, o);
+    }
+
+    @AlwaysInline("Keep switch profiling in the profiling handler variants.")
+    private static void profileSwitch(MethodProfile methodProfile, long curBCI, int caseIndex) {
+        assert SubstrateOptions.useRistretto();
+        assert methodProfile != null;
+        methodProfile.profileSwitch((int) curBCI, caseIndex);
     }
 
     @AlwaysInline("Keep branch profiling in the profiling handler variants.")
