@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.core.test;
 
+import jdk.graal.compiler.core.test.CheckGraalInvariants.InvariantsTool;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -35,9 +36,15 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * Keeps compiler identity-hash folding in the canonicalization path that checks the compilation
  * policy. Constant-reflection implementations may delegate the raw query to another provider.
- * This check runs on compiler code, not on VM heap-building code that records object identities.
+ * VM invariant tools may allow specific non-folding queries, such as image-heap serialization.
  */
 public class VerifyIdentityHashCodeUsage extends VerifyPhase<CoreProviders> {
+    private final InvariantsTool tool;
+
+    public VerifyIdentityHashCodeUsage(InvariantsTool tool) {
+        this.tool = tool;
+    }
+
     @Override
     protected void verify(StructuredGraph graph, CoreProviders context) {
         ResolvedJavaType reflectionProviderType = context.getMetaAccess().lookupJavaType(ConstantReflectionProvider.class);
@@ -50,7 +57,7 @@ public class VerifyIdentityHashCodeUsage extends VerifyPhase<CoreProviders> {
             return;
         }
         for (MethodCallTargetNode call : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            if (isIdentityHashCode(call.targetMethod(), reflectionProviderType)) {
+            if (isIdentityHashCode(call.targetMethod(), reflectionProviderType) && !tool.isIdentityHashCodeQueryAllowed(caller)) {
                 throw new VerificationError(call, "Identity-hash folding must use IdentityHashCodeNode canonicalization so that the compilation policy is checked.");
             }
         }

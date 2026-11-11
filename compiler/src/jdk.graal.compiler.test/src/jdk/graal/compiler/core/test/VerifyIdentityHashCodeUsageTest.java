@@ -80,7 +80,7 @@ public class VerifyIdentityHashCodeUsageTest extends GraalCompilerTest {
 
     private void verify(StructuredGraph graph) {
         try (DebugCloseable _ = graph.getDebug().disableIntercept()) {
-            new VerifyIdentityHashCodeUsage().apply(graph, getProviders());
+            new VerifyIdentityHashCodeUsage(new CheckGraalInvariants.InvariantsTool()).apply(graph, getProviders());
         }
     }
 }
