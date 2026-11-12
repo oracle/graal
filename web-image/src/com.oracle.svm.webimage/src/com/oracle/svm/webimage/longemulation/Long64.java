@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -810,6 +810,23 @@ public class Long64 {
      */
     public static double toNumber(Long64 a) {
         return asUnsignedSafeDouble(a.low, a.high);
+    }
+
+    /**
+     * Converts long to float without double rounding.
+     */
+    public static float toFloat(Long64 a) {
+        int low = a.low;
+        if (a.high >= 0x200000 || a.high < -0x200000) {
+            /*
+             * Outside the exact double integer range, round to odd by discarding the lowest 11
+             * bits and setting bit 11 if any discarded bit was set. The resulting integer is
+             * exactly representable as a double and preserves which side of a float midpoint
+             * the original value lies on.
+             */
+            low = (low & ~0x7ff) | ((low & 0x7ff) == 0 ? 0 : 0x800);
+        }
+        return (float) asUnsignedSafeDouble(low, a.high);
     }
 
 }

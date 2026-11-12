@@ -178,8 +178,10 @@ public class Long64Lowerer {
             method = long64Provider.getMethod("fromInt", int.class);
         } else if (op.equals(arithmeticOpTable.getNarrow())) {
             method = long64Provider.getMethod("lowBits", Long64.class);
-        } else if (op.equals(arithmeticOpTable.getFloatConvert(FloatConvert.L2D)) || op.equals(arithmeticOpTable.getFloatConvert(FloatConvert.L2F))) {
+        } else if (op.equals(arithmeticOpTable.getFloatConvert(FloatConvert.L2D))) {
             method = long64Provider.getMethod("toNumber", Long64.class);
+        } else if (op.equals(arithmeticOpTable.getFloatConvert(FloatConvert.L2F))) {
+            method = long64Provider.getMethod("toFloat", Long64.class);
         } else if (op.equals(FloatStamp.OPS.getFloatConvert(FloatConvert.D2L)) || op.equals(FloatStamp.OPS.getFloatConvert(FloatConvert.F2L))) {
             method = long64Provider.getMethod("fromDouble", double.class);
         } else {
