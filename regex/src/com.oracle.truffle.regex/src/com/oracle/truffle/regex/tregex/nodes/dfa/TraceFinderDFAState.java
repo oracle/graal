@@ -42,7 +42,7 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 /**
  * A DFA state with two one-byte pre-calculated result indices appended to the common
- * {@link DFAStateNode} record. Its tail is:
+ * {@link DFAState} record. Its tail is:
  *
  * <pre>
  * +-------------+------+----------------------------+
@@ -53,7 +53,7 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
  * +-------------+------+----------------------------+
  * </pre>
  */
-public class TraceFinderDFAStateNode extends DFAStateNode {
+public class TraceFinderDFAState extends DFAState {
 
     public static final byte NO_PRE_CALC_RESULT = (byte) 0xff;
 
@@ -64,7 +64,7 @@ public class TraceFinderDFAStateNode extends DFAStateNode {
     private final byte preCalculatedUnAnchoredResult;
     private final byte preCalculatedAnchoredResult;
 
-    public TraceFinderDFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, int matcherRef,
+    public TraceFinderDFAState(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, int matcherRef,
                     byte preCalculatedUnAnchoredResult, byte preCalculatedAnchoredResult) {
         super(id, flags, loopTransitionIndex, indexOfNodeId, indexOfIsFast, successors, matcherRef, (short) -1);
         this.preCalculatedUnAnchoredResult = preCalculatedUnAnchoredResult;
@@ -96,19 +96,19 @@ public class TraceFinderDFAStateNode extends DFAStateNode {
     }
 
     static int getUnAnchoredResult(byte[] records, int recordRef) {
-        return Byte.toUnsignedInt(records[DFAStateNode.tailOffset(records, recordRef) + FIELD_UNANCHORED_RESULT]);
+        return Byte.toUnsignedInt(records[DFAState.tailOffset(records, recordRef) + FIELD_UNANCHORED_RESULT]);
     }
 
     static int getAnchoredResult(byte[] records, int recordRef) {
-        return Byte.toUnsignedInt(records[DFAStateNode.tailOffset(records, recordRef) + FIELD_ANCHORED_RESULT]);
+        return Byte.toUnsignedInt(records[DFAState.tailOffset(records, recordRef) + FIELD_ANCHORED_RESULT]);
     }
 
     static int getEncodedSize(byte[] records, int recordRef) {
-        return DFAStateNode.getEncodedSize(records, recordRef) + TAIL_SIZE;
+        return DFAState.getEncodedSize(records, recordRef) + TAIL_SIZE;
     }
 
     static boolean checkFinalState(byte[] records, int recordRef, TRegexDFAExecutorLocals locals) {
-        if (DFAStateNode.isFinalState(records, recordRef)) {
+        if (DFAState.isFinalState(records, recordRef)) {
             storeResult(records, recordRef, locals, false);
         }
         return false;
@@ -120,8 +120,8 @@ public class TraceFinderDFAStateNode extends DFAStateNode {
     }
 
     static void atEnd(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, boolean inputAtEnd) {
-        boolean anchored = DFAStateNode.isAnchoredFinalState(records, recordRef) && inputAtEnd;
-        if (DFAStateNode.isFinalState(records, recordRef) || anchored) {
+        boolean anchored = DFAState.isAnchoredFinalState(records, recordRef) && inputAtEnd;
+        if (DFAState.isFinalState(records, recordRef) || anchored) {
             storeResult(records, recordRef, locals, anchored);
         }
     }

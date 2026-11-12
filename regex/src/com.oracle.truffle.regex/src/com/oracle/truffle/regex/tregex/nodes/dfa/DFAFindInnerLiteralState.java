@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,14 @@
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.nodes.input.InputOps;
+import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
- * Base class for DFA transitions with one successor. Their packed records begin with these common
- * fields:
+ * A state that searches for an inner literal. Its packed record contains one successor.
  *
  * <pre>
  * +-------------+------+-------------------+
@@ -55,29 +59,55 @@ import com.oracle.truffle.api.CompilerDirectives;
  * +-------------+------+-------------------+
  * </pre>
  */
-public abstract class DFAAbstractTransitionNode extends DFAAbstractNode {
+public final class DFAFindInnerLiteralState extends DFAAbstractState {
 
-    static final int FIELD_SUCCESSOR = 1;
-    static final int COMMON_RECORD_SIZE = FIELD_SUCCESSOR + Integer.BYTES;
+    private static final int FIELD_SUCCESSOR = 1;
+    private static final int RECORD_SIZE = FIELD_SUCCESSOR + Integer.BYTES;
 
-    private final short successor;
+    private final InnerLiteral innerLiteral;
 
-    DFAAbstractTransitionNode(short id, short successor) {
-        super(id);
-        this.successor = successor;
+    public DFAFindInnerLiteralState(short id, short[] successors, InnerLiteral innerLiteral) {
+        super(id, successors);
+        assert successors.length == 1;
+        this.innerLiteral = innerLiteral;
     }
 
-    public final short getSuccessor() {
-        return successor;
+    public InnerLiteral getInnerLiteral() {
+        return innerLiteral;
     }
 
-    final void encodeCommon(DFAExecutorRecords.Encoder encoder, int recordRef, DFAExecutorRecords.Kind kind) {
-        encoder.putKind(recordRef, kind);
-        encoder.putNodeRef(recordRef + FIELD_SUCCESSOR, successor);
+    @Override
+    int encodedSize() {
+        return RECORD_SIZE;
+    }
+
+    @Override
+    void encode(DFAExecutorRecords.Encoder encoder, int recordRef) {
+        assert successors.length == 1;
+        encoder.putKind(recordRef, DFAExecutorRecords.Kind.innerLiteralState);
+        encoder.putNodeRef(recordRef + FIELD_SUCCESSOR, successors[0]);
     }
 
     @CompilerDirectives.EarlyInline
     static int getSuccessor(byte[] records, int recordRef) {
         return DFAExecutorRecords.getInt(records, recordRef + FIELD_SUCCESSOR);
+    }
+
+    static int getEncodedSize() {
+        return RECORD_SIZE;
+    }
+
+    static int executeInnerLiteralSearch(InnerLiteral innerLiteral, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        return InputOps.indexOf(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral, executor.getEncoding(), executor.getIndexOfStringNode());
+    }
+
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("id", getId()),
+                        Json.prop("anchoredFinalState", false),
+                        Json.prop("finalState", false),
+                        Json.prop("loopToSelf", false),
+                        Json.prop("transitions", Json.array(Json.obj(Json.prop("matcher", "innerLiteral(" + innerLiteral.getLiteral() + ")"), Json.prop("target", successors[0])))));
     }
 }

@@ -64,7 +64,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * +-------------+------+-----------------------------------------------+
  * </pre>
  */
-public class DFAInitialStateNode extends DFAAbstractStateNode {
+public class DFAInitialState extends DFAAbstractState {
 
     private static final int FIELD_FLAGS = 1;
     private static final int FIELD_SUCCESSOR_COUNT = 2;
@@ -75,7 +75,7 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
     private final short[] cgLastTransition;
     private final boolean hasUnanchoredEntry;
 
-    public DFAInitialStateNode(short[] successors, short[] cgLastTransition) {
+    public DFAInitialState(short[] successors, short[] cgLastTransition) {
         super((short) 0, successors);
         this.cgLastTransition = cgLastTransition;
         this.hasUnanchoredEntry = initUnanchoredEntry(successors);

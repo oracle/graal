@@ -61,7 +61,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * +--------------------------------------+-------------------------------------------------------------------+
  * </pre>
  */
-public final class DFABQTrackingTransitionConstraintsNode extends DFAAbstractStateNode {
+public final class DFABQTrackingTransitionConstraints extends DFAAbstractState {
 
     private static final int FIELD_BRANCH_COUNT = 1;
     private static final int FIELD_BRANCHES = 3;
@@ -72,7 +72,7 @@ public final class DFABQTrackingTransitionConstraintsNode extends DFAAbstractSta
 
     private final long[][] constraints;
 
-    public DFABQTrackingTransitionConstraintsNode(short id, short[] successors, long[][] constraints) {
+    public DFABQTrackingTransitionConstraints(short id, short[] successors, long[][] constraints) {
         super(id, successors);
         this.constraints = constraints;
     }

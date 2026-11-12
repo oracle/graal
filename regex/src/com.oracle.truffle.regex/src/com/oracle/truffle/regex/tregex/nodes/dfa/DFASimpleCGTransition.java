@@ -58,7 +58,7 @@ import com.oracle.truffle.regex.util.EmptyArrays;
  * generic capture-group tracking are mutually exclusive, so simple records use the executor's
  * capture-group transition record array when generic partial-transition records are absent. Its
  * DFA graph record appends the simple-transition reference to the common
- * {@link DFAAbstractTransitionNode} fields.
+ * {@link DFAAbstractTransition} fields.
  *
  * <pre>
  * DFA graph record tail
@@ -83,7 +83,7 @@ import com.oracle.truffle.regex.util.EmptyArrays;
  * payload: index-update result indices, followed by index-clear result indices
  * </pre>
  */
-public final class DFASimpleCGTransition extends DFAAbstractTransitionNode {
+public final class DFASimpleCGTransition extends DFAAbstractTransition {
 
     public static final int NO_TRANSITION = -1;
 

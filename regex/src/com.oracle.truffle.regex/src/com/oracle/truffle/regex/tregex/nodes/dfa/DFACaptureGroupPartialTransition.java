@@ -504,7 +504,7 @@ public final class DFACaptureGroupPartialTransition {
      * </pre>
      * <p>
      * In this case, array 1 at index 0 will always contain the value of array 0 from the previous
-     * loop iteration. {@link CGTrackingDFAStateNode} takes this into account when replaying the
+     * loop iteration. {@link CGTrackingDFAState} takes this into account when replaying the
      * loop after an index-of operation.
      */
     public static boolean hasLoopToSelfDependency(byte[] partialTransitionRecord) {

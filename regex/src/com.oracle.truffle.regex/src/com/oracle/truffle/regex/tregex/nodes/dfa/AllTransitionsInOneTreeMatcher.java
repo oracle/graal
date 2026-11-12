@@ -102,7 +102,7 @@ public final class AllTransitionsInOneTreeMatcher {
      *            exclusive upper bound) would be: {@code [0x10, 0xff, 0x2000]}.
      * @param successors the list of successors corresponding to every range in the sorted list of
      *            ranges. Every entry in this array is an index of
-     *            {@link DFAStateNode#getSuccessors()}, or a negative index. A negative index can
+     *            {@link DFAState#getSuccessors()}, or a negative index. A negative index can
      *            mean one of two things: {@code -1} denotes "no successor", indices below
      *            {@code -1} denote {@link AllTransitionsInOneTreeLeafMatcher leaf matchers}. These
      *            specialized matchers are used when many ranges lie in the same lower byte range,

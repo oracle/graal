@@ -46,7 +46,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 /**
  * A generic capture-group state. Its packed record appends the anchored-final successor, pre-final
  * transition, final transition, loop partial-transition, and loop-dependency flag to the common
- * {@link DFAStateNode} fields.
+ * {@link DFAState} fields.
  *
  * <pre>
  * +-------------+------+----------------------------------+
@@ -60,7 +60,7 @@ import com.oracle.truffle.api.strings.TruffleString;
  * +-------------+------+----------------------------------+
  * </pre>
  */
-public final class CGTrackingDFAStateNode extends DFAStateNode {
+public final class CGTrackingDFAState extends DFAState {
 
     private static final int FIELD_ANCHORED_FINAL_SUCCESSOR = 0;
     private static final int FIELD_PRE_FINAL_TRANSITION_REF = Integer.BYTES;
@@ -77,7 +77,7 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
     private final int cgLoopToSelfRef;
     private final boolean cgLoopToSelfHasDependency;
 
-    public CGTrackingDFAStateNode(short id,
+    public CGTrackingDFAState(short id,
                     byte flags,
                     short loopTransitionIndex,
                     short indexOfNodeId,
@@ -116,27 +116,27 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
     }
 
     static int getAnchoredFinalSuccessor(byte[] records, int recordRef) {
-        return DFAExecutorRecords.getInt(records, DFAStateNode.tailOffset(records, recordRef) + FIELD_ANCHORED_FINAL_SUCCESSOR);
+        return DFAExecutorRecords.getInt(records, DFAState.tailOffset(records, recordRef) + FIELD_ANCHORED_FINAL_SUCCESSOR);
     }
 
     static int getPreUnAnchoredFinalTransitionRef(byte[] records, int recordRef) {
-        return DFAExecutorRecords.getInt(records, DFAStateNode.tailOffset(records, recordRef) + FIELD_PRE_FINAL_TRANSITION_REF);
+        return DFAExecutorRecords.getInt(records, DFAState.tailOffset(records, recordRef) + FIELD_PRE_FINAL_TRANSITION_REF);
     }
 
     static int getUnAnchoredFinalTransitionRef(byte[] records, int recordRef) {
-        return DFAExecutorRecords.getInt(records, DFAStateNode.tailOffset(records, recordRef) + FIELD_FINAL_TRANSITION_REF);
+        return DFAExecutorRecords.getInt(records, DFAState.tailOffset(records, recordRef) + FIELD_FINAL_TRANSITION_REF);
     }
 
     static int getLoopTransitionRef(byte[] records, int recordRef) {
-        return DFAExecutorRecords.getInt(records, DFAStateNode.tailOffset(records, recordRef) + FIELD_LOOP_TRANSITION_REF);
+        return DFAExecutorRecords.getInt(records, DFAState.tailOffset(records, recordRef) + FIELD_LOOP_TRANSITION_REF);
     }
 
     static boolean loopTransitionHasDependency(byte[] records, int recordRef) {
-        return records[DFAStateNode.tailOffset(records, recordRef) + FIELD_LOOP_TRANSITION_HAS_DEPENDENCY] != 0;
+        return records[DFAState.tailOffset(records, recordRef) + FIELD_LOOP_TRANSITION_HAS_DEPENDENCY] != 0;
     }
 
     static int getEncodedSize(byte[] records, int recordRef) {
-        return DFAStateNode.getEncodedSize(records, recordRef) + TAIL_SIZE;
+        return DFAState.getEncodedSize(records, recordRef) + TAIL_SIZE;
     }
 
     static boolean beforeFindSuccessor(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
@@ -150,11 +150,11 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
                     int preLoopIndex, int postLoopIndex, TruffleString.CodeRange codeRange) {
         assert locals.getIndex() == preLoopIndex;
         if (locals.getIndex() < postLoopIndex) {
-            int loopTransitionRef = DFAStateNode.getSuccessor(records, recordRef, DFAStateNode.getLoopTransitionIndex(records, recordRef));
+            int loopTransitionRef = DFAState.getSuccessor(records, recordRef, DFAState.getLoopTransitionIndex(records, recordRef));
             DFAExecutorRecords.Kind loopTransitionKind = DFAExecutorRecords.getKind(records, loopTransitionRef);
             CompilerAsserts.partialEvaluationConstant(loopTransitionKind);
             if (loopTransitionKind == DFAExecutorRecords.Kind.genericCGTransition) {
-                CGTrackingTransitionNode.apply(records, loopTransitionRef, locals, executor);
+                CGTrackingTransition.apply(records, loopTransitionRef, locals, executor);
             }
             locals.setLastIndex();
             executor.inputSkip(locals, codeRange);
@@ -195,13 +195,13 @@ public final class CGTrackingDFAStateNode extends DFAStateNode {
     }
 
     static void atEnd(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean inputAtEnd) {
-        if (!DFAStateNode.isAnchoredFinalState(records, recordRef) || !inputAtEnd) {
+        if (!DFAState.isAnchoredFinalState(records, recordRef) || !inputAtEnd) {
             checkFinalState(records, recordRef, locals, executor);
         }
     }
 
     private static void checkFinalState(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        if (DFAStateNode.isFinalState(records, recordRef)) {
+        if (DFAState.isFinalState(records, recordRef)) {
             DFACaptureGroupLazyTransition.applyPreFinal(getPreUnAnchoredFinalTransitionRef(records, recordRef), locals, executor);
             DFACaptureGroupPartialTransition.applyFinalStateTransition(executor.getCGPartialTransitionRecords(),
                             getUnAnchoredFinalTransitionRef(records, recordRef), executor, locals.getCGData(), locals.getIndex());

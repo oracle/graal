@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,7 +82,7 @@ public final class TRegexDFAExecutorProperties {
     }
 
     /**
-     * True if the DFA executor must track capture groups via {@link CGTrackingDFAStateNode}s.
+     * True if the DFA executor must track capture groups via {@link CGTrackingDFAState}s.
      */
     public boolean isGenericCG() {
         return genericCG;
@@ -94,7 +94,7 @@ public final class TRegexDFAExecutorProperties {
 
     /**
      * True if the DFA executor tracks capture groups via
-     * {@link DFASimpleCGTrackingStateNode}/{@link DFASimpleCGTransition}.
+     * {@link DFASimpleCGTrackingState}/{@link DFASimpleCGTransition}.
      */
     public boolean isSimpleCG() {
         return simpleCG;
@@ -106,7 +106,7 @@ public final class TRegexDFAExecutorProperties {
 
     /**
      * True if the DFA executor tracks capture groups via
-     * {@link DFASimpleCGTrackingStateNode}/{@link DFASimpleCGTransition}, but must save the current
+     * {@link DFASimpleCGTrackingState}/{@link DFASimpleCGTransition}, but must save the current
      * result every time a final state is reached. This is necessary if any non-final states are
      * reachable from a final state in the DFA.
      */

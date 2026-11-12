@@ -56,8 +56,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
  * padding, and all multi-byte fields use little-endian byte order.
  * <p>
  * Each record layout, its encoder, and its accessors are defined by the class that logically
- * represents that record, beginning with {@link DFAInitialStateNode}, {@link DFAStateNode}, and
- * {@link DFAAbstractTransitionNode}. This class owns only the graph-wide storage and primitive codec.
+ * represents that record, beginning with {@link DFAInitialState}, {@link DFAState}, and
+ * {@link DFAAbstractTransition}. This class owns only the graph-wide storage and primitive codec.
  * Bounded-quantifier {@code long} values are stored separately in a {@code long[]}; references into
  * that array are element offsets.
  * <p>
@@ -112,7 +112,7 @@ final class DFAExecutorRecords {
     }
 
     static Data create(DFAAbstractNode[] nodes, int[] sequentialMatcherRecords) {
-        if (nodes.length == 0 || !(nodes[0] instanceof DFAInitialStateNode)) {
+        if (nodes.length == 0 || !(nodes[0] instanceof DFAInitialState)) {
             throw CompilerDirectives.shouldNotReachHere("DFA node zero must be the initial state");
         }
         int[] nodeRefs = new int[nodes.length];
@@ -127,14 +127,14 @@ final class DFAExecutorRecords {
                 }
                 nodeRefs[i] = recordsSize;
                 recordsSize = Math.addExact(recordsSize, node.encodedSize());
-                if (node instanceof DFAAbstractStateNode state) {
+                if (node instanceof DFAAbstractState state) {
                     numberOfTransitions = Math.addExact(numberOfTransitions, state.getSuccessors().length);
                 }
-                if (node instanceof DFAStateNode state && !state.treeTransitionMatching() &&
+                if (node instanceof DFAState state && !state.treeTransitionMatching() &&
                                 SequentialMatchers.getNoMatchSuccessor(sequentialMatcherRecords, state.getSequentialMatchersRef()) >= 0) {
                     numberOfTransitions = Math.addExact(numberOfTransitions, 1);
                 }
-                if (node instanceof DFAFindInnerLiteralStateNode innerLiteralState) {
+                if (node instanceof DFAFindInnerLiteralState innerLiteralState) {
                     if (innerLiteral != null) {
                         throw CompilerDirectives.shouldNotReachHere("more than one inner-literal DFA state");
                     }
@@ -238,19 +238,19 @@ final class DFAExecutorRecords {
 
     static int getRecordSize(byte[] records, int ref, Kind kind) {
         return switch (kind) {
-            case initialState -> DFAInitialStateNode.getEncodedSize(records);
-            case state -> DFAStateNode.getEncodedSize(records, ref);
-            case traceFinderState -> TraceFinderDFAStateNode.getEncodedSize(records, ref);
-            case simpleCGState -> DFASimpleCGTrackingStateNode.getEncodedSize(records, ref);
-            case genericCGState -> CGTrackingDFAStateNode.getEncodedSize(records, ref);
-            case bqState -> DFABQTrackingStateNode.getEncodedSize(records, ref);
-            case innerLiteralState -> DFAFindInnerLiteralStateNode.getEncodedSize();
-            case genericCGTransition -> CGTrackingTransitionNode.getEncodedSize();
-            case genericCGPreFinalTransition -> CGTrackingPreFinalTransitionNode.getEncodedSize();
-            case genericCGAnchoredFinalTransition -> CGTrackingAnchoredFinalTransitionNode.getEncodedSize();
+            case initialState -> DFAInitialState.getEncodedSize(records);
+            case state -> DFAState.getEncodedSize(records, ref);
+            case traceFinderState -> TraceFinderDFAState.getEncodedSize(records, ref);
+            case simpleCGState -> DFASimpleCGTrackingState.getEncodedSize(records, ref);
+            case genericCGState -> CGTrackingDFAState.getEncodedSize(records, ref);
+            case bqState -> DFABQTrackingState.getEncodedSize(records, ref);
+            case innerLiteralState -> DFAFindInnerLiteralState.getEncodedSize();
+            case genericCGTransition -> CGTrackingTransition.getEncodedSize();
+            case genericCGPreFinalTransition -> CGTrackingPreFinalTransition.getEncodedSize();
+            case genericCGAnchoredFinalTransition -> CGTrackingAnchoredFinalTransition.getEncodedSize();
             case simpleCGTransition -> DFASimpleCGTransition.getEncodedSize();
-            case bqTransitionOps -> DFABQTrackingTransitionOpsNode.getEncodedSize();
-            case bqTransitionConstraints -> DFABQTrackingTransitionConstraintsNode.getEncodedSize(records, ref);
+            case bqTransitionOps -> DFABQTrackingTransitionOps.getEncodedSize();
+            case bqTransitionConstraints -> DFABQTrackingTransitionConstraints.getEncodedSize(records, ref);
         };
     }
 

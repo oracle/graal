@@ -45,7 +45,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 /**
  * A bounded-quantifier state. Its packed record appends unanchored and anchored constraint lists to
- * the common {@link DFAStateNode} fields. Each list has a two-byte entry count followed by six-byte
+ * the common {@link DFAState} fields. Each list has a two-byte entry count followed by six-byte
  * entries containing a {@code long[]} reference and value count.
  *
  * <pre>
@@ -58,7 +58,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
  * +----------------------+-----------------------------------------------+
  * </pre>
  */
-public class DFABQTrackingStateNode extends DFAStateNode {
+public class DFABQTrackingState extends DFAState {
 
     private static final int LIST_HEADER_SIZE = Short.BYTES;
     private static final int LIST_ENTRY_SIZE = Integer.BYTES + Short.BYTES;
@@ -68,7 +68,7 @@ public class DFABQTrackingStateNode extends DFAStateNode {
     private final long[][] unAnchoredFinalConstraints;
     private final long[][] anchoredFinalConstraints;
 
-    public DFABQTrackingStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast,
+    public DFABQTrackingState(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast,
                     short[] successors,
                     int matcherRef,
                     long[][] unAnchoredFinalConstraints,
@@ -120,13 +120,13 @@ public class DFABQTrackingStateNode extends DFAStateNode {
     }
 
     static int getEncodedSize(byte[] records, int recordRef) {
-        int tailRef = DFAStateNode.tailOffset(records, recordRef);
+        int tailRef = DFAState.tailOffset(records, recordRef);
         int anchoredListRef = nextListRef(records, tailRef);
         return nextListRef(records, anchoredListRef) - recordRef;
     }
 
     private static int constraintListRef(byte[] records, int recordRef, boolean anchored) {
-        int listRef = DFAStateNode.tailOffset(records, recordRef);
+        int listRef = DFAState.tailOffset(records, recordRef);
         return anchored ? nextListRef(records, listRef) : listRef;
     }
 
@@ -139,12 +139,12 @@ public class DFABQTrackingStateNode extends DFAStateNode {
     }
 
     static boolean checkFinalState(byte[] records, long[] bqRecords, int recordRef, TRegexDFAExecutorLocals locals, CounterTracker[] counterTrackers) {
-        if (DFAStateNode.isFinalState(records, recordRef)) {
-            DFAStateNode.storeResult(locals);
+        if (DFAState.isFinalState(records, recordRef)) {
+            DFAState.storeResult(locals);
             return true;
         }
-        if (DFAStateNode.isGuardedFinalState(records, recordRef) && checkFinalStateConstraints(records, bqRecords, recordRef, locals, false, counterTrackers)) {
-            DFAStateNode.storeResult(locals);
+        if (DFAState.isGuardedFinalState(records, recordRef) && checkFinalStateConstraints(records, bqRecords, recordRef, locals, false, counterTrackers)) {
+            DFAState.storeResult(locals);
             return true;
         }
         return false;
@@ -156,13 +156,13 @@ public class DFABQTrackingStateNode extends DFAStateNode {
     }
 
     static void atEnd(byte[] records, long[] bqRecords, int recordRef, TRegexDFAExecutorLocals locals, boolean inputAtEnd, CounterTracker[] counterTrackers) {
-        DFAStateNode.atEnd(records, recordRef, locals, inputAtEnd);
-        if (DFAStateNode.isGuardedFinalState(records, recordRef) && checkFinalStateConstraints(records, bqRecords, recordRef, locals, false, counterTrackers)) {
-            DFAStateNode.storeResult(locals);
+        DFAState.atEnd(records, recordRef, locals, inputAtEnd);
+        if (DFAState.isGuardedFinalState(records, recordRef) && checkFinalStateConstraints(records, bqRecords, recordRef, locals, false, counterTrackers)) {
+            DFAState.storeResult(locals);
             return;
         }
-        if (DFAStateNode.isGuardedAnchoredFinalState(records, recordRef) && inputAtEnd && checkFinalStateConstraints(records, bqRecords, recordRef, locals, true, counterTrackers)) {
-            DFAStateNode.storeResult(locals);
+        if (DFAState.isGuardedAnchoredFinalState(records, recordRef) && inputAtEnd && checkFinalStateConstraints(records, bqRecords, recordRef, locals, true, counterTrackers)) {
+            DFAState.storeResult(locals);
         }
     }
 
@@ -173,7 +173,7 @@ public class DFABQTrackingStateNode extends DFAStateNode {
         for (int i = 0; i < listCount; i++) {
             int constraintRef = getConstraintRef(records, recordRef, anchored, i);
             int constraintCount = getConstraintCount(records, recordRef, anchored, i);
-            if (DFABQTrackingTransitionConstraintsNode.constraintsAreSatisfied(bqRecords, constraintRef, constraintCount, locals, counterTrackers)) {
+            if (DFABQTrackingTransitionConstraints.constraintsAreSatisfied(bqRecords, constraintRef, constraintCount, locals, counterTrackers)) {
                 return true;
             }
         }

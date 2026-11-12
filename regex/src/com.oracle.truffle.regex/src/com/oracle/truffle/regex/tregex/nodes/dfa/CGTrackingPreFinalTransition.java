@@ -41,28 +41,31 @@
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 /**
- * An anchored-final capture-group transition. Unlike other transition records, it has no successor.
+ * A generic capture-group pre-final transition. Its packed record appends a lazy-transition
+ * reference to the common {@link DFAAbstractTransition} fields.
  *
  * <pre>
- * +-------------+------+--------------------------------+
- * | byte offset | size | field                          |
- * +-------------+------+--------------------------------+
- * | 0           | 1    | kind                           |
- * | 1           | 4    | partial-transition ref (int32) |
- * +-------------+------+--------------------------------+
+ * +-------------+------+---------------------------+
+ * | byte offset | size | field                     |
+ * +-------------+------+---------------------------+
+ * | 5           | 4    | lazy-transition reference |
+ * +-------------+------+---------------------------+
  * </pre>
  */
-public final class CGTrackingAnchoredFinalTransitionNode extends CGTrackingAbstractTransitionNode {
+public final class CGTrackingPreFinalTransition extends CGTrackingAbstractTransition {
 
-    private static final int FIELD_TRANSITION_REF = 1;
     private static final int RECORD_SIZE = FIELD_TRANSITION_REF + Integer.BYTES;
 
-    /** Reference to a {@link DFACaptureGroupPartialTransition}. */
-    private final int anchoredFinalStateTransitionRef;
+    /** Reference to a {@link DFACaptureGroupLazyTransition}. */
+    private final int transitionRef;
 
-    public CGTrackingAnchoredFinalTransitionNode(short id, int anchoredFinalStateTransitionRef) {
-        super(id, (short) -1);
-        this.anchoredFinalStateTransitionRef = anchoredFinalStateTransitionRef;
+    private CGTrackingPreFinalTransition(short id, short successor, int transitionRef) {
+        super(id, successor);
+        this.transitionRef = transitionRef;
+    }
+
+    public static CGTrackingPreFinalTransition create(short id, short successor, int transitionRef) {
+        return new CGTrackingPreFinalTransition(id, successor, transitionRef);
     }
 
     @Override
@@ -72,12 +75,8 @@ public final class CGTrackingAnchoredFinalTransitionNode extends CGTrackingAbstr
 
     @Override
     void encode(DFAExecutorRecords.Encoder encoder, int recordRef) {
-        encoder.putKind(recordRef, DFAExecutorRecords.Kind.genericCGAnchoredFinalTransition);
-        encoder.putInt(recordRef + FIELD_TRANSITION_REF, anchoredFinalStateTransitionRef);
-    }
-
-    static int getTransitionRef(byte[] records, int recordRef) {
-        return DFAExecutorRecords.getInt(records, recordRef + FIELD_TRANSITION_REF);
+        encodeCommon(encoder, recordRef, DFAExecutorRecords.Kind.genericCGPreFinalTransition);
+        encoder.putInt(recordRef + FIELD_TRANSITION_REF, transitionRef);
     }
 
     static int getEncodedSize() {
@@ -85,12 +84,11 @@ public final class CGTrackingAnchoredFinalTransitionNode extends CGTrackingAbstr
     }
 
     static int apply(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        DFACaptureGroupPartialTransition.applyFinalStateTransition(executor.getCGPartialTransitionRecords(), getTransitionRef(records, recordRef), executor, locals.getCGData(), locals.getIndex());
-        CGTrackingDFAStateNode.storeResult(locals, executor);
-        return DFAExecutorRecords.NO_REF;
+        DFACaptureGroupLazyTransition.apply(getTransitionRef(records, recordRef), locals, executor, true);
+        return getSuccessor(records, recordRef);
     }
 
     static int getCGTrackingCost(byte[] records, int recordRef, TRegexDFAExecutorNode executor) {
-        return DFACaptureGroupPartialTransition.getCost(executor.getCGPartialTransitionRecords(), getTransitionRef(records, recordRef));
+        return DFACaptureGroupLazyTransition.getCost(getTransitionRef(records, recordRef), executor);
     }
 }

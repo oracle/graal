@@ -50,7 +50,7 @@ import com.oracle.truffle.regex.tregex.nfa.PureNFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
-import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAState;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
@@ -84,7 +84,7 @@ public class TRegexOptions {
     /**
      * Maximum number of pre-calculated results per TraceFinder DFA. This number must not be higher
      * than 254, because we compress the result indices to {@code byte} in
-     * {@link TraceFinderDFAStateNode}, with 255 being reserved for "no result"!
+     * {@link TraceFinderDFAState}, with 255 being reserved for "no result"!
      */
     public static final int TRegexTraceFinderMaxNumberOfResults = 254;
 

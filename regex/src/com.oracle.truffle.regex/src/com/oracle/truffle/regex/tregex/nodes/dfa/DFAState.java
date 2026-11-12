@@ -74,7 +74,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * +-------------+--------------------+--------------------------------+
  * </pre>
  */
-public class DFAStateNode extends DFAAbstractStateNode {
+public class DFAState extends DFAAbstractState {
 
     private static final int FIELD_FLAGS = 1;
     private static final int FIELD_LOOP_TRANSITION_INDEX = 2;
@@ -103,7 +103,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
     private final int matcherRef;
     private final short anchoredFinalSuccessor;
 
-    public DFAStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, int matcherRef, short anchoredFinalSuccessor) {
+    public DFAState(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast, short[] successors, int matcherRef, short anchoredFinalSuccessor) {
         super(id, successors);
         assert id > 0;
         assert (flags & FLAG_INDEX_OF_MAY_HAVE_NO_SUCCESSOR) == 0 || (loopTransitionIndex >= 0 && indexOfNodeId >= 0 && indexOfIsFast != 0);

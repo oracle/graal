@@ -46,7 +46,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * A simple capture-group state. Its packed record appends an anchored-final successor and a final
- * simple capture-group transition reference to the common {@link DFAStateNode} fields.
+ * simple capture-group transition reference to the common {@link DFAState} fields.
  *
  * <pre>
  * +-------------+------+------------------------------+
@@ -57,7 +57,7 @@ import com.oracle.truffle.api.strings.TruffleString;
  * +-------------+------+------------------------------+
  * </pre>
  */
-public class DFASimpleCGTrackingStateNode extends DFAStateNode {
+public class DFASimpleCGTrackingState extends DFAState {
 
     private static final int FIELD_ANCHORED_FINAL_SUCCESSOR = 0;
     private static final int FIELD_FINAL_TRANSITION_REF = Integer.BYTES;
@@ -66,7 +66,7 @@ public class DFASimpleCGTrackingStateNode extends DFAStateNode {
     /** Reference to a packed {@link DFASimpleCGTransition} record. */
     private final int transitionToFinalStateRef;
 
-    public DFASimpleCGTrackingStateNode(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast,
+    public DFASimpleCGTrackingState(short id, byte flags, short loopTransitionIndex, short indexOfNodeId, byte indexOfIsFast,
                     short[] successors,
                     int matcherRef,
                     int transitionToFinalStateRef,
@@ -92,21 +92,21 @@ public class DFASimpleCGTrackingStateNode extends DFAStateNode {
     }
 
     static int getAnchoredFinalSuccessor(byte[] records, int recordRef) {
-        return DFAExecutorRecords.getInt(records, DFAStateNode.tailOffset(records, recordRef) + FIELD_ANCHORED_FINAL_SUCCESSOR);
+        return DFAExecutorRecords.getInt(records, DFAState.tailOffset(records, recordRef) + FIELD_ANCHORED_FINAL_SUCCESSOR);
     }
 
     static int getFinalTransitionRef(byte[] records, int recordRef) {
-        return DFAExecutorRecords.getInt(records, DFAStateNode.tailOffset(records, recordRef) + FIELD_FINAL_TRANSITION_REF);
+        return DFAExecutorRecords.getInt(records, DFAState.tailOffset(records, recordRef) + FIELD_FINAL_TRANSITION_REF);
     }
 
     static int getEncodedSize(byte[] records, int recordRef) {
-        return DFAStateNode.getEncodedSize(records, recordRef) + TAIL_SIZE;
+        return DFAState.getEncodedSize(records, recordRef) + TAIL_SIZE;
     }
 
     static void afterIndexOf(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor,
                     int preLoopIndex, int postLoopIndex, TruffleString.CodeRange codeRange) {
         locals.setIndex(postLoopIndex);
-        int loopTransitionRef = DFAStateNode.getSuccessor(records, recordRef, DFAStateNode.getLoopTransitionIndex(records, recordRef));
+        int loopTransitionRef = DFAState.getSuccessor(records, recordRef, DFAState.getLoopTransitionIndex(records, recordRef));
         DFAExecutorRecords.Kind loopTransitionKind = DFAExecutorRecords.getKind(records, loopTransitionRef);
         CompilerAsserts.partialEvaluationConstant(loopTransitionKind);
         if (loopTransitionKind == DFAExecutorRecords.Kind.simpleCGTransition && locals.getIndex() > preLoopIndex) {
@@ -119,7 +119,7 @@ public class DFASimpleCGTrackingStateNode extends DFAStateNode {
     }
 
     static boolean checkFinalState(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        if (DFAStateNode.isFinalState(records, recordRef) && !(DFAStateNode.isAnchoredFinalState(records, recordRef) && executor.inputAtEnd(locals))) {
+        if (DFAState.isFinalState(records, recordRef) && !(DFAState.isAnchoredFinalState(records, recordRef) && executor.inputAtEnd(locals))) {
             storeResult(locals, executor);
             applyFinalTransition(records, recordRef, locals, executor);
         }
@@ -127,10 +127,10 @@ public class DFASimpleCGTrackingStateNode extends DFAStateNode {
     }
 
     static void atEnd(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean inputAtEnd) {
-        boolean anchored = DFAStateNode.isAnchoredFinalState(records, recordRef) && inputAtEnd;
-        if (DFAStateNode.isFinalState(records, recordRef) || anchored) {
+        boolean anchored = DFAState.isAnchoredFinalState(records, recordRef) && inputAtEnd;
+        if (DFAState.isFinalState(records, recordRef) || anchored) {
             storeResult(locals, executor);
-            if (!DFAStateNode.isAnchoredFinalState(records, recordRef) && DFAStateNode.isFinalState(records, recordRef)) {
+            if (!DFAState.isAnchoredFinalState(records, recordRef) && DFAState.isFinalState(records, recordRef)) {
                 applyFinalTransition(records, recordRef, locals, executor);
             }
         }

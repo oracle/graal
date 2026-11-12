@@ -244,11 +244,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     }
 
     public int getPrefixLength() {
-        return (DFAInitialStateNode.getSuccessorCount(dfaRecords) / 2) - 1;
+        return (DFAInitialState.getSuccessorCount(dfaRecords) / 2) - 1;
     }
 
     public boolean isAnchored() {
-        return !DFAInitialStateNode.hasUnAnchoredEntry(dfaRecords);
+        return !DFAInitialState.hasUnAnchoredEntry(dfaRecords);
     }
 
     @Override
@@ -437,7 +437,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             } else {
                 final int stateRef = ip;
                 if (kind == DFAExecutorRecords.Kind.initialState) {
-                    final int successorCount = DFAInitialStateNode.getSuccessorCount(dfaRecords);
+                    final int successorCount = DFAInitialState.getSuccessorCount(dfaRecords);
                     CompilerAsserts.partialEvaluationConstant(successorCount);
                     /*
                      * initial state selection
@@ -497,7 +497,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         continue outer;
                     }
                 } else if (DFAExecutorRecords.isDFAState(kind)) {
-                    final int successorCount = DFAStateNode.getSuccessorCount(dfaRecords, stateRef);
+                    final int successorCount = DFAState.getSuccessorCount(dfaRecords, stateRef);
                     CompilerAsserts.partialEvaluationConstant(successorCount);
                     if (CompilerDirectives.hasNextTier()) {
                         locals.incLoopCount(this);
@@ -512,10 +512,10 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     if (beforeFindSuccessor(kind, stateRef, locals)) {
                         return 0L;
                     }
-                    boolean canDoIndexOf = isForward() && DFAStateNode.canDoIndexOf(dfaRecords, stateRef, codeRange);
+                    boolean canDoIndexOf = isForward() && DFAState.canDoIndexOf(dfaRecords, stateRef, codeRange);
                     CompilerAsserts.partialEvaluationConstant(canDoIndexOf);
                     if (canDoIndexOf && injectBranchProbability(CONTINUE_PROBABILITY, inputHasNext(locals))) {
-                        int indexOfNodeId = DFAStateNode.getIndexOfNodeId(dfaRecords, stateRef);
+                        int indexOfNodeId = DFAState.getIndexOfNodeId(dfaRecords, stateRef);
                         TruffleString.ByteIndexOfCodePointSetNode indexOfNode = getIndexOfNode(indexOfNodeId);
                         TruffleString.CodePointSet indexOfParameter = indexOfParameters[indexOfNodeId];
                         CompilerAsserts.partialEvaluationConstant(indexOfNodeId);
@@ -525,13 +525,13 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         int postLoopIndex = indexOfResult < 0 ? getMaxIndex(locals) : indexOfResult;
                         afterIndexOf(kind, stateRef, locals, locals.getIndex(), postLoopIndex, codeRange);
                         assert locals.getIndex() == postLoopIndex;
-                        boolean canTakeDirectSuccessor = successorCount == 2 && !DFAStateNode.indexOfMayHaveNoSuccessor(dfaRecords, stateRef);
+                        boolean canTakeDirectSuccessor = successorCount == 2 && !DFAState.indexOfMayHaveNoSuccessor(dfaRecords, stateRef);
                         CompilerAsserts.partialEvaluationConstant(canTakeDirectSuccessor);
                         if (canTakeDirectSuccessor && injectBranchProbability(CONTINUE_PROBABILITY, indexOfResult >= 0)) {
-                            int successor = (DFAStateNode.getLoopTransitionIndex(dfaRecords, stateRef) + 1) & 1;
+                            int successor = (DFAState.getLoopTransitionIndex(dfaRecords, stateRef) + 1) & 1;
                             CompilerAsserts.partialEvaluationConstant(successor);
                             inputIncNextIndexRaw(locals, inputGetCodePointSize(locals, codeRange));
-                            ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, successor);
+                            ip = DFAState.getSuccessor(dfaRecords, stateRef, successor);
                             continue outer;
                         }
                     }
@@ -540,11 +540,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         atEnd(kind, stateRef, locals, inputAtEnd);
                         int anchoredFinalSuccessor = getAnchoredFinalSuccessor(kind, stateRef);
                         CompilerAsserts.partialEvaluationConstant(anchoredFinalSuccessor);
-                        if (DFAStateNode.isAnchoredFinalState(dfaRecords, stateRef) && anchoredFinalSuccessor >= 0 && inputAtEnd) {
+                        if (DFAState.isAnchoredFinalState(dfaRecords, stateRef) && anchoredFinalSuccessor >= 0 && inputAtEnd) {
                             ip = anchoredFinalSuccessor;
                             continue outer;
                         }
-                        if (isBackward() && DFAStateNode.hasBackwardPrefixState(dfaRecords, stateRef) && locals.getIndex() > locals.getRegionFrom()) {
+                        if (isBackward() && DFAState.hasBackwardPrefixState(dfaRecords, stateRef) && locals.getIndex() > locals.getRegionFrom()) {
                             assert locals.getIndex() == locals.getFromIndex();
                             /*
                              * We have reached the starting index of the forward matcher, so we have
@@ -553,12 +553,12 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                              */
                             locals.setCurMinIndex(locals.getRegionFrom());
                             int i = successorCount - 1;
-                            ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                            ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                             continue outer;
                         }
                         break;
                     }
-                    int matcherRecordRef = DFAStateNode.getMatcherRef(dfaRecords, stateRef);
+                    int matcherRecordRef = DFAState.getMatcherRef(dfaRecords, stateRef);
                     CompilerAsserts.partialEvaluationConstant(matcherRecordRef);
                     boolean treeTransitionMatching = matcherRecordRef < 0;
                     CompilerAsserts.partialEvaluationConstant(treeTransitionMatching);
@@ -570,7 +570,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         // TODO: this switch loop should be replaced with a PE intrinsic
                         for (int i = 0; i < successorCount; i++) {
                             if (i == treeSuccessor) {
-                                ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                                ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                                 // Guards matching is not supported (and therefore not used) with
                                 // treeTransitionMatchers so no guard checks are needed here
                                 assert kind != DFAExecutorRecords.Kind.bqState;
@@ -594,7 +594,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         if (matcherRefs != SequentialMatchers.NO_LANE) {
                             for (int i = 0; i < transitionCount; i++) {
                                 if (match(encodedMatchers, sequentialMatcherRecords, matcherRefs, i, c)) {
-                                    ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                                    ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                                     continue outer;
                                 }
                             }
@@ -621,7 +621,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                             if (asciiRefs != SequentialMatchers.NO_LANE) {
                                 for (int i = 0; i < transitionCount; i++) {
                                     if (match(encodedMatchers, sequentialMatcherRecords, asciiRefs, i, c)) {
-                                        ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                                        ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                                         continue outer;
                                     }
                                 }
@@ -664,7 +664,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                         if (enc2Refs != SequentialMatchers.NO_LANE) {
                                             for (int i = 0; i < transitionCount; i++) {
                                                 if (match(encodedMatchers, sequentialMatcherRecords, enc2Refs, i, codepoint)) {
-                                                    ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                                                    ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                                                     continue outer;
                                                 }
                                             }
@@ -674,7 +674,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                         if (enc3Refs != SequentialMatchers.NO_LANE) {
                                             for (int i = 0; i < transitionCount; i++) {
                                                 if (match(encodedMatchers, sequentialMatcherRecords, enc3Refs, i, codepoint)) {
-                                                    ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                                                    ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                                                     continue outer;
                                                 }
                                             }
@@ -685,7 +685,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                             getAstralProfile().enter();
                                             for (int i = 0; i < transitionCount; i++) {
                                                 if (match(encodedMatchers, sequentialMatcherRecords, enc4Refs, i, codepoint)) {
-                                                    ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                                                    ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                                                     continue outer;
                                                 }
                                             }
@@ -718,7 +718,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                 int byteMatcherRefs = asciiOrLatin1Refs(codeRange, asciiRefs, latin1Refs);
                                 for (int i = 0; i < transitionCount; i++) {
                                     if (match(encodedMatchers, sequentialMatcherRecords, byteMatcherRefs, i, c)) {
-                                        ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                                        ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                                         continue outer;
                                     }
                                 }
@@ -726,7 +726,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                 getBMPProfile().enter();
                                 for (int i = 0; i < transitionCount; i++) {
                                     if (match(encodedMatchers, sequentialMatcherRecords, bmpRefs, i, c)) {
-                                        ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                                        ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                                         continue outer;
                                     }
                                 }
@@ -751,7 +751,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                             boolean isCodeRangeValid = codeRange == TruffleString.CodeRange.VALID;
                             CompilerAsserts.partialEvaluationConstant(isCodeRangeValid);
                             if (isUTF16()) {
-                                boolean mustDecode = codeRange.isSupersetOf(TruffleString.CodeRange.VALID) && DFAStateNode.utf16MustDecode(dfaRecords, stateRef);
+                                boolean mustDecode = codeRange.isSupersetOf(TruffleString.CodeRange.VALID) && DFAState.utf16MustDecode(dfaRecords, stateRef);
                                 CompilerAsserts.partialEvaluationConstant(mustDecode);
                                 if (mustDecode && injectBranchProbability(ASTRAL_PROBABILITY, inputUTF16IsHighSurrogate(c)) &&
                                                 (isCodeRangeValid || injectBranchProbability(LIKELY_PROBABILITY, inputHasNext(locals, locals.getNextIndex())))) {
@@ -767,7 +767,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                     if (astralRefs != SequentialMatchers.NO_LANE) {
                                         for (int i = 0; i < transitionCount; i++) {
                                             if (match(encodedMatchers, sequentialMatcherRecords, astralRefs, i, c)) {
-                                                ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                                                ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                                                 continue outer;
                                             }
                                         }
@@ -777,7 +777,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                     int byteMatcherRefs = asciiOrLatin1Refs(codeRange, asciiRefs, latin1Refs);
                                     for (int i = 0; i < transitionCount; i++) {
                                         if (match(encodedMatchers, sequentialMatcherRecords, byteMatcherRefs, i, c)) {
-                                            ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                                            ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                                             continue outer;
                                         }
                                     }
@@ -785,7 +785,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                     getBMPProfile().enter();
                                     for (int i = 0; i < transitionCount; i++) {
                                         if (match(encodedMatchers, sequentialMatcherRecords, bmpRefs, i, c)) {
-                                            ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                                            ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                                             continue outer;
                                         }
                                     }
@@ -796,7 +796,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                     int byteMatcherRefs = asciiOrLatin1Refs(codeRange, asciiRefs, latin1Refs);
                                     for (int i = 0; i < transitionCount; i++) {
                                         if (match(encodedMatchers, sequentialMatcherRecords, byteMatcherRefs, i, c)) {
-                                            ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                                            ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                                             continue outer;
                                         }
                                     }
@@ -805,7 +805,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                     getBMPProfile().enter();
                                     for (int i = 0; i < transitionCount; i++) {
                                         if (match(encodedMatchers, sequentialMatcherRecords, bmpRefs, i, c)) {
-                                            ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                                            ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                                             continue outer;
                                         }
                                     }
@@ -813,7 +813,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                     getAstralProfile().enter();
                                     for (int i = 0; i < transitionCount; i++) {
                                         if (match(encodedMatchers, sequentialMatcherRecords, astralRefs, i, c)) {
-                                            ip = DFAStateNode.getSuccessor(dfaRecords, stateRef, i);
+                                            ip = DFAState.getSuccessor(dfaRecords, stateRef, i);
                                             continue outer;
                                         }
                                     }
@@ -837,7 +837,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         if (injectBranchProbability(EXIT_PROBABILITY, !inputHasNext(locals))) {
                             break outer;
                         }
-                        locals.setIndex(DFAFindInnerLiteralStateNode.executeInnerLiteralSearch(innerLiteral, locals, this));
+                        locals.setIndex(DFAFindInnerLiteralState.executeInnerLiteralSearch(innerLiteral, locals, this));
                         if (injectBranchProbability(EXIT_PROBABILITY, locals.getIndex() < 0)) {
                             break outer;
                         }
@@ -853,7 +853,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                             }
                             inputIncRaw(locals, innerLiteral.getEncodedLength());
                             locals.setNextIndex(locals.getIndex());
-                            ip = DFAFindInnerLiteralStateNode.getSuccessor(dfaRecords, stateRef);
+                            ip = DFAFindInnerLiteralState.getSuccessor(dfaRecords, stateRef);
                             continue outer;
                         }
                         inputIncRaw(locals);
@@ -896,12 +896,12 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     private int initialStateSuccessor(TRegexDFAExecutorLocals locals, int i) {
         if (isGenericCG()) {
             locals.setLastIndex();
-            int lastTransition = DFAInitialStateNode.getLastTransition(dfaRecords, i);
+            int lastTransition = DFAInitialState.getLastTransition(dfaRecords, i);
             if (lastTransition >= 0) {
                 locals.setLastTransition((short) lastTransition);
             }
         }
-        return DFAInitialStateNode.getSuccessor(dfaRecords, i);
+        return DFAInitialState.getSuccessor(dfaRecords, i);
     }
 
     private void initNextIndex(TRegexDFAExecutorLocals locals) {
@@ -928,20 +928,20 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     @CompilerDirectives.EarlyInline
     private int transitionNoMatch(int stateRef) {
         CompilerAsserts.partialEvaluationConstant(stateRef);
-        int matcherRecordRef = DFAStateNode.getMatcherRef(dfaRecords, stateRef);
+        int matcherRecordRef = DFAState.getMatcherRef(dfaRecords, stateRef);
         CompilerAsserts.partialEvaluationConstant(matcherRecordRef);
         short noMatchSuccessor = SequentialMatchers.getNoMatchSuccessor(sequentialMatcherRecords, matcherRecordRef);
         if (noMatchSuccessor < 0) {
             return noMatchSuccessor;
         }
-        return DFAStateNode.getSuccessor(dfaRecords, stateRef, noMatchSuccessor);
+        return DFAState.getSuccessor(dfaRecords, stateRef, noMatchSuccessor);
     }
 
     @CompilerDirectives.EarlyInline
     private int getAnchoredFinalSuccessor(DFAExecutorRecords.Kind kind, int stateRef) {
         return switch (kind) {
-            case simpleCGState -> DFASimpleCGTrackingStateNode.getAnchoredFinalSuccessor(dfaRecords, stateRef);
-            case genericCGState -> CGTrackingDFAStateNode.getAnchoredFinalSuccessor(dfaRecords, stateRef);
+            case simpleCGState -> DFASimpleCGTrackingState.getAnchoredFinalSuccessor(dfaRecords, stateRef);
+            case genericCGState -> CGTrackingDFAState.getAnchoredFinalSuccessor(dfaRecords, stateRef);
             default -> DFAExecutorRecords.NO_REF;
         };
     }
@@ -951,12 +951,12 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         CompilerAsserts.partialEvaluationConstant(kind);
         CompilerAsserts.partialEvaluationConstant(transitionRef);
         return switch (kind) {
-            case genericCGTransition -> CGTrackingTransitionNode.apply(dfaRecords, transitionRef, locals, this);
-            case genericCGPreFinalTransition -> CGTrackingPreFinalTransitionNode.apply(dfaRecords, transitionRef, locals, this);
-            case genericCGAnchoredFinalTransition -> CGTrackingAnchoredFinalTransitionNode.apply(dfaRecords, transitionRef, locals, this);
+            case genericCGTransition -> CGTrackingTransition.apply(dfaRecords, transitionRef, locals, this);
+            case genericCGPreFinalTransition -> CGTrackingPreFinalTransition.apply(dfaRecords, transitionRef, locals, this);
+            case genericCGAnchoredFinalTransition -> CGTrackingAnchoredFinalTransition.apply(dfaRecords, transitionRef, locals, this);
             case simpleCGTransition -> DFASimpleCGTransition.apply(dfaRecords, transitionRef, locals, this);
-            case bqTransitionOps -> DFABQTrackingTransitionOpsNode.apply(dfaRecords, bqRecords, transitionRef, locals, counterTrackers);
-            case bqTransitionConstraints -> DFABQTrackingTransitionConstraintsNode.apply(dfaRecords, bqRecords, transitionRef, locals, counterTrackers);
+            case bqTransitionOps -> DFABQTrackingTransitionOps.apply(dfaRecords, bqRecords, transitionRef, locals, counterTrackers);
+            case bqTransitionConstraints -> DFABQTrackingTransitionConstraints.apply(dfaRecords, bqRecords, transitionRef, locals, counterTrackers);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
     }
@@ -965,11 +965,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         CompilerAsserts.partialEvaluationConstant(kind);
         CompilerAsserts.partialEvaluationConstant(stateRef);
         return switch (kind) {
-            case state -> DFAStateNode.beforeFindSuccessor(dfaRecords, stateRef, locals);
-            case traceFinderState -> TraceFinderDFAStateNode.checkFinalState(dfaRecords, stateRef, locals);
-            case simpleCGState -> DFASimpleCGTrackingStateNode.checkFinalState(dfaRecords, stateRef, locals, this);
-            case genericCGState -> CGTrackingDFAStateNode.beforeFindSuccessor(dfaRecords, stateRef, locals, this);
-            case bqState -> DFABQTrackingStateNode.checkFinalState(dfaRecords, bqRecords, stateRef, locals, counterTrackers);
+            case state -> DFAState.beforeFindSuccessor(dfaRecords, stateRef, locals);
+            case traceFinderState -> TraceFinderDFAState.checkFinalState(dfaRecords, stateRef, locals);
+            case simpleCGState -> DFASimpleCGTrackingState.checkFinalState(dfaRecords, stateRef, locals, this);
+            case genericCGState -> CGTrackingDFAState.beforeFindSuccessor(dfaRecords, stateRef, locals, this);
+            case bqState -> DFABQTrackingState.checkFinalState(dfaRecords, bqRecords, stateRef, locals, counterTrackers);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
     }
@@ -978,11 +978,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         CompilerAsserts.partialEvaluationConstant(kind);
         CompilerAsserts.partialEvaluationConstant(stateRef);
         switch (kind) {
-            case state -> DFAStateNode.afterIndexOf(dfaRecords, stateRef, locals, postLoopIndex);
-            case traceFinderState -> TraceFinderDFAStateNode.afterIndexOf(dfaRecords, stateRef, locals, postLoopIndex);
-            case simpleCGState -> DFASimpleCGTrackingStateNode.afterIndexOf(dfaRecords, stateRef, locals, this, preLoopIndex, postLoopIndex, codeRange);
-            case genericCGState -> CGTrackingDFAStateNode.afterIndexOf(dfaRecords, stateRef, locals, this, preLoopIndex, postLoopIndex, codeRange);
-            case bqState -> DFABQTrackingStateNode.afterIndexOf(dfaRecords, bqRecords, stateRef, locals, postLoopIndex, counterTrackers);
+            case state -> DFAState.afterIndexOf(dfaRecords, stateRef, locals, postLoopIndex);
+            case traceFinderState -> TraceFinderDFAState.afterIndexOf(dfaRecords, stateRef, locals, postLoopIndex);
+            case simpleCGState -> DFASimpleCGTrackingState.afterIndexOf(dfaRecords, stateRef, locals, this, preLoopIndex, postLoopIndex, codeRange);
+            case genericCGState -> CGTrackingDFAState.afterIndexOf(dfaRecords, stateRef, locals, this, preLoopIndex, postLoopIndex, codeRange);
+            case bqState -> DFABQTrackingState.afterIndexOf(dfaRecords, bqRecords, stateRef, locals, postLoopIndex, counterTrackers);
             default -> throw CompilerDirectives.shouldNotReachHere();
         }
     }
@@ -991,11 +991,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         CompilerAsserts.partialEvaluationConstant(kind);
         CompilerAsserts.partialEvaluationConstant(stateRef);
         switch (kind) {
-            case state -> DFAStateNode.atEnd(dfaRecords, stateRef, locals, inputAtEnd);
-            case traceFinderState -> TraceFinderDFAStateNode.atEnd(dfaRecords, stateRef, locals, inputAtEnd);
-            case simpleCGState -> DFASimpleCGTrackingStateNode.atEnd(dfaRecords, stateRef, locals, this, inputAtEnd);
-            case genericCGState -> CGTrackingDFAStateNode.atEnd(dfaRecords, stateRef, locals, this, inputAtEnd);
-            case bqState -> DFABQTrackingStateNode.atEnd(dfaRecords, bqRecords, stateRef, locals, inputAtEnd, counterTrackers);
+            case state -> DFAState.atEnd(dfaRecords, stateRef, locals, inputAtEnd);
+            case traceFinderState -> TraceFinderDFAState.atEnd(dfaRecords, stateRef, locals, inputAtEnd);
+            case simpleCGState -> DFASimpleCGTrackingState.atEnd(dfaRecords, stateRef, locals, this, inputAtEnd);
+            case genericCGState -> CGTrackingDFAState.atEnd(dfaRecords, stateRef, locals, this, inputAtEnd);
+            case bqState -> DFABQTrackingState.atEnd(dfaRecords, bqRecords, stateRef, locals, inputAtEnd, counterTrackers);
             default -> throw CompilerDirectives.shouldNotReachHere();
         }
     }
@@ -1045,13 +1045,13 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         for (int ref = 0; ref < dfaRecords.length;) {
             DFAExecutorRecords.Kind kind = DFAExecutorRecords.getKind(dfaRecords, ref);
             if (kind == DFAExecutorRecords.Kind.genericCGState) {
-                cost += CGTrackingDFAStateNode.getCGTrackingCost(dfaRecords, ref, this);
+                cost += CGTrackingDFAState.getCGTrackingCost(dfaRecords, ref, this);
             } else if (kind == DFAExecutorRecords.Kind.genericCGTransition) {
-                cost += CGTrackingTransitionNode.getCGTrackingCost(dfaRecords, ref, this);
+                cost += CGTrackingTransition.getCGTrackingCost(dfaRecords, ref, this);
             } else if (kind == DFAExecutorRecords.Kind.genericCGPreFinalTransition) {
-                cost += CGTrackingPreFinalTransitionNode.getCGTrackingCost(dfaRecords, ref, this);
+                cost += CGTrackingPreFinalTransition.getCGTrackingCost(dfaRecords, ref, this);
             } else if (kind == DFAExecutorRecords.Kind.genericCGAnchoredFinalTransition) {
-                cost += CGTrackingAnchoredFinalTransitionNode.getCGTrackingCost(dfaRecords, ref, this);
+                cost += CGTrackingAnchoredFinalTransition.getCGTrackingCost(dfaRecords, ref, this);
             }
             ref += DFAExecutorRecords.getRecordSize(dfaRecords, ref, kind);
         }

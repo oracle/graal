@@ -47,7 +47,7 @@ import com.oracle.truffle.regex.tregex.automaton.TransitionOp;
 /**
  * A bounded-quantifier operation transition. Its packed record appends a reference into the
  * executor's bounded-quantifier {@code long[]} and a value count to the common
- * {@link DFAAbstractTransitionNode} fields.
+ * {@link DFAAbstractTransition} fields.
  *
  * <pre>
  * +-------------+------+----------------------+
@@ -58,7 +58,7 @@ import com.oracle.truffle.regex.tregex.automaton.TransitionOp;
  * +-------------+------+----------------------+
  * </pre>
  */
-public final class DFABQTrackingTransitionOpsNode extends DFAAbstractTransitionNode {
+public final class DFABQTrackingTransitionOps extends DFAAbstractTransition {
 
     private static final int FIELD_OPERATIONS_REF = COMMON_RECORD_SIZE;
     private static final int FIELD_OPERATIONS_COUNT = FIELD_OPERATIONS_REF + Integer.BYTES;
@@ -66,7 +66,7 @@ public final class DFABQTrackingTransitionOpsNode extends DFAAbstractTransitionN
 
     private final long[] operations;
 
-    public DFABQTrackingTransitionOpsNode(short id, short successor, long[] operations) {
+    public DFABQTrackingTransitionOps(short id, short successor, long[] operations) {
         super(id, successor);
         this.operations = operations;
     }

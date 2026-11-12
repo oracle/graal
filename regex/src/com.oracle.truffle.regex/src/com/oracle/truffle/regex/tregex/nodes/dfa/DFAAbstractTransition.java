@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,44 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.api.CompilerDirectives;
 
-public abstract class DFAAbstractStateNode extends DFAAbstractNode implements JsonConvertible {
+/**
+ * Base class for DFA transitions with one successor. Their packed records begin with these common
+ * fields:
+ *
+ * <pre>
+ * +-------------+------+-------------------+
+ * | byte offset | size | field             |
+ * +-------------+------+-------------------+
+ * | 0           | 1    | kind              |
+ * | 1           | 4    | successor (int32) |
+ * +-------------+------+-------------------+
+ * </pre>
+ */
+public abstract class DFAAbstractTransition extends DFAAbstractNode {
 
-    protected final short[] successors;
+    static final int FIELD_SUCCESSOR = 1;
+    static final int COMMON_RECORD_SIZE = FIELD_SUCCESSOR + Integer.BYTES;
 
-    DFAAbstractStateNode(short id, short[] successors) {
+    private final short successor;
+
+    DFAAbstractTransition(short id, short successor) {
         super(id);
-        this.successors = successors;
+        this.successor = successor;
     }
 
-    public final short[] getSuccessors() {
-        return successors;
+    public final short getSuccessor() {
+        return successor;
+    }
+
+    final void encodeCommon(DFAExecutorRecords.Encoder encoder, int recordRef, DFAExecutorRecords.Kind kind) {
+        encoder.putKind(recordRef, kind);
+        encoder.putNodeRef(recordRef + FIELD_SUCCESSOR, successor);
+    }
+
+    @CompilerDirectives.EarlyInline
+    static int getSuccessor(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getInt(records, recordRef + FIELD_SUCCESSOR);
     }
 }

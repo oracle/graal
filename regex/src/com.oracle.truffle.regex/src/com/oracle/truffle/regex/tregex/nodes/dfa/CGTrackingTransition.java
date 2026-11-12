@@ -46,7 +46,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 
 /**
  * A generic capture-group transition. Its packed record appends a lazy-transition reference and a
- * last-transition index to the common {@link DFAAbstractTransitionNode} fields.
+ * last-transition index to the common {@link DFAAbstractTransition} fields.
  *
  * <pre>
  * +-------------+------+--------------------------------+
@@ -57,7 +57,7 @@ import com.oracle.truffle.api.CompilerAsserts;
  * +-------------+------+--------------------------------+
  * </pre>
  */
-public final class CGTrackingTransitionNode extends CGTrackingAbstractTransitionNode {
+public final class CGTrackingTransition extends CGTrackingAbstractTransition {
 
     private static final int FIELD_LAST_TRANSITION_INDEX = FIELD_TRANSITION_REF + Integer.BYTES;
     private static final int RECORD_SIZE = FIELD_LAST_TRANSITION_INDEX + Short.BYTES;
@@ -66,17 +66,17 @@ public final class CGTrackingTransitionNode extends CGTrackingAbstractTransition
     private final int transitionRef;
     private final short lastTransitionIndex;
 
-    public CGTrackingTransitionNode(short id, short successor, int transitionRef, short lastTransitionIndex) {
+    public CGTrackingTransition(short id, short successor, int transitionRef, short lastTransitionIndex) {
         super(id, successor);
         this.transitionRef = transitionRef;
         this.lastTransitionIndex = lastTransitionIndex;
     }
 
-    public static CGTrackingTransitionNode create(short id, short successor, int transitionRef, short lastTransitionIndex) {
+    public static CGTrackingTransition create(short id, short successor, int transitionRef, short lastTransitionIndex) {
         if (DFACaptureGroupLazyTransition.isEmpty(transitionRef) && lastTransitionIndex < 0) {
             return null;
         }
-        return new CGTrackingTransitionNode(id, successor, transitionRef, lastTransitionIndex);
+        return new CGTrackingTransition(id, successor, transitionRef, lastTransitionIndex);
     }
 
     @Override
@@ -115,7 +115,7 @@ public final class CGTrackingTransitionNode extends CGTrackingAbstractTransition
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof CGTrackingTransitionNode o)) {
+        if (!(obj instanceof CGTrackingTransition o)) {
             return false;
         }
         return getSuccessor() == o.getSuccessor() && lastTransitionIndex == o.lastTransitionIndex && transitionRef == o.transitionRef;
