@@ -27,6 +27,8 @@ package com.oracle.graal.pointsto.standalone.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.HashSet;
+
 import org.junit.Test;
 
 import com.oracle.graal.pointsto.standalone.test.classes.StandalonePrimitivePredicateCase;
@@ -47,7 +49,8 @@ public class StandalonePrimitivePredicateTest extends StandaloneAnalysisTest {
 
     /**
      * Verifies exact primitive propagation, merged primitive propagation, and basic predicate-based
-     * branch elimination.
+     * branch elimination. Equal uncached primitive states must also obey the {@code hashCode}
+     * contract.
      */
     @Test
     public void testPrimitiveAndPredicateAnalysis() {
@@ -63,5 +66,15 @@ public class StandalonePrimitivePredicateTest extends StandaloneAnalysisTest {
         assertNotImplementationInvoked(findMethod(StandalonePrimitivePredicateCase.class, "unreachable1"));
         assertImplementationInvoked(findMethod(StandalonePrimitivePredicateCase.class, "reachable2"));
         assertNotImplementationInvoked(findMethod(StandalonePrimitivePredicateCase.class, "unreachable2"));
+
+        TypeState firstUncachedConstant = TypeState.forPrimitiveConstant(analysis(), -1);
+        TypeState secondUncachedConstant = TypeState.forPrimitiveConstant(analysis(), -1);
+        assertEquals(firstUncachedConstant, secondUncachedConstant);
+        assertEquals(firstUncachedConstant.hashCode(), secondUncachedConstant.hashCode());
+
+        var uniqueConstants = new HashSet<TypeState>();
+        uniqueConstants.add(firstUncachedConstant);
+        uniqueConstants.add(secondUncachedConstant);
+        assertEquals(1, uniqueConstants.size());
     }
 }
