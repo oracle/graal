@@ -151,8 +151,9 @@ public class ArgFilesOptionPreprocessor {
                 resolved = parent.resolve(argFile);
             }
         }
-        resolved = resolved.normalize();
+        // Match java @file lookup for command-line paths: let the filesystem resolve symlinks and '..'.
         if (origin != null) {
+            resolved = resolved.normalize();
             // Check before JAR filesystem resolution, which would discard leading '..' components.
             Path relativeToContainer = origin.resolveRedirectionPath(resolved);
             if (relativeToContainer.getRoot() != null || relativeToContainer.startsWith("..")) {
@@ -178,11 +179,11 @@ public class ArgFilesOptionPreprocessor {
     }
 
     private static Path canonicalPath(Path path) {
-        Path normalized = path.toAbsolutePath().normalize();
+        Path absolute = path.toAbsolutePath();
         try {
-            return normalized.toRealPath();
+            return absolute.toRealPath();
         } catch (IOException ignored) {
-            return normalized;
+            return absolute;
         }
     }
 

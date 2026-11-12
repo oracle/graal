@@ -121,6 +121,8 @@ These deprecated URL protocol options are omitted from the generated table; see 
 
 Native Image argument files use UTF-8 and follow the [Java launcher argument-file specification](https://docs.oracle.com/en/java/javase/25/docs/specs/man/java.html#java-command-line-argument-files).
 All of its syntax rules apply.
+Command-line argument-file paths follow the Java launcher's filesystem lookup rules, including symbolic links and `..`.
+Recursive includes from those files use the same lookup rules.
 A standalone `# native-image:` directive must start the first line; unknown settings or misplaced directives are errors.
 Separate settings with a single space.
 Use `value-continuations` to enable option-value continuations, and `recursive-argument-files` to let the file include other argument files.
