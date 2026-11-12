@@ -73,6 +73,7 @@ import com.oracle.truffle.api.bytecode.LocalAccessor;
 import com.oracle.truffle.api.bytecode.LocalRangeAccessor;
 import com.oracle.truffle.api.bytecode.MaterializedLocalAccessor;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation.Operator;
 import com.oracle.truffle.api.bytecode.Variadic;
@@ -214,6 +215,7 @@ import com.oracle.truffle.api.source.SourceSection;
                                 boxingEliminationTypes = {boolean.class, long.class}, //
                                 enableTailCallHandlers = true, variadicStackLimit = "16")),
 })
+@OperationProxy(BytecodeDescriptorTest.AddProxy.class)
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScAnd", operator = Operator.AND_RETURN_VALUE)
 @ShortCircuitOperation(booleanConverter = BasicInterpreter.ToBoolean.class, name = "ScOr", operator = Operator.OR_RETURN_VALUE, javadoc = "ScOr returns the first truthy operand value.")
 // Variants without a bci frame slot warn about operations that request explicit bci storage.

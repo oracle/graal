@@ -849,6 +849,10 @@ These methods, defined on the [`BytecodeNode`](https://github.com/oracle/graal/b
 - `getExceptionHandlers`, which returns a list of [`ExceptionHandler`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/ExceptionHandler.java) table entries.
 - `getSourceInformation`, which returns a list of [`SourceInformation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/SourceInformation.java) table entries. There is also `getSourceInformationTree`, which encodes the entries as a [`SourceInformationTree`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/SourceInformationTree.java).
 
+Use `Instruction.getDescriptor().getOperationClass()` to identify the custom operation class behind an instruction without parsing its name.
+Quickened instructions return the original operation class, and operation proxies return the proxied class.
+Built-in and short-circuit instructions return `null`.
+
 Note that the bytecode encoding is an implementation detail, so the APIs and their outputs are subject to change, and introspection should only be used for debugging purposes.
 
 
