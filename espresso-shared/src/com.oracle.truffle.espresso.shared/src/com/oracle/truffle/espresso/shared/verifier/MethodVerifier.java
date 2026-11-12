@@ -735,25 +735,21 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         int lastBCI = opcodeIndexesToBCI[opcodeIndexesToBCI.length - 1];
         verifyGuarantee(code.nextBCI(lastBCI) <= code.endBCI(), "Incomplete bytecode");
 
-        if (!useStackMaps) {
-            // Mark all jump targets. We do not need to if method has stack frames, since all jump
-            // targets have one stack frame declared in the attribute, and if it doesn't, we will
-            // see it later.
-            for (int opcodeIdx = 0; opcodeIdx < opcodeIndexesToBCI.length; opcodeIdx++) {
-                int bci = opcodeIndexesToBCI[opcodeIdx];
-                int opcode = code.currentBC(bci);
-                if (Bytecodes.isBranch(opcode)) {
-                    int target = code.readBranchDest(bci);
-                    validateBCI(target);
-                    setBciStatus(target, BCIState.MERGE_TARGET);
-                }
-                if (opcode == TABLESWITCH || opcode == LOOKUPSWITCH) {
-                    initSwitch(bci, opcode);
-                }
-                if (opcode == JSR || opcode == JSR_W) {
-                    verifyGuarantee(opcodeIdx + 1 < opcodeIndexesToBCI.length, "No instruction after JSR: %s", bci);
-                    setBciStatus(opcodeIndexesToBCI[opcodeIdx + 1], BCIState.MERGE_TARGET);
-                }
+        // Validate all jump targets, and mark them as merge points.
+        for (int opcodeIdx = 0; opcodeIdx < opcodeIndexesToBCI.length; opcodeIdx++) {
+            int bci = opcodeIndexesToBCI[opcodeIdx];
+            int opcode = code.currentBC(bci);
+            if (Bytecodes.isBranch(opcode)) {
+                int target = code.readBranchDest(bci);
+                validateBCI(target);
+                setBciStatus(target, BCIState.MERGE_TARGET);
+            }
+            if (opcode == TABLESWITCH || opcode == LOOKUPSWITCH) {
+                initSwitch(bci, opcode);
+            }
+            if (opcode == JSR || opcode == JSR_W) {
+                verifyGuarantee(opcodeIdx + 1 < opcodeIndexesToBCI.length, "No instruction after JSR: %s", bci);
+                setBciStatus(opcodeIndexesToBCI[opcodeIdx + 1], BCIState.MERGE_TARGET);
             }
         }
     }
