@@ -76,6 +76,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
@@ -118,6 +119,8 @@ public abstract sealed class WasmMemory implements TruffleObject, EmbedderDataHo
      * @see #isShared()
      */
     protected final boolean shared;
+
+    private final BranchProfile outOfBoundsBranch = BranchProfile.create();
 
     private Object embedderData = WasmConstant.VOID;
 
@@ -244,6 +247,14 @@ public abstract sealed class WasmMemory implements TruffleObject, EmbedderDataHo
         return WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, message);
     }
 
+    protected final void profileOutOfBounds() {
+        outOfBoundsBranch.enter();
+    }
+
+    public boolean isOutOfBoundsProfileVisited() {
+        return outOfBoundsBranch.toString().contains("VISITED");
+    }
+
     /**
      * Validates that the region starting at offset {@code address} and of length {@code length} is
      * in bounds for a memory of size {@code byteSize}. If the region is not in bounds, then this
@@ -261,11 +272,11 @@ public abstract sealed class WasmMemory implements TruffleObject, EmbedderDataHo
      * @param length the length of the region to be validated, assumed to be non-negative
      * @param byteSize the size of the memory in bytes, assumed to be non-negative
      */
-    protected static final void validateAddress(Node node, long address, long length, long byteSize) {
+    protected final void validateAddress(Node node, long address, long length, long byteSize) {
         assert length >= 0;
         assert byteSize >= 0;
         if (address < 0 || address > byteSize - length) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            profileOutOfBounds();
             throw trapOutOfBounds(node, address, length, byteSize);
         }
     }
