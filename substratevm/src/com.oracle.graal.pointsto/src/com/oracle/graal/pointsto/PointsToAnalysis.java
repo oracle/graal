@@ -540,7 +540,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @Override
     public boolean isSupportedJavaKind(JavaKind javaKind) {
-        return javaKind == JavaKind.Object || (trackPrimitiveValues && javaKind.isPrimitive() && !javaKind.isNumericFloat());
+        /* Void is considered primitive, but void return flows are only tracked with predicates. */
+        return javaKind == JavaKind.Object || (trackPrimitiveValues && javaKind.isPrimitive() && !javaKind.isNumericFloat() && javaKind != JavaKind.Void);
     }
 
     @Override
