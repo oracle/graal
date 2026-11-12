@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package jdk.graal.compiler.nodes.calc;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
-import jdk.graal.compiler.core.common.type.PrimitiveStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
@@ -185,9 +184,10 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             int log2 = CodeUtil.log2(abs);
             // no rounding if dividend is positive or if its low bits are always 0
             if (stampX.canBeNegative() && (stampX.mayBeSet() & (abs - 1)) != 0) {
-                int bits = PrimitiveStamp.getBits(forX.stamp(view));
-                RightShiftNode sign = new RightShiftNode(forX, ConstantNode.forInt(bits - 1));
-                UnsignedRightShiftNode round = new UnsignedRightShiftNode(sign, ConstantNode.forInt(bits - log2));
+                // Shifts promote narrow values to their stack kind before narrowing the result.
+                int stackBits = stampX.getStackKind().getBitCount();
+                RightShiftNode sign = new RightShiftNode(forX, ConstantNode.forInt(stackBits - 1));
+                UnsignedRightShiftNode round = new UnsignedRightShiftNode(sign, ConstantNode.forInt(stackBits - log2));
                 dividend = BinaryArithmeticNode.add(dividend, round, view);
             }
             RightShiftNode shift = new RightShiftNode(dividend, ConstantNode.forInt(log2));
