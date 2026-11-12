@@ -74,8 +74,8 @@ public final class SerialGCOptions {
     @Option(help = "Enables card marking for image heap objects, which arranges them in chunks. Automatically enabled when supported. Serial GC only.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ImageHeapCardMarking = new HostedOptionKey<>(null, SerialGCOptions::validateSerialHostedOption);
 
-    @Option(help = "Track image heap references to the young generation separately. Serial GC only.", type = OptionType.Expert)//
-    public static final RuntimeOptionKey<Boolean> ImageHeapYoungCards = new RuntimeOptionKey<>(true, null, SERIAL_GC_ONLY);
+    @Option(help = "Track image heap cards with no surviving young references separately so young collections can skip them. Serial GC only.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> SkipOldOnlyCardsInYoungGC = new HostedOptionKey<>(true, SerialGCOptions::validateSerialHostedOption);
 
     @Option(help = "Print summary GC information after application main method returns. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false, null, SERIAL_GC_ONLY);

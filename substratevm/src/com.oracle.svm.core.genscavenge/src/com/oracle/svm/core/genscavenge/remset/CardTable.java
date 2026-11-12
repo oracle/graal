@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import static com.oracle.svm.core.genscavenge.graal.BarrierSnippets.CARD_REMEMBERED_SET_LOCATION;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import java.lang.ref.Reference;
@@ -38,14 +39,12 @@ import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
-import com.oracle.svm.core.genscavenge.graal.BarrierSnippets;
 import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.shared.util.UnsignedUtils;
@@ -57,8 +56,9 @@ import jdk.graal.compiler.replacements.ReplacementsUtil;
 
 /**
  * A card table is a remembered set that summarizes pointer stores into a region. A card is "dirty"
- * if a pointer has been stored recently into the memory summarized by the card, or "clean"
- * otherwise.
+ * if a pointer has been stored recently into the memory summarized by the card, or "clean" if no
+ * references need tracking. Image heap cards can also be "old-only", which preserves roots for full
+ * collections while allowing young collections to skip them.
  * <p>
  * When looking for roots into the young space, the whole old space need not be searched for
  * pointers, only the parts of the old space covered by dirty cards. The card table works in concert
@@ -66,18 +66,18 @@ import jdk.graal.compiler.replacements.ReplacementsUtil;
  * <p>
  * At each pointer store the card corresponding to the destination of the store is dirtied. At each
  * collection, the dirty cards are scanned and the corresponding memory is examined for pointers to
- * the young space. When the memory has been scanned, the corresponding card is cleaned.
- * <p>
- * Image heap cards can also retain roots for full collections after their references have left
- * the young generation. Stores mark these cards dirty again using the same zero byte write.
+ * the young space. Before scanning, the collector either cleans the card or marks it old-only. The
+ * reference visitor dirties it again if a reference still points into the young generation. Scans
+ * that must retain the existing card states leave them unchanged. Full collections also scan
+ * old-only image heap cards.
  * <p>
  * Implementation notes:
  * <ul>
- * <li>In theory, I only need "clean" and "dirty" values in the table, but since bit manipulations
+ * <li>In theory, only a few bits are needed for each entry, but since bit manipulations
  * are expensive (particularly atomic bit manipulations), I trade space for time and make each entry
  * a byte.</li>
  *
- * <li>The "dirty" value is 0, since that makes dirtying a card a single "clearByte" instructions
+ * <li>The "dirty" value is 0, since that makes dirtying a card a single "clearByte" instruction
  * which is available in all the instruction set architectures I care about, whereas a "setByte"
  * with a non-zero value takes more instruction space.</li>
  * </ul>
@@ -85,10 +85,10 @@ import jdk.graal.compiler.replacements.ReplacementsUtil;
 public final class CardTable {
     public static final int BYTES_COVERED_BY_ENTRY = 512;
 
-    static final byte DIRTY_ENTRY = 0;
-    static final byte CLEAN_ENTRY = 1;
-    /* Retains roots for full collections after a scan finds no surviving young references. */
-    static final byte OLD_ONLY_ENTRY = 2;
+    public static final byte DIRTY_ENTRY = 0;
+    public static final byte CLEAN_ENTRY = 1;
+    /** Any references to the collected heap point to old objects. There may be none. */
+    public static final byte OLD_ONLY_ENTRY = 2;
     static final UnsignedWord CLEAN_WORD = Word.unsigned(0x0101010101010101L);
     static final UnsignedWord DIRTY_WORD = Word.unsigned(0x0000000000000000L);
 
@@ -109,11 +109,11 @@ public final class CardTable {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setDirty(Pointer table, UnsignedWord index) {
-        byte valueBefore = table.readByte(index, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
+        byte valueBefore = table.readByte(index, CARD_REMEMBERED_SET_LOCATION);
         // Using a likely probability should typically avoid placing the write below at a separate
         // location with an extra jump back to after the barrier for more compact code.
         if (BranchProbabilityNode.probability(BranchProbabilityNode.LIKELY_PROBABILITY, valueBefore != DIRTY_ENTRY)) {
-            table.writeByte(index, DIRTY_ENTRY, BarrierSnippets.CARD_REMEMBERED_SET_LOCATION);
+            table.writeByte(index, DIRTY_ENTRY, CARD_REMEMBERED_SET_LOCATION);
         }
     }
 
@@ -123,49 +123,62 @@ public final class CardTable {
         return entry == DIRTY_ENTRY;
     }
 
-    /** Selects scans that skip image cards without references to the young generation. */
+    /** Returns whether this scan can skip old-only image heap cards. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static boolean isYoungImageHeapScan(Pointer objectsStart, boolean clean) {
-        return SerialGCOptions.ImageHeapYoungCards.getValue() && !clean &&
+    static boolean shouldSkipOldOnlyCards(Pointer objectsStart, boolean clean) {
+        boolean skipOldOnlyCards = SerialGCOptions.SkipOldOnlyCardsInYoungGC.getValue() &&
                         !GCImpl.getGCImpl().isCompleteCollection() && HeapImpl.getHeapImpl().isInImageHeap(objectsStart);
-    }
-
-    /** Full scans include retained cards; young scans revisit cards dirtied by stores or the GC. */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static boolean shouldScan(Pointer table, UnsignedWord index, boolean scanYoungOnly) {
-        int entry = readEntry(table, index);
-        return scanYoungOnly ? entry == DIRTY_ENTRY : entry != CLEAN_ENTRY;
+        assert !skipOldOnlyCards || !clean : "Scans that skip old-only cards must not clean cards";
+        return skipOldOnlyCards;
     }
 
     /**
-     * Preserves roots for full collections before the visitor remarks surviving young references.
-     * Expects to be called only when cleaning cards or scanning only references to the young generation.
+     * Returns whether the card at {@code index} needs scanning.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static byte scannedValue(boolean clean) {
+    static boolean needsScan(Pointer table, UnsignedWord index, boolean skipOldOnlyCards) {
+        int entry = readEntry(table, index);
+        return skipOldOnlyCards ? entry == DIRTY_ENTRY : entry != CLEAN_ENTRY;
+    }
+
+    /**
+     * Returns the state to write to a card before visiting its references. Scans that clean cards
+     * write {@link #CLEAN_ENTRY}. Young image heap scans write {@link #OLD_ONLY_ENTRY} so that a
+     * later full collection still visits the card. The reference visitor dirties the card again
+     * if a reference still points to a young object.
+     *
+     * Call only when cleaning cards or when {@link #shouldSkipOldOnlyCards} returns true. Other
+     * scans must leave existing card states unchanged.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static byte cardStateForScan(boolean clean) {
         return clean ? CLEAN_ENTRY : OLD_ONLY_ENTRY;
     }
 
-    /** Detects a word in which every card needs scanning, including mixtures of dirty and retained cards. */
+    /**
+     * Returns whether every card entry in {@code value} needs scanning.
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static boolean shouldScanAllCards(UnsignedWord value, boolean scanYoungOnly) {
+    static boolean allCardsNeedScan(UnsignedWord value, boolean skipOldOnlyCards) {
         /* Only clean entries have their least significant bit set. */
-        return scanYoungOnly ? value.equal(DIRTY_WORD) : value.and(CLEAN_WORD).equal(0);
+        return skipOldOnlyCards ? value.equal(DIRTY_WORD) : value.and(CLEAN_WORD).equal(0);
     }
 
-    /** Detects a word without candidate cards, including mixtures of clean and retained cards. */
+    /**
+     * Returns whether at least one card entry in {@code value} needs scanning.
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static boolean canSkipWord(UnsignedWord value, boolean scanYoungOnly) {
+    static boolean anyCardNeedsScan(UnsignedWord value, boolean skipOldOnlyCards) {
         if (value.equal(CLEAN_WORD)) {
-            return true;
+            return false;
         }
         /* A zero byte denotes a candidate. Borrowing between bytes preserves this test. */
-        return scanYoungOnly && value.subtract(CLEAN_WORD).and(value.not()).and(Word.unsigned(0x8080808080808080L)).equal(0);
+        return !skipOldOnlyCards || value.subtract(CLEAN_WORD).and(value.not()).and(Word.unsigned(0x8080808080808080L)).notEqual(0);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int readEntry(Pointer table, UnsignedWord index) {
-        byte entry = table.readByte(index);
+        byte entry = table.readByte(index, CARD_REMEMBERED_SET_LOCATION);
         if (GraalDirectives.inIntrinsic()) {
             ReplacementsUtil.dynamicAssert(entry == CLEAN_ENTRY || entry == DIRTY_ENTRY || entry == OLD_ONLY_ENTRY, "valid entry");
         } else {
@@ -197,46 +210,61 @@ public final class CardTable {
     }
 
     public static boolean verify(Pointer cardTableStart, Pointer cardTableEnd, Pointer objectsStart, Pointer objectsLimit) {
+        /* Check all card states even when reference verification is disabled. */
         boolean fromImageHeap = HeapImpl.getHeapImpl().isInImageHeap(objectsStart);
+        if (!verifyCardStates(cardTableStart, cardTableEnd, fromImageHeap)) {
+            return false;
+        }
+
+        if (!SerialGCOptions.VerifyRememberedSet.getValue()) {
+            return true;
+        }
+
+        /* Verify that the card states account for the object references. */
+        boolean success = true;
+        Pointer curPtr = objectsStart;
+        while (curPtr.belowThan(objectsLimit)) {
+            Object obj = curPtr.toObjectNonNull();
+            boolean precise = RememberedSet.get().usePreciseCardMarking(obj);
+            /*
+             * Objects using precise card marking need to be visited, as any of their cards may
+             * be dirty. For objects using imprecise card marking, only the card at the address
+             * of the object may be dirty.
+             */
+            UnsignedWord cardTableIndex = memoryOffsetToIndex(curPtr.subtract(objectsStart));
+            if (precise || !isDirty(cardTableStart, cardTableIndex)) {
+                CARD_TABLE_VERIFICATION_VISITOR.initialize(obj, cardTableStart, objectsStart, precise);
+                InteriorObjRefWalker.walkObject(obj, CARD_TABLE_VERIFICATION_VISITOR);
+                success &= CARD_TABLE_VERIFICATION_VISITOR.success;
+                CARD_TABLE_VERIFICATION_VISITOR.reset();
+
+                DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
+                if (hub.isReferenceInstanceClass()) {
+                    // The referent field of java.lang.Reference is excluded from the reference
+                    // map, so we need to verify it separately.
+                    Reference<?> ref = (Reference<?>) obj;
+                    success &= verifyReferent(ref, cardTableStart, objectsStart, precise);
+                }
+            }
+            curPtr = LayoutEncoding.getObjectEndInGC(obj);
+        }
+
+        return success;
+    }
+
+    private static boolean verifyCardStates(Pointer cardTableStart, Pointer cardTableEnd, boolean fromImageHeap) {
         Pointer pos = cardTableStart;
         while (pos.belowThan(cardTableEnd)) {
-            byte entry = pos.readByte(0);
-            if (entry != DIRTY_ENTRY && entry != CLEAN_ENTRY && !(fromImageHeap && entry == OLD_ONLY_ENTRY)) {
-                Log.log().string("Card at ").zhex(pos).string(" is neither dirty nor clean: ").zhex(entry).newline();
+            byte entry = pos.readByte(0, CARD_REMEMBERED_SET_LOCATION);
+            if (entry != DIRTY_ENTRY && entry != CLEAN_ENTRY && (!fromImageHeap || entry != OLD_ONLY_ENTRY)) {
+                Log.log().string("Card at ").zhex(pos).string(" has an invalid state: ").zhex(entry).newline();
                 return false;
             }
+
             pos = pos.add(1);
         }
-        boolean success = true;
-        if (SerialGCOptions.VerifyRememberedSet.getValue()) {
-            Pointer curPtr = objectsStart;
-            while (curPtr.belowThan(objectsLimit)) {
-                Object obj = curPtr.toObjectNonNull();
-                boolean precise = RememberedSet.get().usePreciseCardMarking(obj);
-                /*
-                 * Objects using precise card marking need to be visited, as any of their cards may
-                 * be dirty. For objects using imprecise card marking, only the card at the address
-                 * of the object may be dirty.
-                 */
-                UnsignedWord cardTableIndex = memoryOffsetToIndex(curPtr.subtract(objectsStart));
-                if (precise || !isDirty(cardTableStart, cardTableIndex)) {
-                    CARD_TABLE_VERIFICATION_VISITOR.initialize(obj, cardTableStart, objectsStart, precise);
-                    InteriorObjRefWalker.walkObject(obj, CARD_TABLE_VERIFICATION_VISITOR);
-                    success &= CARD_TABLE_VERIFICATION_VISITOR.success;
-                    CARD_TABLE_VERIFICATION_VISITOR.reset();
 
-                    DynamicHub hub = DynamicHubIntrinsics.readHub(obj);
-                    if (hub.isReferenceInstanceClass()) {
-                        // The referent field of java.lang.Reference is excluded from the reference
-                        // map, so we need to verify it separately.
-                        Reference<?> ref = (Reference<?>) obj;
-                        success &= verifyReferent(ref, cardTableStart, objectsStart, precise);
-                    }
-                }
-                curPtr = LayoutEncoding.getObjectEndInGC(obj);
-            }
-        }
-        return success;
+        return true;
     }
 
     private static boolean verifyReferent(Reference<?> ref, Pointer cardTableStart, Pointer objectsStart, boolean precise) {
@@ -251,20 +279,18 @@ public final class CardTable {
         }
 
         Object obj = referencedObject.toObject();
-        /* Precise marking uses the reference's card; imprecise marking uses the object's card. */
+        /* Precise marking uses the reference's card. Imprecise marking uses the object's card. */
         Pointer cardAddress = precise ? reference : Word.objectToUntrackedPointer(parentObject);
         UnsignedWord cardTableIndex = memoryOffsetToIndex(cardAddress.subtract(objectsStart));
         int entry = readEntry(cardTableStart, cardTableIndex);
         if (entry == DIRTY_ENTRY) {
             return true;
         }
+
         boolean fromImageHeap = HeapImpl.getHeapImpl().isInImageHeap(parentObject);
-        boolean toYoung = !(Metaspace.isSupported() && Metaspace.singleton().isInAddressSpace(referencedObject)) &&
-                        HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(obj)).isYoungSpace();
-        if (fromImageHeap && entry == OLD_ONLY_ENTRY && !toYoung) {
-            return true;
-        }
-        if (fromImageHeap || toYoung) {
+        boolean toYoung = HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(obj)).isYoungSpace();
+
+        if (toYoung || fromImageHeap && entry != OLD_ONLY_ENTRY) {
             Pointer cardTableAddress = cardTableStart.add(cardTableIndex);
             Log.log().string("Object ").zhex(Word.objectToUntrackedPointer(parentObject)).string(" (").string(parentObject.getClass().getName()).character(')')
                             .string(fromImageHeap ? ", which is in the image heap, " : " ")
@@ -274,6 +300,7 @@ public final class CardTable {
                             .string("However, the card table at ").zhex(cardTableAddress).string(" has state ").signed(entry).string(".").newline();
             return false;
         }
+
         return true;
     }
 

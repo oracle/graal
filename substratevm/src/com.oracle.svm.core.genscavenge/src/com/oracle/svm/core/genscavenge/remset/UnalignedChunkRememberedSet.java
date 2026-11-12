@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import static com.oracle.svm.core.genscavenge.graal.BarrierSnippets.CARD_REMEMBERED_SET_LOCATION;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.shared.Uninterruptible.CORE_GC_CODE;
 
@@ -37,6 +38,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.genscavenge.HeapChunk;
+import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
@@ -61,7 +63,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 
-final class UnalignedChunkRememberedSet {
+public final class UnalignedChunkRememberedSet {
 
     private UnalignedChunkRememberedSet() {
     }
@@ -213,16 +215,19 @@ final class UnalignedChunkRememberedSet {
         }
 
         Pointer cardTableStart = getCardTableStart(chunk);
-        boolean scanYoungOnly = CardTable.isYoungImageHeapScan(Word.objectToUntrackedPointer(obj), clean);
         assert cardTableStart.unsignedRemainder(wordSize()).equal(0);
 
         switch (objHub.getHubType()) {
             case HubType.STORED_CONTINUATION_INSTANCE:
-                walkStoredContinuationImprecise((StoredContinuation) obj, cardTableStart, refVisitor, clean, scanYoungOnly);
+                /* The walker excludes image heap continuations, so scanned cards are only dirty or clean. */
+                assert !HeapImpl.getHeapImpl().isInImageHeap(obj);
+                walkStoredContinuationImprecise((StoredContinuation) obj, cardTableStart, refVisitor, clean);
                 return;
             case HubType.OBJECT_ARRAY:
+                /* Image heap arrays can have old-only cards that young collections can skip. */
+                boolean skipOldOnlyCards = CardTable.shouldSkipOldOnlyCards(Word.objectToUntrackedPointer(obj), clean);
                 UnsignedWord cardTableLimitIdx = objStartOffset.subtract(sizeOfObjectStartOffsetField()).subtract(getCardTableStartOffset());
-                walkObjectArrayPrecise(obj, cardTableStart, cardTableLimitIdx, refVisitor, clean, scanYoungOnly);
+                walkObjectArrayPrecise(obj, cardTableStart, cardTableLimitIdx, refVisitor, clean, skipOldOnlyCards);
                 return;
             default:
                 throw VMError.shouldNotReachHere("Unexpected hub type.");
@@ -230,7 +235,7 @@ final class UnalignedChunkRememberedSet {
     }
 
     @Uninterruptible(reason = CORE_GC_CODE)
-    private static void walkStoredContinuationImprecise(StoredContinuation s, Pointer cardTableStart, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean, boolean scanYoungOnly) {
+    private static void walkStoredContinuationImprecise(StoredContinuation s, Pointer cardTableStart, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean) {
         if (!ContinuationSupport.isSupported()) {
             throw VMError.shouldNotReachHere("Stored continuation objects cannot be in the heap if the continuation support is disabled.");
         } else if (StoredContinuationAccess.shouldWalkContinuation(s)) {
@@ -238,9 +243,9 @@ final class UnalignedChunkRememberedSet {
              * Stored continuations are always marked imprecise, so only the first card needs to be
              * checked.
              */
-            if (CardTable.shouldScan(cardTableStart, Word.zero(), scanYoungOnly)) {
-                if (clean || scanYoungOnly) {
-                    cardTableStart.writeByte(0, CardTable.scannedValue(clean));
+            if (CardTable.isDirty(cardTableStart, Word.zero())) {
+                if (clean) {
+                    cardTableStart.writeByte(0, CardTable.CLEAN_ENTRY, CARD_REMEMBERED_SET_LOCATION);
                 }
                 InteriorObjRefWalker.walkObjectInline(s, refVisitor);
             }
@@ -249,7 +254,7 @@ final class UnalignedChunkRememberedSet {
 
     @Uninterruptible(reason = CORE_GC_CODE)
     private static void walkObjectArrayPrecise(Object obj, Pointer cardTableStart, UnsignedWord cardTableLimitIdx, UninterruptibleObjectReferenceVisitor refVisitor, boolean clean,
-                    boolean scanYoungOnly) {
+                    boolean skipOldOnlyCards) {
         int referenceSize = ObjectLayout.singleton().getReferenceSize();
 
         DynamicHub objHub = (DynamicHub) ObjectHeader.readDynamicHubFromObject(obj);
@@ -265,50 +270,50 @@ final class UnalignedChunkRememberedSet {
 
         UnsignedWord iOffset = elementStartOffset;
         while (iOffset.belowThan(elementEndOffset)) {
-            UnsignedWord dirtyCardStart = findFirstDirtyCard(cardTableStart, CardTable.memoryOffsetToIndex(iOffset), cardTableLimitIdx, scanYoungOnly);
-            UnsignedWord dirtyCardEnd = findFirstCleanCard(cardTableStart, dirtyCardStart, cardTableLimitIdx, clean, scanYoungOnly);
+            UnsignedWord scanCardStart = findScanStart(cardTableStart, CardTable.memoryOffsetToIndex(iOffset), cardTableLimitIdx, skipOldOnlyCards);
+            UnsignedWord scanCardEnd = findScanEnd(cardTableStart, scanCardStart, cardTableLimitIdx, clean, skipOldOnlyCards);
 
-            if (dirtyCardStart.equal(dirtyCardEnd)) {
+            if (scanCardStart.equal(scanCardEnd)) {
                 break;
             }
 
-            // Located a non-empty dirty card interval [dirtyCardStart, dirtyCardEnd).
-            UnsignedWord dirtyStartOffset = dirtyCardStart.multiply(CardTable.BYTES_COVERED_BY_ENTRY);
-            UnsignedWord dirtyEndOffset = dirtyCardEnd.multiply(CardTable.BYTES_COVERED_BY_ENTRY);
+            /* Located a non-empty card interval to scan: [scanCardStart, scanCardEnd). */
+            UnsignedWord scanStartOffset = scanCardStart.multiply(CardTable.BYTES_COVERED_BY_ENTRY);
+            UnsignedWord scanEndOffset = scanCardEnd.multiply(CardTable.BYTES_COVERED_BY_ENTRY);
 
-            // The object may start or end within a card.
-            UnsignedWord startOffset = UnsignedUtils.max(dirtyStartOffset, elementStartOffset);
-            UnsignedWord endOffset = UnsignedUtils.min(dirtyEndOffset, elementEndOffset);
+            /* The object may start or end within a card. */
+            UnsignedWord startOffset = UnsignedUtils.max(scanStartOffset, elementStartOffset);
+            UnsignedWord endOffset = UnsignedUtils.min(scanEndOffset, elementEndOffset);
 
             Pointer refPtr = Word.objectToUntrackedPointer(obj).add(startOffset);
             UnsignedWord nReferences = (endOffset.subtract(startOffset)).unsignedDivide(referenceSize);
             refVisitor.visitObjectReferences(refPtr, true, referenceSize, obj, UnsignedUtils.safeToInt(nReferences));
 
-            iOffset = dirtyEndOffset;
+            iOffset = scanEndOffset;
         }
     }
 
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/gc/g1/g1RemSet.cpp#L562-L586")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static UnsignedWord findFirstDirtyCard(Pointer ctAdr, UnsignedWord startIdx, UnsignedWord endIdx, boolean scanYoungOnly) {
+    private static UnsignedWord findScanStart(Pointer ctAdr, UnsignedWord startIdx, UnsignedWord endIdx, boolean skipOldOnlyCards) {
         assert UnsignedUtils.isAMultiple(endIdx, Word.unsigned(wordSize()));
 
         UnsignedWord wordSize = Word.unsigned(wordSize());
         UnsignedWord curIdx = startIdx;
 
         while (!UnsignedUtils.isAMultiple(curIdx, wordSize)) {
-            if (CardTable.shouldScan(ctAdr, curIdx, scanYoungOnly)) {
+            if (CardTable.needsScan(ctAdr, curIdx, skipOldOnlyCards)) {
                 return curIdx;
             }
             curIdx = curIdx.add(1);
         }
 
         for (/* empty */; curIdx.belowThan(endIdx); curIdx = curIdx.add(wordSize)) {
-            UnsignedWord wordValue = ctAdr.readWord(curIdx);
+            UnsignedWord wordValue = ctAdr.readWord(curIdx, CARD_REMEMBERED_SET_LOCATION);
 
-            if (!CardTable.canSkipWord(wordValue, scanYoungOnly)) {
+            if (CardTable.anyCardNeedsScan(wordValue, skipOldOnlyCards)) {
                 for (int i = 0; i < wordSize(); i++) {
-                    if (CardTable.shouldScan(ctAdr, curIdx, scanYoungOnly)) {
+                    if (CardTable.needsScan(ctAdr, curIdx, skipOldOnlyCards)) {
                         return curIdx;
                     }
                     curIdx = curIdx.add(1);
@@ -322,41 +327,36 @@ final class UnalignedChunkRememberedSet {
 
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/gc/g1/g1RemSet.cpp#L588-L612")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static UnsignedWord findFirstCleanCard(Pointer ctAdr, UnsignedWord startIdx, UnsignedWord endIdx, boolean clean, boolean scanYoungOnly) {
+    private static UnsignedWord findScanEnd(Pointer ctAdr, UnsignedWord startIdx, UnsignedWord endIdx, boolean clean, boolean skipOldOnlyCards) {
         assert UnsignedUtils.isAMultiple(endIdx, Word.unsigned(wordSize()));
 
         UnsignedWord wordSize = Word.unsigned(wordSize());
         UnsignedWord curIdx = startIdx;
 
         while (!UnsignedUtils.isAMultiple(curIdx, wordSize)) {
-            if (!CardTable.shouldScan(ctAdr, curIdx, scanYoungOnly)) {
+            if (!CardTable.needsScan(ctAdr, curIdx, skipOldOnlyCards)) {
                 return curIdx;
-            }
-            if (clean || scanYoungOnly) {
-                ctAdr.writeByte(curIdx, CardTable.scannedValue(clean));
+            } else if (clean || skipOldOnlyCards) {
+                ctAdr.writeByte(curIdx, CardTable.cardStateForScan(clean), CARD_REMEMBERED_SET_LOCATION);
             }
             curIdx = curIdx.add(1);
         }
 
-        while (curIdx.belowThan(endIdx)) {
-            UnsignedWord wordValue = ctAdr.readWord(curIdx);
-            if (!CardTable.shouldScanAllCards(wordValue, scanYoungOnly)) {
-                UnsignedWord wordEnd = curIdx.add(wordSize);
-                while (curIdx.belowThan(wordEnd)) {
-                    if (!CardTable.shouldScan(ctAdr, curIdx, scanYoungOnly)) {
+        for (/* empty */; curIdx.belowThan(endIdx); curIdx = curIdx.add(wordSize)) {
+            UnsignedWord wordValue = ctAdr.readWord(curIdx, CARD_REMEMBERED_SET_LOCATION);
+            if (!CardTable.allCardsNeedScan(wordValue, skipOldOnlyCards)) {
+                for (int i = 0; i < wordSize(); i++) {
+                    if (!CardTable.needsScan(ctAdr, curIdx, skipOldOnlyCards)) {
                         return curIdx;
-                    }
-                    if (clean || scanYoungOnly) {
-                        ctAdr.writeByte(curIdx, CardTable.scannedValue(clean));
+                    } else if (clean || skipOldOnlyCards) {
+                        ctAdr.writeByte(curIdx, CardTable.cardStateForScan(clean), CARD_REMEMBERED_SET_LOCATION);
                     }
                     curIdx = curIdx.add(1);
                 }
-                continue;
+                throw VMError.shouldNotReachHere("should have returned early");
+            } else if (clean || skipOldOnlyCards) {
+                ctAdr.writeWord(curIdx, CardTable.CLEAN_WORD.multiply(CardTable.cardStateForScan(clean)), CARD_REMEMBERED_SET_LOCATION);
             }
-            if (clean || scanYoungOnly) {
-                ctAdr.writeWord(curIdx, CardTable.CLEAN_WORD.multiply(CardTable.scannedValue(clean)));
-            }
-            curIdx = curIdx.add(wordSize);
         }
 
         return endIdx;
@@ -404,7 +404,7 @@ final class UnalignedChunkRememberedSet {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static Pointer getCardTableStart(UnalignedHeader chunk) {
+    public static Pointer getCardTableStart(UnalignedHeader chunk) {
         return getCardTableStart(HeapChunk.asPointer(chunk));
     }
 

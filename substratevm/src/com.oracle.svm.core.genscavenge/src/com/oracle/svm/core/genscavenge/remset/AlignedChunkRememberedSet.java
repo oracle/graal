@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import static com.oracle.svm.core.genscavenge.graal.BarrierSnippets.CARD_REMEMBERED_SET_LOCATION;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.shared.Uninterruptible.CORE_GC_CODE;
 
@@ -158,7 +159,7 @@ public final class AlignedChunkRememberedSet {
     @Uninterruptible(reason = CORE_GC_CODE)
     static void walkDirtyObjects(AlignedHeader chunk, UninterruptibleObjectVisitor visitor, boolean clean) {
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
-        boolean scanYoungOnly = CardTable.isYoungImageHeapScan(objectsStart, clean);
+        boolean skipOldOnlyCards = CardTable.shouldSkipOldOnlyCards(objectsStart, clean);
         Pointer objectsLimit = HeapChunk.getTopPointer(chunk);
         UnsignedWord memorySize = objectsLimit.subtract(objectsStart);
 
@@ -168,45 +169,45 @@ public final class AlignedChunkRememberedSet {
         assert cardTableStart.unsignedRemainder(wordSize()).equal(0);
         assert getCardTableSize().unsignedRemainder(wordSize()).equal(0);
 
-        Pointer dirtyHeapStart = objectsLimit;
-        Pointer dirtyHeapEnd = objectsLimit;
+        Pointer scanHeapStart = objectsLimit;
+        Pointer scanHeapEnd = objectsLimit;
         Pointer cardPos = cardTableLimit.subtract(1);
         Pointer heapPos = CardTable.cardToHeapAddress(cardTableStart, cardPos, objectsStart);
 
         while (cardPos.aboveOrEqual(cardTableStart)) {
-            if (CardTable.shouldScan(cardPos, Word.zero(), scanYoungOnly)) {
-                if (clean || scanYoungOnly) {
-                    cardPos.writeByte(0, CardTable.scannedValue(clean));
+            if (CardTable.needsScan(cardPos, Word.zero(), skipOldOnlyCards)) {
+                if (clean || skipOldOnlyCards) {
+                    cardPos.writeByte(0, CardTable.cardStateForScan(clean), CARD_REMEMBERED_SET_LOCATION);
                 }
-                dirtyHeapStart = heapPos;
+                scanHeapStart = heapPos;
             } else {
-                /* Hit a clean card, so process the dirty range. */
-                if (dirtyHeapStart.belowThan(dirtyHeapEnd)) {
-                    walkObjects(chunk, dirtyHeapStart, dirtyHeapEnd, visitor);
+                /* Process the accumulated scan range before skipping cards. */
+                if (scanHeapStart.belowThan(scanHeapEnd)) {
+                    walkObjects(chunk, scanHeapStart, scanHeapEnd, visitor);
                 }
 
                 if (PointerUtils.isAMultiple(cardPos, Word.unsigned(wordSize()))) {
-                    /* Fast forward through word-aligned continuous range of clean cards. */
+                    /* Skip whole words whose cards do not need scanning. */
                     cardPos = cardPos.subtract(wordSize());
-                    while (cardPos.aboveOrEqual(cardTableStart) && CardTable.canSkipWord(cardPos.readWord(0), scanYoungOnly)) {
+                    while (cardPos.aboveOrEqual(cardTableStart) && !CardTable.anyCardNeedsScan(cardPos.readWord(0, CARD_REMEMBERED_SET_LOCATION), skipOldOnlyCards)) {
                         cardPos = cardPos.subtract(wordSize());
                     }
                     cardPos = cardPos.add(wordSize());
                     heapPos = CardTable.cardToHeapAddress(cardTableStart, cardPos, objectsStart);
                 }
 
-                /* Reset the dirty range. */
-                dirtyHeapEnd = heapPos;
-                dirtyHeapStart = heapPos;
+                /* Reset the scan range. */
+                scanHeapEnd = heapPos;
+                scanHeapStart = heapPos;
             }
 
             cardPos = cardPos.subtract(1);
             heapPos = heapPos.subtract(CardTable.BYTES_COVERED_BY_ENTRY);
         }
 
-        /* Process the remaining dirty range. */
-        if (dirtyHeapStart.belowThan(dirtyHeapEnd)) {
-            walkObjects(chunk, dirtyHeapStart, dirtyHeapEnd, visitor);
+        /* Process the remaining scan range. */
+        if (scanHeapStart.belowThan(scanHeapEnd)) {
+            walkObjects(chunk, scanHeapStart, scanHeapEnd, visitor);
         }
     }
 
