@@ -81,8 +81,7 @@ import com.oracle.svm.shared.util.VMError;
  * <li>Begin {@linkplain #sweepAndCompact compaction and sweeping,} first
  * {@linkplain ReferenceObjectProcessing#updateForwardedRefs() updating reference objects} before
  * the memory of their referent objects can be repurposed. Aligned chunks that
- * {@linkplain AlignedHeapChunk#mustSweep contain pinned objects} are swept, other aligned chunks
- * are compacted.
+ * Aligned chunks that contain pinned objects are swept, other aligned chunks are compacted.
  *
  * <li>{@linkplain #planCompaction() Plan the compaction} by computing the new locations for entire
  * sequences of surviving objects and storing them in {@linkplain ObjectMoveInfo structures} in gaps
@@ -113,7 +112,7 @@ final class CompactingOldGeneration extends OldGeneration {
     private final Space space = new Space("Old", "O", false, getAge());
 
     private final GreyObjectsWalker toGreyObjectsWalker = new GreyObjectsWalker();
-    private final PlanningVisitor planningVisitor = new PlanningVisitor();
+    private final PlanningVisitor planningVisitor = new PlanningVisitor(space);
     private final ObjectRefFixupVisitor refFixupVisitor = new ObjectRefFixupVisitor();
     private final ObjectFixupVisitor fixupVisitor = new ObjectFixupVisitor(refFixupVisitor);
     private final CompactingVisitor compactingVisitor = new CompactingVisitor();
@@ -166,7 +165,7 @@ final class CompactingOldGeneration extends OldGeneration {
     @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     @Override
     public Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
-        assert !AlignedHeapChunk.mustSweep(originalChunk);
+        assert !GCImpl.getGCImpl().mustSweep(originalChunk, originalSpace);
         if (!GCImpl.getGCImpl().isCompleteCollection()) {
             assert originalSpace.isFromSpace();
             return ObjectPromoter.copyAlignedObject(original, originalSpace, space);
@@ -187,7 +186,7 @@ final class CompactingOldGeneration extends OldGeneration {
             result = ObjectPromoter.copyAlignedObject(original, originalSpace, space);
             assert !ObjectHeaderImpl.hasIdentityHashFromAddressInline(oh.readHeaderFromObject(result));
         }
-        GCImpl.getGCImpl().mark(result);
+        GCImpl.getGCImpl().mark(result, originalSpace);
         return result;
     }
 
@@ -201,7 +200,7 @@ final class CompactingOldGeneration extends OldGeneration {
             return original;
         }
         assert originalSpace == space;
-        GCImpl.getGCImpl().mark(original);
+        GCImpl.getGCImpl().mark(original, originalSpace);
         return original;
     }
 
@@ -256,7 +255,7 @@ final class CompactingOldGeneration extends OldGeneration {
 
     @Uninterruptible(reason = CORE_GC_CODE)
     private void planCompaction() {
-        planningVisitor.init(space);
+        planningVisitor.init();
         space.walkAlignedHeapChunks(planningVisitor);
     }
 
@@ -266,7 +265,7 @@ final class CompactingOldGeneration extends OldGeneration {
         try {
             AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
             while (aChunk.isNonNull()) {
-                ObjectMoveInfo.walkObjectsForFixup(aChunk, fixupVisitor);
+                ObjectMoveInfo.walkObjectsForFixup(aChunk, space, fixupVisitor);
                 aChunk = HeapChunk.getNext(aChunk);
             }
         } finally {
@@ -388,7 +387,7 @@ final class CompactingOldGeneration extends OldGeneration {
     private void compact(Timers timers) {
         AlignedHeapChunk.AlignedHeader chunk = space.getFirstAlignedHeapChunk();
         while (chunk.isNonNull()) {
-            if (AlignedHeapChunk.mustSweep(chunk)) {
+            if (GCImpl.getGCImpl().mustSweep(chunk, space)) {
                 ObjectMoveInfo.visit(chunk, sweepingVisitor);
             } else {
                 compactingVisitor.init(chunk);
