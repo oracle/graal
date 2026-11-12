@@ -107,7 +107,8 @@ public final class LinkAtBuildTimeSupport {
                 return "system default";
             }
             assert !clazz.isPrimitive() : "Primitive classes are not loaded via NativeImageClassLoader";
-            return classFilter.isIncluded(clazz);
+            ResolvedJavaModule module = guestAccess.getModule(type);
+            return classFilter.isIncluded(module.getName(), JVMCIReflectionUtil.getPackageName(type), type.toClassName());
         }
 
         if (type.isArray()) {
@@ -116,7 +117,7 @@ public final class LinkAtBuildTimeSupport {
 
         /*
          * GR-79838: Espresso currently loads application classes and Native Image guest runtime
-         * modules through the same system class loader. Keep the configured guest modules outside
+         * modules through the same espresso-owned system class loader. Keep the configured guest modules outside
          * the application class space until Espresso provides separate runtime and application
          * loader hierarchies. Once all application classes and modules are loaded by a dedicated
          * application loader or one of its children, replace this exception and the system-loader
