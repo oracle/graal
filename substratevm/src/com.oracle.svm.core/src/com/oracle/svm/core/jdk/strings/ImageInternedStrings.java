@@ -49,28 +49,66 @@ public class ImageInternedStrings {
      * before the runtime intern set. Image strings are returned directly and are not added to the
      * runtime set.
      * <p>
+     * The array is sorted by {@link #compare}: by the unsigned {@link #mix mixed}
+     * {@link String#hashCode}, then by {@link String#compareTo}. Image strings carry their hash
+     * code, computed at build time, so a lookup compares hash codes and calls
+     * {@link String#compareTo} only for strings with the same hash code. The order is total, so a
+     * lookup takes O(log n) steps even if many image strings share a hash code. The table cannot
+     * change at run time, so strings chosen to collide cannot make it slower.
+     * <p>
      * The field is set late during image generation, so the value is not available during static
      * analysis and compilation.
      */
     @UnknownObjectField(availability = AfterHeapLayout.class) private String[] internedStringTable;
 
+    /**
+     * A directory into {@link #internedStringTable}: the strings whose {@link #mix mixed} hash code
+     * has {@code b} as its top bits are at indices {@code bucketStart[b]} (inclusive) to
+     * {@code bucketStart[b + 1]} (exclusive). The number of buckets, {@code bucketStart.length - 1},
+     * is a power of two of about a quarter of the strings, so the directory costs about one byte
+     * per string and a lookup searches a few strings only. Without it (null), a lookup searches the
+     * whole table in the same order.
+     */
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) private int[] bucketStart;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     protected void setImageInternedStrings(String[] newImageInternedStrings) {
         assert internedStringTable == null : "Container objects already set";
         String[] sortedImageInternedStrings = Arrays.copyOf(newImageInternedStrings, newImageInternedStrings.length);
-        Arrays.sort(sortedImageInternedStrings);
+        Arrays.sort(sortedImageInternedStrings, ImageInternedStrings::compare);
         this.internedStringTable = sortedImageInternedStrings;
+        this.bucketStart = buildBucketStart(sortedImageInternedStrings);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static int[] buildBucketStart(String[] sorted) {
+        int bucketBits = Math.max(1, 31 - Integer.numberOfLeadingZeros(Math.max(1, sorted.length >>> 2)));
+        int buckets = 1 << bucketBits;
+        int shift = Integer.SIZE - bucketBits;
+        int[] starts = new int[buckets + 1];
+        int index = 0;
+        for (int bucket = 0; bucket < buckets; bucket++) {
+            starts[bucket] = index;
+            while (index < sorted.length && mix(sorted[index].hashCode()) >>> shift == bucket) {
+                index++;
+            }
+        }
+        starts[buckets] = index;
+        assert index == sorted.length : "Interned strings not sorted by their mixed hash code";
+        return starts;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void forEachContainerClass(Consumer<Class<?>> consumer) {
         consumer.accept(String[].class);
+        consumer.accept(int[].class);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void forEachContainerObject(Consumer<Object> consumer) {
-        assert internedStringTable != null : "Container objects not set yet";
+        assert internedStringTable != null && bucketStart != null : "Container objects not set yet";
         consumer.accept(internedStringTable);
+        consumer.accept(bucketStart);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -79,10 +117,45 @@ public class ImageInternedStrings {
         return internedStringTable;
     }
 
+    /**
+     * Spreads the hash code over the top bits, which select the bucket. The multiplier is odd, so
+     * two strings have the same mixed hash code exactly if they have the same hash code.
+     */
+    private static int mix(int hashCode) {
+        return hashCode * 0x9E3779B9;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static int compare(String a, String b) {
+        int result = Integer.compareUnsigned(mix(a.hashCode()), mix(b.hashCode()));
+        return result != 0 ? result : a.compareTo(b);
+    }
+
     public String find(String string) {
-        int imageIdx = Arrays.binarySearch(internedStringTable, string);
-        if (imageIdx >= 0) {
-            return internedStringTable[imageIdx];
+        String[] table = internedStringTable;
+        int mixed = mix(string.hashCode());
+        int low = 0;
+        int high = table.length;
+        int[] starts = bucketStart;
+        if (starts != null) {
+            int bucket = mixed >>> (Integer.numberOfLeadingZeros(starts.length - 1) + 1);
+            low = starts[bucket];
+            high = starts[bucket + 1];
+        }
+        while (low < high) {
+            int middle = (low + high) >>> 1;
+            String candidate = table[middle];
+            int result = Integer.compareUnsigned(mix(candidate.hashCode()), mixed);
+            if (result == 0) {
+                result = candidate.compareTo(string);
+            }
+            if (result < 0) {
+                low = middle + 1;
+            } else if (result > 0) {
+                high = middle;
+            } else {
+                return candidate;
+            }
         }
         return null;
     }
