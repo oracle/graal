@@ -144,7 +144,8 @@ An `@file` token consumed as a continuation value remains a value, and continuat
 Use `@@file` to pass a literal `@file` token from a file that enables recursive argument files.
 The `--disable-@files` option prevents later argument-file references from being expanded.
 Native Image reports include cycles with their include chain and rejects nesting deeper than 16 files, including the top-level argument file.
-Set `NATIVE_IMAGE_MAX_ARGUMENT_FILE_NESTING` to a positive integer to change this limit.
+Use `--max-argument-file-nesting=<n>` with a positive integer to change this limit.
+This driver option is parsed before argument files, regardless of its position, and must be passed directly on the command line.
 
 For example, _layer.args_ can include _common.args_ before its own options:
 

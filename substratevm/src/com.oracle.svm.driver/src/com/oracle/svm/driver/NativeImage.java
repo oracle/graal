@@ -328,6 +328,7 @@ public class NativeImage {
     private boolean jarOptionMode = false;
     private boolean moduleOptionMode = false;
     private boolean dryRun = false;
+    private int maxArgumentFileNesting = ArgFilesOptionPreprocessor.DEFAULT_MAX_ARGUMENT_FILE_NESTING;
     private String printFlagsOptionQuery = null;
     private String printFlagsWithExtraHelpOptionQuery = null;
 
@@ -2158,7 +2159,14 @@ public class NativeImage {
             showMessage(USAGE_TEXT);
             return;
         }
+        int maxArgumentFileNesting = ArgFilesOptionPreprocessor.DEFAULT_MAX_ARGUMENT_FILE_NESTING;
         for (String arg : buildArgs) {
+            // Command-line @files are expanded before CmdLineOptionHandler and DefaultOptionHandler.
+            // Parse the limit here so it applies before expansion, regardless of its position.
+            if (CmdLineOptionHandler.isMaxArgumentFileNestingOption(arg)) {
+                maxArgumentFileNesting = CmdLineOptionHandler.parseMaxArgumentFileNesting(arg);
+                continue;
+            }
             boolean exit = true;
             switch (arg) {
                 case "--help" -> {
@@ -2180,6 +2188,7 @@ public class NativeImage {
             }
         }
         NativeImage nativeImage = nativeImageProvider.apply(config);
+        nativeImage.maxArgumentFileNesting = maxArgumentFileNesting;
         try {
             nativeImage.prepareImageBuildArgs();
         } catch (NativeImageError e) {
@@ -2305,7 +2314,7 @@ public class NativeImage {
     class NativeImageArgsProcessor implements Consumer<String> {
 
         private final ArgumentQueue args;
-        private final ArgFilesOptionPreprocessor argFilesPreprocessor = new ArgFilesOptionPreprocessor();
+        private final ArgFilesOptionPreprocessor argFilesPreprocessor = new ArgFilesOptionPreprocessor(maxArgumentFileNesting);
 
         NativeImageArgsProcessor(String argumentOrigin) {
             args = new ArgumentQueue(argumentOrigin);
@@ -2678,8 +2687,9 @@ public class NativeImage {
     }
 
     List<String> getNativeImageArgs() {
-        var argFilesOptionPreprocessor = new ArgFilesOptionPreprocessor();
-        return Stream.concat(getDefaultNativeImageArgs().stream(), config.getBuildArgs().stream())
+        var argFilesOptionPreprocessor = new ArgFilesOptionPreprocessor(maxArgumentFileNesting);
+        Stream<String> commandLineArgs = config.getBuildArgs().stream().filter(arg -> !CmdLineOptionHandler.isMaxArgumentFileNestingOption(arg));
+        return Stream.concat(getDefaultNativeImageArgs().stream(), commandLineArgs)
                         .flatMap(arg -> argFilesOptionPreprocessor.process(arg).stream()).toList();
     }
 

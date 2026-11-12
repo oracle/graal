@@ -45,8 +45,7 @@ public class ArgFilesOptionPreprocessor {
     private static final String DIRECTIVE_PREFIX = "# native-image:";
     private static final String VALUE_CONTINUATIONS_SETTING = "value-continuations";
     private static final String RECURSIVE_ARGUMENT_FILES_SETTING = "recursive-argument-files";
-    private static final String MAX_ARGUMENT_FILE_NESTING_ENV_VAR = "NATIVE_IMAGE_MAX_ARGUMENT_FILE_NESTING";
-    private static final int DEFAULT_MAX_ARGUMENT_FILE_NESTING = 16;
+    static final int DEFAULT_MAX_ARGUMENT_FILE_NESTING = 16;
 
     private record ArgumentFileSettings(boolean valueContinuations, boolean recursiveArgumentFiles) {
         private static final ArgumentFileSettings DEFAULT = new ArgumentFileSettings(false, false);
@@ -58,23 +57,15 @@ public class ArgFilesOptionPreprocessor {
     private record ActiveArgumentFile(String identity, String displayPath) {
     }
 
-    private final int maxArgumentFileNesting = getMaxArgumentFileNesting();
+    private final int maxArgumentFileNesting;
     private boolean disableAtFiles = false;
 
-    private static int getMaxArgumentFileNesting() {
-        String value = System.getenv(MAX_ARGUMENT_FILE_NESTING_ENV_VAR);
-        if (value == null) {
-            return DEFAULT_MAX_ARGUMENT_FILE_NESTING;
-        }
-        try {
-            int maxNesting = Integer.parseInt(value);
-            if (maxNesting > 0) {
-                return maxNesting;
-            }
-        } catch (NumberFormatException ignored) {
-            // Report a consistent configuration error below.
-        }
-        throw NativeImage.showError("Environment variable " + MAX_ARGUMENT_FILE_NESTING_ENV_VAR + " must be a positive integer, but was '" + value + "'.");
+    public ArgFilesOptionPreprocessor() {
+        this(DEFAULT_MAX_ARGUMENT_FILE_NESTING);
+    }
+
+    public ArgFilesOptionPreprocessor(int maxArgumentFileNesting) {
+        this.maxArgumentFileNesting = maxArgumentFileNesting;
     }
 
     public List<String> process(String currentArg) {
