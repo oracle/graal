@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Supplier;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.TruffleOptions;
@@ -64,7 +65,7 @@ import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
 
 final class InstrumentCache {
-    private static final Map<String, InstrumentCache> nativeImageCache = TruffleOptions.AOT ? new LinkedHashMap<>() : null;
+    static final Map<String, InstrumentCache> nativeImageCache = TruffleOptions.AOT ? new LinkedHashMap<>() : null;
     private static Map<AbstractClassLoaderSupplier, Map<String, InstrumentCache>> runtimeCaches = new HashMap<>();
 
     private final String className;
@@ -131,7 +132,8 @@ final class InstrumentCache {
     }
 
     static Map<String, InstrumentCache> load() {
-        if (TruffleOptions.AOT) {
+        // Build-time execution can precede feature initialization of the native-image cache.
+        if (ImageInfo.inImageRuntimeCode()) {
             return nativeImageCache;
         }
         synchronized (InstrumentCache.class) {

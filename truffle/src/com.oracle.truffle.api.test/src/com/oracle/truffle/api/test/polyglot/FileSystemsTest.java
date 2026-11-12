@@ -3175,6 +3175,9 @@ public class FileSystemsTest {
         Class<?> internalResourceRootsClass = Class.forName("com.oracle.truffle.polyglot.InternalResourceRoots");
         Object roots = ReflectionUtils.invokeStatic(internalResourceRootsClass, "getInstance");
         ReflectionUtils.invoke(fileSystem, "onPreInitializeContextEnd", new Class<?>[]{internalResourceRootsClass, Map.class}, roots, Map.of());
+        Class<?> fileSystemsClass = Class.forName("com.oracle.truffle.polyglot.FileSystems");
+        ReflectionUtils.invokeStatic(fileSystemsClass, "prepareForNativeImage", new Class<?>[]{Object.class}, cwd);
+        ReflectionUtils.invokeStatic(fileSystemsClass, "prepareForNativeImage", new Class<?>[]{Object.class}, cwd);
         ReflectionUtils.invoke(fileSystem, "onLoadPreinitializedContext", new Class<?>[]{FileSystem.class}, newFullIOFileSystem(Paths.get(workDir)));
     }
 

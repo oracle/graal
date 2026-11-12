@@ -1273,6 +1273,12 @@ final class InstrumentationHandler {
         return value == null ? null : value.lookup(this, type);
     }
 
+    boolean onInstrumentPreinitialize(Object key) {
+        InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) instrumenterMap.get(key);
+        assert instrumenter != null && instrumenter.isInitialized();
+        return instrumenter.onPreinitialize();
+    }
+
     AllocationReporter getAllocationReporter(LanguageInfo info) {
         AllocationReporter allocationReporter = allocationReporters.computeIfAbsent(info, AllocationReporter::new);
         for (EventBinding.Allocation<? extends AllocationListener> binding : allocationBindings) {
@@ -2255,6 +2261,10 @@ final class InstrumentationHandler {
 
         Env getEnv() {
             return env;
+        }
+
+        boolean onPreinitialize() {
+            return instrument.onPreinitialize(env);
         }
 
         void create(String[] expectedServices) {

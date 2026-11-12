@@ -139,10 +139,6 @@ final class PolyglotEngineOptions {
                     "Warn when an isolated context uses host access without host method scoping (default: true).", usageSyntax = "true|false", sandbox = SandboxPolicy.UNTRUSTED)//
     static final OptionKey<Boolean> WarnMethodScoping = new OptionKey<>(true);
 
-    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
-                    "Use pre-initialized context when it's available (default: true).", usageSyntax = "true|false")//
-    static final OptionKey<Boolean> UsePreInitializedContext = new OptionKey<>(true);
-
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts", usageSyntax = "true|false")//
     static final OptionKey<Boolean> RelaxStaticObjectSafetyChecks = new OptionKey<>(false);

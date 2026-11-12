@@ -37,7 +37,6 @@ import com.oracle.svm.guest.staging.c.function.InvokeJavaFunctionPointer;
 import com.oracle.svm.shared.ReflectivelyAccessed;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -255,7 +254,7 @@ public final class SubstrateOptimizedCallTarget extends OptimizedCallTarget impl
 
     @Override
     public SubstrateOptimizedCallTargetInstalledCode createSubstrateInstalledCode() {
-        assert TruffleSupport.isIsolatedCompilation() : "Must be called only with isolated compilation";
+        assert SubstrateTruffleSupport.isIsolatedCompilation() : "Must be called only with isolated compilation";
         return new SubstrateOptimizedCallTargetInstalledCode(this);
     }
 

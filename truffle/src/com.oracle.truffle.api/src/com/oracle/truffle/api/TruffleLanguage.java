@@ -2726,9 +2726,6 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         @TruffleBoundary
         public <S> S lookup(InstrumentInfo instrument, Class<S> type) {
-            if (isPreInitialization()) {
-                throw new IllegalStateException("Instrument lookup is not allowed during context pre-initialization.");
-            }
             try {
                 return LanguageAccessor.engineAccess().lookup(instrument, type);
             } catch (Throwable t) {

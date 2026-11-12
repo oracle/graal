@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,6 +66,7 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
@@ -94,6 +95,7 @@ final class InternalResourceCache {
     private static final long INITIAL_RESOURCE_MOVE_RETRY_DELAY_MILLIS = 50;
     private static final Map<AbstractClassLoaderSupplier, Map<String, Map<String, Supplier<InternalResourceCache>>>> optionalInternalResourcesCaches = new HashMap<>();
     private static final Map<String, Map<String, Supplier<InternalResourceCache>>> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
+    private static final Set<ResourceKey> resourcesRequiringEagerUnpack = ConcurrentHashMap.newKeySet();
 
     /**
      * Recomputed before the analyses by a substitution in the {@code TruffleBaseFeature} based on
@@ -132,6 +134,30 @@ final class InternalResourceCache {
         return resourceId;
     }
 
+    InternalResourceCache canonicalizeForNativeImage() {
+        if (!ImageInfo.inImageBuildtimeCode()) {
+            return this;
+        }
+        InternalResourceCache runtimeCache = null;
+        if (PolyglotEngineImpl.ENGINE_ID.equals(id)) {
+            runtimeCache = getEngineResource(resourceId);
+        } else {
+            LanguageCache language = LanguageCache.nativeImageCache.get(id);
+            if (language != null) {
+                runtimeCache = language.getResourceCache(resourceId);
+            } else {
+                InstrumentCache instrument = InstrumentCache.nativeImageCache.get(id);
+                if (instrument != null) {
+                    runtimeCache = instrument.getResourceCache(resourceId);
+                }
+            }
+        }
+        if (runtimeCache == null) {
+            throw new IllegalStateException(String.format("Resource '%s' of component '%s' retained in the image heap is not registered for image runtime use.", resourceId, id));
+        }
+        return runtimeCache;
+    }
+
     Path getOwningRoot() {
         return owningRoot == null ? null : owningRoot.path();
     }
@@ -141,19 +167,29 @@ final class InternalResourceCache {
     }
 
     Path getPath(PolyglotEngineImpl polyglotEngine) throws IOException {
+        return getPathImpl(polyglotEngine);
+    }
+
+    Path getPathForImageHeap() throws IOException {
+        return getPathImpl(null);
+    }
+
+    private Path getPathImpl(PolyglotEngineImpl polyglotEngine) throws IOException {
         if (usesInternalResources()) {
             Path result = path;
             if (result == null) {
                 synchronized (this) {
                     result = path;
                     if (result == null) {
-                        result = installResource((resource) -> EngineAccessor.LANGUAGE.createInternalResourceEnv(resource, () -> polyglotEngine.inEnginePreInitialization, false));
+                        result = installResource((resource) -> EngineAccessor.LANGUAGE.createInternalResourceEnv(resource,
+                                        () -> polyglotEngine != null && polyglotEngine.inEnginePreInitialization, false));
                         path = result;
                     }
                 }
             }
-            if (polyglotEngine.inEnginePreInitialization) {
+            if (polyglotEngine != null && polyglotEngine.inEnginePreInitialization) {
                 requiresEagerUnpack = true;
+                resourcesRequiringEagerUnpack.add(new ResourceKey(id, resourceId));
             }
             return result;
         } else {
@@ -163,6 +199,10 @@ final class InternalResourceCache {
 
     InternalResource getInternalResource() {
         return resourceFactory.get();
+    }
+
+    boolean isMissing() {
+        return resourceFactory instanceof NonExistingResourceSupplier;
     }
 
     void initializeOwningRoot(InternalResourceRoots.Root root) {
@@ -194,7 +234,8 @@ final class InternalResourceCache {
     }
 
     /**
-     * Resets state for unit test execution. This method is intended only for testing.
+     * Clears the resolved root and path so that this cache can be attached to rebuilt internal
+     * resource roots.
      */
     void clearCache() {
         owningRoot = null;
@@ -206,7 +247,10 @@ final class InternalResourceCache {
      * engine patching.
      */
     boolean requiresEagerUnpack() {
-        return requiresEagerUnpack;
+        return requiresEagerUnpack || resourcesRequiringEagerUnpack.contains(new ResourceKey(id, resourceId));
+    }
+
+    private record ResourceKey(String componentId, String resourceId) {
     }
 
     /**
@@ -341,6 +385,10 @@ final class InternalResourceCache {
      */
     static void initializeNativeImageState(ClassLoader nativeImageClassLoader) {
         assert TruffleOptions.AOT : "Only supported during image generation";
+        synchronized (InternalResourceCache.class) {
+            optionalInternalResourcesCaches.clear();
+        }
+        InternalResourceRoots.resetNativeImageState();
         nativeImageCache.putAll(collectOptionalResources(new EngineAccessor.StrongClassLoaderSupplier(nativeImageClassLoader)));
     }
 
@@ -350,6 +398,7 @@ final class InternalResourceCache {
      */
     static void resetNativeImageState() {
         nativeImageCache.clear();
+        resourcesRequiringEagerUnpack.clear();
     }
 
     /**
@@ -426,7 +475,7 @@ final class InternalResourceCache {
             for (InternalResourceCache cache : resources) {
                 cache.includeResourcesForNativeImageImpl(tempDir, resourceLocationConsumer);
             }
-        });
+        }, true);
         useExternalDirectoryInNativeImage = false;
     }
 
@@ -480,13 +529,19 @@ final class InternalResourceCache {
     }
 
     static <T extends Throwable> void walkAllResources(ResourcesVisitor<T> consumer) throws T {
-        for (LanguageCache language : LanguageCache.languages().values()) {
+        walkAllResources(consumer, false);
+    }
+
+    private static <T extends Throwable> void walkAllResources(ResourcesVisitor<T> consumer, boolean nativeImageResources) throws T {
+        // Image packaging must populate the caches retained by the runtime registry, not hosted
+        // caches that may already exist from early engine preparation.
+        for (LanguageCache language : (nativeImageResources ? LanguageCache.nativeImageCache : LanguageCache.languages()).values()) {
             Collection<InternalResourceCache> resources = language.getResources();
             if (!resources.isEmpty()) {
                 consumer.visit(language.getId(), language.getResources());
             }
         }
-        for (InstrumentCache instrument : InstrumentCache.load().values()) {
+        for (InstrumentCache instrument : (nativeImageResources ? InstrumentCache.nativeImageCache : InstrumentCache.load()).values()) {
             Collection<InternalResourceCache> resources = instrument.getResources();
             if (!resources.isEmpty()) {
                 consumer.visit(instrument.getId(), resources);

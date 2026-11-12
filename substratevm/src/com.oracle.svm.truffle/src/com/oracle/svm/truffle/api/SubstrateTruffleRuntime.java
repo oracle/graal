@@ -53,7 +53,6 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
-import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
@@ -79,9 +78,9 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.runtime.JVMCI;
 
 class SubstrateTruffleOptions {
 
@@ -119,7 +118,7 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     private static final int DEBUG_TEAR_DOWN_TIMEOUT = 2_000;
     private static final int PRODUCTION_TEAR_DOWN_TIMEOUT = 10_000;
 
-    @Platforms(Platform.HOSTED_ONLY.class) private KnownMethods hostedCallMethods;
+    @Platforms(HOSTED_ONLY.class) private final KnownMethods hostedKnownMethods;
     private volatile BackgroundCompileQueue compileQueue;
     private volatile boolean initialized;
     private volatile boolean compilerInitialized;
@@ -127,7 +126,8 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleRuntime() {
-        super(new SubstrateTruffleCompilationSupport(), List.of());
+        super(SubstrateTruffleSupport.create(), List.of());
+        hostedKnownMethods = new KnownMethods(JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess());
     }
 
     @Override
@@ -164,7 +164,7 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
          * this runs when the first call target is created, on the startup path.
          */
         if (SubstrateTruffleOptions.isMultiThreaded()) {
-            compileQueue = TruffleSupport.singleton().createBackgroundCompileQueue(this);
+            compileQueue = getSupport().createBackgroundCompileQueue(this);
         }
         if (callTarget.engine.traceTransferToInterpreter) {
             Deoptimizer.Options.TraceDeoptimization.update(true, Origin.Runtime);
@@ -178,8 +178,8 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
         /*
          * On SVM we initialize engine caching support when the TruffleFeature is initialized. We
          * cannot do it reliably here as the SubstrateTruffleRuntime might already be initialized
-         * when the TruffleBaseFeature is initialized, this is when the TruffleSupport is not yet
-         * installed.
+         * when the TruffleBaseFeature is initialized, this is when the SubstrateTruffleSupport is
+         * not yet installed.
          */
         return null;
     }
@@ -200,7 +200,6 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleCompiler preinitializeTruffleCompiler() {
         assert truffleCompiler == null : "Cannot re-initialize Substrate TruffleCompiler";
-        ((SubstrateTruffleCompilationSupport) compilationSupport).preinitialize();
         SubstrateTruffleCompiler compiler = (SubstrateTruffleCompiler) newTruffleCompiler();
         truffleCompiler = compiler;
         return compiler;
@@ -235,25 +234,17 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
         return (SubstrateTruffleCompiler) truffleCompiler;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void initializeHostedKnownMethods(MetaAccessProvider hostedMetaAccess) {
-        hostedCallMethods = new KnownMethods(hostedMetaAccess);
-    }
-
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected void clearState() {
-        super.clearState();
-        hostedCallMethods = null;
-    }
-
     @Override
     public KnownMethods getKnownMethods() {
         if (SubstrateUtil.HOSTED) {
-            return hostedCallMethods;
+            return hostedKnownMethods;
         } else {
             return knownMethods;
         }
+    }
+
+    public SubstrateTruffleSupport getSupport() {
+        return (SubstrateTruffleSupport) compilationSupport;
     }
 
     @Override
@@ -394,24 +385,24 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
 
     @Override
     public Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumptionConstant) {
-        return TruffleSupport.singleton().registerOptimizedAssumptionDependency(optimizedAssumptionConstant);
+        return getSupport().registerOptimizedAssumptionDependency(optimizedAssumptionConstant);
     }
 
     @Override
     public TruffleCompilable asCompilableTruffleAST(JavaConstant constant) {
-        return TruffleSupport.singleton().asCompilableTruffleAST(constant);
+        return getSupport().asCompilableTruffleAST(constant);
     }
 
     @Override
     public void log(String loggerId, TruffleCompilable compilable, String message) {
-        if (!TruffleSupport.singleton().tryLog(this, loggerId, compilable, message)) {
+        if (!getSupport().tryLog(this, loggerId, compilable, message)) {
             super.log(loggerId, compilable, message);
         }
     }
 
     @Override
     public boolean isSuppressedFailure(TruffleCompilable compilable, Supplier<String> serializedException) {
-        TriState res = TruffleSupport.singleton().tryIsSuppressedFailure(compilable, serializedException);
+        TriState res = getSupport().tryIsSuppressedFailure(compilable, serializedException);
         switch (res) {
             case TRUE:
                 return true;

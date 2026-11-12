@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -109,7 +111,7 @@ final class PolyglotSharingLayer {
          * Configuration that is common to all contexts created from this layer.
          */
         volatile PreinitConfig preinitConfig;
-        volatile PolyglotContextImpl preInitializedContext;
+        final ArrayDeque<PolyglotContextImpl> preInitializedContexts = new ArrayDeque<>();
         volatile Object bytecodeData;
 
         int claimedCount;
@@ -284,8 +286,13 @@ final class PolyglotSharingLayer {
     }
 
     public void preInitialize() {
+        preInitialize(1);
+    }
+
+    public void preInitialize(int contextCount) {
         assert Thread.holdsLock(engine.lock);
         assert engine.isSharingEnabled(null);
+        assert contextCount >= 0 : "invalid context count";
         if (!isClaimed()) {
             // preinitialization does not make sense for layers without initialized languages.
             return;
@@ -293,16 +300,14 @@ final class PolyglotSharingLayer {
         Shared s = this.shared;
         PreinitConfig preinitConfig = s.preinitConfig;
         assert preinitConfig != null : "preinit config must be initialized";
+        assert s.preInitializedContexts.isEmpty() : "sharing layer already contains preinitialized contexts";
 
-        // deterministic iteration order
-        Set<PolyglotLanguage> toInitialize = new LinkedHashSet<>();
-        for (PolyglotLanguageInstance instance : s.instances) {
-            if (instance != null && !instance.language.isHost()) {
-                toInitialize.add(instance.language);
-            }
+        Set<PolyglotLanguage> toInitialize = getInitializedLanguages();
+        for (int i = 0; i < contextCount; i++) {
+            PolyglotContextImpl context = PolyglotContextImpl.preinitialize(engine, preinitConfig, this, toInitialize, false);
+            assert context.layer.equals(this) : "invalid resulting layer";
+            s.preInitializedContexts.addLast(context);
         }
-        s.preInitializedContext = PolyglotContextImpl.preinitialize(engine, preinitConfig, this, toInitialize, false);
-        assert s.preInitializedContext.layer.equals(this) : "invalid resulting layer";
     }
 
     public PolyglotContextImpl loadPreinitializedContext(PolyglotContextConfig config) {
@@ -314,19 +319,12 @@ final class PolyglotSharingLayer {
             return null;
         }
 
-        PolyglotContextImpl preinitContext = s.preInitializedContext;
+        PolyglotContextImpl preinitContext = s.preInitializedContexts.peekFirst();
         if (preinitContext == null) {
             return null;
         }
 
-        Set<PolyglotLanguage> usedLanguages = new LinkedHashSet<>();
-        for (PolyglotLanguageInstance instance : s.instances) {
-            if (instance != null && !instance.language.isHost()) {
-                usedLanguages.add(instance.language);
-            }
-        }
-
-        Map<PolyglotLanguage, OptionValuesImpl> newLanguageOptions = collectLanguageOptions(config, usedLanguages);
+        Map<PolyglotLanguage, OptionValuesImpl> newLanguageOptions = collectLanguageOptions(config, getInitializedLanguages());
         // we eagerly check options to avoid that patching later on fails.
         if (!areLanguageOptionsCompatible(s, s.previousLanguageOptions, newLanguageOptions)) {
 
@@ -341,10 +339,52 @@ final class PolyglotSharingLayer {
             traceContextPreinit(true, s, preinitContext, s.previousLanguageOptions, newLanguageOptions);
         }
 
-        assert s.preInitializedContext == preinitContext : "must only be mutated while engine lock is held";
+        assert s.preInitializedContexts.peekFirst() == preinitContext : "must only be mutated while engine lock is held";
         // a context can only be used once.
-        s.preInitializedContext = null;
-        return preinitContext;
+        return s.preInitializedContexts.removeFirst();
+    }
+
+    Set<PolyglotLanguage> getInitializedLanguages() {
+        assert Thread.holdsLock(engine.lock);
+        Set<PolyglotLanguage> languages = new LinkedHashSet<>();
+        Shared s = shared;
+        if (s != null) {
+            for (PolyglotLanguageInstance instance : s.instances) {
+                if (instance != null && !instance.language.isHost()) {
+                    languages.add(instance.language);
+                }
+            }
+        }
+        return languages;
+    }
+
+    boolean arePreinitializedEngineLanguageOptionsCompatible(Map<PolyglotLanguage, OptionValuesImpl> newLanguageOptions) {
+        assert Thread.holdsLock(engine.lock);
+        Shared s = shared;
+        assert s != null;
+        for (var entry : newLanguageOptions.entrySet()) {
+            PolyglotLanguage language = entry.getKey();
+            // Context-specific options are checked when claiming a sharing layer, not the engine.
+            if (!areOptionsCompatible(s, language, language.getOptionValues(), entry.getValue())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    void drainPreinitializedContexts(List<PolyglotContextImpl> target) {
+        assert Thread.holdsLock(engine.lock);
+        Shared s = shared;
+        if (s != null) {
+            while (!s.preInitializedContexts.isEmpty()) {
+                target.add(s.preInitializedContexts.removeFirst());
+            }
+        }
+    }
+
+    void restorePreinitializedContext(PolyglotContextImpl context) {
+        assert Thread.holdsLock(engine.lock);
+        shared.preInitializedContexts.addLast(context);
     }
 
     public void freeSharingLayer(PolyglotContextImpl context) {
@@ -450,6 +490,13 @@ final class PolyglotSharingLayer {
         return shared.sourceCache;
     }
 
+    void invalidateSourcesAfterPreinitialization() {
+        Shared s = shared;
+        if (s != null) {
+            s.sourceCache.invalidateSourcesAfterPreinitialization();
+        }
+    }
+
     public PolyglotLanguageInstance getInstance(PolyglotLanguage language) {
         Shared s = this.shared;
         if (s == null) {
@@ -539,6 +586,7 @@ final class PolyglotSharingLayer {
         if (s == null) {
             return;
         }
+        s.sourceCache.close();
         PolyglotInstructionTracers tracers = s.instructionTracers;
         if (tracers != null) {
             tracers.onLayerClose();

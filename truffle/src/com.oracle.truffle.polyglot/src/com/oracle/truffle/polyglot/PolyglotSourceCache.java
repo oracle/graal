@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,7 +81,7 @@ final class PolyglotSourceCache {
         CallTarget target;
         if (source.isCached()) {
             Cache strong = this.strongCache;
-            boolean useStrong = context.getEngine().storeEngine;
+            boolean useStrong = context.getEngine().storeEngine || context.getEngine().inExplicitPreinitialization || context.getEngine().inEnginePreInitialization;
             if (useStrong || !strong.isEmpty()) {
                 target = strong.lookup(origin, context, source, argumentNames, useStrong);
                 if (target != null) {
@@ -107,6 +107,14 @@ final class PolyglotSourceCache {
 
     void cleanupStaleEntries() {
         WeakCache.cleanupStaleEntries(weakCache.deadSources, sourceCacheListener);
+    }
+
+    void invalidateSourcesAfterPreinitialization() {
+        strongCache.invalidateSourcesAfterPreinitialization();
+    }
+
+    void close() {
+        strongCache.sourceCache.clear();
     }
 
     private static CallTarget parseImpl(ParseOrigin origin, PolyglotLanguageContext context, String[] argumentNames, Source source) {
@@ -312,6 +320,12 @@ final class PolyglotSourceCache {
             return value.target;
         }
 
+        void invalidateSourcesAfterPreinitialization() {
+            for (SourceKey key : sourceCache.keySet()) {
+                EngineAccessor.SOURCE.invalidateAfterPreinitialization((Source) key.key);
+            }
+        }
+
         @Override
         boolean isEmpty() {
             return sourceCache.isEmpty();
@@ -320,7 +334,8 @@ final class PolyglotSourceCache {
         @Override
         void listSources(PolyglotImpl polyglot, Collection<Object> sources) {
             for (SourceKey key : sourceCache.keySet()) {
-                sources.add(PolyglotImpl.getOrCreatePolyglotSource(polyglot, (Source) key.key));
+                Source source = (Source) key.key;
+                sources.add(PolyglotImpl.getOrCreatePolyglotSource(polyglot, source));
             }
         }
 
