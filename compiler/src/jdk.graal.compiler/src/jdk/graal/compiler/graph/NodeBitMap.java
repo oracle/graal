@@ -157,9 +157,16 @@ public final class NodeBitMap extends NodeIdAccessor implements NodeIterable<Nod
     }
 
     public void invert() {
-        for (int i = 0; i < bits.length; i++) {
+        int wordsInUse = sizeForNodeCount(nodeCount);
+        for (int i = 0; i < wordsInUse; i++) {
             bits[i] = ~bits[i];
         }
+        // Keep padding and spare capacity clear so they cannot mark future nodes.
+        int remainingBits = nodeCount & (Long.SIZE - 1);
+        if (remainingBits != 0) {
+            bits[wordsInUse - 1] &= (1L << remainingBits) - 1;
+        }
+        Arrays.fill(bits, wordsInUse, bits.length, 0L);
     }
 
     public void grow() {
