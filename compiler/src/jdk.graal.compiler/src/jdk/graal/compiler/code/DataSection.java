@@ -499,7 +499,9 @@ public final class DataSection implements Iterable<Data> {
         }
 
         int gcd = a;
-        return x * y / gcd;
+        // Divide first so that only an unrepresentable LCM overflows. For example,
+        // lcm(32768, 65536) is 65536, but multiplying the inputs first overflows an int.
+        return Math.multiplyExact(x / gcd, y);
     }
 
     public static int align(int position, int alignment) {
