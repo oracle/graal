@@ -70,34 +70,29 @@ public final class RuntimeStateTrimConfig {
     public enum Mode {
 
         /**
-         * Minimize safepoint work and latency.
-         *
-         * It does not explicitly clean retained heap memory, although normal GC policy may
-         * still release unused heap memory.
+         * Prioritize low trim latency over memory reclamation. Choose this mode when minimizing
+         * the impact on application responsiveness is more important than reclaiming unused
+         * memory.
          */
         LATENCY,
 
         /**
-         * Reclaim unused memory while limiting heap changes.
-         *
-         * Performs a young collection, releases unused heap chunks, uncommits unused heap
-         * memory, and cleans unused and filler-object memory.
+         * Reclaim unused memory while limiting the impact on application responsiveness. Choose
+         * this mode when a reduced memory footprint is useful but a more extensive trim would
+         * be too costly.
          */
         CONSERVATIVE,
 
         /**
-         * Balance safepoint latency and memory reduction.
-         *
-         * Performs a complete collection and cleans unused memory in retained chunks. The
-         * collection may release excess heap chunks and uncommit their mappings.
+         * Balance trim latency and memory reclamation. Choose this mode when neither low trim
+         * latency nor the smallest possible memory footprint is the primary concern.
          */
         BALANCED,
 
         /**
-         * Minimize memory usage.
-         *
-         * Performs a complete collection, releases unused heap chunks, uncommits unused heap
-         * memory, and cleans unused and filler-object memory.
+         * Prioritize minimizing memory usage over trim latency. Choose this mode when the
+         * application can tolerate a more expensive trim operation in exchange for the
+         * smallest possible memory footprint.
          */
         SIZE
     }
