@@ -66,6 +66,7 @@ import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
 import jdk.graal.compiler.nodes.loop.InductionVariable.Direction;
+import jdk.graal.compiler.nodes.loop.InductionVariableHelper;
 import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.memory.AddressableMemoryAccess;
@@ -819,8 +820,10 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
         }
         CountedLoopInfo countedLoop = loop.counted();
         // The counted-loop guard covers the counter, but derived arithmetic can wrap before widening.
+        InductionVariable limitCheckedIV = countedLoop.getLimitCheckedIV();
+        InductionVariable bodyIV = countedLoop.getBodyIVEqualsLimitCheckedIV() ? limitCheckedIV : InductionVariableHelper.previousIteration(limitCheckedIV);
         InductionVariable.Endpoints endpoints = accessIndex.computeEndpoints(true, countedLoop.maxTripCountNode(true), accessBase.stamp(NodeView.DEFAULT),
-                        countedLoop.getBodyIV(), countedLoop.getLimitCheckedIV());
+                        bodyIV, limitCheckedIV);
         if (!endpoints.overflowConditions().isEmpty()) {
             return Pair.create(null, null);
         }
