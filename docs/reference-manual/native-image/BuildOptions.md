@@ -143,7 +143,8 @@ When a file enables both settings, Native Image joins its option-value continuat
 An `@file` token consumed as a continuation value remains a value, and continuations do not cross file boundaries.
 Use `@@file` to pass a literal `@file` token from a file that enables recursive argument files.
 The `--disable-@files` option prevents later argument-file references from being expanded.
-Native Image reports include cycles with their include chain and rejects nesting deeper than 64 files.
+Native Image reports include cycles with their include chain and rejects nesting deeper than 16 files, including the top-level argument file.
+Set `NATIVE_IMAGE_MAX_ARGUMENT_FILE_NESTING` to a positive integer to change this limit.
 
 For example, _layer.args_ can include _common.args_ before its own options:
 
