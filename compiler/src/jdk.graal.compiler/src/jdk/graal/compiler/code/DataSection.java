@@ -505,7 +505,9 @@ public final class DataSection implements Iterable<Data> {
     }
 
     public static int align(int position, int alignment) {
-        return NumUtil.roundUp(position, alignment);
+        // Widen the rounding arithmetic and reject an unrepresentable final offset. For example,
+        // rounding 2147483646 up to a multiple of 3 preserves it, but adding 3 - 1 overflows an int.
+        return Math.toIntExact(NumUtil.roundUp((long) position, alignment));
     }
 
     private void checkClosed() {
