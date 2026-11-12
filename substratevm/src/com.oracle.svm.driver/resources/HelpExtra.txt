@@ -6,15 +6,8 @@ Non-standard options help:
     ending in '=...', or end of file. Comment-only lines do not end a continuation.
     The 'recursive-argument-files' setting expands nested @file references at their
     position in the file. Included files control their own settings. Separate settings
-    with a single space; unknown settings are errors. Native Image allows up to 16
-    nested files by default, including the top-level file.
-
-    --max-argument-file-nesting=<n>
-                          set the maximum argument-file nesting depth (default: 16).
-                          Requires a positive integer, passed directly on the command
-                          line. Parsed before argument files, regardless of position.
-  ||--max-argument-file-nesting|=<n>|set the maximum argument-file nesting depth.|Integer|16|false|
-  ||> Requires a positive integer passed directly on the command line. Parsed before argument files, regardless of position.|
+    with a single space; unknown settings are errors. Native Image allows up to 64
+    nested files, including the top-level file.
 
     --exclude-config      exclude configuration for a space-separated pair of classpath/modulepath
                           pattern and resource pattern. For example:

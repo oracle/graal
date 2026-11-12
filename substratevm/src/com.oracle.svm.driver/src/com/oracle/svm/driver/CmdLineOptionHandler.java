@@ -39,7 +39,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     static final String VERBOSE_OPTION = "--verbose";
     static final String DRY_RUN_OPTION = "--dry-run";
     static final String DEBUG_ATTACH_OPTION = "--debug-attach";
-    static final String MAX_ARGUMENT_FILE_NESTING_OPTION = "--max-argument-file-nesting";
     /* Defunct legacy options that we have to accept to maintain backward compatibility */
     private static final String VERBOSE_SERVER_OPTION = "--verbose-server";
     private static final String SERVER_OPTION_PREFIX = "--server-";
@@ -65,9 +64,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     private boolean consume(ArgumentQueue args, String headArg) {
-        if (isMaxArgumentFileNestingOption(headArg)) {
-            throw NativeImage.showError(MAX_ARGUMENT_FILE_NESTING_OPTION + " is only allowed directly on the command line.");
-        }
         DriverPathOptions.Match pathOption = DriverPathOptions.matchCmdLine(args);
         if (pathOption != null) {
             pathOption.consume(nativeImage);
@@ -167,23 +163,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         return false;
-    }
-
-    static boolean isMaxArgumentFileNestingOption(String argument) {
-        return argument.equals(MAX_ARGUMENT_FILE_NESTING_OPTION) || argument.startsWith(MAX_ARGUMENT_FILE_NESTING_OPTION + "=");
-    }
-
-    static int parseMaxArgumentFileNesting(String argument) {
-        String value = argument.equals(MAX_ARGUMENT_FILE_NESTING_OPTION) ? "" : argument.substring(MAX_ARGUMENT_FILE_NESTING_OPTION.length() + 1);
-        try {
-            int maxNesting = Integer.parseInt(value);
-            if (maxNesting > 0) {
-                return maxNesting;
-            }
-        } catch (NumberFormatException ignored) {
-            // Report a consistent option error below.
-        }
-        throw NativeImage.showError(MAX_ARGUMENT_FILE_NESTING_OPTION + " requires a positive integer, but was '" + value + "'.");
     }
 
     private void handleExcludeConfigOption(String headArg, ArgumentQueue args) {

@@ -45,7 +45,7 @@ public class ArgFilesOptionPreprocessor {
     private static final String DIRECTIVE_PREFIX = "# native-image:";
     private static final String VALUE_CONTINUATIONS_SETTING = "value-continuations";
     private static final String RECURSIVE_ARGUMENT_FILES_SETTING = "recursive-argument-files";
-    static final int DEFAULT_MAX_ARGUMENT_FILE_NESTING = 16;
+    private static final int MAX_ARGUMENT_FILE_NESTING = 64;
 
     private record ArgumentFileSettings(boolean valueContinuations, boolean recursiveArgumentFiles) {
         private static final ArgumentFileSettings DEFAULT = new ArgumentFileSettings(false, false);
@@ -57,16 +57,7 @@ public class ArgFilesOptionPreprocessor {
     private record ActiveArgumentFile(String identity, String displayPath) {
     }
 
-    private final int maxArgumentFileNesting;
     private boolean disableAtFiles = false;
-
-    public ArgFilesOptionPreprocessor() {
-        this(DEFAULT_MAX_ARGUMENT_FILE_NESTING);
-    }
-
-    public ArgFilesOptionPreprocessor(int maxArgumentFileNesting) {
-        this.maxArgumentFileNesting = maxArgumentFileNesting;
-    }
 
     public List<String> process(String currentArg) {
         return process(currentArg, null);
@@ -110,11 +101,11 @@ public class ArgFilesOptionPreprocessor {
             chain.add(displayArgumentFile(resolvedFile, origin));
             NativeImage.showError("Argument-file inclusion cycle detected: " + chain);
         }
-        if (activeFiles.size() >= maxArgumentFileNesting) {
+        if (activeFiles.size() >= MAX_ARGUMENT_FILE_NESTING) {
             StringJoiner chain = new StringJoiner(" -> ");
             activeFiles.forEach(file -> chain.add(file.displayPath()));
             chain.add(displayArgumentFile(resolvedFile, origin));
-            NativeImage.showError("Argument-file inclusion exceeds the maximum nesting depth of " + maxArgumentFileNesting + ": " + chain);
+            NativeImage.showError("Argument-file inclusion exceeds the maximum nesting depth of " + MAX_ARGUMENT_FILE_NESTING + ": " + chain);
         }
 
         activeFiles.add(new ActiveArgumentFile(identity, displayArgumentFile(resolvedFile, origin)));
