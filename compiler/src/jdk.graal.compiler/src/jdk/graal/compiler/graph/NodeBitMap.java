@@ -289,8 +289,25 @@ public final class NodeBitMap extends NodeIdAccessor implements NodeIterable<Nod
     @Override
     public int count() {
         int count = 0;
-        for (long l : bits) {
-            count += Long.bitCount(l);
+        // Once all deleted graph nodes are accounted for, only word population counts are needed.
+        int remainingDeletedNodes = graph.getNodesDeletedSinceLastCompression();
+        for (int i = 0; i < bits.length; i++) {
+            long word = bits[i];
+            if (remainingDeletedNodes != 0) {
+                // Match iteration by clearing stale marks for deleted nodes.
+                for (long remaining = word; remaining != 0; remaining &= remaining - 1) {
+                    int bitIndex = Long.numberOfTrailingZeros(remaining);
+                    if (graph.getNode(i * Long.SIZE + bitIndex) == null) {
+                        word &= ~(1L << bitIndex);
+                        bits[i] = word;
+                        remainingDeletedNodes--;
+                        if (remainingDeletedNodes == 0) {
+                            break;
+                        }
+                    }
+                }
+            }
+            count += Long.bitCount(word);
         }
         return count;
     }
