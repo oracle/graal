@@ -25,8 +25,10 @@
 package com.oracle.svm.core.genscavenge.remset;
 
 import static com.oracle.svm.core.genscavenge.graal.BarrierSnippets.CARD_REMEMBERED_SET_LOCATION;
+import static com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.Long.countTrailingZeros;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.shared.Uninterruptible.CORE_GC_CODE;
+import static java.nio.ByteOrder.LITTLE_ENDIAN;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -284,6 +286,8 @@ public final class UnalignedChunkRememberedSet {
             /* The object may start or end within a card. */
             UnsignedWord startOffset = UnsignedUtils.max(scanStartOffset, elementStartOffset);
             UnsignedWord endOffset = UnsignedUtils.min(scanEndOffset, elementEndOffset);
+            assert startOffset.belowThan(endOffset);
+            assert UnsignedUtils.isAMultiple(endOffset.subtract(startOffset), Word.unsigned(referenceSize));
 
             Pointer refPtr = Word.objectToUntrackedPointer(obj).add(startOffset);
             UnsignedWord nReferences = (endOffset.subtract(startOffset)).unsignedDivide(referenceSize);
@@ -296,66 +300,85 @@ public final class UnalignedChunkRememberedSet {
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/gc/g1/g1RemSet.cpp#L562-L586")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static UnsignedWord findScanStart(Pointer ctAdr, UnsignedWord startIdx, UnsignedWord endIdx, boolean skipOldOnlyCards) {
+        assert startIdx.belowOrEqual(endIdx);
         assert UnsignedUtils.isAMultiple(endIdx, Word.unsigned(wordSize()));
 
+        int skipMask = CardTable.skipMask(skipOldOnlyCards);
+        UnsignedWord skipWordMask = CardTable.skipWordMask(skipOldOnlyCards);
         UnsignedWord wordSize = Word.unsigned(wordSize());
         UnsignedWord curIdx = startIdx;
 
         while (!UnsignedUtils.isAMultiple(curIdx, wordSize)) {
-            if (CardTable.needsScan(ctAdr, curIdx, skipOldOnlyCards)) {
+            if (CardTable.needsScan(ctAdr, curIdx, skipMask)) {
                 return curIdx;
             }
             curIdx = curIdx.add(1);
         }
 
-        for (/* empty */; curIdx.belowThan(endIdx); curIdx = curIdx.add(wordSize)) {
-            UnsignedWord wordValue = ctAdr.readWord(curIdx, CARD_REMEMBERED_SET_LOCATION);
-
-            if (CardTable.anyCardNeedsScan(wordValue, skipOldOnlyCards)) {
-                for (int i = 0; i < wordSize(); i++) {
-                    if (CardTable.needsScan(ctAdr, curIdx, skipOldOnlyCards)) {
-                        return curIdx;
-                    }
-                    curIdx = curIdx.add(1);
-                }
-                VMError.shouldNotReachHere("should have returned early");
+        Pointer pos = ctAdr.add(curIdx);
+        Pointer limit = ctAdr.add(endIdx);
+        UnsignedWord wordValue = Word.zero();
+        /* Word-sized steps reach limit exactly. The equality exit keeps this a simple pointer loop. */
+        while (pos.notEqual(limit)) {
+            wordValue = pos.readWord(0, CARD_REMEMBERED_SET_LOCATION);
+            if (CardTable.anyCardNeedsScan(wordValue, skipWordMask)) {
+                break;
             }
+            pos = pos.add(wordSize);
         }
 
-        return endIdx;
+        if (pos.equal(limit)) {
+            return endIdx;
+        }
+
+        /*
+         * The mask checks a bit that is zero for cards needing scanning.
+         * Invert these bits so counting trailing zeros finds the first card to scan.
+         *
+         * On little-endian targets, dividing that bit position by eight gives the card's byte offset.
+         */
+        UnsignedWord candidates = wordValue.not().and(skipWordMask);
+        assert isLittleEndian();
+        int cardOffset = countTrailingZeros(candidates.rawValue()) / Byte.SIZE;
+        return pos.subtract(ctAdr).add(cardOffset);
     }
 
     @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+16/src/hotspot/share/gc/g1/g1RemSet.cpp#L588-L612")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static UnsignedWord findScanEnd(Pointer ctAdr, UnsignedWord startIdx, UnsignedWord endIdx, boolean clean, boolean skipOldOnlyCards) {
+        assert startIdx.belowOrEqual(endIdx);
         assert UnsignedUtils.isAMultiple(endIdx, Word.unsigned(wordSize()));
 
+        boolean updateCards = clean || skipOldOnlyCards;
+        int skipMask = CardTable.skipMask(skipOldOnlyCards);
+        UnsignedWord skipWordMask = CardTable.skipWordMask(skipOldOnlyCards);
         UnsignedWord wordSize = Word.unsigned(wordSize());
         UnsignedWord curIdx = startIdx;
 
         while (!UnsignedUtils.isAMultiple(curIdx, wordSize)) {
-            if (!CardTable.needsScan(ctAdr, curIdx, skipOldOnlyCards)) {
+            if (!CardTable.needsScan(ctAdr, curIdx, skipMask)) {
                 return curIdx;
-            } else if (clean || skipOldOnlyCards) {
+            } else if (updateCards) {
                 ctAdr.writeByte(curIdx, CardTable.cardStateForScan(clean), CARD_REMEMBERED_SET_LOCATION);
             }
             curIdx = curIdx.add(1);
         }
 
-        for (/* empty */; curIdx.belowThan(endIdx); curIdx = curIdx.add(wordSize)) {
+        for (/* empty */; curIdx.notEqual(endIdx); curIdx = curIdx.add(wordSize)) {
             UnsignedWord wordValue = ctAdr.readWord(curIdx, CARD_REMEMBERED_SET_LOCATION);
-            if (!CardTable.allCardsNeedScan(wordValue, skipOldOnlyCards)) {
+            if (!CardTable.allCardsNeedScan(wordValue, skipWordMask)) {
                 for (int i = 0; i < wordSize(); i++) {
-                    if (!CardTable.needsScan(ctAdr, curIdx, skipOldOnlyCards)) {
+                    if (!CardTable.needsScan(ctAdr, curIdx, skipMask)) {
                         return curIdx;
-                    } else if (clean || skipOldOnlyCards) {
+                    } else if (updateCards) {
                         ctAdr.writeByte(curIdx, CardTable.cardStateForScan(clean), CARD_REMEMBERED_SET_LOCATION);
                     }
                     curIdx = curIdx.add(1);
                 }
                 throw VMError.shouldNotReachHere("should have returned early");
-            } else if (clean || skipOldOnlyCards) {
-                ctAdr.writeWord(curIdx, CardTable.CLEAN_WORD.multiply(CardTable.cardStateForScan(clean)), CARD_REMEMBERED_SET_LOCATION);
+            } else if (updateCards) {
+                UnsignedWord cardStates = clean ? CardTable.CLEAN_WORD : CardTable.OLD_ONLY_WORD;
+                ctAdr.writeWord(curIdx, cardStates, CARD_REMEMBERED_SET_LOCATION);
             }
         }
 
@@ -421,6 +444,11 @@ public final class UnalignedChunkRememberedSet {
     @Fold
     static int wordSize() {
         return SubstrateTarget.getWordSize();
+    }
+
+    @Fold
+    static boolean isLittleEndian() {
+        return SubstrateTarget.getArchitecture().getByteOrder() == LITTLE_ENDIAN;
     }
 
     @Fold

@@ -33,6 +33,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.core.SubstrateTarget;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.genscavenge.GCImpl;
@@ -45,6 +47,7 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.shared.util.UnsignedUtils;
@@ -86,11 +89,12 @@ public final class CardTable {
     public static final int BYTES_COVERED_BY_ENTRY = 512;
 
     public static final byte DIRTY_ENTRY = 0;
-    public static final byte CLEAN_ENTRY = 1;
     /** Any references to the collected heap point to old objects. There may be none. */
-    public static final byte OLD_ONLY_ENTRY = 2;
-    static final UnsignedWord CLEAN_WORD = Word.unsigned(0x0101010101010101L);
-    static final UnsignedWord DIRTY_WORD = Word.unsigned(0x0000000000000000L);
+    public static final byte OLD_ONLY_ENTRY = 1;
+    public static final byte CLEAN_ENTRY = 3;
+
+    static final UnsignedWord OLD_ONLY_WORD = Word.unsigned(0x0101010101010101L);
+    static final UnsignedWord CLEAN_WORD = Word.unsigned(0x0303030303030303L);
 
     private static final CardTableVerificationVisitor CARD_TABLE_VERIFICATION_VISITOR = new CardTableVerificationVisitor();
 
@@ -133,12 +137,32 @@ public final class CardTable {
     }
 
     /**
-     * Returns whether the card at {@code index} needs scanning.
+     * Returns a mask for testing whether a card can be skipped. A set masked bit means skip the card.
+     * Bit 0 skips both {@link #CLEAN_ENTRY} and {@link #OLD_ONLY_ENTRY}. Bit 1 skips only
+     * {@link #CLEAN_ENTRY}. {@link #DIRTY_ENTRY} needs scanning with either mask.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static boolean needsScan(Pointer table, UnsignedWord index, boolean skipOldOnlyCards) {
+    static int skipMask(boolean skipOldOnlyCards) {
+        return skipOldOnlyCards ? OLD_ONLY_ENTRY : CLEAN_ENTRY ^ OLD_ONLY_ENTRY;
+    }
+
+    /**
+     * Returns the mask from {@link #skipMask} repeated in every byte of a machine word. This lets
+     * the scanner test several card entries with one word operation.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static UnsignedWord skipWordMask(boolean skipOldOnlyCards) {
+        return skipOldOnlyCards ? OLD_ONLY_WORD : CLEAN_WORD.xor(OLD_ONLY_WORD);
+    }
+
+    /**
+     * Returns whether the card at {@code index} needs scanning under the mask from {@link #skipMask}.
+     */
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static boolean needsScan(Pointer table, UnsignedWord index, int skipMask) {
         int entry = readEntry(table, index);
-        return skipOldOnlyCards ? entry == DIRTY_ENTRY : entry != CLEAN_ENTRY;
+        return (entry & skipMask) == 0;
     }
 
     /**
@@ -150,30 +174,30 @@ public final class CardTable {
      * Call only when cleaning cards or when {@link #shouldSkipOldOnlyCards} returns true. Other
      * scans must leave existing card states unchanged.
      */
+    @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static byte cardStateForScan(boolean clean) {
         return clean ? CLEAN_ENTRY : OLD_ONLY_ENTRY;
     }
 
     /**
-     * Returns whether every card entry in {@code value} needs scanning.
+     * Returns whether every card entry in {@code value} needs scanning under the mask from
+     * {@link #skipWordMask}.
      */
+    @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static boolean allCardsNeedScan(UnsignedWord value, boolean skipOldOnlyCards) {
-        /* Only clean entries have their least significant bit set. */
-        return skipOldOnlyCards ? value.equal(DIRTY_WORD) : value.and(CLEAN_WORD).equal(0);
+    static boolean allCardsNeedScan(UnsignedWord value, UnsignedWord skipWordMask) {
+        return value.and(skipWordMask).equal(0);
     }
 
     /**
-     * Returns whether at least one card entry in {@code value} needs scanning.
+     * Returns whether at least one card entry in {@code value} needs scanning under the mask from
+     * {@link #skipWordMask}.
      */
+    @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    static boolean anyCardNeedsScan(UnsignedWord value, boolean skipOldOnlyCards) {
-        if (value.equal(CLEAN_WORD)) {
-            return false;
-        }
-        /* A zero byte denotes a candidate. Borrowing between bytes preserves this test. */
-        return !skipOldOnlyCards || value.subtract(CLEAN_WORD).and(value.not()).and(Word.unsigned(0x8080808080808080L)).notEqual(0);
+    static boolean anyCardNeedsScan(UnsignedWord value, UnsignedWord skipWordMask) {
+        return value.and(skipWordMask).notEqual(skipWordMask);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -253,7 +277,37 @@ public final class CardTable {
     }
 
     private static boolean verifyCardStates(Pointer cardTableStart, Pointer cardTableEnd, boolean fromImageHeap) {
+        UnsignedWord wordSize = Word.unsigned(SubstrateTarget.getWordSize());
+        assert cardTableStart.unsignedRemainder(wordSize).equal(0);
+
+        /* Reject bits outside the valid states in every byte of a word. */
+        UnsignedWord forbiddenBits = CLEAN_WORD.not();
+        Pointer wordLimit = PointerUtils.roundDown(cardTableEnd, wordSize);
         Pointer pos = cardTableStart;
+        while (pos.belowThan(wordLimit)) {
+            UnsignedWord entries = pos.readWord(0, CARD_REMEMBERED_SET_LOCATION);
+            if (entries.and(forbiddenBits).notEqual(0)) {
+                break;
+            }
+
+            /* Align bit 0 and bit 1 of each entry so they can be compared across the whole word. */
+            UnsignedWord bit0 = entries.and(OLD_ONLY_WORD);
+            UnsignedWord bit1 = entries.unsignedShiftRight(1).and(OLD_ONLY_WORD);
+
+            if (fromImageHeap) {
+                /* Image heap cards allow DIRTY_ENTRY (00), OLD_ONLY_ENTRY (01), and CLEAN_ENTRY (11). */
+                if (bit1.and(bit0).notEqual(bit1)) {
+                    break;
+                }
+            } else if (bit0.notEqual(bit1)) {
+                /* Runtime cards allow only DIRTY_ENTRY (00) and CLEAN_ENTRY (11), so the bits must match. */
+                break;
+            }
+
+            pos = pos.add(wordSize);
+        }
+
+        /* Locate the exact invalid card, or check the remaining bytes after the last whole word. */
         while (pos.belowThan(cardTableEnd)) {
             byte entry = pos.readByte(0, CARD_REMEMBERED_SET_LOCATION);
             if (entry != DIRTY_ENTRY && entry != CLEAN_ENTRY && (!fromImageHeap || entry != OLD_ONLY_ENTRY)) {

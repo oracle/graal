@@ -160,6 +160,8 @@ public final class AlignedChunkRememberedSet {
     static void walkDirtyObjects(AlignedHeader chunk, UninterruptibleObjectVisitor visitor, boolean clean) {
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
         boolean skipOldOnlyCards = CardTable.shouldSkipOldOnlyCards(objectsStart, clean);
+        int skipMask = CardTable.skipMask(skipOldOnlyCards);
+        UnsignedWord skipWordMask = CardTable.skipWordMask(skipOldOnlyCards);
         Pointer objectsLimit = HeapChunk.getTopPointer(chunk);
         UnsignedWord memorySize = objectsLimit.subtract(objectsStart);
 
@@ -175,7 +177,7 @@ public final class AlignedChunkRememberedSet {
         Pointer heapPos = CardTable.cardToHeapAddress(cardTableStart, cardPos, objectsStart);
 
         while (cardPos.aboveOrEqual(cardTableStart)) {
-            if (CardTable.needsScan(cardPos, Word.zero(), skipOldOnlyCards)) {
+            if (CardTable.needsScan(cardPos, Word.zero(), skipMask)) {
                 if (clean || skipOldOnlyCards) {
                     cardPos.writeByte(0, CardTable.cardStateForScan(clean), CARD_REMEMBERED_SET_LOCATION);
                 }
@@ -189,7 +191,12 @@ public final class AlignedChunkRememberedSet {
                 if (PointerUtils.isAMultiple(cardPos, Word.unsigned(wordSize()))) {
                     /* Skip whole words whose cards do not need scanning. */
                     cardPos = cardPos.subtract(wordSize());
-                    while (cardPos.aboveOrEqual(cardTableStart) && !CardTable.anyCardNeedsScan(cardPos.readWord(0, CARD_REMEMBERED_SET_LOCATION), skipOldOnlyCards)) {
+                    while (cardPos.aboveOrEqual(cardTableStart)) {
+                        UnsignedWord entries = cardPos.readWord(0, CARD_REMEMBERED_SET_LOCATION);
+                        /* The direct clean-word check is redundant but produces faster code for all-clean scans. */
+                        if (entries.notEqual(CardTable.CLEAN_WORD) && CardTable.anyCardNeedsScan(entries, skipWordMask)) {
+                            break;
+                        }
                         cardPos = cardPos.subtract(wordSize());
                     }
                     cardPos = cardPos.add(wordSize());
