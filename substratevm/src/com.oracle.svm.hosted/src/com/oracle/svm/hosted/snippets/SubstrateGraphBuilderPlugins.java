@@ -940,7 +940,8 @@ public class SubstrateGraphBuilderPlugins {
                  */
                 Class<?> clazz = asConstantObject(b, Class.class, clazzNode);
                 int dimensionCount = asConstantIntegerOrMinusOne(GraphUtil.arrayLength(dimensionsNode, ArrayLengthProvider.FindLengthMode.SEARCH_ONLY, b.getConstantReflection()));
-                if (clazz != null && dimensionCount > 0) {
+                /* void.class has no corresponding array type, so leave it to the regular method implementation. */
+                if (clazz != null && clazz != void.class && dimensionCount > 0) {
                     AnalysisType type = (AnalysisType) b.getMetaAccess().lookupJavaType(clazz);
                     for (int i = 0; i < dimensionCount && type.getArrayDimension() < 255; i++) {
                         type = type.getArrayClass();
