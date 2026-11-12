@@ -208,7 +208,7 @@ public final class SimdCutNode extends UnaryNode implements VectorLIRLowerable {
         }
 
         if (length == 1) {
-            EconomicMap<ValuePhiNode, ValuePhiNode> scalarizedPhis = EconomicMap.create(Equivalence.DEFAULT);
+            EconomicMap<PhiLane, ValuePhiNode> scalarizedPhis = EconomicMap.create(Equivalence.DEFAULT);
             ValueNode input = getValue();
             ValueNode replacement = tryToScalarize(input, offset, input.graph(), scalarizedPhis, metaAccess);
             if (replacement != this) {
@@ -222,7 +222,7 @@ public final class SimdCutNode extends UnaryNode implements VectorLIRLowerable {
         return this;
     }
 
-    private static ValueNode tryToScalarize(ValueNode targetValue, int offset, StructuredGraph graph, EconomicMap<ValuePhiNode, ValuePhiNode> scalarizedPhis,
+    private static ValueNode tryToScalarize(ValueNode targetValue, int offset, StructuredGraph graph, EconomicMap<PhiLane, ValuePhiNode> scalarizedPhis,
                     MetaAccessProvider metaAccess) {
         // Operand lanes can have different bounds from the arithmetic result being scalarized.
         Stamp stamp = getStamp((SimdStamp) targetValue.stamp(NodeView.DEFAULT), offset, 1);
@@ -247,16 +247,21 @@ public final class SimdCutNode extends UnaryNode implements VectorLIRLowerable {
         return result;
     }
 
-    private static ValueNode pushPastPhi(ValuePhiNode phi, int offset, Stamp stamp, StructuredGraph graph, EconomicMap<ValuePhiNode, ValuePhiNode> scalarizedPhis, MetaAccessProvider metaAccess) {
+    /// Identifies a phi component independently of other lanes visited during scalarization.
+    private record PhiLane(ValuePhiNode phi, int offset) {
+    }
+
+    private static ValueNode pushPastPhi(ValuePhiNode phi, int offset, Stamp stamp, StructuredGraph graph, EconomicMap<PhiLane, ValuePhiNode> scalarizedPhis, MetaAccessProvider metaAccess) {
+        PhiLane key = new PhiLane(phi, offset);
         ValuePhiNode replacementPhi;
-        if (scalarizedPhis.containsKey(phi)) {
-            replacementPhi = scalarizedPhis.get(phi);
+        if (scalarizedPhis.containsKey(key)) {
+            replacementPhi = scalarizedPhis.get(key);
         } else {
             AbstractMergeNode merge = phi.merge();
             replacementPhi = graph.addWithoutUnique(new ValuePhiNode(stamp, merge));
 
             // Before optimizing the phi's input values, put it in the cache to ensure termination.
-            scalarizedPhis.put(phi, replacementPhi);
+            scalarizedPhis.put(key, replacementPhi);
             for (ValueNode phiInput : phi.values()) {
                 ValueNode simplifiedInput = tryToScalarize(phiInput, offset, graph, scalarizedPhis, metaAccess);
                 replacementPhi.addInput(simplifiedInput);
@@ -265,13 +270,13 @@ public final class SimdCutNode extends UnaryNode implements VectorLIRLowerable {
         return replacementPhi;
     }
 
-    private static ValueNode pushPastAdd(AddNode add, int offset, StructuredGraph graph, EconomicMap<ValuePhiNode, ValuePhiNode> scalarizedPhis, MetaAccessProvider metaAccess) {
+    private static ValueNode pushPastAdd(AddNode add, int offset, StructuredGraph graph, EconomicMap<PhiLane, ValuePhiNode> scalarizedPhis, MetaAccessProvider metaAccess) {
         ValueNode x = tryToScalarize(add.getX(), offset, graph, scalarizedPhis, metaAccess);
         ValueNode y = tryToScalarize(add.getY(), offset, graph, scalarizedPhis, metaAccess);
         return graph.addOrUniqueWithInputs(BinaryArithmeticNode.add(x, y));
     }
 
-    private static ValueNode pushPastMul(MulNode mul, int offset, StructuredGraph graph, EconomicMap<ValuePhiNode, ValuePhiNode> scalarizedPhis, MetaAccessProvider metaAccess) {
+    private static ValueNode pushPastMul(MulNode mul, int offset, StructuredGraph graph, EconomicMap<PhiLane, ValuePhiNode> scalarizedPhis, MetaAccessProvider metaAccess) {
         ValueNode x = tryToScalarize(mul.getX(), offset, graph, scalarizedPhis, metaAccess);
         ValueNode y = tryToScalarize(mul.getY(), offset, graph, scalarizedPhis, metaAccess);
         return graph.addOrUniqueWithInputs(BinaryArithmeticNode.mul(x, y));
