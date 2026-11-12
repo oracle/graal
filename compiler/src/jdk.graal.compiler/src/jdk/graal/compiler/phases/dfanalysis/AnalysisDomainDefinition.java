@@ -310,6 +310,7 @@ public interface AnalysisDomainDefinition<ELEM_TYPE> {
         return false;
     }
 
+    @SuppressWarnings("unused")
     default void widen(List<ValuePhiNode> phis, IntList reachableInputIndices, ELEM_TYPE[] result, DFAMap<ELEM_TYPE> map, int evalCnt) {
         throw GraalError.unimplementedParent();
     }

@@ -344,9 +344,9 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                             IntegerPentagon x = map.getOrUnrestricted(phi.valueAt(inputIdx)).asInteger();
                             IntegerPentagon y = map.getOrUnrestricted(otherPhi.valueAt(inputIdx)).asInteger();
                             if (sub) {
-                                if (!IntegerPentagon.isLowerThan(x, otherPhi, y)) {
+                                if (!IntegerPentagon.isLowerThan(x, otherPhi.valueAt(inputIdx), y)) {
                                     sub = false;
-                                    if (!IntegerPentagon.isLowerEqual(phi, x, otherPhi, y)) {
+                                    if (!IntegerPentagon.isLowerEqual(phi.valueAt(inputIdx), x, otherPhi.valueAt(inputIdx), y)) {
                                         lb = false;
                                         // no symbolic relationship found
                                         break;
@@ -1116,6 +1116,8 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                             inferences[i] = Pentagon.of(inferredStamps[i], CollectionsUtil.setOf(), CollectionsUtil.setOf());
                         }
                     }
+                    // force default to unrestricted if there were any cases ath the same successor
+                    inferences[iSwitch.defaultSuccessorIndex()] = unrestricted(inferences[iSwitch.defaultSuccessorIndex()]);
                     yield AnalysisDomainDefinition.switchInference(Pentagon.class, inferences);
                 }
                 default -> null;
@@ -1442,7 +1444,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
         }
     }
 
-    private DFAnalysis<Pentagon> prepareAnalysis(StructuredGraph graph, CoreProviders context) {
+    private static DFAnalysis<Pentagon> prepareAnalysis(StructuredGraph graph, CoreProviders context) {
         final DomainOfPentagons domainOfPentagons = new DomainOfPentagons(
                         context.getConstantReflection(),
                         Options.PA_WidenAfter.getValue(graph.getOptions()),
@@ -1474,15 +1476,12 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                         });
     }
 
-    private void processResults(StructuredGraph graph, CoreProviders context, DFAMap<Pentagon> results) {
+    private static void processResults(StructuredGraph graph, CoreProviders context, DFAMap<Pentagon> results) {
         MapCursor<ValueNode, Pentagon> stampCursor = results.getEntries();
-        int constantsFound = 0;
         while (stampCursor.advance()) {
             ValueNode node = stampCursor.getKey();
             Pentagon pentagon = stampCursor.getValue();
             if (pentagon.isConstant() && !(node instanceof ConstantNode || node instanceof LogicConstantNode)) {
-                constantsFound++;
-                String tNodeString = graph.getDebug().isLogEnabled(DebugContext.VERY_DETAILED_LEVEL) ? node.toString() : "";
                 if (pentagon instanceof LogicPentagon lp) {
                     graph.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "replacing %s with constant %s", node, lp.logic);
                     LogicConstantNode c = LogicConstantNode.forBoolean(lp.logic.toBoolean(), graph);
@@ -1517,7 +1516,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After constant replacement");
     }
 
-    private void cleanup(StructuredGraph graph, DFAnalysis<Pentagon> analysis) {
+    private static void cleanup(StructuredGraph graph, DFAnalysis<Pentagon> analysis) {
         analysis.cleanup();
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After PentagonalAnalysis cleanup");
     }

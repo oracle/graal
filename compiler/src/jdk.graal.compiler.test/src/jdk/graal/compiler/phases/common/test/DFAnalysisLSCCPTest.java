@@ -1152,10 +1152,27 @@ public class DFAnalysisLSCCPTest extends DFAnalysisBaseTest {
         test("weirdDoubleLoopPhiSnippet", new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
     }
 
+    @DFATestSnippet
     public static void weirdDoubleLoopPhiSnippet(int[] a) {
         // the output of one loop phi is directly used in the second loop phi
         for (int i = 0, j = 1; j < a.length; j = (i = j) + 1) {
             GraalDirectives.blackhole(a[i] + a[j]);
+        }
+    }
+
+    @Test
+    public void defaultMergeSwitch() {
+        test("defaultMergeSwitchSnippet", 9);
+    }
+
+    @DFATestSnippet
+    public static int defaultMergeSwitchSnippet(int a) {
+        switch (a) {
+            case 1:
+                return 42;
+            case 0:
+            default:
+                return a;
         }
     }
 }

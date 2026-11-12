@@ -158,7 +158,7 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
         }
     }
 
-    private DFAnalysis<Stamp> prepareAnalysis(StructuredGraph graph) {
+    private static DFAnalysis<Stamp> prepareAnalysis(StructuredGraph graph) {
         boolean inferencesEnabled = Options.LSCCP_AllowInferences.getValue(graph.getOptions()) && DFAnalysis.Options.DFA_AllowInferences.getValue(graph.getOptions());
         // run analysis
         return DFAnalysis.create(Stamp.class, graph, CONSTANT_NORMALIZED_STAMPS, nd -> switch (nd) {
@@ -171,7 +171,7 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
         });
     }
 
-    private void processResults(StructuredGraph graph, DFAMap<Stamp> results) {
+    private static void processResults(StructuredGraph graph, DFAMap<Stamp> results) {
         MapCursor<ValueNode, Stamp> stampCursor = results.getEntries();
         while (stampCursor.advance()) {
             ValueNode node = stampCursor.getKey();
@@ -211,7 +211,7 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After constant replacement");
     }
 
-    private void cleanup(StructuredGraph graph, DFAnalysis<Stamp> analysis) {
+    private static void cleanup(StructuredGraph graph, DFAnalysis<Stamp> analysis) {
         // cleanup stuff that the analysis left behind
         analysis.cleanup();
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After LSCCP cleanup");
@@ -586,6 +586,8 @@ public final class LSCCPPhase extends PostRunCanonicalizationPhase<CoreProviders
                             inferences[i] = unrestricted(inferences[i]);
                         }
                     }
+                    // force default to unrestricted if there were any cases ath the same successor
+                    inferences[iSwitch.defaultSuccessorIndex()] = unrestricted(inferences[iSwitch.defaultSuccessorIndex()]);
                     yield AnalysisDomainDefinition.switchInference(Stamp.class, inferences);
                 }
                 default -> null;

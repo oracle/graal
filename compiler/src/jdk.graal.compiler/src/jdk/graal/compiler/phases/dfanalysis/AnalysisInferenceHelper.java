@@ -119,6 +119,12 @@ import jdk.vm.ci.meta.TriState;
 final class AnalysisInferenceHelper {
 
     /**
+     * Maximum recursion depth of {@link #recursiveTransitiveCheck} when following chains of
+     * floating usages. This is a protection from exhausting the stack and may cost precision.
+     */
+    private static final int MAX_TRANSITIVE_USAGE_DEPTH = 10;
+
+    /**
      * This is the main entry point for inserting inferred facts into the graph. It collects the
      * relevant branches and queries the {@link AnalysisDomainDefinition} of the given analysis for
      * inferrable values.
@@ -165,8 +171,9 @@ final class AnalysisInferenceHelper {
         } else if (node instanceof SwitchNode switchNode) {
             infGenerator = switchNode;
             inputs = new ValueNode[]{switchNode.value()};
-            allTargetBranches = new AbstractBeginNode[1][switchNode.blockSuccessorCount()];
-            for (int i = 0; i < allTargetBranches.length; i++) {
+            int successorCnt = switchNode.blockSuccessorCount();
+            allTargetBranches = new AbstractBeginNode[1][successorCnt];
+            for (int i = 0; i < successorCnt; i++) {
                 allTargetBranches[0][i] = switchNode.blockSuccessor(i);
             }
             toInsert = domain.calcInferrableValues(switchNode, elemMap);
@@ -578,20 +585,37 @@ final class AnalysisInferenceHelper {
      * updated the dominance cache along the way.
      */
     private static <T> boolean checkTransitiveUsages(DFAnalysis<T> analysis, StringBuilder logBuilder, ValueNode usage, ValueNode value, HIRBlock targetBranch) {
-        return recursiveTransitiveCheck(analysis.dominanceCache, new NodeFlood(analysis.graph), usage, analysis, logBuilder, usage, value, targetBranch);
+        return recursiveTransitiveCheck(analysis.dominanceCache, new NodeFlood(analysis.graph), usage, 0, analysis, logBuilder, usage, value, targetBranch);
     }
 
     /**
-     * This should be done iteratively, but this conflicts with the way the node-to-block cache is
-     * built.
+     * Checks whether {@code curTransitiveNode} and all of its transitive usages are dominated by
+     * {@code targetBranch}. On success, {@code domMap} contains an entry for
+     * {@code curTransitiveNode}. Together, these entries form a sparse, conservative approximation
+     * of a latest-possible schedule. Since this schedule does not depend on {@code targetBranch},
+     * it is reused by later checks for other branches.
+     * <p>
+     * This is implemented recursively because the entry of a floating node can only be computed
+     * once all of its usages have been resolved. We check for dominance in pre-order traversal and
+     * build the cache in post-order. Failing to prove dominance results in an early exit, which
+     * may leave entries for already resolved nodes in the cache. Recursion lets us combine these.
+     * An iterative version would need an explicit stack holding per-node state, effectively
+     * rebuilding the call stack by hand without a real benefit.
+     * <p>
+     * To keep long chains of floating nodes from overflowing the stack, recursion is limited to
+     * {@link #MAX_TRANSITIVE_USAGE_DEPTH}. When that limit is exceeded, the check conservatively
+     * returns {@code false}, so no inference is inserted for {@code usage}.
      */
-    private static <T> boolean recursiveTransitiveCheck(EconomicMap<Node, HIRBlock> domMap, NodeFlood flood, Node curTransitiveNode, DFAnalysis<T> analysis, StringBuilder logBuilder,
-                    ValueNode usage,
-                    ValueNode value, HIRBlock targetBranch) {
+    private static <T> boolean recursiveTransitiveCheck(EconomicMap<Node, HIRBlock> domMap, NodeFlood flood, Node curTransitiveNode, int depth, DFAnalysis<T> analysis,
+                    StringBuilder logBuilder, ValueNode usage, ValueNode value, HIRBlock targetBranch) {
         CompilationAlarm.checkProgress(analysis.graph);
         final ControlFlowGraph cfg = analysis.cfg;
         flood.add(curTransitiveNode);
         if (!(curTransitiveNode instanceof ValueNode curTransitiveUsage)) {
+            return false;
+        }
+        if (depth > MAX_TRANSITIVE_USAGE_DEPTH) {
+            log(logBuilder, "        not doing it for %s -> %s (usage depth limit)\n", usage, curTransitiveUsage);
             return false;
         }
         if (curTransitiveUsage instanceof ConditionalNode) {
@@ -621,14 +645,13 @@ final class AnalysisInferenceHelper {
             }
         } else {
             if (curTransitiveNode instanceof GuardedNode guarded) {
-                switch (checkGuarded(cfg, targetBranch, guarded)) {
+                GuardDominance guardDominance = checkGuarded(cfg, targetBranch, guarded);
+                switch (guardDominance.result()) {
                     case TRUE -> {
                         // the dominance check succeeded for this guard, therefore we skip
                         // to the next iteration
                         log(logBuilder, "    ((-> %s) %s dominates %s)\n", curTransitiveUsage, targetBranch, guarded);
-                        if (guarded instanceof FixedNode fxg) {
-                            domMap.put(curTransitiveNode, cfg.blockFor(fxg));
-                        }
+                        domMap.put(curTransitiveNode, guardDominance.block());
                         return true;
                     }
                     case FALSE -> {
@@ -673,7 +696,7 @@ final class AnalysisInferenceHelper {
                         myDom = myDom == null ? blk : (HIRBlock) AbstractControlFlowGraph.commonDominator(myDom, blk);
                     }
                 } else {
-                    if (!flood.isMarked(u) && !recursiveTransitiveCheck(domMap, flood, u, analysis, logBuilder, usage, value, targetBranch)) {
+                    if (!flood.isMarked(u) && !recursiveTransitiveCheck(domMap, flood, u, depth + 1, analysis, logBuilder, usage, value, targetBranch)) {
                         return false;
                     }
                     if (domMap.containsKey(u)) {
@@ -697,12 +720,21 @@ final class AnalysisInferenceHelper {
         }
     }
 
-    private static TriState checkGuarded(ControlFlowGraph cfg, HIRBlock targetBranch, GuardedNode guardedNode) {
+    private record GuardDominance(TriState result, HIRBlock block) {
+        static final GuardDominance FALSE = new GuardDominance(TriState.FALSE, null);
+        static final GuardDominance UNKNOWN = new GuardDominance(TriState.UNKNOWN, null);
+
+        static GuardDominance of(HIRBlock targetBranch, HIRBlock guardBlock) {
+            return targetBranch.dominates(guardBlock) ? new GuardDominance(TriState.TRUE, guardBlock) : FALSE;
+        }
+    }
+
+    private static GuardDominance checkGuarded(ControlFlowGraph cfg, HIRBlock targetBranch, GuardedNode guardedNode) {
         return switch (guardedNode.getGuard()) {
             case FixedNode fn ->
-                TriState.get(targetBranch.dominates(cfg.blockFor(fn)));
+                GuardDominance.of(targetBranch, cfg.blockFor(fn));
             case GuardNode gn ->
-                gn.getAnchor() instanceof FixedNode fn ? TriState.get(targetBranch.dominates(cfg.blockFor(fn))) : TriState.UNKNOWN;
+                gn.getAnchor() instanceof FixedNode fn ? GuardDominance.of(targetBranch, cfg.blockFor(fn)) : GuardDominance.UNKNOWN;
             case MultiGuardNode mg -> {
                 /*
                  * For a multiguard node to be dominated by the target branch, the target branch
@@ -710,24 +742,28 @@ final class AnalysisInferenceHelper {
                  * target branch. If the target branch dominates no input, the guard is not
                  * dominated by the target branch. We only check direct inputs of the multiguard. If
                  * one of these inputs floats itself, we abort the dominance check.
+                 *
+                 * On success, the resulting block is the common dominator of all inputs dominated
+                 * by the target branch. The remaining inputs dominate the target branch and would
+                 * pull the common dominator above it, so they are excluded.
                  */
-                boolean targetDominates = false;
+                HIRBlock dominatedCommonDom = null;
                 boolean othersDominate = true;
                 for (ValueNode anchor : mg.getGuards()) {
                     if (!(anchor instanceof FixedNode fn)) {
-                        yield TriState.UNKNOWN;
+                        yield GuardDominance.UNKNOWN;
                     }
                     HIRBlock gBlock = cfg.blockFor(fn);
                     if (targetBranch.dominates(gBlock)) {
-                        targetDominates = true;
+                        dominatedCommonDom = dominatedCommonDom == null ? gBlock : (HIRBlock) AbstractControlFlowGraph.commonDominator(dominatedCommonDom, gBlock);
                     } else if (!gBlock.dominates(targetBranch)) {
                         othersDominate = false;
                     }
                 }
-                yield targetDominates && othersDominate ? TriState.TRUE : TriState.FALSE;
+                yield dominatedCommonDom != null && othersDominate ? new GuardDominance(TriState.TRUE, dominatedCommonDom) : GuardDominance.FALSE;
             }
             case null, default ->
-                TriState.UNKNOWN;
+                GuardDominance.UNKNOWN;
         };
     }
 

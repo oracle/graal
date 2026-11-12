@@ -466,6 +466,11 @@ final class WorkList {
                         case AbstractBeginNode ignored -> needsPrioRemoval = true;
                         case ControlSplitNode ignored -> needsPrioRemoval = true;
                         case FixedNode ignored -> needsPrioRemoval = true;
+                        // Pis can be with or without priority, so we have to go through both queues
+                        case PiNode ignored -> {
+                            needsPrioRemoval = true;
+                            needsValueRemoval = true;
+                        }
                         // nodes scheduled without priority
                         default -> needsValueRemoval = true;
                     }

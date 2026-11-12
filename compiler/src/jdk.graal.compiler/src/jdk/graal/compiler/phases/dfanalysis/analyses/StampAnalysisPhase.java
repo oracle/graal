@@ -143,7 +143,7 @@ public final class StampAnalysisPhase extends PostRunCanonicalizationPhase<CoreP
         }
     }
 
-    private DFAnalysis<Stamp> prepareAnalysis(StructuredGraph graph) {
+    private static DFAnalysis<Stamp> prepareAnalysis(StructuredGraph graph) {
         FullStampsDomain domain = new FullStampsDomain(Options.DFSA_DoTypes.getValue(graph.getOptions()));
         return DFAnalysis.create(Stamp.class, graph, new FullStampsDomain(Options.DFSA_DoTypes.getValue(graph.getOptions())), nd -> switch (nd) {
             case ConstantNode ignored -> true;
@@ -167,7 +167,7 @@ public final class StampAnalysisPhase extends PostRunCanonicalizationPhase<CoreP
         });
     }
 
-    private void processResults(StructuredGraph graph, DFAMap<Stamp> results) {
+    private static void processResults(StructuredGraph graph, DFAMap<Stamp> results) {
         MapCursor<ValueNode, Stamp> stampCursor = results.getEntries();
         while (stampCursor.advance()) {
             ValueNode node = stampCursor.getKey();
@@ -208,7 +208,7 @@ public final class StampAnalysisPhase extends PostRunCanonicalizationPhase<CoreP
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After constant replacement");
     }
 
-    private void cleanup(StructuredGraph graph, DFAnalysis<Stamp> analysis) {
+    private static void cleanup(StructuredGraph graph, DFAnalysis<Stamp> analysis) {
         analysis.cleanup();
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After FullStamps cleanup");
     }
@@ -567,6 +567,8 @@ public final class StampAnalysisPhase extends PostRunCanonicalizationPhase<CoreP
                             inferences[i] = unrestricted(inferences[i]);
                         }
                     }
+                    // force default to unrestricted if there were any cases ath the same successor
+                    inferences[iSwitch.defaultSuccessorIndex()] = unrestricted(inferences[iSwitch.defaultSuccessorIndex()]);
                     yield AnalysisDomainDefinition.switchInference(Stamp.class, inferences);
                 }
                 default -> null;
