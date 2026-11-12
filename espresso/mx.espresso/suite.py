@@ -203,6 +203,19 @@ suite = {
             "checkstyleVersion": "10.21.0",
         },
 
+        "com.oracle.truffle.espresso.libs.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "sdk:POLYGLOT",
+                "mx:JUNIT",
+            ],
+            "javaCompliance": "21+",
+            "checkstyle": "com.oracle.truffle.espresso",
+            "testProject": True,
+            "jacoco": "exclude",
+        },
+
         "com.oracle.truffle.espresso.resources.libs": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -817,6 +830,26 @@ suite = {
                 },
             },
             "maven": False,
+        },
+
+        "ESPRESSO_LIBS_UNIT_TESTS": {
+            "subDir": "src",
+            "description": "Unit tests for Espresso with -XX:+UseEspressoLibs",
+            "dependencies": [
+                "com.oracle.truffle.espresso.libs.test",
+            ],
+            "exclude": [
+                "mx:JUNIT",
+            ],
+            "distDependencies": [
+                "sdk:POLYGLOT",
+                "espresso:ESPRESSO",
+                "espresso:ESPRESSO_LIBS_RESOURCES",
+                "espresso:ESPRESSO_RUNTIME_RESOURCES",
+                "truffle:TRUFFLE_RUNTIME",
+            ],
+            "maven": False,
+            "testDistribution": True,
         },
 
         "ESPRESSO_LIBS_RESOURCES": {
