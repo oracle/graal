@@ -35,6 +35,14 @@ import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.extended.GuardedNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerMulExactNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
+import java.util.List;
+import java.util.function.BiFunction;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.AndNode;
+import jdk.graal.compiler.nodes.calc.OrNode;
+import jdk.graal.compiler.nodes.calc.XorNode;
+import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactNode;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -149,6 +157,39 @@ public class HypotheticalOperandsCanonicalizationTest extends GraalCompilerTest 
                 Assert.assertEquals(multiply ? MulNode.class : SubNode.class, broad.canonical(tool, u, v).getClass());
                 Assert.assertSame(x, exact.getX());
                 Assert.assertSame(y, exact.getY());
+            }
+        }
+    }
+
+    /// Checks the shared reassociation matcher with replacement expressions and absent matches.
+    @Test
+    public void testReassociation() {
+        List<BiFunction<ValueNode, ValueNode, BinaryArithmeticNode<?>>> operations = List.of(AddNode::new, SubNode::new, MulNode::new, AndNode::new, OrNode::new, XorNode::new);
+        long[] expected = {9, -9, 20, 4, 5, 1};
+        for (int bits : new int[]{32, 64}) {
+            JavaKind kind = bits == 32 ? JavaKind.Int : JavaKind.Long;
+            ValueNode x = parameter(0, IntegerStamp.create(bits));
+            ValueNode y = parameter(1, IntegerStamp.create(bits));
+            ValueNode z = parameter(2, IntegerStamp.create(bits));
+            for (int i = 0; i < operations.size(); i++) {
+                BiFunction<ValueNode, ValueNode, BinaryArithmeticNode<?>> operation = operations.get(i);
+                BinaryArithmeticNode<?> originalX = operation.apply(x, ConstantNode.forIntegerKind(kind, 2));
+                BinaryArithmeticNode<?> original = operation.apply(originalX, ConstantNode.forIntegerKind(kind, 3));
+                BinaryArithmeticNode<?> suppliedX = operation.apply(y, ConstantNode.forIntegerKind(kind, 4));
+                ValueNode suppliedY = ConstantNode.forIntegerKind(kind, 5);
+                BinaryArithmeticNode<?> unchanged = (BinaryArithmeticNode<?>) BinaryArithmeticNode.reassociateMatchedValues(original, ValueNode.isConstantPredicate(), originalX,
+                                original.getY(), NodeView.DEFAULT);
+                Assert.assertSame(x, unchanged.getX());
+                BinaryArithmeticNode<?> replacement = (BinaryArithmeticNode<?>) BinaryArithmeticNode.reassociateMatchedValues(original, ValueNode.isConstantPredicate(), suppliedX,
+                                suppliedY, NodeView.DEFAULT);
+                Assert.assertEquals(i == 1 ? AddNode.class : original.getClass(), replacement.getClass());
+                Assert.assertSame(y, replacement.getX());
+                Assert.assertEquals(expected[i], replacement.getY().asJavaConstant().asLong());
+                Assert.assertSame(original, BinaryArithmeticNode.reassociateMatchedValues(original, ValueNode.isConstantPredicate(), y, z, NodeView.DEFAULT));
+                Assert.assertSame(originalX, original.getX());
+                // The helper must retain exact operations even when supplied constants can combine.
+                IntegerAddExactNode exact = new IntegerAddExactNode(originalX, original.getY(), new BeginNode());
+                Assert.assertSame(exact, BinaryArithmeticNode.reassociateMatchedValues(exact, ValueNode.isConstantPredicate(), suppliedX, suppliedY, NodeView.DEFAULT));
             }
         }
     }
