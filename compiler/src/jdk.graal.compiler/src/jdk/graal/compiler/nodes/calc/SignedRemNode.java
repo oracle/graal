@@ -106,7 +106,8 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
         }
         if (self != null && self.hasNoUsages() && self.next() instanceof SignedDivNode) {
             SignedDivNode div = (SignedDivNode) self.next();
-            if (div.x == self.x && div.y == self.y && div.getZeroGuard() == self.getZeroGuard() && div.stateBefore() == self.stateBefore()) {
+            // The division must preserve traps for the supplied operands before removing the remainder.
+            if (div.x == forX && div.y == forY && div.getZeroGuard() == self.getZeroGuard() && div.stateBefore() == self.stateBefore()) {
                 // left over from canonicalizing ((a - a % b) / b) into (a / b)
                 return null;
             }

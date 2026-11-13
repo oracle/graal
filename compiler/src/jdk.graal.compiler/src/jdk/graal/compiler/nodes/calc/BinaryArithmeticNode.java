@@ -423,8 +423,13 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
     }
 
     private static ReassociateMatch findReassociate(BinaryNode binary, NodePredicate criterion) {
-        boolean resultX = criterion.apply(binary.getX());
-        boolean resultY = criterion.apply(binary.getY());
+        return findReassociate(binary.getX(), binary.getY(), criterion);
+    }
+
+    /// Finds which of the supplied operands alone matches `criterion`.
+    private static ReassociateMatch findReassociate(ValueNode forX, ValueNode forY, NodePredicate criterion) {
+        boolean resultX = criterion.apply(forX);
+        boolean resultY = criterion.apply(forY);
         if (resultX && !resultY) {
             return ReassociateMatch.x;
         }
@@ -643,7 +648,8 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
     public static ValueNode reassociateMatchedValues(BinaryArithmeticNode<?> node, NodePredicate criterion, ValueNode forX, ValueNode forY, NodeView view) {
         BinaryOp<?> op = node.getOp(forX, forY);
         GraalError.guarantee(node.mayReassociate(), "%s: binary op %s does not satisfy precondition of reassociateMatchedValues", node, op);
-        ReassociateMatch match1 = findReassociate(node, criterion);
+        // Match the supplied expression; the original inputs may describe a different computation.
+        ReassociateMatch match1 = findReassociate(forX, forY, criterion);
         if (match1 == null) {
             return node;
         }
@@ -654,7 +660,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             // cannot re-associate guarded nodes
             return node;
         }
-        ValueNode otherValue = match1.getOtherValue(node);
+        ValueNode otherValue = match1 == ReassociateMatch.x ? forY : forX;
         boolean addSub = false;
         boolean subAdd = false;
         if (otherValue.getClass() != node.getClass()) {
@@ -691,7 +697,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             invertM2 = match1 == ReassociateMatch.x && match2 == ReassociateMatch.x;
         }
         assert !(invertM1 && invertM2) && !(invertA && aSub) : Assertions.errorMessageContext("node", node, "invertM1", invertM1, "invertM2", invertM2, "invertA", invertA, "aSub", aSub);
-        ValueNode m1 = match1.getValue(node);
+        ValueNode m1 = match1 == ReassociateMatch.x ? forX : forY;
         ValueNode m2 = match2.getValue(other);
         ValueNode a = match2.getOtherValue(other);
         if (isNonExactAddOrSub(node)) {
