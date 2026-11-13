@@ -116,6 +116,8 @@ class TraversingBlockingQueue implements BlockingQueue<Runnable> {
                 // updateWeight returns false only if the task's target does not exist
                 if (task.isCancelled() || !task.updateWeight(time)) {
                     if (entries.remove(entry)) {
+                        // Clear the target's submitted state before waking compilation waiters.
+                        task.finish();
                         ((CompilationTask.ExecutorServiceWrapper) entry).cancel(false);
                         onDiscard.accept(entry);
                         removed--;
