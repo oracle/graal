@@ -48,6 +48,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -120,6 +122,31 @@ public interface BytecodeRootNode {
     @SuppressWarnings("unused")
     default Object interceptOutgoingValue(Object value) {
         return value;
+    }
+
+    /**
+     * Supplies the node object for a tagged bytecode region. The generated instrumentation node
+     * delegates {@link InstrumentableNode#getNodeObject()} to this hook. The default returns
+     * {@code null}, which instrumentation treats as an empty node object.
+     * <p>
+     * Use the supplied node's tags and source sections to identify the region and expose language
+     * metadata. Source sections can be absent if source information has not been materialized
+     * or the parser did not supply a source section. The result must satisfy the interop and
+     * tag-specific contracts of {@link InstrumentableNode#getNodeObject()}. For example,
+     * {@link StandardTags.ReadVariableTag} and {@link StandardTags.WriteVariableTag} require a
+     * node object with the variable name.
+     * <p>
+     * The same restrictions and usage details of {@link InstrumentableNode#getNodeObject()} also
+     * apply to this method. Since bytecode indices are not stable, they should not be used to
+     * identify the node's code region (unless accompanied by a {@link BytecodeNode}).
+     *
+     * @param node the tagged region belonging to this root
+     * @return an interop node object, or {@code null} if no properties are available
+     * @since 25.6
+     */
+    @SuppressWarnings("unused")
+    default Object getInstrumentationNodeObject(TagTreeNode node) {
+        return null;
     }
 
     /**

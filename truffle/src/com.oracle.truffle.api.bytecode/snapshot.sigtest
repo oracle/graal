@@ -233,6 +233,7 @@ meth public com.oracle.truffle.api.exception.AbstractTruffleException interceptT
 meth public com.oracle.truffle.api.source.Source getSource()
 meth public com.oracle.truffle.api.source.SourceSection ensureSourceSection()
 meth public com.oracle.truffle.api.source.SourceSection ensureSourceSectionWithContent()
+meth public java.lang.Object getInstrumentationNodeObject(com.oracle.truffle.api.bytecode.TagTreeNode)
 meth public java.lang.Object interceptControlFlowException(com.oracle.truffle.api.nodes.ControlFlowException,com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.bytecode.BytecodeNode,int) throws java.lang.Throwable
 meth public java.lang.Object interceptIncomingValue(java.lang.Object)
 meth public java.lang.Object interceptOutgoingValue(java.lang.Object)
