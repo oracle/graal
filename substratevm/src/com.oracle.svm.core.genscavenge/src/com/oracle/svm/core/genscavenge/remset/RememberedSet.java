@@ -161,12 +161,12 @@ public interface RememberedSet extends BarrierSetProvider {
     void dirtyCardRangeForUnalignedObject(Object object, Pointer startAddress, Pointer endAddress);
 
     /**
-     * Marks the {@code holderObject} as dirty if needed according to the location of {@code object}
-     * and {@code holderObject}.
+     * Records a reference from {@code holderObject} to {@code object} when later collections need
+     * to revisit it.
      */
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void dirtyCardIfNecessaryInGC(Object holderObject, Object object, Pointer objRef);
+    void updateCardIfNecessaryInGC(Object holderObject, Object object, Pointer objRef);
 
     /**
      * If remembered set tracking is enabled for the given object, this method ensures that all

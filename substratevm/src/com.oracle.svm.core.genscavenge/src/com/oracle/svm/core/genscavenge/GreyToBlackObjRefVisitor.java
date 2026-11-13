@@ -111,7 +111,7 @@ public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectRefe
 
         if (ObjectHeaderImpl.isMarkedHeader(header)) {
             // Note that marking is also used in copying collections in chunks with pinned objects.
-            RememberedSet.get().dirtyCardIfNecessaryInGC(holderObject, p.toObjectNonNull(), objRef);
+            RememberedSet.get().updateCardIfNecessaryInGC(holderObject, p.toObjectNonNull(), objRef);
             return;
         }
 
@@ -121,7 +121,7 @@ public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectRefe
                 // Update the reference to point to the forwarded Object.
                 Object obj = ohi.getForwardedObject(p, header);
                 ReferenceAccess.singleton().writeObjectAt(objRef, obj, compressed);
-                RememberedSet.get().dirtyCardIfNecessaryInGC(holderObject, obj, objRef);
+                RememberedSet.get().updateCardIfNecessaryInGC(holderObject, obj, objRef);
                 return;
             }
 
@@ -138,9 +138,9 @@ public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectRefe
 
             /*
              * The reference will not be updated if a whole chunk is promoted or the object is
-             * pinned. However, we still might have to dirty the card.
+             * pinned. However, we still might have to update the card.
              */
-            RememberedSet.get().dirtyCardIfNecessaryInGC(holderObject, copy, objRef);
+            RememberedSet.get().updateCardIfNecessaryInGC(holderObject, copy, objRef);
         }
     }
 

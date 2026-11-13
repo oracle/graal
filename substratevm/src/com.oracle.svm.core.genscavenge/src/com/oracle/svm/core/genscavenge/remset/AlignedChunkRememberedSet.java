@@ -151,6 +151,15 @@ public final class AlignedChunkRememberedSet {
         }
     }
 
+    /** Updates the object's card using the state selected by the GC. */
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void updateCardForObjectInGC(Object object, byte cardState) {
+        Pointer objectPointer = Word.objectToUntrackedPointer(object);
+        AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(objectPointer);
+        CardTable.setEntryInGC(getCardTableStart(chunk), getObjectIndex(chunk, objectPointer), cardState);
+    }
+
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void dirtyAllReferencesOf(Object obj) {
         ForcedSerialPostWriteBarrier.force(OffsetAddressNode.address(obj, 0), false);

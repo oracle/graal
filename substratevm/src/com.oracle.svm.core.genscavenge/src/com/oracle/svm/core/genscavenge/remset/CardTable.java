@@ -121,6 +121,15 @@ public final class CardTable {
         }
     }
 
+    /** Records the state chosen by the GC for a card containing a runtime reference. */
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void setEntryInGC(Pointer table, UnsignedWord index, byte cardState) {
+        if (table.readByte(index, CARD_REMEMBERED_SET_LOCATION) != cardState) {
+            table.writeByte(index, cardState, CARD_REMEMBERED_SET_LOCATION);
+        }
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isDirty(Pointer table, UnsignedWord index) {
         int entry = readEntry(table, index);

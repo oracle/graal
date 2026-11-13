@@ -56,6 +56,7 @@ import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.guest.staging.util.HostedByteBufferPointer;
+import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.VMError;
@@ -153,6 +154,15 @@ public final class UnalignedChunkRememberedSet {
         } else {
             CardTable.setDirty(cardTableStart, objectIndex);
         }
+    }
+
+    /** Updates the card containing the reference using the state selected by the GC. */
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void updateCardForObjectInGC(Object obj, Pointer address, byte cardState) {
+        UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunk(obj);
+        UnsignedWord index = CardTable.memoryOffsetToIndex(address.subtract(Word.objectToUntrackedPointer(obj)));
+        CardTable.setEntryInGC(getCardTableStart(chunk), index, cardState);
     }
 
     /**

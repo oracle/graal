@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import static com.oracle.svm.core.genscavenge.remset.CardTable.DIRTY_ENTRY;
+import static com.oracle.svm.core.genscavenge.remset.CardTable.OLD_ONLY_ENTRY;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.shared.Uninterruptible.CORE_GC_CODE;
 
@@ -42,6 +44,7 @@ import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
+import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
@@ -199,40 +202,49 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     @Override
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void dirtyCardIfNecessaryInGC(Object holderObject, Object object, Pointer objRef) {
-        if (holderObject == null || object == null) {
+    public void updateCardIfNecessaryInGC(Object holderObject, Object object, Pointer objRef) {
+        assert object != null;
+        if (holderObject == null) {
             return;
         }
 
         assert !HeapImpl.getHeapImpl().isInImageHeap(object) : "should never be called for references to image heap objects";
 
-        if (cardNeedsDirtyingInGC(holderObject, object)) {
-            if (ObjectHeaderImpl.isAlignedObject(holderObject)) {
-                AlignedChunkRememberedSet.dirtyCardForObject(holderObject, false);
-            } else {
-                assert ObjectHeaderImpl.isUnalignedObject(holderObject);
-                /* Stored continuations use imprecise card marking, so their scanner checks at the start of the object. */
-                Pointer address = holderObject instanceof StoredContinuation ? Word.objectToUntrackedPointer(holderObject) : objRef;
-                UnalignedChunkRememberedSet.dirtyCardForObject(holderObject, address, false);
+        if (GCImpl.getGCImpl().isCompleteCollection()) {
+            if (HeapImpl.usesImageHeapCardMarking() && HeapImpl.getHeapImpl().isInImageHeap(holderObject)) {
+                /*
+                 * Full GC leaves no young objects, but image heap cards must still
+                 * record references into the runtime heap so future full collections find these roots.
+                 * Record them as old-only when enabled. Later GC stores may conservatively dirty the card.
+                 */
+                byte cardState = SerialGCOptions.SkipOldOnlyCardsInYoungGC.getValue() ? OLD_ONLY_ENTRY : DIRTY_ENTRY;
+                updateCardInGC(holderObject, objRef, cardState);
+            } else if (Metaspace.singleton().isInAddressSpace(holderObject)) {
+                updateCardInGC(holderObject, objRef, DIRTY_ENTRY);
             }
+        } else if (cardNeedsDirtyingInYoungGC(holderObject, object)) {
+            updateCardInGC(holderObject, objRef, DIRTY_ENTRY);
         }
     }
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static boolean cardNeedsDirtyingInGC(Object holderObject, Object object) {
-        assert holderObject != null && object != null;
-
-        if (GCImpl.getGCImpl().isCompleteCollection()) {
-            /*
-             * After a full GC, the young generation is empty. So, there would be nothing to do.
-             * However, we want to keep track of all the references that the image heap or metaspace
-             * have to the runtime heap (regardless of the runtime heap generation). We clean and
-             * remark those only during complete collections.
-             */
-            return HeapImpl.usesImageHeapCardMarking() && HeapImpl.getHeapImpl().isInImageHeap(holderObject) ||
-                            Metaspace.singleton().isInAddressSpace(holderObject);
+    private static void updateCardInGC(Object holderObject, Pointer objRef, byte cardState) {
+        if (ObjectHeaderImpl.isAlignedObject(holderObject)) {
+            AlignedChunkRememberedSet.updateCardForObjectInGC(holderObject, cardState);
+        } else {
+            assert ObjectHeaderImpl.isUnalignedObject(holderObject);
+            /* Stored continuations use imprecise card marking, so their scanner checks at the start of the object. */
+            Pointer address = holderObject instanceof StoredContinuation ? Word.objectToUntrackedPointer(holderObject) : objRef;
+            UnalignedChunkRememberedSet.updateCardForObjectInGC(holderObject, address, cardState);
         }
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean cardNeedsDirtyingInYoungGC(Object holderObject, Object object) {
+        assert holderObject != null && object != null;
+        assert !GCImpl.getGCImpl().isCompleteCollection();
 
         /*
          * If we don't have any survivor spaces, then there is nothing to do because the young
@@ -246,10 +258,7 @@ public class CardTableBasedRememberedSet implements RememberedSet {
          * Dirty the card table for references from the image heap, metaspace, or old generation to
          * the young generation.
          */
-        if (!isInYoungGenerationInGC(object)) {
-            return false;
-        }
-        return hasRememberedSetInGC(holderObject);
+        return isInYoungGenerationInGC(object) && hasRememberedSetInGC(holderObject);
     }
 
     @AlwaysInline("GC performance")

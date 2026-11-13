@@ -124,7 +124,7 @@ final class ReferenceObjectProcessing {
         Object refObject = referentAddr.toObjectNonNull();
         if (willSurviveThisCollection(refObject)) {
             // Either an object that got promoted without being moved or an object in the old gen.
-            RememberedSet.get().dirtyCardIfNecessaryInGC(dr, refObject, getReferentFieldAddress(dr));
+            RememberedSet.get().updateCardIfNecessaryInGC(dr, refObject, getReferentFieldAddress(dr));
             return;
         }
         if (!areAllSoftReferencesWeak() && dr instanceof SoftReference) {
@@ -154,7 +154,7 @@ final class ReferenceObjectProcessing {
     }
 
     /**
-     * Updates remembered references according to the liveness of the referent, dirtying cards, and
+     * Updates remembered references according to the liveness of the referent, updating cards, and
      * clears the discovered status of non-pending references.
      *
      * @return a list of those references which are pending to be added to a {@link ReferenceQueue}.
@@ -197,7 +197,7 @@ final class ReferenceObjectProcessing {
     }
 
     /**
-     * Determine if the referent is live, updating the reference field, and dirtying cards.
+     * Determine if the referent is live, updating the reference field and its card state.
      *
      * @return true if the referent will survive the collection, false otherwise.
      */
@@ -217,7 +217,7 @@ final class ReferenceObjectProcessing {
         }
         Object refObject = refPointer.toObjectNonNull();
         if (willSurviveThisCollection(refObject)) {
-            RememberedSet.get().dirtyCardIfNecessaryInGC(dr, refObject, getReferentFieldAddress(dr));
+            RememberedSet.get().updateCardIfNecessaryInGC(dr, refObject, getReferentFieldAddress(dr));
             return true;
         }
         /*
