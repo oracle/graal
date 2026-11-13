@@ -418,6 +418,7 @@ final class BytecodeNodeElement extends AbstractElement {
         AbstractBytecodeNodeElement.buildVerifyLocalsIndex(b);
         AbstractBytecodeNodeElement.buildVerifyFrameDescriptor(b, true);
         parent.abstractBytecodeNode.emitMaybeInvalidateLocalValue(b, "USER_LOCALS_START_INDEX + localOffset");
+        parent.abstractBytecodeNode.emitMaybeRestoreDefaultLocalValue(b, "USER_LOCALS_START_INDEX + localOffset", "value");
         if (parent.model.usesBoxingElimination() && tier.isCached()) {
             b.startStatement().startCall("setLocalValueImpl");
             b.string("frame").string("localOffset").string("value");
@@ -788,13 +789,17 @@ final class BytecodeNodeElement extends AbstractElement {
         }
 
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "reconcileContinuationLocals");
+        String defaultLocalValueDetail = "";
+        if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
+            defaultLocalValueDetail = "\nObject slots containing the default local value are left unchanged.";
+        }
         BytecodeRootNodeElement.addJavadoc(ex, """
                         A continuation frame can become stale when cached local tags change after
                         the continuation was captured. Before resuming cached bytecode, reconcile
                         the frame slot tags with the current cached local tags. Compatible tag
                         mismatches are repaired in the frame; incompatible values generalize tags
-                        through the cached local tag update path.
-                        """);
+                        through the cached local tag update path.%s
+                        """.formatted(defaultLocalValueDetail));
         ex.addAnnotationMirror(new CodeAnnotationMirror(types.ExplodeLoop));
         ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
         ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
@@ -808,7 +813,12 @@ final class BytecodeNodeElement extends AbstractElement {
         b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
         b.startDeclaration(type(byte.class), "frameTag").startCall("FRAMES", "getTag").string("frame").string("frameIndex").end(2);
 
-        b.startIf().string("frameTag == ").staticReference(parent.frameTagsElement.getIllegal()).end().startBlock();
+        b.startIf().string("frameTag == ").staticReference(parent.frameTagsElement.getIllegal());
+        if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
+            b.string(" || (frameTag == ").staticReference(parent.frameTagsElement.getObject());
+            b.string(" && ").startCall("FRAMES.getObject").string("frame").string("frameIndex").end().string(" == DEFAULT_LOCAL_VALUE)");
+        }
+        b.end().startBlock();
         b.statement("continue");
         b.end();
 
