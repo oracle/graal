@@ -56,6 +56,8 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.graph.NodeStack;
 import jdk.graal.compiler.graph.Position;
+import jdk.graal.compiler.guards.optimistic.OptimisticFixedGuardNode;
+import jdk.graal.compiler.guards.optimistic.OptimisticGuardNode;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractFixedGuardNode;
@@ -1054,6 +1056,12 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
         }
 
         protected void registerNewCondition(LogicNode condition, boolean negated, GuardingNode guard) {
+            if (guard instanceof OptimisticFixedGuardNode || guard instanceof OptimisticGuardNode) {
+                // Folding control flow with an optimistic guard's condition does not keep the guard
+                // alive. Its usages may disappear and OptimisticGuardsPhase can then remove it.
+                return;
+            }
+
             /*
              * <PI proven always true> Special case PI nodes and already-to-be-proven logic nodes:
              * If a previous operation leads to a guard that will already unconditionally fold away

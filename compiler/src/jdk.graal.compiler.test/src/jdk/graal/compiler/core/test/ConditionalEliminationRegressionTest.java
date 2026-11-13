@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.phases.MidTier;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -70,6 +71,32 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ConditionalEliminationRegressionTest extends GraalCompilerTest {
+
+    public static int countedLoopSnippet(int start, int[] a) {
+        int i = start & 7;
+        for (; i <= a.length; i += 4) {
+            a[i + 1] = a[i] + 1;
+        }
+        return i;
+    }
+
+    @Test
+    public void testCountedLoop() {
+        OptionValues options = new OptionValues(getInitialOptions(), MidTier.Options.OptimisticAliasingAnalysis, true);
+        ResolvedJavaMethod method = getResolvedJavaMethod("countedLoopSnippet");
+        for (int iteration = 0; iteration < 3; iteration++) {
+            for (int start = 0; start < 2; start++) {
+                int length = start == 0 ? 100 : 6;
+                int[] expectedArray = new int[length];
+                int[] actualArray = new int[length];
+                Result expected = executeExpected(method, null, start, expectedArray);
+                Result actual = executeActual(options, method, null, start, actualArray);
+                assertEquals(expected, actual);
+                Assert.assertEquals(expected.exception.getMessage(), actual.exception.getMessage());
+                Assert.assertArrayEquals(expectedArray, actualArray);
+            }
+        }
+    }
 
     @Override
     protected OptimisticOptimizations getOptimisticOptimizations() {
