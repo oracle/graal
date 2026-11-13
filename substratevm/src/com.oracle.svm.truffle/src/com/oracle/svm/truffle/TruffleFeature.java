@@ -35,10 +35,12 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -101,6 +103,7 @@ import java.util.function.ToLongBiFunction;
 import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 
+import com.oracle.svm.hosted.code.DeoptimizationUtils.GraphCheckFailure;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -137,6 +140,7 @@ import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.runtimecompilation.CallTreeInfo;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationCandidate;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature;
+import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompilationFeature.RuntimeCompilationFailure;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethod;
 import com.oracle.svm.graal.hosted.runtimecompilation.RuntimeCompiledMethodSupport;
 import com.oracle.svm.hosted.BytecodeHandlerFeature;
@@ -249,6 +253,9 @@ public class TruffleFeature implements InternalFeature {
 
         @Option(help = "No longer has any effect", deprecated = true)//
         static final HostedOptionKey<Boolean> TruffleInlineDuringParsing = new HostedOptionKey<>(true);
+
+        @Option(help = "Fail if a method is reachable for runtime compilation, but preparing its graph for runtime compilation fails.")//
+        public static final HostedOptionKey<Boolean> TruffleCheckUnsupportedRuntimeCompilationMethods = new HostedOptionKey<>(true);
     }
 
     public static final class IsEnabled implements BooleanSupplier {
@@ -976,6 +983,67 @@ public class TruffleFeature implements InternalFeature {
     private record BlocklistViolationInfo(RuntimeCompilationCandidate candidate, String[] callTrace) {
     }
 
+    private static void checkUnsupportedRuntimeCompilationMethods() {
+        if (!Options.TruffleCheckUnsupportedRuntimeCompilationMethods.getValue()) {
+            return;
+        }
+
+        List<RuntimeCompilationFailure> failures = new ArrayList<>(RuntimeCompilationFeature.singleton().getRuntimeCompilationFailures());
+        if (failures.isEmpty()) {
+            return;
+        }
+
+        Map<GraphCheckFailure.Reason, List<RuntimeCompilationFailure>> failuresByCause = new EnumMap<>(GraphCheckFailure.Reason.class);
+        Set<AnalysisMethod> failedMethods = new HashSet<>();
+        for (RuntimeCompilationFailure failure : failures) {
+            failuresByCause.computeIfAbsent(failure.reason(), _ -> new ArrayList<>()).add(failure);
+            failedMethods.add(failure.method());
+        }
+
+        Comparator<RuntimeCompilationFailure> failureOrder = Comparator
+                        .comparing((RuntimeCompilationFailure failure) -> failure.method().format("%H.%n(%p)"))
+                        .thenComparing(RuntimeCompilationFailure::details)
+                        .thenComparing(failure -> failure.parsingContext().toString());
+
+        System.out.println();
+        System.out.printf("=== Found %d method(s) reachable from runtime-compiled code that do not support runtime compilation ===%n", failedMethods.size());
+        System.out.println();
+        for (Map.Entry<GraphCheckFailure.Reason, List<RuntimeCompilationFailure>> entry : failuresByCause.entrySet()) {
+            List<RuntimeCompilationFailure> causeFailures = entry.getValue();
+            causeFailures.sort(failureOrder);
+            int failureCount = causeFailures.size();
+            System.out.printf("%s (%d failure%s):%n", entry.getKey().description(), failureCount, failureCount == 1 ? "" : "s");
+            System.out.printf("  To fix: %s%n", getFailureGuidance(entry.getKey()));
+            for (RuntimeCompilationFailure failure : causeFailures) {
+                System.out.printf("  Method: %s%n", failure.method().format("%H.%n(%p)"));
+                if (!failure.details().isEmpty()) {
+                    System.out.printf("  Detail: %s%n", failure.details());
+                }
+                System.out.println("  Parsing context:");
+                if (failure.parsingContext().isEmpty()) {
+                    System.out.println("    unavailable");
+                } else {
+                    for (StackTraceElement contextElement : failure.parsingContext()) {
+                        System.out.printf("    at %s%n", contextElement);
+                    }
+                }
+            }
+        }
+
+        throw VMError.shouldNotReachHere("Methods reachable from runtime-compiled code do not support runtime compilation");
+    }
+
+    private static String getFailureGuidance(GraphCheckFailure.Reason reason) {
+        return switch (reason) {
+            case DECLARING_CLASS_NOT_BUILD_TIME_INITIALIZED -> "Mark the declaring class for build-time initialization with --initialize-at-build-time=<class>, " +
+                            "if its initializer is safe to run during image building.";
+            case DISALLOWED_NODE -> "Add a @TruffleBoundary to keep this operation out of runtime-compiled code. " +
+                            "For EnsureClassInitializedNode specifically, you can also mark the indicated type for build-time initialization if safe.";
+            case PARSING_BAILOUT -> "Use the bailout detail to identify and fix the cause. If the method does not need to be runtime-compiled, " +
+                            "add @TruffleBoundary to keep it out of the graph. If the problem persists, please report it to the GraalVM team.";
+        };
+    }
+
     private void checkBlockList(CallTreeInfo treeInfo) {
         RuntimeCompilationFeature runtimeCompilation = RuntimeCompilationFeature.singleton();
         boolean failBlockListViolations;
@@ -1129,6 +1197,7 @@ public class TruffleFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess access) {
         CallTreeInfo treeInfo = RuntimeCompilationFeature.singleton().getCallTreeInfo();
 
+        checkUnsupportedRuntimeCompilationMethods();
         checkBlockList(treeInfo);
 
         if (Options.PrintStaticTruffleBoundaries.getValue()) {

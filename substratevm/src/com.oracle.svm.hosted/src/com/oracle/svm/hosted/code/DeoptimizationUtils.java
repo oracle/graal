@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,11 +27,18 @@ package com.oracle.svm.hosted.code;
 import static com.oracle.svm.hosted.code.SubstrateCompilationDirectives.DEOPT_TARGET_METHOD;
 
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Supplier;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -54,6 +61,7 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.GuestAnnotationAccess;
+import com.oracle.svm.shared.util.ClassUtil;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.graph.Node;
@@ -310,7 +318,7 @@ public class DeoptimizationUtils {
         /*
          * No deopt targets can have a StackValueNode in the graph.
          */
-        assert createGraphChecker(graph, AOT_COMPILATION_INVALID_NODES).get() : "Invalid nodes in deopt target: " + graph;
+        assert createGraphChecker(graph, AOT_COMPILATION_INVALID_NODES, null).get() : "Invalid nodes in deopt target: " + graph;
 
         for (Infopoint infopoint : result.getInfopoints()) {
             if (infopoint.debugInfo != null) {
@@ -522,24 +530,95 @@ public class DeoptimizationUtils {
 
     public static final NodePredicate AOT_COMPILATION_INVALID_NODES = n -> NodePredicates.isA(StackValueNode.class).test(n);
 
+    public static GraphChecker createGraphChecker(StructuredGraph graph, NodePredicate invalidNodes, ConstantReflectionProvider constantReflection) {
+        return new GraphChecker(graph, invalidNodes, constantReflection);
+    }
+
     /**
-     * @return Supplier which returns true if the graph does not violate the checks.
+     * Checks that a method variant's graph is valid for use as a runtime compilation or deopt
+     * target. If any of the validity checks are violated, produces false.
+     * <p>
+     * Use {@link #check} to obtain a detailed {@link GraphCheckResult}, or use it like a
+     * {@link Supplier} when only a boolean check result is needed.
      */
-    public static Supplier<Boolean> createGraphChecker(StructuredGraph graph, NodePredicate invalidNodes) {
-        return () -> {
+    public static final class GraphChecker implements Supplier<Boolean> {
+        private final StructuredGraph graph;
+        private final NodePredicate invalidNodes;
+        private final ConstantReflectionProvider constantReflection;
+
+        private GraphChecker(StructuredGraph graph, NodePredicate invalidNodes, ConstantReflectionProvider constantReflection) {
+            this.graph = graph;
+            this.invalidNodes = invalidNodes;
+            this.constantReflection = constantReflection;
+        }
+
+        @Override
+        public Boolean get() {
+            return check().isValid();
+        }
+
+        public GraphCheckResult check() {
+            List<GraphCheckFailure> failures = new ArrayList<>();
             if (!graph.method().getDeclaringClass().isInitialized()) {
                 /*
                  * All types which are used at run time should build-time initialized. This ensures
                  * the partial evaluator does not constant fold uninitialized fields.
                  */
-                return false;
+                failures.add(new GraphCheckFailure(GraphCheckFailure.Reason.DECLARING_CLASS_NOT_BUILD_TIME_INITIALIZED,
+                                graph.method().getDeclaringClass().toJavaName()));
             }
 
-            if (graph.getNodes().filter(invalidNodes).isNotEmpty()) {
-                return false;
+            Set<String> invalidNodeDetails = new TreeSet<>();
+            for (Node node : graph.getNodes().filter(invalidNodes)) {
+                invalidNodeDetails.add(getInvalidNodeDetails(node));
+            }
+            if (!invalidNodeDetails.isEmpty()) {
+                failures.add(new GraphCheckFailure(GraphCheckFailure.Reason.DISALLOWED_NODE, String.join(", ", invalidNodeDetails)));
+            }
+            return new GraphCheckResult(failures);
+        }
+
+        private String getInvalidNodeDetails(Node node) {
+            String details = ClassUtil.getUnqualifiedName(node.getClass());
+            if (node instanceof EnsureClassInitializedNode ensureClassInitializedNode && constantReflection != null) {
+                ResolvedJavaType initializedType = ensureClassInitializedNode.constantTypeOrNull(constantReflection);
+                String typeName = initializedType == null ? "unknown (non-constant hub)" : initializedType.toJavaName();
+                details += " (type: " + typeName + ")";
+            }
+            return details;
+        }
+    }
+
+    public record GraphCheckResult(List<GraphCheckFailure> failures) {
+        public GraphCheckResult {
+            failures = List.copyOf(failures);
+        }
+
+        public boolean isValid() {
+            return failures.isEmpty();
+        }
+    }
+
+    public record GraphCheckFailure(Reason reason, String details) {
+        public enum Reason {
+            DECLARING_CLASS_NOT_BUILD_TIME_INITIALIZED("declaring class is not initialized at build time"),
+            DISALLOWED_NODE("graph contains nodes that are not supported"),
+            PARSING_BAILOUT("graph parsing bailed out");
+
+            private final String description;
+
+            Reason(String description) {
+                this.description = description;
             }
 
-            return true;
-        };
+            public String description() {
+                return description;
+            }
+        }
+
+        public GraphCheckFailure {
+            Objects.requireNonNull(reason);
+            details = details == null ? "" : details;
+        }
     }
 }

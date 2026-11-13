@@ -7,6 +7,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-80168: Bytecode DSL: Added `BytecodeConfig.matches` to compare configurations for a particular interpreter.
 * GR-80168: Bytecode DSL: Added `serializeBuilderBytecode`, `deserializeBuilderBytecode`, `serializeExecutionBytecode`, and `deserializeExecutionBytecode` methods. Execution bytecode can be loaded without reading or replaying builder calls. Deprecated the builder-only `serialize` and `deserialize` methods.
 * GR-79412: Restored automatic splitting during interpreter direct-call execution instead of compilation preparation. See [Splitting](docs/splitting/Splitting.md) for details.
+* GR-81868: Added the Native Image option `-H:TruffleCheckUnsupportedRuntimeCompilationMethods` to fail image building when analysis finds methods reachable from runtime-compiled code that do not support runtime compilation. The check is enabled by default and can be disabled with `-H:-TruffleCheckUnsupportedRuntimeCompilationMethods`.
 
 ## Version 25.6
 

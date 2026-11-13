@@ -42,9 +42,10 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.code.DeoptimizationUtils.GraphCheckFailure;
+import com.oracle.svm.hosted.code.DeoptimizationUtils.GraphCheckResult;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -137,6 +138,7 @@ import jdk.graal.compiler.debug.Indent;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.graph.iterators.NodePredicate;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.nodes.CallTargetNode;
@@ -224,6 +226,16 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         boolean allowRuntimeCompilation(ResolvedJavaMethod method);
     }
 
+    public record RuntimeCompilationFailure(AnalysisMethod method, GraphCheckFailure.Reason reason, String details, List<StackTraceElement> parsingContext) {
+        public RuntimeCompilationFailure {
+            details = details == null ? "" : details;
+            if (parsingContext.isEmpty()) {
+                throw new AssertionError("Expected a parsing context");
+            }
+            parsingContext = List.copyOf(parsingContext);
+        }
+    }
+
     public interface AllowInliningPredicate {
         enum InlineDecision {
             INLINE,
@@ -251,6 +263,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
     private final Set<AnalysisMethod> registeredRuntimeCompilations = ConcurrentHashMap.newKeySet();
     private final Set<SubstrateMethod> substrateAnalysisMethods = ConcurrentHashMap.newKeySet();
     private final Map<AnalysisMethod, String> invalidForRuntimeCompilation = new ConcurrentHashMap<>();
+    private final Set<RuntimeCompilationFailure> runtimeCompilationFailures = ConcurrentHashMap.newKeySet();
     private final Set<RuntimeCompilationCandidate> runtimeCompilationCandidates = ConcurrentHashMap.newKeySet();
     private final Set<AnalysisMethod> runtimeCompilationsFailedDuringParsing = ConcurrentHashMap.newKeySet();
     private CallTreeInfo callTreeMetadata = null;
@@ -369,6 +382,10 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 
     public Collection<RuntimeCompilationCandidate> getAllRuntimeCompilationCandidates() {
         return runtimeCompilationCandidates;
+    }
+
+    public List<RuntimeCompilationFailure> getRuntimeCompilationFailures() {
+        return List.copyOf(runtimeCompilationFailures);
     }
 
     public SubstrateMethod prepareMethodForRuntimeCompilation(ResolvedJavaMethod method, FeatureImpl.BeforeAnalysisAccessImpl config) {
@@ -796,7 +813,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                 return graph;
             } catch (PermanentBailoutException ex) {
                 bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
-                recordFailed(method);
+                recordFailed(method, new GraphCheckFailure(GraphCheckFailure.Reason.PARSING_BAILOUT, ex.getLocalizedMessage()), Arrays.asList(method.getParsingContext()));
                 runtimeCompilationsFailedDuringParsing.add(method);
                 return HostVM.PARSING_FAILED;
             }
@@ -831,20 +848,29 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
             return graph;
         }
 
-        private void recordFailed(AnalysisMethod method) {
+        private void recordFailed(AnalysisMethod method, GraphCheckFailure failure, List<StackTraceElement> parsingContext) {
             // Will need to create post to invalidate other MethodTypeFlows (if they exist)
-            invalidForRuntimeCompilation.computeIfAbsent(method, _ -> "generic failure");
+            invalidForRuntimeCompilation.computeIfAbsent(method,
+                            _ -> failure.reason().description() + (failure.details().isEmpty() ? "" : ": " + failure.details()));
+            if (method.getMethodVariantKey() == RUNTIME_COMPILED_METHOD) {
+                runtimeCompilationFailures.add(new RuntimeCompilationFailure(method, failure.reason(), failure.details(), parsingContext));
+            }
         }
 
         @Override
         public boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph) {
             PointsToAnalysisMethod aMethod = (PointsToAnalysisMethod) graph.method();
             MethodVariant.MethodVariantKey methodVariantKey = aMethod.getMethodVariantKey();
-            Supplier<Boolean> graphChecker = DeoptimizationUtils.createGraphChecker(graph,
-                            methodVariantKey == RUNTIME_COMPILED_METHOD ? DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES : DeoptimizationUtils.AOT_COMPILATION_INVALID_NODES);
+            NodePredicate invalidNodes = methodVariantKey == RUNTIME_COMPILED_METHOD ? DeoptimizationUtils.RUNTIME_COMPILATION_INVALID_NODES
+                            : DeoptimizationUtils.AOT_COMPILATION_INVALID_NODES;
+            DeoptimizationUtils.GraphChecker graphChecker = DeoptimizationUtils.createGraphChecker(graph, invalidNodes, bb.getConstantReflectionProvider());
             if (methodVariantKey != ORIGINAL_METHOD) {
-                if (!graphChecker.get()) {
-                    recordFailed(aMethod);
+                GraphCheckResult result = graphChecker.check();
+                if (!result.isValid()) {
+                    List<StackTraceElement> parsingContext = Arrays.asList(aMethod.getParsingContext());
+                    for (GraphCheckFailure failure : result.failures()) {
+                        recordFailed(aMethod, failure, parsingContext);
+                    }
                     return false;
                 }
             } else if (DeoptimizationUtils.canDeoptForTesting(aMethod, false, graphChecker)) {
