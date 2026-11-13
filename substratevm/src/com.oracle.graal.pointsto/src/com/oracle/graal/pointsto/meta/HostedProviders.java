@@ -40,6 +40,11 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+/**
+ * Extends {@link Providers} with graph builder plugins for analysis and Native Image AOT compilation.
+ * The contained providers determine the metadata universe: Native Image creates separate instances
+ * backed by {@link AnalysisMetaAccess} for analysis and {@code HostedMetaAccess} for AOT compilation.
+ */
 public class HostedProviders extends Providers {
 
     private GraphBuilderConfiguration.Plugins graphBuilderPlugins;
