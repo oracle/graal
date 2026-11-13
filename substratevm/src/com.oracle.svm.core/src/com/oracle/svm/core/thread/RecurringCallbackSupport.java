@@ -41,6 +41,7 @@ import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.options.Option;
@@ -496,7 +497,7 @@ public class RecurringCallbackSupport {
     }
 
     static final class SafepointException extends RuntimeException {
-        public static final SafepointException SINGLETON = new SafepointException();
+        public static final SafepointException SINGLETON = PreallocatedExceptions.prepare(new SafepointException());
 
         @Serial //
         private static final long serialVersionUID = 1L;

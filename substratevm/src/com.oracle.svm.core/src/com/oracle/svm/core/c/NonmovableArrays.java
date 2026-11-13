@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,6 +54,7 @@ import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
@@ -83,8 +84,8 @@ public final class NonmovableArrays {
 
     private static final UninterruptibleUtils.AtomicLong runtimeArraysInExistence = new UninterruptibleUtils.AtomicLong(0);
 
-    private static final OutOfMemoryError OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate nonmovable array");
-    private static final NegativeArraySizeException NEGATIVE_ARRAY_SIZE_EXCEPTION = new NegativeArraySizeException();
+    private static final OutOfMemoryError OUT_OF_MEMORY_ERROR = PreallocatedExceptions.createOutOfMemoryError("Could not allocate nonmovable array");
+    private static final NegativeArraySizeException NEGATIVE_ARRAY_SIZE_EXCEPTION = PreallocatedExceptions.createNegativeArraySizeException();
 
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

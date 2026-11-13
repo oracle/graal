@@ -88,6 +88,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
@@ -411,7 +412,7 @@ public final class HeapImpl extends Heap {
      * dynamic hubs were collected, this visitor throws a {@link FoundAllHubsException}.
      */
     private static class ClassListBuilderVisitor implements MemoryWalker.ImageHeapRegionVisitor, ObjectVisitor {
-        private static final FoundAllHubsException FOUND_ALL_HUBS_EXCEPTION = new FoundAllHubsException();
+        private static final FoundAllHubsException FOUND_ALL_HUBS_EXCEPTION = PreallocatedExceptions.prepare(new FoundAllHubsException());
 
         private final int dynamicHubCount;
         private final List<Class<?>> list;

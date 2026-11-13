@@ -31,10 +31,11 @@ import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
 import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.CodeUtil;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import org.graalvm.word.impl.Word;
 
 public abstract class CEnumRuntimeData {
-    private static final NullPointerException CACHED_NULL_EXCEPTION = new NullPointerException(
+    private static final NullPointerException CACHED_NULL_EXCEPTION = PreallocatedExceptions.createNullPointerException(
                     "null enum object cannot be converted to C enum integer (typically for automatic conversions on return to C code)");
 
     /** Stores the sign- or zero-extended C values (depending on the signedness of the C enum). */

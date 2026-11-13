@@ -38,6 +38,7 @@ import com.oracle.svm.jdwp.bridge.jniutils.JNICalls;
 import com.oracle.svm.jdwp.bridge.jniutils.JNIExceptionWrapper;
 import com.oracle.svm.jdwp.bridge.jniutils.JNIUtil;
 import com.oracle.svm.jdwp.bridge.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 
@@ -57,7 +58,7 @@ public final class ForeignException extends RuntimeException {
     /**
      * Pre-allocated {@code ForeignException} for double failure.
      */
-    private static final ForeignException MARSHALLING_FAILED = new ForeignException(null, UNDEFINED, false);
+    private static final ForeignException MARSHALLING_FAILED = PreallocatedExceptions.prepare(new ForeignException(null, UNDEFINED, false));
     private static volatile JNICalls jniCalls;
 
     private final byte kind;
