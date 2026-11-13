@@ -24,6 +24,10 @@
  */
 package jdk.graal.compiler.core.test;
 
+import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -80,6 +84,34 @@ public class HypotheticalOperandsCanonicalizationTest extends GraalCompilerTest 
                 Assert.assertSame(one, compare.getX());
                 Assert.assertSame(two, compare.getY());
             }
+        }
+    }
+
+    /// Creates a nonconstant operand with a chosen stamp for hypothetical canonicalization.
+    private static ParameterNode parameter(int index, IntegerStamp stamp) {
+        return new ParameterNode(index, StampPair.createSingle(stamp));
+    }
+
+    /// Checks that replacing either shift operand cannot reuse the original result's constant stamp.
+    @Test
+    public void testUnsignedRightShift() {
+        CanonicalizerTool tool = canonicalizerTool();
+        for (int bits : new int[]{32, 64}) {
+            ValueNode zero = parameter(0, IntegerStamp.create(bits, 0, 0));
+            ValueNode unrestricted = parameter(1, IntegerStamp.create(bits));
+            ValueNode twoOrThree = parameter(2, IntegerStamp.create(bits, 2, 3));
+            ValueNode one = ConstantNode.forInt(1);
+            UnsignedRightShiftNode shift = new UnsignedRightShiftNode(zero, one);
+            Assert.assertEquals(0, shift.canonical(tool, zero, one).asJavaConstant().asLong());
+            Assert.assertSame(shift, shift.canonical(tool, unrestricted, one));
+            Assert.assertEquals(1, shift.canonical(tool, twoOrThree, one).asJavaConstant().asLong());
+            Assert.assertSame(unrestricted, shift.canonical(tool, unrestricted, ConstantNode.forInt(0)));
+            UnsignedRightShiftNode largeShift = new UnsignedRightShiftNode(unrestricted, ConstantNode.forInt(bits - 1));
+            ValueNode nonnegative = parameter(3, IntegerStamp.create(bits, 0, 3));
+            Assert.assertEquals(0, largeShift.canonical(tool, nonnegative, largeShift.getY()).asJavaConstant().asLong());
+            Assert.assertSame(largeShift, largeShift.canonical(tool, nonnegative, one));
+            Assert.assertSame(zero, shift.getX());
+            Assert.assertSame(one, shift.getY());
         }
     }
 }
