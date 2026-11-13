@@ -30,11 +30,9 @@ import org.graalvm.nativeimage.impl.ClassLoading;
 
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubUtils;
-import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
-import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.espresso.classfile.ParserField;
 import com.oracle.svm.espresso.classfile.attributes.Attribute;
 import com.oracle.svm.espresso.classfile.attributes.ConstantValueAttribute;
@@ -133,15 +131,6 @@ public class CremaResolvedJavaFieldImpl extends InterpreterResolvedJavaField imp
             return null;
         }
         return getDeclaringClass().getConstantPool().utf8At(signatureAttribute.getSignatureIndex(), "signature").toString();
-    }
-
-    @Override
-    public JNIFieldId getOrCreateJNIFieldId() {
-        if (!isStatic()) {
-            return CremaJNIFieldIds.forInstanceField(getOffset());
-        }
-        CremaResolvedObjectType type = ((CremaResolvedObjectType) getDeclaringClass());
-        return CremaJNIFieldIds.forStaticField(type.classRegistry().getOrCreateCremaJNIStaticFieldId(this, type.getHub(), getOffset()));
     }
 
     @Override

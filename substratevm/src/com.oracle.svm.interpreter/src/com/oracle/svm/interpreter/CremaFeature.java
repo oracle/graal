@@ -46,8 +46,8 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
-import com.oracle.svm.core.hub.crema.CremaJNIMethodIds;
+import com.oracle.svm.core.interpreter.InterpreterJNIFieldIds;
+import com.oracle.svm.core.interpreter.InterpreterJNIMethodIds;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport;
@@ -133,8 +133,8 @@ public class CremaFeature implements InternalFeature {
             enterInterpreterForFFMUpcall = CEntryPointCallStubSupport.singleton().registerStubForMethod(enterInterpreterForFFMUpcallTarget, () -> entryPointData, List.of(
                             newAnnotationValue(DeoptStub.class, "stubType", DeoptStub.StubType.InterpreterFFMUpcallStub)));
 
-            access.registerAsInHeap(CremaJNIFieldIds.CremaJNIStaticFieldId.class);
-            access.registerAsInHeap(CremaJNIMethodIds.CremaJNIMethodId.class);
+            access.registerAsInHeap(InterpreterJNIFieldIds.InterpreterJNIStaticFieldId.class);
+            access.registerAsInHeap(InterpreterJNIMethodIds.InterpreterJNIMethodId.class);
 
             CEntryPointData unpublished = CEntryPointData.createCustomUnpublished();
             enterCremaJNIUpcallVarargsVirtualWrapper = registerCremaJNIUpcallWrapperMethod(accessImpl, CallVariant.VARARGS, false, unpublished);

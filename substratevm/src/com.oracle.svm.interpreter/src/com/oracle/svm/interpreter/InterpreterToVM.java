@@ -50,11 +50,12 @@ import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.espresso.shared.resolver.CallKind;
+import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.interpreter.metadata.CremaResolvedJavaMethodImpl;
@@ -1095,13 +1096,25 @@ public final class InterpreterToVM {
         }
     }
 
-    @AlwaysInline("Fold invocation tracing in the dispatch entry")
-    private static boolean shouldCallAOTEntryPoint(boolean stayInInterpreter, InterpreterResolvedJavaMethod target, boolean trace) {
-        boolean canBeInterpreterInvoked = target.hasBytecodes() ||
+    static boolean canInvoke(InterpreterResolvedJavaMethod target) {
+        return target instanceof CremaResolvedJavaMethod && target.isNative() || canBeInterpreterInvoked(target) || canBeAOTCalled(target);
+    }
+
+    private static boolean canBeInterpreterInvoked(InterpreterResolvedJavaMethod target) {
+        return target.hasBytecodes() ||
                         (RuntimeClassLoading.isSupported() && target.isSignaturePolymorphicIntrinsic());
-        boolean canBeAOTCalled = target.hasNativeEntryPoint() &&
+    }
+
+    private static boolean canBeAOTCalled(InterpreterResolvedJavaMethod target) {
+        return target.hasNativeEntryPoint() &&
                         target.getNativeEntryPoint().isNonNull() &&
                         !target.getNativeEntryPoint().equal(InterpreterKnownCompiledEntryPoints.getMethodNotCompiledHandler());
+    }
+
+    @AlwaysInline("Fold invocation tracing in the dispatch entry")
+    private static boolean shouldCallAOTEntryPoint(boolean stayInInterpreter, InterpreterResolvedJavaMethod target, boolean trace) {
+        boolean canBeInterpreterInvoked = canBeInterpreterInvoked(target);
+        boolean canBeAOTCalled = canBeAOTCalled(target);
 
         if (!canBeInterpreterInvoked && !canBeAOTCalled) {
             String source;

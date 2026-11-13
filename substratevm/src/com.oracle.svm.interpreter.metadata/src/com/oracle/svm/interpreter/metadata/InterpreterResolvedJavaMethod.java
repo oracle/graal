@@ -65,8 +65,11 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.interpreter.InterpreterJNIMethodIds;
 import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
@@ -886,6 +889,11 @@ public class InterpreterResolvedJavaMethod extends InterpreterAnnotated implemen
      */
     public final int getMethodId() {
         return methodId;
+    }
+
+    public final JNIMethodId getOrCreateJNIMethodId() {
+        ClassLoader loader = getDeclaringClass().getJavaClass().getClassLoader();
+        return InterpreterJNIMethodIds.forMethod(ClassRegistries.runtimeLastLayer().getRegistry(loader).getOrCreateInterpreterJNIMethodId(this));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

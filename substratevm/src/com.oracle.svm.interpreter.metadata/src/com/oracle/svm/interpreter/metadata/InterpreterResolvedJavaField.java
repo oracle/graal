@@ -39,9 +39,12 @@ import org.graalvm.word.impl.Word;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.SubstrateMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.interpreter.InterpreterJNIFieldIds;
 import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.jvmci.shared.meta.SharedField;
 import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.espresso.classfile.ClassfileParser;
@@ -264,6 +267,33 @@ public class InterpreterResolvedJavaField extends InterpreterAnnotated implement
 
     public final int getInstalledLayerNum() {
         return layerNum;
+    }
+
+    /** Returns whether this field has addressable storage that can be encoded in a JNI field ID. */
+    public final boolean canCreateJNIFieldId() {
+        int fieldOffset = getOffset();
+        return isStatic() ? fieldOffset >= 0 && getInstalledLayerNum() != MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED : fieldOffset > 0;
+    }
+
+    /**
+     * Gets or creates the tagged JNI field ID for this interpreter field. Instance field IDs encode
+     * the field offset directly. Static field IDs are cached by the declaring class loader's
+     * registry and encode the declaring hub, offset, and installed static-storage layer in a
+     * metaspace node.
+     *
+     * @return the JNI field ID
+     */
+    public final JNIFieldId getOrCreateJNIFieldId() {
+        assert canCreateJNIFieldId();
+        int fieldOffset = getOffset();
+        if (!isStatic()) {
+            return InterpreterJNIFieldIds.forInstanceField(fieldOffset);
+        }
+        DynamicHub hub = getDeclaringClass().getHub();
+        ClassLoader loader = getDeclaringClass().getJavaClass().getClassLoader();
+        var node = ClassRegistries.runtimeLastLayer().getRegistry(loader).getOrCreateInterpreterJNIStaticFieldId(
+                        this, hub, fieldOffset, getInstalledLayerNum());
+        return InterpreterJNIFieldIds.forStaticField(node);
     }
 
     @Override

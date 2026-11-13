@@ -42,17 +42,16 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.configure.ClassNameSupport;
-import com.oracle.svm.configure.config.ConfigurationMemberInfo;
-import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jni.MissingJNIRegistrationUtils;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.metadata.MetadataTracer;
-import com.oracle.svm.guest.staging.util.DeferredKeyMap;
 import com.oracle.svm.core.util.DynamicHubKey;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.guest.staging.util.DeferredKeyMap;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
@@ -371,10 +370,14 @@ public final class JNIReflectionDictionary {
     }
 
     public static JNIMethodId getMethodID(Class<?> classObject, CharSequence name, CharSequence signature, boolean isStatic) {
+        return getMethodID(classObject, name, signature, isStatic, true);
+    }
+
+    public static JNIMethodId getMethodID(Class<?> classObject, CharSequence name, CharSequence signature, boolean isStatic, boolean reportMissingRegistrationErrors) {
         JNIAccessibleMethodDescriptor descriptor = new JNIAccessibleMethodDescriptor(name, signature);
         JNIAccessibleMethod rawMethod = findMethod(classObject, descriptor, "getMethodID");
         traceMethodAccessIfNeeded(classObject, descriptor, rawMethod, false, rawMethod == null && SignatureUtil.isSignatureValid(signature.toString(), false));
-        JNIAccessibleMethod method = checkMethod(rawMethod, classObject, name, signature);
+        JNIAccessibleMethod method = checkMethod(rawMethod, classObject, name, signature, reportMissingRegistrationErrors);
         boolean match = (method != null && method.isStatic() == isStatic && method.isDiscoverableIn(classObject));
         traceMethodAccessIfNeeded(classObject, descriptor, method, match, false);
         return toMethodID(match ? method : null);
@@ -384,9 +387,7 @@ public final class JNIReflectionDictionary {
         boolean metadataRegisteredForReplay = method != null && (method.isNegative() || (match && method.isPreserved()));
         if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(traceMissing, metadataRegisteredForReplay)) {
             Class<?> traceClass = method != null && match ? method.getDeclaringClassObject() : classObject;
-            MetadataTracer.singleton().traceJNIType(traceClass);
-            MetadataTracer.singleton().traceMethodAccess(traceClass, descriptor.getNameConvertToString(), descriptor.getSignatureConvertToString(),
-                            ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+            MetadataTracer.singleton().traceJNIMethodAccess(traceClass, descriptor.getNameConvertToString(), descriptor.getSignatureConvertToString());
         }
     }
 
@@ -406,8 +407,8 @@ public final class JNIReflectionDictionary {
         return jniMethod;
     }
 
-    private static JNIAccessibleMethod checkMethod(JNIAccessibleMethod method, Class<?> clazz, CharSequence name, CharSequence signature) {
-        if (throwMissingRegistrationErrors() && method == null && SignatureUtil.isSignatureValid(signature.toString(), false)) {
+    private static JNIAccessibleMethod checkMethod(JNIAccessibleMethod method, Class<?> clazz, CharSequence name, CharSequence signature, boolean reportMissingRegistrationErrors) {
+        if (reportMissingRegistrationErrors && throwMissingRegistrationErrors() && method == null && SignatureUtil.isSignatureValid(signature.toString(), false)) {
             /*
              * A malformed signature never throws a missing registration error since it can't
              * possibly match an existing method.
@@ -441,9 +442,13 @@ public final class JNIReflectionDictionary {
     }
 
     public static JNIFieldId getDeclaredFieldID(Class<?> classObject, String name, boolean isStatic) {
+        return getDeclaredFieldID(classObject, name, isStatic, true);
+    }
+
+    public static JNIFieldId getDeclaredFieldID(Class<?> classObject, String name, boolean isStatic, boolean reportMissingRegistrationErrors) {
         JNIAccessibleField field = getDeclaredField(classObject, name, isStatic, "getDeclaredFieldID");
         traceFieldAccessIfNeeded(classObject, name, field, field != null && !field.isNegative(), field == null);
-        field = checkField(field, classObject, name);
+        field = checkField(field, classObject, name, reportMissingRegistrationErrors);
         return (field != null) ? field.getId() : Word.nullPointer();
     }
 
@@ -473,9 +478,13 @@ public final class JNIReflectionDictionary {
     }
 
     public static JNIFieldId getFieldID(Class<?> clazz, CharSequence name, boolean isStatic) {
+        return getFieldID(clazz, name, isStatic, true);
+    }
+
+    public static JNIFieldId getFieldID(Class<?> clazz, CharSequence name, boolean isStatic, boolean reportMissingRegistrationErrors) {
         JNIAccessibleField rawField = findField(clazz, name, isStatic, "getFieldID");
         traceFieldAccessIfNeeded(clazz, name, rawField, false, rawField == null);
-        JNIAccessibleField field = checkField(rawField, clazz, name);
+        JNIAccessibleField field = checkField(rawField, clazz, name, reportMissingRegistrationErrors);
         boolean match = field != null && field.isDiscoverableIn(clazz);
         traceFieldAccessIfNeeded(clazz, name, field, match, false);
         return match ? field.getId() : Word.nullPointer();
@@ -485,8 +494,7 @@ public final class JNIReflectionDictionary {
         boolean metadataRegisteredForReplay = field != null && (field.isNegative() || (match && field.isPreserved()));
         if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(traceMissing, metadataRegisteredForReplay)) {
             Class<?> traceClass = field != null && match ? field.getDeclaringClass().getClassObject() : classObject;
-            MetadataTracer.singleton().traceJNIType(traceClass);
-            MetadataTracer.singleton().traceFieldAccess(traceClass, name.toString(), ConfigurationMemberInfo.ConfigurationMemberDeclaration.DECLARED);
+            MetadataTracer.singleton().traceJNIFieldAccess(traceClass, name.toString());
         }
     }
 
@@ -507,8 +515,8 @@ public final class JNIReflectionDictionary {
         return null;
     }
 
-    private static JNIAccessibleField checkField(JNIAccessibleField field, Class<?> clazz, CharSequence name) {
-        if (throwMissingRegistrationErrors() && field == null) {
+    private static JNIAccessibleField checkField(JNIAccessibleField field, Class<?> clazz, CharSequence name, boolean reportMissingRegistrationErrors) {
+        if (reportMissingRegistrationErrors && throwMissingRegistrationErrors() && field == null) {
             MissingJNIRegistrationUtils.reportFieldAccess(clazz, name.toString());
         } else if (field != null && field.isNegative()) {
             return null;

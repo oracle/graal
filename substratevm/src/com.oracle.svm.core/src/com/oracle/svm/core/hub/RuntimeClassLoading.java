@@ -101,6 +101,9 @@ public class RuntimeClassLoading {
             }
         };
 
+        @Option(help = "Enable interpreter JNI registration fallback for non-registered AOT classes, methods, and fields. Requires runtime class loading.", stability = EXPERIMENTAL) //
+        public static final HostedOptionKey<Boolean> JNIRegistrationFallback = new HostedOptionKey<>(false, Options::validateJNIRegistrationFallback);
+
         private static void validateRuntimeClassLoading(HostedOptionKey<Boolean> optionKey) {
             if (!optionKey.getValue()) {
                 return;
@@ -118,6 +121,13 @@ public class RuntimeClassLoading {
                 throw UserError.invalidOptionValue(RuntimeClassLoading, RuntimeClassLoading.getValue(),
                                 "Requires predefined class support to be disabled, please use " +
                                                 SubstrateOptionsParser.commandArgument(PredefinedClassesSupport.Options.SupportPredefinedClasses, "-"));
+            }
+        }
+
+        private static void validateJNIRegistrationFallback(HostedOptionKey<Boolean> optionKey) {
+            if (optionKey.getValue() && !RuntimeClassLoading.getValue()) {
+                throw UserError.invalidOptionValue(JNIRegistrationFallback, JNIRegistrationFallback.getValue(),
+                                "Requires runtime class loading, please use " + SubstrateOptionsParser.commandArgument(RuntimeClassLoading, "+"));
             }
         }
 
@@ -148,6 +158,11 @@ public class RuntimeClassLoading {
     @Fold
     public static boolean isSupported() {
         return Options.RuntimeClassLoading.getValue();
+    }
+
+    @Fold
+    public static boolean isJNIRegistrationFallbackSupported() {
+        return Options.JNIRegistrationFallback.getValue();
     }
 
     /**
