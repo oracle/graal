@@ -1,0 +1,85 @@
+/*
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package jdk.graal.compiler.core.test;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.FloatNormalizeCompareNode;
+import jdk.graal.compiler.nodes.calc.IntegerNormalizeCompareNode;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
+import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.vm.ci.meta.JavaKind;
+
+/// Checks that binary canonicalization uses the supplied operands without changing the original node.
+public class HypotheticalOperandsCanonicalizationTest extends GraalCompilerTest {
+
+    /// Creates a tool for querying canonicalization without applying its result to a graph.
+    private CanonicalizerTool canonicalizerTool() {
+        return GraphUtil.getDefaultSimplifier(getProviders(), false, null, getInitialOptions());
+    }
+
+    /// Checks signed and unsigned integer comparisons with unchanged and replacement operands.
+    @Test
+    public void testIntegerNormalizeCompare() {
+        CanonicalizerTool tool = canonicalizerTool();
+        for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long}) {
+            for (boolean unsigned : new boolean[]{false, true}) {
+                ValueNode one = ConstantNode.forIntegerKind(kind, 1);
+                ValueNode two = ConstantNode.forIntegerKind(kind, 2);
+                IntegerNormalizeCompareNode compare = new IntegerNormalizeCompareNode(one, two, JavaKind.Int, unsigned);
+                Assert.assertEquals(-1, compare.canonical(tool, one, two).asJavaConstant().asInt());
+                Assert.assertEquals(1, compare.canonical(tool, two, one).asJavaConstant().asInt());
+                Assert.assertEquals(0, compare.canonical(tool, two, two).asJavaConstant().asInt());
+                Assert.assertSame(one, compare.getX());
+                Assert.assertSame(two, compare.getY());
+            }
+        }
+    }
+
+    /// Checks floating comparisons, including both unordered results for replacement NaN operands.
+    @Test
+    public void testFloatNormalizeCompare() {
+        CanonicalizerTool tool = canonicalizerTool();
+        StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), getDebugContext()).build();
+        for (JavaKind kind : new JavaKind[]{JavaKind.Float, JavaKind.Double}) {
+            for (boolean unorderedLess : new boolean[]{false, true}) {
+                ValueNode one = ConstantNode.forFloatingKind(kind, 1, graph);
+                ValueNode two = ConstantNode.forFloatingKind(kind, 2, graph);
+                ValueNode nan = ConstantNode.forFloatingKind(kind, Double.NaN, graph);
+                FloatNormalizeCompareNode compare = new FloatNormalizeCompareNode(one, two, JavaKind.Int, unorderedLess);
+                Assert.assertEquals(-1, compare.canonical(tool, one, two).asJavaConstant().asInt());
+                Assert.assertEquals(1, compare.canonical(tool, two, one).asJavaConstant().asInt());
+                Assert.assertEquals(0, compare.canonical(tool, two, two).asJavaConstant().asInt());
+                Assert.assertEquals(unorderedLess ? -1 : 1, compare.canonical(tool, nan, two).asJavaConstant().asInt());
+                Assert.assertSame(one, compare.getX());
+                Assert.assertSame(two, compare.getY());
+            }
+        }
+    }
+}

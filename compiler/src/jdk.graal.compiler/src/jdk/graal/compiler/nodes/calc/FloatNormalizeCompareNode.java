@@ -62,7 +62,7 @@ public final class FloatNormalizeCompareNode extends AbstractNormalizeCompareNod
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
-        ValueNode result = tryConstantFold(x, y, isUnorderedLess, false, stamp(view).getStackKind(), tool.getConstantReflection());
+        ValueNode result = tryConstantFold(forX, forY, isUnorderedLess, false, stamp(view).getStackKind(), tool.getConstantReflection());
         if (result != null) {
             return result;
         }
