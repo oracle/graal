@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 25.7
+
+* GR-81626: Bytecode DSL: Added `InstructionDescriptor.getOperationClass()` to identify the custom operation class behind an instruction, including quickened instructions and operation proxies.
+
 ## Version 25.6
 
 * (breaking-change) GR-79412: Changed automatic splitting to clone marked direct-call targets during root compilation preparation instead of direct-call execution. `RootNode.cloneUninitialized` is now invoked without an entered language context during automatic splitting; the root language remains entered, so implementations can still use `LanguageReference`. See [Splitting](docs/splitting/Splitting.md) for details.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,7 @@ final class InstructionDescriptorImplElement extends AbstractElement {
         this.add(createGetName());
         this.add(createIsInstrumentation());
         this.add(createGetOperationCode());
+        this.add(createGetOperationClass());
         this.add(createGetArgumentDescriptors());
 
         CodeVariableElement descriptors = this.add(new CodeVariableElement(Set.of(STATIC, FINAL), arrayOf(asType()), "DESCRIPTORS"));
@@ -128,6 +129,14 @@ final class InstructionDescriptorImplElement extends AbstractElement {
         ex.getModifiers().add(FINAL);
         CodeTreeBuilder b = ex.createBuilder();
         b.startReturn().string("opcode").end();
+        return ex;
+    }
+
+    private CodeExecutableElement createGetOperationClass() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.InstructionDescriptor, "getOperationClass");
+        ex.getModifiers().add(FINAL);
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startReturn().staticReference(parent.instructionsElement.asType(), "OPERATION_CLASSES").string("[opcode]").end();
         return ex;
     }
 

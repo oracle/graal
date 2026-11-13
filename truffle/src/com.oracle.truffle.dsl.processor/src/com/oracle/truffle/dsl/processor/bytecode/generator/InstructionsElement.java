@@ -42,6 +42,7 @@ package com.oracle.truffle.dsl.processor.bytecode.generator;
 
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.arrayOf;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.generic;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.wildcard;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
 import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.FINAL;
@@ -67,6 +68,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Immediat
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateWidth;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediateEncoding;
+import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -92,6 +94,12 @@ final class InstructionsElement extends AbstractElement {
          * We order after cached instruction order to ensure we have a compact table switch layout.
          */
         List<List<InstructionModel>> instructionPartitions = BytecodeRootNodeElement.partitionInstructions(parent.model.getInstructions());
+        CodeVariableElement operationClasses = this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), arrayOf(generic(Class.class, wildcard(null, null))), "OPERATION_CLASSES"));
+        GeneratorUtils.addCompilationFinal(operationClasses, 1);
+        CodeTreeBuilder b = operationClasses.createInitBuilder();
+        b.startNewArray(arrayOf(generic(Class.class, wildcard(null, null))), null);
+        b.string("null"); // Opcode zero is reserved.
+
         int index = OPCODE_START_INDEX;
         constants = new HashMap<>();
         for (List<InstructionModel> partition : instructionPartitions) {
@@ -101,8 +109,14 @@ final class InstructionsElement extends AbstractElement {
                 fld.createDocBuilder().startDoc().lines(instruction.pp()).end(2);
                 this.add(fld);
                 constants.put(instruction.getName(), fld);
+                if (instruction.kind == InstructionKind.CUSTOM) {
+                    b.typeLiteral(instruction.operation.customModel.getTemplateType().asType());
+                } else {
+                    b.string("null");
+                }
             }
         }
+        b.end();
 
         argumentDescriptorImpl = this.add(new ArgumentDescriptorElement());
         abstractArgument = this.add(new AbstractArgumentElement());
