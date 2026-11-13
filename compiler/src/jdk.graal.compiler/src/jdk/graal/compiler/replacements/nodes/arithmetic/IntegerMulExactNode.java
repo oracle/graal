@@ -87,8 +87,9 @@ public final class IntegerMulExactNode extends MulNode implements GuardedNode, I
                 return ConstantNode.forIntegerStamp(stamp(NodeView.DEFAULT), 0);
             }
         }
-        if (!IntegerStamp.multiplicationCanOverflow((IntegerStamp) x.stamp(NodeView.DEFAULT), (IntegerStamp) y.stamp(NodeView.DEFAULT))) {
-            return new MulNode(x, y).canonical(tool);
+        // Only the supplied operand bounds can justify removing the overflow check.
+        if (!IntegerStamp.multiplicationCanOverflow((IntegerStamp) forX.stamp(NodeView.DEFAULT), (IntegerStamp) forY.stamp(NodeView.DEFAULT))) {
+            return new MulNode(forX, forY).canonical(tool);
         }
         return this;
     }

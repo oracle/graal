@@ -28,6 +28,13 @@ import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
+import jdk.graal.compiler.nodes.BeginNode;
+import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
+import jdk.graal.compiler.nodes.calc.MulNode;
+import jdk.graal.compiler.nodes.calc.SubNode;
+import jdk.graal.compiler.nodes.extended.GuardedNode;
+import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerMulExactNode;
+import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -112,6 +119,37 @@ public class HypotheticalOperandsCanonicalizationTest extends GraalCompilerTest 
             Assert.assertSame(largeShift, largeShift.canonical(tool, nonnegative, one));
             Assert.assertSame(zero, shift.getX());
             Assert.assertSame(one, shift.getY());
+        }
+    }
+
+    /// Checks both replacement operands and their overflow bounds before dropping exact arithmetic.
+    @Test
+    public void testExactArithmetic() {
+        CanonicalizerTool tool = canonicalizerTool();
+        for (int bits : new int[]{32, 64}) {
+            ValueNode x = parameter(0, IntegerStamp.create(bits, -10, 10));
+            ValueNode y = parameter(1, IntegerStamp.create(bits, -10, 10));
+            ValueNode u = parameter(2, IntegerStamp.create(bits, -20, 20));
+            ValueNode v = parameter(3, IntegerStamp.create(bits, -20, 20));
+            ValueNode unrestricted = parameter(4, IntegerStamp.create(bits));
+            ValueNode unrestrictedY = parameter(5, IntegerStamp.create(bits));
+            BeginNode guard = new BeginNode();
+            for (boolean multiply : new boolean[]{false, true}) {
+                BinaryArithmeticNode<?> exact = multiply ? new IntegerMulExactNode(x, y, guard) : new IntegerSubExactNode(x, y, guard);
+                BinaryArithmeticNode<?> unchanged = (BinaryArithmeticNode<?>) exact.canonical(tool, x, y);
+                Assert.assertSame(x, unchanged.getX());
+                Assert.assertSame(y, unchanged.getY());
+                BinaryArithmeticNode<?> replacement = (BinaryArithmeticNode<?>) exact.canonical(tool, u, v);
+                Assert.assertEquals(multiply ? MulNode.class : SubNode.class, replacement.getClass());
+                Assert.assertSame(u, replacement.getX());
+                Assert.assertSame(v, replacement.getY());
+                Assert.assertSame(exact, exact.canonical(tool, unrestricted, unrestrictedY));
+                Assert.assertSame(guard, ((GuardedNode) exact).getGuard());
+                BinaryArithmeticNode<?> broad = multiply ? new IntegerMulExactNode(unrestricted, unrestricted, guard) : new IntegerSubExactNode(unrestricted, y, guard);
+                Assert.assertEquals(multiply ? MulNode.class : SubNode.class, broad.canonical(tool, u, v).getClass());
+                Assert.assertSame(x, exact.getX());
+                Assert.assertSame(y, exact.getY());
+            }
         }
     }
 }
