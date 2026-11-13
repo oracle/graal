@@ -98,7 +98,7 @@ public abstract class InstructionDescriptor {
      * instructions and {@link ShortCircuitOperation short-circuit instructions}.
      *
      * @return the operation class, or {@code null} if unavailable
-     * @since 25.6
+     * @since 25.7
      */
     public Class<?> getOperationClass() {
         return null;
