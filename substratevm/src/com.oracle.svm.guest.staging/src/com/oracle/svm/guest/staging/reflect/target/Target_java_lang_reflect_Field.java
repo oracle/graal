@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Field;
 import java.util.Map;
 
@@ -40,10 +41,15 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.guest.staging.layered.LayerIdComputer;
 import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
+import sun.reflect.annotation.AnnotationParser;
+import sun.reflect.annotation.TypeAnnotation;
+import sun.reflect.annotation.TypeAnnotationParser;
 import sun.reflect.generics.repository.FieldRepository;
 
 @TargetClass(value = Field.class)
@@ -64,6 +70,13 @@ public final class Target_java_lang_reflect_Field {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = AnnotationsComputer.class) //
     byte[] annotations;
+
+    /**
+     * The layer that encoded the annotation metadata, which may differ from the declaring class's
+     * layer.
+     */
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = LayerIdComputer.class) //
+    public int layerId;
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClassName = "com.oracle.svm.core.reflect.target.ReflectionFieldValueComputers$FieldOffsetComputer") //
     public int offset;
@@ -89,6 +102,43 @@ public final class Target_java_lang_reflect_Field {
 
     @Alias
     native Target_java_lang_reflect_Field copy();
+
+    /**
+     * The JDK uses the declaring class's constant pool. A later layer can register fields of a
+     * base-layer class, so annotation indexes must instead use the field metadata's layer.
+     */
+    @Substitute
+    @TargetElement(onlyWith = ReflectionSupportPredicates.BuildingImageLayer.class)
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.6-b27/src/java.base/share/classes/java/lang/reflect/Field.java#L1267-L1287")
+    private Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
+        Map<Class<? extends Annotation>, Annotation> declAnnos;
+        if ((declAnnos = declaredAnnotations) == null) {
+            synchronized (this) {
+                if ((declAnnos = declaredAnnotations) == null) {
+                    if (root != null) {
+                        declAnnos = root.declaredAnnotations();
+                    } else {
+                        Field field = SubstrateUtil.cast(this, Field.class);
+                        Class<?> declaringClass = field.getDeclaringClass();
+                        declAnnos = AnnotationParser.parseAnnotations(annotations, ReflectionHelper.getAnnotationConstantPool(declaringClass, layerId), declaringClass);
+                    }
+                    declaredAnnotations = declAnnos;
+                }
+            }
+        }
+        return declAnnos;
+    }
+
+    /** Type annotations use the same layer-local lookup tables as declaration annotations. */
+    @Substitute
+    @TargetElement(onlyWith = ReflectionSupportPredicates.BuildingImageLayer.class)
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.6-b27/src/java.base/share/classes/java/lang/reflect/Field.java#L1299-L1307")
+    public AnnotatedType getAnnotatedType() {
+        Field field = SubstrateUtil.cast(this, Field.class);
+        Class<?> declaringClass = field.getDeclaringClass();
+        return TypeAnnotationParser.buildAnnotatedType(getTypeAnnotationBytes0(), ReflectionHelper.getAnnotationConstantPool(declaringClass, layerId), field, declaringClass, field.getGenericType(),
+                        TypeAnnotation.TypeAnnotationTarget.FIELD);
+    }
 
     @Alias//
     native Target_jdk_internal_reflect_FieldAccessor acquireFieldAccessor();

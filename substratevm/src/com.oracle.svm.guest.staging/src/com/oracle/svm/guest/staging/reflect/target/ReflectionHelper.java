@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,28 @@
  */
 package com.oracle.svm.guest.staging.reflect.target;
 
+import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
+import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
+import com.oracle.svm.guest.staging.reflect.ConstantPoolProvider;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
+import jdk.internal.reflect.ConstantPool;
+
 class ReflectionHelper {
+    /** Annotation metadata can be encoded in a later layer than the declaring class. */
+    static ConstantPool getAnnotationConstantPool(Class<?> declaringClass, int layerId) {
+        Target_jdk_internal_reflect_ConstantPool constantPool;
+        if (GuestStagingDependencyBridge.singleton().isRuntimeLoadedClass(declaringClass)) {
+            constantPool = new Target_jdk_internal_reflect_ConstantPool(layerId, declaringClass);
+        } else if (GuestImageLayerBuildingSupport.buildingImageLayer()) {
+            constantPool = ConstantPoolProvider.singletons()[layerId].getConstantPool();
+        } else {
+            constantPool = null;
+        }
+        return SubstrateUtil.cast(constantPool, ConstantPool.class);
+    }
+
     static Target_java_lang_reflect_Executable getHolder(Target_java_lang_reflect_Executable executable) {
         Target_java_lang_reflect_Executable holder = getRoot(executable);
         if (holder == null) {

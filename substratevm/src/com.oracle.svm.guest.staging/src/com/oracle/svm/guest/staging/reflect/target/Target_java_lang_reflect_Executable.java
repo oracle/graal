@@ -31,7 +31,6 @@ import java.lang.reflect.Parameter;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
@@ -40,14 +39,12 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
-import com.oracle.svm.guest.staging.reflect.ConstantPoolProvider;
+import com.oracle.svm.guest.staging.layered.LayerIdComputer;
 import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
-import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
+import com.oracle.svm.shared.util.BasedOnJDKFile;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
-import jdk.internal.reflect.ConstantPool;
 import sun.reflect.annotation.AnnotationParser;
 
 @TargetClass(value = Executable.class)
@@ -83,6 +80,7 @@ public final class Target_java_lang_reflect_Executable {
      */
     @Substitute
     @TargetElement(onlyWith = ReflectionSupportPredicates.BuildingImageLayer.class)
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.6-b27/src/java.base/share/classes/java/lang/reflect/Executable.java#L659-L680")
     private Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
         Map<Class<? extends Annotation>, Annotation> result = declaredAnnotations;
         if (result == null) {
@@ -95,15 +93,7 @@ public final class Target_java_lang_reflect_Executable {
                     } else {
                         Executable executable = SubstrateUtil.cast(this, Executable.class);
                         Class<?> declaringClass = executable.getDeclaringClass();
-                        Target_jdk_internal_reflect_ConstantPool constantPool;
-                        if (GuestStagingDependencyBridge.singleton().isRuntimeLoadedClass(declaringClass)) {
-                            constantPool = new Target_jdk_internal_reflect_ConstantPool(layerId, declaringClass);
-                        } else if (GuestImageLayerBuildingSupport.buildingImageLayer()) {
-                            constantPool = ConstantPoolProvider.singletons()[layerId].getConstantPool();
-                        } else {
-                            constantPool = null;
-                        }
-                        result = AnnotationParser.parseAnnotations(getAnnotationBytes(), SubstrateUtil.cast(constantPool, ConstantPool.class), declaringClass);
+                        result = AnnotationParser.parseAnnotations(getAnnotationBytes(), ReflectionHelper.getAnnotationConstantPool(declaringClass, layerId), declaringClass);
                     }
                     declaredAnnotations = result;
                 }
@@ -139,16 +129,6 @@ public final class Target_java_lang_reflect_Executable {
         @Override
         public Object transform(Object receiver, Object originalValue) {
             return ImageSingletons.lookup(EncodedRuntimeMetadataSupplier.class).getReflectParametersEncoding((Executable) receiver);
-        }
-    }
-
-    static class LayerIdComputer implements FieldValueTransformer {
-        @Override
-        public Object transform(Object receiver, Object originalValue) {
-            if (GuestImageLayerBuildingSupport.buildingImageLayer()) {
-                return GuestStagingDependencyBridge.singleton().currentImageLayerNumber();
-            }
-            return MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
         }
     }
 }
