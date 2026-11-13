@@ -291,6 +291,13 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
             for (int i : intersectingArgs[iStage1]) {
                 addToStack(argTransitions.get(i), matcher, argConstraints.get(i), argOperations.get(i), resultLength);
             }
+            // Pop the initial arguments in input order to preserve transition priority.
+            // Constraint remainders stay on top and are processed before the next argument.
+            for (int lo = 0, hi = stack.length() - 1; lo < hi; lo++, hi--) {
+                int tmp = stack.get(lo);
+                stack.set(lo, stack.get(hi));
+                stack.set(hi, tmp);
+            }
             constraintDeduplicationSet.clear();
             outer: while (!stack.isEmpty()) {
                 int i = stack.pop();
