@@ -24,39 +24,42 @@
  */
 package jdk.graal.compiler.core.test;
 
-import jdk.graal.compiler.core.common.type.IntegerStamp;
-import jdk.graal.compiler.core.common.type.StampPair;
-import jdk.graal.compiler.nodes.ParameterNode;
-import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
-import jdk.graal.compiler.nodes.BeginNode;
-import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
-import jdk.graal.compiler.nodes.calc.MulNode;
-import jdk.graal.compiler.nodes.calc.SubNode;
-import jdk.graal.compiler.nodes.extended.GuardedNode;
-import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerMulExactNode;
-import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
 import java.util.List;
 import java.util.function.BiFunction;
-import jdk.graal.compiler.nodes.NodeView;
-import jdk.graal.compiler.nodes.calc.AddNode;
-import jdk.graal.compiler.nodes.calc.AndNode;
-import jdk.graal.compiler.nodes.calc.OrNode;
-import jdk.graal.compiler.nodes.calc.XorNode;
-import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactNode;
-import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.nodes.ReturnNode;
-import jdk.graal.compiler.nodes.calc.SignedDivNode;
-import jdk.graal.compiler.options.OptionValues;
+
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.AndNode;
+import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.FloatNormalizeCompareNode;
 import jdk.graal.compiler.nodes.calc.IntegerNormalizeCompareNode;
+import jdk.graal.compiler.nodes.calc.MulNode;
+import jdk.graal.compiler.nodes.calc.OrNode;
+import jdk.graal.compiler.nodes.calc.SignedDivNode;
+import jdk.graal.compiler.nodes.calc.SignedRemNode;
+import jdk.graal.compiler.nodes.calc.SubNode;
+import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
+import jdk.graal.compiler.nodes.calc.XorNode;
+import jdk.graal.compiler.nodes.extended.GuardedNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactNode;
+import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerMulExactNode;
+import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
+
 import jdk.vm.ci.meta.JavaKind;
 
 /// Checks that binary canonicalization uses the supplied operands without changing the original node.
@@ -222,6 +225,35 @@ public class HypotheticalOperandsCanonicalizationTest extends GraalCompilerTest 
             Assert.assertSame(y, first.getY());
             second.setZeroGuard(graph.start());
             Assert.assertSame(first, first.canonical(tool, x, y));
+        }
+    }
+
+    /// Checks that removing an unused remainder preserves traps for the supplied divisor.
+    @Test
+    public void testAdjacentSignedRemainder() {
+        OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.FloatingDivNodes, false);
+        CanonicalizerTool tool = GraphUtil.getDefaultSimplifier(getProviders(), false, null, options);
+        for (int bits : new int[]{32, 64}) {
+            StructuredGraph graph = new StructuredGraph.Builder(options, getDebugContext()).build();
+            ValueNode x = graph.addWithoutUnique(parameter(0, IntegerStamp.create(bits)));
+            ValueNode y = graph.addWithoutUnique(parameter(1, IntegerStamp.create(bits, 3, 3)));
+            ValueNode divisor = graph.addWithoutUnique(parameter(2, IntegerStamp.create(bits)));
+            SignedRemNode rem = graph.add(new SignedRemNode(x, y, null));
+            SignedDivNode div = graph.add(new SignedDivNode(x, y, null));
+            graph.start().setNext(rem);
+            rem.setNext(div);
+            div.setNext(graph.add(new ReturnNode(div)));
+            Assert.assertNull(rem.canonical(tool, x, y));
+            ValueNode replacement = rem.canonical(tool, x, divisor);
+            Assert.assertTrue(replacement instanceof SignedRemNode);
+            Assert.assertSame(x, ((SignedRemNode) replacement).getX());
+            Assert.assertSame(divisor, ((SignedRemNode) replacement).getY());
+            JavaKind kind = bits == 32 ? JavaKind.Int : JavaKind.Long;
+            Assert.assertNotNull(rem.canonical(tool, x, ConstantNode.forIntegerKind(kind, 0)));
+            div.setZeroGuard(graph.start());
+            Assert.assertNotNull(rem.canonical(tool, x, y));
+            Assert.assertSame(x, rem.getX());
+            Assert.assertSame(y, rem.getY());
         }
     }
 }
