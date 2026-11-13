@@ -39,7 +39,6 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.NodeWithState;
 import jdk.graal.compiler.phases.Phase;
 import jdk.graal.compiler.phases.util.Providers;
@@ -123,11 +122,6 @@ public final class TruffleSafepointInsertionPhase extends Phase {
             }
         }
 
-        for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            try (DebugCloseable s = callTarget.withNodeSourcePosition()) {
-                insertSafepoint(graph, (FixedNode) callTarget.invoke());
-            }
-        }
     }
 
     private void insertSafepointAtLoopBegin(StructuredGraph graph, LoopBeginNode loopBeginNode) {

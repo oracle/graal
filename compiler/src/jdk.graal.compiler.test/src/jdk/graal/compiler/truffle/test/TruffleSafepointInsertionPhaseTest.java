@@ -28,10 +28,13 @@ import java.util.List;
 
 import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LoopBeginNode;
+import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.truffle.nodes.TruffleSafepointNode;
@@ -40,7 +43,9 @@ import jdk.graal.compiler.truffle.phases.TruffleSafepointInsertionPhase;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
@@ -64,6 +69,77 @@ public class TruffleSafepointInsertionPhaseTest extends PartialEvaluationTest {
 
         new TruffleSafepointInsertionPhase(getTypes(), getProviders()).apply(graph);
         Assert.assertEquals(1, countSafepointsInLoop(graph));
+    }
+
+    @Test
+    public void testOrdinaryBoundaryDoesNotPoll() {
+        StructuredGraph graph = partialEval(new BoundaryRootNode(), 1);
+        Assert.assertEquals(1, graph.getNodes(MethodCallTargetNode.TYPE).count());
+        Invoke invoke = graph.getNodes(MethodCallTargetNode.TYPE).first().invoke();
+        new TruffleSafepointInsertionPhase(getTypes(), getProviders()).apply(graph);
+        Assert.assertFalse(invoke.predecessor() instanceof TruffleSafepointNode);
+        Assert.assertEquals(graph.getNodes(ReturnNode.TYPE).count(), graph.getNodes().filter(TruffleSafepointNode.class).count());
+        for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
+            Assert.assertTrue(returnNode.predecessor() instanceof TruffleSafepointNode);
+        }
+        Assert.assertTrue(graph.verify());
+    }
+
+    @Test
+    public void testCompilationRootStillPolls() {
+        StructuredGraph graph = partialEval(RootNode.createConstantNode(42));
+        Assert.assertEquals(0, graph.getNodes(MethodCallTargetNode.TYPE).count());
+        new TruffleSafepointInsertionPhase(getTypes(), getProviders()).apply(graph);
+        Assert.assertEquals(1, graph.getNodes(ReturnNode.TYPE).count());
+        Assert.assertEquals(1, graph.getNodes().filter(TruffleSafepointNode.class).count());
+        Assert.assertTrue(graph.getNodes(ReturnNode.TYPE).first().predecessor() instanceof TruffleSafepointNode);
+        Assert.assertTrue(graph.verify());
+    }
+
+    @Test
+    public void testCompiledBoundaryReturnsAndExceptions() {
+        BoundaryRootNode root = new BoundaryRootNode();
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        Assert.assertEquals(-1, target.call(-1));
+        compileHelper("boundarySafepoint", root, new Object[]{1});
+        Assert.assertTrue(target.isValid());
+        root.calls[0] = 0;
+        Assert.assertEquals(42, target.call(41));
+        Assert.assertEquals(1, root.calls[0]);
+        Assert.assertEquals(-1, target.call(-1));
+        Assert.assertEquals(2, root.calls[0]);
+        Assert.assertTrue(target.isValid());
+    }
+
+    private static final class BoundaryRootNode extends RootNode {
+        final int[] calls = new int[1];
+
+        BoundaryRootNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            int value = (int) frame.getArguments()[0];
+            try {
+                return ordinaryBoundary(value, calls);
+            } catch (BoundaryException e) {
+                return -1;
+            }
+        }
+    }
+
+    @TruffleBoundary(transferToInterpreterOnException = false)
+    private static int ordinaryBoundary(int value, int[] calls) {
+        calls[0]++;
+        if (value < 0) {
+            throw new BoundaryException();
+        }
+        return value + 1;
+    }
+
+    @SuppressWarnings("serial")
+    private static final class BoundaryException extends ControlFlowException {
     }
 
     private static long countSafepointsInLoop(StructuredGraph graph) {
