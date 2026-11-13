@@ -194,6 +194,11 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
+        public RootCallTarget initializeTarget(RootNode root, ExecutionSignature signature) {
+            return root.initializeTarget(signature);
+        }
+
+        @Override
         public EncapsulatingNodeReference createEncapsulatingNodeReference(Thread thread) {
             return new EncapsulatingNodeReference(thread);
         }

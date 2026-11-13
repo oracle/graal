@@ -1325,28 +1325,36 @@ public class HostAccessTest extends AbstractHostAccessTest {
 
     @Test
     public void testConverterReturnsNull() {
-        /*
-         * HotSpot uses GuestToHostCodeCache#methodHandleHostInvoke and SVM uses
-         * GuestToHostCodeCache#reflectionHostInvoke. These two methods throw a different exception
-         * when a null value is passed as a method int argument. The former throws
-         * NullPointerException during automatic unboxing, the latter throws
-         * IllegalArgumentException.
-         */
         HostAccess.Builder builder = HostAccess.newBuilder();
         builder.targetTypeMapping(Integer.class, Integer.class, (v) -> v.equals(42), (v) -> {
             return null;
         });
         setupEnv(builder);
-        try {
-            context.asValue(new PassPrimitive()).invokeMember("f0", 42);
-            fail();
-        } catch (PolyglotException e) {
-            assertTrue(e.isHostException());
-            assertTrue(TruffleTestAssumptions.isAOT() ? e.asHostException() instanceof IllegalArgumentException : e.asHostException() instanceof NullPointerException);
-        }
+        assertFails(() -> context.asValue(new PassPrimitive()).invokeMember("f0", 42), IllegalArgumentException.class);
+        assertFails(() -> context.asValue(42).as(int.class), NullPointerException.class);
+        assertNull(context.asValue(42).as(Integer.class));
+        assertEquals(43, (int) context.asValue(43).as(int.class));
+    }
 
-        assertNull(context.asValue(42).as(int.class));
-        assertEquals(43, context.asValue(43).asInt());
+    @Test
+    public void testPrimitiveConverterReturnsNull() {
+        Class<?>[] primitiveTypes = {boolean.class, byte.class, short.class, char.class, int.class, long.class, float.class, double.class};
+        Class<?>[] boxedTypes = {Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class};
+        for (TargetMappingPrecedence precedence : TargetMappingPrecedence.values()) {
+            Builder builder = HostAccess.newBuilder();
+            for (Class<?> boxedType : boxedTypes) {
+                builder.targetTypeMapping(Value.class, boxedType, null, value -> null, precedence);
+            }
+            setupEnv(builder);
+            Value value = context.asValue("mapped null");
+            for (int repeat = 0; repeat < 2; repeat++) {
+                for (int i = 0; i < primitiveTypes.length; i++) {
+                    Class<?> primitiveType = primitiveTypes[i];
+                    assertFails(() -> value.as(primitiveType), NullPointerException.class);
+                    assertNull(value.as(boxedTypes[i]));
+                }
+            }
+        }
     }
 
     @Test

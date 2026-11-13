@@ -47,6 +47,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.net.URI;
@@ -222,6 +223,8 @@ public abstract class Accessor {
 
         public abstract CallTarget getCallTargetWithoutInitialization(RootNode root);
 
+        public abstract RootCallTarget initializeTarget(RootNode root, ExecutionSignature signature);
+
         public abstract EncapsulatingNodeReference createEncapsulatingNodeReference(Thread thread);
 
         public abstract boolean isSameFrame(RootNode root, Frame frame1, Frame frame2);
@@ -347,6 +350,7 @@ public abstract class Accessor {
         public abstract Class<?> getRawTypeFromGenericType(Type genericType, Class<?> defaultRawType);
 
         public abstract Type findActualTypeArgument(Type typeOrTypeVar, Type genericTargetType);
+
     }
 
     public abstract static class StringsSupport extends Support {
@@ -1229,7 +1233,21 @@ public abstract class Accessor {
             }
         }
 
+        public boolean supportsExactGeneratedProxyCall(@SuppressWarnings("unused") Method method) {
+            return false;
+        }
+
+        public void setExactGeneratedProxyEntries(Method[] entries) {
+            if (entries.length != 0) {
+                throw CompilerDirectives.shouldNotReachHere("Exact generated proxy entries are not supported by this runtime");
+            }
+        }
+
         public abstract RuntimeCallTarget newCallTarget(CallTarget source, RootNode rootNode);
+
+        public RuntimeCallTarget newCallTarget(CallTarget source, RootNode rootNode, @SuppressWarnings("unused") ExecutionSignature signature) {
+            return newCallTarget(source, rootNode);
+        }
 
         public abstract long getCallTargetId(CallTarget target);
 
