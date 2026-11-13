@@ -1367,13 +1367,13 @@ public abstract class PlatformThreads {
             if (JavaThreads.isInterrupted(threadObj)) {
                 log.string(", interrupted");
             }
-        }
 
-        log.indent(true);
-        for (StackTraceElement e : threadObj.getStackTrace()) {
-            log.string(e.toString()).newline();
+            log.indent(true);
+            for (StackTraceElement e : threadObj.getStackTrace()) {
+                log.string(e.toString()).newline();
+            }
+            log.redent(false);
         }
-        log.redent(false);
     }
 
     protected static class ThreadStartRoutinePrologue implements CEntryPointOptions.Prologue {
