@@ -692,7 +692,8 @@ public class NativeImageGenerator {
                 BuildPhaseProviderImpl.markHostedUniverseBuilt();
                 ClassInitializationSupport classInitializationSupport = bb.getHostVM().getClassInitializationSupport();
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(hMetaAccess);
-                SubstrateReplacements analysisReplacements = (SubstrateReplacements) bb.getProviders(MethodVariant.ORIGINAL_METHOD).getReplacements();
+                HostedProviders analysisProviders = bb.getProviders(MethodVariant.ORIGINAL_METHOD);
+                SubstrateReplacements analysisReplacements = (SubstrateReplacements) analysisProviders.getReplacements();
                 runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess,
                                 analysisReplacements, classInitializationSupport, platformConfig,
                                 bb.getSnippetReflectionProvider()).build();
@@ -701,9 +702,10 @@ public class NativeImageGenerator {
                     hostedGraalConfiguration.setHostedUniverse(hUniverse);
                 }
 
-                GraphBuilderConfiguration.Plugins plugins = registerGraphBuilderPlugins(featureHandler, (HostedProviders) runtimeConfiguration.getProviders(), bb.getMetaAccess(), nativeLibraries, loader,
-                                ParsingReason.AOTCompilation, bb.getAnnotationSubstitutionProcessor(), new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()),
-                                SubstrateTarget.singleton(), this.isStubBasedPluginsSupported());
+                ClassInitializationPlugin classInitializationPlugin = analysisProviders.getGraphBuilderPlugins().getClassInitializationPlugin();
+                GraphBuilderConfiguration.Plugins plugins = registerGraphBuilderPlugins(featureHandler, (HostedProviders) runtimeConfiguration.getProviders(), bb.getMetaAccess(), nativeLibraries,
+                                loader, ParsingReason.AOTCompilation, bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, SubstrateTarget.singleton(), this
+                                                .isStubBasedPluginsSupported());
                 /* HostedRuntimeConfigurationBuilder creates all AOT backends with HostedProviders. */
                 for (SubstrateBackend backend : runtimeConfiguration.getBackends()) {
                     ((HostedProviders) backend.getProviders()).setGraphBuilderPlugins(plugins);
