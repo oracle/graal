@@ -128,7 +128,15 @@ public class ValidationSuite extends WasmFileSuite {
                         // # Validation
 
                         // ## Types
-                        // types are universally valid.
+                        // ### Recursive Types
+                        binaryCase(
+                                        "Subtype - forward supertype",
+                                        "Supertypes must be defined before subtypes",
+                                        // (type $root (sub (struct (field (mut i32)))))
+                                        // (type $child (sub $parent (struct (field (mut i32)) (field (mut anyref)) (field (mut i64)))))
+                                        // (type $parent (sub $root (struct (field (mut i32)) (field (mut anyref)))))
+                                        "00 61 73 6D 01 00 00 00 01 1D 01 4E 03 50 00 5F 01 7F 01 50 01 02 5F 03 7F 01 6E 01 7E 01 50 01 00 5F 02 7F 01 6E 01",
+                                        Failure.Type.INVALID),
 
                         // ### Limits
                         // checked individually on memories and tables
