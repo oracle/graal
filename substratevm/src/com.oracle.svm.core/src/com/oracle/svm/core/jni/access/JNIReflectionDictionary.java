@@ -370,13 +370,13 @@ public final class JNIReflectionDictionary {
     }
 
     public static JNIMethodId getMethodID(Class<?> classObject, CharSequence name, CharSequence signature, boolean isStatic) {
-        return getMethodID(classObject, name, signature, isStatic, true);
+        return getMethodID(classObject, name, signature, isStatic, true, true);
     }
 
-    public static JNIMethodId getMethodID(Class<?> classObject, CharSequence name, CharSequence signature, boolean isStatic, boolean reportMissingRegistrationErrors) {
+    public static JNIMethodId getMethodID(Class<?> classObject, CharSequence name, CharSequence signature, boolean isStatic, boolean reportMissingRegistrationErrors, boolean traceMissingMetadata) {
         JNIAccessibleMethodDescriptor descriptor = new JNIAccessibleMethodDescriptor(name, signature);
         JNIAccessibleMethod rawMethod = findMethod(classObject, descriptor, "getMethodID");
-        traceMethodAccessIfNeeded(classObject, descriptor, rawMethod, false, rawMethod == null && SignatureUtil.isSignatureValid(signature.toString(), false));
+        traceMethodAccessIfNeeded(classObject, descriptor, rawMethod, false, traceMissingMetadata && rawMethod == null && SignatureUtil.isSignatureValid(signature.toString(), false));
         JNIAccessibleMethod method = checkMethod(rawMethod, classObject, name, signature, reportMissingRegistrationErrors);
         boolean match = (method != null && method.isStatic() == isStatic && method.isDiscoverableIn(classObject));
         traceMethodAccessIfNeeded(classObject, descriptor, method, match, false);
@@ -441,10 +441,6 @@ public final class JNIReflectionDictionary {
         return null;
     }
 
-    public static JNIFieldId getDeclaredFieldID(Class<?> classObject, String name, boolean isStatic) {
-        return getDeclaredFieldID(classObject, name, isStatic, true);
-    }
-
     public static JNIFieldId getDeclaredFieldID(Class<?> classObject, String name, boolean isStatic, boolean reportMissingRegistrationErrors) {
         JNIAccessibleField field = getDeclaredField(classObject, name, isStatic, "getDeclaredFieldID");
         traceFieldAccessIfNeeded(classObject, name, field, field != null && !field.isNegative(), field == null);
@@ -477,13 +473,9 @@ public final class JNIReflectionDictionary {
         return null;
     }
 
-    public static JNIFieldId getFieldID(Class<?> clazz, CharSequence name, boolean isStatic) {
-        return getFieldID(clazz, name, isStatic, true);
-    }
-
-    public static JNIFieldId getFieldID(Class<?> clazz, CharSequence name, boolean isStatic, boolean reportMissingRegistrationErrors) {
+    public static JNIFieldId getFieldID(Class<?> clazz, CharSequence name, boolean isStatic, boolean reportMissingRegistrationErrors, boolean traceMissingMetadata) {
         JNIAccessibleField rawField = findField(clazz, name, isStatic, "getFieldID");
-        traceFieldAccessIfNeeded(clazz, name, rawField, false, rawField == null);
+        traceFieldAccessIfNeeded(clazz, name, rawField, false, traceMissingMetadata && rawField == null);
         JNIAccessibleField field = checkField(rawField, clazz, name, reportMissingRegistrationErrors);
         boolean match = field != null && field.isDiscoverableIn(clazz);
         traceFieldAccessIfNeeded(clazz, name, field, match, false);
