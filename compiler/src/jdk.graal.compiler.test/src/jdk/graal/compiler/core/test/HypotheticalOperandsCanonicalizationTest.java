@@ -43,6 +43,10 @@ import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.OrNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactNode;
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.nodes.ReturnNode;
+import jdk.graal.compiler.nodes.calc.SignedDivNode;
+import jdk.graal.compiler.options.OptionValues;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -191,6 +195,33 @@ public class HypotheticalOperandsCanonicalizationTest extends GraalCompilerTest 
                 IntegerAddExactNode exact = new IntegerAddExactNode(originalX, original.getY(), new BeginNode());
                 Assert.assertSame(exact, BinaryArithmeticNode.reassociateMatchedValues(exact, ValueNode.isConstantPredicate(), suppliedX, suppliedY, NodeView.DEFAULT));
             }
+        }
+    }
+
+    /// Checks adjacent division reuse only for the operands shared with the following division.
+    @Test
+    public void testAdjacentSignedDivision() {
+        OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.FloatingDivNodes, false);
+        CanonicalizerTool tool = GraphUtil.getDefaultSimplifier(getProviders(), false, null, options);
+        for (int bits : new int[]{32, 64}) {
+            StructuredGraph graph = new StructuredGraph.Builder(options, getDebugContext()).build();
+            ValueNode x = graph.addWithoutUnique(parameter(0, IntegerStamp.create(bits, 20, 20)));
+            ValueNode y = graph.addWithoutUnique(parameter(1, IntegerStamp.create(bits, 4, 4)));
+            ValueNode u = graph.addWithoutUnique(parameter(2, IntegerStamp.create(bits, 18, 18)));
+            ValueNode v = graph.addWithoutUnique(parameter(3, IntegerStamp.create(bits, 6, 6)));
+            SignedDivNode first = graph.add(new SignedDivNode(x, y, null));
+            SignedDivNode second = graph.add(new SignedDivNode(x, y, null));
+            graph.start().setNext(first);
+            first.setNext(second);
+            second.setNext(graph.add(new ReturnNode(second)));
+            Assert.assertSame(second, first.canonical(tool, x, y));
+            Assert.assertSame(first, first.canonical(tool, u, v));
+            Assert.assertSame(first, first.canonical(tool, u, y));
+            Assert.assertSame(first, first.canonical(tool, x, v));
+            Assert.assertSame(x, first.getX());
+            Assert.assertSame(y, first.getY());
+            second.setZeroGuard(graph.start());
+            Assert.assertSame(first, first.canonical(tool, x, y));
         }
     }
 }
