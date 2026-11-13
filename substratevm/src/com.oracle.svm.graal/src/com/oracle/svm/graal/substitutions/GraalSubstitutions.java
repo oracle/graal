@@ -71,6 +71,7 @@ import jdk.graal.compiler.core.match.MatchRuleRegistry;
 import jdk.graal.compiler.core.match.MatchStatement;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugDumpHandlersFactory;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.KeyRegistry;
 import jdk.graal.compiler.debug.MetricKey;
 import jdk.graal.compiler.debug.TTY;
@@ -104,16 +105,18 @@ final class Target_jdk_graal_compiler_nodes_graphbuilderconf_InvocationPlugins {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = PluginTransformer.class)//
     private boolean allocatedAtBuildTime;
 
+    @Alias
+    private native void runDeferredRegistrations();
+
     @Substitute
     private void flushDeferrables() {
         if (deferredRegistrations != null) {
             if (allocatedAtBuildTime) {
                 throw VMError.shouldNotReachHere("not initialized during image generation");
             } else {
-                /*
-                 * Ristretto allocates plugins at runtime.
-                 */
-                assert SubstrateOptions.useRistretto();
+                /* Ristretto creates new plugin sets whose deferred registrations must run. */
+                GraalError.guarantee(SubstrateOptions.useRistretto(), "Runtime plugin registration requires Ristretto");
+                runDeferredRegistrations();
             }
         }
     }
