@@ -878,6 +878,14 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     public abstract BackgroundCompileQueue getCompileQueue();
 
+    protected boolean supportsExactGeneratedProxyCall(@SuppressWarnings("unused") Method method) {
+        return false;
+    }
+
+    protected void setExactGeneratedProxyEntries(@SuppressWarnings("unused") Method[] entries) {
+        throw CompilerDirectives.shouldNotReachHere("Exact generated proxy entries are not supported by this runtime");
+    }
+
     @SuppressWarnings("unused")
     protected void onEngineCreated(EngineData engine) {
     }

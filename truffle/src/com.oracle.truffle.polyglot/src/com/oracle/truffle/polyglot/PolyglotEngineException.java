@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.polyglot.PolyglotGeneratedProxy.DefaultMethodFallbackException;
 
 /**
  * Represents an expected user exception caused by the polyglot engine. It is wrapped such that it
@@ -96,6 +97,8 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 @SuppressWarnings("serial")
 final class PolyglotEngineException extends RuntimeException {
 
+    static final PolyglotEngineException DEFAULT_METHOD_FALLBACK = new PolyglotEngineException(DefaultMethodFallbackException.INSTANCE);
+
     final RuntimeException e;
     final boolean closedException;
 
@@ -107,6 +110,12 @@ final class PolyglotEngineException extends RuntimeException {
         super(null, e);
         this.e = e;
         this.closedException = closedException;
+    }
+
+    private PolyglotEngineException(DefaultMethodFallbackException e) {
+        super(null, e, false, false);
+        this.e = e;
+        this.closedException = false;
     }
 
     @SuppressWarnings("sync-override")

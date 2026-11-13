@@ -76,9 +76,9 @@ public final class SubstrateOptimizedCallTarget extends OptimizedCallTarget impl
 
     /**
      * The entry point used by a caller that is compiled when the caller is performing a
-     * type-specialized direct call. If {@link #installedCode} is valid, this field is its entry
-     * point address, otherwise it is the entry point of {@link #specializedC2IAdapter} or the
-     * {@linkplain TypedEntrySupport#lookupInterpreterEntryAddress interpreter entry point}.
+     * type-specialized direct call. If {@link #installedCode} contains specialized code, this field
+     * is its entry point address. Otherwise, it is the entry point of
+     * {@link #specializedC2IAdapter}, or 0 if no compatible entry point is available.
      *
      * @see #setFromCompiledSpecializedEntryPoint()
      */
@@ -205,7 +205,7 @@ public final class SubstrateOptimizedCallTarget extends OptimizedCallTarget impl
             this.fromCompiledSpecializedEntryPoint = code.getEntryPoint();
             this.fromCompiledUnspecializedEntryPoint = 0;
         } else {
-            this.fromCompiledSpecializedEntryPoint = code.getEntryPoint();
+            this.fromCompiledSpecializedEntryPoint = 0;
             this.fromCompiledUnspecializedEntryPoint = code.getEntryPoint();
         }
         this.fromInterpreterEntryPoint = method.i2cAdapter.getEntryPoint();
@@ -228,23 +228,15 @@ public final class SubstrateOptimizedCallTarget extends OptimizedCallTarget impl
     @Override
     public void onAllAuxiliaryImageCodeInstalled() {
         // If this call target does not have valid compiled code, set its compiled specialized entry
-        // point either to the C2I adapter, if available, or to the interpreter entry point.
+        // point to the C2I adapter, if available, or to zero so callers select their AOT fallback.
         setFromCompiledSpecializedEntryPoint();
     }
 
     private void setFromCompiledSpecializedEntryPoint() {
         if (!installedCode.isValid()) {
-            long entry = 0;
-            if (specializedC2IAdapter != null) {
-                entry = specializedC2IAdapter.getEntryPoint();
-            }
-            if (entry == 0) {
-                entry = TypedEntrySupport.singleton().lookupInterpreterEntryAddress();
-            }
-            assert entry != 0;
-            fromCompiledSpecializedEntryPoint = entry;
+            fromCompiledSpecializedEntryPoint = specializedC2IAdapter == null ? 0 : specializedC2IAdapter.getEntryPoint();
         } else {
-            assert fromCompiledSpecializedEntryPoint == installedCode.getEntryPoint();
+            assert fromCompiledSpecializedEntryPoint == 0 || fromCompiledSpecializedEntryPoint == installedCode.getEntryPoint();
         }
     }
 
@@ -295,14 +287,22 @@ public final class SubstrateOptimizedCallTarget extends OptimizedCallTarget impl
                     Class<?> returnType = specializedReturnClass(argumentsProfile, returnProfile);
                     CompilerAsserts.partialEvaluationConstant(returnType);
 
-                    if (returnType == Integer.class) {
+                    if (returnType == Boolean.class) {
+                        result = invokeFromCompiledReturnBoolean(this, args);
+                    } else if (returnType == Byte.class) {
+                        result = invokeFromCompiledReturnByte(this, args);
+                    } else if (returnType == Short.class) {
+                        result = invokeFromCompiledReturnShort(this, args);
+                    } else if (returnType == Character.class) {
+                        result = invokeFromCompiledReturnChar(this, args);
+                    } else if (returnType == Integer.class) {
                         result = invokeFromCompiledReturnInt(this, args);
                     } else if (returnType == Long.class) {
                         result = invokeFromCompiledReturnLong(this, args);
+                    } else if (returnType == Float.class) {
+                        result = invokeFromCompiledReturnFloat(this, args);
                     } else if (returnType == Double.class) {
                         result = invokeFromCompiledReturnDouble(this, args);
-                    } else if (returnType == Boolean.class) {
-                        result = invokeFromCompiledReturnBoolean(this, args);
                     } else {
                         result = invokeFromCompiledReturnObject(this, args);
                     }
@@ -367,23 +367,9 @@ public final class SubstrateOptimizedCallTarget extends OptimizedCallTarget impl
 
     static Class<?>[] specializedArgumentClasses(ArgumentsProfile profile) {
         Objects.requireNonNull(profile);
-        if (TypedEntrySupport.Options.UseTypedArguments.getValue()) {
-            Class<?>[] argumentClasses = profile.getTypes();
-
-            /*
-             * The maximum number of arguments for specialized signatures must be below the limit of
-             * escape analysis for virtualization of arrays. But in practice, a much lower limit is
-             * useful anyway: there is no benefit of passing a high number of arguments on the stack
-             * vs. in a heap array.
-             *
-             * Note that the length must be a compile-time constant because this method is reachable
-             * during partial evaluation, and the check must constant fold.
-             */
-            int maxLength = 20;
-
-            if (argumentClasses != null && argumentClasses.length < maxLength) {
-                return argumentClasses;
-            }
+        Class<?>[] argumentClasses = profile.getTypes();
+        if (argumentClasses != null && TypedEntrySupport.supportsTypedArgumentCount(argumentClasses.length)) {
+            return argumentClasses;
         }
         return null;
     }
@@ -409,6 +395,26 @@ public final class SubstrateOptimizedCallTarget extends OptimizedCallTarget impl
      */
 
     @ReflectivelyAccessed
+    static boolean invokeFromCompiledReturnBoolean(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+        return compiledEntryReturnBoolean(callTarget, args);
+    }
+
+    @ReflectivelyAccessed
+    static byte invokeFromCompiledReturnByte(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+        return compiledEntryReturnByte(callTarget, args);
+    }
+
+    @ReflectivelyAccessed
+    static short invokeFromCompiledReturnShort(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+        return compiledEntryReturnShort(callTarget, args);
+    }
+
+    @ReflectivelyAccessed
+    static char invokeFromCompiledReturnChar(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+        return compiledEntryReturnChar(callTarget, args);
+    }
+
+    @ReflectivelyAccessed
     static int invokeFromCompiledReturnInt(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
         return compiledEntryReturnInt(callTarget, args);
     }
@@ -419,13 +425,13 @@ public final class SubstrateOptimizedCallTarget extends OptimizedCallTarget impl
     }
 
     @ReflectivelyAccessed
-    static double invokeFromCompiledReturnDouble(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
-        return compiledEntryReturnDouble(callTarget, args);
+    static float invokeFromCompiledReturnFloat(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+        return compiledEntryReturnFloat(callTarget, args);
     }
 
     @ReflectivelyAccessed
-    static boolean invokeFromCompiledReturnBoolean(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
-        return compiledEntryReturnBoolean(callTarget, args);
+    static double invokeFromCompiledReturnDouble(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+        return compiledEntryReturnDouble(callTarget, args);
     }
 
     @ReflectivelyAccessed
@@ -437,6 +443,58 @@ public final class SubstrateOptimizedCallTarget extends OptimizedCallTarget impl
      * compiledEntryReturn* methods: The return-type-specialized methods that are used as the root
      * for partial evaluation.
      */
+
+    @ReflectivelyAccessed
+    @SuppressWarnings("all")
+    static boolean compiledEntryReturnBoolean(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+        args = specializeArguments(callTarget, args);
+        Object result = callTarget.profiledPERoot(args);
+        if (result instanceof Boolean && specializedReturnClass(callTarget.getArgumentsProfile(), callTarget.getReturnProfile()) == Boolean.class) {
+            return (boolean) result;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new DeoptimizedResultException(result);
+        }
+    }
+
+    @ReflectivelyAccessed
+    @SuppressWarnings("all")
+    static byte compiledEntryReturnByte(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+        args = specializeArguments(callTarget, args);
+        Object result = callTarget.profiledPERoot(args);
+        if (result instanceof Byte && specializedReturnClass(callTarget.getArgumentsProfile(), callTarget.getReturnProfile()) == Byte.class) {
+            return (byte) result;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new DeoptimizedResultException(result);
+        }
+    }
+
+    @ReflectivelyAccessed
+    @SuppressWarnings("all")
+    static short compiledEntryReturnShort(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+        args = specializeArguments(callTarget, args);
+        Object result = callTarget.profiledPERoot(args);
+        if (result instanceof Short && specializedReturnClass(callTarget.getArgumentsProfile(), callTarget.getReturnProfile()) == Short.class) {
+            return (short) result;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new DeoptimizedResultException(result);
+        }
+    }
+
+    @ReflectivelyAccessed
+    @SuppressWarnings("all")
+    static char compiledEntryReturnChar(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+        args = specializeArguments(callTarget, args);
+        Object result = callTarget.profiledPERoot(args);
+        if (result instanceof Character && specializedReturnClass(callTarget.getArgumentsProfile(), callTarget.getReturnProfile()) == Character.class) {
+            return (char) result;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new DeoptimizedResultException(result);
+        }
+    }
 
     @ReflectivelyAccessed
     @SuppressWarnings("all")
@@ -466,11 +524,11 @@ public final class SubstrateOptimizedCallTarget extends OptimizedCallTarget impl
 
     @ReflectivelyAccessed
     @SuppressWarnings("all")
-    static double compiledEntryReturnDouble(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+    static float compiledEntryReturnFloat(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
         args = specializeArguments(callTarget, args);
         Object result = callTarget.profiledPERoot(args);
-        if (result instanceof Double && specializedReturnClass(callTarget.getArgumentsProfile(), callTarget.getReturnProfile()) == Double.class) {
-            return (double) result;
+        if (result instanceof Float && specializedReturnClass(callTarget.getArgumentsProfile(), callTarget.getReturnProfile()) == Float.class) {
+            return (float) result;
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new DeoptimizedResultException(result);
@@ -479,11 +537,11 @@ public final class SubstrateOptimizedCallTarget extends OptimizedCallTarget impl
 
     @ReflectivelyAccessed
     @SuppressWarnings("all")
-    static boolean compiledEntryReturnBoolean(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+    static double compiledEntryReturnDouble(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
         args = specializeArguments(callTarget, args);
         Object result = callTarget.profiledPERoot(args);
-        if (result instanceof Boolean && specializedReturnClass(callTarget.getArgumentsProfile(), callTarget.getReturnProfile()) == Boolean.class) {
-            return (boolean) result;
+        if (result instanceof Double && specializedReturnClass(callTarget.getArgumentsProfile(), callTarget.getReturnProfile()) == Double.class) {
+            return (double) result;
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new DeoptimizedResultException(result);
@@ -512,6 +570,46 @@ public final class SubstrateOptimizedCallTarget extends OptimizedCallTarget impl
      */
 
     @ReflectivelyAccessed
+    static boolean interpreterEntryReturnBoolean(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+        Object result = callTarget.callBoundary(args);
+        if (result instanceof Boolean) {
+            return (boolean) result;
+        } else {
+            throw new DeoptimizedResultException(result);
+        }
+    }
+
+    @ReflectivelyAccessed
+    static byte interpreterEntryReturnByte(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+        Object result = callTarget.callBoundary(args);
+        if (result instanceof Byte) {
+            return (byte) result;
+        } else {
+            throw new DeoptimizedResultException(result);
+        }
+    }
+
+    @ReflectivelyAccessed
+    static short interpreterEntryReturnShort(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+        Object result = callTarget.callBoundary(args);
+        if (result instanceof Short) {
+            return (short) result;
+        } else {
+            throw new DeoptimizedResultException(result);
+        }
+    }
+
+    @ReflectivelyAccessed
+    static char interpreterEntryReturnChar(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+        Object result = callTarget.callBoundary(args);
+        if (result instanceof Character) {
+            return (char) result;
+        } else {
+            throw new DeoptimizedResultException(result);
+        }
+    }
+
+    @ReflectivelyAccessed
     static int interpreterEntryReturnInt(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
         Object result = callTarget.callBoundary(args);
         if (result instanceof Integer) {
@@ -532,20 +630,20 @@ public final class SubstrateOptimizedCallTarget extends OptimizedCallTarget impl
     }
 
     @ReflectivelyAccessed
-    static double interpreterEntryReturnDouble(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+    static float interpreterEntryReturnFloat(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
         Object result = callTarget.callBoundary(args);
-        if (result instanceof Double) {
-            return (double) result;
+        if (result instanceof Float) {
+            return (float) result;
         } else {
             throw new DeoptimizedResultException(result);
         }
     }
 
     @ReflectivelyAccessed
-    static boolean interpreterEntryReturnBoolean(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
+    static double interpreterEntryReturnDouble(SubstrateOptimizedCallTarget callTarget, Object[] args) throws DeoptimizedResultException {
         Object result = callTarget.callBoundary(args);
-        if (result instanceof Boolean) {
-            return (boolean) result;
+        if (result instanceof Double) {
+            return (double) result;
         } else {
             throw new DeoptimizedResultException(result);
         }
