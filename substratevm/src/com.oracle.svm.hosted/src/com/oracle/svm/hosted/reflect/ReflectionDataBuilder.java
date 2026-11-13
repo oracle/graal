@@ -588,6 +588,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 /* GR-66387: The runtime condition should be combined across layers. */
                 return;
             }
+            boolean[] needsHidingCheck = new boolean[1];
             methods.compute(analysisMethod, (aMethod, md) -> {
                 ElementData data = md != null ? md : new ElementData();
 
@@ -602,9 +603,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     if (!aMethod.isConstructor() && aMethod.getDeclaringClass().isAnnotation()) {
                         processAnnotationMethod(accessibility, aMethod);
                     }
-                    if (!throwMissingRegistrationErrors()) {
-                        checkHidingMethods(aMethod);
-                    }
+                    needsHidingCheck[0] = !throwMissingRegistrationErrors();
                 }
                 if (accessibility.includes(QUERIED)) {
                     data.updateDynamicAccessMetadata(cnd, preserved, accessibility);
@@ -617,6 +616,14 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
                 return data;
             });
+            /*
+             * Look for hiding methods only once compute() has returned. The check can run right
+             * away on another analysis thread, and it ignores the method if this registration is
+             * not yet visible in the map.
+             */
+            if (needsHidingCheck[0]) {
+                checkHidingMethods(analysisMethod);
+            }
         });
     }
 
@@ -770,6 +777,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 /* GR-66387: The runtime condition should be combined across layers. */
                 return;
             }
+            boolean[] needsHidingCheck = new boolean[1];
             fields.compute(analysisField, (_, fd) -> {
                 abortIfSealed();
                 ElementData data = fd != null ? fd : new ElementData();
@@ -786,9 +794,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     if (analysisField.getDeclaringClass().isAnnotation()) {
                         processAnnotationField(accessibility, analysisField);
                     }
-                    if (!throwMissingRegistrationErrors()) {
-                        checkHidingFields(analysisField);
-                    }
+                    needsHidingCheck[0] = !throwMissingRegistrationErrors();
                 }
                 if (accessibility.includes(QUERIED)) {
                     data.updateDynamicAccessMetadata(cnd, preserved, accessibility);
@@ -805,6 +811,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
                 return data;
             });
+            /*
+             * Look for hiding fields only once compute() has returned, for the same reason as in
+             * registerMethod.
+             */
+            if (needsHidingCheck[0]) {
+                checkHidingFields(analysisField);
+            }
         });
     }
 
