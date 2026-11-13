@@ -151,4 +151,30 @@ public class DFAnalysisPentagonTest extends DFAnalysisBaseTest {
     public static int symbolicFactsSnippet(int a, int b) {
         return DFAnalysisLSCCPTest.symbolicFactsPattern(a, b);
     }
+
+    @Test
+    public void switchInference() {
+        test("switchInferenceSnippet", 5, 3);
+    }
+
+    @DFATestSnippet(anchors = 0, returns = "i32 [10]")
+    public static int switchInferenceSnippet(int a, int b) {
+        // only known to be 15 during the analysis, the anchor in the conditional constant is
+        // removed
+        int constantFifteen = DFAnalysisLSCCPTest.conditionalConstant(a, 15);
+        switch (b) {
+            case 1, 3, 7 -> {
+                // the switch infers b in [1, 7], therefore b * 2 is in [2, 14]
+                if (b * 2 > constantFifteen) {
+                    // this branch is unreachable, the anchor is removed
+                    GraalDirectives.controlFlowAnchor();
+                    return 3;
+                }
+                return 10;
+            }
+            default -> {
+                return 10;
+            }
+        }
+    }
 }

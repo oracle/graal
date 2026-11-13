@@ -25,7 +25,6 @@
 
 package jdk.graal.compiler.phases.dfanalysis.analyses;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -49,7 +48,6 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.DynamicPiNode;
 import jdk.graal.compiler.nodes.GraphState;
-import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
@@ -154,7 +152,9 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
             if (node instanceof LogicNode) {
                 return LogicPentagon.UNEVALUATED;
             } else {
-                return switch (node.stamp(NodeView.DEFAULT)) {
+                // switches have a void stamp, their domain elements represent the switch value
+                Stamp stamp = node instanceof IntegerSwitchNode iSwitch ? iSwitch.switchValue().stamp(NodeView.DEFAULT) : node.stamp(NodeView.DEFAULT);
+                return switch (stamp) {
                     case IntegerStamp iStamp ->
                         IntegerPentagon.UNEVALUATED[CodeUtil.log2(iStamp.getBits())];
                     case FloatStamp fStamp ->
@@ -190,7 +190,9 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
             if (node instanceof LogicNode) {
                 return LogicPentagon.UNRESTRICTED;
             } else {
-                return switch (node.stamp(NodeView.DEFAULT)) {
+                // switches have a void stamp, their domain elements represent the switch value
+                Stamp stamp = node instanceof IntegerSwitchNode iSwitch ? iSwitch.switchValue().stamp(NodeView.DEFAULT) : node.stamp(NodeView.DEFAULT);
+                return switch (stamp) {
                     case IntegerStamp iStamp ->
                         IntegerPentagon.UNRESTRICTED[CodeUtil.log2(iStamp.getBits())];
                     case FloatStamp fStamp ->
@@ -899,40 +901,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
 
         @Override
         public boolean[] splitReachability(ControlSplitNode split, DFAMap<Pentagon> map) {
-            switch (split) {
-                case IfNode ifNode -> {
-                    // boolean[] {trueSuccessor, falseSuccessor}
-                    TriState condition = map.getOrUnrestricted(ifNode.condition()).asLogic().logic;
-                    return switch (condition) {
-                        case UNKNOWN -> TRUE_TRUE;
-                        case TRUE -> TRUE_FALSE;
-                        case FALSE -> FALSE_TRUE;
-                    };
-                }
-                case IntegerSwitchNode switchNode -> {
-                    return AnalysisHelpers.calcStampSwitchReachability(switchNode, map.getOrUnrestricted(switchNode.value()).asInteger().range);
-                }
-                case BinaryIntegerExactArithmeticSplitNode exactBinary -> {
-                    // boolean[] {defaultSuccessor, overflowSuccessor}
-                    return switch (AnalysisHelpers.isOverflowing(exactBinary, map.getOrUnrestricted(exactBinary.getX()).asInteger().range,
-                                    map.getOrUnrestricted(exactBinary.getY()).asInteger().range)) {
-                        case UNKNOWN -> TRUE_TRUE;
-                        case TRUE -> FALSE_TRUE;
-                        case FALSE -> TRUE_FALSE;
-                    };
-                }
-                case IntegerNegExactSplitNode exactNegate -> {
-                    // boolean[] {defaultSuccessor, overflowSuccessor}
-                    IntegerStamp valueStamp = map.getOrUnrestricted(exactNegate.getValue()).asInteger().range;
-                    PrimitiveConstant value = (PrimitiveConstant) valueStamp.asConstant();
-                    return value != null ? (value.asLong() == CodeUtil.minValue(valueStamp.getBits()) ? FALSE_TRUE : TRUE_FALSE) : TRUE_TRUE;
-                }
-                case null ->
-                    throw GraalError.shouldNotReachHere("can not compute successor reachability for split 'null'");
-                default -> {
-                    return null;
-                }
-            }
+            return AnalysisHelpers.splitReachability(split, map, p -> p.asLogic().logic, p -> p instanceof IntegerPentagon ip ? ip.range : null);
         }
 
         @Override
@@ -1094,32 +1063,8 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                                                         Pentagon.ofGeneralStamp(rYf)));
                     }
                 }
-                case IntegerSwitchNode iSwitch -> {
-                    IntegerStamp vUnev = (IntegerStamp) iSwitch.switchValue().stamp(NodeView.DEFAULT).empty();
-                    IntegerStamp[] inferredStamps = new IntegerStamp[iSwitch.getSuccessorCount()];
-                    Arrays.fill(inferredStamps, vUnev);
-                    for (int i = 0; i < iSwitch.keyCount(); i++) {
-                        IntegerStamp keyStamp = IntegerStamp.createConstant(vUnev.getBits(), iSwitch.intKeyAt(i));
-                        int branch = iSwitch.keySuccessorIndex(i);
-                        inferredStamps[branch] = (IntegerStamp) inferredStamps[branch].meet(keyStamp);
-                    }
-                    Pentagon[] inferences = new Pentagon[inferredStamps.length];
-                    for (int i = 0; i < inferredStamps.length; i++) {
-                        if (inferredStamps[i].isEmpty() || inferredStamps[i].isUnrestricted()) {
-                            /*
-                             * The information this inference is calculated by is static, and we
-                             * were not able to calculate an inference here. Therefore, we will
-                             * never calculate an inference here, therefore we can return null.
-                             */
-                            inferences[i] = null;
-                        } else {
-                            inferences[i] = Pentagon.of(inferredStamps[i], CollectionsUtil.setOf(), CollectionsUtil.setOf());
-                        }
-                    }
-                    // force default to unrestricted if there were any cases ath the same successor
-                    inferences[iSwitch.defaultSuccessorIndex()] = unrestricted(inferences[iSwitch.defaultSuccessorIndex()]);
-                    yield AnalysisDomainDefinition.switchInference(Pentagon.class, inferences);
-                }
+                case IntegerSwitchNode iSwitch ->
+                    AnalysisHelpers.switchStampInference(Pentagon.class, iSwitch, st -> Pentagon.of(st, CollectionsUtil.setOf(), CollectionsUtil.setOf()));
                 default -> null;
             };
         }
@@ -1458,8 +1403,7 @@ public final class PentagonalAnalysisPhase extends PostRunCanonicalizationPhase<
                                 for (Node input : ln.inputs()) {
                                     if (!(input instanceof ValueNode vin) || !domainOfPentagons.isOfInterest(vin)) {
                                         // we are not interested in logic nodes the inputs of
-                                        // which we do not
-                                        // understand
+                                        // which we do not understand
                                         yield false;
                                     }
                                 }

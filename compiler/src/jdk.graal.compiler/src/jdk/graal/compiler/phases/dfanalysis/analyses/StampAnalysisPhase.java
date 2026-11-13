@@ -25,7 +25,10 @@
 
 package jdk.graal.compiler.phases.dfanalysis.analyses;
 
-import java.util.Arrays;
+import static jdk.graal.compiler.phases.dfanalysis.analyses.AnalysisHelpers.stampForBoolean;
+import static jdk.graal.compiler.phases.dfanalysis.analyses.AnalysisHelpers.stampForTriState;
+import static jdk.graal.compiler.phases.dfanalysis.analyses.AnalysisHelpers.stateForLogicStamp;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -33,7 +36,6 @@ import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.core.common.calc.FloatConvertCategory;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
-import jdk.graal.compiler.core.common.type.AbstractPointerStamp;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
@@ -47,7 +49,6 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.DynamicPiNode;
 import jdk.graal.compiler.nodes.GraphState;
-import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
@@ -59,13 +60,10 @@ import jdk.graal.compiler.nodes.UnaryOpLogicNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.BinaryNode;
-import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.FloatConvertNode;
-import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.UnaryNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
-import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
@@ -484,95 +482,12 @@ public final class StampAnalysisPhase extends PostRunCanonicalizationPhase<CoreP
 
         @Override
         public boolean[] splitReachability(ControlSplitNode split, DFAMap<Stamp> map) {
-            switch (split) {
-                case IfNode ifNode -> {
-                    // boolean[] {trueSuccessor, falseSuccessor}
-                    TriState condition = stateForLogicStamp((LogicValueStamp) map.getOrUnrestricted(ifNode.condition()));
-                    return switch (condition) {
-                        case UNKNOWN -> TRUE_TRUE;
-                        case TRUE -> TRUE_FALSE;
-                        case FALSE -> FALSE_TRUE;
-                    };
-                }
-                case SwitchNode switchNode -> {
-                    return AnalysisHelpers.calcStampSwitchReachability(switchNode, map.getOrUnrestricted(switchNode.value()));
-                }
-                case BinaryIntegerExactArithmeticSplitNode exactBinary -> {
-                    // boolean[] {defaultSuccessor, overflowSuccessor}
-                    return switch (AnalysisHelpers.isOverflowing(exactBinary, (IntegerStamp) map.getOrUnrestricted(exactBinary.getX()),
-                                    (IntegerStamp) map.getOrUnrestricted(exactBinary.getY()))) {
-                        case UNKNOWN -> TRUE_TRUE;
-                        case TRUE -> FALSE_TRUE;
-                        case FALSE -> TRUE_FALSE;
-                    };
-                }
-                case IntegerNegExactSplitNode exactNegate -> {
-                    // boolean[] {defaultSuccessor, overflowSuccessor}
-                    IntegerStamp valueStamp = (IntegerStamp) map.getOrUnrestricted(exactNegate.getValue());
-                    PrimitiveConstant value = (PrimitiveConstant) valueStamp.asConstant();
-                    return value != null ? (value.asLong() == CodeUtil.minValue(valueStamp.getBits()) ? FALSE_TRUE : TRUE_FALSE) : TRUE_TRUE;
-                }
-                case null ->
-                    throw GraalError.shouldNotReachHere("can not compute successor reachability for split 'null'");
-                default -> {
-                    return null;
-                }
-            }
+            return AnalysisHelpers.splitReachability(split, map, s -> stateForLogicStamp((LogicValueStamp) s), s -> s);
         }
 
         @Override
         public Stamp[][] calcInferrableValues(ValueNode node, DFAMap<Stamp> map) {
-            return switch (node) {
-                case IsNullNode nullNode -> {
-                    ValueNode value = nullNode.getValue();
-                    AbstractPointerStamp unrest = (AbstractPointerStamp) unrestricted(value);
-                    yield AnalysisDomainDefinition.ifInference(Stamp.class,
-                                    AnalysisDomainDefinition.unaryLogicInference(Stamp.class, unrest.asAlwaysNull()),
-                                    AnalysisDomainDefinition.unaryLogicInference(Stamp.class, unrest.asNonNull()));
-                }
-                case CompareNode compareNode -> {
-                    ValueNode x = compareNode.getX();
-                    ValueNode y = compareNode.getY();
-                    Stamp unrestX = unrestricted(x);
-                    Stamp unrestY = unrestricted(y);
-                    Stamp xStamp = map.getOrUnrestricted(x);
-                    GraalError.guarantee(xStamp != null, "WHAT why is %s with stamp %s null when evaluating %s?", x, x.stamp(NodeView.DEFAULT), compareNode);
-                    Stamp yStamp = map.getOrUnrestricted(y);
-                    // only calculate additional information for X and Y caused by this compare
-                    Stamp xt = compareNode.getSucceedingStampForX(false, unrestX, yStamp);
-                    Stamp yt = compareNode.getSucceedingStampForY(false, xStamp, unrestY);
-                    Stamp xf = compareNode.getSucceedingStampForX(true, unrestX, yStamp);
-                    Stamp yf = compareNode.getSucceedingStampForY(true, xStamp, unrestY);
-                    yield AnalysisDomainDefinition.ifInference(Stamp.class,
-                                    // true branch
-                                    AnalysisDomainDefinition.binaryLogicInference(Stamp.class,
-                                                    xt == null ? unrestX : xt,
-                                                    yt == null ? unrestY : yt),
-                                    // false branch
-                                    AnalysisDomainDefinition.binaryLogicInference(Stamp.class,
-                                                    xf == null ? unrestX : xf,
-                                                    yf == null ? unrestY : yf));
-                }
-                case IntegerSwitchNode iSwitch -> {
-                    IntegerStamp vUnev = (IntegerStamp) unevaluated(iSwitch.switchValue());
-                    Stamp[] inferences = new IntegerStamp[iSwitch.getSuccessorCount()];
-                    Arrays.fill(inferences, vUnev);
-                    for (int i = 0; i < iSwitch.keyCount(); i++) {
-                        Stamp keyStamp = IntegerStamp.createConstant(vUnev.getBits(), iSwitch.intKeyAt(i));
-                        int branch = iSwitch.keySuccessorIndex(i);
-                        inferences[branch] = merge(inferences[branch], keyStamp);
-                    }
-                    for (int i = 0; i < inferences.length; i++) {
-                        if (isUnevaluated(inferences[i])) {
-                            inferences[i] = unrestricted(inferences[i]);
-                        }
-                    }
-                    // force default to unrestricted if there were any cases ath the same successor
-                    inferences[iSwitch.defaultSuccessorIndex()] = unrestricted(inferences[iSwitch.defaultSuccessorIndex()]);
-                    yield AnalysisDomainDefinition.switchInference(Stamp.class, inferences);
-                }
-                default -> null;
-            };
+            return AnalysisHelpers.calcStampInferrableValues(node, map, this::normalize);
         }
 
         @Override
@@ -654,34 +569,6 @@ public final class StampAnalysisPhase extends PostRunCanonicalizationPhase<CoreP
             } else {
                 return input;
             }
-        }
-    }
-
-    private static LogicValueStamp stampForBoolean(boolean value) {
-        return value ? LogicValueStamp.TRUE : LogicValueStamp.FALSE;
-    }
-
-    private static LogicValueStamp stampForTriState(TriState state) {
-        if (state == null) {
-            return LogicValueStamp.EMPTY;
-        }
-        return switch (state) {
-            case TRUE -> LogicValueStamp.TRUE;
-            case FALSE -> LogicValueStamp.FALSE;
-            case UNKNOWN -> LogicValueStamp.UNRESTRICTED;
-        };
-    }
-
-    private static TriState stateForLogicStamp(LogicValueStamp stamp) {
-        if (stamp.isEmpty()) {
-            return null;
-        } else if (stamp.equals(LogicValueStamp.TRUE)) {
-            return TriState.TRUE;
-        } else if (stamp.equals(LogicValueStamp.FALSE)) {
-            return TriState.FALSE;
-        } else {
-            GraalError.guarantee(stamp.equals(LogicValueStamp.UNRESTRICTED), "unexpected LogicValueStamp %s", stamp);
-            return TriState.UNKNOWN;
         }
     }
 }
