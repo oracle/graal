@@ -49,6 +49,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GuardedValueNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.LogicConstantNode;
@@ -63,6 +64,7 @@ import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.extended.MultiGuardNode;
 import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
 import jdk.graal.compiler.nodes.loop.InductionVariable.Direction;
@@ -628,7 +630,7 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
 
     // Test aliasing between an access (which may be a read or a write) and a list of writes. The
     // writes are either all before or all after the access, as given by writesAfterAccess.
-    private static <ValueAccess extends ValueNode & AddressableMemoryAccess> LogicNode testPotentialAliasing(Loop loop, ValueAccess access, ArrayList<WriteNode> potentialAliasingWrites,
+    private <ValueAccess extends ValueNode & AddressableMemoryAccess> LogicNode testPotentialAliasing(Loop loop, ValueAccess access, ArrayList<WriteNode> potentialAliasingWrites,
                     boolean useStrictObjectEquality, ConstantReflectionProvider constantReflection) {
         LogicNode isAliasing = null;
         for (WriteNode write : potentialAliasingWrites) {
@@ -649,7 +651,7 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
     /// `useStrictObjectEquality` is true, accesses to the same object are considered aliasing;
     /// otherwise, the access order and induction variables may establish independence between
     /// iterations.
-    private static <ValueAccess extends ValueNode & AddressableMemoryAccess> LogicNode testLoopAccessAliasing(Loop loop, ValueAccess access, WriteNode write,
+    private <ValueAccess extends ValueNode & AddressableMemoryAccess> LogicNode testLoopAccessAliasing(Loop loop, ValueAccess access, WriteNode write,
                     boolean useStrictObjectEquality, ConstantReflectionProvider constantReflection) {
         StructuredGraph graph = loop.loopBegin().graph();
         boolean accessIsRead = access instanceof FloatingReadNode || access instanceof ReadNode;
@@ -810,7 +812,7 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
     /// The highest address is the address of the last byte accessed. Returns null bounds unless the
     /// offset calculation is proven not to overflow. Adds conditions to `addressWrapConditions`
     /// that must be false before these bounds or the access order can be used to prove independence.
-    private static Pair<ValueNode, ValueNode> accessBounds(AddressableMemoryAccess access, Loop loop, ArrayList<LogicNode> addressWrapConditions,
+    private Pair<ValueNode, ValueNode> accessBounds(AddressableMemoryAccess access, Loop loop, ArrayList<LogicNode> addressWrapConditions,
                     ConstantReflectionProvider constantReflection) {
         StructuredGraph graph = loop.loopBegin().graph();
         ValueNode accessBase = getBase(access, loop);
@@ -824,11 +826,29 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
         InductionVariable bodyIV = countedLoop.getBodyIVEqualsLimitCheckedIV() ? limitCheckedIV : InductionVariableHelper.previousIteration(limitCheckedIV);
         InductionVariable.Endpoints endpoints = accessIndex.computeEndpoints(true, countedLoop.maxTripCountNode(true), accessBase.stamp(NodeView.DEFAULT),
                         bodyIV, limitCheckedIV);
-        if (!endpoints.overflowConditions().isEmpty()) {
-            return Pair.create(null, null);
+        GuardingNode endpointGuard = null;
+        for (LogicNode overflowCondition : endpoints.overflowConditions()) {
+            if (overflowCondition.isTautology()) {
+                return Pair.create(null, null);
+            } else if (!overflowCondition.isContradiction()) {
+                if (!graph.getGuardsStage().allowsFloatingGuards()) {
+                    return Pair.create(null, null);
+                }
+                GuardingNode overflowGuard = createRawAddressOverflowGuard(countedLoop, overflowCondition);
+                if (overflowGuard == null) {
+                    return Pair.create(null, null);
+                }
+                endpointGuard = MultiGuardNode.addGuard(endpointGuard, overflowGuard);
+            }
         }
-        ValueNode accessStart = AddNode.create(accessBase, endpoints.init(), NodeView.DEFAULT);
-        ValueNode accessEnd = AddNode.create(accessBase, endpoints.extremum(), NodeView.DEFAULT);
+        ValueNode accessInit = endpoints.init();
+        ValueNode accessExtremum = endpoints.extremum();
+        if (endpointGuard != null) {
+            accessInit = graph.unique(new GuardedValueNode(accessInit, endpointGuard));
+            accessExtremum = graph.unique(new GuardedValueNode(accessExtremum, endpointGuard));
+        }
+        ValueNode accessStart = AddNode.create(accessBase, accessInit, NodeView.DEFAULT);
+        ValueNode accessEnd = AddNode.create(accessBase, accessExtremum, NodeView.DEFAULT);
 
         // Ensure that the lower component of the pair is always the smaller of the bounds.
         ValueNode accessLow;
@@ -851,6 +871,12 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
         addressWrapConditions.add(CompareNode.createCompareNode(graph, CanonicalCondition.BT, lastByte, accessHigh, constantReflection, NodeView.DEFAULT));
 
         return Pair.create(accessLow, lastByte);
+    }
+
+    /// Creates a guard that ensures a raw address offset stays within its arithmetic range.
+    /// Returning null leaves the access bounds unknown so the caller conservatively assumes aliasing.
+    protected GuardingNode createRawAddressOverflowGuard(CountedLoopInfo countedLoop, LogicNode overflowCondition) {
+        return countedLoop.createOverflowGuard(overflowCondition, DeoptimizationReason.Aliasing);
     }
 
     /**

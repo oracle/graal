@@ -49,6 +49,7 @@ import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -106,7 +107,7 @@ public class OptimisticRawAliasingTest extends GraalCompilerTest {
         Method method = OptimisticAliasingAnalysisPhase.class.getDeclaredMethod("testLoopAccessAliasing", Loop.class,
                         ValueNode.class, WriteNode.class, boolean.class, ConstantReflectionProvider.class);
         method.setAccessible(true);
-        return (LogicNode) method.invoke(null, loop, read, write, false, getConstantReflection());
+        return (LogicNode) method.invoke(new OptimisticAliasingAnalysisPhase(CanonicalizerPhase.create()), loop, read, write, false, getConstantReflection());
     }
 
     /// Keeps a dependence when the first write overwrites the next iteration's read.
