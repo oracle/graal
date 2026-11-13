@@ -20,11 +20,10 @@ suite = {
             },
             {
                 "name" : "musl",
-                "version" : "c7bb8193aebe53edade0c92e3a3f7297bbf9067c",
+                "version" : "19628d552b4ba7ba505595083a57b46d73e6d964",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/musl.git", "kind" : "git"},
                 ],
-                "foreign": True,
             },
             {
                 "name" : "sulong",
