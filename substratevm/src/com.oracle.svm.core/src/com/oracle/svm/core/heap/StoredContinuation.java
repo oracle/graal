@@ -36,7 +36,12 @@ import com.oracle.svm.guest.staging.core.heap.Heap;
  *
  * Stored continuations are {@link Hybrid} objects where the array part contains the raw stack data.
  * After writing the stack data into the object, we manually emit the correct GC write barriers for
- * all the references (see {@link Heap#dirtyAllReferencesOf}).
+ * all the references (see {@link Heap#dirtyAllReferencesOf}). Following initialization, an object
+ * is considered effectively immutable, and only GC is expected to write the references it contains.
+ * Therefore, implicit write barriers intentionally do not support stored continuations, and they
+ * cannot have declared object reference fields.
+ *
+ * Objects of this type can reside in unaligned chunks.
  */
 @Hybrid(componentType = Word.class)
 public final class StoredContinuation {
