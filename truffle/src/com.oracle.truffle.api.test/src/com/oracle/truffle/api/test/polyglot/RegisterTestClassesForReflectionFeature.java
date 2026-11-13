@@ -45,6 +45,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
 
 import com.oracle.truffle.tck.tests.ValueAssert;
 
@@ -69,12 +70,24 @@ public class RegisterTestClassesForReflectionFeature implements Feature {
                     ContextAPITest.class,
                     GR40903Outer.class,
                     GR40903Outer.Inner.class,
-                    HostObjectToStringTest.class);
+                    HostObjectToStringTest.class,
+                    HostStackTraceTest.class,
+                    GuestFunctionToHostInterfaceProxyTest.class);
 
     /* Keep proxy implementation reflection metadata explicit for HostAccess tests using getMethods(). */
     private static final List<Class<?>[]> TEST_PROXY_INTERFACES = List.<Class<?>[]> of(
                     new Class<?>[]{HostAccessTest.ProxiedPoint.class},
-                    new Class<?>[]{HostAccessTest.ProxiedPoint2.class});
+                    new Class<?>[]{HostAccessTest.ProxiedPoint2.class},
+                    new Class<?>[]{HostStackTraceTest.StackTraceFunction.class},
+                    new Class<?>[]{HostStackTraceTest.StackTraceObject.class},
+                    new Class<?>[]{HostStackTraceTest.StackTraceVarArgsFunction.class},
+                    new Class<?>[]{GuestFunctionToHostInterfaceProxyTest.SharedSumFunction.class},
+                    new Class<?>[]{GuestFunctionToHostInterfaceProxyTest.LegacyVarArgsFunction.class},
+                    new Class<?>[]{GuestFunctionToHostInterfaceProxyTest.LegacyVarArgsOnlyFunction.class},
+                    new Class<?>[]{GuestFunctionToHostInterfaceProxyTest.LegacyVarArgs.class},
+                    new Class<?>[]{GuestFunctionToHostInterfaceProxyTest.LegacyInheritedVarArgsFunction.class},
+                    new Class<?>[]{GuestFunctionToHostInterfaceProxyTest.LegacyInheritedArrayFunction.class},
+                    new Class<?>[]{GuestFunctionToHostInterfaceProxyTest.LegacyCovariantFunction.class});
 
     protected static void registerClass(Class<?> clazz) {
         RuntimeReflection.register(clazz);
@@ -88,6 +101,7 @@ public class RegisterTestClassesForReflectionFeature implements Feature {
 
     @SuppressWarnings("deprecation")
     protected static void registerProxyClass(Class<?>... interfaces) {
+        RuntimeProxyCreation.register(interfaces);
         Class<?> proxyClass = Proxy.getProxyClass(interfaces[0].getClassLoader(), interfaces);
         registerClass(proxyClass);
     }

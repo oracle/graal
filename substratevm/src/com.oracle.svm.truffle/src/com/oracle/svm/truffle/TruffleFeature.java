@@ -113,6 +113,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.UninterruptibleGuestValue;
 import com.oracle.svm.core.annotate.Alias;
@@ -269,6 +270,11 @@ public class TruffleFeature implements InternalFeature {
         tempTargetAllowlistMethods = EconomicSet.create();
         warnMethods = EconomicSet.create();
         neverPartOfCompilationViolations = ConcurrentHashMap.newKeySet();
+    }
+
+    @Override
+    public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        TypedEntrySupport.registerExactEntryPlugin(plugins, ((SubstrateTruffleRuntime) Truffle.getRuntime()).getExactGeneratedProxyEntries());
     }
 
     @Override

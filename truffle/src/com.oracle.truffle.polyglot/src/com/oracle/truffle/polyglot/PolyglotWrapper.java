@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,44 +59,47 @@ interface PolyglotWrapper {
     static boolean isInstance(Object v) {
         if (v == null) {
             return false;
+        } else if (v instanceof PolyglotGeneratedProxy) {
+            return true;
         } else if (v instanceof Proxy) {
-            return isHostProxy(v);
+            return getProxyWrapper(v) != null;
         } else {
             return v instanceof PolyglotWrapper;
         }
     }
 
-    @TruffleBoundary
-    static boolean isHostProxy(Object v) {
-        if (Proxy.isProxyClass(v.getClass())) {
-            return Proxy.getInvocationHandler(v) instanceof PolyglotWrapper;
-        } else {
-            return false;
+    static Object getGuestObject(Object v) {
+        if (v instanceof PolyglotGeneratedProxy proxy) {
+            return proxy.receiver;
         }
+        return (v instanceof Proxy ? getProxyWrapper(v) : (PolyglotWrapper) v).getGuestObject();
     }
 
-    static PolyglotWrapper asInstance(Object v) {
-        if (v instanceof Proxy) {
-            return getHostProxy(v);
-        } else {
-            return (PolyglotWrapper) v;
+    static PolyglotLanguageContext getLanguageContext(Object v) {
+        if (v instanceof PolyglotGeneratedProxy proxy) {
+            return (PolyglotLanguageContext) proxy.languageContext;
         }
+        return (v instanceof Proxy ? getProxyWrapper(v) : (PolyglotWrapper) v).getLanguageContext();
     }
 
     @TruffleBoundary
-    static PolyglotWrapper getHostProxy(Object v) {
-        return (PolyglotWrapper) Proxy.getInvocationHandler(v);
+    static PolyglotWrapper getProxyWrapper(Object proxy) {
+        Object handler;
+        if (proxy instanceof Proxy && Proxy.isProxyClass(proxy.getClass())) {
+            handler = Proxy.getInvocationHandler(proxy);
+        } else {
+            return null;
+        }
+        return handler instanceof PolyglotWrapper wrapper ? wrapper : null;
     }
 
     @TruffleBoundary
-    static boolean equalsProxy(PolyglotWrapper wrapper, Object other) {
-        if (other == null) {
-            return false;
-        } else if (Proxy.isProxyClass(other.getClass())) {
-            return equals(wrapper.getLanguageContext(), wrapper.getGuestObject(), getHostProxy(other).getGuestObject());
-        } else {
-            return false;
+    static boolean equalsProxy(Object languageContext, Object receiver, Object other) {
+        if (other instanceof PolyglotGeneratedProxy proxy) {
+            return equals(languageContext, receiver, proxy.receiver);
         }
+        PolyglotWrapper otherWrapper = getProxyWrapper(other);
+        return otherWrapper != null && equals(languageContext, receiver, otherWrapper.getGuestObject());
     }
 
     @TruffleBoundary

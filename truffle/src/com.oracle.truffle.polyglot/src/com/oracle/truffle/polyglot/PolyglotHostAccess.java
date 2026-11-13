@@ -76,7 +76,7 @@ final class PolyglotHostAccess extends AbstractHostAccess {
             return migrateValue(node, access, hostValue, access.getValueReceiver(hostValue), InlinedBranchProfile.getUncached());
         } else if (PolyglotWrapper.isInstance(hostValue)) {
             PolyglotContextImpl context = PolyglotFastThreadLocals.getContextWithNode(node);
-            return context.migrateHostWrapper(PolyglotWrapper.asInstance(hostValue));
+            return context.migrateHostWrapper(hostValue);
         }
         return hostValue;
     }
