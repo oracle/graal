@@ -240,7 +240,7 @@ public final class BlindedConstantNode extends FloatingNode implements Arithmeti
         return switch (constant.getJavaKind()) {
             case Boolean -> JavaConstant.forInt(Byte.toUnsignedInt(constant.asBoolean() ? (byte) 1 : 0));
             case Byte -> JavaConstant.forInt(Byte.toUnsignedInt((byte) constant.asBoxedPrimitive()));
-            case Char -> JavaConstant.forInt((int) constant.asBoxedPrimitive());
+            case Char -> JavaConstant.forInt(constant.asInt());
             case Short -> JavaConstant.forInt(Short.toUnsignedInt((short) constant.asBoxedPrimitive()));
             case Int -> JavaConstant.forInt(constant.asInt());
             case Float -> JavaConstant.forInt(Float.floatToRawIntBits(constant.asFloat()));
