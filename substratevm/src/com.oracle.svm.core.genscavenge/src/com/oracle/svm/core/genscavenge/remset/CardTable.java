@@ -42,6 +42,7 @@ import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -60,8 +61,8 @@ import jdk.graal.compiler.replacements.ReplacementsUtil;
 /**
  * A card table is a remembered set that summarizes pointer stores into a region. A card is "dirty"
  * if a pointer has been stored recently into the memory summarized by the card, or "clean" if no
- * references need tracking. Image heap cards can also be "old-only", which preserves roots for full
- * collections while allowing young collections to skip them.
+ * references need tracking. Image heap and metaspace cards can also be "old-only", which preserves
+ * roots for full collections while allowing young collections to skip them.
  * <p>
  * When looking for roots into the young space, the whole old space need not be searched for
  * pointers, only the parts of the old space covered by dirty cards. The card table works in concert
@@ -72,7 +73,7 @@ import jdk.graal.compiler.replacements.ReplacementsUtil;
  * the young space. Before scanning, the collector either cleans the card or marks it old-only. The
  * reference visitor dirties it again if a reference still points into the young generation. Scans
  * that must retain the existing card states leave them unchanged. Full collections also scan
- * old-only image heap cards.
+ * old-only cards.
  * <p>
  * Implementation notes:
  * <ul>
@@ -136,13 +137,19 @@ public final class CardTable {
         return entry == DIRTY_ENTRY;
     }
 
-    /** Returns whether this scan can skip old-only image heap cards. */
+    /** Returns whether this scan can skip old-only cards. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static boolean shouldSkipOldOnlyCards(Pointer objectsStart, boolean clean) {
         boolean skipOldOnlyCards = SerialGCOptions.SkipOldOnlyCardsInYoungGC.getValue() &&
-                        !GCImpl.getGCImpl().isCompleteCollection() && HeapImpl.getHeapImpl().isInImageHeap(objectsStart);
+                        !GCImpl.getGCImpl().isCompleteCollection() && allowsOldOnlyCards(objectsStart);
         assert !skipOldOnlyCards || !clean : "Scans that skip old-only cards must not clean cards";
         return skipOldOnlyCards;
+    }
+
+    /** Returns whether the containing memory region permits the old-only card state. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean allowsOldOnlyCards(Pointer objectsStart) {
+        return HeapImpl.getHeapImpl().isInImageHeap(objectsStart) || Metaspace.singleton().isInAddressSpace(objectsStart);
     }
 
     /**
@@ -176,9 +183,9 @@ public final class CardTable {
 
     /**
      * Returns the state to write to a card before visiting its references. Scans that clean cards
-     * write {@link #CLEAN_ENTRY}. Young image heap scans write {@link #OLD_ONLY_ENTRY} so that a
-     * later full collection still visits the card. The reference visitor dirties the card again
-     * if a reference still points to a young object.
+     * write {@link #CLEAN_ENTRY}. Young image heap and metaspace scans write {@link #OLD_ONLY_ENTRY}
+     * so that a later full collection still visits the card. The reference visitor dirties the card
+     * again if a reference still points to a young object.
      *
      * Call only when cleaning cards or when {@link #shouldSkipOldOnlyCards} returns true. Other
      * scans must leave existing card states unchanged.
@@ -244,8 +251,8 @@ public final class CardTable {
 
     public static boolean verify(Pointer cardTableStart, Pointer cardTableEnd, Pointer objectsStart, Pointer objectsLimit) {
         /* Check all card states even when reference verification is disabled. */
-        boolean fromImageHeap = HeapImpl.getHeapImpl().isInImageHeap(objectsStart);
-        if (!verifyCardStates(cardTableStart, cardTableEnd, fromImageHeap)) {
+        boolean allowsOldOnly = allowsOldOnlyCards(objectsStart);
+        if (!verifyCardStates(cardTableStart, cardTableEnd, allowsOldOnly)) {
             return false;
         }
 
@@ -285,7 +292,7 @@ public final class CardTable {
         return success;
     }
 
-    private static boolean verifyCardStates(Pointer cardTableStart, Pointer cardTableEnd, boolean fromImageHeap) {
+    private static boolean verifyCardStates(Pointer cardTableStart, Pointer cardTableEnd, boolean allowsOldOnly) {
         UnsignedWord wordSize = Word.unsigned(SubstrateTarget.getWordSize());
         assert cardTableStart.unsignedRemainder(wordSize).equal(0);
 
@@ -303,13 +310,13 @@ public final class CardTable {
             UnsignedWord bit0 = entries.and(OLD_ONLY_WORD);
             UnsignedWord bit1 = entries.unsignedShiftRight(1).and(OLD_ONLY_WORD);
 
-            if (fromImageHeap) {
-                /* Image heap cards allow DIRTY_ENTRY (00), OLD_ONLY_ENTRY (01), and CLEAN_ENTRY (11). */
+            if (allowsOldOnly) {
+                /* Image heap and metaspace cards allow DIRTY_ENTRY (00), OLD_ONLY_ENTRY (01), and CLEAN_ENTRY (11). */
                 if (bit1.and(bit0).notEqual(bit1)) {
                     break;
                 }
             } else if (bit0.notEqual(bit1)) {
-                /* Runtime cards allow only DIRTY_ENTRY (00) and CLEAN_ENTRY (11), so the bits must match. */
+                /* Cards in the young and old generations allow only DIRTY_ENTRY (00) and CLEAN_ENTRY (11), so the bits must match. */
                 break;
             }
 
@@ -319,7 +326,7 @@ public final class CardTable {
         /* Locate the exact invalid card, or check the remaining bytes after the last whole word. */
         while (pos.belowThan(cardTableEnd)) {
             byte entry = pos.readByte(0, CARD_REMEMBERED_SET_LOCATION);
-            if (entry != DIRTY_ENTRY && entry != CLEAN_ENTRY && (!fromImageHeap || entry != OLD_ONLY_ENTRY)) {
+            if (entry != DIRTY_ENTRY && entry != CLEAN_ENTRY && (!allowsOldOnly || entry != OLD_ONLY_ENTRY)) {
                 Log.log().string("Card at ").zhex(pos).string(" has an invalid state: ").zhex(entry).newline();
                 return false;
             }
@@ -335,8 +342,10 @@ public final class CardTable {
     }
 
     private static boolean verifyReference(Object parentObject, Pointer cardTableStart, Pointer objectsStart, Pointer reference, Pointer referencedObject, boolean precise) {
+        /* References into the image heap or metaspace do not need tracking because those targets are never collected. */
         if (referencedObject.isNull() ||
                         HeapImpl.getHeapImpl().isInImageHeap(referencedObject) ||
+                        Metaspace.singleton().isInAddressSpace(referencedObject) ||
                         HeapImpl.getHeapImpl().isInImageHeap(parentObject) && !HeapImpl.usesImageHeapCardMarking()) {
             return true;
         }
@@ -351,15 +360,25 @@ public final class CardTable {
         }
 
         boolean fromImageHeap = HeapImpl.getHeapImpl().isInImageHeap(parentObject);
+        boolean fromMetaspace = Metaspace.singleton().isInAddressSpace(parentObject);
+        boolean requiresFullScan = fromImageHeap || fromMetaspace;
         boolean toYoung = HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(obj)).isYoungSpace();
 
-        if (toYoung || fromImageHeap && entry != OLD_ONLY_ENTRY) {
+        if (toYoung || requiresFullScan && entry != OLD_ONLY_ENTRY) {
             Pointer cardTableAddress = cardTableStart.add(cardTableIndex);
-            Log.log().string("Object ").zhex(Word.objectToUntrackedPointer(parentObject)).string(" (").string(parentObject.getClass().getName()).character(')')
-                            .string(fromImageHeap ? ", which is in the image heap, " : " ")
-                            .string("has an object reference at ")
+            Log log = Log.log();
+            log.string("Object ").zhex(Word.objectToUntrackedPointer(parentObject)).string(" (").string(parentObject.getClass().getName()).character(')');
+            if (fromImageHeap) {
+                log.string(", which is in the image heap, ");
+            } else if (fromMetaspace) {
+                log.string(", which is in metaspace, ");
+            } else {
+                log.character(' ');
+            }
+
+            log.string("has an object reference at ")
                             .zhex(reference).string(" that points to ").zhex(referencedObject).string(" (").string(obj.getClass().getName()).string("), ")
-                            .string("which is in the ").string(fromImageHeap ? "runtime heap" : "young generation").string(". ")
+                            .string("which is in the ").string(requiresFullScan ? "runtime heap" : "young generation").string(". ")
                             .string("However, the card table at ").zhex(cardTableAddress).string(" has state ").signed(entry).string(".").newline();
             return false;
         }

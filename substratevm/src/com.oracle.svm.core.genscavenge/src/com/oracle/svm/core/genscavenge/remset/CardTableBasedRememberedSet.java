@@ -211,16 +211,14 @@ public class CardTableBasedRememberedSet implements RememberedSet {
         assert !HeapImpl.getHeapImpl().isInImageHeap(object) : "should never be called for references to image heap objects";
 
         if (GCImpl.getGCImpl().isCompleteCollection()) {
-            if (HeapImpl.usesImageHeapCardMarking() && HeapImpl.getHeapImpl().isInImageHeap(holderObject)) {
+            if (HeapImpl.usesImageHeapCardMarking() && HeapImpl.getHeapImpl().isInImageHeap(holderObject) || Metaspace.singleton().isInAddressSpace(holderObject)) {
                 /*
-                 * Full GC leaves no young objects, but image heap cards must still
+                 * Full GC leaves no young objects, but image heap and metaspace cards must still
                  * record references into the runtime heap so future full collections find these roots.
                  * Record them as old-only when enabled. Later GC stores may conservatively dirty the card.
                  */
                 byte cardState = SerialGCOptions.SkipOldOnlyCardsInYoungGC.getValue() ? OLD_ONLY_ENTRY : DIRTY_ENTRY;
                 updateCardInGC(holderObject, objRef, cardState);
-            } else if (Metaspace.singleton().isInAddressSpace(holderObject)) {
-                updateCardInGC(holderObject, objRef, DIRTY_ENTRY);
             }
         } else if (cardNeedsDirtyingInYoungGC(holderObject, object)) {
             updateCardInGC(holderObject, objRef, DIRTY_ENTRY);
