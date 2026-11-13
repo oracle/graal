@@ -29,6 +29,7 @@ import static jdk.graal.compiler.core.common.cfg.AbstractControlFlowGraph.INVALI
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import org.graalvm.word.LocationIdentity;
 
@@ -191,6 +192,9 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
 
         @Override
         public FixedNode next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
             FixedNode result = cur;
             if (result instanceof FixedWithNextNode) {
                 FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) result;

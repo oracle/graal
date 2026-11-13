@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -75,6 +76,9 @@ public final class DataSection implements Iterable<Data> {
         private int alignment;
         private final int size;
 
+        /// Prevents changes to the alignment after the owning section computes its layout.
+        private boolean alignmentFrozen;
+
         private DataSectionReference ref;
 
         protected Data(int alignment, int size) {
@@ -89,13 +93,17 @@ public final class DataSection implements Iterable<Data> {
 
         /**
          * Updates the alignment of the current data segment. This does not guarantee that the
-         * underlying runtime actually supports this alignment.
+         * underlying runtime actually supports this alignment. The alignment cannot be changed
+         * after the owning data section is closed.
          *
          * @param newAlignment The new alignment
          */
         public void updateAlignment(int newAlignment) {
             if (newAlignment == alignment) {
                 return;
+            }
+            if (alignmentFrozen) {
+                throw new IllegalStateException("Cannot update alignment after the data section is closed");
             }
             alignment = lcm(alignment, newAlignment);
         }
@@ -315,6 +323,7 @@ public final class DataSection implements Iterable<Data> {
         int position = 0;
         int alignment = 1;
         for (Data d : dataItems) {
+            d.alignmentFrozen = true;
             int itemAlignment = Math.max(minDataAlignment, d.alignment);
 
             alignment = lcm(alignment, itemAlignment);
@@ -480,7 +489,7 @@ public final class DataSection implements Iterable<Data> {
 
     @Override
     public Iterator<Data> iterator() {
-        return dataItems.iterator();
+        return Collections.unmodifiableList(dataItems).iterator();
     }
 
     public static int lcm(int x, int y) {

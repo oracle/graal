@@ -27,6 +27,7 @@ package jdk.graal.compiler.phases.common.writesinking.data;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.graph.Graph;
@@ -129,6 +130,9 @@ public final class WritesOrdering extends ArrayList<CacheEntry> {
          */
         @Override
         public CacheEntry next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
             return WritesOrdering.this.get(pos--);
         }
 
