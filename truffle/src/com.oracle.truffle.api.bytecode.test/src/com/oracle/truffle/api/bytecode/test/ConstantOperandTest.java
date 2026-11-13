@@ -412,11 +412,24 @@ public class ConstantOperandTest {
     @Test
     public void testPrologNull() {
         ConstantOperandsInPrologTestRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, b -> {
-            assertThrows(IllegalArgumentException.class, () -> b.beginRoot(null));
             b.beginRoot("foo");
             assertThrows(IllegalArgumentException.class, () -> b.emitLoadConstant(null));
             b.endRoot(0);
         }).getNode(0);
+    }
+
+    @Test
+    public void testPrologNullName() {
+        ConstantOperandsInPrologTestRootNode root = ConstantOperandsInPrologTestRootNodeGen.create(LANGUAGE, BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot(null);
+            b.beginReturn();
+            b.emitLoadConstant(1L);
+            b.endReturn();
+            b.endRoot(0);
+        }).getNode(0);
+        assertEquals(1L, root.getCallTarget().call());
+        assertEquals(null, root.prologEvents.get(0));
+        assertEquals(0, root.prologEvents.get(1));
     }
 
     @Test
@@ -429,15 +442,39 @@ public class ConstantOperandTest {
 
         assertThrows(IllegalArgumentException.class, () -> parse(b -> {
             b.beginRoot();
-            b.beginGetAttrWithDefault(null);
+            b.beginSetCheckValue(42, null);
+            b.emitLoadArgument(0);
+            b.endSetCheckValue();
             b.endRoot();
         }));
+    }
 
-        assertThrows(IllegalArgumentException.class, () -> parse(b -> {
+    @Test
+    public void testNullConstantOperands() {
+        ConstantOperandTestRootNode missingKey = parse(b -> {
             b.beginRoot();
-            b.endGetAttrWithDefault(null);
+            b.beginReturn();
+            b.beginGetAttrWithDefault(null);
+            b.emitLoadArgument(0);
+            b.endGetAttrWithDefault("missing");
+            b.endReturn();
             b.endRoot();
-        }));
+        });
+        assertEquals("missing", missingKey.getCallTarget().call(new HashMap<>()));
+
+        ConstantOperandTestRootNode nullDefault = parse(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginGetAttrWithDefault("foo");
+            b.emitLoadArgument(0);
+            b.endGetAttrWithDefault(null);
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(null, nullDefault.getCallTarget().call(new HashMap<>()));
+        Map<String, Object> present = new HashMap<>();
+        present.put("foo", "baz");
+        assertEquals("baz", nullDefault.getCallTarget().call(present));
     }
 
     @Test
