@@ -1163,7 +1163,7 @@ final class MyOtherIllegalLocalException extends MyIllegalLocalException {
 }
 
 @ExpectError("The defaultLocalValue and illegalLocalException attributes are mutually exclusive.%")
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, defaultLocalValue = "null", illegalLocalException = MyIllegalLocalException.class)
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, defaultLocalValue = "42", illegalLocalException = MyIllegalLocalException.class)
 abstract class MutuallyExclusiveLocalSettings extends RootNode implements BytecodeRootNode {
     protected MutuallyExclusiveLocalSettings(BytecodeDSLTestLanguage language, FrameDescriptor fd) {
         super(language, fd);
@@ -1171,7 +1171,7 @@ abstract class MutuallyExclusiveLocalSettings extends RootNode implements Byteco
 }
 
 @ExpectError("The defaultLocalValue and illegalLocalException attributes are mutually exclusive.%")
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, defaultLocalValue = "null", illegalLocalException = MyOtherIllegalLocalException.class, illegalLocalExceptionFactory = "factoryMethod")
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, defaultLocalValue = "42", illegalLocalException = MyOtherIllegalLocalException.class, illegalLocalExceptionFactory = "factoryMethod")
 abstract class MutuallyExclusiveLocalSettings2 extends RootNode implements BytecodeRootNode {
     protected MutuallyExclusiveLocalSettings2(BytecodeDSLTestLanguage language, FrameDescriptor fd) {
         super(language, fd);

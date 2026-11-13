@@ -465,6 +465,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             model.defaultLocalValueExpression = DSLExpression.parse(model, "defaultLocalValue", model.defaultLocalValue);
             if (model.defaultLocalValueExpression != null) {
                 model.defaultLocalValueExpression = DSLExpression.resolve(resolver, model, "defaultLocalValue", model.defaultLocalValueExpression, model.defaultLocalValue);
+                if (model.defaultLocalValueExpression != null && model.defaultLocalValueExpression.getResolvedType().getKind() == TypeKind.NULL) {
+                    model.addError(generateBytecodeMirror, ElementUtils.getAnnotationValue(generateBytecodeMirror, "defaultLocalValue"), "The defaultLocalValue must not be null.");
+                }
             }
         } else if (model.illegalLocalException != null) {
             model.loadIllegalLocalStrategy = LoadIllegalLocalStrategy.CUSTOM_EXCEPTION;

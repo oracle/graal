@@ -1430,6 +1430,72 @@ public class ErrorTests {
         }
     }
 
+    @ExpectError("The defaultLocalValue must not be null.")
+    @GenerateBytecode(languageClass = ErrorLanguage.class, defaultLocalValue = "null")
+    public abstract static class NullDefaultLocalValue extends RootNode implements BytecodeRootNode {
+        protected NullDefaultLocalValue(ErrorLanguage language, FrameDescriptor descriptor) {
+            super(language, descriptor);
+        }
+
+        @Operation
+        public static final class Value {
+            @Specialization
+            public static int value() {
+                return 42;
+            }
+        }
+    }
+
+    @GenerateBytecode(languageClass = ErrorLanguage.class, defaultLocalValue = "DEFAULT")
+    public abstract static class NullDefaultLocalField extends RootNode implements BytecodeRootNode {
+        static final Object DEFAULT = null;
+
+        protected NullDefaultLocalField(ErrorLanguage language, FrameDescriptor descriptor) {
+            super(language, descriptor);
+        }
+
+        @Operation
+        public static final class Value {
+            @Specialization
+            public static int value() {
+                return 42;
+            }
+        }
+    }
+
+    @Test
+    public void testNullDefaultLocalField() {
+        ExceptionInInitializerError error = Assert.assertThrows(ExceptionInInitializerError.class, () -> NullDefaultLocalFieldGen.newConfigBuilder());
+        assertTrue(error.getCause() instanceof NullPointerException);
+        assertEquals("The defaultLocalValue must not be null.", error.getCause().getMessage());
+    }
+
+    @GenerateBytecode(languageClass = ErrorLanguage.class, defaultLocalValue = "defaultValue()")
+    public abstract static class NullDefaultLocalMethod extends RootNode implements BytecodeRootNode {
+        static Object defaultValue() {
+            return null;
+        }
+
+        protected NullDefaultLocalMethod(ErrorLanguage language, FrameDescriptor descriptor) {
+            super(language, descriptor);
+        }
+
+        @Operation
+        public static final class Value {
+            @Specialization
+            public static int value() {
+                return 42;
+            }
+        }
+    }
+
+    @Test
+    public void testNullDefaultLocalMethod() {
+        ExceptionInInitializerError error = Assert.assertThrows(ExceptionInInitializerError.class, () -> NullDefaultLocalMethodGen.newConfigBuilder());
+        assertTrue(error.getCause() instanceof NullPointerException);
+        assertEquals("The defaultLocalValue must not be null.", error.getCause().getMessage());
+    }
+
     // Checkstyle: stop
     @ExpectError("%")
     @TypeSystem

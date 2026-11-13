@@ -128,21 +128,17 @@ public class LocalHelpersTest {
         if (interpreterClass == BytecodeNodeWithLocalIntrospectionBaseDefault.class || interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEObjectDefault.class) {
             return BytecodeNodeWithLocalIntrospection.DEFAULT;
         }
-        if (interpreterClass == BytecodeNodeWithLocalIntrospectionWithBENullDefault.class) {
-            return null;
-        }
         throw new AssertionError();
     }
 
     private boolean hasLocalDefaultValue() {
         Class<?> interpreterClass = bytecode.getGeneratedClass();
-        return interpreterClass == BytecodeNodeWithLocalIntrospectionBaseDefault.class || interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEObjectDefault.class ||
-                        interpreterClass == BytecodeNodeWithLocalIntrospectionWithBENullDefault.class;
+        return interpreterClass == BytecodeNodeWithLocalIntrospectionBaseDefault.class || interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEObjectDefault.class;
     }
 
     private boolean hasBoxingElimination() {
         Class<?> interpreterClass = bytecode.getGeneratedClass();
-        return interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEObjectDefault.class || interpreterClass == BytecodeNodeWithLocalIntrospectionWithBENullDefault.class ||
+        return interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEObjectDefault.class ||
                         interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEIllegal.class;
     }
 
@@ -2313,14 +2309,6 @@ public class LocalHelpersTest {
                                 boxingEliminationTypes = {boolean.class, long.class}, //
                                 enableUncachedInterpreter = true, //
                                 defaultLocalValue = "resolveDefault()", //
-                                enableYield = true, //
-                                enableMaterializedLocalAccesses = true, //
-                                captureFramesForTrace = true)),
-                @Variant(suffix = "WithBENullDefault", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
-                                enableQuickening = true, //
-                                boxingEliminationTypes = {boolean.class, long.class}, //
-                                enableUncachedInterpreter = true, //
-                                defaultLocalValue = "null", //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 captureFramesForTrace = true))

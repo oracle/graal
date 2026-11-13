@@ -427,7 +427,8 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
         if (model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
             CodeVariableElement var = this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(Object.class), "DEFAULT_LOCAL_VALUE"));
-            var.createInitBuilder().tree(DSLExpressionGenerator.write(model.defaultLocalValueExpression, null, Map.of()));
+            var.createInitBuilder().startStaticCall(type(Objects.class), "requireNonNull").tree(DSLExpressionGenerator.write(model.defaultLocalValueExpression, null, Map.of())).doubleQuote(
+                            "The defaultLocalValue must not be null.").end();
         } else {
             CodeVariableElement var = this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(Object.class), "EXPECTED_FRAME_DESCRIPTOR_DEFAULT_VALUE"));
             var.createInitBuilder().startStaticCall(types.FrameDescriptor, "newBuilder().defaultValueIllegal().build().getDefaultValue").end();

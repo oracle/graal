@@ -568,9 +568,11 @@ public @interface GenerateBytecode {
      * </pre>
      *
      * The expression supports a subset of Java (see the {@link com.oracle.truffle.api.dsl.Cached
-     * Cached} documentation), including other expressions like <code>null</code> or a static method
-     * call. Note that instance members of the root node cannot be bound with the default local
-     * value expression for efficiency reasons.
+     * Cached} documentation), including static method calls. The expression must evaluate to a
+     * non-null value. A literal {@code null} is rejected by the annotation processor; other
+     * expressions that evaluate to {@code null} cause a {@link NullPointerException} during
+     * initialization of the generated class. Note that instance members of the root node cannot
+     * be bound with the default local value expression for efficiency reasons.
      *
      * @since 24.2
      */
