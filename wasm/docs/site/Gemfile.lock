@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/graalvm/graal-languages-jekyll-theme.git
-  revision: dbb1e342b1ac6408943b4d5fa76210d5e2bc9973
+  revision: 8796760ddc3f823db86a2e0dde617b80e2f3473c
   branch: main
   specs:
     graal-languages-jekyll-theme (0.2.1)
