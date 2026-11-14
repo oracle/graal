@@ -175,7 +175,7 @@ Some of the events are available with [Serial GC](MemoryManagement.md) only, the
 | `jdk.NativeMemoryUsageTotal` <a href="#footnote-3">3)</a>     |
 | `jdk.NativeMemoryUsagePeak` <a href="#footnote-3">3)</a>      |
 | `jdk.NativeMemoryUsageTotalPeak` <a href="#footnote-3">3)</a> |
-| `jdk.ObjectAllocationSample` <a href="#footnote-1">1)</a>     |
+| `jdk.ObjectAllocationSample` <a href="#footnote-4">4)</a>     |
 | `jdk.ObjectAllocationInNewTLAB` <a href="#footnote-1">1)</a>  |
 | `jdk.OldObjectSample` <a href="#footnote-1">2)</a>            |
 | `jdk.OSInformation`                                           |
@@ -198,6 +198,7 @@ Some of the events are available with [Serial GC](MemoryManagement.md) only, the
 <p id="footnote-1" style="margin-bottom: 0;"><i>1) Available if Serial GC is used.</i></p>
 <p id="footnote-2" style="margin-bottom: 0;"><i>2) Partially available if Serial GC is used.</i></p>
 <p id="footnote-3" style="margin-bottom: 0;"><i>3) Available if Native Memory Tracking is used.</i></p>
+<p id="footnote-4" style="margin-bottom: 0;"><i>4) Available if Serial GC or G1 GC is used.</i></p>
 
 ### Further Reading
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -36,6 +36,7 @@ import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
+import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads;
@@ -70,6 +71,16 @@ public class JfrAllocationEvents {
             if (JfrEvent.ObjectAllocationSample.shouldEmit()) {
                 emitObjectAllocationSample(startTicks, hub);
             }
+        }
+    }
+
+    /** Emits a weighted sample after a native collector's allocation slow path. */
+    @AlwaysInline("Keep allocation event checks inline in allocation slow paths.")
+    @Uninterruptible(reason = "Emits a JFR event from the uninterruptible allocation slowpath.", callerMustBe = true)
+    public static void emitSample(DynamicHub hub) {
+        if (HasJfrSupport.get() && JfrEvent.ObjectAllocationSample.shouldEmit()) {
+            /* Native collectors do not expose the TLAB size or the allocation kind here. */
+            emitObjectAllocationSample(JfrTicks.elapsedTicks(), hub);
         }
     }
 
