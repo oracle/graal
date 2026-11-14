@@ -25,6 +25,10 @@
 package com.oracle.truffle.tools.coverage.test;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -242,6 +246,68 @@ public final class CoverageTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void testLCOVSourceFileWithoutPath() {
+        // Two sources with the same name but different content and no path.
+        Source first = makeSource("ROOT(STATEMENT)");
+        Source second = makeSource("ROOT(STATEMENT, STATEMENT)");
+        Assert.assertNull(first.getPath());
+        Assert.assertNull(second.getPath());
+        List<String> sourceFiles = getLCOVSourceFiles(first, second);
+        Assert.assertEquals(out.toString(), 2, sourceFiles.size());
+        Assert.assertTrue(out.toString(), sourceFiles.contains(first.getURI().toString()));
+        Assert.assertTrue(out.toString(), sourceFiles.contains(second.getURI().toString()));
+        Assert.assertNotEquals(sourceFiles.get(0), sourceFiles.get(1));
+    }
+
+    @Test
+    public void testLCOVSourceFileWithExplicitURI() {
+        Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(STATEMENT)", "test").uri(URI.create("memory:///coverage-source")).buildLiteral();
+        Assert.assertNull(source.getPath());
+        Assert.assertEquals(List.of(source.getURI().toString()), getLCOVSourceFiles(source));
+    }
+
+    @Test
+    public void testLCOVSourceFileWithEmptyURI() {
+        Source first = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(STATEMENT)", "test").uri(URI.create("")).buildLiteral();
+        Source second = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(STATEMENT, STATEMENT)", "test").uri(URI.create("")).buildLiteral();
+        Assert.assertEquals("", first.getURI().toString());
+        Assert.assertEquals("", second.getURI().toString());
+        List<String> sourceFiles = getLCOVSourceFiles(first, second);
+        Assert.assertEquals(2, sourceFiles.size());
+        Assert.assertTrue(sourceFiles.contains(makeSource("ROOT(STATEMENT)").getURI().toString()));
+        Assert.assertTrue(sourceFiles.contains(makeSource("ROOT(STATEMENT, STATEMENT)").getURI().toString()));
+        Assert.assertNotEquals(sourceFiles.get(0), sourceFiles.get(1));
+    }
+
+    @Test
+    public void testLCOVSourceFileWithPath() throws IOException {
+        Path path = Files.createTempFile("coverage-source", ".test");
+        try {
+            Source source = Source.newBuilder(InstrumentationTestLanguage.ID, path.toFile()).content("ROOT(STATEMENT)").build();
+            Assert.assertNotNull(source.getPath());
+            Assert.assertNotEquals(source.getURI().toString(), source.getPath());
+            Assert.assertEquals(List.of(source.getPath()), getLCOVSourceFiles(source));
+        } finally {
+            Files.delete(path);
+        }
+    }
+
+    private List<String> getLCOVSourceFiles(Source... sources) {
+        try (Context context = Context.newBuilder().in(System.in).out(out).err(err).option(CoverageInstrument.ID, "true").option(CoverageInstrument.ID + ".Output", "lcov").build()) {
+            for (Source source : sources) {
+                context.eval(source);
+            }
+        }
+        List<String> sourceFiles = new ArrayList<>();
+        for (String line : out.toString().split("\\R")) {
+            if (line.startsWith("SF:")) {
+                sourceFiles.add(line.substring("SF:".length()));
+            }
+        }
+        return sourceFiles;
     }
 
     @TruffleLanguage.Registration(id = RootAndStatementInDifferentSources.ID, name = "RootAndStatementInDifferentSources", version = "0")
