@@ -212,7 +212,7 @@ public class HotSpotReplacementsUtil {
         public static final HotSpotFieldLocationIdentity JAVA_THREAD_MONITOR_OWNER_ID_LOCATION = new HotSpotFieldLocationIdentity("JavaThread::_monitor_owner_id", false,
                         config -> config.javaThreadMonitorOwnerIDOffset);
 
-        public static final HotSpotFieldLocationIdentity JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION = new HotSpotFieldLocationIdentity("JavaThread::_scopedValueCache", true,
+        public static final HotSpotFieldLocationIdentity JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION = new HotSpotFieldLocationIdentity("JavaThread::_scopedValueCache", false,
                         config -> config.javaThreadScopedValueCacheOffset);
 
         public static final HotSpotFieldLocationIdentity JAVA_THREAD_UNLOCKED_INFLATED_MONITOR_LOCATION = new HotSpotFieldLocationIdentity("JavaThread::_unlocked_inflated_monitor", false,
