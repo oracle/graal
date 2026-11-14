@@ -508,11 +508,15 @@ public final class DataSection implements Iterable<Data> {
         }
 
         int gcd = a;
-        return x * y / gcd;
+        // Divide first so that only an unrepresentable LCM overflows. For example,
+        // lcm(32768, 65536) is 65536, but multiplying the inputs first overflows an int.
+        return Math.multiplyExact(x / gcd, y);
     }
 
     public static int align(int position, int alignment) {
-        return NumUtil.roundUp(position, alignment);
+        // Widen the rounding arithmetic and reject an unrepresentable final offset. For example,
+        // rounding 2147483646 up to a multiple of 3 preserves it, but adding 3 - 1 overflows an int.
+        return Math.toIntExact(NumUtil.roundUp((long) position, alignment));
     }
 
     private void checkClosed() {
