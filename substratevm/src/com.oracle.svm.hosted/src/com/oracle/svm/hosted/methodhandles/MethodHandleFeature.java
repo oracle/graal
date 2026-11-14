@@ -173,6 +173,7 @@ public class MethodHandleFeature implements InternalFeature {
 
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
         ImageHeapScanner heapScanner = access.getUniverse().getHeapScanner();
+        var hostedValuesProvider = access.getUniverse().getHostedValuesProvider();
 
         access.registerFieldValueTransformer(
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.ClassSpecializer"), "cache"),
@@ -247,7 +248,7 @@ public class MethodHandleFeature implements InternalFeature {
                 MethodHandle[] filteredArray = new MethodHandle[originalArray.length];
                 for (int i = 0; i < originalArray.length; i++) {
                     MethodHandle handle = originalArray[i];
-                    if (handle != null && heapScanner.isObjectReachable(handle)) {
+                    if (handle != null && heapScanner.isObjectReachable(hostedValuesProvider.forObject(handle))) {
                         filteredArray[i] = handle;
                     }
                 }
@@ -303,7 +304,8 @@ public class MethodHandleFeature implements InternalFeature {
                                     if (object != null) {
                                         MethodHandle constructor = ReflectionUtil.invokeMethod(constructorGetter, object);
                                         MethodHandle concatenator = ReflectionUtil.invokeMethod(concatenatorGetter, object);
-                                        if (constructor != null && concatenator != null && heapScanner.isObjectReachable(constructor) && heapScanner.isObjectReachable(concatenator)) {
+                                        if (constructor != null && concatenator != null && heapScanner.isObjectReachable(hostedValuesProvider.forObject(constructor)) &&
+                                                        heapScanner.isObjectReachable(hostedValuesProvider.forObject(concatenator))) {
                                             result.put(entry.getKey(), value);
                                         }
                                     }
