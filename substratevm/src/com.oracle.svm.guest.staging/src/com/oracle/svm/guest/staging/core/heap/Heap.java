@@ -67,9 +67,10 @@ public abstract class Heap {
     public abstract void attachThread(IsolateThread isolateThread);
 
     /**
-     * Notifies the heap that a thread will be detached from the VM. This allows to cleanup
-     * heap-specific resources, e.g., the TLAB. This method is called for every thread except the
-     * main thread (i.e., the one that maps the image heap).
+     * Notifies the heap that a thread will be detached from the VM. This allows cleaning up
+     * heap-specific resources, e.g., the TLAB. During isolate teardown, this method is not called
+     * for the last attached thread. Its remaining heap-specific resources are released by
+     * {@link #tearDown}.
      */
     @Uninterruptible(reason = "Current thread holds the ThreadsLock with exclusive write access.")
     public abstract void detachThread(IsolateThread isolateThread);
@@ -128,7 +129,13 @@ public abstract class Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract ObjectHeader getObjectHeader();
 
-    /** Tear down the heap and free all allocated virtual memory chunks. */
+    /**
+     * Tears down the heap and frees all allocated virtual memory chunks.
+     * <p>
+     * Once this method is called, only the thread tearing down the isolate is still attached.
+     * The implementation must also release the heap-specific resources of this last thread, as
+     * {@link #detachThread} does for other threads.
+     */
     @Uninterruptible(reason = "Tear-down in progress.")
     public abstract boolean tearDown();
 
