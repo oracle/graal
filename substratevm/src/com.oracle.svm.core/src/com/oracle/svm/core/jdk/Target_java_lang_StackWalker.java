@@ -355,9 +355,13 @@ final class Target_java_lang_StackWalker {
 
                 /*
                  * Store the StoredContinuation object in a field to avoid problems in case that the
-                 * continuation continues execution in another thread in the meanwhile.
+                 * continuation continues execution in another thread in the meanwhile. Capture it
+                 * only once per continuation so resuming and yielding again cannot replace the
+                 * snapshot while the walk still contains pointers into its original frames.
                  */
-                stored = ContinuationInternals.getStoredContinuation(continuation);
+                if (!initialized) {
+                    stored = ContinuationInternals.getStoredContinuation(continuation);
+                }
                 if (stored == null) {
                     return false;
                 }
@@ -371,6 +375,7 @@ final class Target_java_lang_StackWalker {
                      */
                     continuation = continuation.getParent();
                     initialized = false;
+                    stored = null;
                 }
             } while (continuation != null);
 
