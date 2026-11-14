@@ -209,9 +209,16 @@ public class CremaFeature implements InternalFeature {
         InterpreterFeature.prepareSignatures();
 
         accessImpl.registerAsImmutable(CremaSupport.singleton());
-        accessImpl.registerAsImmutable(InterpreterForeignFunctionsSupport.singleton());
         CremaSupport.singleton().setEnterDirectInterpreterStubEntryPoint(MethodRefSupport.createMethodPointer(hUniverse.lookup(enterDirectInterpreterStub)));
-        InterpreterForeignFunctionsSupport.singleton().setUpcallStubPointer(MethodRefSupport.createMethodPointer(hUniverse.lookup(enterInterpreterForFFMUpcall)));
+        /*
+         * Only foreign function support uses this singleton. If its type is unreachable, it is not
+         * part of the hosted universe and must not be registered in the image heap.
+         */
+        InterpreterForeignFunctionsSupport ffmSupport = InterpreterForeignFunctionsSupport.singleton();
+        if (hUniverse.getBigBang().getMetaAccess().optionalLookupJavaType(ffmSupport.getClass()).filter(AnalysisType::isReachable).isPresent()) {
+            accessImpl.registerAsImmutable(ffmSupport);
+            ffmSupport.setUpcallStubPointer(MethodRefSupport.createMethodPointer(hUniverse.lookup(enterInterpreterForFFMUpcall)));
+        }
         CremaSupport.singleton().setCremaJNIUpcallWrapperEntryPoints(MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallVarargsVirtualWrapper)),
                         MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallArrayVirtualWrapper)),
                         MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallVaListVirtualWrapper)),
