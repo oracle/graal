@@ -500,7 +500,7 @@ public final class ReflectionPlugins {
         }
 
         ClassLoader loader;
-        if (reason == ParsingReason.AutomaticUnsafeTransformation || reason == ParsingReason.EarlyClassInitializerAnalysis) {
+        if (reason == ParsingReason.AutomaticUnsafeTransformation) {
             /*
              * We are getting called before analysis, DynamicHubs are not available at this point.
              * This is acceptable because those graphs will not be used by the analysis later.
@@ -750,7 +750,7 @@ public final class ReflectionPlugins {
      */
     @SuppressWarnings("unchecked")
     private <T> T getIntrinsic(T element) {
-        if (reason == ParsingReason.AutomaticUnsafeTransformation || reason == ParsingReason.EarlyClassInitializerAnalysis) {
+        if (reason == ParsingReason.AutomaticUnsafeTransformation) {
             /* We are analyzing the static initializers and should always intrinsify. */
             return element;
         }
@@ -772,7 +772,7 @@ public final class ReflectionPlugins {
      * Same as {@link #getIntrinsic}, but returns a {@link JavaConstant}.
      */
     private JavaConstant getIntrinsicConstant(GraphBuilderContext context, Object element) {
-        if (reason == ParsingReason.AutomaticUnsafeTransformation || reason == ParsingReason.EarlyClassInitializerAnalysis) {
+        if (reason == ParsingReason.AutomaticUnsafeTransformation) {
             /* We are analyzing the static initializers and should always intrinsify. */
             return context.getSnippetReflection().forObject(element);
         }

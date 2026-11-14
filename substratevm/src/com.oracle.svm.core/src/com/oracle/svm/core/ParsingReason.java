@@ -29,7 +29,6 @@ public enum ParsingReason {
     PointsToAnalysis,
     AOTCompilation,
     JITCompilation,
-    EarlyClassInitializerAnalysis,
     AutomaticUnsafeTransformation;
 
     public boolean isForHosted() {
