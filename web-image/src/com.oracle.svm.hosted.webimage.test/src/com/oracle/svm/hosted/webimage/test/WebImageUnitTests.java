@@ -29,6 +29,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
+import com.oracle.svm.hosted.webimage.test.unit.ImplicitExceptionsSupportMethodTest;
 import com.oracle.svm.hosted.webimage.test.unit.MoveResolverTest;
 import com.oracle.svm.hosted.webimage.test.unit.WasmActiveDataTest;
 import com.oracle.svm.hosted.webimage.test.unit.WasmLMSingleThreadedAtomicsTest;
@@ -37,6 +38,7 @@ import junit.framework.TestSuite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
+                ImplicitExceptionsSupportMethodTest.class,
                 MoveResolverTest.class,
                 WasmActiveDataTest.class,
                 WasmLMSingleThreadedAtomicsTest.class
