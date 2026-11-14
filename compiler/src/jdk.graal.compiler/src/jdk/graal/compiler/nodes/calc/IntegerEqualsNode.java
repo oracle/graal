@@ -279,8 +279,7 @@ public final class IntegerEqualsNode extends CompareNode implements Canonicaliza
                         if (nonConstant instanceof LeftShiftNode) {
                             LeftShiftNode shift = (LeftShiftNode) nonConstant;
                             if (shift.getY().isConstant()) {
-                                int mask = shift.getShiftAmountMask();
-                                int amount = shift.getY().asJavaConstant().asInt() & mask;
+                                int amount = shift.getConstantShiftAmount();
                                 if (shift.getX().getStackKind() == JavaKind.Int) {
                                     return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 >>> amount));
                                 } else {
@@ -291,8 +290,7 @@ public final class IntegerEqualsNode extends CompareNode implements Canonicaliza
                         } else if (nonConstant instanceof RightShiftNode) {
                             RightShiftNode shift = (RightShiftNode) nonConstant;
                             if (shift.getY().isConstant() && ((IntegerStamp) shift.getX().stamp(view)).isPositive()) {
-                                int mask = shift.getShiftAmountMask();
-                                int amount = shift.getY().asJavaConstant().asInt() & mask;
+                                int amount = shift.getConstantShiftAmount();
                                 if (shift.getX().getStackKind() == JavaKind.Int) {
                                     return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 << amount));
                                 } else {
@@ -303,8 +301,7 @@ public final class IntegerEqualsNode extends CompareNode implements Canonicaliza
                         } else if (nonConstant instanceof UnsignedRightShiftNode) {
                             UnsignedRightShiftNode shift = (UnsignedRightShiftNode) nonConstant;
                             if (shift.getY().isConstant()) {
-                                int mask = shift.getShiftAmountMask();
-                                int amount = shift.getY().asJavaConstant().asInt() & mask;
+                                int amount = shift.getConstantShiftAmount();
                                 if (shift.getX().getStackKind() == JavaKind.Int) {
                                     return new IntegerTestNode(shift.getX(), ConstantNode.forInt(-1 << amount));
                                 } else {

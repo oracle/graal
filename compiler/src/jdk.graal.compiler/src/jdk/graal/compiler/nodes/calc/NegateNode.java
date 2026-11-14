@@ -104,7 +104,7 @@ public class NegateNode extends UnaryArithmeticNode<Neg> implements NarrowableAr
             RightShiftNode shift = (RightShiftNode) forValue;
             Stamp stamp = forValue.stamp(view);
             if (shift.getY().isConstant() && stamp instanceof IntegerStamp) {
-                int shiftAmount = shift.getY().asJavaConstant().asInt();
+                int shiftAmount = shift.getConstantShiftAmount();
                 if (shiftAmount == ((IntegerStamp) stamp).getBits() - 1) {
                     return UnsignedRightShiftNode.create(shift.getX(), shift.getY(), view);
                 }

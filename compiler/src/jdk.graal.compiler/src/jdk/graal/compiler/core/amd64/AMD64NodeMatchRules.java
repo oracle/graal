@@ -584,14 +584,14 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
 
     @MatchRule("(Or (LeftShift=lshift value Constant) (UnsignedRightShift=rshift value Constant))")
     public ComplexMatchResult rotateLeftConstant(LeftShiftNode lshift, UnsignedRightShiftNode rshift) {
-        JavaConstant lshiftConst = lshift.getY().asJavaConstant();
-        JavaConstant rshiftConst = rshift.getY().asJavaConstant();
-        if ((lshift.getShiftAmountMask() & (lshiftConst.asInt() + rshiftConst.asInt())) == 0) {
+        int lshiftAmount = lshift.getConstantShiftAmount();
+        int rshiftAmount = rshift.getConstantShiftAmount();
+        if ((lshift.getShiftAmountMask() & (lshiftAmount + rshiftAmount)) == 0) {
             return builder -> {
                 Value a = operand(lshift.getX());
                 OperandSize size = OperandSize.get(a.getPlatformKind());
                 assert size == OperandSize.DWORD || size == OperandSize.QWORD : size;
-                return getArithmeticLIRGenerator().emitShiftConst(ROL, size, a, lshiftConst);
+                return getArithmeticLIRGenerator().emitShiftConst(ROL, size, a, JavaConstant.forInt(lshiftAmount));
             };
         }
         return null;

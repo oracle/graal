@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import jdk.graal.compiler.core.amd64.AMD64AddressLowering;
 import jdk.graal.compiler.core.amd64.AMD64AddressNode;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
@@ -76,6 +77,40 @@ public class AMD64AddressLoweringTest extends GraalCompilerTest {
         ValueNode index = graph.addOrUniqueWithInputs(new LeftShiftNode(const64(10), const32(1)));
         AddressNode result = lowering.lower(base, index);
         assertAddress(result, null, null, Stride.S2, 1020);
+    }
+
+    /// Checks address scaling before the shift distance has been canonicalized.
+    @Test
+    public void convertRawShiftedIndexToDisplacement() {
+        for (int amount : new int[]{-64, -63, -62, -61, 64, 65, 66, 67}) {
+            ValueNode base = graph.addOrUniqueWithInputs(const64(1000));
+            ValueNode index = graph.addOrUniqueWithInputs(new LeftShiftNode(const64(10), const32(amount)));
+            AddressNode result = lowering.lower(base, index);
+            assertAddress(result, null, null, Stride.fromLog2(amount & 63), 1000 + (int) (10L << amount));
+        }
+    }
+
+    /// Checks that a negative inner distance cannot cancel the scale of an outer shift.
+    @Test
+    public void preserveNestedShiftOverflow() {
+        ValueNode base = graph.addOrUniqueWithInputs(const64(0));
+        ValueNode inner = graph.addOrUniqueWithInputs(new LeftShiftNode(const64(1), const32(-1)));
+        ValueNode outer = graph.addOrUniqueWithInputs(new LeftShiftNode(inner, const32(2)));
+        AMD64AddressNode address = (AMD64AddressNode) lowering.lower(base, outer);
+
+        // Evaluates the selected addressing mode after lowering has inspected the raw distances.
+        ValueNode value = graph.addOrUniqueWithInputs(const64(address.getDisplacement()));
+        if (address.getBase() != null) {
+            value = graph.addOrUniqueWithInputs(new AddNode(value, address.getBase()));
+        }
+        if (address.getIndex() != null) {
+            ValueNode scaledIndex = new LeftShiftNode(address.getIndex(), const32(address.getScale().log2));
+            value = graph.addOrUniqueWithInputs(new AddNode(value, scaledIndex));
+        }
+        ReturnNode returnNode = graph.add(new ReturnNode(value));
+        graph.start().setNext(returnNode);
+        createCanonicalizerPhase().apply(graph, getDefaultHighTierContext());
+        Assert.assertEquals((1L << -1) << 2, returnNode.result().asJavaConstant().asLong());
     }
 
     @Test

@@ -128,7 +128,7 @@ public final class UnsignedRightShiftNode extends ShiftNode<UShr> {
             if (bits >= Integer.SIZE && forX instanceof ShiftNode) {
                 ShiftNode<?> other = (ShiftNode<?>) forX;
                 if (other.getY().isConstant()) {
-                    int otherAmount = other.getY().asJavaConstant().asInt() & mask;
+                    int otherAmount = other.getConstantShiftAmount();
                     if (other instanceof UnsignedRightShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {

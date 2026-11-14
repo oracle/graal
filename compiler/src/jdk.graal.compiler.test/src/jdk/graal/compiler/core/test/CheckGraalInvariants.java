@@ -403,6 +403,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyPhaseNoDirectRecursion());
         verifiers.add(new VerifyStringCaseUsage());
         verifiers.add(new VerifyMathAbs());
+        verifiers.add(new VerifyShiftAmounts());
         verifiers.add(new VerifyLoopInfo());
         verifiers.add(new VerifyGuardsStageUsages());
         verifiers.add(new VerifyAArch64RegisterUsages());
