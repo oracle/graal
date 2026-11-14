@@ -126,8 +126,7 @@ public class RistrettoCompilationRequest implements Comparable<RistrettoCompilat
     @Override
     public InstalledCode call() throws Exception {
         boolean compilationStarted = false;
-        try (DebugContext debug = RuntimeCompilationSupport.get().openDebugContext(RuntimeOptionValues.singleton().get(), RistrettoUtils.getDescription(rMethod),
-                        DebugContext.getDefaultLogStream());
+        try (DebugContext debug = openDebugContext();
                         DebugContext.Activation _ = debug.activate()) {
             compilationStarted = true;
             return compileAndPublish(debug);
@@ -138,6 +137,11 @@ public class RistrettoCompilationRequest implements Comparable<RistrettoCompilat
             }
             throw t;
         }
+    }
+
+    /** Opens the context owned by {@link #call()}, including code publication and failure cleanup. */
+    protected DebugContext openDebugContext() {
+        return RuntimeCompilationSupport.get().openDebugContext(RuntimeOptionValues.singleton().get(), RistrettoUtils.getDescription(rMethod), DebugContext.getDefaultLogStream());
     }
 
     private InstalledCode compileAndPublish(DebugContext debug) {

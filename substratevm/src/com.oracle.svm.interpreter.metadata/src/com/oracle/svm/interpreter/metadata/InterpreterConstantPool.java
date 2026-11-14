@@ -417,6 +417,11 @@ public class InterpreterConstantPool extends ConstantPool implements jdk.vm.ci.m
         return parserConstantPool;
     }
 
+    @Override
+    public int methodHandleMemberIndex(int cpi) {
+        return super.methodHandleMemberIndex(cpi);
+    }
+
     protected Object resolve(int cpi, @SuppressWarnings("unused") InterpreterResolvedObjectType accessingClass) {
         assert cpi != 0; // guaranteed by the caller
 
