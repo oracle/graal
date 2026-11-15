@@ -432,15 +432,6 @@ public abstract class OptimizedCallTarget extends RuntimeCallTarget implements T
         TruffleLanguage<?> language = engine.getLanguage(this);
         Object previous = language == null ? null : engine.enterLanguage(language);
         try {
-            if (rootCompilation && engine.splitting && TruffleSplittingStrategy.splitForCompilation(this)) {
-                /*
-                 * Installing a split rewrites this root and cancels the current compilation. Do
-                 * not run regular preparation for this obsolete compilation; the retry prepares
-                 * the rewritten root.
-                 */
-                return false;
-            }
-
             boolean result = OptimizedRuntimeAccessor.NODES.prepareForCompilation(root, rootCompilation, compilationTier, lastTier);
             if (result) {
                 if (nodeRewritingAssumption == null) {

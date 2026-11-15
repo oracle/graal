@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.truffle.test;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -35,8 +36,51 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
-public class TruffleDirectCallNodeTest {
+public class TruffleDirectCallNodeTest extends TestWithSynchronousCompiling {
+
+    @Test
+    public void testSplitInvalidatesInlinedCaller() {
+        RootNode callee = new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return this;
+            }
+
+            @Override
+            public boolean isCloningAllowed() {
+                return true;
+            }
+        };
+        DirectCallerRootNode middle = new DirectCallerRootNode(callee);
+        OptimizedCallTarget caller = (OptimizedCallTarget) new DirectCallerRootNode(middle).getCallTarget();
+        assertSame(callee, caller.call());
+        caller.compile(true);
+        caller.waitForCompilation();
+        assertTrue(caller.isValidLastTier());
+        assertSame(callee, caller.call());
+
+        assertTrue(middle.callNode.cloneCallTarget());
+        assertTrue(middle.callNode.isCallTargetCloned());
+        assertFalse("Splitting an inlined caller must invalidate compiled code", caller.isValid());
+        assertSame(((OptimizedCallTarget) middle.callNode.getCurrentCallTarget()).getRootNode(), caller.call());
+    }
+
+    private static final class DirectCallerRootNode extends RootNode {
+        @Child private DirectCallNode callNode;
+
+        DirectCallerRootNode(RootNode callee) {
+            super(null);
+            callNode = DirectCallNode.create(callee.getCallTarget());
+            callNode.forceInlining();
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return callNode.call(frame.getArguments());
+        }
+    }
 
     @Test
     public void testCanBeClonedWithoutParent() {

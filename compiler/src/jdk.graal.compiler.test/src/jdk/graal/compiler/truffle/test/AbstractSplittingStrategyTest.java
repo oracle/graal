@@ -51,37 +51,34 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
     protected static void testSplitsDirectCallsHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
         // two callers for a target are needed
         runtime.createDirectCallNode(callTarget);
-        CallsTargetRootNode callerRoot = new CallsTargetRootNode(callTarget);
-        OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRoot.getCallTarget();
-        Assert.assertFalse("Uninitialized root was ready for compilation", callerTarget.prepareForCompilation(true, 1, false));
-        callerTarget.call(firstArgs);
+        final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
+        directCallNode.call(firstArgs);
         Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
-        callerTarget.call(firstArgs);
+        directCallNode.call(firstArgs);
         Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
-        callerTarget.call(secondArgs);
+        directCallNode.call(secondArgs);
         Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(callTarget));
-        Assert.assertFalse("Target split before compilation preparation", callerRoot.callNode.isCallTargetCloned());
-        Assert.assertTrue(callerTarget.prepareForCompilation(false, 1, false));
-        Assert.assertFalse("Inline preparation split the call target", callerRoot.callNode.isCallTargetCloned());
-        Assert.assertFalse("Compilation was not delayed after splitting", callerTarget.prepareForCompilation(true, 1, false));
-        Assert.assertTrue("Target was not split during compilation preparation", callerRoot.callNode.isCallTargetCloned());
-        Assert.assertTrue("Compilation was delayed more than once", callerTarget.prepareForCompilation(true, 1, false));
+        directCallNode.call(secondArgs);
+        Assert.assertTrue("Target needs split but not split", directCallNode.isCallTargetCloned());
+
+        // A new call node to a marked target also splits.
+        final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
+        newCallNode.call(firstArgs);
+        Assert.assertTrue("new call node to \"needs split\" target is not split", newCallNode.isCallTargetCloned());
     }
 
     protected static void testDoesNotSplitDirectCallHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
         // two callers for a target are needed
         runtime.createDirectCallNode(callTarget);
-        CallsTargetRootNode callerRoot = new CallsTargetRootNode(callTarget);
-        OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRoot.getCallTarget();
-        callerTarget.call(firstArgs);
+        final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
+        directCallNode.call(firstArgs);
         Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
-        callerTarget.call(firstArgs);
+        directCallNode.call(firstArgs);
         Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
-        callerTarget.call(secondArgs);
+        directCallNode.call(secondArgs);
         Assert.assertFalse("Target needs split without reporting", getNeedsSplit(callTarget));
-        callerTarget.call(secondArgs);
-        Assert.assertTrue(callerTarget.prepareForCompilation(true, 1, false));
-        Assert.assertFalse("Target does not need split but is split", callerRoot.callNode.isCallTargetCloned());
+        directCallNode.call(secondArgs);
+        Assert.assertFalse("Target does not need split but is split", directCallNode.isCallTargetCloned());
 
         // A new call node to an unmarked target does not split.
         final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
@@ -92,19 +89,17 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
     protected static void testNeedsSplitButDoesNotSplitDirectCallHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
         // two callers for a target are needed
         runtime.createDirectCallNode(callTarget);
-        CallsTargetRootNode callerRoot = new CallsTargetRootNode(callTarget);
-        OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRoot.getCallTarget();
-        callerTarget.call(firstArgs);
+        final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
+        directCallNode.call(firstArgs);
         Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
-        callerTarget.call(firstArgs);
+        directCallNode.call(firstArgs);
         Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
-        callerTarget.call(secondArgs);
+        directCallNode.call(secondArgs);
         Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(callTarget));
-        callerTarget.call(secondArgs);
-        Assert.assertTrue(callerTarget.prepareForCompilation(true, 1, false));
-        Assert.assertFalse("Target shouldn't be split but is split", callerRoot.callNode.isCallTargetCloned());
+        directCallNode.call(secondArgs);
+        Assert.assertFalse("Target shouldn't be split but is split", directCallNode.isCallTargetCloned());
 
-        // A new call node is not split outside compilation preparation.
+        // A new call node cannot bypass the splitting limits.
         final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
         newCallNode.call(firstArgs);
         Assert.assertFalse("new call node to non \"needs split\" target is split", newCallNode.isCallTargetCloned());
@@ -226,21 +221,6 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         @Override
         public Object execute(VirtualFrame frame) {
             return frame.getArguments()[1];
-        }
-    }
-
-    static final class CallsTargetRootNode extends RootNode {
-
-        @Child OptimizedDirectCallNode callNode;
-
-        CallsTargetRootNode(OptimizedCallTarget target) {
-            super(null);
-            callNode = (OptimizedDirectCallNode) runtime.createDirectCallNode(target);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return callNode.call(frame.getArguments());
         }
     }
 

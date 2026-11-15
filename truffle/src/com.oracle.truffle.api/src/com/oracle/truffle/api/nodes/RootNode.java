@@ -392,11 +392,6 @@ public abstract class RootNode extends ExecutableNode {
      * uninitialized copy from each initialized node.
      * </ul>
      *
-     * When this method is invoked during compilation preparation and this root node is associated
-     * with a {@link TruffleLanguage language}, that language is entered, but no language context is
-     * entered. In that case, {@link LanguageReference} can be used, but {@link ContextThreadLocal},
-     * {@link ContextLocal}, and {@link ContextReference} cannot be used.
-     *
      * @return an uninitialized copy of this root node if supported.
      * @throws UnsupportedOperationException if not supported
      * @see #isCloneUninitializedSupported()
