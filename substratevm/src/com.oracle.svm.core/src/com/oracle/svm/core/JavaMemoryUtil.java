@@ -720,7 +720,8 @@ public final class JavaMemoryUtil {
      */
     @Uninterruptible(reason = "Arrays must not move")
     public static void copyPrimitiveArrayForward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
-        assert length >= 0 : length;
+        /* A non-constant message would allocate, which uninterruptible code must not do. */
+        assert length >= 0 : "negative length";
         assert fromArray != null;
         assert toArray != null;
 
@@ -761,7 +762,8 @@ public final class JavaMemoryUtil {
      */
     @Uninterruptible(reason = "Arrays must not move")
     public static void copyPrimitiveArrayBackward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
-        assert length >= 0 : length;
+        /* A non-constant message would allocate, which uninterruptible code must not do. */
+        assert length >= 0 : "negative length";
         assert fromArray != null;
         assert toArray != null;
 

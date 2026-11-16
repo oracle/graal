@@ -281,6 +281,7 @@ public abstract class Heap {
      * {@code start} in {@code holder} are overwritten by a raw memory copy. Only called if
      * {@link #supportsBulkReferenceCopy()} returns {@code true}.
      */
+    @SuppressWarnings("unused")
     @Uninterruptible(reason = "Ensure that no GC can occur between the barriers and the copy.", callerMustBe = true)
     public void referenceRangePreWriteBarrier(Object holder, Pointer start, UnsignedWord count) {
         throw VMError.shouldNotReachHereAtRuntime();
@@ -291,6 +292,7 @@ public abstract class Heap {
      * {@code start} in {@code holder} were written by a raw memory copy. Only called if
      * {@link #supportsBulkReferenceCopy()} returns {@code true}.
      */
+    @SuppressWarnings("unused")
     @Uninterruptible(reason = "Ensure that no GC can occur between the copy and the barriers.", callerMustBe = true)
     public void referenceRangePostWriteBarrier(Object holder, Pointer start, UnsignedWord count) {
         throw VMError.shouldNotReachHereAtRuntime();
