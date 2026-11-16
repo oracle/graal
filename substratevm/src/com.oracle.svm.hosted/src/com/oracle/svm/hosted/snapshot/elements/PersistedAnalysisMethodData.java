@@ -79,6 +79,8 @@ public interface PersistedAnalysisMethodData {
 
         void setIsIntrinsicMethod(boolean value);
 
+        void setIsInlined(boolean value);
+
         void setCompilationBehaviorOrdinal(byte value);
 
         void setAnalysisGraphLocation(String value);
@@ -150,6 +152,8 @@ public interface PersistedAnalysisMethodData {
         boolean getIsImplementationInvoked();
 
         boolean getIsIntrinsicMethod();
+
+        boolean getIsInlined();
 
         byte getCompilationBehaviorOrdinal();
 

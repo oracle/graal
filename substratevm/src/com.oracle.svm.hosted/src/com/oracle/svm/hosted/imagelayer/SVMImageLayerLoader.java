@@ -34,6 +34,7 @@ import static com.oracle.svm.hosted.lambda.LambdaParser.createMethodGraph;
 
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -949,15 +950,6 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
         analysisMethod.setCompilationBehavior(compilationBehavior);
     }
 
-    private PersistedAnalysisMethodData.Loader getMethodData(AnalysisMethod analysisMethod) {
-        if (analysisMethod.getWrapped() instanceof BaseLayerMethod m) {
-            return findMethod(m.getBaseLayerId());
-        }
-        String descriptor = imageLayerSnapshotUtil.getMethodDescriptor(analysisMethod);
-        Integer id = methodDescriptorToBaseLayerId.get(descriptor);
-        return (id != null) ? findMethod(id) : null;
-    }
-
     public SnapshotStructList.Loader<DynamicHubInfoData.Loader> getDynamicHubInfos() {
         return snapshot.getDynamicHubInfos();
     }
@@ -1198,9 +1190,6 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
     }
 
     private int getBaseLayerFieldId(AnalysisField analysisField) {
-        if (analysisField.wrapped instanceof BaseLayerField baseLayerField) {
-            return baseLayerField.getBaseLayerId();
-        }
         PersistedAnalysisFieldData.Loader fieldData = getFieldData(analysisField);
         if (fieldData == null) {
             /* The field was not reachable in the base image */
@@ -1246,31 +1235,6 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
          * this step or later, is different this will result in a failed guarantee.
          */
         analysisField.setPosition(fieldData.getPosition());
-    }
-
-    private PersistedAnalysisFieldData.Loader getFieldData(AnalysisField analysisField) {
-        if (analysisField.wrapped instanceof BaseLayerField baseLayerField) {
-            return findField(baseLayerField.getBaseLayerId());
-        }
-        String declTypeDescriptor = imageLayerSnapshotUtil.getTypeDescriptor(analysisField.getDeclaringClass());
-        Integer declTypeId = typeDescriptorToBaseLayerId.get(declTypeDescriptor);
-        if (declTypeId == null) {
-            return null;
-        }
-        PersistedAnalysisTypeData.Loader typeData = findType(declTypeId);
-        SnapshotPrimitiveList.Int.Loader fieldIds;
-        if (analysisField.isStatic()) {
-            fieldIds = typeData.getStaticFieldIds();
-        } else {
-            fieldIds = typeData.getInstanceFieldIds();
-        }
-        for (int i = 0; i < fieldIds.size(); i++) {
-            PersistedAnalysisFieldData.Loader fieldData = findField(fieldIds.get(i));
-            if (fieldData != null && analysisField.getName().equals(fieldData.getName())) {
-                return fieldData;
-            }
-        }
-        return null;
     }
 
     public void postFutureBigbangTasks() {
@@ -1369,34 +1333,76 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
         instance.readFieldValue(universe.lookup(SVMImageLayerSnapshotUtil.COMPANION));
     }
 
-    public boolean isReachableInPreviousLayer(AnalysisType type) {
-        return getPropertyInPreviousLayer(type, PersistedAnalysisTypeData.Loader::getIsReachable);
+    /** Queries persisted reachability without importing the type into the analysis universe. */
+    public boolean isReachableInPreviousLayer(ResolvedJavaType type) {
+        var data = getTypeData(type);
+        return data != null && data.getIsReachable();
     }
 
-    public boolean isInstantiatedInPreviousLayer(AnalysisType type) {
-        return getPropertyInPreviousLayer(type, PersistedAnalysisTypeData.Loader::getIsInstantiated);
+    public boolean isInstantiatedInPreviousLayer(ResolvedJavaType type) {
+        var data = getTypeData(type);
+        return data != null && data.getIsInstantiated();
     }
 
-    private boolean getPropertyInPreviousLayer(AnalysisType type, Function<PersistedAnalysisTypeData.Loader, Boolean> propertyGetter) {
-        Integer typeId;
-        if (type.getWrapped() instanceof BaseLayerType baseLayerType) {
-            typeId = baseLayerType.getBaseLayerId();
-        } else {
-            /*
-             * Types that cannot be loaded manually can be duplicated and can get a new type id even
-             * if they were in a shared layer. In this case, using the type identifier can still
-             * retrieve the id from the shared layer.
-             */
-            String typeDescriptor = imageLayerSnapshotUtil.getTypeDescriptor(type);
-            typeId = typeDescriptorToBaseLayerId.get(typeDescriptor);
+    public boolean isReachableInPreviousLayer(ResolvedJavaMethod method) {
+        var data = getMethodData(method);
+        return data != null && (data.getIsInlined() || (!Modifier.isAbstract(data.getModifiers()) && (data.getIsImplementationInvoked() || data.getIsIntrinsicMethod())));
+    }
+
+    public boolean isReachableInPreviousLayer(ResolvedJavaField field) {
+        var data = getFieldData(field);
+        return data != null && (data.getIsAccessed() || data.getIsRead() || (data.getIsWritten() && (Modifier.isVolatile(data.getModifiers()) || data.getStorageKind() == JavaKind.Object)));
+    }
+
+    private PersistedAnalysisTypeData.Loader getTypeData(ResolvedJavaType type) {
+        ResolvedJavaType wrappedType = type instanceof AnalysisType analysisType ? analysisType.getWrapped() : universe.getSubstitutions().lookup(type);
+        if (wrappedType instanceof BaseLayerType baseLayerType) {
+            return findType(baseLayerType.getBaseLayerId());
         }
-        if (typeId != null) {
-            var typeInfo = findType(typeId);
-            if (typeInfo != null) {
-                return propertyGetter.apply(typeInfo);
+        /*
+         * Types that cannot be loaded manually can be duplicated and can get a new type id even
+         * if they were in a shared layer. In this case, using the type identifier can still
+         * retrieve the id from the shared layer.
+         */
+        String typeDescriptor = imageLayerSnapshotUtil.getTypeDescriptor(type, universe.getSubstitutions());
+        Integer typeId = typeDescriptorToBaseLayerId.get(typeDescriptor);
+        return typeId == null ? null : findType(typeId);
+    }
+
+    private PersistedAnalysisMethodData.Loader getMethodData(ResolvedJavaMethod method) {
+        ResolvedJavaMethod substitutedMethod = method instanceof AnalysisMethod ? method : universe.getSubstitutions().lookup(method);
+        ResolvedJavaMethod wrapped = substitutedMethod instanceof AnalysisMethod aMethod ? aMethod.getWrapped() : substitutedMethod;
+        if (wrapped instanceof BaseLayerMethod m) {
+            return findMethod(m.getBaseLayerId());
+        }
+        String descriptor = imageLayerSnapshotUtil.getMethodDescriptor(substitutedMethod, universe);
+        Integer id = methodDescriptorToBaseLayerId.get(descriptor);
+        return (id != null) ? findMethod(id) : null;
+    }
+
+    private PersistedAnalysisFieldData.Loader getFieldData(ResolvedJavaField field) {
+        ResolvedJavaField substitutedField = field instanceof AnalysisField ? field : universe.getSubstitutions().lookup(field);
+        ResolvedJavaField wrapped = substitutedField instanceof AnalysisField aField ? aField.wrapped : substitutedField;
+        if (wrapped instanceof BaseLayerField baseLayerField) {
+            return findField(baseLayerField.getBaseLayerId());
+        }
+        PersistedAnalysisTypeData.Loader typeData = getTypeData(substitutedField.getDeclaringClass());
+        if (typeData == null) {
+            return null;
+        }
+        SnapshotPrimitiveList.Int.Loader fieldIds;
+        if (substitutedField.isStatic()) {
+            fieldIds = typeData.getStaticFieldIds();
+        } else {
+            fieldIds = typeData.getInstanceFieldIds();
+        }
+        for (int i = 0; i < fieldIds.size(); i++) {
+            PersistedAnalysisFieldData.Loader fieldData = findField(fieldIds.get(i));
+            if (fieldData != null && substitutedField.getName().equals(fieldData.getName())) {
+                return fieldData;
             }
         }
-        return false;
+        return null;
     }
 
     public record LayeredSimulationResult(boolean successful, EconomicMap<AnalysisField, JavaConstant> staticFieldValues) {

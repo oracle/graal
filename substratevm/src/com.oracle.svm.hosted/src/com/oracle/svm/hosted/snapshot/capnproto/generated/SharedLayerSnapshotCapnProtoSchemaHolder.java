@@ -1392,6 +1392,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Builder initClosedFieldWrites(int size) {
         return _initPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 13, size);
       }
+      public final boolean getIsInlined() {
+        return _getBooleanField(172);
+      }
+      public final void setIsInlined(boolean value) {
+        _setBooleanField(172, value);
+      }
+
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -1554,6 +1561,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Reader getClosedFieldWrites() {
         return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 13, null, 0);
+      }
+
+      public final boolean getIsInlined() {
+        return _getBooleanField(172);
       }
 
     }
@@ -2397,6 +2408,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Builder initUpdatableReceivers(int size) {
         return _initPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 4, size);
       }
+      public final byte getStorageKind() {
+        return _getByteField(25);
+      }
+      public final void setStorageKind(byte value) {
+        _setByteField(25, value);
+      }
+
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -2501,6 +2519,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public final com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.Reader getUpdatableReceivers() {
         return _getPointerField(com.oracle.svm.shaded.org.capnproto.PrimitiveList.Int.factory, 4, null, 0);
+      }
+
+      public final byte getStorageKind() {
+        return _getByteField(25);
       }
 
     }

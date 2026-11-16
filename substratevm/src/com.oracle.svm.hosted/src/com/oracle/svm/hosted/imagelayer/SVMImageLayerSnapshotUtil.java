@@ -52,6 +52,8 @@ import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
+import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
+import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -64,14 +66,14 @@ import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
-import com.oracle.svm.guest.staging.meta.MethodOffset;
-import com.oracle.svm.guest.staging.meta.MethodPointer;
-import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.guest.staging.c.CGlobalDataImpl;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.hosted.ForeignHostedSupport;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.VMFeature;
@@ -110,6 +112,7 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaMethod;
 
 public class SVMImageLayerSnapshotUtil {
 
@@ -292,37 +295,48 @@ public class SVMImageLayerSnapshotUtil {
     }
 
     public String getTypeDescriptor(AnalysisType type) {
+        return getTypeDescriptor(type, type.getUniverse().getSubstitutions());
+    }
+
+    public String getTypeDescriptor(ResolvedJavaType type, SubstitutionProcessor substitutions) {
         if (type.isArray()) {
             /* Array names can contain an unstable generated name instead of its substitution. */
-            return getTypeDescriptor(type.getComponentType()) + "[]";
+            return getTypeDescriptor(type.getComponentType(), substitutions) + "[]";
         }
-        String javaName = type.toJavaName(true);
+        ResolvedJavaType substituted = substitutedType(type, substitutions);
+        String javaName = substituted.toJavaName(true);
         if (javaName.contains(GENERATED_SERIALIZATION)) {
-            return getGeneratedSerializationName(type);
+            return getGeneratedSerializationName(substituted);
         }
-        if (isProxyType(type)) {
+        if (isProxyType(substituted)) {
             return javaName;
         }
-        return addModuleName(javaName, JVMCIReflectionUtil.getModule(type).getName());
+        return addModuleName(javaName, JVMCIReflectionUtil.getModule(substituted).getName());
     }
 
     public String getMethodDescriptor(AnalysisMethod method) {
-        AnalysisType declaringClass = method.getDeclaringClass();
+        return getMethodDescriptor(method, method.getUniverse());
+    }
+
+    public String getMethodDescriptor(ResolvedJavaMethod method, AnalysisUniverse universe) {
+        SubstitutionProcessor substitutions = universe.getSubstitutions();
+        ResolvedJavaMethod wrapped = method instanceof AnalysisMethod analysisMethod ? analysisMethod.wrapped : method;
+        ResolvedJavaType declaringClass = substitutedType(method.getDeclaringClass(), substitutions);
         String moduleName = JVMCIReflectionUtil.getModule(declaringClass).getName();
         if (declaringClass.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
             return getGeneratedSerializationName(declaringClass) + ":" + method.getName();
         }
-        if (method.wrapped instanceof FactoryMethod factoryMethod) {
-            AnalysisMethod targetConstructor = method.getUniverse().lookup(factoryMethod.getTargetConstructor());
-            return addModuleName(targetConstructor.getDeclaringClass().toJavaName(true) + getQualifiedName(method), moduleName);
+        if (wrapped instanceof FactoryMethod factoryMethod) {
+            ResolvedJavaMethod targetConstructor = substitutions.lookup(factoryMethod.getTargetConstructor());
+            return addModuleName(substitutedType(targetConstructor.getDeclaringClass(), substitutions).toJavaName(true) + formatMethod(method, declaringClass, universe, "%R %H.%n(%P)"), moduleName);
         }
-        if (method.wrapped instanceof IncompatibleClassChangeFallbackMethod fallbackMethod) {
+        if (wrapped instanceof IncompatibleClassChangeFallbackMethod fallbackMethod) {
             ResolvedJavaMethod originalMethod = fallbackMethod.getOriginal();
             if (originalMethod != null) {
-                return addModuleName(method.getQualifiedName() + " " + getResolvedJavaMethodQualifiedName(originalMethod), moduleName);
+                return addModuleName(formatMethod(method, declaringClass, universe, "%H.%n(%P)") + " " + getResolvedJavaMethodQualifiedName(originalMethod), moduleName);
             }
         }
-        if (method.wrapped instanceof SubstitutionMethod substitutionMethod) {
+        if (wrapped instanceof SubstitutionMethod substitutionMethod) {
             /*
              * A layered image can track both the original method and its substitution wrapper when
              * a substitution calls an aliased original method. The descriptor therefore needs to
@@ -334,15 +348,15 @@ public class SVMImageLayerSnapshotUtil {
             String originalModule = JVMCIReflectionUtil.getModule(original.getDeclaringClass()).getName();
             return addModuleName(getResolvedJavaMethodQualifiedName(original), originalModule) + "->" + addModuleName(getResolvedJavaMethodQualifiedName(annotated), annotatedModule);
         }
-        if (!(method.wrapped instanceof HotSpotResolvedJavaMethod)) {
-            return addModuleName(getQualifiedName(method), moduleName);
+        if (!(wrapped instanceof HotSpotResolvedJavaMethod)) {
+            return addModuleName(formatMethod(method, declaringClass, universe, "%R %H.%n(%P)"), moduleName);
         }
         /*
          * Those methods cannot use the name of the wrapped method as it would not use the name of
          * the SubstitutionType
          */
         if (isLambdaType(declaringClass) || isInjectedInvokerType(declaringClass) || isMethodHandleType(declaringClass) || isProxyType(declaringClass)) {
-            return getQualifiedName(method);
+            return formatMethod(method, declaringClass, universe, "%R %H.%n(%P)");
         }
         Executable originalMethod = OriginalMethodProvider.getJavaMethod(method);
         if (originalMethod != null) {
@@ -354,7 +368,7 @@ public class SVMImageLayerSnapshotUtil {
          * duplication. The wrapped method signature preserves the original type information,
          * preventing this issue.
          */
-        return addModuleName(getWrappedQualifiedName(method), moduleName);
+        return addModuleName(getResolvedJavaMethodQualifiedName(wrapped), moduleName);
     }
 
     /*
@@ -362,7 +376,7 @@ public class SVMImageLayerSnapshotUtil {
      * stable in a multi threading context. To ensure the correct one is matched in the extension
      * image, the constructor accessors table from SerializationSupport is accessed.
      */
-    private static String getGeneratedSerializationName(AnalysisType type) {
+    private static String getGeneratedSerializationName(ResolvedJavaType type) {
         Class<?> constructorAccessor = OriginalClassProvider.getJavaClass(type);
         SerializationSupport serializationRegistry = SerializationSupport.currentLayer();
         SerializationSupport.SerializationLookupKey serializationLookupKey = serializationRegistry.getKeyFromConstructorAccessorClass(constructorAccessor);
@@ -377,12 +391,30 @@ public class SVMImageLayerSnapshotUtil {
         return moduleName + ":" + elementName;
     }
 
-    private static String getQualifiedName(AnalysisMethod method) {
-        return method.getSignature().getReturnType().toJavaName(true) + " " + method.getQualifiedName();
+    private static ResolvedJavaType substitutedType(ResolvedJavaType type, SubstitutionProcessor substitutions) {
+        return type instanceof AnalysisType ? type : substitutions.lookup(type);
     }
 
-    private static String getWrappedQualifiedName(AnalysisMethod method) {
-        return getResolvedJavaMethodQualifiedName(method.wrapped);
+    private static String formatMethod(ResolvedJavaMethod method, ResolvedJavaType declaringClass, AnalysisUniverse universe, String format) {
+        if (method instanceof AnalysisMethod) {
+            return method.format(format);
+        }
+        var signature = method.getSignature();
+        if (method instanceof FactoryMethod) {
+            /* FactoryMethodSupport already builds the signature from analysis types. */
+            return new UnresolvedJavaMethod(method.getName(), signature, declaringClass).format(format);
+        }
+        /* Match AnalysisMethod's substituted signature without creating analysis elements. */
+        ResolvedJavaType accessingClass = method.getDeclaringClass();
+        SubstitutionProcessor substitutions = universe.getSubstitutions();
+        ResolvedJavaType[] parameters = new ResolvedJavaType[signature.getParameterCount(false)];
+        for (int i = 0; i < parameters.length; i++) {
+            var parameterType = universe.resolveSignatureType(signature.getParameterType(i, accessingClass), accessingClass);
+            parameters[i] = substitutedType(parameterType, substitutions);
+        }
+        var returnType = universe.resolveSignatureType(signature.getReturnType(accessingClass), accessingClass);
+        var substitutedSignature = ResolvedSignature.fromArray(parameters, substitutedType(returnType, substitutions));
+        return new UnresolvedJavaMethod(method.getName(), substitutedSignature, declaringClass).format(format);
     }
 
     private static String getResolvedJavaMethodQualifiedName(ResolvedJavaMethod method) {
