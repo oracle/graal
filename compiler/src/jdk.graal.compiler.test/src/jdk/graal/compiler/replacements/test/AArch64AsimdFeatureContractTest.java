@@ -62,6 +62,7 @@ import jdk.graal.compiler.replacements.nodes.Base64DecodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.Base64EncodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.DilithiumNode;
 import jdk.graal.compiler.replacements.nodes.KyberNode;
+import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
@@ -257,5 +258,13 @@ public class AArch64AsimdFeatureContractTest extends GraalCompilerTest {
         for (String name : new String[]{"implDilithiumAlmostNtt", "implDilithiumAlmostInverseNtt", "implDilithiumNttMult", "implDilithiumMontMulByConstant", "implDilithiumDecomposePoly"}) {
             assertConditionalPlugins(plugins, "Lsun/security/provider/ML_DSA;", name, 1);
         }
+    }
+
+    @Test
+    public void testVectorizedHashCode() {
+        assertAsimdLowering(gen -> gen.emitVectorizedHashCode(null, POINTER, INT, INT, jdk.vm.ci.meta.JavaKind.Int));
+        assertFalse(VectorizedHashCodeNode.isSupported(WITHOUT_ASIMD));
+        assertTrue(VectorizedHashCodeNode.isSupported(WITH_ASIMD));
+        assertConditionalPlugins(getReplacements().getGraphBuilderPlugins().getInvocationPlugins(), "Ljdk/internal/util/ArraysSupport;", "vectorizedHashCode", 1);
     }
 }

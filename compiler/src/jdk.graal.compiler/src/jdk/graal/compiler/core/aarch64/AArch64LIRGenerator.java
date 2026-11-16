@@ -1417,6 +1417,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitVectorizedHashCode(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayStart, Value length, Value initialValue, JavaKind arrayKind) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitVectorizedHashCode requires ASIMD");
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64VectorizedHashCodeOp(this,
                         result, asAllocatable(arrayStart), asAllocatable(length), asAllocatable(initialValue), arrayKind));

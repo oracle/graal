@@ -126,7 +126,7 @@ public final class VectorizedHashCodeNode extends PureFunctionStubIntrinsicNode 
     public static boolean isSupported(Architecture arch) {
         return switch (arch) {
             case AMD64 amd64 -> true;
-            case AArch64 aarch64 -> true;
+            case AArch64 aarch64 -> aarch64.getFeatures().contains(AArch64.CPUFeature.ASIMD);
             default -> false;
         };
     }
