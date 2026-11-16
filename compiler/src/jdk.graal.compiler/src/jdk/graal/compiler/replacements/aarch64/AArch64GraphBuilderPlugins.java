@@ -50,6 +50,7 @@ import jdk.graal.compiler.nodes.extended.JavaReadNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.ConditionalInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
@@ -68,6 +69,7 @@ import jdk.graal.compiler.replacements.nodes.ArrayFillNode;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 import jdk.graal.compiler.replacements.nodes.FloatToHalfFloatNode;
 import jdk.graal.compiler.replacements.nodes.HalfFloatToFloatNode;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -120,19 +122,29 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         registerFMA(r);
         registerMinMax(r);
 
-        r.register(new InvocationPlugin("copySign", float.class, float.class) {
+        r.register(new ConditionalInvocationPlugin("copySign", float.class, float.class) {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode magnitude, ValueNode sign) {
                 b.addPush(JavaKind.Float, new CopySignNode(magnitude, sign));
                 return true;
             }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return CopySignNode.isSupported(arch);
+            }
         });
-        r.register(new InvocationPlugin("copySign", double.class, double.class) {
+        r.register(new ConditionalInvocationPlugin("copySign", double.class, double.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode magnitude, ValueNode sign) {
                 b.addPush(JavaKind.Double, new CopySignNode(magnitude, sign));
                 return true;
+            }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return CopySignNode.isSupported(arch);
             }
         });
         r.register(new InvocationPlugin("round", float.class) {
