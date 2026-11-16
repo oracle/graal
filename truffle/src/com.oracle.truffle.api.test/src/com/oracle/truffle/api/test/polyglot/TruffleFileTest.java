@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1180,6 +1180,71 @@ public class TruffleFileTest {
             assertFails(() -> env.getInternalTruffleFile(invalidPath), IllegalArgumentException.class);
             assertFails(() -> env.getTruffleFileInternal(invalidPath, (f) -> false), IllegalArgumentException.class);
             return null;
+        }
+    }
+
+    @Test
+    public void testIntegerAttributeValues() throws IOException {
+        Path testFile = Files.createTempFile("integerAttributes", ".txt");
+        try {
+            Files.writeString(testFile, "content");
+            IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new IntegerAttributesFileSystem()).build();
+            try (Context ctx = Context.newBuilder().allowIO(ioAccess).build()) {
+                AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestIntegerAttributeValuesLanguage.class, "", testFile.toAbsolutePath().toString());
+            }
+        } finally {
+            Files.deleteIfExists(testFile);
+        }
+    }
+
+    @Registration
+    static final class TestIntegerAttributeValuesLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile file = env.getPublicTruffleFile((String) contextArguments[0]);
+            assertEquals(Long.valueOf(7), file.getAttribute(TruffleFile.SIZE));
+            assertEquals(7L, file.size());
+            assertEquals(Long.valueOf(IntegerAttributesFileSystem.INODE), file.getAttribute(TruffleFile.UNIX_INODE));
+            TruffleFile.Attributes attributes = file.getAttributes(List.of(TruffleFile.UNIX_INODE, TruffleFile.UNIX_DEV, TruffleFile.UNIX_RDEV, TruffleFile.UNIX_UID));
+            assertEquals(Long.valueOf(IntegerAttributesFileSystem.INODE), attributes.get(TruffleFile.UNIX_INODE));
+            assertEquals(Long.valueOf(IntegerAttributesFileSystem.DEV), attributes.get(TruffleFile.UNIX_DEV));
+            assertEquals(Long.valueOf(IntegerAttributesFileSystem.RDEV), attributes.get(TruffleFile.UNIX_RDEV));
+            assertEquals(Integer.valueOf(IntegerAttributesFileSystem.UID), attributes.get(TruffleFile.UNIX_UID));
+            return null;
+        }
+    }
+
+    private static final class IntegerAttributesFileSystem extends ForwardingFileSystem {
+
+        static final int INODE = 42;
+        static final int DEV = 7;
+        static final int RDEV = 0;
+        static final int UID = 1000;
+
+        IntegerAttributesFileSystem() {
+            super(FileSystem.newDefaultFileSystem());
+        }
+
+        @Override
+        public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
+            String unixPrefix = "unix:";
+            if (attributes.startsWith(unixPrefix)) {
+                Map<String, Object> result = new HashMap<>();
+                for (String name : attributes.substring(unixPrefix.length()).split(",")) {
+                    switch (name) {
+                        case "ino" -> result.put(name, INODE);
+                        case "dev" -> result.put(name, DEV);
+                        case "rdev" -> result.put(name, RDEV);
+                        case "uid" -> result.put(name, UID);
+                        default -> throw new UnsupportedOperationException("Unsupported attribute " + name);
+                    }
+                }
+                return result;
+            }
+            Map<String, Object> result = new HashMap<>(super.readAttributes(path, attributes, options));
+            result.computeIfPresent("size", (k, v) -> Math.toIntExact((Long) v));
+            return result;
         }
     }
 
