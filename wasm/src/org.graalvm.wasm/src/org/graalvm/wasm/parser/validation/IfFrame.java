@@ -73,6 +73,9 @@ class IfFrame extends ControlFrame {
     }
 
     void enterElse(ParserState state, RuntimeBytecodeGen bytecode) {
+        if (elseBranch) {
+            throw WasmException.create(Failure.TYPE_MISMATCH, "Else branch can only occur once in an if.");
+        }
         initializedLocals = (BitSet) parentFrame.initializedLocals.clone();
         final BytecodeFixup location = bytecode.addForwardBranch(RuntimeBytecodeGen.BranchOp.BR);
         falseJumpLocation.patch(bytecode.location());
