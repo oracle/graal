@@ -214,4 +214,11 @@ public class G1ImageHeapLayouter implements ImageHeapLayouter {
     public void writeMetadata(ByteBuffer imageHeapBytes, long imageHeapOffsetInBuffer) {
         // nothing to do
     }
+
+    @Override
+    public void releaseObjectReferences() {
+        for (G1ImageHeapPartition partition : partitions) {
+            partition.releaseObjectReferences();
+        }
+    }
 }

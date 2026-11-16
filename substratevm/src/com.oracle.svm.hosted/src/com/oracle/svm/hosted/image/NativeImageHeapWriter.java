@@ -140,6 +140,7 @@ public final class NativeImageHeapWriter {
             writeStaticFields(buffer, watchdog);
 
             heap.getLayouter().writeMetadata(buffer.getByteBuffer(), 0);
+            heap.clearWriteHeapState();
         }
         return sectionOffsetOfARelocatablePointer;
     }

@@ -757,9 +757,8 @@ public class NativeImageGenerator {
             BuildPhaseProviderImpl.markReadyForCompilation();
 
             NativeImageCodeCache codeCache;
-            CompileQueue compileQueue;
             try (StopTimer _ = TimerCollection.createTimerAndStart(TimerCollection.Registry.COMPILE_TOTAL)) {
-                compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtimeConfiguration, DeoptTester.enabled());
+                CompileQueue compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtimeConfiguration, DeoptTester.enabled());
                 if (ImageSingletons.contains(RuntimeCompilationCallbacks.class)) {
                     ImageSingletons.lookup(RuntimeCompilationCallbacks.class).onCompileQueueCreation(bb, hUniverse, compileQueue);
                 }
@@ -785,7 +784,11 @@ public class NativeImageGenerator {
                 AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, compileQueue.getCompilations(), codeCache, heap, debug,
                                 runtimeConfiguration, nativeLibraries);
                 featureHandler.forEachFeature(feature -> feature.afterCompilation(config));
+                /* Release compilation debug payload when no later consumer needs it. */
+                codeCache.clearCompilationDebugInfo();
                 BuildPhaseProviderImpl.markCompilationFinished();
+                /* Runtime metadata and feature callbacks no longer need the compile queue maps. */
+                compileQueue.purge();
             }
 
             /* Re-run shadow heap verification after compilation. */
@@ -837,8 +840,6 @@ public class NativeImageGenerator {
                     throw debug.handle(e);
                 }
             }
-
-            compileQueue.purge();
 
             int numCompilations = codeCache.getCodeAreaCompilationCount();
             int imageDiskFileSize;

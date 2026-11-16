@@ -33,6 +33,7 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.ListIterator;
@@ -210,7 +211,7 @@ public class CompileQueue {
     private final Boolean deoptimizeAll;
     protected final List<Policy> policies;
     protected CompletionExecutor executor;
-    protected final ConcurrentMap<HostedMethod, CompileTask> compilations;
+    protected ConcurrentMap<HostedMethod, CompileTask> compilations;
     protected final RuntimeConfiguration runtimeConfig;
     protected final MetaAccessProvider metaAccess;
     private Suites regularSuites = null;
@@ -368,7 +369,9 @@ public class CompileQueue {
 
         @Override
         public void run(DebugContext debug) {
-            result = doCompile(debug, method, compilationIdentifier, reason);
+            CompilationResult compilation = doCompile(debug, method, compilationIdentifier, reason);
+            HostedConfiguration.instance().handleSourceMappingsAfterCompilation(method, compilation);
+            result = compilation;
         }
 
         @Override
@@ -659,16 +662,23 @@ public class CompileQueue {
         return phaseSuite;
     }
 
+    /**
+     * Returns a read-only view of the compilation tasks. Previously obtained views retain their
+     * tasks after {@link #purge()}; consumers must drop them to allow reclamation.
+     */
     public Map<HostedMethod, CompileTask> getCompilations() {
-        return compilations;
+        VMError.guarantee(compilations != null, "Compilation tasks were released.");
+        return Collections.unmodifiableMap(compilations);
     }
 
     public void purge() {
-        compilations.clear();
+        VMError.guarantee(compilations != null, "Compilation tasks were already released.");
+        /* Detach instead of making an earlier view look as if nothing was compiled. */
+        compilations = null;
     }
 
     public Collection<CompileTask> getCompilationTasks() {
-        return compilations.values();
+        return getCompilations().values();
     }
 
     private void printMethodHistogram() {
@@ -1548,7 +1558,6 @@ public class CompileQueue {
                 } else {
                     throw t;
                 }
-
             }
         }
     }
@@ -1748,7 +1757,7 @@ public class CompileQueue {
 
     public Map<HostedMethod, CompilationResult> getCompilationResults() {
         Map<HostedMethod, CompilationResult> result = new TreeMap<>(HostedUniverse.METHOD_COMPARATOR);
-        for (Entry<HostedMethod, CompileTask> entry : compilations.entrySet()) {
+        for (Entry<HostedMethod, CompileTask> entry : getCompilations().entrySet()) {
             result.put(entry.getKey(), entry.getValue().result);
         }
         return result;

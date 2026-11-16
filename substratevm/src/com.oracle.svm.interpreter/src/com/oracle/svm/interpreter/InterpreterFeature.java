@@ -344,6 +344,11 @@ public class InterpreterFeature implements InternalFeature {
         int nativeDowncallStubLength = accessImpl.getCompilations().get(hNativeDowncallStub).result.getTargetCodeSize();
 
         InterpreterSupport.setNativeDowncallStubPointer(MethodRefSupport.createMethodPointer(hNativeDowncallStub), nativeDowncallStubLength);
+        /*
+         * This check reads infopoint DebugInfo. Run it in afterCompilation before
+         * NativeImageCodeCache clears that payload after all feature callbacks have completed.
+         */
+        checkPreAllocatedValueInfos(accessImpl.getMetaAccess(), accessImpl.getCodeCache());
     }
 
     private static ResolvedJavaMethod getExecuteBodyFromBCIMethod(MetaAccessProvider metaAccess) {
@@ -361,14 +366,6 @@ public class InterpreterFeature implements InternalFeature {
     private static ResolvedJavaMethod getJNIDowncallMethod(MetaAccessProvider metaAccess) {
         ResolvedJavaType jniDowncallRootType = metaAccess.lookupJavaType(Interpreter.JNIDowncallRoot.class);
         return JVMCIReflectionUtil.getUniqueDeclaredMethod(metaAccess, jniDowncallRootType, "execute", InterpreterResolvedJavaMethod.class, Object[].class);
-    }
-
-    @Override
-    public void beforeImageWrite(BeforeImageWriteAccess access) {
-        FeatureImpl.BeforeImageWriteAccessImpl accessImpl = (FeatureImpl.BeforeImageWriteAccessImpl) access;
-        HostedMetaAccess metaAccess = accessImpl.getMetaAccess();
-        NativeImageCodeCache codeCache = accessImpl.getImage().getCodeCache();
-        checkPreAllocatedValueInfos(metaAccess, codeCache);
     }
 
     private static void checkPreAllocatedValueInfos(HostedMetaAccess metaAccess, NativeImageCodeCache codeCache) {

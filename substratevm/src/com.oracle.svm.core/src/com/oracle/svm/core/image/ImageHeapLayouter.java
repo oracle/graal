@@ -62,6 +62,15 @@ public interface ImageHeapLayouter {
     void writeMetadata(ByteBuffer imageHeapBytes, long imageHeapOffsetInBuffer);
 
     /**
+     * Releases references to {@link ImageHeapObject} instances after heap contents and layout
+     * metadata have reached their final consumers.
+     * This is a terminal, single-threaded operation. Object-list access, further assignment or
+     * layout, and duplicate release are invalid afterwards. Partition sizes and offsets remain
+     * available for summaries that no longer inspect objects.
+     */
+    void releaseObjectReferences();
+
+    /**
      * Facilitates {@link ImageHeapLayouter#layout} cancellation through an
      * {@link ImageHeapLayouterCallback} instance.
      */

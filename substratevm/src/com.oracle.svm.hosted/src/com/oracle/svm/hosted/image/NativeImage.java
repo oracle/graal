@@ -977,6 +977,15 @@ public abstract class NativeImage extends AbstractImage {
         return objectFile;
     }
 
+    /**
+     * Returns whether code-emission state must remain available while the object file is written.
+     * Debug-info generation consumes compilation data during object-file writing. Windows unwind
+     * metadata uses its own snapshot captured before code emission.
+     */
+    public static boolean isCodeEmissionStateRequiredForImageWrite() {
+        return SubstrateOptions.useDebugInfoGeneration();
+    }
+
     public abstract static class NativeTextSectionImpl extends BasicProgbitsSectionImpl {
         DeadlockWatchdog watchdog = DeadlockWatchdog.singleton();
 
@@ -1010,22 +1019,11 @@ public abstract class NativeImage extends AbstractImage {
         protected void writeTextSection(DebugContext debug, final Section textSection, final List<HostedMethod> entryPoints) {
             try (Indent _ = debug.logAndIndent("TextImpl.writeTextSection")) {
                 /*
-                 * Write the text content. For slightly complicated reasons, we now call
-                 * patchMethods in two places -- but it only happens once for any given image build.
-                 *
-                 * - If we're generating relocatable code, we do it now, and generate relocation
-                 * records from the RelocationMap data that we get out. These relocation records
-                 * stay in the output file.
-                 *
-                 * - If we are generating a shared library, we don't need these relocation records,
-                 * because once we have fixed vaddrs, we can use rip-relative addressing and we
-                 * won't need to do load-time relocation for these references. In this case, we
-                 * instead call patchMethods *during* write-out, to fix up these cross-section
-                 * PC-relative references.
-                 *
-                 * This late fix-up of text references is the only reason why we need a custom
-                 * implementation for the text section. We can save a lot of load-time relocation by
-                 * exploiting PC-relative addressing in this way.
+                 * Define method symbols before patching and writing code into the text buffer.
+                 * Patching records the relocations needed by object-file writing. Once a
+                 * compilation has been written, its code-emission state can be released unless
+                 * native debug-info generation still needs it. Platform unwind inputs have already
+                 * been captured before this step.
                  */
 
                 /*
@@ -1090,14 +1088,8 @@ public abstract class NativeImage extends AbstractImage {
 
                 // the map starts out empty...
                 assert !textBuffer.hasRelocations();
-                codeCache.patchMethods(debug, textBuffer, objectFile);
+                codeCache.patchAndWriteCode(debug, textBuffer, objectFile, !isCodeEmissionStateRequiredForImageWrite());
                 // but now may be populated
-
-                /*
-                 * Blat the text-reference-patched (but rodata-reference-unpatched) code cache into
-                 * our byte array.
-                 */
-                codeCache.writeCode(textBuffer);
                 if (PLTGOTConfiguration.isEnabled()) {
                     PLTSupport pltSupport = HostedPLTGOTConfiguration.singleton().getPLTSupport();
                     pltSupport.writeToTextSection(textBuffer, objectFile, textSection);

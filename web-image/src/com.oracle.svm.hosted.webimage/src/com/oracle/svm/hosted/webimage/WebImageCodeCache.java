@@ -135,13 +135,10 @@ public class WebImageCodeCache extends NativeImageCodeCache {
     }
 
     @Override
-    public void patchMethods(DebugContext debug, RelocatableBuffer codeBuffer, ObjectFile objectFile) {
-
-    }
-
-    @Override
-    public void writeCode(RelocatableBuffer buffer) {
-
+    public void patchAndWriteCode(DebugContext debug, RelocatableBuffer buffer, ObjectFile objectFile, boolean releaseCodeEmissionState) {
+        if (releaseCodeEmissionState) {
+            clearCodeEmissionState(getOrderedCompilations());
+        }
     }
 
     @Override

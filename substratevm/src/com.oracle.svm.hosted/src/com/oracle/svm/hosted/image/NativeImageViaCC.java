@@ -89,8 +89,9 @@ public abstract class NativeImageViaCC extends NativeImage {
     @Override
     public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
         try (Indent _ = debug.logAndIndent("Writing native image")) {
-            // 0. Free codecache to make space for writing the objectFile
+            /* Release build metadata to make space for writing the object file. */
             codeCache.purge();
+            heap.releaseAfterImageWritePreparation();
 
             // 1. write the relocatable file
             write(debug, tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));

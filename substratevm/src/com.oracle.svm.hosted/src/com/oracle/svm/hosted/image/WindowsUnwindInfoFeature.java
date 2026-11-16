@@ -34,11 +34,12 @@ import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PR
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
@@ -50,7 +51,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SharedCompilationResult;
 import com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.VMError;
 
@@ -94,27 +94,56 @@ import jdk.graal.compiler.core.common.NumUtil;
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.WINDOWS_BASE.class)
 public class WindowsUnwindInfoFeature implements InternalFeature {
+    private List<UnwindData> unwindData;
+
+    @Override
+    public void afterCompilation(AfterCompilationAccess access) {
+        /*
+         * Code layout is final, but emission has not released compilation marks yet. Keep only
+         * unwind inputs, not compilation results or hosted methods, until beforeImageWrite.
+         * These small snapshots temporarily overlap the results so the much larger emission
+         * payloads can be released incrementally, including on Windows.
+         */
+        unwindData = ((FeatureImpl.AfterCompilationAccessImpl) access).getCodeCache().getOrderedCompilations().stream()
+                        .map(entry -> snapshot(NativeImage.localSymbolNameForMethod(entry.getLeft()), entry.getRight(), FrameAccess.returnAddressSize()))
+                        .filter(Objects::nonNull).toList();
+    }
+
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
         AbstractImage image = ((FeatureImpl.BeforeImageWriteAccessImpl) access).getImage();
-        ObjectFile objectFile = image.getObjectFile();
+        VMError.guarantee(unwindData != null, "Windows unwind inputs must be captured before code emission");
+        emit(image.getObjectFile(), unwindData, SubstrateOptions.PreserveFramePointer.getValue());
+        unwindData = null;
+    }
+
+    static UnwindData snapshot(String symbolName, CompilationResult compilation, int returnAddressSize) {
+        if (compilation.getTotalFrameSize() == returnAddressSize) {
+            return null; /* No frame, no unwind info needed. */
+        }
+        SharedCompilationResult shared = (SharedCompilationResult) compilation;
+        int saveOffset = shared.hasFramePointerSaveAreaOffset() ? shared.getFramePointerSaveAreaOffset() : -1;
+        List<CodeMark> rangeMarks = saveOffset < 0 ? List.of()
+                        : List.copyOf(deriveRangeMarks(compilation, markId -> markId == FRAME_POINTER_SPILLED || markId == FRAME_POINTER_RELOADED));
+        return new UnwindData(symbolName, compilation.getTargetCodeSize(), shared.getFrameSize(), saveOffset,
+                        collectPrologueMarks(compilation), rangeMarks);
+    }
+
+    static void emit(ObjectFile objectFile, List<UnwindData> unwindData, boolean preserveFramePointer) {
 
         /* Determine the size of .xdata and .pdata sections. */
         AtomicInteger xdataSize = new AtomicInteger();
         AtomicInteger pdataSize = new AtomicInteger();
-        image.getCodeCache().getOrderedCompilations().stream().parallel()
-                        .forEach(entry -> visitRanges(entry.getRight(), (range, startMark, _) -> {
-                            var compilation = (SharedCompilationResult) entry.getRight();
+        unwindData.stream().parallel()
+                        .forEach(data -> visitRanges(data, (range, startMark, _) -> {
                             int countOfCodes = switch (startMark.id) {
                                 case PROLOGUE_START -> {
                                     assert RUNTIME_FUNCTION.isPrimary(range) : range;
-                                    CodeMark[] prologueMarks = new CodeMark[MAX_PROLOGUE_MARKS];
-                                    int markCount = collectPrologueMarks(compilation, prologueMarks);
-                                    yield countOfPrologueCodes(compilation, prologueMarks, markCount);
+                                    yield countOfPrologueCodes(data);
                                 }
                                 case FRAME_POINTER_SPILLED -> {
                                     assert RUNTIME_FUNCTION.isChained(range) && range % 2 == 1 : range;
-                                    yield UNWIND_CODE.UWOP_PUSH_NONVOL.slots + UNWIND_CODE.forAllocation(compilation.getFramePointerSaveAreaOffset()).slots;
+                                    yield UNWIND_CODE.UWOP_PUSH_NONVOL.slots + UNWIND_CODE.forAllocation(data.framePointerSaveAreaOffset()).slots;
                                 }
                                 case FRAME_POINTER_RELOADED -> {
                                     assert RUNTIME_FUNCTION.isChained(range) && range % 2 == 0 : range;
@@ -137,34 +166,33 @@ public class WindowsUnwindInfoFeature implements InternalFeature {
         objectFile.newUserDefinedSection(".pdata", 4, pdataImpl);
 
         /* Emit the content of .xdata and .pdata sections. */
-        for (Pair<HostedMethod, CompilationResult> entry : image.getCodeCache().getOrderedCompilations()) {
-            visitRanges(entry.getRight(), (range, startMark, end) -> {
+        for (UnwindData data : unwindData) {
+            visitRanges(data, (range, startMark, end) -> {
                 if (RUNTIME_FUNCTION.isPrimary(range)) {
                     pdataBuffer.mark(); /* Mark position of the primary RUNTIME_FUNCTION entry. */
                 }
 
-                String symbolName = NativeImage.localSymbolNameForMethod(entry.getLeft());
+                String symbolName = data.symbolName();
 
                 /* Define a symbol for the UNWIND_INFO entry. */
                 String unwindInfoSymbolName = RUNTIME_FUNCTION.unwindInfoSymbolPrefixFor(range) + symbolName;
                 objectFile.createDefinedSymbol(unwindInfoSymbolName, xdataSection, xdataBuffer.position(), 0, false, false, false);
 
                 /* Emit the UNWIND_INFO entry for the range. */
-                var compilation = (SharedCompilationResult) entry.getRight();
                 switch (startMark.id) {
                     case PROLOGUE_START -> {
-                        CodeMark[] prologueMarks = new CodeMark[MAX_PROLOGUE_MARKS];
-                        int markCount = collectPrologueMarks(compilation, prologueMarks);
+                        CodeMark[] prologueMarks = data.prologueMarks();
+                        int markCount = prologueMarks.length;
 
                         CodeMark lastMark = prologueMarks[markCount - 1];
                         int sizeOfProlog = lastMark.pcOffset;
-                        int countOfCodes = countOfPrologueCodes(compilation, prologueMarks, markCount);
+                        int countOfCodes = countOfPrologueCodes(data);
                         byte frameRegister = 0;
                         int frameOffset = 0;
                         if (lastMark.id == PROLOGUE_SET_FRAME_POINTER) {
                             frameRegister = UNWIND_INFO.RBP;
-                            if (SubstrateOptions.PreserveFramePointer.getValue()) {
-                                frameOffset = compilation.getFramePointerSaveAreaOffset();
+                            if (preserveFramePointer) {
+                                frameOffset = data.framePointerSaveAreaOffset();
                             }
                         }
                         UNWIND_INFO.emit(xdataBuffer, sizeOfProlog, countOfCodes, frameRegister, frameOffset, () -> {
@@ -173,7 +201,7 @@ public class WindowsUnwindInfoFeature implements InternalFeature {
                                 CodeMark mark = prologueMarks[i];
                                 switch (mark.id) {
                                     case PROLOGUE_SET_FRAME_POINTER -> UNWIND_CODE.UWOP_SET_FPREG.emit(xdataBuffer, mark.pcOffset, 0);
-                                    case PROLOGUE_DECD_RSP -> UNWIND_CODE.forAllocation(compilation.getFrameSize()).emit(xdataBuffer, mark.pcOffset, compilation.getFrameSize());
+                                    case PROLOGUE_DECD_RSP -> UNWIND_CODE.forAllocation(data.frameSize()).emit(xdataBuffer, mark.pcOffset, data.frameSize());
                                     case PROLOGUE_PUSH_RBP -> UNWIND_CODE.UWOP_PUSH_NONVOL.emit(xdataBuffer, mark.pcOffset, UNWIND_INFO.RBP);
                                     default -> throw VMError.shouldNotReachHere("Unexpected: " + mark.id);
                                 }
@@ -181,7 +209,7 @@ public class WindowsUnwindInfoFeature implements InternalFeature {
                         });
                     }
                     case FRAME_POINTER_SPILLED -> {
-                        int framePointerSaveAreaOffset = compilation.getFramePointerSaveAreaOffset();
+                        int framePointerSaveAreaOffset = data.framePointerSaveAreaOffset();
                         int countOfCodes = UNWIND_CODE.UWOP_PUSH_NONVOL.slots + UNWIND_CODE.forAllocation(framePointerSaveAreaOffset).slots;
                         ByteBuffer primaryRuntimeFunctionEntry = pdataBuffer.asReadOnlyBuffer().reset().slice().order(pdataBuffer.order());
                         UNWIND_INFO.emit(xdataBuffer, 0, countOfCodes, (byte) 0, 0, () -> {
@@ -216,25 +244,14 @@ public class WindowsUnwindInfoFeature implements InternalFeature {
     }
 
     /** Visits the ranges derived from marks using the specified visitor. */
-    private static void visitRanges(CompilationResult compilation, RangeVisitor visitor) {
-        if (compilation.getTotalFrameSize() == FrameAccess.returnAddressSize()) {
-            return; /* No frame, no unwind info needed. */
-        }
-
-        SharedCompilationResult cr = (SharedCompilationResult) compilation;
-        if (!cr.hasFramePointerSaveAreaOffset()) {
-            /* There is no frame pointer, so there is only the primary range. */
-            visitor.visit(RUNTIME_FUNCTION.PRIMARY_RANGE, START_MARK, compilation.getTargetCodeSize());
-            return;
-        }
-
+    private static void visitRanges(UnwindData data, RangeVisitor visitor) {
         CodeMark startMark = START_MARK;
         int range = RUNTIME_FUNCTION.PRIMARY_RANGE;
-        for (CodeMark endMark : deriveRangeMarks(compilation, markId -> markId == FRAME_POINTER_SPILLED || markId == FRAME_POINTER_RELOADED)) {
+        for (CodeMark endMark : data.rangeMarks()) {
             visitor.visit(range++, startMark, endMark.pcOffset);
             startMark = endMark;
         }
-        visitor.visit(range, startMark, compilation.getTargetCodeSize());
+        visitor.visit(range, startMark, data.targetCodeSize());
     }
 
     /** Derives a refined list of range marks, ensuring no empty ranges. */
@@ -262,13 +279,13 @@ public class WindowsUnwindInfoFeature implements InternalFeature {
 
     private static final int MAX_PROLOGUE_MARKS = 3;
 
-    /** Collects prologue marks into a given array and returns the number of marks collected. */
-    private static int collectPrologueMarks(CompilationResult compilation, CodeMark[] prologueMarks) {
+    /** Returns the prologue marks in emission order. */
+    private static CodeMark[] collectPrologueMarks(CompilationResult compilation) {
         /*
          * We expect the prologue marks to be in the following order: [PROLOGUE_PUSH_RBP,
          * PROLOGUE_DECD_RSP, PROLOGUE_SET_FRAME_POINTER], and to find at least one of them.
          */
-        assert prologueMarks.length >= MAX_PROLOGUE_MARKS;
+        CodeMark[] prologueMarks = new CodeMark[MAX_PROLOGUE_MARKS];
         int lastMarkIndex = 0;
         loop: for (CodeMark mark : compilation.getMarks()) {
             switch (mark.id) {
@@ -297,25 +314,28 @@ public class WindowsUnwindInfoFeature implements InternalFeature {
             }
         }
         assert prologueMarks[lastMarkIndex] != null : "no prologue marks";
-        return lastMarkIndex + 1;
+        return Arrays.copyOf(prologueMarks, lastMarkIndex + 1);
     }
 
     /**
      * Returns the number of {@linkplain UNWIND_CODE#slots slots} required for unwind codes
      * corresponding to the given prologue marks.
      */
-    private static int countOfPrologueCodes(SharedCompilationResult compilation, CodeMark[] prologueMarks, int markCount) {
-        assert markCount <= prologueMarks.length;
+    private static int countOfPrologueCodes(UnwindData data) {
         int sum = 0;
-        for (int i = 0; i < markCount; i++) {
-            sum += switch (prologueMarks[i].id) {
+        for (CodeMark mark : data.prologueMarks()) {
+            sum += switch (mark.id) {
                 case PROLOGUE_PUSH_RBP -> UNWIND_CODE.UWOP_PUSH_NONVOL.slots;
-                case PROLOGUE_DECD_RSP -> UNWIND_CODE.forAllocation(compilation.getFrameSize()).slots;
+                case PROLOGUE_DECD_RSP -> UNWIND_CODE.forAllocation(data.frameSize()).slots;
                 case PROLOGUE_SET_FRAME_POINTER -> UNWIND_CODE.UWOP_SET_FPREG.slots;
-                default -> throw VMError.shouldNotReachHere("Unexpected: " + prologueMarks[i].id);
+                default -> throw VMError.shouldNotReachHere("Unexpected: " + mark.id);
             };
         }
         return sum;
+    }
+
+    /** No references to a compilation or its mark list survive in this snapshot. */
+    record UnwindData(String symbolName, int targetCodeSize, int frameSize, int framePointerSaveAreaOffset, CodeMark[] prologueMarks, List<CodeMark> rangeMarks) {
     }
 }
 

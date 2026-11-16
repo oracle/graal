@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.AppLayerCGlobalTracking;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
+import com.oracle.svm.hosted.image.ImageHeapReasonSupport;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.imagelayer.LayeredImageUtils;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -260,7 +261,7 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
     }
 
     private void addDefaultValuesObject(NativeImageHeap heap, @SuppressWarnings("unused") HostedUniverse hUniverse) {
-        String addReason = "Registered as a required heap constant within RuntimeOptionFeature";
+        Object addReason = ImageHeapReasonSupport.singleton().description("Registered as a required heap constant within RuntimeOptionFeature");
 
         heap.addObject(defaultValues, false, addReason);
         heap.addObject(defaultStrings, false, addReason);
