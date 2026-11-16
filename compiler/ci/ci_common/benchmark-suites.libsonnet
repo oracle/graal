@@ -22,6 +22,12 @@
     all_but_main_suites:: std.setDiff(self.all_suites, self.main_suites, keyF=_suite_key),
   },
 
+  // The adapter selects iteration counts and scoring windows per benchmark.
+  interpreter_workload:: {
+    suite_run_args:: ["--iteration-policy=interpreter"],
+    suite:: super.suite + "-small",
+  },
+
   // suite definitions
   // *****************
   awfy_template(capture_crema_libjvm_size=false):: cc.compiler_benchmark + c.heap.small + bc.bench_max_threads + {
@@ -46,8 +52,11 @@
 
   dacapo: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "dacapo",
+    suite_benchmarks:: "*",
+    suite_run_args:: [],
     run+: [
-      self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args
+      self.benchmark_cmd + [self.suite + ":" + self.suite_benchmarks, "--"] + self.extra_vm_args +
+      (if self.suite_run_args == [] then [] else ["--"] + self.suite_run_args)
     ],
     logs+: [
         "%s/*/scratch/%s" % [config.compiler.compiler_suite, file]
@@ -70,8 +79,11 @@
 
   scala_dacapo: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "scala-dacapo",
+    suite_benchmarks:: "*",
+    suite_run_args:: [],
     run+: [
-      self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args
+      self.benchmark_cmd + [self.suite + ":" + self.suite_benchmarks, "--"] + self.extra_vm_args +
+      (if self.suite_run_args == [] then [] else ["--"] + self.suite_run_args)
     ],
     timelimit: "01:30:00",
     forks_batches:: 2,

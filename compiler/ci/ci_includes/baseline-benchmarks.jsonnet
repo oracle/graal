@@ -18,6 +18,11 @@
   local hotspot_interpreter_builds = [
     c.weekly + hw.x52 + jdk + cc.hotspot_interpreter + bench.awfy
   for jdk in cc.product_jdks
+  ] + [
+    c.weekly + hw.x52 + jdk + cc.hotspot_interpreter + suite + bench.interpreter_workload +
+    (if suite.suite == "dacapo" then {timelimit: "0:30:00"} else {})
+  for jdk in cc.product_jdks
+  for suite in [bench.dacapo, bench.scala_dacapo]
   ],
 
   local hotspot_profiling_builds = std.flattenArrays([
