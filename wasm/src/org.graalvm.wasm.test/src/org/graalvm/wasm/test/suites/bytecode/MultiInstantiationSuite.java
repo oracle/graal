@@ -666,6 +666,31 @@ public class MultiInstantiationSuite {
         }
     }
 
+    @Test
+    public void testRefAsNonNull() throws IOException {
+        // (module
+        // (type $t (func (param i32) (result i32)))
+        // (func $id (type $t) local.get 0)
+        // (elem declare func $id)
+        // (func (export "main") (type $t)
+        // local.get 0
+        // ref.func $id
+        // ref.as_non_null
+        // call_ref $t))
+        final byte[] source = WasmTestUtils.hexStringToByteArray(
+                        "00 61 73 6D 01 00 00 00",
+                        "01 06 01 60 01 7F 01 7F",
+                        "03 03 02 00 00",
+                        "07 08 01 04 6D 61 69 6E 00 01",
+                        "09 05 01 03 00 01 00",
+                        "0A 10 02 04 00 20 00 0B 09 00 20 00 D2 00 D4 14 00 0B");
+
+        test(source, wasm -> null, (wasm, instance) -> {
+            Value main = Value.asValue(WebAssembly.instanceExport(instance, "main"));
+            Assert.assertEquals("Return value of main", 42, main.execute(42).asInt());
+        });
+    }
+
     // Tests that exercise the BytecodeParser#readCodeEntries code path that is used when
     // instantiating a module multiple times.
     @Test
