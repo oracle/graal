@@ -96,6 +96,12 @@ public abstract class OptionOrigin {
         return (originLocation == null ? valuesFile : originLocation.resolveSibling(valuesFile)).normalize();
     }
 
+    /// Normalizes an origin-relative redirection path using this origin's path rules.
+    public Path normalizeRedirectionPath(Path valuesFile) {
+        Path originDirectory = resolveRedirectionPath(Path.of(""));
+        return originDirectory.relativize(resolveRedirectionPath(valuesFile));
+    }
+
     /// Reads a redirection file relative to this origin, preserving its contents for argument-file parsing.
     public String readRedirectionFile(@SuppressWarnings("unused") Path valuesFile) throws IOException {
         throw new IOException(new UnsupportedOperationException());

@@ -144,7 +144,7 @@ public class ArgFilesOptionPreprocessor {
         }
         // Match java @file lookup for command-line paths: let the filesystem resolve symlinks and '..'.
         if (origin != null) {
-            resolved = resolved.normalize();
+            resolved = origin.normalizeRedirectionPath(resolved);
             // Check before JAR filesystem resolution, which would discard leading '..' components.
             Path relativeToContainer = origin.resolveRedirectionPath(resolved);
             if (relativeToContainer.getRoot() != null || relativeToContainer.startsWith("..")) {
