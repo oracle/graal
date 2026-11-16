@@ -44,9 +44,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Ristretto (native image bytecode based JIT) specific implementation of the bytecode parser.
  */
 public class RistrettoParser extends BytecodeParser {
-    private static final String GRAAL_DIRECTIVES_CLASS_NAME = "jdk.graal.compiler.api.directives.GraalDirectives";
-    private static final String RISTRETTO_DIRECTIVES_CLASS_NAME = "com.oracle.svm.interpreter.ristretto.RistrettoDirectives";
-
     private MetaAccessProvider cachedMetaAccess;
 
     public RistrettoParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
@@ -72,11 +69,13 @@ public class RistrettoParser extends BytecodeParser {
     }
 
     /**
-     * Do not apply ordinary invocation plugins while parsing a bytecode in an exception-handler
-     * range. Ristretto needs the normal invoke path here because it explicitly creates the invoke's
-     * local exception successor. Compiler directives are semantic graph markers, so their plugins
-     * must still be applied. If any other plugin cannot be disabled, fail permanently instead of
-     * silently dropping the exception edge.
+     * Conservatively restrict invocation plugins at bytecodes covered by local exception handlers.
+     * Compiler directives must retain their graph semantics. The listed primitive operations and
+     * successful constant folds do not need a Java exception successor; receiver checks use the
+     * parser's explicit exceptions or deoptimization state. Object.clone supplies an exception-aware
+     * clone node. Other optional plugins retain the normal invoke path, and unsupported required
+     * plugins fail permanently rather than silently losing exception dispatch. This checks the
+     * current method's handlers, not handlers in callers that may later inline this method.
      */
     @Override
     protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
@@ -84,7 +83,7 @@ public class RistrettoParser extends BytecodeParser {
         if (hasLocalExceptionHandlerAtBci(currentBci)) {
             InvocationPlugins plugins = graphBuilderConfig.getPlugins().getInvocationPlugins();
             InvocationPlugin plugin = plugins.lookupInvocation(targetMethod, true, !parsingIntrinsic(), options);
-            if (plugin != null && !isCompilerDirectivePluginTarget(targetMethod)) {
+            if (plugin != null && !RistrettoInvocationPluginPolicy.canApplyWithLocalExceptionHandler(targetMethod)) {
                 if (intrinsicContext != null && intrinsicContext.isCallToOriginal(targetMethod)) {
                     return false;
                 }
@@ -97,11 +96,6 @@ public class RistrettoParser extends BytecodeParser {
             }
         }
         return super.tryInvocationPlugin(invokeKind, args, targetMethod, resultType);
-    }
-
-    private static boolean isCompilerDirectivePluginTarget(ResolvedJavaMethod targetMethod) {
-        String methodName = targetMethod.format("%H.%n(%p)");
-        return methodName.startsWith(GRAAL_DIRECTIVES_CLASS_NAME + ".") || methodName.startsWith(RISTRETTO_DIRECTIVES_CLASS_NAME + ".");
     }
 
     private boolean hasLocalExceptionHandlerAtBci(int currentBci) {
