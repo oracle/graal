@@ -587,6 +587,21 @@ public class ValidationSuite extends WasmFileSuite {
                                         "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 0A 04 01 02 00 05 0B 0B",
                                         Failure.Type.INVALID),
 
+                        // If - multiple else branches
+                        binaryCase("If - multiple else branches",
+                                        "Else branch can only occur once in an if.",
+                                        // (module
+                                        // (func (export "_main")
+                                        // i32.const 1
+                                        // if
+                                        // else
+                                        // else
+                                        // end
+                                        // )
+                                        // )
+                                        "00 61 73 6D 01 00 00 00 01 04 01 60 00 00 03 02 01 00 07 09 01 05 5F 6D 61 69 6E 00 00 0A 0B 01 09 00 41 01 04 40 05 05 0B 0B",
+                                        Failure.Type.INVALID),
+
                         // Correct if else
                         binaryCase("If - correct if else",
                                         "",
