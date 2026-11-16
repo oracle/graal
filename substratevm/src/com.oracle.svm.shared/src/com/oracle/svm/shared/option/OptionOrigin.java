@@ -248,6 +248,11 @@ final class MacroOptionOrigin extends OptionOrigin {
     }
 
     @Override
+    public URI container() {
+        return optionDirectory.toUri();
+    }
+
+    @Override
     public int hashCode() {
         return Objects.hash(kind, name);
     }
