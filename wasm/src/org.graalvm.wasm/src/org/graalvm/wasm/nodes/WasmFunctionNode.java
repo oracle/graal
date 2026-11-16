@@ -1421,7 +1421,7 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                         throw CompilerDirectives.shouldNotReachHere();
                 }
             } catch (WasmOSRException osrExc) {
-                return osrExc.osrResult;
+                return osrExc.getResultOrRethrow();
             } catch (WasmRuntimeException e) {
                 codeEntry.exceptionBranch();
                 CompilerAsserts.partialEvaluationConstant(virtualState.stackPointer);
@@ -1521,9 +1521,23 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
         @Serial private static final long serialVersionUID = 171629579745510728L;
 
         private final Object osrResult;
+        private final Throwable throwable;
 
         WasmOSRException(Object osrResult) {
             this.osrResult = osrResult;
+            this.throwable = null;
+        }
+
+        WasmOSRException(Throwable throwable) {
+            this.osrResult = null;
+            this.throwable = throwable;
+        }
+
+        Object getResultOrRethrow() {
+            if (throwable != null) {
+                throw WasmLanguage.rethrow(throwable);
+            }
+            return osrResult;
         }
     }
 
@@ -1536,7 +1550,12 @@ public final class WasmFunctionNode<V128> extends Node implements BytecodeOSRNod
                 LoopNode.reportLoopCount(state.thiz, REPORT_LOOP_STRIDE);
                 if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(state.thiz, REPORT_LOOP_STRIDE)) {
                     OSRInterpreterState osrInterpreterState = new OSRInterpreterState(state.lineIndex, state.activeLegacyCatchCount);
-                    Object result = BytecodeOSRNode.tryOSR(state.thiz, resumeOffset | ((long) virtualState.stackPointer << 32), osrInterpreterState, null, frame);
+                    Object result;
+                    try {
+                        result = BytecodeOSRNode.tryOSR(state.thiz, resumeOffset | ((long) virtualState.stackPointer << 32), osrInterpreterState, null, frame);
+                    } catch (Throwable throwable) {
+                        throw new WasmOSRException(throwable);
+                    }
                     if (result != null) {
                         throw new WasmOSRException(result);
                     }
