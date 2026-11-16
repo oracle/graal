@@ -657,6 +657,9 @@ public class BinaryParser extends BinaryStreamParser {
                     int superTypeCount = readLength();
                     if (superTypeCount == 1) {
                         int superTypeIndex = readTypeIndex();
+                        if (superTypeIndex >= typeIndex) {
+                            fail(Failure.SUB_TYPE, "Supertypes must be defined before subtypes");
+                        }
                         module.registerSuperType(typeIndex, superTypeIndex);
                         module.limits().checkSubtypeDepth(module.superTypeDepth(typeIndex));
                     } else if (superTypeCount > 1) {
