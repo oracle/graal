@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import sun.management.Util;
 
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-public final class SubstrateRuntimeMXBean implements RuntimeMXBean {
+public final class SubstrateRuntimeMXBean implements RuntimeMXBean, VMManagementBean {
 
     private final String managementSpecVersion;
 

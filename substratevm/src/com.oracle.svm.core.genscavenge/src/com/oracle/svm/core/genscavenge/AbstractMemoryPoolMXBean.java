@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.jdk.management.VMManagementBean;
 import com.oracle.svm.core.heap.AbstractMXBean;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.shared.Uninterruptible;
@@ -44,7 +45,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import org.graalvm.word.impl.Word;
 import sun.management.Util;
 
-public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements MemoryPoolMXBean {
+public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements MemoryPoolMXBean, VMManagementBean {
 
     protected static final UnsignedWord UNDEFINED = Word.unsigned(UNDEFINED_MEMORY_USAGE);
 

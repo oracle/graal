@@ -354,7 +354,7 @@ public final class ManagementSupport implements ThreadListener {
      * instead of an actual {@link PlatformManagedObject} implementation, code will be executed at
      * run-time when someone tries to access the {@link PlatformManagedObject}.
      */
-    public interface PlatformManagedObjectSupplier extends Supplier<PlatformManagedObject>, PlatformManagedObject {
+    public interface PlatformManagedObjectSupplier extends Supplier<PlatformManagedObject>, VMManagementBean {
         @Override
         default ObjectName getObjectName() {
             throw VMError.shouldNotReachHereOverrideInChild(); // ExcludeFromJacocoGeneratedReport
@@ -393,6 +393,7 @@ public final class ManagementSupport implements ThreadListener {
         @Platforms(Platform.HOSTED_ONLY.class)
         @SuppressWarnings("unchecked")
         public void addSingleton(Class<? extends PlatformManagedObject> clazz, PlatformManagedObject object) {
+            UserError.guarantee(object instanceof VMManagementBean, "VM management bean registrations must implement %s.", VMManagementBean.class.getName());
             if (!clazz.isInterface()) {
                 throw UserError.abort("Key for registration of a PlatformManagedObject must be an interface");
             }
@@ -418,6 +419,9 @@ public final class ManagementSupport implements ThreadListener {
         @Platforms(Platform.HOSTED_ONLY.class)
         @SuppressWarnings("unchecked")
         public void addList(Class<? extends PlatformManagedObject> clazz, List<? extends PlatformManagedObject> beans) {
+            for (PlatformManagedObject bean : beans) {
+                UserError.guarantee(bean instanceof VMManagementBean, "VM management bean registrations must implement %s.", VMManagementBean.class.getName());
+            }
             if (!clazz.isInterface()) {
                 throw UserError.abort("Key for registration of a PlatformManagedObject must be an interface");
             }
