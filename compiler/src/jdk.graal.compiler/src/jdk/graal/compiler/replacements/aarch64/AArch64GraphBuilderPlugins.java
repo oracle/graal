@@ -33,6 +33,7 @@ import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool.ArrayIndexOfVariant;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.NodeView;
@@ -329,12 +330,24 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             public SnippetTemplate.SnippetInfo getSnippet(StringLatin1Snippets.Templates templates) {
                 return templates.indexOf;
             }
+
+            @Override
+            public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode[] args) {
+                // The snippet creates ArrayIndexOfNodes directly, bypassing plugin admission.
+                return ArrayIndexOfNode.isSupported(b.getLowerer().getTarget().arch, Stride.S1, ArrayIndexOfVariant.MatchAny) &&
+                                super.execute(b, targetMethod, receiver, args);
+            }
         });
-        r.register(new InvocationPlugin("indexOfChar", byte[].class, int.class, int.class, int.class) {
+        r.register(new ConditionalInvocationPlugin("indexOfChar", byte[].class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
                 b.addPush(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(b, JavaKind.Byte, Stride.S1, value, max, fromIndex, ch));
                 return true;
+            }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return ArrayIndexOfNode.isSupported(arch, Stride.S1, ArrayIndexOfVariant.MatchAny);
             }
         });
     }
@@ -410,13 +423,25 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             public SnippetTemplate.SnippetInfo getSnippet(StringUTF16Snippets.Templates templates) {
                 return templates.indexOfUnsafe;
             }
+
+            @Override
+            public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode[] args) {
+                // The snippet creates ArrayIndexOfNodes directly, bypassing plugin admission.
+                return ArrayIndexOfNode.isSupported(b.getLowerer().getTarget().arch, Stride.S2, ArrayIndexOfVariant.MatchAny) &&
+                                super.execute(b, targetMethod, receiver, args);
+            }
         });
-        r.register(new InvocationPlugin("indexOfChar", byte[].class, int.class, int.class, int.class) {
+        r.register(new ConditionalInvocationPlugin("indexOfChar", byte[].class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
                 ZeroExtendNode toChar = b.add(new ZeroExtendNode(b.add(new NarrowNode(ch, JavaKind.Char.getBitCount())), JavaKind.Int.getBitCount()));
                 b.addPush(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(b, JavaKind.Byte, Stride.S2, value, max, fromIndex, toChar));
                 return true;
+            }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return ArrayIndexOfNode.isSupported(arch, Stride.S2, ArrayIndexOfVariant.MatchAny);
             }
         });
         Registration r2 = new Registration(plugins, StringUTF16Snippets.class);

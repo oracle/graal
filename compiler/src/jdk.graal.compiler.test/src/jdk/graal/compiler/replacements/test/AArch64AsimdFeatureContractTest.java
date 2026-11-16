@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.replacements.test;
 
+import java.lang.reflect.Proxy;
 import java.util.EnumSet;
 import java.util.function.Consumer;
 
@@ -33,6 +34,7 @@ import org.junit.Test;
 import jdk.graal.compiler.core.aarch64.AArch64ArithmeticLIRGenerator;
 import jdk.graal.compiler.core.aarch64.AArch64LIRKindTool;
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.aarch64.AArch64HotSpotLIRGenerator;
@@ -40,17 +42,22 @@ import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool.ArrayIndexOfVariant;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.CopySignNode;
 import jdk.graal.compiler.nodes.calc.SignumNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.ConditionalInvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
+import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 import jdk.graal.compiler.replacements.nodes.Base64DecodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.Base64EncodeBlockNode;
 
@@ -172,5 +179,54 @@ public class AArch64AsimdFeatureContractTest extends GraalCompilerTest {
         InvocationPlugins plugins = standardPlugins();
         assertConditionalPlugins(plugins, "Ljava/util/Base64$Encoder;", "encodeBlock", 1);
         assertConditionalPlugins(plugins, "Ljava/util/Base64$Decoder;", "decodeBlock", 1);
+    }
+
+    private void assertSnippetAdmission(InvocationPlugins plugins, String className, String methodName) {
+        int count = 0;
+        for (InvocationPlugin plugin : plugins.getInvocationPlugins(true).get(className)) {
+            if (plugin.name.equals(methodName)) {
+                for (AArch64 arch : new AArch64[]{WITHOUT_ASIMD, WITH_ASIMD}) {
+                    TargetDescription target = new TargetDescription(arch, true, 16, 4096, true);
+                    LoweringProvider lowerer = (LoweringProvider) Proxy.newProxyInstance(LoweringProvider.class.getClassLoader(), new Class<?>[]{LoweringProvider.class}, (proxy, method, args) -> {
+                        Assert.assertEquals("getTarget", method.getName());
+                        return target;
+                    });
+                    boolean[] reachedSnippet = {false};
+                    GraphBuilderContext context = (GraphBuilderContext) Proxy.newProxyInstance(GraphBuilderContext.class.getClassLoader(), new Class<?>[]{GraphBuilderContext.class}, (proxy, method,
+                                    args) -> {
+                        switch (method.getName()) {
+                            case "getLowerer":
+                                return lowerer;
+                            case "isPluginEnabled":
+                                reachedSnippet[0] = true;
+                                // Stop before instantiating the snippet: only admission is under test.
+                                return false;
+                            default:
+                                throw new AssertionError(method);
+                        }
+                    });
+                    assertFalse(plugin.execute(context, null, null, new ValueNode[0]));
+                    Assert.assertEquals(arch == WITH_ASIMD, reachedSnippet[0]);
+                }
+                count++;
+            }
+        }
+        Assert.assertEquals(1, count);
+    }
+
+    @Test
+    public void testArrayIndexOf() {
+        assertAsimdLowering(gen -> gen.emitArrayIndexOf(Stride.S1, ArrayIndexOfVariant.MatchAny, null, POINTER, POINTER, INT, INT, INT));
+        for (Stride stride : Stride.values()) {
+            for (ArrayIndexOfVariant variant : ArrayIndexOfVariant.values()) {
+                assertFalse(ArrayIndexOfNode.isSupported(WITHOUT_ASIMD, stride, variant));
+                assertTrue(ArrayIndexOfNode.isSupported(WITH_ASIMD, stride, variant));
+            }
+        }
+        InvocationPlugins plugins = aarch64Plugins();
+        assertConditionalPlugins(plugins, "Ljava/lang/StringLatin1;", "indexOfChar", 1);
+        assertConditionalPlugins(plugins, "Ljava/lang/StringUTF16;", "indexOfChar", 1);
+        assertSnippetAdmission(plugins, "Ljava/lang/StringLatin1;", "indexOf");
+        assertSnippetAdmission(plugins, "Ljava/lang/StringUTF16;", "indexOfUnsafe");
     }
 }
