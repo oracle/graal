@@ -2747,6 +2747,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
                             replacingSpecialization.getBoxingOverloads().add(specialization);
                         } else {
+                            if (isReplacedThroughBoxingOverload(specialization, replacingSpecialization)) {
+                                /*
+                                 * Replaces is transitive. A broader specialization may replace a
+                                 * compatible object specialization together with its boxing
+                                 * overloads without itself being a boxing overload.
+                                 */
+                                continue;
+                            }
                             if (specialization.hasMultipleInstances() != replacingSpecialization.hasMultipleInstances()) {
                                 /*
                                  * Avoid warnings for cases where the replaced specialization has an
@@ -3011,6 +3019,16 @@ public final class NodeParser extends AbstractParser<NodeData> {
         for (int i = 0; i < specializations.size(); i++) {
             specializations.get(i).setIndex(i);
         }
+    }
+
+    private static boolean isReplacedThroughBoxingOverload(SpecializationData specialization, SpecializationData replacingSpecialization) {
+        for (SpecializationData intermediate : specialization.getReplacedBy()) {
+            if (replacingSpecialization.getReplaces().contains(intermediate) && ElementUtils.isObject(intermediate.getReturnType().getType()) &&
+                            intermediate.isBoxingOverloadable(specialization)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void resolveReplaces(NodeData node, boolean emitMessages) {

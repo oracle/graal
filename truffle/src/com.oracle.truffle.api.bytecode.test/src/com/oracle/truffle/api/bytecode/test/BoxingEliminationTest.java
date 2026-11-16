@@ -80,6 +80,60 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     protected static final BytecodeDSLTestLanguage LANGUAGE = null;
 
     @Test
+    public void testTransitiveBoxingOverload() {
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginAbs();
+            b.beginTransitiveBoxingLoad();
+            b.emitLoadArgument(0);
+            b.endTransitiveBoxingLoad();
+            b.endAbs();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        BoxingValue receiver = new BoxingValue(42);
+        assertEquals(42, node.getCallTarget().call(receiver));
+        assertEquals(42, node.getCallTarget().call(receiver));
+        assertInstructions(node, "load.argument", "c.TransitiveBoxingLoad$Cached$int", "c.Abs$Int", "return");
+        assertEquals(1, receiver.intCalls);
+        assertEquals(1, receiver.cachedCalls);
+
+        receiver.value = "result";
+        assertEquals("result", node.getCallTarget().call(receiver));
+        assertInstructions(node, "load.argument", "c.TransitiveBoxingLoad$Cached$Generic", "c.Abs", "return");
+        assertEquals(2, receiver.intCalls);
+        assertEquals(1, receiver.cachedCalls);
+        assertEquals(0, receiver.fallbackCalls);
+
+        assertEquals("result", node.getCallTarget().call(receiver));
+        assertEquals(2, receiver.cachedCalls);
+        assertEquals(43, node.getCallTarget().call(new BoxingValue(43)));
+
+        // Overflow replaces both cached entry points, including the primitive boxing overload.
+        BoxingValue overflow = new BoxingValue("overflow");
+        assertEquals("overflow", node.getCallTarget().call(overflow));
+        assertEquals("result", node.getCallTarget().call(receiver));
+        assertInstructions(node, "load.argument", "c.TransitiveBoxingLoad$Fallback0", "c.Abs", "return");
+        assertEquals(1, overflow.fallbackCalls);
+        assertEquals(1, receiver.fallbackCalls);
+        assertEquals(2, receiver.intCalls);
+        assertEquals(2, receiver.cachedCalls);
+    }
+
+    static final class BoxingValue {
+        Object value;
+        int intCalls;
+        int cachedCalls;
+        int fallbackCalls;
+
+        BoxingValue(Object value) {
+            this.value = value;
+        }
+    }
+
+    @Test
     public void testArgumentAbs() {
         // return - (arg0)
         BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
@@ -2384,6 +2438,35 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         protected BoxingEliminationTestRootNode(BytecodeDSLTestLanguage language,
                         FrameDescriptor.Builder frameDescriptor) {
             super(language, frameDescriptor.build());
+        }
+
+        @Operation
+        @SuppressWarnings("unused")
+        static final class TransitiveBoxingLoad {
+
+            @Specialization(guards = "receiver == cachedReceiver", limit = "2", rewriteOn = UnexpectedResultException.class)
+            public static int doInt(BoxingValue receiver, @Cached("receiver") BoxingValue cachedReceiver) throws UnexpectedResultException {
+                cachedReceiver.intCalls++;
+                Object value = cachedReceiver.value;
+                if (value instanceof Integer i) {
+                    return i;
+                }
+                throw new UnexpectedResultException(value);
+            }
+
+            @ForceQuickening
+            @Specialization(guards = "receiver == cachedReceiver", limit = "2", replaces = "doInt")
+            public static Object doCached(BoxingValue receiver, @Cached("receiver") BoxingValue cachedReceiver) {
+                cachedReceiver.cachedCalls++;
+                return cachedReceiver.value;
+            }
+
+            @ForceQuickening
+            @Specialization(guards = "receiver == cachedReceiver", limit = "3", replaces = "doCached")
+            public static Object doFallback(BoxingValue receiver, @Cached("receiver") BoxingValue cachedReceiver) {
+                cachedReceiver.fallbackCalls++;
+                return cachedReceiver.value;
+            }
         }
 
         @Operation
