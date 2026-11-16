@@ -244,6 +244,19 @@ public class SandboxPolicyTest {
         assertIsolateSpecificOptionRejectedWithoutSpawnIsolate("engine.MaxIsolateMemory", "128MB");
     }
 
+    @Test
+    public void testUntrustedSandboxRejectsDisabledStaticObjectSafetyChecks() {
+        // Run only for UNTRUSTED policy, no need to repeat this with other policies
+        Assume.assumeTrue(configuration.sandboxPolicy == SandboxPolicy.UNTRUSTED);
+
+        AbstractPolyglotTest.assertFails(() -> {
+            Engine engine = newEngineBuilder(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).option("engine.ForceStaticObjectSafetyChecks", "false").build();
+            engine.close();
+        }, IllegalArgumentException.class, e -> {
+            assertSandboxPolicyException(e, "The engine.ForceStaticObjectSafetyChecks option is set to false, but must be set to true.");
+        });
+    }
+
     private static void assertIsolateSpecificOptionRejectedWithoutSpawnIsolate(String optionName, String optionValue) {
         AbstractPolyglotTest.assertFails(() -> {
             Engine engine = Engine.newBuilder(TrustedLanguage.ID).allowExperimentalOptions(true).option(optionName, optionValue).build();

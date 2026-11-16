@@ -195,6 +195,7 @@ public class PolyglotIsolateSandboxPolicyTest {
         if (isInterpreterCallStackHeadRoomSupported()) {
             try (Context context = newUntrustedContextBuilder("triste").sandbox(SandboxPolicy.UNTRUSTED).build()) {
                 assertTrue(context.eval("triste", "test(isIsolated(),1)").asBoolean());
+                assertTrue(context.eval("triste", "test(areStaticObjectSafetyChecksForced(),1)").asBoolean());
                 boolean hasCompilerMitigation = context.eval("triste", "test(hasCompilerMitigation(),1)").asBoolean();
                 assertTrue(TruffleTestAssumptions.isExternalIsolate() != hasCompilerMitigation);
             }
