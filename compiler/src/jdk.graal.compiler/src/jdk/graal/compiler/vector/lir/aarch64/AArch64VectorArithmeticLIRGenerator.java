@@ -44,6 +44,8 @@ import static jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp.FSQRT;
 import static jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp.FSUB;
 import static jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp.LSL;
 import static jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp.LSR;
+import static jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp.MADD;
+import static jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp.MSUB;
 import static jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp.MUL;
 import static jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp.NEG;
 import static jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp.NOT;
@@ -289,16 +291,39 @@ public class AArch64VectorArithmeticLIRGenerator extends AArch64ArithmeticLIRGen
     public Value emitMul(Value a, Value b, boolean setFlags) {
         if (isVectorKind(a)) {
             assert !setFlags : "Must not use flags with vector kinds " + a + " " + b;
+            if (isLongVectorKind(a)) {
+                return emitVectorLongMul(a, b);
+            }
             return emitVectorBinary(getASIMDOpCode(a, MUL, FMUL), a, b);
         } else {
             return super.emitMul(a, b, setFlags);
         }
     }
 
+    private static boolean isLongVectorKind(Value v) {
+        return ((AArch64Kind) v.getPlatformKind()).getScalar() == AArch64Kind.QWORD;
+    }
+
+    /**
+     * NEON has no integer multiply for 64-bit lanes, see {@link AArch64VectorLongMulOp}.
+     */
+    private Variable emitVectorLongMul(Value a, Value b) {
+        LIRKind resultKind = LIRKind.combine(a, b);
+        Variable result = getLIRGen().newVariable(resultKind);
+        LIRKind tempKind = LIRKind.value(AArch64Kind.V128_DWORD);
+        getLIRGen().append(new AArch64VectorLongMulOp(result, asAllocatable(a), asAllocatable(b),
+                        getLIRGen().newVariable(tempKind), getLIRGen().newVariable(tempKind), getLIRGen().newVariable(tempKind)));
+        return result;
+    }
+
     @Override
     public Value emitMNeg(Value a, Value b) {
         if (isVectorKind(a)) {
             assert isVectorKind(b) : b.getPlatformKind();
+            if (isLongVectorKind(a)) {
+                /* There is no NEON MNEG equivalent for 64-bit lanes. */
+                return emitNegate(emitVectorLongMul(a, b), false);
+            }
             return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.MNEG, true, a, b);
         } else {
             return super.emitMNeg(a, b);
@@ -857,6 +882,12 @@ public class AArch64VectorArithmeticLIRGenerator extends AArch64ArithmeticLIRGen
     protected Value emitMultiplyAddSub(AArch64ArithmeticOp op, Value a, Value b, Value c) {
         if (isVectorKind(a)) {
             assert a.getPlatformKind() == b.getPlatformKind() : a.getPlatformKind() + " " + b.getPlatformKind();
+            if (isLongVectorKind(a) && (op == MADD || op == MSUB)) {
+                /* There are no NEON MLA/MLS equivalents for 64-bit lanes. */
+                Value product = emitVectorLongMul(a, b);
+                LIRKind resultKind = LIRKind.combine(product, c);
+                return op == MADD ? emitAdd(resultKind, c, product, false) : emitSub(resultKind, c, product, false);
+            }
             Variable result;
             if (op == SMADDL || op == SMSUBL) {
                 AArch64Kind aKind = ((AArch64Kind) a.getPlatformKind()).getScalar();
