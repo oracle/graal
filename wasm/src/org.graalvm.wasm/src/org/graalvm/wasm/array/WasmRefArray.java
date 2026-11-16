@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -99,7 +99,8 @@ public final class WasmRefArray extends WasmArray {
 
     @Override
     public void setObj(int index, Object value) throws UnsupportedTypeException {
-        if (type().matchesValue(value)) {
+        ReferenceType elementType = (ReferenceType) type().asArrayType().fieldType().storageType();
+        if (elementType.matchesValue(value)) {
             array[index] = value;
         } else {
             throw UnsupportedTypeException.create(new Object[]{value});
