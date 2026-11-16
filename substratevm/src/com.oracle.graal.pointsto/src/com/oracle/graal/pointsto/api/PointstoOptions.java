@@ -39,10 +39,24 @@ import jdk.graal.compiler.options.OptionKey;
 public class PointstoOptions {
 
     @Option(help = "Track primitive values using the infrastructure of points-to analysis.")//
-    public static final OptionKey<Boolean> TrackPrimitiveValues = new OptionKey<>(true);
+    public static final OptionKey<Boolean> TrackPrimitiveValues = new OptionKey<>(true) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (!newValue) {
+                UsePredicates.update(values, false);
+            }
+        }
+    };
 
     @Option(help = "Use predicates in points-to analysis.")//
-    public static final OptionKey<Boolean> UsePredicates = new OptionKey<>(true);
+    public static final OptionKey<Boolean> UsePredicates = new OptionKey<>(true) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                TrackPrimitiveValues.update(values, true);
+            }
+        }
+    };
 
     @Option(help = "Use experimental Reachability Analysis instead of points-to.")//
     public static final OptionKey<Boolean> UseExperimentalReachabilityAnalysis = new OptionKey<>(false);
