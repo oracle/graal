@@ -490,6 +490,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                 }
             }
             if (sandboxPolicy.isStricterOrEqual(SandboxPolicy.UNTRUSTED)) {
+                boolean forceStaticObjectSafetyChecks = parseOption(PolyglotEngineOptions.ForceStaticObjectSafetyChecks, "engine.ForceStaticObjectSafetyChecks", options,
+                                systemPropertiesOptions, useSystemProperties);
+                if (!forceStaticObjectSafetyChecks) {
+                    if (hasBeenSet("engine.ForceStaticObjectSafetyChecks", options, systemPropertiesOptions, useSystemProperties)) {
+                        throw sandboxPolicyException(sandboxPolicy, "The engine.ForceStaticObjectSafetyChecks option is set to false, but must be set to true.",
+                                        "use the default value (true) by removing Builder.option(\"engine.ForceStaticObjectSafetyChecks\", \"false\") or set it to true");
+                    } else {
+                        optionsWithPresets.put("engine.ForceStaticObjectSafetyChecks", "true");
+                    }
+                }
                 if (hasBeenSet("sandbox.MaxASTDepth", options, systemPropertiesOptions, useSystemProperties)) {
                     OptionKey<Integer> maxASTDepthOptionKey = EngineAccessor.SANDBOX.getMaxASTDepthOption();
                     int maxASTDepth = parseOption(maxASTDepthOptionKey, "sandbox.MaxASTDepth", options, systemPropertiesOptions, useSystemProperties);

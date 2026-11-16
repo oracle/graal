@@ -93,6 +93,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.TestAPIAccessor;
 
 @TruffleLanguage.Registration(id = PolyglotIsolateTestLanguage.ID, name = PolyglotIsolateTestLanguage.ID, //
                 defaultMimeType = PolyglotIsolateTestLanguage.MIME_TYPE, //
@@ -712,6 +713,9 @@ class PolyglotIsolateTestLanguage extends TruffleLanguage<PolyglotIsolateTestLan
                     }
                 case "isMemoryProtected":
                     return ImageInfo.inImageRuntimeCode() && isMemoryProtected();
+                case "areStaticObjectSafetyChecksForced":
+                    Object languageInstance = TestAPIAccessor.languageAccess().getPolyglotLanguageInstance(getLanguage(PolyglotIsolateTestLanguage.class));
+                    return TestAPIAccessor.ENGINE.areStaticObjectSafetyChecksForced(languageInstance);
                 default:
                     throw new ExecuteException("Unknown request " + hostMethodToCall);
             }

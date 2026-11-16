@@ -19,6 +19,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-72833: Bytecode DSL: Added execution-metadata options on `OperationProxy.Proxyable` (`bindFrame`, `bindBytecodeNode`, `bindBytecodeIndex`) and `@Bind("$bytecodeIndex")`. AST indices default to `-1` unless explicitly bound.
 * GR-72833: Specialization DSL: Fixed empty variadic child validation when execute methods provide all evaluated operands.
 * GR-81544: Bytecode DSL: Added `BytecodeRootNode.getInstrumentationNodeObject(TagTreeNode)` to supply tag-specific metadata, including variable names for read/write instrumentation.
+* GR-81694: `SandboxPolicy.UNTRUSTED` now automatically enables `engine.ForceStaticObjectSafetyChecks`. Explicitly setting this option to `false` in an untrusted context is rejected.
 
 ## Version 25.5
 
