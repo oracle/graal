@@ -26,6 +26,7 @@ package com.oracle.svm.truffle.api;
 
 import java.io.PrintStream;
 import java.util.Map;
+import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
@@ -47,6 +48,7 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DiagnosticsOutputDirectory;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -89,6 +91,11 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     protected TruffleTier newTruffleTier(OptionValues options) {
         InstrumentationSuite instrumentationSuite = newInstrumentationSuite();
         instrumentationSuite.appendPhase(new BasePhase<TruffleTierContext>() {
+            @Override
+            public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+                return ALWAYS_APPLICABLE;
+            }
+
             @Override
             protected void run(StructuredGraph graph, TruffleTierContext context) {
                 TypedEntrySupport.afterTruffleTier(graph);
