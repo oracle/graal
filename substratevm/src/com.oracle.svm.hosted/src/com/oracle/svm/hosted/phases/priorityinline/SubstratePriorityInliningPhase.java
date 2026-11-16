@@ -70,8 +70,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.priorityinline.CallTree;
@@ -167,33 +165,28 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
 
     private final PGOProfilesLookup pgoProfiles;
     private final RuntimeConfiguration runtimeConfig;
-    private final OptimisticOptimizations optimisticOpts;
     private final HostedUniverse universe;
-    private final PhaseSuite<HighTierContext> highTier;
     private final boolean layeredBuild;
 
     @SharedGlobalPhaseState private static volatile boolean IPEAShutDownHookAdded;
     static final InterProceduralPartialEscapeAnalysisStatistics IPEAStatistics = new InterProceduralPartialEscapeAnalysisStatistics();
 
-    private SubstratePriorityInliningPhase(CanonicalizerPhase canonicalizer, OptionValues options, RuntimeConfiguration runtimeConfig, OptimisticOptimizations optimisticOpts,
-                    HostedUniverse universe, PhaseSuite<HighTierContext> highTier, SubstrateInliningProvider inliningProvider, PGOProfilesLookup pgoProfiles) {
+    private SubstratePriorityInliningPhase(CanonicalizerPhase canonicalizer, OptionValues options, RuntimeConfiguration runtimeConfig,
+                    HostedUniverse universe, SubstrateInliningProvider inliningProvider, PGOProfilesLookup pgoProfiles) {
         super(canonicalizer, options, inliningProvider);
         this.runtimeConfig = runtimeConfig;
-        this.optimisticOpts = optimisticOpts;
         this.universe = universe;
-        this.highTier = highTier;
         this.pgoProfiles = pgoProfiles;
         this.layeredBuild = ImageLayerBuildingSupport.buildingExtensionLayer();
     }
 
     public SubstratePriorityInliningPhase(SubstratePriorityInliningPhase oldPhase, SubstrateInliningProvider substrateInliningProvider, PGOProfilesLookup pgoProfiles) {
-        this(oldPhase.canonicalizer, HostedOptionValues.singleton().get(), oldPhase.runtimeConfig, oldPhase.optimisticOpts, oldPhase.universe, oldPhase.highTier, substrateInliningProvider,
-                        pgoProfiles);
+        this(oldPhase.canonicalizer, HostedOptionValues.singleton().get(), oldPhase.runtimeConfig, oldPhase.universe, substrateInliningProvider, pgoProfiles);
     }
 
-    public SubstratePriorityInliningPhase(CanonicalizerPhase canonicalizer, OptionValues options, RuntimeConfiguration runtimeConfig, OptimisticOptimizations optimisticOpts,
-                    HostedUniverse universe, PhaseSuite<HighTierContext> highTier, PGOProfilesLookup pgoProfiles) {
-        this(canonicalizer, options, runtimeConfig, optimisticOpts, universe, highTier, new SubstrateInliningProvider(universe, _ -> null), pgoProfiles);
+    public SubstratePriorityInliningPhase(CanonicalizerPhase canonicalizer, OptionValues options, RuntimeConfiguration runtimeConfig,
+                    HostedUniverse universe, PGOProfilesLookup pgoProfiles) {
+        this(canonicalizer, options, runtimeConfig, universe, new SubstrateInliningProvider(universe, _ -> null), pgoProfiles);
     }
 
     private static void registerIPEAStatisticsShutdownHook(TrackIPEAMode trackIPEAMode) {
@@ -318,8 +311,7 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
                 new BoxNodeIdentityPhase().apply(graphCopy, getContext());
                 CallTree.mergeUnwinds(graphCopy);
 
-                HighTierContext highTierContext = new HighTierContext(getContext().getProviders(), highTier, optimisticOpts);
-                applyPGOProfiles(graphCopy, highTierContext, replaceePosition);
+                applyPGOProfiles(graphCopy, getContext(), replaceePosition);
 
                 ref = UseGraphCache.getValue(getOptions()) ? selectedGraphCache.createRef(inlinee, graphCopy) : selectedGraphCache.createNonCounted(graphCopy);
             }
