@@ -579,6 +579,19 @@ public @interface GenerateBytecode {
     String defaultLocalValue() default "";
 
     /**
+     * Disables the assertions that reject {@code null} values in local stores and local accessor
+     * stores. The default is {@code false}.
+     * <p>
+     * This option provides temporary compatibility for interpreters that store {@code null} in
+     * locals. Such interpreters should migrate to non-null sentinel values. This option will be
+     * deprecated in a future release. It does not permit a {@code null}
+     * {@link #defaultLocalValue() default local value}.
+     *
+     * @since 25.7
+     */
+    boolean disableLocalNullChecks() default false;
+
+    /**
      * Specifies the exception to throw when attempting to load a cleared {@link BytecodeLocal
      * local} (i.e., a local that has not been written to).
      * <p>

@@ -506,6 +506,10 @@ final class BytecodeNodeElement extends AbstractElement {
             return ex;
         }
 
+        if (generic && !parent.model.disableLocalNullChecks) {
+            b.statement("assert value != null : \"Local values must not be null.\"");
+        }
+
         AbstractBytecodeNodeElement.buildVerifyFrameDescriptor(b, true);
         if (tier.isCached()) {
             b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");

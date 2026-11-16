@@ -139,7 +139,14 @@ public class LocalHelpersTest {
     private boolean hasBoxingElimination() {
         Class<?> interpreterClass = bytecode.getGeneratedClass();
         return interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEObjectDefault.class ||
-                        interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEIllegal.class;
+                        interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEIllegal.class || interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEIllegalRootScoped.class ||
+                        interpreterClass == BytecodeNodeWithLocalIntrospectionWithBENullStores.class;
+    }
+
+    private boolean allowsNullStores() {
+        Class<?> interpreterClass = bytecode.getGeneratedClass();
+        return interpreterClass == BytecodeNodeWithLocalIntrospectionBaseNullStores.class ||
+                        interpreterClass == BytecodeNodeWithLocalIntrospectionWithBENullStores.class;
     }
 
     private boolean capturesFrameForTrace() {
@@ -1749,33 +1756,30 @@ public class LocalHelpersTest {
     public void testGetLocalDefaultOrIllegalGetLocal() {
         // @formatter:off
         // // B0
-        // result;
         // {
         //   var l0;
         //   if (arg0) {
-        //     result = getLocal(l0)
+        //     return getLocal(l0)
         //   } else {
         //     l0 = 42L
         //   }
         // }
         // {
         //   var l1;
-        //   result = getLocal(l1);
+        //   return getLocal(l1);
         // }
-        // return result
         // @formatter:on
 
         BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
             b.beginRoot();
 
-            BytecodeLocal result = makeLocal(b, "result");
             b.beginBlock();
             BytecodeLocal l = makeLocal(b, "l0");
             b.beginIfThenElse();
             b.emitLoadArgument(0);
-            b.beginStoreLocal(result);
+            b.beginReturn();
             b.emitGetLocal(l.getLocalOffset());
-            b.endStoreLocal();
+            b.endReturn();
             b.beginStoreLocal(l);
             b.emitLoadConstant(42);
             b.endStoreLocal();
@@ -1784,14 +1788,10 @@ public class LocalHelpersTest {
 
             b.beginBlock();
             l = makeLocal(b, "l1");
-            b.beginStoreLocal(result);
-            b.emitGetLocal(l.getLocalOffset());
-            b.endStoreLocal();
-            b.endBlock();
-
             b.beginReturn();
-            b.emitLoadLocal(result);
+            b.emitGetLocal(l.getLocalOffset());
             b.endReturn();
+            b.endBlock();
 
             b.endRoot();
         });
@@ -2273,6 +2273,125 @@ public class LocalHelpersTest {
         assertArrayEquals(new Object[]{null, null}, (Object[]) inner.call(false));
     }
 
+    @Test
+    @SuppressWarnings("try")
+    public void testLocalNullStores() {
+        // These checks rely on Java assertions in generated interpreter code.
+        try (Context c = BytecodeDSLTestLanguage.createPolyglotContextWithCompilationDisabled()) {
+            runLocalNullStoreAssertions();
+        }
+    }
+
+    private void runLocalNullStoreAssertions() {
+        for (String store : List.of("StoreLocal", "LocalAccessor", "LocalRangeAccessor")) {
+            for (boolean cached : new boolean[]{false, true}) {
+                BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+                    b.beginRoot();
+                    BytecodeLocal local = b.createLocal();
+                    switch (store) {
+                        case "StoreLocal" -> {
+                            b.beginStoreLocal(local);
+                            b.emitLoadArgument(0);
+                            b.endStoreLocal();
+                        }
+                        case "LocalAccessor" -> {
+                            b.beginSetLocalAccessor(local, FrameSlotKind.Object);
+                            b.emitLoadArgument(0);
+                            b.endSetLocalAccessor();
+                        }
+                        case "LocalRangeAccessor" -> {
+                            b.beginSetLocalRangeAccessor(new BytecodeLocal[]{local}, FrameSlotKind.Object, 0);
+                            b.emitLoadArgument(0);
+                            b.endSetLocalRangeAccessor();
+                        }
+                        default -> throw new AssertionError(store);
+                    }
+                    b.beginReturn();
+                    b.emitLoadLocal(local);
+                    b.endReturn();
+                    b.endRoot();
+                });
+                root.getBytecodeNode().setUncachedThreshold(cached ? 0 : Integer.MAX_VALUE);
+                // Exercise null before and after primitive/object stores in both modes.
+                for (Object value : new Object[]{42L, "value"}) {
+                    if (!allowsNullStores()) {
+                        assertThrows(store, AssertionError.class, () -> root.getCallTarget().call((Object) null));
+                    }
+                    assertEquals(value, root.getCallTarget().call(value));
+                    if (allowsNullStores()) {
+                        assertNull(root.getCallTarget().call((Object) null));
+                    } else {
+                        assertThrows(store, AssertionError.class, () -> root.getCallTarget().call((Object) null));
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testMaterializedLocalNullStores() {
+        // These checks rely on Java assertions in generated interpreter code.
+        try (Context c = BytecodeDSLTestLanguage.createPolyglotContextWithCompilationDisabled()) {
+            runMaterializedLocalNullStoreAssertions();
+        }
+    }
+
+    private void runMaterializedLocalNullStoreAssertions() {
+        for (boolean accessor : new boolean[]{false, true}) {
+            for (boolean cached : new boolean[]{false, true}) {
+                BytecodeRootNodes<BytecodeNodeWithLocalIntrospection> roots = parseNodes(b -> {
+                    b.beginRoot();
+                    BytecodeLocal local = b.createLocal();
+                    b.beginRoot();
+                    if (accessor) {
+                        b.beginSetMaterializedLocalAccessor(local);
+                        b.emitLoadConstant(FrameSlotKind.Object);
+                        b.emitLoadArgument(0);
+                        b.emitLoadArgument(1);
+                        b.endSetMaterializedLocalAccessor();
+                    } else {
+                        b.beginStoreLocalMaterialized(local);
+                        b.emitLoadArgument(0);
+                        b.emitLoadArgument(1);
+                        b.endStoreLocalMaterialized();
+                    }
+                    b.beginReturn();
+                    b.beginLoadLocalMaterialized(local);
+                    b.emitLoadArgument(0);
+                    b.endLoadLocalMaterialized();
+                    b.endReturn();
+                    b.endRoot();
+                    b.beginYield();
+                    b.emitLoadNull();
+                    b.endYield();
+                    b.beginReturn();
+                    b.emitLoadLocal(local);
+                    b.endReturn();
+                    b.endRoot();
+                });
+                BytecodeNodeWithLocalIntrospection owner = roots.getNode(0);
+                BytecodeNodeWithLocalIntrospection writer = roots.getNode(1);
+                owner.getBytecodeNode().setUncachedThreshold(cached ? 0 : Integer.MAX_VALUE);
+                writer.getBytecodeNode().setUncachedThreshold(cached ? 0 : Integer.MAX_VALUE);
+                for (Object value : new Object[]{42L, "value"}) {
+                    ContinuationResult result = (ContinuationResult) owner.getCallTarget().call();
+                    if (!allowsNullStores()) {
+                        assertThrows(AssertionError.class, () -> writer.getCallTarget().call(result.getFrame(), null));
+                    }
+                    writer.getCallTarget().call(result.getFrame(), value);
+                    if (allowsNullStores()) {
+                        assertNull(writer.getCallTarget().call(result.getFrame(), null));
+                    } else {
+                        assertThrows(AssertionError.class, () -> writer.getCallTarget().call(result.getFrame(), null));
+                        // A rejected store must leave the previous value intact.
+                        assertEquals(value, result.continueWith(null));
+                    }
+                }
+            }
+        }
+    }
+
 }
 
 @GenerateBytecodeTestVariants({
@@ -2309,6 +2428,19 @@ public class LocalHelpersTest {
                                 boxingEliminationTypes = {boolean.class, long.class}, //
                                 enableUncachedInterpreter = true, //
                                 defaultLocalValue = "resolveDefault()", //
+                                enableYield = true, //
+                                enableMaterializedLocalAccesses = true, //
+                                captureFramesForTrace = true)),
+                @Variant(suffix = "BaseNullStores", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                disableLocalNullChecks = true, //
+                                enableYield = true, //
+                                enableMaterializedLocalAccesses = true, //
+                                captureFramesForTrace = true)),
+                @Variant(suffix = "WithBENullStores", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                                disableLocalNullChecks = true, //
+                                enableQuickening = true, //
+                                enableUncachedInterpreter = true, //
+                                boxingEliminationTypes = {boolean.class, long.class}, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 captureFramesForTrace = true))

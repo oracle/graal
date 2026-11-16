@@ -134,6 +134,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public boolean enableSerialization;
     public boolean enableQuickening;
     public boolean allowUnsafe;
+    public boolean disableLocalNullChecks;
     public boolean enableYield;
     public boolean enableMaterializedLocalAccesses;
     public BytecodeIndexMode bytecodeIndexMode;

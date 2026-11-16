@@ -252,9 +252,11 @@ public class BytecodeDSLBuiltins {
                                         .addImmediate(ImmediateKind.FRAME_INDEX, "frame_index"));
         m.storeLocalInstruction = m.instruction(InstructionKind.STORE_LOCAL, "store.local", m.signature(void.class, "value", Object.class, Object.class)) //
                         .addImmediate(ImmediateKind.FRAME_INDEX, "frame_index");
-        m.storeLocalOperation = m.operation(OperationKind.STORE_LOCAL, "StoreLocal", """
+        m.storeLocalOperation = m.operation(OperationKind.STORE_LOCAL, "StoreLocal", String.format("""
                         StoreLocal writes the value produced by {@code value} into the {@code local} in the current frame.
-                        """) //
+                        The value must be non-null unless {@link %s#disableLocalNullChecks()} is enabled.
+                        Otherwise, attempting to store null throws {@link AssertionError} when assertions are enabled.
+                        """, GENERATE_BYTECODE)) //
                         .setVoid(true) //
                         .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to store to")) //
                         .setDynamicOperands(child("value")) //
@@ -285,10 +287,12 @@ public class BytecodeDSLBuiltins {
             m.storeLocalMaterializedOperation = m.operation(OperationKind.STORE_LOCAL_MATERIALIZED, "StoreLocalMaterialized",
                             String.format("""
                                             StoreLocalMaterialized writes the value produced by {@code value} into {@code local} in the materialized frame produced by {@code frame}.
+                                            The value must be non-null unless {@link %s#disableLocalNullChecks()} is enabled.
+                                            Otherwise, attempting to store null throws {@link AssertionError} when assertions are enabled.
                                             This operation can be used to store locals defined by the current root or an enclosing root.
                                             The local must belong to the materialized frame. It should also be in scope, otherwise the operation may produce unexpected values.
                                             The interpreter will validate the scope if {@link %s#bytecodeIndexMode the bytecode index mode} is {@code FRAME}.
-                                            """, GENERATE_BYTECODE)) //
+                                            """, GENERATE_BYTECODE, GENERATE_BYTECODE)) //
                             .setVoid(true) //
                             .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to store to")) //
                             .setDynamicOperands(child("frame"), child("value")) //

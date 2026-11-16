@@ -300,6 +300,8 @@ An operation may need to produce more than one result, or to modify local variab
 
 The Bytecode DSL supports local variables using its [`BytecodeLocal`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeLocal.java) abstraction.
 You can allocate a `BytecodeLocal` in the current frame using the builder's `createLocal` method.
+A local can store any non-null Java value.
+When [boxing elimination](Optimization.md#boxing-elimination) is enabled, the interpreter will automatically try to specialize the storage representation of each local.
 
 ### Accessing locals
 In bytecode, you can use `LoadLocal` and `StoreLocal` operations to access the local.

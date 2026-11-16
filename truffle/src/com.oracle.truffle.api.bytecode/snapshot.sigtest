@@ -420,6 +420,7 @@ intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean additionalAssertions()
 meth public abstract !hasdefault boolean allowUnsafe()
 meth public abstract !hasdefault boolean captureFramesForTrace()
+meth public abstract !hasdefault boolean disableLocalNullChecks()
 meth public abstract !hasdefault boolean enableBlockScoping()
 meth public abstract !hasdefault boolean enableBytecodeDebugListener()
 meth public abstract !hasdefault boolean enableCompressedSources()

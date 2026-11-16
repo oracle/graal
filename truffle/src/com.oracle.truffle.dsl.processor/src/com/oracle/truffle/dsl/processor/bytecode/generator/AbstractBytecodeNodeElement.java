@@ -423,6 +423,10 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             return ex;
         }
 
+        if (!parent.model.disableLocalNullChecks) {
+            b.statement("assert value != null : \"Local values must not be null.\"");
+        }
+
         AbstractBytecodeNodeElement.buildVerifyFrameDescriptor(b, true);
 
         b.startStatement();

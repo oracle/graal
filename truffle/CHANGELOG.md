@@ -8,6 +8,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-80168: Bytecode DSL: Added `serializeBuilderBytecode`, `deserializeBuilderBytecode`, `serializeExecutionBytecode`, and `deserializeExecutionBytecode` methods. Execution bytecode can be loaded without reading or replaying builder calls. Deprecated the builder-only `serialize` and `deserialize` methods.
 * GR-79412: Restored automatic splitting during interpreter direct-call execution instead of compilation preparation. See [Splitting](docs/splitting/Splitting.md) for details.
 * GR-81389: Bytecode DSL: Changed `GenerateBytecode.defaultLocalValue` to require a non-null value.
+* GR-81389: Bytecode DSL: Local stores and accessor `setObject` methods require non-null Java values, checked with assertions. Interpreters can temporarily enable `GenerateBytecode.disableLocalNullChecks` to support null local stores while migrating to non-null values.
+* GR-81389: Bytecode DSL: `BytecodeNode.setLocalValue`, `setLocalValues`, and `copyLocalValues` now mark locals illegal when given `null`, or restore the default local value when given that value (compared by identity), without updating cached type profiles.
 
 ## Version 25.6
 

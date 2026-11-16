@@ -904,7 +904,7 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
 
             BytecodeLocal x = b.createLocal();
             b.beginStoreLocal(x);
-            b.emitLoadNull();
+            b.emitLoadArgument(0);
             b.endStoreLocal();
 
             b.beginIncrementValue();
@@ -932,7 +932,7 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
         List<Instruction> instructionsToTest;
         if (run.hasInstructionRewriting()) {
             assertInstructions(node,
-                            "load.null",
+                            "load.argument",
                             "store.local",
                             "clear.local",
                             "load.constant",
@@ -941,7 +941,7 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
             instructionsToTest = filterTrace(node.getBytecodeNode().getInstructionsAsList());
         } else {
             assertInstructions(node,
-                            "load.null",
+                            "load.argument",
                             "store.local",
                             "load.constant",
                             "pop",
@@ -956,7 +956,7 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
             instructionsToTest = List.of(filtered.get(0), filtered.get(1), filtered.get(4), filtered.get(9), filtered.get(10));
         }
         assertEquals(42L, node.getCallTarget().call(123));
-        assertEquals("load.null", instructionsToTest.get(0).getName());
+        assertEquals("load.argument", instructionsToTest.get(0).getName());
         assertEquals("store.local", instructionsToTest.get(1).getName());
         assertEquals("clear.local", instructionsToTest.get(2).getName());
         assertEquals("load.constant", instructionsToTest.get(3).getName());
@@ -966,7 +966,7 @@ public class InstructionRewritingTest extends AbstractBasicInterpreterTest {
         node.getRootNodes().update(config);
 
         assertInstructions(node,
-                        "load.null",
+                        "load.argument",
                         "store.local",
                         "load.constant",
                         "c.IncrementValue",
