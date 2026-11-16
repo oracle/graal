@@ -35,7 +35,8 @@ import jdk.graal.compiler.code.DataSection.Data;
 import jdk.graal.compiler.code.DataSection.RawData;
 import jdk.vm.ci.code.site.DataSectionReference;
 
-/// Checks that closing a data section preserves its computed layout and emitted contents.
+/// Checks that closing a data section preserves its computed layout and emitted contents, including
+/// layouts with padding from `ForceAdversarialLayout`.
 public class DataSectionTest extends GraalCompilerTest {
     @Test
     public void retainedAlignmentUpdateAfterClose() {
