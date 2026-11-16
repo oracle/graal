@@ -29,15 +29,21 @@ import static org.junit.Assume.assumeTrue;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.amd64.AMD64AddressLowering;
 import jdk.graal.compiler.core.amd64.AMD64AddressNode;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.LoopBeginNode;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
 import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -143,6 +149,77 @@ public class AMD64AddressLoweringTest extends GraalCompilerTest {
         ValueNode index = graph.addOrUniqueWithInputs(new NegateNode(new AddNode(new NegateNode(const64(13)), const64(3))));
         AddressNode result = lowering.lower(base, index);
         assertAddress(result, null, null, Stride.S4, 2010);
+    }
+
+    public static long loopIndex(long start, int iterations) {
+        long value = start;
+        for (int i = 0; i < iterations; i++) {
+            value += 7;
+        }
+        return value;
+    }
+
+    private void checkLoopIndex(long constant, Stride stride, int displacement) {
+        checkLoopIndex(constant, stride, displacement, false);
+    }
+
+    private void checkLoopIndex(long constant, Stride stride, int displacement, boolean sharedBaseAndIndex) {
+        StructuredGraph loopGraph = parseEager("loopIndex", AllowAssumptions.NO);
+        ValuePhiNode phi = loopGraph.getNodes().filter(ValuePhiNode.class).filter(p -> IntegerStamp.getBits(((ValuePhiNode) p).stamp(NodeView.DEFAULT)) == Long.SIZE).first();
+        Assert.assertNotNull(phi);
+        LoopBeginNode loop = (LoopBeginNode) phi.merge();
+        // Address index canonicalization applies to the main loop after strip mining.
+        loop.setMainLoop();
+        ValueNode index = loopGraph.addOrUnique(new AddNode(phi, ConstantNode.forLong(constant, loopGraph)));
+        ValueNode base = sharedBaseAndIndex ? index : null;
+        AMD64AddressNode address = loopGraph.addOrUnique(new AMD64AddressNode(base, index));
+        address.setScale(stride);
+        address.setDisplacement(displacement);
+        address.canonicalizeIndex(GraphUtil.getDefaultSimplifier(getProviders(), false, loopGraph.getAssumptions(), loopGraph.getOptions()));
+
+        Assert.assertSame(base, address.getBase());
+        Assert.assertSame(stride, address.getScale());
+        long expected = displacement + (constant << stride.log2);
+        Assert.assertSame(expected == (int) expected ? phi : index, address.getIndex());
+        long remainingOffset = address.getIndex() == phi ? 0 : constant;
+        long actual = address.getDisplacement() + (remainingOffset << address.getScale().log2);
+        Assert.assertEquals("constant=" + constant + ", stride=" + stride + ", displacement=" + displacement, expected, actual);
+    }
+
+    @Test
+    public void canonicalizeSmallLoopIndex() {
+        for (Stride stride : new Stride[]{Stride.S1, Stride.S2, Stride.S4, Stride.S8}) {
+            checkLoopIndex(42, stride, 31);
+            checkLoopIndex(-42, stride, -31);
+        }
+    }
+
+    @Test
+    public void canonicalizeSharedBaseAndIndex() {
+        for (Stride stride : new Stride[]{Stride.S1, Stride.S2, Stride.S4, Stride.S8}) {
+            checkLoopIndex(42, stride, 31, true);
+            checkLoopIndex(-42, stride, -31, true);
+            checkLoopIndex(0x1_0000_0000L, stride, 31, true);
+        }
+    }
+
+    @Test
+    public void canonicalizeLongLoopIndex() {
+        for (Stride stride : new Stride[]{Stride.S1, Stride.S2, Stride.S4, Stride.S8}) {
+            for (long value : new long[]{0x1_0000_0000L, -0x1_0000_0000L, Long.MIN_VALUE, Long.MAX_VALUE}) {
+                checkLoopIndex(value, stride, 31);
+            }
+        }
+    }
+
+    @Test
+    public void canonicalizeOverflowingLoopDisplacement() {
+        for (Stride stride : new Stride[]{Stride.S1, Stride.S2, Stride.S4, Stride.S8}) {
+            checkLoopIndex(Integer.MAX_VALUE, stride, 1);
+            checkLoopIndex(Integer.MIN_VALUE, stride, -1);
+            checkLoopIndex(1, stride, Integer.MAX_VALUE);
+            checkLoopIndex(-1, stride, Integer.MIN_VALUE);
+        }
     }
 
     private static ConstantNode const64(long value) {
