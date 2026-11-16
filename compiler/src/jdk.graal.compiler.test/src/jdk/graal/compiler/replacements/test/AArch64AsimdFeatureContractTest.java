@@ -51,6 +51,8 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.replacements.StandardGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
+import jdk.graal.compiler.replacements.nodes.Base64DecodeBlockNode;
+import jdk.graal.compiler.replacements.nodes.Base64EncodeBlockNode;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
@@ -114,6 +116,8 @@ public class AArch64AsimdFeatureContractTest extends GraalCompilerTest {
         assertTrue("ASIMD target must retain intrinsic lowering", with.instructions > 0);
     }
 
+    private static final Value POINTER = new Variable(LIRKind.value(AArch64Kind.QWORD), 0);
+    private static final Value INT = new Variable(LIRKind.value(AArch64Kind.DWORD), 1);
     private static final Value FLOAT = new Variable(LIRKind.value(AArch64Kind.SINGLE), 2);
     private static final Value DOUBLE = new Variable(LIRKind.value(AArch64Kind.DOUBLE), 3);
 
@@ -155,5 +159,18 @@ public class AArch64AsimdFeatureContractTest extends GraalCompilerTest {
         assertTrue(SignumNode.isSupported(WITH_ASIMD));
         assertConditionalPlugins(aarch64Plugins(), "Ljava/lang/Math;", "copySign", 2);
         assertConditionalPlugins(standardPlugins(), "Ljava/lang/Math;", "signum", 2);
+    }
+
+    @Test
+    public void testBase64() {
+        assertAsimdLowering(gen -> gen.emitBase64EncodeBlock(null, POINTER, INT, INT, POINTER, INT, INT));
+        assertAsimdLowering(gen -> gen.emitBase64DecodeBlock(null, POINTER, INT, INT, POINTER, INT, INT, INT));
+        assertFalse(Base64EncodeBlockNode.isSupported(WITHOUT_ASIMD));
+        assertTrue(Base64EncodeBlockNode.isSupported(WITH_ASIMD));
+        assertFalse(Base64DecodeBlockNode.isSupported(WITHOUT_ASIMD));
+        assertTrue(Base64DecodeBlockNode.isSupported(WITH_ASIMD));
+        InvocationPlugins plugins = standardPlugins();
+        assertConditionalPlugins(plugins, "Ljava/util/Base64$Encoder;", "encodeBlock", 1);
+        assertConditionalPlugins(plugins, "Ljava/util/Base64$Decoder;", "decodeBlock", 1);
     }
 }

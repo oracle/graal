@@ -751,6 +751,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitBase64EncodeBlock(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value srcPos, Value sl, Value dst, Value dp, Value isURLFlag) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitBase64EncodeBlock requires ASIMD");
         RegisterValue rSrc = AArch64.r0.asValue(src.getValueKind());
         RegisterValue rSp = AArch64.r1.asValue(srcPos.getValueKind());
         RegisterValue rSl = AArch64.r2.asValue(sl.getValueKind());
@@ -768,6 +769,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitBase64DecodeBlock(EnumSet<?> runtimeCheckedCPUFeatures, Value src, Value srcPos, Value sl, Value dst, Value dp, Value isURLFlag, Value unusedIsMimeFlag) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitBase64DecodeBlock requires ASIMD");
         RegisterValue rSrc = AArch64.r0.asValue(src.getValueKind());
         RegisterValue rSp = AArch64.r1.asValue(srcPos.getValueKind());
         RegisterValue rSl = AArch64.r2.asValue(sl.getValueKind());
