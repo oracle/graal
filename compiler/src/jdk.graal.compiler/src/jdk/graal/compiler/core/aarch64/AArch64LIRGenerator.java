@@ -1193,6 +1193,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitDilithiumAlmostNtt(Value coeffs, Value zetas) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitDilithiumAlmostNtt requires ASIMD");
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         RegisterValue rResult = AArch64.r0.asValue(result.getValueKind());
         RegisterValue rCoeffs = AArch64.r0.asValue(coeffs.getValueKind());
@@ -1208,6 +1209,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitDilithiumAlmostInverseNtt(Value coeffs, Value zetas) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitDilithiumAlmostInverseNtt requires ASIMD");
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         RegisterValue rResult = AArch64.r0.asValue(result.getValueKind());
         RegisterValue rCoeffs = AArch64.r0.asValue(coeffs.getValueKind());
@@ -1223,6 +1225,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitDilithiumNttMult(Value product, Value coeffs1, Value coeffs2) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitDilithiumNttMult requires ASIMD");
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         RegisterValue rResult = AArch64.r0.asValue(result.getValueKind());
         RegisterValue rProduct = AArch64.r0.asValue(product.getValueKind());
@@ -1240,6 +1243,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitDilithiumMontMulByConstant(Value coeffs, Value constant) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitDilithiumMontMulByConstant requires ASIMD");
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         RegisterValue rResult = AArch64.r0.asValue(result.getValueKind());
         RegisterValue rCoeffs = AArch64.r0.asValue(coeffs.getValueKind());
@@ -1255,6 +1259,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitDilithiumDecomposePoly(Value input, Value lowPart, Value highPart, Value twoGamma2, Value multiplier) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitDilithiumDecomposePoly requires ASIMD");
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         RegisterValue rResult = AArch64.r0.asValue(result.getValueKind());
         RegisterValue rInput = AArch64.r0.asValue(input.getValueKind());
@@ -1276,6 +1281,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitKyberNtt(Value poly, Value zetas) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitKyberNtt requires ASIMD");
         RegisterValue rResult = AArch64.r0.asValue(LIRKind.value(AArch64Kind.DWORD));
         RegisterValue rPoly = AArch64.r0.asValue(poly.getValueKind());
         RegisterValue rZetas = AArch64.r1.asValue(zetas.getValueKind());
@@ -1289,6 +1295,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitKyberInverseNtt(Value poly, Value zetas) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitKyberInverseNtt requires ASIMD");
         RegisterValue rResult = AArch64.r0.asValue(LIRKind.value(AArch64Kind.DWORD));
         RegisterValue rPoly = AArch64.r0.asValue(poly.getValueKind());
         RegisterValue rZetas = AArch64.r1.asValue(zetas.getValueKind());
@@ -1302,6 +1309,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitKyberNttMult(Value resultValue, Value ntta, Value nttb, Value zetas) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitKyberNttMult requires ASIMD");
         RegisterValue rResult = AArch64.r0.asValue(LIRKind.value(AArch64Kind.DWORD));
         RegisterValue rResultPointer = AArch64.r0.asValue(resultValue.getValueKind());
         RegisterValue rNtta = AArch64.r1.asValue(ntta.getValueKind());
@@ -1319,6 +1327,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitKyberAddPoly2(Value resultValue, Value a, Value b) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitKyberAddPoly2 requires ASIMD");
         RegisterValue rResult = AArch64.r0.asValue(LIRKind.value(AArch64Kind.DWORD));
         RegisterValue rResultPointer = AArch64.r0.asValue(resultValue.getValueKind());
         RegisterValue rA = AArch64.r1.asValue(a.getValueKind());
@@ -1334,6 +1343,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitKyberAddPoly3(Value resultValue, Value a, Value b, Value c) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitKyberAddPoly3 requires ASIMD");
         RegisterValue rResult = AArch64.r0.asValue(LIRKind.value(AArch64Kind.DWORD));
         RegisterValue rResultPointer = AArch64.r0.asValue(resultValue.getValueKind());
         RegisterValue rA = AArch64.r1.asValue(a.getValueKind());
@@ -1351,6 +1361,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitKyber12To16(Value condensed, Value index, Value parsed, Value parsedLength) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitKyber12To16 requires ASIMD");
         RegisterValue rResult = AArch64.r0.asValue(LIRKind.value(AArch64Kind.DWORD));
         RegisterValue rCondensed = AArch64.r0.asValue(condensed.getValueKind());
         RegisterValue rIndex = AArch64.r1.asValue(index.getValueKind());
@@ -1368,6 +1379,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitKyberBarrettReduce(Value coeffs) {
+        GraalError.guarantee(supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitKyberBarrettReduce requires ASIMD");
         RegisterValue rResult = AArch64.r0.asValue(LIRKind.value(AArch64Kind.DWORD));
         RegisterValue rCoeffs = AArch64.r0.asValue(coeffs.getValueKind());
         emitMove(rCoeffs, coeffs);

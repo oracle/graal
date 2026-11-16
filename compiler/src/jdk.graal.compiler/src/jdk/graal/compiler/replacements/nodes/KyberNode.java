@@ -73,8 +73,8 @@ public abstract class KyberNode extends MemoryKillStubIntrinsicNode {
         if (arch instanceof AMD64 amd64) {
             return amd64.getFeatures().containsAll(minFeaturesAMD64());
         }
-        if (arch instanceof AArch64) {
-            return true;
+        if (arch instanceof AArch64 aarch64) {
+            return aarch64.getFeatures().contains(AArch64.CPUFeature.ASIMD);
         }
         return false;
     }

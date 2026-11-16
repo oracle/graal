@@ -60,6 +60,8 @@ import jdk.graal.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 import jdk.graal.compiler.replacements.nodes.Base64DecodeBlockNode;
 import jdk.graal.compiler.replacements.nodes.Base64EncodeBlockNode;
+import jdk.graal.compiler.replacements.nodes.DilithiumNode;
+import jdk.graal.compiler.replacements.nodes.KyberNode;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
@@ -228,5 +230,32 @@ public class AArch64AsimdFeatureContractTest extends GraalCompilerTest {
         assertConditionalPlugins(plugins, "Ljava/lang/StringUTF16;", "indexOfChar", 1);
         assertSnippetAdmission(plugins, "Ljava/lang/StringLatin1;", "indexOf");
         assertSnippetAdmission(plugins, "Ljava/lang/StringUTF16;", "indexOfUnsafe");
+    }
+
+    @Test
+    public void testMLKEMAndMLDSA() {
+        assertAsimdLowering(gen -> gen.emitKyberNtt(POINTER, POINTER));
+        assertAsimdLowering(gen -> gen.emitKyberInverseNtt(POINTER, POINTER));
+        assertAsimdLowering(gen -> gen.emitKyberNttMult(POINTER, POINTER, POINTER, POINTER));
+        assertAsimdLowering(gen -> gen.emitKyberAddPoly2(POINTER, POINTER, POINTER));
+        assertAsimdLowering(gen -> gen.emitKyberAddPoly3(POINTER, POINTER, POINTER, POINTER));
+        assertAsimdLowering(gen -> gen.emitKyber12To16(POINTER, INT, POINTER, INT));
+        assertAsimdLowering(gen -> gen.emitKyberBarrettReduce(POINTER));
+        assertAsimdLowering(gen -> gen.emitDilithiumAlmostNtt(POINTER, POINTER));
+        assertAsimdLowering(gen -> gen.emitDilithiumAlmostInverseNtt(POINTER, POINTER));
+        assertAsimdLowering(gen -> gen.emitDilithiumNttMult(POINTER, POINTER, POINTER));
+        assertAsimdLowering(gen -> gen.emitDilithiumMontMulByConstant(POINTER, INT));
+        assertAsimdLowering(gen -> gen.emitDilithiumDecomposePoly(POINTER, POINTER, POINTER, INT, INT));
+        assertFalse(KyberNode.isSupported(WITHOUT_ASIMD));
+        assertTrue(KyberNode.isSupported(WITH_ASIMD));
+        assertFalse(DilithiumNode.isSupported(WITHOUT_ASIMD));
+        assertTrue(DilithiumNode.isSupported(WITH_ASIMD));
+        InvocationPlugins plugins = standardPlugins();
+        for (String name : new String[]{"implKyberNtt", "implKyberInverseNtt", "implKyberNttMult", "implKyberAddPoly", "implKyber12To16", "implKyberBarrettReduce"}) {
+            assertConditionalPlugins(plugins, "Lcom/sun/crypto/provider/ML_KEM;", name, name.equals("implKyberAddPoly") ? 2 : 1);
+        }
+        for (String name : new String[]{"implDilithiumAlmostNtt", "implDilithiumAlmostInverseNtt", "implDilithiumNttMult", "implDilithiumMontMulByConstant", "implDilithiumDecomposePoly"}) {
+            assertConditionalPlugins(plugins, "Lsun/security/provider/ML_DSA;", name, 1);
+        }
     }
 }
