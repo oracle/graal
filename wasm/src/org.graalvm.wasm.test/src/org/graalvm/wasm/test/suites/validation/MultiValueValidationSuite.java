@@ -91,6 +91,26 @@ public class MultiValueValidationSuite extends ValidationSuite {
                                                         "   drop" +
                                                         ")",
                                         Failure.Type.INVALID),
+                        binaryCase("If - mismatched implicit else after unreachable",
+                                        "Expected else branch. If with incompatible param and result types requires else branch.",
+                                        // if (param i32) (result i64) unreachable end
+                                        "0061 736D 0100 0000 0109 0260 017F 017E 6000 0003 0201 010A 0D01 0B00 4107 4100 0400 000B 1A0B",
+                                        Failure.Type.INVALID),
+                        binaryCase("If - mismatched implicit else after branch",
+                                        "Expected else branch. If with incompatible param and result types requires else branch.",
+                                        // if (param i32) (result i64) drop i64.const 0 br 0 end
+                                        "0061 736D 0100 0000 0109 0260 017F 017E 6000 0003 0201 010A 1101 0F00 4107 4100 0400 1A42 000C 000B 1A0B",
+                                        Failure.Type.INVALID),
+                        binaryCase("If - mismatched implicit else after return",
+                                        "Expected else branch. If with incompatible param and result types requires else branch.",
+                                        // if (param i32) (result i64) drop i64.const 0 return end
+                                        "0061 736D 0100 0000 010A 0260 017F 017E 6000 017E 0302 0101 0A0F 010D 0041 0741 0004 001A 4200 0F0B 0B",
+                                        Failure.Type.INVALID),
+                        binaryCase("If - mismatched implicit else after throw",
+                                        "Expected else branch. If with incompatible param and result types requires else branch.",
+                                        // if (param i32) (result i64) drop throw 0 end
+                                        "0061 736D 0100 0000 0109 0260 017F 017E 6000 0003 0201 010D 0301 0001 0A0F 010D 0041 0741 0004 001A 0800 0B1A 0B",
+                                        Failure.Type.INVALID),
                         binaryCase("Return - invalid reference type",
                                         "malformed value type",
                                         // (module
@@ -109,5 +129,6 @@ public class MultiValueValidationSuite extends ValidationSuite {
     protected void addContextOptions(Context.Builder contextBuilder) {
         contextBuilder.option("wasm.MultiValue", "true");
         contextBuilder.option("wasm.BulkMemoryAndRefTypes", "false");
+        contextBuilder.option("wasm.Exceptions", "true");
     }
 }
