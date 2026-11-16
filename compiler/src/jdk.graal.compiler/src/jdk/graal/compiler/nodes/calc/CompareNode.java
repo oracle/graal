@@ -397,6 +397,11 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         }
     }
 
+    /**
+     * Querying by X alone is sufficient because antecedent comparisons are indexed under both
+     * operands. The indexed implication rules require matching operand pairs (possibly swapped)
+     * or matching X values, so every applicable antecedent appears in this bucket.
+     */
     @Override
     public final ValueNode getImplicationKey() {
         return getX();
