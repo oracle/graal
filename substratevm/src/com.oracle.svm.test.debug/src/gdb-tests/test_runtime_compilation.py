@@ -65,9 +65,8 @@ class TestJITCompilationInterface(unittest.TestCase):
         # check if old breakpoints still exist, code address must be the same
         # split at code address as multi-breakpoints are printed very different to single breakpoints
         self.assertIn(breakpoint_info_before.split('0x')[-1], breakpoint_info_after)
-        # check if exactly one new correct breakpoint was added
-        # new breakpoint address is always added after
-        self.assertEqual(breakpoint_info_after.split(breakpoint_info_before.split('0x')[-1])[-1].count('com.oracle.svm.test.debug.helper.RuntimeCompilations::inlineTest'), 1)
+        # check if exactly one new correct breakpoint was added, regardless of address order
+        self.assertEqual(breakpoint_info_after.replace(breakpoint_info_before.split('0x')[-1], '').count('com.oracle.svm.test.debug.helper.RuntimeCompilations::inlineTest'), 1)
 
         # run until the end and check if breakpoints for the run-time debuginfo are removed
         gdb_disable_breakpoints()
