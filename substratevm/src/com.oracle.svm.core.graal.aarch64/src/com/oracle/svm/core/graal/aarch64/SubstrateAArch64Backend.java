@@ -2044,7 +2044,8 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
 
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, int threadCodeBaseOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
+                    RegisterValue threadArg, int threadIsolateOffset, int threadCodeBaseOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset,
+                    InterpreterJNITrampolineData interpreterData) {
 
         CompilationResult result = new CompilationResult(identifier);
         AArch64MacroAssembler asm = new SubstrateAArch64MacroAssembler(getTarget());
@@ -2052,14 +2053,14 @@ public class SubstrateAArch64Backend extends SubstrateBackendWithAssembler<Subst
         asm.setCodePatchingAnnotationConsumer(patchConsumerFactory.newConsumer(result));
         try (ScratchRegister scratch = asm.getScratchRegister()) {
             Register scratchRegister = scratch.getRegister();
-            if (cremaData != null) {
-                Label nonCremaMethodId = new Label();
-                // Negative method IDs encode CremaResolvedJavaMethod instances.
-                asm.tbz(methodIdArg.getRegister(), 63, nonCremaMethodId);
-                result.recordDataPatch(asm.position(), new ConstantReference(new SubstrateMethodPointerConstant(MethodRefSupport.createMethodPointer(cremaData.wrapperMethod()))));
+            if (interpreterData != null) {
+                Label nonInterpreterMethodId = new Label();
+                // Negative method IDs encode InterpreterResolvedJavaMethod instances.
+                asm.tbz(methodIdArg.getRegister(), 63, nonInterpreterMethodId);
+                result.recordDataPatch(asm.position(), new ConstantReference(new SubstrateMethodPointerConstant(MethodRefSupport.createMethodPointer(interpreterData.wrapperMethod()))));
                 asm.adrpAdd(scratchRegister);
                 asm.jmp(scratchRegister);
-                asm.bind(nonCremaMethodId);
+                asm.bind(nonInterpreterMethodId);
             }
             asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_UNSIGNED_SCALED, threadArg.getRegister(), threadIsolateOffset));
             /*

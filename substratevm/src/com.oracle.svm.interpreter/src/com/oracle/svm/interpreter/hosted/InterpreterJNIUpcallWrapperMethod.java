@@ -36,7 +36,6 @@ import org.graalvm.word.Pointer;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.jvmci.shared.meta.DeoptStub;
 import com.oracle.svm.core.interpreter.InterpreterJNIUpcallStub;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallVariantWrapperHolder;
@@ -45,6 +44,7 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
 import com.oracle.svm.hosted.jni.JNIGraphKit;
 import com.oracle.svm.interpreter.InterpreterStubSection;
+import com.oracle.svm.jvmci.shared.meta.DeoptStub;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -66,14 +66,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
 /**
- * Builds runtime-class-loading JNI call wrappers that dispatch {@code jmethodID} values to the
- * interpreter.
+ * Builds JNI call wrappers that dispatch interpreter {@code jmethodID} values to the interpreter.
  *
- * The generated graph mirrors the regular JNI Java-call wrappers, but routes runtime-loaded methods
- * through {@link InterpreterStubSection} entry points because their bytecode is interpreted rather
- * than compiled into image code.
+ * The generated graph mirrors the regular JNI Java-call wrappers, but routes interpreted methods
+ * through {@link InterpreterStubSection} entry points.
  */
-public final class CremaJNIUpcallWrapperMethod extends EntryPointCallStubMethod {
+public final class InterpreterJNIUpcallWrapperMethod extends EntryPointCallStubMethod {
     /** The JNI call variant implemented by this wrapper. */
     private final CallVariant callVariant;
 
@@ -84,7 +82,7 @@ public final class CremaJNIUpcallWrapperMethod extends EntryPointCallStubMethod 
      * Creates a wrapper for {@code callVariant} and {@code nonVirtual} using
      * {@code originalMetaAccess} and {@code wordTypes} to model the native ABI signature.
      */
-    public CremaJNIUpcallWrapperMethod(CallVariant callVariant, boolean nonVirtual, MetaAccessProvider originalMetaAccess, jdk.graal.compiler.word.WordTypes wordTypes) {
+    public InterpreterJNIUpcallWrapperMethod(CallVariant callVariant, boolean nonVirtual, MetaAccessProvider originalMetaAccess, jdk.graal.compiler.word.WordTypes wordTypes) {
         super(createName(callVariant, nonVirtual),
                         originalMetaAccess.lookupJavaType(JNIJavaCallVariantWrapperHolder.class),
                         createSignature(originalMetaAccess, wordTypes),
@@ -109,7 +107,7 @@ public final class CremaJNIUpcallWrapperMethod extends EntryPointCallStubMethod 
         List<JavaKind> args = new ArrayList<>();
         args.add(wordKind); // JNIEnv
         args.add(wordKind); // receiver/class handle
-        args.add(wordKind); // runtime jmethodID handle
+        args.add(wordKind); // interpreter jmethodID handle
         args.add(wordKind); // payload: InterpreterAccessStubData, jvalue*, or va_list
         return ResolvedSignature.fromKinds(args.toArray(JavaKind[]::new), JavaKind.Long, originalMetaAccess);
     }

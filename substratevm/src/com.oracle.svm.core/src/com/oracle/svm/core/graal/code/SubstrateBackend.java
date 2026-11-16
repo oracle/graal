@@ -248,11 +248,11 @@ public abstract class SubstrateBackend extends Backend {
 
     public abstract BasePhase<CoreProviders> newAddressLoweringPhase(CodeCacheProvider codeCache);
 
-    public record CremaJNITrampolineData(ResolvedJavaMethod wrapperMethod, CallVariant callVariant) {
+    public record InterpreterJNITrampolineData(ResolvedJavaMethod wrapperMethod, CallVariant callVariant) {
     }
 
     public abstract CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, int threadCodeBaseOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData);
+                    RegisterValue threadArg, int threadIsolateOffset, int threadCodeBaseOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, InterpreterJNITrampolineData interpreterData);
 
     /**
      * Returns whether the backend can fold the stack overflow check into the method prologue for

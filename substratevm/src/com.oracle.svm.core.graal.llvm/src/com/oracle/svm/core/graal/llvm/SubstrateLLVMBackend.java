@@ -78,9 +78,10 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
 
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, int threadCodeBaseOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
-        // GR-77614: Crema methodIDs should be handled here
-        VMError.guarantee(cremaData == null);
+                    RegisterValue threadArg, int threadIsolateOffset, int threadCodeBaseOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset,
+                    InterpreterJNITrampolineData interpreterData) {
+        // GR-77614: Interpreter method IDs should be handled here
+        VMError.guarantee(interpreterData == null);
         VMError.guarantee(threadCodeBaseOffset == -1);
 
         CompilationResult result = new CompilationResult(identifier);

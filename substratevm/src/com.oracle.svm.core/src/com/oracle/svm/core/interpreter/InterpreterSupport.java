@@ -45,6 +45,7 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.PreparedSignature;
+import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
@@ -77,6 +78,18 @@ public abstract class InterpreterSupport {
     private CFunctionPointer nativeDowncallStubPointer;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
     private int nativeDowncallStubLength;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
+    private CFunctionPointer interpreterJNIUpcallVarargsVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
+    private CFunctionPointer interpreterJNIUpcallArrayVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
+    private CFunctionPointer interpreterJNIUpcallVaListVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
+    private CFunctionPointer interpreterJNIUpcallVarargsNonVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
+    private CFunctionPointer interpreterJNIUpcallArrayNonVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
+    private CFunctionPointer interpreterJNIUpcallVaListNonVirtualWrapperEntryPoint;
 
     @Fold
     public static boolean isEnabled() {
@@ -86,6 +99,35 @@ public abstract class InterpreterSupport {
     @Fold
     public static InterpreterSupport singleton() {
         return ImageSingletons.lookup(InterpreterSupport.class);
+    }
+
+    /** Gets the JNI upcall wrapper entry point for the requested call variant. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public final CFunctionPointer getInterpreterJNIUpcallWrapperEntryPoint(CallVariant variant, boolean nonVirtual) {
+        CFunctionPointer result;
+        if (variant == CallVariant.VARARGS) {
+            result = nonVirtual ? interpreterJNIUpcallVarargsNonVirtualWrapperEntryPoint : interpreterJNIUpcallVarargsVirtualWrapperEntryPoint;
+        } else if (variant == CallVariant.ARRAY) {
+            result = nonVirtual ? interpreterJNIUpcallArrayNonVirtualWrapperEntryPoint : interpreterJNIUpcallArrayVirtualWrapperEntryPoint;
+        } else if (variant == CallVariant.VA_LIST) {
+            result = nonVirtual ? interpreterJNIUpcallVaListNonVirtualWrapperEntryPoint : interpreterJNIUpcallVaListVirtualWrapperEntryPoint;
+        } else {
+            throw VMError.shouldNotReachHereUnexpectedInput(variant);
+        }
+        VMError.guarantee(result.isNonNull(), "entry point for interpreter JNI upcall wrapper was not set up at build time");
+        return result;
+    }
+
+    /** Sets the JNI upcall wrapper entry points for all JNI call variants that invoke interpreted methods. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public final void setInterpreterJNIUpcallWrapperEntryPoints(CFunctionPointer varargsVirtual, CFunctionPointer arrayVirtual, CFunctionPointer vaListVirtual,
+                    CFunctionPointer varargsNonVirtual, CFunctionPointer arrayNonVirtual, CFunctionPointer vaListNonVirtual) {
+        interpreterJNIUpcallVarargsVirtualWrapperEntryPoint = varargsVirtual;
+        interpreterJNIUpcallArrayVirtualWrapperEntryPoint = arrayVirtual;
+        interpreterJNIUpcallVaListVirtualWrapperEntryPoint = vaListVirtual;
+        interpreterJNIUpcallVarargsNonVirtualWrapperEntryPoint = varargsNonVirtual;
+        interpreterJNIUpcallArrayNonVirtualWrapperEntryPoint = arrayNonVirtual;
+        interpreterJNIUpcallVaListNonVirtualWrapperEntryPoint = vaListNonVirtual;
     }
 
     /**

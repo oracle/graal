@@ -102,7 +102,6 @@ import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.hub.registry.TypeIDs;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.MethodRefUtils;
 import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.espresso.classfile.ConstantPool;
@@ -181,18 +180,6 @@ public class CremaSupportImpl implements CremaSupport {
 
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     private CFunctionPointer enterDirectInterpreterStubEntryPoint;
-    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
-    private CFunctionPointer cremaJNIUpcallVarargsVirtualWrapperEntryPoint;
-    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
-    private CFunctionPointer cremaJNIUpcallArrayVirtualWrapperEntryPoint;
-    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
-    private CFunctionPointer cremaJNIUpcallVaListVirtualWrapperEntryPoint;
-    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
-    private CFunctionPointer cremaJNIUpcallVarargsNonVirtualWrapperEntryPoint;
-    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
-    private CFunctionPointer cremaJNIUpcallArrayNonVirtualWrapperEntryPoint;
-    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
-    private CFunctionPointer cremaJNIUpcallVaListNonVirtualWrapperEntryPoint;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
@@ -2021,37 +2008,8 @@ public class CremaSupportImpl implements CremaSupport {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public CFunctionPointer getCremaJNIUpcallWrapperEntryPoint(CallVariant variant, boolean nonVirtual) {
-        CFunctionPointer result;
-        if (variant == CallVariant.VARARGS) {
-            result = nonVirtual ? cremaJNIUpcallVarargsNonVirtualWrapperEntryPoint : cremaJNIUpcallVarargsVirtualWrapperEntryPoint;
-        } else if (variant == CallVariant.ARRAY) {
-            result = nonVirtual ? cremaJNIUpcallArrayNonVirtualWrapperEntryPoint : cremaJNIUpcallArrayVirtualWrapperEntryPoint;
-        } else if (variant == CallVariant.VA_LIST) {
-            result = nonVirtual ? cremaJNIUpcallVaListNonVirtualWrapperEntryPoint : cremaJNIUpcallVaListVirtualWrapperEntryPoint;
-        } else {
-            throw VMError.shouldNotReachHereUnexpectedInput(variant);
-        }
-        VMError.guarantee(result.isNonNull(), "entry point for runtime JNI upcall wrapper was not setup at build-time");
-        return result;
-    }
-
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
     public void setEnterDirectInterpreterStubEntryPoint(CFunctionPointer stubEntryPoint) {
         enterDirectInterpreterStubEntryPoint = stubEntryPoint;
-    }
-
-    @Override
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setCremaJNIUpcallWrapperEntryPoints(CFunctionPointer varargsVirtual, CFunctionPointer arrayVirtual, CFunctionPointer vaListVirtual, CFunctionPointer varargsNonVirtual,
-                    CFunctionPointer arrayNonVirtual, CFunctionPointer vaListNonVirtual) {
-        cremaJNIUpcallVarargsVirtualWrapperEntryPoint = varargsVirtual;
-        cremaJNIUpcallArrayVirtualWrapperEntryPoint = arrayVirtual;
-        cremaJNIUpcallVaListVirtualWrapperEntryPoint = vaListVirtual;
-        cremaJNIUpcallVarargsNonVirtualWrapperEntryPoint = varargsNonVirtual;
-        cremaJNIUpcallArrayNonVirtualWrapperEntryPoint = arrayNonVirtual;
-        cremaJNIUpcallVaListNonVirtualWrapperEntryPoint = vaListNonVirtual;
     }
 
     @Override
