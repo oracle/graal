@@ -1283,7 +1283,7 @@ public class GraphUtil {
         } else {
             /* The source array is not virtualized, emit index loads. */
             ResolvedJavaType sourceType = StampTool.typeOrNull(sourceAlias, tool.getMetaAccess());
-            if (sourceType == null || !sourceType.isArray() || !newComponentType.isAssignableFrom(sourceType.getElementalType())) {
+            if (sourceType == null || !sourceType.isArray() || !newComponentType.isAssignableFrom(sourceType.getComponentType())) {
                 return;
             }
             for (int i = 0; i < readLength; i++) {
