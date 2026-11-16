@@ -150,7 +150,9 @@ public class G1Feature implements InternalFeature {
         }
 
         ImageSingletons.add(PlatformPhysicalMemorySupport.class, new G1PhysicalMemorySupport(createPlatformPhysicalMemorySupport()));
-        ImageSingletons.add(GCRelatedMXBeans.class, new G1RelatedMXBeans());
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            ImageSingletons.add(GCRelatedMXBeans.class, new G1RelatedMXBeans());
+        }
     }
 
     private static PlatformPhysicalMemorySupport createPlatformPhysicalMemorySupport() {

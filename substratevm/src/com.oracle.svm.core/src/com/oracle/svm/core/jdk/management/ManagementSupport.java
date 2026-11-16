@@ -209,21 +209,25 @@ public final class ManagementSupport implements ThreadListener {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public boolean isAllowedPlatformManagedObject(PlatformManagedObject object) {
-        if (mxBeans.contains(object) || GCRelatedMXBeans.mxBeans().contains(object)) {
+    private boolean isRegisteredPlatformManagedObject(PlatformManagedObject object) {
+        return mxBeans.contains(object) || GCRelatedMXBeans.mxBeans().contains(object);
+    }
+
+    /** Identifies management beans provided by the hosting VM. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static boolean isHostedPlatformManagedObject(PlatformManagedObject object, boolean extensionLayer) {
+        if (!extensionLayer && getSingleton().isRegisteredPlatformManagedObject(object)) {
             /* Object is provided by our registry. */
-            return true;
+            return false;
         }
 
         for (Class<? extends PlatformManagedObject> clazz : ManagementFactory.getPlatformManagementInterfaces()) {
-            if (clazz.isInstance(object)) {
-                if (ManagementFactory.getPlatformMXBeans(clazz).contains(object)) {
-                    /*
-                     * Object is provided by the hosting HotSpot VM. It must not be reachable in the
-                     * image heap, because it is for the wrong VM.
-                     */
-                    return false;
-                }
+            if (clazz.isInstance(object) && ManagementFactory.getPlatformMXBeans(clazz).contains(object)) {
+                /*
+                 * Object is provided by the hosting HotSpot VM. It must not be reachable in the
+                 * image heap, because it is for the wrong VM.
+                 */
+                return true;
             }
         }
 
@@ -231,7 +235,7 @@ public final class ManagementSupport implements ThreadListener {
          * Object provided neither by our registry nor by the hosting HotSpot VM, i.e., it is
          * provided by the application. This is allowed.
          */
-        return true;
+        return false;
     }
 
     public synchronized MBeanServer getPlatformMBeanServer() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import java.lang.management.PlatformManagedObject;
 import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Type;
-import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,11 +44,9 @@ import javax.management.openmbean.OpenType;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
-import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
@@ -58,29 +55,19 @@ import com.oracle.svm.core.jdk.management.SubstrateRuntimeMXBean;
 import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.LayeredImageUtils;
-import com.oracle.svm.shared.singletons.ImageSingletonLoader;
-import com.oracle.svm.shared.singletons.ImageSingletonWriter;
-import com.oracle.svm.shared.singletons.LayeredPersistFlags;
-import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
+import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 /** See {@link ManagementSupport} for documentation. */
 @AutomaticallyRegisteredFeature
 public final class ManagementFeature extends JNIRegistrationUtil implements InternalFeature {
-    private static final int EMPTY_ID = -1;
-    private static final int TO_PROCESS = -2;
-
     @SuppressWarnings({"unchecked", "rawtypes"}) //
     private static final Class<? extends PlatformManagedObject>[] MANAGED_OBJECT_REPLACEMENT_CANDIDATES = new Class[]{ClassLoadingMXBean.class,
                     CompilationMXBean.class, RuntimeMXBean.class,
                     ThreadMXBean.class, OperatingSystemMXBean.class, MemoryMXBean.class};
-
-    private int[] manageObjectReplacementConstantIds = new int[]{EMPTY_ID, EMPTY_ID, EMPTY_ID, EMPTY_ID, EMPTY_ID, EMPTY_ID};
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -102,17 +89,15 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             Map<PlatformManagedObject, PlatformManagedObject> platformManagedObjectReplacements = new IdentityHashMap<>();
             var managementSupport = ManagementSupport.getSingleton();
-            for (int i = 0; i < MANAGED_OBJECT_REPLACEMENT_CANDIDATES.length; i++) {
-                var clazz = MANAGED_OBJECT_REPLACEMENT_CANDIDATES[i];
+            for (var clazz : MANAGED_OBJECT_REPLACEMENT_CANDIDATES) {
                 PlatformManagedObject source = ManagementFactory.getPlatformMXBean(clazz);
                 PlatformManagedObject target = managementSupport.getPlatformMXBeanRaw(clazz);
                 if (source != null && target != null) {
                     platformManagedObjectReplacements.put(source, target);
-                    /*
-                     * Mark slots corresponding to objects which need to be installed in the initial
-                     * layer.
-                     */
-                    manageObjectReplacementConstantIds[i] = TO_PROCESS;
+                    if (ImageLayerBuildingSupport.buildingInitialLayer()) {
+                        /* Retain replacement beans even when only a later layer references them. */
+                        CrossLayerConstantRegistry.singletonOrNull().registerHeapConstant(replacementKey(clazz), target);
+                    }
                 }
             }
 
@@ -134,18 +119,18 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
             });
         } else {
             /*
-             * All beans were created in the initial layer. In subsequent layers we must ensure
-             * these objects are again properly linked.
+             * All VM beans were created in the initial layer. The registry carries their keys
+             * through intermediate shared layers, so every extension layer links to the same
+             * initial-layer objects. Do not register new bean replacements in intermediate layers.
              */
-            Map<PlatformManagedObject, ImageHeapConstant> priorLayerPlatformManagedObjectReplacements = new IdentityHashMap<>();
-            var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
-            for (int i = 0; i < manageObjectReplacementConstantIds.length; i++) {
-                int objectId = manageObjectReplacementConstantIds[i];
-                if (objectId != EMPTY_ID) {
-                    var clazz = MANAGED_OBJECT_REPLACEMENT_CANDIDATES[i];
+            Map<PlatformManagedObject, String> priorLayerPlatformManagedObjectReplacements = new IdentityHashMap<>();
+            var registry = CrossLayerConstantRegistry.singletonOrNull();
+            for (var clazz : MANAGED_OBJECT_REPLACEMENT_CANDIDATES) {
+                String key = replacementKey(clazz);
+                if (registry.constantExists(key)) {
                     PlatformManagedObject source = ManagementFactory.getPlatformMXBean(clazz);
                     assert source != null;
-                    priorLayerPlatformManagedObjectReplacements.put(source, loader.getOrCreateConstant(objectId));
+                    priorLayerPlatformManagedObjectReplacements.put(source, key);
                 }
             }
 
@@ -155,7 +140,11 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
             accessImpl.registerJVMCIObjectToConstantReplacer(constant -> {
                 Object source = hostedValuesProvider.asObject(Object.class, constant);
                 if (source instanceof PlatformManagedObject) {
-                    return priorLayerPlatformManagedObjectReplacements.get(source);
+                    String key = priorLayerPlatformManagedObjectReplacements.get(source);
+                    if (key != null) {
+                        /* Reconstruct constants after all substitution processors are installed. */
+                        return (ImageHeapConstant) registry.getConstant(key);
+                    }
                 }
                 return null;
             });
@@ -181,25 +170,6 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             assert verifyMemoryManagerBeans();
             assert ManagementSupport.getSingleton().verifyNoOverlappingMxBeans();
-
-            if (ImageLayerBuildingSupport.buildingInitialLayer()) {
-                /*
-                 * When building an initial layer, we must ensure that all beans potentially
-                 * referred to by later layers are seen during heap scanning. In addition, we must
-                 * collect their constant ids so that we can access them in later layers.
-                 */
-                var managementSupport = ManagementSupport.getSingleton();
-                var universe = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getUniverse();
-                for (int i = 0; i < manageObjectReplacementConstantIds.length; i++) {
-                    int objectId = manageObjectReplacementConstantIds[i];
-                    if (objectId != EMPTY_ID) {
-                        assert objectId == TO_PROCESS : objectId;
-                        var clazz = MANAGED_OBJECT_REPLACEMENT_CANDIDATES[i];
-                        PlatformManagedObject target = managementSupport.getPlatformMXBeanRaw(clazz);
-                        manageObjectReplacementConstantIds[i] = LayeredImageUtils.registerObjectAsEmbeddedRoot(universe, target);
-                    }
-                }
-            }
         }
     }
 
@@ -255,26 +225,7 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
-    /**
-     * We must track the replaced objects so that all object replacements refer to the correct
-     * object.
-     */
-    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
-
-        @Override
-        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
-            return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<ManagementFeature>() {
-                @Override
-                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, ManagementFeature singleton) {
-                    writer.writeIntList("objectIds", Arrays.stream(singleton.manageObjectReplacementConstantIds).boxed().toList());
-                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
-                }
-
-                @Override
-                public void onSingletonRegistration(ImageSingletonLoader loader, ManagementFeature singleton) {
-                    singleton.manageObjectReplacementConstantIds = loader.readIntList("objectIds").stream().mapToInt(Integer::intValue).toArray();
-                }
-            });
-        }
+    private static String replacementKey(Class<? extends PlatformManagedObject> clazz) {
+        return "ManagementFeature#" + clazz.getName();
     }
 }

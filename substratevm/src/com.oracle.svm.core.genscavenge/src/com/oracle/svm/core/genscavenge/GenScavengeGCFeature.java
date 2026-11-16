@@ -92,9 +92,11 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(RememberedSet.class, rememberedSet);
         ImageSingletons.add(BarrierSetProvider.class, rememberedSet);
 
-        GenScavengeMemoryPoolMXBeans memoryPoolMXBeans = new GenScavengeMemoryPoolMXBeans();
-        ImageSingletons.add(GenScavengeMemoryPoolMXBeans.class, memoryPoolMXBeans);
-        ImageSingletons.add(GCRelatedMXBeans.class, new GenScavengeRelatedMXBeans(memoryPoolMXBeans));
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            GenScavengeMemoryPoolMXBeans memoryPoolMXBeans = new GenScavengeMemoryPoolMXBeans();
+            ImageSingletons.add(GenScavengeMemoryPoolMXBeans.class, memoryPoolMXBeans);
+            ImageSingletons.add(GCRelatedMXBeans.class, new GenScavengeRelatedMXBeans(memoryPoolMXBeans));
+        }
 
         if (RuntimeClassLoading.isSupported() && ImageLayerBuildingSupport.firstImageBuild()) {
             ImageSingletons.add(Metaspace.class, new MetaspaceImpl());
