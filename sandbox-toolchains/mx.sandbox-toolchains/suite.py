@@ -13,7 +13,7 @@ suite = {
             {
                 "name" : "build-sandbox-llvm",
                 "subdir" : True,
-                "version" : "68998be338fa144c99a0a61db3c936bdc21ab1a3",
+                "version" : "3711a202a431d1417eddc824b1bf1a0780b731bd",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/llvm-project.git", "kind" : "git"},
                 ],
