@@ -26,8 +26,9 @@ package jdk.graal.compiler.duplication.phases.simulation;
 
 import java.util.Arrays;
 
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph.RecursiveVisitor;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 /**
  * Reusable traversal storage for a dominator tree. Each invocation visits only its bounded subtree;
@@ -38,6 +39,15 @@ public final class SimulationCFGTraversal<V> {
     private Object[] values = new Object[16];
     private boolean[] entered = new boolean[16];
     private int size;
+
+    /**
+     * Entry point for callers that do not retain traversal storage between invocations. The CFG
+     * parameter is retained for compatibility; storage grows with the traversal instead of being
+     * sized from the CFG.
+     */
+    public static <V> void visitDominatorTreeBounded(ControlFlowGraph cfg, RecursiveVisitor<V> visitor, HIRBlock start, int startDepth, int maxDepth) {
+        new SimulationCFGTraversal<V>().visitDominatorTreeBounded(visitor, start, startDepth, maxDepth);
+    }
 
     private void push(HIRBlock block) {
         if (size == stack.length) {
