@@ -29,6 +29,7 @@ import java.util.List;
 import jdk.graal.compiler.vector.nodes.VectorNode;
 import jdk.graal.compiler.vector.nodes.type.VectorStamp;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
@@ -71,11 +72,7 @@ public final class VectorPhi extends ValuePhiNode implements VectorTransformatio
 
     @Override
     public VectorTransformation createCopy(FixedNode insertBefore, ValueNode... inputs) {
-        VectorPhi copy = graph().addWithoutUnique(new VectorPhi(getVectorStamp(), merge()));
-        for (ValueNode input : inputs) {
-            addInput(input);
-        }
-        return copy;
+        throw GraalError.shouldNotReachHere("VectorPhi should be shifted by DefaultVectorIterator rather than copied by VectorTransformationIterator");
     }
 
     @Override

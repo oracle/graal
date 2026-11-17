@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -120,6 +120,10 @@ public class VectorAPIRearrangeOpNode extends VectorAPIMacroNode implements Cano
     private static SimdConstant improveConstant(SimdConstant oldConstant, ValueNode[] args, CoreProviders providers) {
         if (oldConstant != null) {
             return oldConstant;
+        }
+        if (!args[M_ARG_INDEX].isNullConstant()) {
+            /* TODO GR-62819: masked constant folding */
+            return null;
         }
         SimdConstant v = maybeConstantValue(args[V_ARG_INDEX], providers);
         SimdConstant sh = maybeConstantValue(args[SH_ARG_INDEX], providers);

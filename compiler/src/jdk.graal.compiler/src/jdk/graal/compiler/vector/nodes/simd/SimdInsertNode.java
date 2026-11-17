@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -104,6 +104,7 @@ public final class SimdInsertNode extends BinaryNode implements VectorLIRLowerab
     }
 
     private static SimdStamp computeStamp(SimdStamp vecStamp, Stamp valStamp, int offset) {
+        GraalError.guarantee(vecStamp.getVectorLength() > 1, "SIMD insertion requires a destination with more than one component: %s", vecStamp);
         Stamp[] res = new Stamp[vecStamp.getVectorLength()];
         for (int i = 0; i < res.length; i++) {
             res[i] = vecStamp.getComponent(i);
