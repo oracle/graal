@@ -191,7 +191,7 @@ public final class SimdCutNode extends UnaryNode implements VectorLIRLowerable {
     }
 
     /**
-     * If we have {@code offset = 0} and {@code length = 1}, try to transform the computation rooted
+     * If we have {@code length = 1}, try to transform the computation rooted
      * in this node to a purely scalar computation. This currently transforms phis and add and
      * multiply nodes. Other vector inputs that feed into this computation are themselves cut to a
      * scalar.
