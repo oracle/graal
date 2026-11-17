@@ -104,7 +104,8 @@ public abstract class LogicNode extends FloatingNode implements IndirectInputCha
      * Emit intermediate logic nodes too if changing their inputs can change the keys, as with a
      * logic negation's operand. The caller tracks this node's inputs and proxies traversed while
      * normalizing keys. Return {@code false} if the proof rules cannot be represented by these keys,
-     * requesting a full search; any emitted keys may be retained conservatively.
+     * requesting that this condition be considered for every query; any emitted keys may be retained
+     * conservatively.
      */
     public boolean forEachImplicationKey(Consumer<ValueNode> consumer) {
         consumer.accept(this);
@@ -125,7 +126,8 @@ public abstract class LogicNode extends FloatingNode implements IndirectInputCha
      * Nested negations are handled recursively.
      *
      * Overrides adding proof rules must also override {@link #forEachImplicationKey} if the inherited
-     * keys do not cover those rules. Returning {@code false} there requests a full search.
+     * keys do not cover those rules. Returning {@code false} there requests that this condition be
+     * considered for every query.
      *
      * @param thisNegated whether this condition should be considered as false.
      * @param other the other condition.

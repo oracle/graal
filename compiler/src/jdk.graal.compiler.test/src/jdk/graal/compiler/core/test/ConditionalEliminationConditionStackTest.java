@@ -176,7 +176,7 @@ public class ConditionalEliminationConditionStackTest extends GraalCompilerTest 
         for (GuardedCondition condition : conditions) {
             TriState result = condition.getCondition().implies(condition.isNegated(), query);
             if (result.isKnown()) {
-                return new Implication(condition, result);
+                return new Implication(condition, result.toBoolean());
             }
         }
         return null;
@@ -295,11 +295,11 @@ public class ConditionalEliminationConditionStackTest extends GraalCompilerTest 
         try (ConditionalEliminationConditionStack conditions = new ConditionalEliminationConditionStack(graph)) {
             GuardedCondition proof = push(conditions, graph.addOrUniqueWithInputs(LogicNegationNode.create(condition)), false);
             Assert.assertSame(proof, conditions.findImplication(queryX).condition());
-            Assert.assertEquals(TriState.FALSE, conditions.findImplication(queryX).result());
+            Assert.assertFalse(conditions.findImplication(queryX).result());
             condition.replaceFirstInput(x, y);
             Assert.assertNull(conditions.findImplication(queryX));
             Assert.assertSame(proof, conditions.findImplication(queryY).condition());
-            Assert.assertEquals(TriState.FALSE, conditions.findImplication(queryY).result());
+            Assert.assertFalse(conditions.findImplication(queryY).result());
         }
     }
 
@@ -493,7 +493,7 @@ public class ConditionalEliminationConditionStackTest extends GraalCompilerTest 
             GuardedCondition fallback = push(conditions, graph.addWithoutUnique(new FullScanImplicationNode()), true);
             GuardedCondition newest = push(conditions, LogicNegationNode.create(query), false);
             Assert.assertSame(newest, conditions.findImplication(query).condition());
-            Assert.assertEquals(TriState.FALSE, conditions.findImplication(query).result());
+            Assert.assertFalse(conditions.findImplication(query).result());
             Assert.assertSame(newest, conditions.pop());
             Assert.assertSame(fallback, conditions.findImplication(query).condition());
             conditions.pop();
@@ -513,7 +513,7 @@ public class ConditionalEliminationConditionStackTest extends GraalCompilerTest 
         try (ConditionalEliminationConditionStack conditions = new ConditionalEliminationConditionStack(graph)) {
             GuardedCondition proof = push(conditions, graph.addOrUniqueWithInputs(new IntegerTestNode(y, x)), true);
             Assert.assertSame(proof, conditions.findImplication(query).condition());
-            Assert.assertEquals(TriState.FALSE, conditions.findImplication(query).result());
+            Assert.assertFalse(conditions.findImplication(query).result());
         }
     }
 
@@ -551,7 +551,7 @@ public class ConditionalEliminationConditionStackTest extends GraalCompilerTest 
             a.replaceAtUsages(b);
             LogicNode query = graph.addWithoutUnique(new IsNullNode(b));
             Assert.assertSame(proof, conditions.findImplication(query).condition());
-            Assert.assertEquals(TriState.FALSE, conditions.findImplication(query).result());
+            Assert.assertFalse(conditions.findImplication(query).result());
         }
     }
 
@@ -577,12 +577,12 @@ public class ConditionalEliminationConditionStackTest extends GraalCompilerTest 
             Assert.assertSame(newer, conditions.findImplication(queryC).condition());
             conditions.pop();
             Assert.assertSame(older, conditions.findImplication(queryC).condition());
-            Assert.assertEquals(TriState.FALSE, conditions.findImplication(queryC).result());
+            Assert.assertFalse(conditions.findImplication(queryC).result());
             Assert.assertNull(conditions.findImplication(queryA));
             conditions.pop();
             push(conditions, graph.addWithoutUnique(new IsNullNode(a)), false);
             Assert.assertNull(conditions.findImplication(queryC));
-            Assert.assertEquals(TriState.TRUE, conditions.findImplication(queryA).result());
+            Assert.assertTrue(conditions.findImplication(queryA).result());
         }
     }
 

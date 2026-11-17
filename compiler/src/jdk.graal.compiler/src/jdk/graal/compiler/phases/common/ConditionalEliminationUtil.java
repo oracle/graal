@@ -111,7 +111,7 @@ public class ConditionalEliminationUtil {
         }
     }
 
-    public record Implication(GuardedCondition condition, TriState result) {
+    public record Implication(GuardedCondition condition, boolean result) {
     }
 
     /**
@@ -629,7 +629,7 @@ public class ConditionalEliminationUtil {
 
         Implication implication = conditions.findImplication(node);
         if (implication != null) {
-            return rewireGuards(implication.condition().getGuard(), implication.result().toBoolean(), null, null, rewireGuardFunction);
+            return rewireGuards(implication.condition().getGuard(), implication.result(), null, null, rewireGuardFunction);
         }
         if (tryProveMaskedBelow(infoElementProvider, node, rewireGuardFunction)) {
             return true;

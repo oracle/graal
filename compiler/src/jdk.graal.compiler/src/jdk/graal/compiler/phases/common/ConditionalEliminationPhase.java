@@ -755,7 +755,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
 
         private boolean tryProveIfConditionFromExistingCondition(IfNode node) {
             ConditionalEliminationUtil.Implication implication = conditions.findImplication(node.condition());
-            return implication != null && rewriteIfCondition(node, implication.condition().getGuard(), implication.result().toBoolean());
+            return implication != null && rewriteIfCondition(node, implication.condition().getGuard(), implication.result());
         }
 
         private boolean rewriteIfCondition(IfNode node, GuardingNode guard, boolean result) {

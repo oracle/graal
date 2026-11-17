@@ -104,6 +104,7 @@ import jdk.graal.compiler.phases.SingleRunSubphase;
 import jdk.graal.compiler.phases.common.ConditionalEliminationConditionStack;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.GuardedCondition;
+import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.Implication;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.InfoElement;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.InfoElementProvider;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.Marks;
@@ -112,7 +113,6 @@ import jdk.graal.compiler.phases.common.util.GlobalProfilesOptimizationUtility;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.TriState;
 
 /**
  * @see DuplicationSimulationUtil
@@ -1032,13 +1032,8 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
             }
 
             private boolean tryProveIfConditionFromExistingCondition(IfNode node) {
-                for (GuardedCondition guardedCondition : conditions) {
-                    TriState result = guardedCondition.getCondition().implies(guardedCondition.isNegated(), node.condition());
-                    if (result.isKnown()) {
-                        return killIfFromProof(node, result.toBoolean());
-                    }
-                }
-                return false;
+                Implication implication = conditions.findImplication(node.condition());
+                return implication != null && killIfFromProof(node, implication.result());
             }
 
             private boolean killIfFromProof(IfNode node, boolean result) {

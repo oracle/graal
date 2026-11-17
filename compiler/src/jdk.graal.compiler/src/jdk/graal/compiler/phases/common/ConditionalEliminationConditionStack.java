@@ -29,7 +29,6 @@ import java.util.BitSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -48,9 +47,10 @@ import jdk.vm.ci.meta.TriState;
 
 /**
  * Active dominating conditions indexed by their
- * {@link LogicNode#forEachImplicationKey implication keys}. Conditions requesting a full search remain
- * in an unconditional fallback set. A query merges one key bucket with that set in stack order,
- * preserving the first proof selected by a full scan. Searches are never capped.
+ * {@link LogicNode#forEachImplicationKey implication keys}. Conditions whose proof rules are not
+ * covered by their keys remain in a fallback set considered for every query. A query merges one key
+ * bucket with that set in stack order, preserving the first proof selected by a full scan. Searches
+ * are never capped.
  * This avoids repeatedly scanning unrelated dominating conditions, which can otherwise make a
  * sequence of independent tests quadratic in the number of conditions.
  *
@@ -80,7 +80,7 @@ public final class ConditionalEliminationConditionStack implements Iterable<Guar
         });
     }
 
-    private final class Entry implements Consumer<ValueNode> {
+    private final class Entry {
         final GuardedCondition condition;
         final int position;
         final List<Object> keys = new ArrayList<>(3);
@@ -90,8 +90,7 @@ public final class ConditionalEliminationConditionStack implements Iterable<Guar
             position = entries.size();
         }
 
-        @Override
-        public void accept(ValueNode value) {
+        void addImplicationKey(ValueNode value) {
             valueKey(value, this);
         }
 
@@ -126,7 +125,7 @@ public final class ConditionalEliminationConditionStack implements Iterable<Guar
         LogicNode node = condition.getCondition();
         // Track input changes to the condition itself even when its lookup keys are operands.
         entry.addKey(node);
-        if (!node.forEachImplicationKey(entry)) {
+        if (!node.forEachImplicationKey(entry::addImplicationKey)) {
             fallback.set(entry.position);
         }
     }
@@ -224,13 +223,13 @@ public final class ConditionalEliminationConditionStack implements Iterable<Guar
             } else {
                 bucketPosition--;
             }
-            if (candidate.position == fallbackPosition) {
-                // An invalidated entry can occur in both streams. Visit it once.
-                fallbackPosition = fallback.previousSetBit(fallbackPosition - 1);
-            }
             Implication result = prove(candidate.condition, query);
             if (result != null) {
                 return result;
+            }
+            if (candidate.position == fallbackPosition) {
+                // An invalidated entry can occur in both streams. Visit it once.
+                fallbackPosition = fallback.previousSetBit(fallbackPosition - 1);
             }
         }
         return null;
@@ -239,7 +238,7 @@ public final class ConditionalEliminationConditionStack implements Iterable<Guar
     private static Implication prove(GuardedCondition condition, LogicNode query) {
         // Keys only select candidates; the proof must still check operands, stamps and negation.
         TriState result = condition.getCondition().implies(condition.isNegated(), query);
-        return result.isKnown() ? new Implication(condition, result) : null;
+        return result.isKnown() ? new Implication(condition, result.toBoolean()) : null;
     }
 
     @Override
