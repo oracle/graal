@@ -2875,8 +2875,9 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Returns the default time zone of this environment. If the time-zone was not explicitly
-         * set by the embedder then the {@link ZoneId#systemDefault() system default} time-zone will
-         * be returned.
+         * set by the embedder, UTC is returned with {@link SandboxPolicy#CONSTRAINED} or stricter
+         * sandbox policies, and the {@link ZoneId#systemDefault() system default} time-zone is
+         * returned otherwise.
          *
          * @see ZoneId#systemDefault()
          * @since 19.2
