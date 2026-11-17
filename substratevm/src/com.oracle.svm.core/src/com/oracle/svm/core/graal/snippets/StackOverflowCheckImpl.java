@@ -298,8 +298,12 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     @Override
     public void updateStackOverflowBoundary() {
         long threadSize = PlatformThreads.getRequestedJavaStackSize(Thread.currentThread());
-        /* Keep the OS-provided boundary until runtime option validation rejects a tiny -Xss. */
-        if (threadSize >= PlatformThreads.getJavaThreadMinimumStackSize()) {
+        /*
+         * Do not apply an invalidly small -Xss limit to the main thread.
+         * Keep its OS-provided stack boundary so startup can reach option validation.
+         */
+        long minimumStackSize = PlatformThreads.addStackOverflowGuardZones(PlatformThreads.getJavaThreadMinimumUsableStackSize());
+        if (threadSize >= minimumStackSize) {
             updateStackOverflowBoundary(Word.unsigned(threadSize));
         }
     }
