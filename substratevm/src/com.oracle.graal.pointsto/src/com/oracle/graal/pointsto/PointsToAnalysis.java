@@ -132,6 +132,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                         "RemoveSaturatedTypeFlows requires AliasArrayTypeFlows.");
         AnalysisError.guarantee(!analysisPolicy.useConservativeUnsafeAccess() || analysisPolicy.removeSaturatedTypeFlows(),
                         "Conservative unsafe access requires RemoveSaturatedTypeFlows.");
+        /* GR-58495: temporary, until context-sensitive analysis supports these options. */
+        checkPredicatesSupported();
         this.extensionPolicy = createExtensionPolicy(hostVM);
         this.typeFlowTimer = timerCollection.createTimer("(typeflow)");
 
@@ -167,6 +169,33 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             preSaturatedSourceTypeFlow = new PreSaturatedTypeFlow(null);
             preSaturatedSourceTypeFlow.enableFlow(this);
         }
+    }
+
+    /**
+     * Rejects primitive-value tracking and predicates under a context-sensitive policy, which does
+     * not support them yet. The check uses the final option values, so it holds whatever the order
+     * of the options and whichever option selected the policy.
+     */
+    private void checkPredicatesSupported() {
+        boolean trackPrimitives = PointstoOptions.TrackPrimitiveValues.getValue(options);
+        boolean predicates = PointstoOptions.UsePredicates.getValue(options);
+        if (!analysisPolicy.isContextSensitiveAnalysis() || !(trackPrimitives || predicates)) {
+            return;
+        }
+        String policy = PointstoOptions.AnalysisContextSensitivity.getValue(options);
+        String insens = PointstoOptions.ContextSensitivity.insens.value();
+        /* AllocationSiteSensitiveHeap alone also selects a context-sensitive policy. */
+        boolean selectedByPolicy = !policy.equalsIgnoreCase(insens);
+        String sensitivityName = PointstoOptions.AnalysisContextSensitivity.getName();
+        String heapName = PointstoOptions.AllocationSiteSensitiveHeap.getName();
+        String trackName = PointstoOptions.TrackPrimitiveValues.getName();
+        String predicatesName = PointstoOptions.UsePredicates.getName();
+
+        String selector = selectedByPolicy ? "-H:" + sensitivityName + "=" + policy : "-H:+" + heapName;
+        String insensitive = selectedByPolicy ? "-H:" + sensitivityName + "=" + insens : "-H:-" + heapName;
+        String enabled = trackPrimitives && predicates ? "-H:+" + trackName + " and -H:+" + predicatesName : "-H:+" + (trackPrimitives ? trackName : predicatesName);
+        throw AnalysisError.userError(String.format("Context-sensitive analysis (%s) does not support %s yet. Pass -H:-%s -H:-%s, or select context-insensitive analysis with %s.",
+                        selector, enabled, trackName, predicatesName, insensitive));
     }
 
     private static ExtensionPolicy createExtensionPolicy(HostVM hostVM) {
