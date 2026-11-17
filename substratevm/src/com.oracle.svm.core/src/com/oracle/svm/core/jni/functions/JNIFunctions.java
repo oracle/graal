@@ -77,6 +77,7 @@ import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.interpreter.InterpreterJNIFieldIds;
+import com.oracle.svm.core.interpreter.InterpreterJNIMethodIds;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jdk.StackTraceUtils;
@@ -1062,13 +1063,13 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static JNIObjectHandle ToReflectedMethod(JNIEnvironment env, JNIObjectHandle classHandle, JNIMethodId methodId, boolean isStatic) {
-        if (InterpreterSupport.isEnabled()) {
+        if (InterpreterSupport.isEnabled() && InterpreterJNIMethodIds.isInterpreterMethodId(methodId)) {
             Executable result = InterpreterSupport.singleton().getJNIMethodExecutable(methodId);
             if (result != null) {
                 Class<?> clazz = result.getDeclaringClass();
                 assert Support.isJNIClassAccessible(DynamicHub.fromClass(clazz)) : clazz.getName();
-                return JNIObjectHandles.createLocal(result);
             }
+            return JNIObjectHandles.createLocal(result);
         }
 
         Executable result = null;
@@ -1935,19 +1936,14 @@ public final class JNIFunctions {
             boolean resolvedMethodCanUseInterpreterFallback = false;
             boolean methodFoundWithOppositeStaticKind = false;
             boolean runtimeLoaded = RuntimeClassLoading.isSupported() && hub.isRuntimeLoaded();
-            boolean interpreterFallback = runtimeLoaded || RuntimeClassLoading.isJNIRegistrationFallbackSupported();
+            boolean registrationFallback = RuntimeClassLoading.isJNIRegistrationFallbackSupported();
+            boolean interpreterFallback = runtimeLoaded || registrationFallback;
 
             if (interpreterFallback) {
                 resolvedJavaMethod = InterpreterSupport.singleton().lookupMethodForJNI(origClazz, name.toString(), signature.toString());
                 if (resolvedJavaMethod != null) {
-                    resolvedMethodCanUseInterpreterFallback = InterpreterSupport.singleton().canCreateJNIMethodId(resolvedJavaMethod);
-                }
-                if (resolvedJavaMethod instanceof CremaResolvedJavaMethod && resolvedMethodCanUseInterpreterFallback) {
-                    if (resolvedJavaMethod.isStatic() == isStatic) {
-                        methodID = InterpreterSupport.singleton().getOrCreateJNIMethodId(resolvedJavaMethod);
-                    } else {
-                        methodFoundWithOppositeStaticKind = true;
-                    }
+                    resolvedMethodCanUseInterpreterFallback = (resolvedJavaMethod instanceof CremaResolvedJavaMethod || registrationFallback) &&
+                                    InterpreterSupport.singleton().canCreateJNIMethodId(resolvedJavaMethod);
                 }
             }
 
@@ -1960,19 +1956,24 @@ public final class JNIFunctions {
             boolean lookupInDictionary = !runtimeLoaded || (resolvedJavaMethod != null && !(resolvedJavaMethod instanceof CremaResolvedJavaMethod));
             if (lookupInDictionary) {
                 boolean reportMissingRegistrationErrors = !interpreterFallback || (resolvedJavaMethod != null && !resolvedMethodCanUseInterpreterFallback);
-                methodID = JNIReflectionDictionary.getMethodID(origClazz, name, signature, isStatic, reportMissingRegistrationErrors);
+                methodID = JNIReflectionDictionary.getMethodID(origClazz, name, signature, isStatic, reportMissingRegistrationErrors,
+                                !resolvedMethodCanUseInterpreterFallback || resolvedJavaMethod.isStatic() != isStatic);
             }
 
             if (InterpreterSupport.isEnabled() && methodID.isNull() && resolvedMethodCanUseInterpreterFallback) {
                 if (resolvedJavaMethod.isStatic() == isStatic) {
                     methodID = InterpreterSupport.singleton().getOrCreateJNIMethodId(resolvedJavaMethod);
+                    if (MetadataTracer.enabled()) {
+                        Class<?> declaringClass = InterpreterSupport.singleton().toClass(resolvedJavaMethod.getDeclaringClass());
+                        MetadataTracer.singleton().traceJNIMethodAccess(declaringClass, name.toString(), signature.toString());
+                    }
                 } else {
                     methodFoundWithOppositeStaticKind = true;
                 }
             }
 
             if (methodID.isNull() && !interpreterFallback) {
-                methodFoundWithOppositeStaticKind = JNIReflectionDictionary.getMethodID(origClazz, name, signature, !isStatic, false).isNonNull();
+                methodFoundWithOppositeStaticKind = JNIReflectionDictionary.getMethodID(origClazz, name, signature, !isStatic, false, true).isNonNull();
             }
 
             if (methodID.isNull()) {
@@ -2005,28 +2006,31 @@ public final class JNIFunctions {
             }
 
             boolean runtimeLoaded = RuntimeClassLoading.isSupported() && hub.isRuntimeLoaded();
-            boolean interpreterFallback = runtimeLoaded || RuntimeClassLoading.isJNIRegistrationFallbackSupported();
+            boolean registrationFallback = RuntimeClassLoading.isJNIRegistrationFallbackSupported();
+            boolean interpreterFallback = runtimeLoaded || registrationFallback;
             ResolvedJavaField resolvedField = null;
             boolean resolvedFieldCanUseInterpreterFallback = false;
             JNIFieldId fieldID = Word.nullPointer();
             if (interpreterFallback) {
                 resolvedField = InterpreterSupport.singleton().lookupFieldForJNI(clazz, name.toString(), signature.toString(), isStatic);
                 if (resolvedField != null) {
-                    resolvedFieldCanUseInterpreterFallback = InterpreterSupport.singleton().canCreateJNIFieldId(resolvedField);
-                }
-                if (resolvedField instanceof CremaResolvedJavaField && resolvedFieldCanUseInterpreterFallback) {
-                    fieldID = InterpreterSupport.singleton().getOrCreateJNIFieldId(resolvedField);
+                    resolvedFieldCanUseInterpreterFallback = (resolvedField instanceof CremaResolvedJavaField || registrationFallback) &&
+                                    InterpreterSupport.singleton().canCreateJNIFieldId(resolvedField);
                 }
             }
 
             boolean lookupInDictionary = !runtimeLoaded || (resolvedField != null && !(resolvedField instanceof CremaResolvedJavaField));
             if (lookupInDictionary) {
                 boolean reportMissingRegistrationErrors = !interpreterFallback || (resolvedField != null && !resolvedFieldCanUseInterpreterFallback);
-                fieldID = JNIReflectionDictionary.getFieldID(clazz, name, isStatic, reportMissingRegistrationErrors);
+                fieldID = JNIReflectionDictionary.getFieldID(clazz, name, isStatic, reportMissingRegistrationErrors, !resolvedFieldCanUseInterpreterFallback);
             }
 
             if (InterpreterSupport.isEnabled() && fieldID.isNull() && resolvedFieldCanUseInterpreterFallback) {
                 fieldID = InterpreterSupport.singleton().getOrCreateJNIFieldId(resolvedField);
+                if (MetadataTracer.enabled()) {
+                    Class<?> declaringClass = InterpreterSupport.singleton().toClass(resolvedField.getDeclaringClass());
+                    MetadataTracer.singleton().traceJNIFieldAccess(declaringClass, name.toString());
+                }
             }
             if (fieldID.isNull()) {
                 throw new NoSuchFieldError(clazz.getName() + '.' + name);

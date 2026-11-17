@@ -67,6 +67,7 @@ import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
+import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
 import com.oracle.svm.espresso.classfile.descriptors.Type;
 import com.oracle.svm.espresso.shared.lookup.LookupSuccessInvocationFailure;
@@ -145,9 +146,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
 
     @Override
     public Executable getJNIMethodExecutable(JNIMethodId methodId) {
-        if (!InterpreterJNIMethodIds.isInterpreterMethodId(methodId)) {
-            return null;
-        }
+        assert InterpreterJNIMethodIds.isInterpreterMethodId(methodId);
         ResolvedJavaMethod method = InterpreterJNIMethodIds.getMethod(methodId);
         if (method instanceof CremaResolvedJavaMethod cremaMethod) {
             return RuntimeReflectionMetadata.fromResolvedMethod(cremaMethod);
@@ -188,6 +187,9 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             return null;
         }
         InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz));
+        if (symbolicName == ParserSymbols.ParserNames._init_ || symbolicName == ParserSymbols.ParserNames._clinit_) {
+            return type.lookupDeclaredMethod(symbolicName, symbolicDescriptor);
+        }
         try {
             return type.lookupMethod(symbolicName, symbolicDescriptor);
         } catch (LookupSuccessInvocationFailure e) {
