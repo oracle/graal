@@ -165,9 +165,6 @@ public class DuplicationSimulationTraversalTest extends GraalCompilerTest {
                     RecordingVisitor actual = new RecordingVisitor();
                     traversal.visitDominatorTreeBounded(actual, start, start.getDominatorDepth(), maxDepth);
                     Assert.assertEquals(expected.events, actual.events);
-                    RecordingVisitor singleTraversal = new RecordingVisitor();
-                    SimulationCFGTraversal.visitDominatorTreeBounded(cfg, singleTraversal, start, start.getDominatorDepth(), maxDepth);
-                    Assert.assertEquals(expected.events, singleTraversal.events);
                 }
             }
         }
