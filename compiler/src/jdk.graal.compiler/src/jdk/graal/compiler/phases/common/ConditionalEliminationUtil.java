@@ -789,23 +789,11 @@ public class ConditionalEliminationUtil {
         if (xProof.guard == yProof.guard) {
             return xProof;
         }
-        ConditionProof deepestProof = null;
-        boolean foundXProofGuard = false;
-        boolean foundYProofGuard = false;
-        for (GuardedCondition condition : conditions) {
-            if (condition.getGuard() == xProof.guard) {
-                foundXProofGuard = true;
-                if (deepestProof == null) {
-                    deepestProof = xProof;
-                }
-            } else if (condition.getGuard() == yProof.guard) {
-                foundYProofGuard = true;
-                if (deepestProof == null) {
-                    deepestProof = yProof;
-                }
-            }
+        GuardedCondition deepest = conditions.findDeepestCondition(xProof.guard, yProof.guard);
+        if (deepest == null) {
+            return null;
         }
-        return foundXProofGuard && foundYProofGuard ? deepestProof : null;
+        return deepest.getGuard() == xProof.guard ? xProof : yProof;
     }
 
     /**

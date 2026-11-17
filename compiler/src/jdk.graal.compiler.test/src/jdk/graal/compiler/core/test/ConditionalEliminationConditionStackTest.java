@@ -26,7 +26,6 @@ package jdk.graal.compiler.core.test;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Consumer;
@@ -40,6 +39,7 @@ import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.TypeReference;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNegationNode;
@@ -277,10 +277,9 @@ public class ConditionalEliminationConditionStackTest extends GraalCompilerTest 
             copy.pushAll(source);
             Assert.assertSame(older, copy.findImplication(queryA).condition());
             Assert.assertSame(newer, copy.findImplication(queryB).condition());
-            Iterator<GuardedCondition> iterator = copy.iterator();
-            Assert.assertSame(newer, iterator.next());
-            Assert.assertSame(older, iterator.next());
-            Assert.assertFalse(iterator.hasNext());
+            Assert.assertSame(newer, copy.pop());
+            Assert.assertSame(older, copy.pop());
+            Assert.assertEquals(0, copy.size());
         }
     }
 
@@ -452,17 +451,34 @@ public class ConditionalEliminationConditionStackTest extends GraalCompilerTest 
     }
 
     @Test
-    public void iterationCannotBypassStackMutations() {
+    public void deepestConditionRequiresBothGuardsAndPreservesOrder() {
         StructuredGraph graph = graph();
         LogicNode query = graph.addWithoutUnique(new IsNullNode(parameter(graph, 0, JavaKind.Object)));
+        BeginNode firstGuard = graph.add(new BeginNode());
+        BeginNode secondGuard = graph.add(new BeginNode());
+        BeginNode missingGuard = graph.add(new BeginNode());
+        GuardedCondition older = new GuardedCondition(firstGuard, query, false);
+        GuardedCondition newer = new GuardedCondition(secondGuard, query, true);
+        GuardedCondition newest = new GuardedCondition(firstGuard, query, false);
         try (ConditionalEliminationConditionStack conditions = new ConditionalEliminationConditionStack(graph)) {
-            GuardedCondition proof = push(conditions, query, false);
-            Iterator<GuardedCondition> iterator = conditions.iterator();
-            Assert.assertSame(proof, iterator.next());
-            Assert.assertThrows(UnsupportedOperationException.class, iterator::remove);
-            Assert.assertEquals(1, conditions.size());
-            Assert.assertSame(proof, conditions.findImplication(query).condition());
-            Assert.assertSame(proof, conditions.pop());
+            Assert.assertNull(conditions.findDeepestCondition(firstGuard, secondGuard));
+            conditions.push(older);
+            Assert.assertSame(older, conditions.findDeepestCondition(firstGuard, firstGuard));
+            Assert.assertNull(conditions.findDeepestCondition(firstGuard, secondGuard));
+            Assert.assertNull(conditions.findDeepestCondition(secondGuard, firstGuard));
+            conditions.push(newer);
+            Assert.assertSame(newer, conditions.findDeepestCondition(firstGuard, secondGuard));
+            Assert.assertSame(newer, conditions.findDeepestCondition(secondGuard, firstGuard));
+            Assert.assertNull(conditions.findDeepestCondition(firstGuard, missingGuard));
+            Assert.assertNull(conditions.findDeepestCondition(missingGuard, secondGuard));
+            conditions.push(newest);
+            Assert.assertSame(newest, conditions.findDeepestCondition(firstGuard, secondGuard));
+            Assert.assertSame(newest, conditions.pop());
+            Assert.assertSame(newer, conditions.findDeepestCondition(firstGuard, secondGuard));
+            Assert.assertSame(newer, conditions.pop());
+            Assert.assertNull(conditions.findDeepestCondition(firstGuard, secondGuard));
+            conditions.clear();
+            Assert.assertNull(conditions.findDeepestCondition(firstGuard, firstGuard));
         }
     }
 

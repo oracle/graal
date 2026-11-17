@@ -26,7 +26,6 @@ package jdk.graal.compiler.phases.common;
 
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 
@@ -40,6 +39,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.spi.ValueProxy;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.GuardedCondition;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.Implication;
@@ -58,7 +58,7 @@ import jdk.vm.ci.meta.TriState;
  * moves its entries to fallback until popped. Memberships stay fixed so that rollback is always in
  * stack order. Sharing the map may select or invalidate extra candidates, which is conservative.
  */
-public final class ConditionalEliminationConditionStack implements Iterable<GuardedCondition>, AutoCloseable {
+public final class ConditionalEliminationConditionStack implements AutoCloseable {
     private final EconomicMap<Object, ArrayList<Entry>> index = EconomicMap.create();
     private final ArrayList<Entry> entries = new ArrayList<>();
     private final BitSet fallback = new BitSet();
@@ -174,21 +174,29 @@ public final class ConditionalEliminationConditionStack implements Iterable<Guar
         return entries.size();
     }
 
-    @Override
-    public Iterator<GuardedCondition> iterator() {
-        // The wrapper leaves remove unsupported: mutations must go through push/pop/clear.
-        Iterator<Entry> iterator = entries.reversed().iterator();
-        return new Iterator<>() {
-            @Override
-            public boolean hasNext() {
-                return iterator.hasNext();
+    /**
+     * Returns the newest condition guarded by either guard, or {@code null} unless both guards are
+     * present. Active conditions are ordered by dominance, so its guard is dominated by both guards.
+     */
+    public GuardedCondition findDeepestCondition(GuardingNode firstGuard, GuardingNode secondGuard) {
+        GuardedCondition deepest = null;
+        boolean foundFirst = false;
+        boolean foundSecond = false;
+        for (int i = entries.size() - 1; i >= 0; i--) {
+            GuardedCondition condition = entries.get(i).condition;
+            GuardingNode guard = condition.getGuard();
+            if (guard == firstGuard || guard == secondGuard) {
+                if (deepest == null) {
+                    deepest = condition;
+                }
+                foundFirst |= guard == firstGuard;
+                foundSecond |= guard == secondGuard;
+                if (foundFirst && foundSecond) {
+                    return deepest;
+                }
             }
-
-            @Override
-            public GuardedCondition next() {
-                return iterator.next().condition;
-            }
-        };
+        }
+        return null;
     }
 
     /** Returns the same first known implication as the full stack, or {@code null}. */
