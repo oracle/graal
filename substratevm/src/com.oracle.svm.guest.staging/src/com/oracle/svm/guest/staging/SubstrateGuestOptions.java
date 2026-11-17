@@ -40,6 +40,13 @@ import jdk.graal.compiler.options.OptionType;
 
 public final class SubstrateGuestOptions {
 
+    /// Using a small stack size, such as 64 KiB, on a machine that has a large page size, such as
+    /// 64 KiB, and address space randomization enabled may result in transient isolate
+    /// initialization failures. A `StackOverflowError` can be thrown early on because there is
+    /// hardly any usable stack space available. Therefore, SVM uses 128 KiB as the minimum usable
+    /// stack size for explicitly requested Java stack sizes, including `-Xss`, for now.
+    public static final long USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE = 128L * 1024L;
+
     @Option(help = "Initialize the VM and run startup hooks.")//
     public static final HostedOptionKey<Boolean> InitializeVM = new HostedOptionKey<>(true);
 
@@ -56,7 +63,7 @@ public final class SubstrateGuestOptions {
             return;
         }
 
-        long minimumStackSize = GuestStagingDependencyBridge.singleton().getJavaThreadMinimumUsableStackSize();
+        long minimumStackSize = USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE;
         if (stackSize < minimumStackSize) {
             throw RuntimeOptionValidation.invalidOptionValue(option, stackSize, "Java thread stack size is too small; specify at least " + minimumStackSize + " bytes");
         }

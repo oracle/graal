@@ -114,17 +114,6 @@ import jdk.internal.misc.Unsafe;
  */
 @InternalVMMethod
 public abstract class PlatformThreads {
-    /// Using a small stack size, such as 64 KiB, on a machine that has a large page size, such as
-    /// 64 KiB, and address space randomization enabled may result in transient isolate
-    /// initialization failures. A `StackOverflowError` can be thrown early on because there is
-    /// hardly any usable stack space available. Therefore, SVM uses 128 KiB as the minimum usable
-    /// stack size for explicitly requested Java stack sizes, including `-Xss`, for now.
-    private static final long USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE = 128L * 1024L;
-
-    public static long getJavaThreadMinimumUsableStackSize() {
-        return USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE;
-    }
-
     @Fold
     public static PlatformThreads singleton() {
         return ImageSingletons.lookup(PlatformThreads.class);
@@ -467,7 +456,7 @@ public abstract class PlatformThreads {
     /// and thread start path are specific to SVM. The SVM yellow and red zones are then added so
     /// the result can be compared with [#addStackOverflowGuardZones].
     public static long getJavaThreadMinimumStackSize() {
-        long minimumStackSizeWithGuards = addStackOverflowGuardZones(USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE);
+        long minimumStackSizeWithGuards = addStackOverflowGuardZones(SubstrateGuestOptions.USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE);
         long pageSize = VirtualMemoryProvider.get().getGranularity().rawValue();
         return NumUtil.roundUp(minimumStackSizeWithGuards, pageSize);
     }
