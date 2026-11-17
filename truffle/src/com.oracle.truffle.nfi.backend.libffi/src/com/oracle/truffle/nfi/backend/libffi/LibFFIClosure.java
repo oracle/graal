@@ -64,15 +64,12 @@ import com.oracle.truffle.nfi.backend.libffi.LibFFIClosureFactory.UnboxStringNod
 import com.oracle.truffle.nfi.backend.libffi.LibFFISignature.CachedSignatureInfo;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 import com.oracle.truffle.nfi.backend.libffi.NativeArgumentBuffer.TypeTag;
+import com.oracle.truffle.nfi.backend.spi.NFIState;
 
 @ExportLibrary(InteropLibrary.class)
 final class LibFFIClosure implements TruffleObject {
 
     private static final RetPatches IGNORE_RETURN = new RetPatches(-1, null, null);
-
-    private static boolean hasPendingException(Node node) {
-        return LibFFILanguage.get(node).getNFIState().getPendingException() != null;
-    }
 
     final ClosureNativePointer nativePointer;
 
@@ -323,18 +320,24 @@ final class LibFFIClosure implements TruffleObject {
 
         @Specialization
         public Object doBufferRet(VirtualFrame frame, NativeArgumentBuffer.Pointer retBuffer) {
-            Object ret = callClosure.execute(frame);
-            // Older native runtimes need the serialized frontend default instead of this marker.
-            if (NativeLibVersion.get() >= 3 && hasPendingException(this)) {
-                /*
-                 * The native result is ignored when an exception is pending. The native closure
-                 * zeros the full return area when it sees this marker. It is important to do as
-                 * little work as possible in the exception case to avoid secondary exceptions while
-                 * handling StackOverflowError or OutOfMemoryError.
-                 */
-                return IGNORE_RETURN;
+            NFIState state = LibFFILanguage.get(this).getNFIState();
+            Throwable saved = state.savePendingException();
+            try {
+                Object ret = callClosure.execute(frame);
+                // Older native runtimes need the serialized frontend default instead of this marker.
+                if (NativeLibVersion.get() >= 3 && state.getPendingException() != null) {
+                    /*
+                     * The native result is ignored when an exception is pending. The native closure
+                     * zeros the full return area when it sees this marker. It is important to do as
+                     * little work as possible in the exception case to avoid secondary exceptions while
+                     * handling StackOverflowError or OutOfMemoryError.
+                     */
+                    return IGNORE_RETURN;
+                }
+                return encodeRet.execute(ret, retBuffer);
+            } finally {
+                state.restorePendingException(saved);
             }
-            return encodeRet.execute(ret, retBuffer);
         }
     }
 
@@ -377,8 +380,14 @@ final class LibFFIClosure implements TruffleObject {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            callClosure.execute(frame);
-            return null;
+            NFIState state = LibFFILanguage.get(this).getNFIState();
+            Throwable saved = state.savePendingException();
+            try {
+                callClosure.execute(frame);
+                return null;
+            } finally {
+                state.restorePendingException(saved);
+            }
         }
     }
 
@@ -421,7 +430,13 @@ final class LibFFIClosure implements TruffleObject {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return callClosure.execute(frame);
+            NFIState state = LibFFILanguage.get(this).getNFIState();
+            Throwable saved = state.savePendingException();
+            try {
+                return callClosure.execute(frame);
+            } finally {
+                state.restorePendingException(saved);
+            }
         }
     }
 
@@ -466,14 +481,20 @@ final class LibFFIClosure implements TruffleObject {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Object ret = callClosure.execute(frame);
-            if (hasPendingException(this)) {
-                return null;
+            NFIState state = LibFFILanguage.get(this).getNFIState();
+            Throwable saved = state.savePendingException();
+            try {
+                Object ret = callClosure.execute(frame);
+                if (state.getPendingException() != null) {
+                    return null;
+                }
+                if (interopLibrary.isNull(ret)) {
+                    return null;
+                }
+                return ret;
+            } finally {
+                state.restorePendingException(saved);
             }
-            if (interopLibrary.isNull(ret)) {
-                return null;
-            }
-            return ret;
         }
     }
 
@@ -657,20 +678,26 @@ final class LibFFIClosure implements TruffleObject {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Object ret = callClosure.execute(frame);
-            if (hasPendingException(this)) {
-                /*
-                 * The pending exception is rethrown after the native call returns. Its return value
-                 * is ignored, so avoid interop conversion here. In particular, converting the
-                 * default NFIPointer can initialize its library exports on a deeply nested stack
-                 * while unwinding a stack overflow.
-                 */
-                return null;
-            }
+            NFIState state = LibFFILanguage.get(this).getNFIState();
+            Throwable saved = state.savePendingException();
             try {
-                return unboxString.execute(ret);
-            } catch (UnsupportedTypeException ex) {
-                return null;
+                Object ret = callClosure.execute(frame);
+                if (state.getPendingException() != null) {
+                    /*
+                     * The pending exception is rethrown after the native call returns. Its return value
+                     * is ignored, so avoid interop conversion here. In particular, converting the
+                     * default NFIPointer can initialize its library exports on a deeply nested stack
+                     * while unwinding a stack overflow.
+                     */
+                    return null;
+                }
+                try {
+                    return unboxString.execute(ret);
+                } catch (UnsupportedTypeException ex) {
+                    return null;
+                }
+            } finally {
+                state.restorePendingException(saved);
             }
         }
     }

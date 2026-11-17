@@ -85,7 +85,11 @@ final class PanamaClosure implements TruffleObject {
     @SuppressWarnings("unused")
     private static void setPendingException(PanamaNFILanguage language, Throwable throwable) {
         // Keep this handler minimal: it can run while recovering from stack exhaustion.
-        language.getNFIState().setPendingException(throwable);
+        NFIState state = language.getNFIState();
+        // Errors before saving or after restoring the state must preserve the earlier exception.
+        if (state.getPendingException() == null) {
+            state.setPendingException(throwable);
+        }
     }
 
     /**
@@ -276,6 +280,7 @@ final class PanamaClosure implements TruffleObject {
             NFIState nfiState = language.getNFIState();
             ErrorContext ctx = (ErrorContext) language.errorContext.get();
             nfiState.setNFIErrno(ctx.getNativeErrno());
+            Throwable saved = nfiState.savePendingException();
             try (Arena arena = Arena.ofConfined()) {
 
                 try {
@@ -302,9 +307,10 @@ final class PanamaClosure implements TruffleObject {
                         // Trace filling is best effort; preserve the original pending exception.
                     }
                     return MemorySegment.NULL;
-                } finally {
-                    ctx.setNativeErrno(nfiState.getNFIErrno());
                 }
+            } finally {
+                nfiState.restorePendingException(saved);
+                ctx.setNativeErrno(nfiState.getNFIErrno());
             }
         }
     }
@@ -338,6 +344,7 @@ final class PanamaClosure implements TruffleObject {
             NFIState nfiState = language.getNFIState();
             ErrorContext ctx = (ErrorContext) language.errorContext.get();
             nfiState.setNFIErrno(ctx.getNativeErrno());
+            Throwable saved = nfiState.savePendingException();
             try {
                 callClosure.execute(frame);
             } catch (Throwable t) {
@@ -351,6 +358,7 @@ final class PanamaClosure implements TruffleObject {
                     // Trace filling is best effort; preserve the original pending exception.
                 }
             } finally {
+                nfiState.restorePendingException(saved);
                 ctx.setNativeErrno(nfiState.getNFIErrno());
             }
             return null;
@@ -404,6 +412,7 @@ final class PanamaClosure implements TruffleObject {
             NFIState nfiState = language.getNFIState();
             ErrorContext ctx = (ErrorContext) language.errorContext.get();
             nfiState.setNFIErrno(ctx.getNativeErrno());
+            Throwable saved = nfiState.savePendingException();
             try {
                 Object ret = callClosure.execute(frame);
                 if (nfiState.getPendingException() != null) {
@@ -425,6 +434,7 @@ final class PanamaClosure implements TruffleObject {
                 }
                 return defaultReturn;
             } finally {
+                nfiState.restorePendingException(saved);
                 ctx.setNativeErrno(nfiState.getNFIErrno());
             }
         }

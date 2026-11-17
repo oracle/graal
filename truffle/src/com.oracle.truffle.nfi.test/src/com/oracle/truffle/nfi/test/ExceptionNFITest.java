@@ -50,6 +50,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -312,8 +313,20 @@ public class ExceptionNFITest extends NFITest {
             return 0;
         });
         Assert.assertThrows(MyException.class, () -> target.call(MyException.THROW, success, observe));
-        // A previously pending exception currently makes this successful result unusable.
-        Assert.assertEquals(0, observed[0]);
+        Assert.assertEquals(42, observed[0]);
+    }
+
+    /**
+     * The earlier pending exception is restored after the second callback.
+     */
+    @Test
+    public void testFirstExceptionPreserved(@Inject(NativeJustCall2.class) CallTarget target) {
+        RuntimeException first = new MyException();
+        TestCallback fail = new TestCallback(0, args -> {
+            throw first;
+        });
+        Assert.assertSame(first, Assert.assertThrows(MyException.class, () -> target.call(fail, SuccessException.THROW)));
+        target.call(NOOP, NOOP);
     }
 
     @Test
@@ -323,24 +336,138 @@ public class ExceptionNFITest extends NFITest {
         Object language = ReflectionUtils.invokeStatic(languageClass, "get", new Class<?>[]{Node.class}, new Object[]{null});
         NFIState state = (NFIState) ReflectionUtils.invoke(language, "getNFIState");
         Class<?> closureClass = Class.forName("com.oracle.truffle.nfi.backend.panama.PanamaClosure");
-        RuntimeException failure = new SuccessException();
-        MethodHandle failing = MethodHandles.throwException(int.class, RuntimeException.class).bindTo(failure);
+        RuntimeException first = new MyException();
+        RuntimeException second = new SuccessException();
+        MethodHandle failing = MethodHandles.throwException(int.class, RuntimeException.class).bindTo(second);
         MethodHandle protectedCall = (MethodHandle) ReflectionUtils.invokeStatic(closureClass, "protectUpcall",
                         new Class<?>[]{MethodHandle.class, languageClass}, failing, language);
         try {
+            state.setPendingException(first);
             Assert.assertEquals(0, (int) protectedCall.invokeExact());
-            Assert.assertSame(failure, state.getPendingException());
+            Assert.assertSame(first, state.getPendingException());
+            state.clearPendingException();
+            Assert.assertEquals(0, (int) protectedCall.invokeExact());
+            Assert.assertSame(second, state.getPendingException());
         } finally {
             state.clearPendingException();
         }
     }
 
-    /**
-     * Last exception wins.
-     */
-    @Test(expected = SuccessException.class)
-    public void testExceptionOverride(@Inject(NativeJustCall2.class) CallTarget target) {
-        target.call(MyException.THROW, SuccessException.THROW);
+    @Test
+    public void testSuccessfulCallbackAfterException() {
+        CallTarget target = new SendExecuteNode("native_call_after_exception", "(():void, ():sint32, (sint32):void):void").getCallTarget();
+        CallTarget nested = new SendExecuteNode("native_just_call", "(():void):void").getCallTarget();
+        int[] observed = {-1};
+        TestCallback success = new TestCallback(0, args -> {
+            nested.call(NOOP);
+            return 42;
+        });
+        TestCallback observe = new TestCallback(1, args -> {
+            observed[0] = (int) args[0];
+            return 0;
+        });
+        Assert.assertThrows(MyException.class, () -> target.call(MyException.THROW, success, observe));
+        Assert.assertEquals(42, observed[0]);
+    }
+
+    @Test
+    public void testNestedArgumentFailureAfterException() {
+        CallTarget target = new SendExecuteNode("native_call_after_exception", "(():void, ():sint32, (sint32):void):void").getCallTarget();
+        CallTarget nested = new SendExecuteNode("native_just_call", "(():void):void").getCallTarget();
+        RuntimeException first = new MyException();
+        TestCallback fail = new TestCallback(0, args -> {
+            throw first;
+        });
+        AssertionError[] argumentFailure = {null};
+        TestCallback success = new TestCallback(0, args -> {
+            argumentFailure[0] = Assert.assertThrows(AssertionError.class, () -> nested.call());
+            return 42;
+        });
+        int[] observed = {-1};
+        TestCallback observe = new TestCallback(1, args -> {
+            observed[0] = (int) args[0];
+            return 0;
+        });
+        Assert.assertSame(first, Assert.assertThrows(MyException.class, () -> target.call(fail, success, observe)));
+        Assert.assertNotNull("The successful callback must reach the nested call", argumentFailure[0]);
+        Assert.assertTrue("The nested call must fail on its own arguments", argumentFailure[0].getCause() instanceof ArityException);
+        Assert.assertEquals(42, observed[0]);
+    }
+
+    @Test
+    public void testObjectCallbackAfterException() {
+        Assume.assumeFalse("Panama does not support object handles", "panama".equals(TEST_BACKEND));
+        for (String type : new String[]{"OBJECT", "NULLABLE"}) {
+            CallTarget target = new SendExecuteNode("native_object_after_exception", String.format("(env, ():void, ():%s, %s, (sint32):void):void", type, type)).getCallTarget();
+            Object value = new TestCallback(0, args -> 0);
+            TestCallback success = new TestCallback(0, args -> value);
+            int[] observed = {-1};
+            TestCallback observe = new TestCallback(1, args -> {
+                observed[0] = (int) args[0];
+                return 0;
+            });
+            Assert.assertThrows(MyException.class, () -> target.call(MyException.THROW, success, value, observe));
+            Assert.assertEquals(type, 1, observed[0]);
+        }
+    }
+
+    @Test
+    public void testStringCallbackAfterException() {
+        Assume.assumeFalse("Panama string callbacks use different ownership", "panama".equals(TEST_BACKEND));
+        CallTarget target = new SendExecuteNode("native_string_after_exception", "(():void, ():string, (sint32):void):void").getCallTarget();
+        int[] observed = {-1};
+        TestCallback success = new TestCallback(0, args -> "callback result");
+        TestCallback observe = new TestCallback(1, args -> {
+            observed[0] = (int) args[0];
+            return 0;
+        });
+        Assert.assertThrows(MyException.class, () -> target.call(MyException.THROW, success, observe));
+        Assert.assertEquals(1, observed[0]);
+    }
+
+    @Test
+    public void testNativeExceptionFlagRestoredAfterCallback() {
+        Assume.assumeFalse("Panama does not support environment pointers", "panama".equals(TEST_BACKEND));
+        CallTarget target = new SendExecuteNode("native_exception_flag_after_callback", "(env, ():void, ():void, (sint32, sint32):void):void").getCallTarget();
+        CallTarget check = new SendExecuteNode("native_exception_check", "(env):sint32").getCallTarget();
+        int[] observed = {-1, -1, -1};
+        TestCallback success = new TestCallback(0, args -> {
+            observed[0] = (int) check.call();
+            return 0;
+        });
+        TestCallback observe = new TestCallback(2, args -> {
+            observed[1] = (int) args[0];
+            observed[2] = (int) args[1];
+            return 0;
+        });
+        Assert.assertThrows(MyException.class, () -> target.call(MyException.THROW, success, observe));
+        Assert.assertArrayEquals(new int[]{0, 1, 1}, observed);
+        Assert.assertEquals(0, check.call());
+    }
+
+    @Test
+    public void testStackOverflowAfterPendingException() {
+        assumeStackOverflowSupported();
+        CallTarget target = new SendExecuteNode("native_call_after_exception", "(():void, ():sint32, (sint32):void):void").getCallTarget();
+        CallTarget recursive = new SendExecuteNode("call_closure_noarg_SINT32", "(():sint32):sint32").getCallTarget();
+        boolean[] overflow = {false};
+        Object[] callback = new Object[1];
+        callback[0] = new TestCallback(0, args -> {
+            try {
+                return recursive.call(callback[0]);
+            } catch (StackOverflowError error) {
+                overflow[0] = true;
+                throw error;
+            }
+        });
+        int[] observed = {-1};
+        TestCallback observe = new TestCallback(1, args -> {
+            observed[0] = (int) args[0];
+            return 0;
+        });
+        Assert.assertThrows(MyException.class, () -> target.call(MyException.THROW, callback[0], observe));
+        Assert.assertTrue("The recursive callback must reach stack overflow", overflow[0]);
+        Assert.assertEquals(0, observed[0]);
     }
 
     /**

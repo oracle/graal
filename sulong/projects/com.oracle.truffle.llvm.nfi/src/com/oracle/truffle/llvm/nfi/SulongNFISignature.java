@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,15 +30,19 @@
 package com.oracle.truffle.llvm.nfi;
 
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
+import com.oracle.truffle.nfi.backend.spi.NFIState;
 
 @ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = false)
 @SuppressWarnings("static-method")
@@ -55,7 +59,33 @@ final class SulongNFISignature {
 
     @ExportMessage
     Object createClosure(Object executable) {
-        return executable;
+        return new Closure(executable);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class Closure implements TruffleObject {
+        final Object executable;
+
+        Closure(Object executable) {
+            this.executable = executable;
+        }
+
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        Object execute(Object[] args, @Bind Node node,
+                        @CachedLibrary("this.executable") InteropLibrary interop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+            NFIState state = SulongNFI.get(node).getNFIState();
+            Throwable saved = state.savePendingException();
+            try {
+                return interop.execute(executable, args);
+            } finally {
+                state.restorePendingException(saved);
+            }
+        }
     }
 
     @ExportLibrary(value = NFIBackendSignatureBuilderLibrary.class, useForAOT = false)
