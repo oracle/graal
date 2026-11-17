@@ -36,6 +36,7 @@ import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
@@ -67,11 +68,44 @@ public class CountedStripMiningRegressionTest extends GraalCompilerTest {
         return i;
     }
 
+    public static int guardedBreakBeforeOverflow(int i) {
+        if (i > Integer.MIN_VALUE) {
+            do {
+                if (i == Integer.MIN_VALUE + 1) {
+                    break;
+                }
+                i = Math.subtractExact(i, 2);
+            } while (i > Integer.MIN_VALUE);
+        }
+        return i;
+    }
+
     @Test
     public void testGuardedTailCountedLoop() {
-        test("guardedTailCountedSnippet", 1000001, 0);
-        test("guardedTailCountedSnippet", 1001, 70);
-        test("guardedTailCountedSnippet", Integer.MIN_VALUE + 1, Integer.MIN_VALUE);
+        OptionValues options = new OptionValues(getInitialOptions(),
+                        GraalOptions.PartialUnroll, false,
+                        GraalOptions.LoopPeeling, false,
+                        GraalOptions.FullUnroll, false,
+                        GraalOptions.LoopUnswitch, false,
+                        VectorIntrinsics.Options.Vectorization, false,
+                        jdk.graal.compiler.nodes.loop.Loop.Options.DetectInvertedLoopsAsCounted, true,
+                        jdk.graal.compiler.core.phases.MidTier.Options.StripMineCountedLoops, true,
+                        CountedStripMiningPhase.Options.CountedStripMiningMinFrequency, 0,
+                        CountedStripMiningPhase.Options.StripMineALot, true,
+                        DebugOptions.Counters, "");
+        StructuredGraph graph = parseEager("guardedTailCountedSnippet", AllowAssumptions.YES, options);
+        Suites suites = createSuites(options);
+        suites.getHighTier().apply(graph, getDefaultHighTierContext());
+        long before = CountedStripMiningPhase.FailedShouldStripMineGuardingIV.getCurrentValue(graph.getDebug());
+        suites.getMidTier().apply(graph, getDefaultMidTierContext());
+        Assert.assertTrue("Guarded IV must be rejected by strip mining",
+                        CountedStripMiningPhase.FailedShouldStripMineGuardingIV.getCurrentValue(graph.getDebug()) > before);
+        test(options, "guardedTailCountedSnippet", 1000001, 0);
+        test(options, "guardedTailCountedSnippet", 1001, 70);
+        test(options, "guardedTailCountedSnippet", 1000, 70);
+        test(options, "guardedTailCountedSnippet", Integer.MIN_VALUE + 1, Integer.MIN_VALUE);
+        test(options, "guardedBreakBeforeOverflow", Integer.MIN_VALUE + 1);
+        test(options, "guardedBreakBeforeOverflow", Integer.MIN_VALUE + 3);
     }
 
     public static int method2() {
