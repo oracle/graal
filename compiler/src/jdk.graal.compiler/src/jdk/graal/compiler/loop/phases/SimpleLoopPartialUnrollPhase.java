@@ -121,7 +121,9 @@ public class SimpleLoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
         if (opaqueUnrolledStrides != null) {
             try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
                 for (OpaqueNode opaque : opaqueUnrolledStrides.getValues()) {
-                    opaque.remove();
+                    if (opaque.isAlive()) {
+                        opaque.remove();
+                    }
                 }
                 if (!listener.getNodes().isEmpty()) {
                     canonicalizer.applyIncremental(graph, context, listener.getNodes());
