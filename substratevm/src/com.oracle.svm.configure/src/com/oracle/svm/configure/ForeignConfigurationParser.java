@@ -71,7 +71,7 @@ public abstract class ForeignConfigurationParser<FD, LO> extends ConditionalConf
 
     private void parseAndRegisterForeignCall(Object call, boolean forUpcall) {
         var map = asMap(call, "a foreign call must be a map");
-        checkAttributes(map, "foreign call", List.of(RETURN_TYPE, PARAMETER_TYPES), List.of(CONDITIONAL_KEY, "options"));
+        checkAttributes(map, "foreign call", List.of(RETURN_TYPE, PARAMETER_TYPES), List.of(CONDITIONAL_KEY, REASON_KEY, "options"));
         var condition = parseCondition(map, true);
         var descriptor = createFunctionDescriptor(map);
         var optionsMap = asMap(map.get("options", EconomicMap.emptyMap()), "options must be a map");
@@ -94,7 +94,7 @@ public abstract class ForeignConfigurationParser<FD, LO> extends ConditionalConf
 
     private void parseAndRegisterDirectUpcall(Object call) {
         var map = asMap(call, "a foreign call must be a map");
-        checkAttributes(map, "foreign call", List.of("class", "method"), List.of(CONDITIONAL_KEY, RETURN_TYPE, PARAMETER_TYPES, "options"));
+        checkAttributes(map, "foreign call", List.of("class", "method"), List.of(CONDITIONAL_KEY, REASON_KEY, RETURN_TYPE, PARAMETER_TYPES, "options"));
 
         var condition = parseCondition(map, true);
         String className = asString(map.get("class"), "class");

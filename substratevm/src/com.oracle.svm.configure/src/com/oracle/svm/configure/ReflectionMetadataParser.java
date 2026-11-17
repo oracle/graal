@@ -37,7 +37,7 @@ import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.util.TypeResult;
 
 class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T> {
-    private static final List<String> OPTIONAL_REFLECT_METADATA_ATTRS = Arrays.asList(CONDITIONAL_KEY,
+    private static final List<String> OPTIONAL_REFLECT_METADATA_ATTRS = Arrays.asList(CONDITIONAL_KEY, REASON_KEY,
                     "allDeclaredConstructors", "allPublicConstructors", "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
                     "methods", "fields", "unsafeAllocated", "serializable", "jniAccessible");
 

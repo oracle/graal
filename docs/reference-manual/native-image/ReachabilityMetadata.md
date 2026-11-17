@@ -238,6 +238,10 @@ These fields are available in all sections (`reflection`, `jni`, and `resources`
 | `condition`             | Object | Conditional registration based on type reachability | `"condition": {"typeReached": "com.example.Type"}` |
 | `condition.typeReached` | String | Fully qualified class name that must be reached     | `"com.example.ConditionClass"`                     |
 
+You can add a `reason` field to a reflection entry, resource glob or bundle entry, or foreign function entry to explain why it is needed.
+Set `reason` to a string or an array of strings.
+The `reason` value does not change registration behavior.
+
 ### Reflection Metadata
 
 Use these fields in the `"reflection": [...]` section to configure Java reflection access for your application:
