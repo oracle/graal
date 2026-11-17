@@ -526,6 +526,10 @@ def svm_gate_body(args, tasks):
                 # GR-74135: Instantiate the configured concrete class when its instance main is
                 # inherited from an abstract superclass.
                 helloworld(['--variant', 'inheritedInstance'] + args.extra_image_builder_arguments)
+                # Run-time class loading in an image without foreign function support: Crema must
+                # not touch its foreign-functions singleton when the analysis did not reach it
+                # (elide-dev/graal#108).
+                helloworld(svm_experimental_options(['-H:+RuntimeClassLoading', '-H:-ForeignAPISupport']) + args.extra_image_builder_arguments)
 
     with Task('terminus helloworld', tasks, tags=[GraalTags.terminus]) as t:
         if t: _run_terminus_gate(args)
