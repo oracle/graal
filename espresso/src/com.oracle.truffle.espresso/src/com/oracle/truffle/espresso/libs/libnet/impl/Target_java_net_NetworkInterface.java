@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,6 +95,7 @@ public final class Target_java_net_NetworkInterface {
     }
 
     @Substitution
+    @TruffleBoundary
     @Throws(SocketException.class)
     public static @JavaType(NetworkInterface.class) StaticObject getByInetAddress0(@JavaType(InetAddress.class) StaticObject addr,
                     @Inject LibsMeta lMeta,
@@ -150,6 +151,7 @@ public final class Target_java_net_NetworkInterface {
 
     @Substitution
     @Throws(SocketException.class)
+    @TruffleBoundary
     public static @JavaType(byte[].class) StaticObject getMacAddr0(@SuppressWarnings("unused") @JavaType(byte[].class) StaticObject inAddr, @JavaType(String.class) StaticObject name, int ind,
                     @Inject EspressoContext ctx,
                     @Inject InformationLeak iL) {

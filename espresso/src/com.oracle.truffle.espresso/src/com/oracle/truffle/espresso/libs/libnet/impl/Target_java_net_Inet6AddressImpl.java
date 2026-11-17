@@ -47,6 +47,7 @@ public final class Target_java_net_Inet6AddressImpl {
     @Substitution(hasReceiver = true)
     @Throws(UnknownHostException.class)
     @SuppressWarnings("unused")
+    @TruffleBoundary
     public static @JavaType(String.class) StaticObject getLocalHostName(@JavaType(internalName = "Ljava/net/Inet6AddressImpl;") StaticObject self,
                     @Inject Meta meta, @Inject EspressoContext context) {
         // Simulate a system where no real hostname can be retrieved.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,6 +62,7 @@ public final class Target_sun_nio_ch_TruffleSelector {
     }
 
     @Substitution
+    @TruffleBoundary
     public static void register(int selectorId, int fd, int newEvents,
                     @Inject LibsState libsState,
                     @Inject TruffleIO io) {
@@ -80,6 +81,7 @@ public final class Target_sun_nio_ch_TruffleSelector {
     }
 
     @Substitution
+    @TruffleBoundary
     public static void changeEvents(int selectorId, int fd, int newEvents, @Inject LibsState libsState) {
         // this is synchronized from outside per guest SelectionKey
         SelectionKey selectionKey = libsState.selectorGetSelectionKey(selectorId, fd);
@@ -103,6 +105,7 @@ public final class Target_sun_nio_ch_TruffleSelector {
     }
 
     @Substitution
+    @TruffleBoundary
     public static void wakeup(int selectorId, @Inject LibsState libsState) {
         Selector selector = libsState.selectorGetHostSelector(selectorId);
         selector.wakeup();

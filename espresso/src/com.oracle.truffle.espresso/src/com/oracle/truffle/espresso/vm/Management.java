@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1020,6 +1020,7 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
+    @TruffleBoundary
     public long GetThreadCpuTimeWithKind(long threadId, boolean withSysTime,
                     @Inject Meta meta) {
         if (threadId < 0) {
@@ -1043,6 +1044,7 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
+    @TruffleBoundary
     public void GetThreadCpuTimesWithKind(@JavaType(long[].class) StaticObject threadIds, @JavaType(long[].class) StaticObject times, boolean withSysTime,
                     @Inject EspressoLanguage language, @Inject Meta meta) {
         if (StaticObject.isNull(threadIds) || StaticObject.isNull(times)) {

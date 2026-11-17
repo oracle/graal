@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -149,6 +149,7 @@ public class LibsState {
      *
      * @return the handle
      */
+    @TruffleBoundary
     public long handlifyTruffleSelector() {
         try {
             return truffleSelectorHandles.handlify(Selector.open());
@@ -330,6 +331,7 @@ public class LibsState {
      *
      * @return the handle
      */
+    @TruffleBoundary
     public long pollerHandlify() {
         try {
             return trufflePollerHandles.handlify(Selector.open());

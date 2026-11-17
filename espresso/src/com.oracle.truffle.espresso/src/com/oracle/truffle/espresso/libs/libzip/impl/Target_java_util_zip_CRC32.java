@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.libs.libzip.impl;
 import java.nio.ByteBuffer;
 import java.util.zip.CRC32;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
@@ -59,6 +60,7 @@ public final class Target_java_util_zip_CRC32 {
     }
 
     @Substitution(languageFilter = PureJavaLibZipFilter.class)
+    @TruffleBoundary
     public static int update(int crc, int b) {
         CRC32 hostCRC = new CRC32();
         putCRC(crc, hostCRC);
@@ -68,6 +70,7 @@ public final class Target_java_util_zip_CRC32 {
     }
 
     @Substitution(languageFilter = PureJavaLibZipFilter.class)
+    @TruffleBoundary
     public static int updateBytes0(int crc, @JavaType(byte[].class) StaticObject b, int off, int len,
                     @Inject EspressoLanguage language) {
         CRC32 hostCRC = new CRC32();
@@ -78,6 +81,7 @@ public final class Target_java_util_zip_CRC32 {
     }
 
     @Substitution(languageFilter = PureJavaLibZipFilter.class)
+    @TruffleBoundary
     public static int updateByteBuffer0(int crc, long bufAddress, int off, int len,
                     @Inject NativeAccess nativeAccess, @Inject Meta meta) {
         CRC32 hostCRC = new CRC32();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.libs.libjava.impl;
 import java.time.Duration;
 import java.time.Instant;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.libs.InformationLeak;
 import com.oracle.truffle.espresso.libs.LibsMeta;
 import com.oracle.truffle.espresso.libs.LibsState;
@@ -44,6 +45,7 @@ public final class Target_java_lang_ProcessHandleImpl_Info {
     }
 
     @Substitution(hasReceiver = true)
+    @TruffleBoundary
     public static void info0(@JavaType(internalName = "Ljava/lang/ProcessHandleImpl$Info;") StaticObject self, long pid, @Inject InformationLeak iL, @Inject LibsMeta libsMeta,
                     @Inject LibsState libsState) {
         libsState.checkCreateProcessAllowed();
