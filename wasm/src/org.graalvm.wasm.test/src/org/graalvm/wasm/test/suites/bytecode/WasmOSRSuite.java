@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.util.EnumSet;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
@@ -57,6 +58,7 @@ import org.junit.Test;
 
 public class WasmOSRSuite {
     private static final int N_CONTEXTS = 2;
+    private static final int OSR_TRIGGER_ITERATIONS = 1024;
 
     @Test
     public void testOSR() throws IOException, InterruptedException {
@@ -140,6 +142,51 @@ public class WasmOSRSuite {
                         Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
             Value exports = context.eval(source).newInstance().getMember("exports");
             Assert.assertEquals(42, exports.getMember("_main").execute().asInt());
+        }
+    }
+
+    @Test
+    public void testExceptionAfterOSRIsNotCaughtAtLoopOffset() throws IOException, InterruptedException {
+        final ByteSequence binary = ByteSequence.create(compileWat("main", """
+                        (module
+                            (type $t0 (func))
+                            (tag $e0 (type $t0))
+                            (func (export "_main") (param $iterations i32) (result i32)
+                                (local $i i32)
+                                (block $handler
+                                    (try_table (catch_all $handler)
+                                        (loop $loop
+                                            local.get $i
+                                            i32.const 1
+                                            i32.add
+                                            local.tee $i
+                                            local.get $iterations
+                                            i32.lt_u
+                                            br_if $loop
+                                        )
+                                    )
+                                    throw $e0
+                                )
+                                i32.const 42
+                            )
+                        )
+                        """, EnumSet.of(WasmBinaryTools.WabtOption.EXCEPTIONS)));
+        final Source source = Source.newBuilder(WasmLanguage.ID, binary, "main").build();
+
+        var engineBuilder = Engine.newBuilder().allowExperimentalOptions(true);
+        engineBuilder.option("wasm.Exceptions", "true");
+        engineBuilder.option("engine.OSR", "true");
+        engineBuilder.option("engine.OSRCompilationThreshold", "1");
+        engineBuilder.option("engine.FirstTierCompilationThreshold", "1000000");
+        engineBuilder.option("engine.LastTierCompilationThreshold", "1000000");
+        engineBuilder.option("engine.BackgroundCompilation", "false");
+
+        try (Engine engine = engineBuilder.build();
+                        Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
+            Value exports = context.eval(source).newInstance().getMember("exports");
+            PolyglotException exception = Assert.assertThrows(PolyglotException.class,
+                            () -> exports.getMember("_main").execute(OSR_TRIGGER_ITERATIONS));
+            Assert.assertTrue(exception.isGuestException());
         }
     }
 }
