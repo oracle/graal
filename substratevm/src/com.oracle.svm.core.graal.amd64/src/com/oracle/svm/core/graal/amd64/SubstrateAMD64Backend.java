@@ -2535,7 +2535,8 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
 
     @Override
     public CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier,
-                    RegisterValue threadArg, int threadIsolateOffset, int threadCodeBaseOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset, CremaJNITrampolineData cremaData) {
+                    RegisterValue threadArg, int threadIsolateOffset, int threadCodeBaseOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset,
+                    InterpreterJNITrampolineData interpreterData) {
         CompilationResult result = new CompilationResult(identifier);
         AMD64MacroAssembler asm = createAssembler(HostedOptionValues.singleton().get());
         PatchConsumerFactory patchConsumerFactory = PatchConsumerFactory.HostedPatchConsumerFactory.factory();
@@ -2544,15 +2545,15 @@ public class SubstrateAMD64Backend extends SubstrateBackendWithAssembler<AMD64Ma
             asm.endbranch();
         }
         Register jumpTargetRegister = SubstrateControlFlowIntegrity.useSoftwareCFI() ? SubstrateControlFlowIntegrity.singleton().getCFITargetRegister() : rax;
-        if (cremaData != null) {
-            Label nonCremaMethodId = new Label();
-            // Negative method IDs encode CremaResolvedJavaMethod instances.
+        if (interpreterData != null) {
+            Label nonInterpreterMethodId = new Label();
+            // Negative method IDs encode InterpreterResolvedJavaMethod instances.
             asm.testq(methodIdArg.getRegister(), methodIdArg.getRegister());
-            asm.jccb(AMD64Assembler.ConditionFlag.GreaterEqual, nonCremaMethodId);
-            result.recordDataPatch(asm.position(), new ConstantReference(new SubstrateMethodPointerConstant(MethodRefSupport.createMethodPointer(cremaData.wrapperMethod()))));
+            asm.jccb(AMD64Assembler.ConditionFlag.GreaterEqual, nonInterpreterMethodId);
+            result.recordDataPatch(asm.position(), new ConstantReference(new SubstrateMethodPointerConstant(MethodRefSupport.createMethodPointer(interpreterData.wrapperMethod()))));
             asm.leaq(jumpTargetRegister, asm.getPlaceholder(asm.position()));
             asm.jmp(jumpTargetRegister);
-            asm.bind(nonCremaMethodId);
+            asm.bind(nonInterpreterMethodId);
         }
         asm.movq(rax, new AMD64Address(threadArg.getRegister(), threadIsolateOffset));
         /*

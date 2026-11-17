@@ -39,7 +39,6 @@ import com.oracle.svm.guest.staging.hub.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
@@ -188,18 +187,8 @@ public interface CremaSupport {
 
     CFunctionPointer getEnterDirectInterpreterStubEntryPoint();
 
-    /** Gets the JNI upcall wrapper entry point for {@code variant} and {@code nonVirtual}. */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    CFunctionPointer getCremaJNIUpcallWrapperEntryPoint(CallVariant variant, boolean nonVirtual);
-
     @Platforms(Platform.HOSTED_ONLY.class)
     void setEnterDirectInterpreterStubEntryPoint(CFunctionPointer stubEntryPoint);
-
-    /** Sets the JNI upcall wrapper entry points for all JNI call variants to perform a JNI upcall on a runtime-loaded method. */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    void setCremaJNIUpcallWrapperEntryPoints(CFunctionPointer varargsVirtual, CFunctionPointer arrayVirtual, CFunctionPointer vaListVirtual, CFunctionPointer varargsNonVirtual,
-                    CFunctionPointer arrayNonVirtual,
-                    CFunctionPointer vaListNonVirtual);
 
     <T extends ConstantPool & jdk.vm.ci.meta.ConstantPool> T getConstantPool(DynamicHub hub);
 

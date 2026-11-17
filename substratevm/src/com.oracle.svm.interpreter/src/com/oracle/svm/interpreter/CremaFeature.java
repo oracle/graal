@@ -46,11 +46,12 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendWithAssembler;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.interpreter.InterpreterJNIFieldIds;
-import com.oracle.svm.core.interpreter.InterpreterJNIMethodIds;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport;
+import com.oracle.svm.core.interpreter.InterpreterJNIFieldIds;
+import com.oracle.svm.core.interpreter.InterpreterJNIMethodIds;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -62,7 +63,7 @@ import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.interpreter.hosted.CremaJNIUpcallWrapperMethod;
+import com.oracle.svm.interpreter.hosted.InterpreterJNIUpcallWrapperMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
@@ -88,12 +89,12 @@ public class CremaFeature implements InternalFeature {
     private AnalysisMethod enterVTableInterpreterStub;
     private AnalysisMethod enterDirectInterpreterStub;
     private AnalysisMethod enterInterpreterForFFMUpcall;
-    private AnalysisMethod enterCremaJNIUpcallVarargsVirtualWrapper;
-    private AnalysisMethod enterCremaJNIUpcallArrayVirtualWrapper;
-    private AnalysisMethod enterCremaJNIUpcallVaListVirtualWrapper;
-    private AnalysisMethod enterCremaJNIUpcallVarargsNonVirtualWrapper;
-    private AnalysisMethod enterCremaJNIUpcallArrayNonVirtualWrapper;
-    private AnalysisMethod enterCremaJNIUpcallVaListNonVirtualWrapper;
+    private AnalysisMethod enterInterpreterJNIUpcallVarargsVirtualWrapper;
+    private AnalysisMethod enterInterpreterJNIUpcallArrayVirtualWrapper;
+    private AnalysisMethod enterInterpreterJNIUpcallVaListVirtualWrapper;
+    private AnalysisMethod enterInterpreterJNIUpcallVarargsNonVirtualWrapper;
+    private AnalysisMethod enterInterpreterJNIUpcallArrayNonVirtualWrapper;
+    private AnalysisMethod enterInterpreterJNIUpcallVaListNonVirtualWrapper;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -137,12 +138,12 @@ public class CremaFeature implements InternalFeature {
             access.registerAsInHeap(InterpreterJNIMethodIds.InterpreterJNIMethodId.class);
 
             CEntryPointData unpublished = CEntryPointData.createCustomUnpublished();
-            enterCremaJNIUpcallVarargsVirtualWrapper = registerCremaJNIUpcallWrapperMethod(accessImpl, CallVariant.VARARGS, false, unpublished);
-            enterCremaJNIUpcallArrayVirtualWrapper = registerCremaJNIUpcallWrapperMethod(accessImpl, CallVariant.ARRAY, false, unpublished);
-            enterCremaJNIUpcallVaListVirtualWrapper = registerCremaJNIUpcallWrapperMethod(accessImpl, CallVariant.VA_LIST, false, unpublished);
-            enterCremaJNIUpcallVarargsNonVirtualWrapper = registerCremaJNIUpcallWrapperMethod(accessImpl, CallVariant.VARARGS, true, unpublished);
-            enterCremaJNIUpcallArrayNonVirtualWrapper = registerCremaJNIUpcallWrapperMethod(accessImpl, CallVariant.ARRAY, true, unpublished);
-            enterCremaJNIUpcallVaListNonVirtualWrapper = registerCremaJNIUpcallWrapperMethod(accessImpl, CallVariant.VA_LIST, true, unpublished);
+            enterInterpreterJNIUpcallVarargsVirtualWrapper = registerInterpreterJNIUpcallWrapperMethod(accessImpl, CallVariant.VARARGS, false, unpublished);
+            enterInterpreterJNIUpcallArrayVirtualWrapper = registerInterpreterJNIUpcallWrapperMethod(accessImpl, CallVariant.ARRAY, false, unpublished);
+            enterInterpreterJNIUpcallVaListVirtualWrapper = registerInterpreterJNIUpcallWrapperMethod(accessImpl, CallVariant.VA_LIST, false, unpublished);
+            enterInterpreterJNIUpcallVarargsNonVirtualWrapper = registerInterpreterJNIUpcallWrapperMethod(accessImpl, CallVariant.VARARGS, true, unpublished);
+            enterInterpreterJNIUpcallArrayNonVirtualWrapper = registerInterpreterJNIUpcallWrapperMethod(accessImpl, CallVariant.ARRAY, true, unpublished);
+            enterInterpreterJNIUpcallVaListNonVirtualWrapper = registerInterpreterJNIUpcallWrapperMethod(accessImpl, CallVariant.VA_LIST, true, unpublished);
 
             AnalysisType invokers = accessImpl.findTypeByName("java.lang.invoke.Invokers$Holder");
             for (AnalysisMethod invokersMethod : invokers.getDeclaredMethods(false)) {
@@ -153,8 +154,8 @@ public class CremaFeature implements InternalFeature {
         }
     }
 
-    private static AnalysisMethod registerCremaJNIUpcallWrapperMethod(FeatureImpl.BeforeAnalysisAccessImpl access, CallVariant callVariant, boolean nonVirtual, CEntryPointData entryPointData) {
-        CremaJNIUpcallWrapperMethod wrapper = new CremaJNIUpcallWrapperMethod(callVariant, nonVirtual, access.getUniverse().getOriginalMetaAccess(), access.getBigBang()
+    private static AnalysisMethod registerInterpreterJNIUpcallWrapperMethod(FeatureImpl.BeforeAnalysisAccessImpl access, CallVariant callVariant, boolean nonVirtual, CEntryPointData entryPointData) {
+        InterpreterJNIUpcallWrapperMethod wrapper = new InterpreterJNIUpcallWrapperMethod(callVariant, nonVirtual, access.getUniverse().getOriginalMetaAccess(), access.getBigBang()
                         .getWordTypes());
         AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
         access.getBigBang().addRootMethod(analysisWrapper, true, "Registered in " + CremaFeature.class);
@@ -212,12 +213,12 @@ public class CremaFeature implements InternalFeature {
         accessImpl.registerAsImmutable(InterpreterForeignFunctionsSupport.singleton());
         CremaSupport.singleton().setEnterDirectInterpreterStubEntryPoint(MethodRefSupport.createMethodPointer(hUniverse.lookup(enterDirectInterpreterStub)));
         InterpreterForeignFunctionsSupport.singleton().setUpcallStubPointer(MethodRefSupport.createMethodPointer(hUniverse.lookup(enterInterpreterForFFMUpcall)));
-        CremaSupport.singleton().setCremaJNIUpcallWrapperEntryPoints(MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallVarargsVirtualWrapper)),
-                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallArrayVirtualWrapper)),
-                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallVaListVirtualWrapper)),
-                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallVarargsNonVirtualWrapper)),
-                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallArrayNonVirtualWrapper)),
-                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterCremaJNIUpcallVaListNonVirtualWrapper)));
+        InterpreterSupport.singleton().setInterpreterJNIUpcallWrapperEntryPoints(MethodRefSupport.createMethodPointer(hUniverse.lookup(enterInterpreterJNIUpcallVarargsVirtualWrapper)),
+                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterInterpreterJNIUpcallArrayVirtualWrapper)),
+                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterInterpreterJNIUpcallVaListVirtualWrapper)),
+                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterInterpreterJNIUpcallVarargsNonVirtualWrapper)),
+                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterInterpreterJNIUpcallArrayNonVirtualWrapper)),
+                        MethodRefSupport.createMethodPointer(hUniverse.lookup(enterInterpreterJNIUpcallVaListNonVirtualWrapper)));
     }
 
     @Override
