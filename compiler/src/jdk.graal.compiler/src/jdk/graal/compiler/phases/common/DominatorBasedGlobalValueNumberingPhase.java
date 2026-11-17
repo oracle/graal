@@ -358,7 +358,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             boolean substituted = false;
             if (canSubstitute) {
                 // GVN node
-                substituted = blockMap.substitute(cur, substitute, cfg, licmNodes, canLICM ? loopCandidate : null);
+                substituted = ValueMap.substitute(cur, substitute, cfg, licmNodes, canLICM ? loopCandidate : null);
             } else {
                 if (canLICM) {
                     tryPerformLICM(loopCandidate, cur, licmNodes);
@@ -651,7 +651,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             return edgeDataEqual != null && substitute(n, edgeDataEqual, cfg, licmNodes, invariantInLoop);
         }
 
-        private boolean substitute(Node n, Node edgeDataEqual, ControlFlowGraph cfg, NodeBitMap licmNodes, Loop invariantInLoop) {
+        private static boolean substitute(Node n, Node edgeDataEqual, ControlFlowGraph cfg, NodeBitMap licmNodes, Loop invariantInLoop) {
             assert edgeDataEqual.graph() != null;
             assert edgeDataEqual instanceof FixedNode : "Only process fixed nodes";
             StructuredGraph graph = (StructuredGraph) edgeDataEqual.graph();
