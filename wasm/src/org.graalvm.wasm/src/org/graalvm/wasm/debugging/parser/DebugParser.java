@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -307,10 +307,10 @@ public class DebugParser {
             } else if (DataEncoding.isByteArray(attributeEncoding)) {
                 int length = 0;
                 if (DataEncoding.isLen1(attributeEncoding)) {
-                    length = read1();
+                    length = readUnsigned1();
                 }
                 if (DataEncoding.isLen2(attributeEncoding)) {
-                    length = read2();
+                    length = readUnsigned2();
                 }
                 if (DataEncoding.isLen4(attributeEncoding)) {
                     length = read4();
@@ -318,6 +318,7 @@ public class DebugParser {
                 if (DataEncoding.isLeb128Unsigned(attributeEncoding)) {
                     length = readUnsignedInt();
                 }
+                checkOffset(length);
                 final byte[] blockData = new byte[length];
                 for (int blockOffset = 0; blockOffset != length; ++blockOffset) {
                     blockData[blockOffset] = read1();
@@ -716,16 +717,17 @@ public class DebugParser {
     /**
      * Reads the location list at the given offset from the location section.
      * 
-     * @param locOffset the location offset.
-     * @param locLength the length of the location section.
+     * @param locSectionOffset the offset of the location section.
+     * @param locSectionLength the length of the location section.
+     * @param locOffset the location offset relative to the location section.
      * @return a byte array containing the locations or null, if the location section is malformed.
      */
     @TruffleBoundary
-    public byte[] readLocationListOrNull(int locOffset, int locLength) {
+    public byte[] readLocationListOrNull(int locSectionOffset, int locSectionLength, int locOffset) {
         final int currentOffset = this.offset;
         final int currentEndOffset = this.endOffset;
-        this.offset = locOffset;
-        this.endOffset = locOffset + locLength;
+        this.offset = locSectionOffset + locOffset;
+        this.endOffset = locSectionOffset + locSectionLength;
         byte[] b = null;
         for (;;) {
             try {
@@ -737,7 +739,8 @@ public class DebugParser {
                 if (start == 0 && end == 0) {
                     break;
                 }
-                final int length = read2();
+                final int length = readUnsigned2();
+                checkOffset(length);
                 b = new byte[length];
                 for (int i = 0; i < length; i++) {
                     b[i] = read1();
@@ -767,7 +770,7 @@ public class DebugParser {
      * @throws WasmDebugException if the given value is beyond the given endOffset.
      */
     private static void checkOffset(int offset, int endOffset, int length) throws WasmDebugException {
-        if (Integer.compareUnsigned(offset + length, endOffset) > 0) {
+        if (length < 0 || offset < 0 || endOffset < 0 || offset > endOffset - length) {
             throw new WasmDebugException("out of bounds data access");
         }
     }
@@ -838,6 +841,16 @@ public class DebugParser {
         } catch (WasmException e) {
             throw new WasmDebugException(e.getMessage());
         }
+    }
+
+    /**
+     * Reads two bytes as an unsigned short value from the internal byte array and advances the offset
+     * pointer.
+     * 
+     * @throws WasmDebugException if the data is beyond the current endOffset.
+     */
+    private int readUnsigned2() throws WasmDebugException {
+        return read2() & 0xffff;
     }
 
     /**
