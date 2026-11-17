@@ -28,7 +28,9 @@ package jdk.graal.compiler.loop.test;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.options.OptionValues;
 
 public class AggressivePartialUnrollRegression2Test extends GraalCompilerTest {
 
@@ -112,6 +114,7 @@ public class AggressivePartialUnrollRegression2Test extends GraalCompilerTest {
 
     @Test
     public void testDeletedUnrolledStride() {
-        test("deletedUnrolledStrideSnippet", 5L);
+        OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.PartialUnroll, true);
+        test(options, "deletedUnrolledStrideSnippet", 5L);
     }
 }
