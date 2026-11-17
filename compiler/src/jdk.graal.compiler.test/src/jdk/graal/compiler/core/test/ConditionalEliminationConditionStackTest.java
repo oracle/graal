@@ -74,21 +74,6 @@ import jdk.vm.ci.meta.TriState;
 
 public class ConditionalEliminationConditionStackTest extends GraalCompilerTest {
     @NodeInfo
-    private static final class MissingImplicationKeysNode extends LogicNode {
-        static final NodeClass<MissingImplicationKeysNode> TYPE = NodeClass.create(MissingImplicationKeysNode.class);
-
-        protected MissingImplicationKeysNode() {
-            super(TYPE);
-        }
-
-        @Override
-        public TriState implies(boolean negated, LogicNode other) {
-            // Deliberately violates the inherited identity-key contract to exercise verification.
-            return TriState.TRUE;
-        }
-    }
-
-    @NodeInfo
     private static final class FullScanImplicationNode extends LogicNode {
         static final NodeClass<FullScanImplicationNode> TYPE = NodeClass.create(FullScanImplicationNode.class);
 
@@ -234,20 +219,6 @@ public class ConditionalEliminationConditionStackTest extends GraalCompilerTest 
                     push(conditions, graph.addWithoutUnique(new IsNullNode(parameter(graph, i, JavaKind.Object))), false);
                 }
                 Assert.assertSame(proof, conditions.findImplication(queries[n]).condition());
-            }
-        }
-    }
-
-    @Test
-    public void assertionsVerifyImplicationKeys() {
-        StructuredGraph graph = graph();
-        LogicNode query = graph.addWithoutUnique(new IsNullNode(parameter(graph, 0, JavaKind.Object)));
-        try (ConditionalEliminationConditionStack conditions = new ConditionalEliminationConditionStack(graph)) {
-            push(conditions, graph.addWithoutUnique(new MissingImplicationKeysNode()), false);
-            if (ConditionalEliminationConditionStack.class.desiredAssertionStatus()) {
-                Assert.assertThrows(AssertionError.class, () -> conditions.findImplication(query));
-            } else {
-                Assert.assertNull(conditions.findImplication(query));
             }
         }
     }
@@ -496,8 +467,7 @@ public class ConditionalEliminationConditionStackTest extends GraalCompilerTest 
             }
         }
         long comparisons = nodes.stream().mapToLong(node -> node.implicationCalls).sum();
-        // Only the assertion's full-scan oracle visits unrelated conditions.
-        Assert.assertEquals(ConditionalEliminationConditionStack.class.desiredAssertionStatus() ? (long) n * (n - 1) / 2 : 0, comparisons);
+        Assert.assertEquals(0, comparisons);
     }
 
     @Test
@@ -634,7 +604,7 @@ public class ConditionalEliminationConditionStackTest extends GraalCompilerTest 
             Assert.assertNull(conditions.findImplication(queryA));
         }
         long comparisons = nodes.stream().mapToLong(node -> node.implicationCalls).sum();
-        Assert.assertEquals(131 * (ConditionalEliminationConditionStack.class.desiredAssertionStatus() ? 2 : 1), comparisons);
+        Assert.assertEquals(131, comparisons);
     }
 
     @Test

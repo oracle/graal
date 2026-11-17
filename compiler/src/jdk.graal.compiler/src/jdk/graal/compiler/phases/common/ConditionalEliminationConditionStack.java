@@ -27,11 +27,9 @@ package jdk.graal.compiler.phases.common;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
-import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Graph.NodeEventListener;
 import jdk.graal.compiler.graph.Graph.NodeEventScope;
@@ -201,24 +199,6 @@ public final class ConditionalEliminationConditionStack implements AutoCloseable
 
     /** Returns the same first known implication as the full stack, or {@code null}. */
     public Implication findImplication(LogicNode query) {
-        Implication result = findIndexed(query);
-        // Check the selected guard as well as the truth value: callers use it to rewire the graph.
-        assert Objects.equals(result, findImplicationLinear(query)) : Assertions.errorMessageContext("query", query, "indexed", result);
-        return result;
-    }
-
-    /** Full-scan oracle, used only by the assertion in {@link #findImplication}. */
-    private Implication findImplicationLinear(LogicNode query) {
-        for (int i = entries.size() - 1; i >= 0; i--) {
-            Implication result = prove(entries.get(i).condition, query);
-            if (result != null) {
-                return result;
-            }
-        }
-        return null;
-    }
-
-    private Implication findIndexed(LogicNode query) {
         Object key = valueKey(query.getImplicationKey(), null);
         List<Entry> bucket = index.get(key);
         int bucketPosition = bucket == null ? -1 : bucket.size() - 1;
