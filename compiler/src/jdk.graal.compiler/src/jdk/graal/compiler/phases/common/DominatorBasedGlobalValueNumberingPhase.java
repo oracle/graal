@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -327,13 +327,16 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                 }
             }
 
-            boolean canSubsitute = blockMap.hasSubstitute(cur);
+            // Retain the lookup result for both substitution and insertion after a miss.
+            Node substitute = blockMap.find(cur);
+            assert substitute != cur : "Must find a different value equal node";
+            boolean canSubstitute = substitute != null;
             // assume FixedGlobalValueNumberable nodes shouldn't be moved
             boolean canLICM = loopCandidate != null && !mustGVN;
             if (cur instanceof MemoryAccess) {
                 MemoryAccess access = (MemoryAccess) cur;
                 if (loopKillsLocation(thisLoopKilledLocations, access.getLocationIdentity())) {
-                    if (canSubsitute) {
+                    if (canSubstitute) {
                         // loop kills this location, do not bother trying to figure out if parts
                         // can be GVNed, let floating reads later handle that
                         return;
@@ -353,14 +356,15 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
              * all exits. Such operations that are unconditionally executed in the particular loop.
              */
             boolean substituted = false;
-            if (canSubsitute) {
+            if (canSubstitute) {
                 // GVN node
-                substituted = blockMap.substitute(cur, cfg, licmNodes, canLICM ? loopCandidate : null);
+                substituted = blockMap.substitute(cur, substitute, cfg, licmNodes, canLICM ? loopCandidate : null);
             } else {
                 if (canLICM) {
                     tryPerformLICM(loopCandidate, cur, licmNodes);
                 }
-                blockMap.rememberNodeForGVN(cur);
+                // LICM changes control flow, but not the inputs or data used by find.
+                blockMap.add(cur);
             }
             if (mustGVN && !substituted) {
                 if (MemoryKill.isMemoryKill(cur)) {
@@ -534,7 +538,49 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             }
         }
 
+        /**
+         * Find a dominating value equal to {@code n}, which must not already be in this map.
+         */
         private Node find(Node n) {
+            if (length == 0) {
+                return null;
+            }
+            /*
+             * A value-equal node must share every input with n. As in Graph.findDuplicate, an
+             * input used only by n proves that no duplicate exists. New nodes do not yet appear
+             * in their inputs' usage lists.
+             */
+            int earlyExitUsageCount = n.graph() != null ? 1 : 0;
+            Node leastUsedInput = null;
+            int minUsageCount = Integer.MAX_VALUE;
+            for (Node input : n.inputs()) {
+                int usageCount = input.getUsageCount();
+                if (usageCount == earlyExitUsageCount) {
+                    return null;
+                }
+                if (usageCount < minUsageCount) {
+                    minUsageCount = usageCount;
+                    leastUsedInput = input;
+                }
+            }
+            /*
+             * Check the shortest usage list only if it is smaller than the array. This is a
+             * negative filter: a global duplicate need not belong to the active dominator state.
+             * The array search below still determines membership and preserves candidate order,
+             * including when a remembered node's inputs have changed since insertion.
+             */
+            if (leastUsedInput != null && minUsageCount < length) {
+                boolean possibleMatch = false;
+                for (Node usage : leastUsedInput.usages()) {
+                    if (usage != n && valueEquals(usage, n)) {
+                        possibleMatch = true;
+                        break;
+                    }
+                }
+                if (!possibleMatch) {
+                    return null;
+                }
+            }
             for (int i = 0; i < length; i++) {
                 Node entry = entries[i];
                 if (entry != null) {
@@ -602,9 +648,10 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
          */
         public boolean substitute(Node n, ControlFlowGraph cfg, NodeBitMap licmNodes, Loop invariantInLoop) {
             Node edgeDataEqual = find(n);
-            if (edgeDataEqual == null) {
-                return false;
-            }
+            return edgeDataEqual != null && substitute(n, edgeDataEqual, cfg, licmNodes, invariantInLoop);
+        }
+
+        private boolean substitute(Node n, Node edgeDataEqual, ControlFlowGraph cfg, NodeBitMap licmNodes, Loop invariantInLoop) {
             assert edgeDataEqual.graph() != null;
             assert edgeDataEqual instanceof FixedNode : "Only process fixed nodes";
             StructuredGraph graph = (StructuredGraph) edgeDataEqual.graph();
