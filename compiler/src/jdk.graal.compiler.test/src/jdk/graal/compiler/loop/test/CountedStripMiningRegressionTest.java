@@ -54,6 +54,26 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 @SuppressWarnings("all")
 public class CountedStripMiningRegressionTest extends GraalCompilerTest {
 
+    /** Exercises strip mining of an inverted loop with a guarded exact-arithmetic stride. */
+    public static int guardedTailCountedSnippet(int i, int n) {
+        if (i > n) {
+            do {
+                if (i == 77) {
+                    break;
+                }
+                i = Math.subtractExact(i, 2);
+            } while (i > n);
+        }
+        return i;
+    }
+
+    @Test
+    public void testGuardedTailCountedLoop() {
+        test("guardedTailCountedSnippet", 1000001, 0);
+        test("guardedTailCountedSnippet", 1001, 70);
+        test("guardedTailCountedSnippet", Integer.MIN_VALUE + 1, Integer.MIN_VALUE);
+    }
+
     public static int method2() {
         int var0 = -1038903517;
         int[] var12 = new int[3];
