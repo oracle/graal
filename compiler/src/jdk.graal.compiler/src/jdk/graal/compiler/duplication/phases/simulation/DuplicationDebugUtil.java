@@ -46,6 +46,8 @@ class DuplicationDebugUtil {
     public static final CounterKey counterNotDuplicatedVectorizable = DebugContext.counter("SimulationBasedDuplication_NotDuplicated_Vectorizable");
 
     public static final CounterKey nodeCountBudgetReached = DebugContext.counter("SimulationBasedDuplication_MaxGraphSizeReached");
+    public static final CounterKey simulatedNodes = DebugContext.counter("SimulationBasedDuplication_SimulatedNodes");
+    public static final CounterKey simulatedCandidates = DebugContext.counter("SimulationBasedDuplication_SimulatedCandidates");
 
     public static final TimerKey timerBenefitComputation = DebugContext.timer("SimulationBasedDuplication_Time_BenefitComputation");
     public static final TimerKey timerRegionComputation = DebugContext.timer("SimulationBasedDuplication_Time_RegionIteration");

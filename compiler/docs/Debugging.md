@@ -187,6 +187,12 @@ Note that `-Djdk.graal.MetricsFile` produces per-compilation output, not per-met
 If a method is compiled multiple times, post-processing of the CSV output will be required
 to obtain per-method metric values.
 
+### Duplication Simulation Work
+
+Enable the `SimulationBasedDuplication_SimulatedNodes` and `SimulationBasedDuplication_SimulatedCandidates` counters to inspect duplication simulation work per compilation.
+The node counter counts visits to nodes in simulated regions, so the same graph node can be counted in multiple candidates.
+These counters measure analysis work, not elapsed time or the number of distinct graph nodes.
+
 ## Method filtering
 
 Specifying one of the debug scope options (i.e., `-Djdk.graal.Log`, `-Djdk.graal.Dump`, `-Djdk.graal.Counter`,
