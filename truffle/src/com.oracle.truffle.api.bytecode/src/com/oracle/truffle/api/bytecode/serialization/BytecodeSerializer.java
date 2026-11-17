@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,8 +43,10 @@ package com.oracle.truffle.api.bytecode.serialization;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import com.oracle.truffle.api.bytecode.BytecodeDescriptor;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.source.Source;
 
 /**
  * Represents a class that can serialize constants in a bytecode interpreter.
@@ -75,8 +77,8 @@ import com.oracle.truffle.api.bytecode.GenerateBytecode;
  * or constant operands, except primitive ones that are
  * {@link GenerateBytecode#inlinePrimitiveConstants inlined})</li>
  * <li>objects stored in non-{@code transient} fields of the root node</li>
- * <li>{@link com.oracle.truffle.api.source.Source} objects passed in builder calls (i.e., sources
- * passed to {@code beginSource})</li>
+ * <li>{@link Source} objects passed in builder calls (i.e., sources passed to
+ * {@code beginSource})</li>
  * </ul>
  *
  * @see GenerateBytecode#enableSerialization
@@ -109,8 +111,31 @@ public interface BytecodeSerializer {
      * <p>
      * The {@code context} is supplied so that a {@link BytecodeSerializer} can transitively
      * serialize other {@link BytecodeRootNode root nodes} (e.g., inner functions) if necessary.
+     * Root nodes may not be fully initialized, so this method must not execute these roots or
+     * request call targets/metadata updates.
      * <p>
-     * Must not be dependent on any side-effects of the language.
+     * The serializer should not rely on side-effects of the language.
+     * <p>
+     * The serializer should not try to deduplicate constants. The Bytecode DSL avoids serializing
+     * the same constant multiple times within a single serialization operation, using object
+     * equality to deduplicate constants (except for {@link Float} and {@link Double}, which use
+     * raw bits to preserve distinct NaN payloads). However, the same serializer could be used for
+     * both {@link BytecodeDescriptor#serializeBuilderBytecode builder bytecode} and
+     * {@link BytecodeDescriptor#serializeExecutionBytecode execution bytecode}, and both payloads
+     * must be independently decodable.
+     * <p>
+     * <strong>Object identity</strong>: When object identity matters, the above constraint means
+     * that the serializer and deserializer must cooperate to return the same object for repeated
+     * decodings. A simple way to achieve this is by caching objects by a language-assigned ID and
+     * encoding the ID with the description: on deserialization, the first occurrence of the ID can
+     * construct the object and subsequent occurrences can reuse the cached value.
+     * <p>
+     * Reparsing also affects identity: a reparse should not construct a new object if its identity
+     * is important. Reparses use the same deserializer object, so if a caching scheme is used,
+     * reparsing should automatically reuse existing objects. If a language serializes both
+     * {@link BytecodeDescriptor#serializeBuilderBytecode builder bytecode} and
+     * {@link BytecodeDescriptor#serializeExecutionBytecode execution bytecode} it should be careful
+     * to reuse the same serializer instance to ensure cache IDs are consistent.
      *
      * @since 24.2
      */

@@ -157,14 +157,14 @@ public class InstrumentationNodeObjectTest {
     private static BytecodeRootNodes<MetadataRoot> doRoundTrip(MetadataLanguage language, BytecodeConfig config, BytecodeParser<MetadataRootGen.Builder> parser) {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {
-            MetadataRootGen.serialize(new DataOutputStream(output), SERIALIZER, parser);
+            MetadataRootGen.serializeBuilderBytecode(new DataOutputStream(output), SERIALIZER, parser);
         } catch (IOException ex) {
             throw new AssertionError(ex);
         }
         byte[] serialized = output.toByteArray();
         Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(serialized));
         try {
-            return MetadataRootGen.deserialize(language, config, input, DESERIALIZER);
+            return MetadataRootGen.deserializeBuilderBytecode(language, config, input, DESERIALIZER);
         } catch (IOException ex) {
             throw new AssertionError(ex);
         }

@@ -398,6 +398,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         return hasInstrumentations() || (enableTagInstrumentation && !getProvidedTags().isEmpty());
     }
 
+    public boolean needsStableBciRemappings() {
+        return enableInstructionRewriting || enableTagInstrumentation;
+    }
+
     public boolean hasYieldOperation() {
         return enableYield || !customYieldOperations.isEmpty();
     }

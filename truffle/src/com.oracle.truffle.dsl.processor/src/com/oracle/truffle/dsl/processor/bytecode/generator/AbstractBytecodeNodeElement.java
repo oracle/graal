@@ -264,7 +264,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         this.add(createTranslateBytecodeIndex());
         this.add(createCreateTransition());
         transition = this.add(createTransition());
-        if (parent.model.hasYieldOperation() && parent.model.enableInstructionTracing) {
+        if (parent.model.enableInstructionTracing) {
             this.add(createIsInstructionTracingEnabled());
         }
 
@@ -278,14 +278,14 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
     }
 
     private boolean needsStableBciRemappings() {
-        return parent.model.enableInstructionRewriting || parent.model.enableTagInstrumentation;
+        return parent.model.needsStableBciRemappings();
     }
 
     private CodeExecutableElement createIsInstructionTracingEnabled() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, FINAL), type(boolean.class), "isInstructionTracingEnabled");
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(boolean.class), "isInstructionTracingEnabled");
         CodeTreeBuilder b = ex.createBuilder();
         b.startReturn();
-        b.string(parent.configEncoder.checkInstructionTracingEnabled(parent.configEncoder.decodeInstrumentations("this.configEncoding")));
+        b.string(parent.configEncoder.checkInstructionTracingBit("this.configEncoding"));
         b.end();
         return ex;
     }
@@ -757,6 +757,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
     private CodeExecutableElement createValidateBytecodes() {
         CodeExecutableElement validate = new CodeExecutableElement(Set.of(PRIVATE, FINAL), type(boolean.class), "validateBytecodes");
+        validate.addParameter(new CodeVariableElement(generic(List.class, parent.asType()), "roots"));
         CodeTreeBuilder b = validate.createBuilder();
 
         b.declaration(parent.asType(), "root");
@@ -1060,7 +1061,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         return validate;
     }
 
-    static boolean tryEmitRootNodeForLocalInstruction(CodeTreeBuilder b, InstructionValidationGroup group) {
+    private static boolean tryEmitRootNodeForLocalInstruction(CodeTreeBuilder b, InstructionValidationGroup group) {
         if (group.localVar()) {
             b.startAssign("root").string("this.getRoot()").end();
             return true;
@@ -1068,7 +1069,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             InstructionImmediate rootImmediate = group.immediates.stream() //
                             .filter(imm -> imm.kind() == ImmediateKind.LOCAL_ROOT) //
                             .findFirst().get();
-            b.startAssign("root").startCall("this.getRoot().getBytecodeRootNodeImpl").tree(BytecodeRootNodeElement.readImmediate("bc", "bci", rootImmediate)).end(2);
+            b.startAssign("root").startCall("roots", "get").tree(BytecodeRootNodeElement.readImmediate("bc", "bci", rootImmediate)).end(2);
             return true;
         }
         return false;

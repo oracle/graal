@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import java.io.DataInput;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.HostCompilerDirectives;
@@ -51,6 +53,8 @@ import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterHandlerC
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.debug.BytecodeDebugListener;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -198,22 +202,29 @@ public @interface GenerateBytecode {
      * and from a serialized byte array representation. The code effectively serializes the node's
      * execution data (bytecode, constants, etc.) and all of its non-transient fields.
      * <p>
-     * The serialization logic is defined in static {@code serialize} and {@code deserialize}
-     * methods of the generated root class. The generated {@link BytecodeRootNodes} class also
-     * overrides {@link BytecodeRootNodes#serialize}.
+     * The serialization logic is available through
+     * {@link BytecodeDescriptor#serializeBuilderBytecode},
+     * {@link BytecodeDescriptor#serializeExecutionBytecode},
+     * {@link BytecodeDescriptor#deserializeBuilderBytecode}, and
+     * {@link BytecodeDescriptor#deserializeExecutionBytecode}. Equivalent static methods are also
+     * generated on the root class. The generated {@link BytecodeRootNodes} class overrides
+     * {@link BytecodeRootNodes#serializeBuilderBytecode} and
+     * {@link BytecodeRootNodes#serializeExecutionBytecode}.
      * <p>
-     * This feature can be used to avoid the overhead of parsing source code on start up. Note that
-     * serialization still incurs some overhead, as it does not trivially copy bytecode directly: in
-     * order to validate the bytecode (balanced stack pointers, valid branches, etc.), serialization
-     * encodes builder method calls and deserialization replays those calls.
+     * This feature can be used to avoid the overhead of parsing source code on start up. Builder
+     * bytecode encodes builder method calls, which are replayed and validated during deserialization
+     * (balanced stack pointers, valid branches, etc.). When the serialized bytes are trusted,
+     * execution bytecode can be loaded directly to avoid builder replay for a particular
+     * configuration.
      * <p>
-     * Note that the generated {@code deserialize} method takes a {@link java.util.function.Supplier
-     * Supplier<DataInput>} rather than a {@link java.io.DataInput} directly. The supplier should
-     * produce a fresh {@link java.io.DataInput} each time because the input may be processed
-     * multiple times (due to {@link BytecodeRootNodes#update(BytecodeConfig) reparsing}).
+     * The deserialization methods take {@link Supplier}s of {@link DataInput} rather than inputs
+     * directly. The builder bytecode supplier should produce a fresh {@link DataInput} each time
+     * because the input may be processed multiple times (due to
+     * {@link BytecodeRootNodes#update(BytecodeConfig) reparsing}). The execution bytecode supplier
+     * is invoked at most once during initial deserialization.
      *
-     * @see com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer
-     * @see com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer
+     * @see BytecodeSerializer
+     * @see BytecodeDeserializer
      * @see <a href=
      *      "https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/SerializationTutorial.java">Serialization
      *      tutorial</a>

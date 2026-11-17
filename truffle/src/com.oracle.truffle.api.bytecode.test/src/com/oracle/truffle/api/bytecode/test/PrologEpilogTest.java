@@ -142,9 +142,9 @@ public class PrologEpilogTest extends AbstractInstructionTest {
         if (testSerialize) {
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             try {
-                PrologEpilogBytecodeNodeGen.serialize(new DataOutputStream(output), SERIALIZER, builder);
+                PrologEpilogBytecodeNodeGen.serializeBuilderBytecode(new DataOutputStream(output), SERIALIZER, builder);
                 Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
-                nodes = PrologEpilogBytecodeNodeGen.deserialize(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
+                nodes = PrologEpilogBytecodeNodeGen.deserializeBuilderBytecode(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
             } catch (IOException ex) {
                 throw new AssertionError(ex);
             }
@@ -159,9 +159,9 @@ public class PrologEpilogTest extends AbstractInstructionTest {
         if (testSerialize) {
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             try {
-                EpilogReturnExceptionHandlerNodeGen.serialize(new DataOutputStream(output), SERIALIZER, builder);
+                EpilogReturnExceptionHandlerNodeGen.serializeBuilderBytecode(new DataOutputStream(output), SERIALIZER, builder);
                 Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
-                nodes = EpilogReturnExceptionHandlerNodeGen.deserialize(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
+                nodes = EpilogReturnExceptionHandlerNodeGen.deserializeBuilderBytecode(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
             } catch (IOException ex) {
                 throw new AssertionError(ex);
             }
@@ -176,9 +176,9 @@ public class PrologEpilogTest extends AbstractInstructionTest {
         if (testSerialize) {
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             try {
-                CustomReturnEpilogBytecodeNodeGen.serialize(new DataOutputStream(output), SERIALIZER, builder);
+                CustomReturnEpilogBytecodeNodeGen.serializeBuilderBytecode(new DataOutputStream(output), SERIALIZER, builder);
                 Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
-                nodes = CustomReturnEpilogBytecodeNodeGen.deserialize(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
+                nodes = CustomReturnEpilogBytecodeNodeGen.deserializeBuilderBytecode(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
             } catch (IOException ex) {
                 throw new AssertionError(ex);
             }

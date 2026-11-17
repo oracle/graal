@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,9 +49,7 @@ import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.STATIC;
 import static javax.lang.model.element.Modifier.VOLATILE;
 
-import java.io.IOError;
-import java.io.IOException;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import javax.lang.model.element.ElementKind;
@@ -100,7 +98,8 @@ final class BytecodeRootNodesImplElement extends AbstractElement {
         }
 
         if (parent.model.enableSerialization) {
-            this.add(createSerialize());
+            this.add(createSerializeBuilderBytecode());
+            this.add(createSerializeExecutionBytecode());
         }
     }
 
@@ -179,12 +178,10 @@ final class BytecodeRootNodesImplElement extends AbstractElement {
     private CodeExecutableElement createConstructor() {
         CodeExecutableElement ctor = new CodeExecutableElement(null, "BytecodeRootNodesImpl");
         ctor.addParameter(new CodeVariableElement(parent.parserType, "generator"));
-        ctor.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
+        ctor.addParameter(new CodeVariableElement(type(long.class), "encoding"));
         CodeTreeBuilder b = ctor.createBuilder();
         b.statement("super(VISIBLE_TOKEN, generator)");
-        b.startAssign("this.encoding");
-        b.startStaticCall(parent.configEncoder.asType(), "decode").string("config").end();
-        b.end();
+        b.statement("this.encoding = encoding");
 
         return ctor;
     }
@@ -253,8 +250,15 @@ final class BytecodeRootNodesImplElement extends AbstractElement {
         CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeRootNodes, "updateImpl", new String[]{"encoder", "encoding"});
         mergeSuppressWarnings(ex, "hiding");
         CodeTreeBuilder b = ex.createBuilder();
+        b.startIf().string("!isParsed()").end().startBlock();
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+        b.startThrow().startNew(type(IllegalStateException.class));
+        b.doubleQuote("A reparse was attempted before parsing completed. This is likely a bug in the parser or serializer/deserializer.");
+        b.end(2);
+        b.end();
+
         b.startDeclaration(type(long.class), "maskedEncoding");
-        b.startStaticCall(parent.configEncoder.asType(), "decode").string("encoder").string("encoding").end();
+        b.startStaticCall(parent.configEncoder.asType(), "normalizeEncoding").string("encoder").string("encoding").end();
         b.end();
         b.declaration(type(long.class), "oldEncoding", "this.encoding");
         b.declaration(type(long.class), "newEncoding", "maskedEncoding | oldEncoding");
@@ -335,7 +339,7 @@ final class BytecodeRootNodesImplElement extends AbstractElement {
         b.end(2);
 
         b.startStatement().startCall("parser", "parse").string("builder").end(2);
-        b.startStatement().startCall("builder", "finish").end(2);
+        b.startStatement().startCall("builder", "finish").string("true").end(2);
 
         b.statement("this.encoding = newEncoding");
         b.statement("return true");
@@ -380,11 +384,12 @@ final class BytecodeRootNodesImplElement extends AbstractElement {
     }
 
     private CodeExecutableElement createValidate() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(boolean.class), "validate");
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(boolean.class), "validate");
+        ex.addParameter(new CodeVariableElement(generic(List.class, parent.asType()), "roots"));
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.startFor().type(parent.model.getTemplateType().asType()).string(" node : nodes").end().startBlock();
-        b.startStatement().string("(").cast(parent.asType(), "node").string(")").string(".getBytecodeNodeImpl().validateBytecodes()").end();
+        b.startFor().type(parent.asType()).string(" node : roots").end().startBlock();
+        b.statement("node.getBytecodeNodeImpl().validateBytecodes(roots)");
         b.end();
 
         b.statement("return true");
@@ -412,50 +417,40 @@ final class BytecodeRootNodesImplElement extends AbstractElement {
         return ex;
     }
 
-    private CodeExecutableElement createSerialize() {
-        CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeRootNodes, "serialize", new String[]{"buffer", "callback"});
-        mergeSuppressWarnings(ex, "cast");
+    private CodeExecutableElement createSerializeBuilderBytecode() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeRootNodes, "serializeBuilderBytecode", new String[]{"buffer", "callback"});
 
         BytecodeRootNodeElement.addJavadoc(ex, """
-                        Serializes the given bytecode nodes
-                        All metadata (e.g., source info) is serialized (even if it has not yet been parsed).
-                        <p>
-                        This method serializes the root nodes with their current field values.
-
-                        @param buffer the buffer to write the byte output to.
-                        @param callback the language-specific serializer for constants in the bytecode.
+                        {@inheritDoc}
                         """);
 
         CodeTreeBuilder b = ex.createBuilder();
-
-        b.declaration(generic(ArrayList.class, parent.model.getTemplateType().asType()), "existingNodes", "new ArrayList<>(nodes.length)");
-        b.startFor().string("int i = 0; i < nodes.length; i++").end().startBlock();
-        b.startStatement().startCall("existingNodes", "add");
-        b.startGroup().cast(parent.asType()).string("nodes[i]").end();
-        b.end(2);
-        b.end();
-
-        b.startDeclaration(parent.bytecodeBuilderType, "builder");
-        b.startNew("Builder");
-        b.string("getLanguage()");
-        b.string("this");
-        b.startCall("BytecodeConfigEncoderImpl.decode");
-        b.staticReference(types.BytecodeConfig, "COMPLETE");
-        b.end();
-        b.end();
-        b.end();
-
-        b.startTryBlock();
-
-        b.startStatement().startCall("builder", "serialize");
+        b.startStatement().startStaticCall(parent.serializationEncodingElement.asType(), "serializeBuilderBytecode");
         b.string("buffer");
         b.string("callback");
-        b.string("existingNodes");
+        b.string("getParserImpl()");
+        b.string("this");
         b.end().end();
 
-        b.end().startCatchBlock(type(IOError.class), "e");
-        b.startThrow().cast(type(IOException.class), "e.getCause()").end();
-        b.end();
+        return ex;
+    }
+
+    private CodeExecutableElement createSerializeExecutionBytecode() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeRootNodes, "serializeExecutionBytecode", new String[]{"buffer", "config", "callback"});
+
+        BytecodeRootNodeElement.addJavadoc(ex, """
+                        {@inheritDoc}
+                        """);
+
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startStatement().startStaticCall(parent.serializationEncodingElement.asType(), "serializeExecutionBytecode");
+        b.string("getLanguage()");
+        b.string("buffer");
+        b.string("config");
+        b.string("callback");
+        b.string("getParserImpl()");
+        b.string("this");
+        b.end().end();
 
         return ex;
     }

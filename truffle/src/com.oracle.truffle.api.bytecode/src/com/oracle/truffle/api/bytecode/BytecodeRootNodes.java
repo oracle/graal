@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -172,20 +173,71 @@ public abstract class BytecodeRootNodes<T extends RootNode & BytecodeRootNode> {
     protected abstract boolean updateImpl(BytecodeConfigEncoder encoder, long encoding);
 
     /**
-     * Serializes the nodes to a byte buffer. This method will always fail unless serialization is
-     * {@link GenerateBytecode#enableSerialization enabled}.
+     * Serializes builder bytecode for these nodes.
+     *
+     * @since 24.2
+     * @deprecated Use {@link #serializeBuilderBytecode}.
+     */
+    @Deprecated(since = "25.7")
+    public void serialize(DataOutput buffer, BytecodeSerializer callback) throws IOException {
+        serializeBuilderBytecode(buffer, callback);
+    }
+
+    /**
+     * Serializes the nodes as a sequence of builder calls, including all optional metadata
+     * (e.g., source information), so the nodes can be deserialized with any configuration or
+     * reparsed later when more metadata is requested. This method will always fail unless
+     * serialization is {@link GenerateBytecode#enableSerialization enabled}.
      * <p>
-     * Unlike the static {@code serialize} method defined on the generated root node, this method
-     * serializes the nodes using their current field values.
+     * Unlike {@link BytecodeDescriptor#serializeBuilderBytecode}, this method serializes the nodes
+     * using their current field values.
      * <p>
      * This method will be overridden by the Bytecode DSL. Do not override.
      *
-     * @param buffer The buffer to write the serialized bytes to.
+     * @param buffer The buffer to write the builder payload to.
      * @param callback A language-defined method for serializing language constants.
      * @throws IOException if an I/O error occurs with the buffer.
+     * @since 25.7
+     * @see #serializeExecutionBytecode
      */
     @SuppressWarnings("unused")
-    public void serialize(DataOutput buffer, BytecodeSerializer callback) throws IOException {
+    public void serializeBuilderBytecode(DataOutput buffer, BytecodeSerializer callback) throws IOException {
+        throw new IllegalArgumentException("Serialization is not enabled for this interpreter.");
+    }
+
+    /**
+     * Serializes execution bytecode and its metadata for the requested {@code config}. This method
+     * will always fail unless serialization is {@link GenerateBytecode#enableSerialization enabled}.
+     * <p>
+     * The output contains only the execution bytecode payload. A corresponding builder payload
+     * must be produced separately using {@link #serializeBuilderBytecode} and supplied during
+     * deserialization to support reparsing. Execution bytecode is serialized in an unquickened form
+     * and does not preserve execution profiles.
+     * <p>
+     * <strong>Since execution bytecode skips builder validation during deserialization, it should
+     * only be used in trusted environments</strong>.
+     * <p>
+     * Each payload must be independently decodable. If constant object identity matters, its
+     * identity must be encoded consistently across both payloads, for example by sharing
+     * serializer state that assigns identity indices to constants.
+     * <p>
+     * To produce the execution bytecode representation, this method reruns the stored parser to
+     * construct a temporary representation with the requested configuration. Serialization does
+     * not update the live bytecodes or their configuration.
+     * <p>
+     * Unlike {@link BytecodeDescriptor#serializeExecutionBytecode}, this method serializes the
+     * nodes using their current field values.
+     * <p>
+     * This method will be overridden by the Bytecode DSL. Do not override.
+     *
+     * @param buffer The buffer to write the execution bytecode payload to.
+     * @param config The target configuration for execution bytecode.
+     * @param callback A language-defined method for serializing language constants.
+     * @throws IOException if an I/O error occurs with the buffer.
+     * @since 25.7
+     */
+    @SuppressWarnings("unused")
+    public void serializeExecutionBytecode(DataOutput buffer, BytecodeConfig config, BytecodeSerializer callback) throws IOException {
         throw new IllegalArgumentException("Serialization is not enabled for this interpreter.");
     }
 
