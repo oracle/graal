@@ -149,6 +149,11 @@ The `--disable-@files` option prevents later argument-file references from being
 When used in an included file, it also affects the remaining arguments in the including files and subsequent command-line arguments in the same preprocessing stream.
 Each _native-image.properties_ file and macro option is processed in a separate stream with its own disable state.
 Native Image reports include cycles with their include chain and rejects nesting deeper than 64 files, including the top-level argument file.
+If the top-level file enables `recursive-argument-files`, its expansion has a cumulative budget of 16,777,216 input characters, measured in Java UTF-16 code units.
+The budget counts the complete contents of the root and every included file before parsing, including comments and whitespace.
+Each inclusion counts again, even when it refers to a previously included file; each top-level file starts with a fresh budget.
+Recursion can turn small files into a huge expansion, so enabling it also selects this more conservative limit.
+Without recursion enabled on the top-level file, the Java launcher's existing per-file ceiling of 2,147,483,647 bytes applies.
 
 For example, _layer.args_ can include _common.args_ before its own options:
 

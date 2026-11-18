@@ -46,6 +46,7 @@ public class ArgFilesOptionPreprocessor {
     private static final String VALUE_CONTINUATIONS_SETTING = "value-continuations";
     private static final String RECURSIVE_ARGUMENT_FILES_SETTING = "recursive-argument-files";
     private static final int MAX_ARGUMENT_FILE_NESTING = 64;
+    private static final int MAX_ARGUMENT_FILE_EXPANSION_SIZE = 16 * 1024 * 1024;
 
     private record ArgumentFileSettings(boolean valueContinuations, boolean recursiveArgumentFiles) {
         private static final ArgumentFileSettings DEFAULT = new ArgumentFileSettings(false, false);
@@ -55,6 +56,25 @@ public class ArgFilesOptionPreprocessor {
     }
 
     private record ActiveArgumentFile(String identity, String displayPath) {
+    }
+
+    private static final class ArgumentFileExpansion {
+        private final List<ActiveArgumentFile> activeFiles = new ArrayList<>();
+        private long remainingCharacters = Integer.MAX_VALUE;
+
+        private void accountForContents(String contents, ArgumentFileSettings settings) {
+            if (activeFiles.size() == 1 && settings.recursiveArgumentFiles()) {
+                // Recursion can multiply small inputs into huge expansions. Only roots that opt in
+                // receive the smaller budget; ordinary argument files retain the Java file-size limit.
+                remainingCharacters = MAX_ARGUMENT_FILE_EXPANSION_SIZE;
+            }
+            if (contents.length() > remainingCharacters) {
+                NativeImage.showError("Argument-file expansion rooted at '" + activeFiles.getFirst().displayPath() + "' exceeds the maximum cumulative input size of " +
+                                MAX_ARGUMENT_FILE_EXPANSION_SIZE + " characters while expanding '" + activeFiles.getLast().displayPath() +
+                                "'. Reduce repeated includes or the argument-file contents.");
+            }
+            remainingCharacters -= contents.length();
+        }
     }
 
     private boolean disableAtFiles = false;
@@ -77,13 +97,14 @@ public class ArgFilesOptionPreprocessor {
                 return List.of(argWithoutAt);
             }
             Path argFile = Paths.get(argWithoutAt);
-            return processArgumentFile(argFile, origin, null, new ArrayList<>());
+            return processArgumentFile(argFile, origin, null, new ArgumentFileExpansion());
         }
 
         return List.of(currentArg);
     }
 
-    private List<String> processArgumentFile(Path argFile, OptionOrigin origin, Path includingFile, List<ActiveArgumentFile> activeFiles) {
+    private List<String> processArgumentFile(Path argFile, OptionOrigin origin, Path includingFile, ArgumentFileExpansion expansion) {
+        List<ActiveArgumentFile> activeFiles = expansion.activeFiles;
         Path resolvedFile = resolveArgumentFile(argFile, origin, includingFile);
         String identity = getArgumentFileIdentity(resolvedFile, origin);
         int cycleStart = -1;
@@ -110,7 +131,7 @@ public class ArgFilesOptionPreprocessor {
 
         activeFiles.add(new ActiveArgumentFile(identity, displayArgumentFile(resolvedFile, origin)));
         try {
-            ParsedArgumentFile parsed = readArgFile(resolvedFile, origin);
+            ParsedArgumentFile parsed = readArgFile(resolvedFile, origin, expansion);
             List<String> result = new ArrayList<>();
             for (String argument : parsed.arguments()) {
                 if (parsed.settings().recursiveArgumentFiles() && !disableAtFiles && argument.startsWith("@")) {
@@ -119,7 +140,7 @@ public class ArgFilesOptionPreprocessor {
                         // An escaped @argument is literal and is not expanded recursively.
                         addArg(result, referencedFile);
                     } else {
-                        result.addAll(processArgumentFile(Paths.get(referencedFile), origin, resolvedFile, activeFiles));
+                        result.addAll(processArgumentFile(Paths.get(referencedFile), origin, resolvedFile, expansion));
                     }
                 } else {
                     addArg(result, argument);
@@ -205,7 +226,7 @@ public class ArgFilesOptionPreprocessor {
     }
 
     // Ported from JDK11's java.base/share/native/libjli/args.c
-    private static ParsedArgumentFile readArgFile(Path file, OptionOrigin origin) {
+    private static ParsedArgumentFile readArgFile(Path file, OptionOrigin origin, ArgumentFileExpansion expansion) {
         List<String> arguments = new ArrayList<>();
 
         String options = null;
@@ -216,6 +237,7 @@ public class ArgFilesOptionPreprocessor {
         }
 
         ArgumentFileSettings settings = getArgumentFileSettings(options, file);
+        expansion.accountForContents(options, settings);
         CTX_ARGS ctx = new CTX_ARGS();
         ctx.state = PARSER_STATE.FIND_NEXT;
         ctx.parts = new ArrayList<>(4);
