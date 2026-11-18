@@ -349,9 +349,12 @@ public final class SubstrateSBConcatHelper {
          *
          * @return the existing or grown capacity in characters
          */
-        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/AbstractStringBuilder.java#L267-L291")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.6-b29/src/java.base/share/classes/java/lang/AbstractStringBuilder.java#L267-L294")
         private static long ensureCapacityInternal(int curCapacity, int curLength, int addend, int oldCoder, int newCoder) {
             int minimumCapacity = curLength + addend;
+            if (minimumCapacity < 0) {
+                throw new OutOfMemoryError("Required length exceeds implementation limit");
+            }
             if (minimumCapacity - curCapacity > 0) {
                 return newCapacity(curCapacity, minimumCapacity, oldCoder, newCoder);
             }
@@ -369,16 +372,16 @@ public final class SubstrateSBConcatHelper {
          *
          * @return the grown capacity in characters
          */
-        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25-ga/src/java.base/share/classes/java/lang/AbstractStringBuilder.java#L340-L349")
+        @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jvmci-25.6-b29/src/java.base/share/classes/java/lang/AbstractStringBuilder.java#L345-L355")
         private static int newCapacity(int curCapacity, int minimumCapacity, int oldCoder, int newCoder) {
             int oldLength = curCapacity << oldCoder;
-            int minimumLength = minimumCapacity << newCoder;
-            int minimumGrowth = minimumLength - oldLength;
-            int preferredGrowth = oldLength + (2 << newCoder);
-            int newLength = ArraysSupport.newLength(oldLength, minimumGrowth, preferredGrowth);
-            if (newLength == Integer.MAX_VALUE) {
+            long minimumLength = (long) minimumCapacity << newCoder;
+            if (minimumLength < 0 || minimumLength >= Integer.MAX_VALUE) {
                 throw new OutOfMemoryError("Required length exceeds implementation limit");
             }
+            int minimumGrowth = (int) minimumLength - oldLength;
+            int preferredGrowth = oldLength + (2 << newCoder);
+            int newLength = ArraysSupport.newLength(oldLength, minimumGrowth, preferredGrowth);
             return newLength >> newCoder;
         }
 
