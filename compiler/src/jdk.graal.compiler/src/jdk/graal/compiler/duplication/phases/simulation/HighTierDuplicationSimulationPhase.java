@@ -194,7 +194,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
         private BlockMap<SimulationEndInfo> improvements;
         private int simulationsPerformed;
         private final ControlFlowGraph cfg;
-        private final SimulationEntraceFrame visitor;
+        private final SimulationEntranceFrame visitor;
         private SimulationFrame simulationVisitor;
         private final boolean stopAtCF;
         private final CFGFrequencyInfo cfgFrequencyInfo;
@@ -214,7 +214,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
                     vectorizableLoops.add(loop);
                 }
             }
-            this.visitor = new SimulationEntraceFrame(graph, blockToNodes, nodeToBlock, context);
+            this.visitor = new SimulationEntranceFrame(graph, blockToNodes, nodeToBlock, context);
         }
 
         @Override
@@ -226,7 +226,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
             visitor.conditions.close();
         }
 
-        private class SimulationEntraceFrame implements ControlFlowGraph.RecursiveVisitor<Marks> {
+        private class SimulationEntranceFrame implements ControlFlowGraph.RecursiveVisitor<Marks> {
             final NodeMap<HIRBlock> nodeToBlock;
             protected final NodeMap<InfoElement> map;
             protected final BlockMap<List<Node>> blockToNodes;
@@ -239,7 +239,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
             protected final SafeStampInputSearch safeStampInputSearch;
             protected EconomicMap<AbstractBeginNode, Stamp> successorStampCache;
 
-            SimulationEntraceFrame(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, CoreProviders providers) {
+            SimulationEntranceFrame(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, CoreProviders providers) {
                 this.graph = graph;
                 this.debug = graph.getDebug();
                 this.blockToNodes = blockToNodes;
@@ -583,7 +583,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
 
         }
 
-        private class SimulationFrame extends SimulationEntraceFrame {
+        private class SimulationFrame extends SimulationEntranceFrame {
             protected MergeNode simulationStartMerge;
             protected NodeMap<Node> synonyms;
             protected List<Runnable> synonymUndoOperations = new ArrayList<>();
