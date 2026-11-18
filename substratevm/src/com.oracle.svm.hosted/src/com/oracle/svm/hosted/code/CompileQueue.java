@@ -804,8 +804,7 @@ public class CompileQueue {
                     }
                     continue;
                 }
-                if (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod) ||
-                                hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isSimplyImplementationInvoked()) {
+                if (isParseRoot(hMethod)) {
                     ensureParsed(hMethod, null, new EntryPointReason());
                 }
                 if (hMethod.wrapped.isVirtualRootMethod()) {
@@ -830,6 +829,27 @@ public class CompileQueue {
                 }
             }
         }
+    }
+
+    /** Identifies methods that need a hosted graph without relying on discovery from another graph. */
+    private static boolean isParseRoot(HostedMethod method) {
+        if (HostedConfiguration.instance().isAdditionalParseRoot(method)) {
+            // Clients request analyzed variants for separate compilation or later inlining.
+            return true;
+        }
+        if (method.isEntryPoint()) {
+            // Native entry points can be reached without a Java caller.
+            return true;
+        }
+        if (SubstrateCompilationDirectives.singleton().isForcedCompilation(method)) {
+            // An explicit compilation request also needs a prepared graph.
+            return true;
+        }
+        if (method.wrapped.isDirectRootMethod() && method.wrapped.isSimplyImplementationInvoked()) {
+            // Analysis roots need their implementation, unless an invocation plugin handles the call.
+            return true;
+        }
+        return false;
     }
 
     public boolean isRegisteredDeoptTarget(HostedMethod method) {
@@ -891,8 +911,10 @@ public class CompileQueue {
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-            if (makeInlineDecision((HostedMethod) b.getMethod(), (HostedMethod) method) && b.recursiveInliningDepth(method) == 0) {
-                return InlineInfo.createStandardInlineInfo(method);
+            HostedMethod caller = (HostedMethod) b.getMethod();
+            HostedMethod inlinee = makeInlineDecision(caller, (HostedMethod) method);
+            if (inlinee != null && b.recursiveInliningDepth(inlinee) == 0) {
+                return InlineInfo.createStandardInlineInfo(inlinee);
             } else {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
@@ -916,6 +938,7 @@ public class CompileQueue {
 
         @Override
         protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method) {
+            verifyInliningProviders((HostedMethod) graph.method(), (HostedMethod) method, runtimeConfig);
             return ((HostedMethod) method).compilationInfo.getCompilationGraph().getEncodedGraph();
         }
 
@@ -966,7 +989,7 @@ public class CompileQueue {
          */
         boolean inliningPotential = false;
         for (var invokeInfo : method.compilationInfo.getCompilationGraph().getInvokeInfos()) {
-            if (invokeInfo.getInvokeKind().isDirect() && makeInlineDecision(method, invokeInfo.getTargetMethod())) {
+            if (invokeInfo.getInvokeKind().isDirect() && makeInlineDecision(method, invokeInfo.getTargetMethod()) != null) {
                 inliningPotential = true;
                 break;
             }
@@ -1012,29 +1035,31 @@ public class CompileQueue {
         }
     }
 
-    private boolean makeInlineDecision(HostedMethod method, HostedMethod callee) {
-        if (!LayeredImageOptions.UseSharedLayerStrengthenedGraphs.getValue() && callee.compilationInfo.getCompilationGraph() == null) {
+    /** Returns the selected inlinee variant, or {@code null} when inlining is declined. */
+    private HostedMethod makeInlineDecision(HostedMethod method, HostedMethod callee) {
+        HostedMethod inlinee = selectInlineeMethod(method, callee);
+        if (!LayeredImageOptions.UseSharedLayerStrengthenedGraphs.getValue() && inlinee.compilationInfo.getCompilationGraph() == null) {
             /*
              * We have compiled this method in a prior layer or this method's compilation is delayed
              * to the application layer, but don't have the graph available here.
              */
             assert callee.isCompiledInPriorLayer() || callee.wrapped.isDelayed() : method;
-            return false;
+            return null;
         }
         if (InterpreterSupport.isEnabled() && InterpreterSupport.singleton().isInterpreterBytecodeHandlerStub(method) && isBytecodeHandlerStubTarget(method, callee)) {
             VMError.guarantee(callee.canBeInlined(), "Bytecode handler target must be inlinable into its generated stub: %s", callee);
-            return true;
+            return inlinee;
         }
         if (universe.hostVM().neverInlineTrivial(method.getWrapped(), callee.getWrapped())) {
-            return false;
+            return null;
         }
         if (callee.shouldBeInlined()) {
-            return true;
+            return inlinee;
         }
-        if (optionAOTTrivialInline && callee.compilationInfo.isTrivialMethod() && !method.compilationInfo.isTrivialInliningDisabled()) {
-            return true;
+        if (optionAOTTrivialInline && inlinee.compilationInfo.isTrivialMethod() && !method.compilationInfo.isTrivialInliningDisabled()) {
+            return inlinee;
         }
-        return false;
+        return null;
     }
 
     /**
@@ -1527,7 +1552,65 @@ public class CompileQueue {
      * Compiles an additional method result without adding it to the normal image compilation map.
      */
     public final CompilationResult compileAdditionalMethod(DebugContext debug, HostedMethod method, CompileReason reason) {
+        VMError.guarantee(method.compilationInfo.getCompilationGraph() != null, "Additional compilation requires a method parsed during the normal parse phase: %s", method);
         return doCompile(debug, method, new SubstrateHostedCompilationIdentifier(method), reason);
+    }
+
+    /**
+     * Selects an existing variant of {@code callee} for inlining into {@code caller}, using
+     * {@link HostedConfiguration#selectInlineeMethod}. The selected variant must represent the same
+     * Java method. This selects the graph to inline without changing the destination of a call
+     * that remains uninlined.
+     */
+    public static HostedMethod selectInlineeMethod(HostedMethod caller, HostedMethod callee) {
+        HostedMethod inlinee = HostedConfiguration.instance().selectInlineeMethod(caller, callee);
+        VMError.guarantee(inlinee != null && inlinee.getMethodVariant(MethodVariant.ORIGINAL_METHOD).equals(callee.getMethodVariant(MethodVariant.ORIGINAL_METHOD)),
+                        "Inlining selection must return an existing variant of %s for caller %s", callee, caller);
+        VMError.guarantee(inlinee.equals(callee) || inlinee.compilationInfo.getCompilationGraph() != null,
+                        "Selected inlinee variant %s for caller %s was not prepared; register all possible variants with isAdditionalParseRoot", inlinee, caller);
+        return inlinee;
+    }
+
+    /** Fails before importing a graph prepared under incompatible compilation assumptions. */
+    public static void verifyInliningProviders(HostedMethod caller, HostedMethod inlinee, RuntimeConfiguration config) {
+        VMError.guarantee(hasCompatibleCompilationProviders(caller, inlinee, config),
+                        "Incompatible compilation providers when inlining %s into %s; select a compatible prepared method variant or explicitly disable this inline", inlinee, caller);
+    }
+
+    /**
+     * Prepared graphs already contain decisions made with the callee's providers. Decoding with
+     * the caller's providers cannot undo them. Require identical services before importing such
+     * a graph, allowing the backend's original calling-convention code cache to differ.
+     */
+    private static boolean hasCompatibleCompilationProviders(HostedMethod caller, HostedMethod callee, RuntimeConfiguration config) {
+        HostedProviders callerProviders = selectCompilationProviders(caller, config);
+        HostedProviders calleeProviders = selectCompilationProviders(callee, config);
+        return hasCompatibleCodeCache(caller, callee, callerProviders, calleeProviders, config) &&
+                        callerProviders.getGraphBuilderPlugins() == calleeProviders.getGraphBuilderPlugins() &&
+                        callerProviders.getMetaAccess() == calleeProviders.getMetaAccess() &&
+                        callerProviders.getConstantReflection() == calleeProviders.getConstantReflection() &&
+                        callerProviders.getConstantFieldProvider() == calleeProviders.getConstantFieldProvider() &&
+                        callerProviders.getForeignCalls() == calleeProviders.getForeignCalls() &&
+                        callerProviders.getLowerer() == calleeProviders.getLowerer() &&
+                        callerProviders.getReplacements() == calleeProviders.getReplacements() &&
+                        callerProviders.getStampProvider() == calleeProviders.getStampProvider() &&
+                        callerProviders.getSnippetReflection() == calleeProviders.getSnippetReflection() &&
+                        callerProviders.getWordTypes() == calleeProviders.getWordTypes() &&
+                        callerProviders.getPlatformConfigurationProvider() == calleeProviders.getPlatformConfigurationProvider() &&
+                        callerProviders.getMetaAccessExtensionProvider() == calleeProviders.getMetaAccessExtensionProvider() &&
+                        callerProviders.getLoopsDataProvider() == calleeProviders.getLoopsDataProvider();
+    }
+
+    /**
+     * Accepts identical code caches, or each method's original backend code cache. Native-entry
+     * and Java backends use different calling conventions, but inlining imports a graph rather
+     * than machine code: the caller's backend compiles the combined graph. Other provider services
+     * must still match.
+     */
+    private static boolean hasCompatibleCodeCache(HostedMethod caller, HostedMethod callee, HostedProviders callerProviders, HostedProviders calleeProviders, RuntimeConfiguration config) {
+        return callerProviders.getCodeCache() == calleeProviders.getCodeCache() ||
+                        callerProviders.getCodeCache() == config.lookupBackend(caller).getProviders().getCodeCache() &&
+                                        calleeProviders.getCodeCache() == config.lookupBackend(callee).getProviders().getCodeCache();
     }
 
     private static HostedProviders selectCompilationProviders(HostedMethod method, RuntimeConfiguration config) {
