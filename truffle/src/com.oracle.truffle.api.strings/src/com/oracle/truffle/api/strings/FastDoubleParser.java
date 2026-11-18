@@ -620,7 +620,7 @@ final class FastDoubleParser {
         // Skip trailing whitespace
         // ------------------------
         index = skipWhitespace(arrayA, offsetA, lengthA, strideA, index, endIndex);
-        if (index < endIndex || digitCount == 0 && readValue(arrayA, offsetA, lengthA, strideA, virtualIndexOfPoint) != '.' || !hasExponent) {
+        if (index < endIndex || digitCount == 0 || !hasExponent) {
             throw numberFormatException(a, startIndex, len, Reason.EMPTY);
         }
 

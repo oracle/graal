@@ -122,6 +122,26 @@ public class TStringParseDoubleTest extends TStringTestBase {
     }
 
     @Test
+    public void testEmptyHexadecimalSignificand() throws Exception {
+        for (String input : new String[]{"0x.p100000000", "0x.p-100000000", "-0x.p100000000", "+0X.P+100000000", " \t0x.p100000000\r\n",
+                        "0xp0", "0x.p0", "-0x.p0", "+0X.P0"}) {
+            checkAsciiString(input, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
+                Assert.assertThrows(TruffleString.NumberFormatException.class, () -> node.execute(a));
+            });
+        }
+    }
+
+    @Test
+    public void testHexadecimalSignificand() throws Exception {
+        for (String input : new String[]{"0x0p0", "0x0.p0", "0x.0p0", "0x1.p0", "0x.1p4", "-0x0.p100000000", "-0x.0p-100000000"}) {
+            double expected = Double.parseDouble(input);
+            checkAsciiString(input, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
+                Assert.assertEquals(Double.valueOf(expected), Double.valueOf(node.execute(a)));
+            });
+        }
+    }
+
+    @Test
     public void testNull() throws Exception {
         checkNullS((s) -> node.execute(s));
     }
