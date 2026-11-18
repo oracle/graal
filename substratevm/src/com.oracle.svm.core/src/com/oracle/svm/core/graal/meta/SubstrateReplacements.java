@@ -84,6 +84,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.SnippetParameterInfo;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.replacements.SnippetTemplateRegistry;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.ConstantBindingParameterPlugin;
@@ -157,6 +158,14 @@ public class SubstrateReplacements extends ReplacementsImpl {
     public SubstrateReplacements(Providers providers, BytecodeProvider bytecodeProvider, TargetDescription target, GraphMakerFactory graphMakerFactory) {
         // Snippets cannot have optimistic assumptions.
         super(new GraalDebugHandlersFactory(providers.getSnippetReflection()), providers, bytecodeProvider, target);
+        this.builder = new Builder(graphMakerFactory);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected SubstrateReplacements(Providers providers, BytecodeProvider bytecodeProvider, TargetDescription target, GraphMakerFactory graphMakerFactory,
+                    SnippetTemplateRegistry templateRegistry) {
+        // Snippets cannot have optimistic assumptions.
+        super(new GraalDebugHandlersFactory(providers.getSnippetReflection()), providers, bytecodeProvider, target, templateRegistry);
         this.builder = new Builder(graphMakerFactory);
     }
 
