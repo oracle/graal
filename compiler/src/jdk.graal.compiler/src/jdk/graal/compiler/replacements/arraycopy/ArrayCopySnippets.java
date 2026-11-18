@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -781,7 +781,8 @@ public abstract class ArrayCopySnippets implements Snippets {
         }
 
         private static boolean canBeArray(ResolvedJavaType type) {
-            return type == null || type.isJavaLangObject() || type.isArray();
+            // Interface stamps can describe arrays, e.g., after an instanceof Serializable check.
+            return type == null || type.isJavaLangObject() || type.isArray() || type.isInterface();
         }
 
         /**
