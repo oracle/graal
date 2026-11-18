@@ -327,7 +327,6 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                 }
             }
 
-            // Retain the lookup result for both substitution and insertion after a miss.
             Node substitute = blockMap.find(cur);
             assert substitute != cur : "Must find a different value equal node";
             boolean canSubstitute = substitute != null;
@@ -564,10 +563,9 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                 }
             }
             /*
-             * Check the shortest usage list only if it is smaller than the array. This is a
-             * negative filter: a global duplicate need not belong to the active dominator state.
-             * The array search below still determines membership and preserves candidate order,
-             * including when a remembered node's inputs have changed since insertion.
+             * A global duplicate may be outside the active dominator state. Use the shorter usage
+             * list only to prove absence; the array search determines membership and preserves
+             * candidate order after input mutations.
              */
             if (leastUsedInput != null && minUsageCount < length) {
                 boolean possibleMatch = false;
@@ -651,6 +649,20 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             return edgeDataEqual != null && substitute(n, edgeDataEqual, cfg, licmNodes, invariantInLoop);
         }
 
+        /**
+         * Replace {@code n} with a previously found equivalent node, lifting the replacement out
+         * of {@code invariantInLoop} when needed.
+         *
+         * @param n fixed node to eliminate
+         * @param edgeDataEqual dominating fixed node with equal inputs and data fields
+         * @param cfg control-flow graph with current node-to-block mappings
+         * @param licmNodes nodes already known to be loop invariant or lifted; required when
+         *            {@code invariantInLoop} is non-null
+         * @param invariantInLoop loop out of which the replacement may be lifted, or {@code null}
+         *            to disable loop invariant code motion
+         * @return {@code true} if {@code n} was removed; {@code false} if substitution would require
+         *         proxies, even if the replacement was lifted
+         */
         private static boolean substitute(Node n, Node edgeDataEqual, ControlFlowGraph cfg, NodeBitMap licmNodes, Loop invariantInLoop) {
             assert edgeDataEqual.graph() != null;
             assert edgeDataEqual instanceof FixedNode : "Only process fixed nodes";
