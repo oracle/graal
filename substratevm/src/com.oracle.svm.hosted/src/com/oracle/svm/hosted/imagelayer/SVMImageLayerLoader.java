@@ -90,6 +90,7 @@ import com.oracle.svm.hosted.imagelayer.BaseLayerMethodResolver.BaseLayerProvide
 import com.oracle.svm.hosted.imagelayer.BaseLayerMethodResolver.PersistedMethod;
 import com.oracle.svm.hosted.jni.JNIAccessFeature;
 import com.oracle.svm.hosted.lambda.LambdaParser;
+import com.oracle.svm.hosted.methodhandles.BoundMethodHandleSpeciesSupport;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -385,8 +386,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             DynamicHub rawTargetConstructorHub = typeToHub(rawTargetConstructorType);
             SerializationSupport.currentLayer().addConstructorAccessor(rawDeclaringHub, rawTargetConstructorHub, SerializationFeature.getConstructorAccessor(constructor));
             Class<?> constructorAccessor = SerializationSupport.getHostedSerializationConstructorAccessor(rawDeclaringHub, rawTargetConstructorHub).getClass();
-            verifyClassIdentityHashCode(constructorAccessor, typeData);
-            metaAccess.lookupJavaType(constructorAccessor);
+            verifyClassIdentityHashCodeAndLookupType(constructorAccessor, typeData);
             return true;
         } else if (wrappedType.isLambda()) {
             WrappedType.Lambda.Loader lambda = wrappedType.getLambda();
@@ -401,27 +401,29 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             if (lambdaClass == null) {
                 return false;
             }
-            verifyClassIdentityHashCode(lambdaClass, typeData);
-            metaAccess.lookupJavaType(lambdaClass);
+            verifyClassIdentityHashCodeAndLookupType(lambdaClass, typeData);
             return types.containsKey(typeData.getId());
         } else if (wrappedType.isProxyType()) {
             Class<?>[] interfaces = SnapshotAdapters.toArray(typeData.getInterfaces(), tid -> OriginalClassProvider.getJavaClass(getAnalysisTypeForBaseLayerId(tid)), Class[]::new);
             Class<?> proxy = DynamicProxySupport.singleton().getProxyClassHosted(interfaces);
-            verifyClassIdentityHashCode(proxy, typeData);
-            metaAccess.lookupJavaType(proxy);
+            verifyClassIdentityHashCodeAndLookupType(proxy, typeData);
             return true;
+        } else if (wrappedType.isBoundMethodHandleSpecies()) {
+            Class<?> speciesClass = BoundMethodHandleSpeciesSupport.recreateSpecies(wrappedType.getBoundMethodHandleSpecies());
+            verifyClassIdentityHashCodeAndLookupType(speciesClass, typeData);
+            return types.containsKey(typeData.getId());
         }
         return false;
     }
 
-    private void verifyClassIdentityHashCode(Class<?> clazz, PersistedAnalysisTypeData.Loader typeData) {
+    private void verifyClassIdentityHashCodeAndLookupType(Class<?> clazz, PersistedAnalysisTypeData.Loader typeData) {
         Integer identityHashCode = constantLoader.getClassIdentityHashCode(typeData.getId());
-        if (identityHashCode == null) {
-            /* A type tracked through analysis need not have a persisted Class constant. */
-            return;
+        /* A type tracked through analysis need not have a persisted Class constant. */
+        if (identityHashCode != null) {
+            int actualHashCode = clazz.hashCode();
+            VMError.guarantee(actualHashCode == identityHashCode, "The identity hash code of generated class %s was already set to %d instead of %d", clazz, actualHashCode, identityHashCode);
         }
-        int actualHashCode = clazz.hashCode();
-        VMError.guarantee(actualHashCode == identityHashCode, "The identity hash code of generated class %s was already set to %d instead of %d", clazz, actualHashCode, identityHashCode);
+        metaAccess.lookupJavaType(clazz);
     }
 
     private void loadMethodHandleTargets(ResolvedJavaMethod m, BigBang bigBang) {

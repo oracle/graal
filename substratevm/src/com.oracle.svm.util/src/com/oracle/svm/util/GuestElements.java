@@ -160,6 +160,8 @@ public abstract sealed class GuestElements permits GuestAccess.GuestElementsImpl
 
     public final ResolvedJavaType java_lang_Iterable = lookupType(Iterable.class);
 
+    public final ResolvedJavaType java_lang_invoke_BoundMethodHandle = lookupType("java.lang.invoke.BoundMethodHandle");
+
     public final ResolvedJavaType java_lang_invoke_DirectMethodHandle = lookupType("java.lang.invoke.DirectMethodHandle");
     public final ResolvedJavaMethod java_lang_invoke_DirectMethodHandle_allocateInstance = lookupMethod(java_lang_invoke_DirectMethodHandle, "allocateInstance", Object.class);
 

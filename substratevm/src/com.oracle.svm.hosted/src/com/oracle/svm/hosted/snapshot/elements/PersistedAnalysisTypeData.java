@@ -175,6 +175,8 @@ public interface PersistedAnalysisTypeData {
             Lambda.Writer initLambda();
 
             void setProxyType();
+
+            void setBoundMethodHandleSpecies(String value);
         }
 
         interface Loader {
@@ -189,6 +191,10 @@ public interface PersistedAnalysisTypeData {
             Lambda.Loader getLambda();
 
             boolean isProxyType();
+
+            boolean isBoundMethodHandleSpecies();
+
+            String getBoundMethodHandleSpecies();
         }
 
         interface SerializationGenerated {

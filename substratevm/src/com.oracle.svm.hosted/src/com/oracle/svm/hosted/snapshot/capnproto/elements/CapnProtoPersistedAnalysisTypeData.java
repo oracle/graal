@@ -403,6 +403,11 @@ record WrappedTypeWriterAdapter(WrappedType.Builder delegate) implements Persist
     public void setProxyType() {
         delegate.setProxyType(Void.VOID);
     }
+
+    @Override
+    public void setBoundMethodHandleSpecies(String value) {
+        delegate.setBoundMethodHandleSpecies(value);
+    }
 }
 
 record WrappedTypeLoaderAdapter(WrappedType.Reader delegate) implements PersistedAnalysisTypeData.WrappedType.Loader {
@@ -434,6 +439,16 @@ record WrappedTypeLoaderAdapter(WrappedType.Reader delegate) implements Persiste
     @Override
     public boolean isProxyType() {
         return delegate.isProxyType();
+    }
+
+    @Override
+    public boolean isBoundMethodHandleSpecies() {
+        return delegate.isBoundMethodHandleSpecies();
+    }
+
+    @Override
+    public String getBoundMethodHandleSpecies() {
+        return delegate.getBoundMethodHandleSpecies().toString();
     }
 }
 
