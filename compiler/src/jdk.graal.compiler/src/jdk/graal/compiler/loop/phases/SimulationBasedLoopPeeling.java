@@ -42,6 +42,7 @@ import jdk.graal.compiler.vector.phases.LoopVectorizationAnalysis;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.cfg.CFGLoop;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
@@ -1280,9 +1281,9 @@ public class SimulationBasedLoopPeeling {
          * process the (not visited) floating nodes after.
          */
         SpecialBenefit ben = new SpecialBenefit();
-        List<HIRBlock> loopBlocks = loop.getCFGLoop().getBlocks();
+        CFGLoop<HIRBlock> cfgLoop = loop.getCFGLoop();
         for (HIRBlock b : cfg.reversePostOrder()) {
-            if (loopBlocks.contains(b)) {
+            if (cfgLoop.containsBlock(b)) {
                 FixedNode cur = b.getBeginNode();
                 while (true) { // TERMINATION ARGUMENT: process fixed nodes of a basic block
                     CompilationAlarm.checkProgress(cfg.graph);
