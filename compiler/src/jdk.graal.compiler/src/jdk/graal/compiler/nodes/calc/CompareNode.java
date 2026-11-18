@@ -398,9 +398,9 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
     }
 
     /**
-     * Querying by X alone is sufficient because antecedent comparisons are indexed under both
+     * Querying by X alone is sufficient because registered comparisons are indexed under both
      * operands. The indexed implication rules require matching operand pairs (possibly swapped)
-     * or matching X values, so every applicable antecedent appears in this bucket.
+     * or matching X values, so every applicable registered comparison appears in this bucket.
      */
     @Override
     public final ValueNode getImplicationKey() {
@@ -409,7 +409,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
 
     /**
      * The proofs below require matching operand pairs (possibly swapped), or the same X and constant
-     * bounds. Thus the consequent's X must match one of these operands.
+     * bounds. Thus the query comparison's X must match one of these operands.
      */
     @Override
     public boolean forEachImplicationKey(Consumer<ValueNode> consumer) {

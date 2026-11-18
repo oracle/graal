@@ -84,10 +84,10 @@ public abstract class LogicNode extends FloatingNode implements IndirectInputCha
     }
 
     /**
-     * Selects the candidate bucket when this node is the consequent of an implication search.
-     * Every known {@link #implies} result must be covered by the antecedent's
-     * {@link #forEachImplicationKey} keys after value-proxy and constant normalization. The default
-     * supports identity proofs.
+     * Selects the candidate bucket when this node is the query condition. If a registered
+     * condition's {@link #implies} returns a known result for this node, one of its
+     * {@link #forEachImplicationKey} keys must match this key after value-proxy and constant
+     * normalization. The default supports identity proofs.
      */
     public ValueNode getImplicationKey() {
         return this;
@@ -95,7 +95,7 @@ public abstract class LogicNode extends FloatingNode implements IndirectInputCha
 
     /**
      * Emits candidate keys for implication searches. Whenever {@link #implies} returns a known
-     * result, at least one key must match the consequent's {@link #getImplicationKey() query key}.
+     * result, at least one key must match the query condition's {@link #getImplicationKey() query key}.
      * Matching skips value proxies and compares constants by value; extra matches are harmless.
      * The default covers the identity and negation proofs in this class.
      * For example, comparisons emit both operands so that a query keyed by its first operand also
@@ -120,9 +120,9 @@ public abstract class LogicNode extends FloatingNode implements IndirectInputCha
      * <li>If negate(this, thisNegated) => !other, returns {@link TriState#FALSE}</li>
      * </ul>
      *
-     * Overrides must not unwrap a {@link LogicNegationNode} consequent. They should delegate to
+     * Overrides must not unwrap a {@link LogicNegationNode} query condition. They should delegate to
      * this method when their specialized proofs return {@link TriState#UNKNOWN}, so that this
-     * method unwraps the consequent, redispatches the implication proof, and flips the result.
+     * method unwraps the query condition, redispatches the implication proof, and flips the result.
      * Nested negations are handled recursively.
      *
      * Overrides adding proof rules must also override {@link #forEachImplicationKey} if the inherited

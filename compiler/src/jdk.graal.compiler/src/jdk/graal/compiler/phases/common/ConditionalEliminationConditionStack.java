@@ -81,7 +81,7 @@ public final class ConditionalEliminationConditionStack implements AutoCloseable
     private final class Entry {
         final GuardedCondition condition;
         final int position;
-        final List<Object> keys = new ArrayList<>(3);
+        final List<Object> keys = new ArrayList<>();
 
         Entry(GuardedCondition condition) {
             this.condition = condition;
