@@ -145,7 +145,9 @@ Each file controls its own recursion setting, so an unmarked file is a leaf and 
 When a file enables both `value-continuations` and `recursive-argument-files`, Native Image joins its option-value continuations before expanding includes.
 An `@file` token consumed as a continuation value remains a value, and continuations do not cross file boundaries.
 Use `@@file` to pass a literal `@file` token from a file that enables recursive argument files.
-The `--disable-@files` option prevents later argument-file references from being expanded.
+The `--disable-@files` option prevents later argument-file references from being expanded and disables `@@` unescaping.
+When used in an included file, it also affects the remaining arguments in the including files and subsequent command-line arguments in the same preprocessing stream.
+Each _native-image.properties_ file and macro option is processed in a separate stream with its own disable state.
 Native Image reports include cycles with their include chain and rejects nesting deeper than 64 files, including the top-level argument file.
 
 For example, _layer.args_ can include _common.args_ before its own options:
