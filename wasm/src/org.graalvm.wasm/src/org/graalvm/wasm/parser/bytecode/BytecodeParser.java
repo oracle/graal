@@ -886,6 +886,7 @@ public abstract class BytecodeParser {
                         case Bytecode.I64_MUL_WIDE_S:
                         case Bytecode.I64_MUL_WIDE_U:
                         case Bytecode.THROW_REF:
+                        case Bytecode.REF_AS_NON_NULL:
                         case Bytecode.REF_EQ:
                         case Bytecode.LEGACY_CATCH_DROP:
                         case Bytecode.BR_RETURN_CALL: {
