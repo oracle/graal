@@ -77,6 +77,11 @@ import jdk.vm.ci.meta.UnresolvedJavaField;
 import jdk.vm.ci.meta.UnresolvedJavaMethod;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
+/**
+ * Stores snippet graphs prepared by {@link SymbolicSnippetEncoder} for decoding by
+ * {@link HotSpotReplacementsImpl}. Decoding must use providers compatible with the folding already
+ * performed during preparation.
+ */
 public class EncodedSnippets {
     /**
      * Returns true if the current runtime or current compilation thread uses encoded snippets and
