@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex;
 
 import java.util.Iterator;
+import java.util.PrimitiveIterator;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -103,6 +104,20 @@ public class TBitSetTest {
     @Test
     public void testEmpty() {
         check();
+    }
+
+    @Test
+    public void testReverseIterator() {
+        int[] values = {0, 1, 63, 64, 65, 127, 128, 129, 255};
+        for (int value : values) {
+            bitSet.set(value);
+        }
+        PrimitiveIterator.OfInt iterator = bitSet.reverseIterator();
+        for (int i = values.length - 1; i >= 0; i--) {
+            Assert.assertTrue(iterator.hasNext());
+            Assert.assertEquals(values[i], iterator.nextInt());
+        }
+        Assert.assertFalse(iterator.hasNext());
     }
 
     @Test

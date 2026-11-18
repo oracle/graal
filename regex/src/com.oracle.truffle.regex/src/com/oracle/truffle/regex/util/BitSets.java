@@ -350,6 +350,10 @@ public final class BitSets {
         return new BitSetIterator(bs);
     }
 
+    public static PrimitiveIterator.OfInt reverseIterator(long[] bs) {
+        return new ReverseBitSetIterator(bs);
+    }
+
     private static final class BitSetIterator implements PrimitiveIterator.OfInt {
 
         private final long[] words;
@@ -394,6 +398,61 @@ public final class BitSets {
             last = (wordIndex * 64) + bitIndex;
             curWord >>>= 1;
             bitIndex++;
+            findNext();
+            return last;
+        }
+
+        @Override
+        public void remove() {
+            clear(words, last);
+        }
+    }
+
+    private static final class ReverseBitSetIterator implements PrimitiveIterator.OfInt {
+
+        private final long[] words;
+        private int wordIndex;
+        private byte bitIndex = 63;
+        private long curWord;
+        private int last;
+
+        private ReverseBitSetIterator(long[] words) {
+            this.words = words;
+            wordIndex = words.length - 1;
+            if (hasNext()) {
+                curWord = words[wordIndex];
+            }
+            findNext();
+        }
+
+        private void findNext() {
+            while (curWord == 0) {
+                wordIndex--;
+                bitIndex = 63;
+                if (hasNext()) {
+                    curWord = words[wordIndex];
+                } else {
+                    return;
+                }
+            }
+            assert hasNext();
+            assert curWord != 0;
+            int leadingZeros = Long.numberOfLeadingZeros(curWord);
+            curWord <<= leadingZeros;
+            bitIndex -= leadingZeros;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return wordIndex >= 0;
+        }
+
+        @Override
+        public int nextInt() {
+            assert hasNext();
+            last = (wordIndex * 64) + bitIndex;
+            curWord <<= 1;
+            bitIndex--;
             findNext();
             return last;
         }
