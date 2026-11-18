@@ -38,7 +38,7 @@ import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationSet;
-import com.oracle.svm.configure.test.AddExports;
+import com.oracle.svm.test.api.AddExports;
 
 import jdk.graal.compiler.util.json.JsonWriter;
 

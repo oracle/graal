@@ -1458,6 +1458,7 @@ suite = {
                 "mx:JUNIT_TOOL",
                 "sdk:NATIVEIMAGE",
                 "com.oracle.svm.configure",
+                "SVM_TEST_API",
             ],
             "checkstyle": "com.oracle.svm.test",
             "workingSets": "SVM",
