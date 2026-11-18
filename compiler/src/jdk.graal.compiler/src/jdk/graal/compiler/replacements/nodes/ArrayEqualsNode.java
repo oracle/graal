@@ -162,44 +162,60 @@ public class ArrayEqualsNode extends PureFunctionStubIntrinsicNode implements Ca
             if (virtual1.entryCount() == virtual2.entryCount()) {
                 int entryCount = virtual1.entryCount();
                 boolean allEqual = true;
-                for (int i = 0; i < entryCount; i++) {
-                    ValueNode entry1 = tool.getEntry(virtual1, i);
-                    ValueNode entry2 = tool.getEntry(virtual2, i);
-                    if (entry1 != entry2) {
-                        if (entry1 instanceof ConstantNode && entry2 instanceof ConstantNode) {
-                            // Float NaN constants are different constant nodes but treated as
-                            // equal in Arrays.equals([F[F) or Arrays.equals([D[D).
-                            if (entry1.getStackKind() == JavaKind.Float && entry2.getStackKind() == JavaKind.Float) {
-                                float value1 = ((JavaConstant) entry1.asConstant()).asFloat();
-                                float value2 = ((JavaConstant) entry2.asConstant()).asFloat();
-                                if (Float.floatToIntBits(value1) != Float.floatToIntBits(value2)) {
-                                    allEqual = false;
-                                }
-                            } else if (entry1.getStackKind() == JavaKind.Double && entry2.getStackKind() == JavaKind.Double) {
-                                double value1 = ((JavaConstant) entry1.asConstant()).asDouble();
-                                double value2 = ((JavaConstant) entry2.asConstant()).asDouble();
-                                if (Double.doubleToLongBits(value1) != Double.doubleToLongBits(value2)) {
-                                    allEqual = false;
-                                }
+                int index = 0;
+                while (index < entryCount) {
+                    ValueNode entry1 = tool.getEntry(virtual1, index);
+                    ValueNode entry2 = tool.getEntry(virtual2, index);
+                    int end1 = nextEntryBoundary(virtual1, index, tool);
+                    int end2 = nextEntryBoundary(virtual2, index, tool);
+
+                    if (end1 != end2 || entry1.getStackKind() != entry2.getStackKind()) {
+                        // Resume comparison at the next boundary shared by both layouts.
+                        allEqual = false;
+                        while (end1 != end2) {
+                            if (end1 < end2) {
+                                end1 = nextEntryBoundary(virtual1, end1, tool);
                             } else {
-                                allEqual = false;
+                                end2 = nextEntryBoundary(virtual2, end2, tool);
                             }
-                        } else {
-                            // the contents might be different
-                            allEqual = false;
                         }
+                        index = end1;
+                        continue;
                     }
-                    if (entry1.stamp(NodeView.DEFAULT).alwaysDistinct(entry2.stamp(NodeView.DEFAULT))) {
-                        // the contents are different
+
+                    index = end1;
+                    if (entry1 == entry2) {
+                        continue;
+                    }
+                    if (entry1.isJavaConstant() && entry2.isJavaConstant()) {
+                        JavaConstant c1 = entry1.asJavaConstant();
+                        JavaConstant c2 = entry2.asJavaConstant();
+                        // Normalize NaNs only for floating-point array comparisons.
+                        if (c1.equals(c2) || (kind == c1.getJavaKind() && isNaNFloat(c1) && isNaNFloat(c2))) {
+                            continue;
+                        }
                         tool.replaceWithValue(ConstantNode.forBoolean(false, graph()));
                         return;
                     }
+                    if (entry1.stamp(NodeView.DEFAULT).alwaysDistinct(entry2.stamp(NodeView.DEFAULT))) {
+                        tool.replaceWithValue(ConstantNode.forBoolean(false, graph()));
+                        return;
+                    }
+                    allEqual = false;
                 }
                 if (allEqual) {
                     tool.replaceWithValue(ConstantNode.forBoolean(true, graph()));
                 }
             }
         }
+    }
+
+    private static int nextEntryBoundary(VirtualObjectNode virtual, int index, VirtualizerTool tool) {
+        int next = index + 1;
+        while (next < virtual.entryCount() && tool.getEntry(virtual, next).isIllegalConstant()) {
+            next++;
+        }
+        return next;
     }
 
     @NodeIntrinsic
