@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.FutureTask;
 
-import com.oracle.truffle.api.dsl.test.ExpectWarning;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
@@ -38,6 +37,8 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
@@ -48,13 +49,12 @@ import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.test.ExpectWarning;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -174,7 +174,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
     }
 
     @Test
-    public void testDirectCallOverloadsDoNotSplitDuringExecution() {
+    public void testDirectCallOverloadsSplitDuringExecution() {
         OptimizedCallTarget callee = (OptimizedCallTarget) new SplittingTestRootNode(
                         NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
         DirectCallNode caller = runtime.createDirectCallNode(callee);
@@ -186,12 +186,12 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(callee));
 
         Assert.assertEquals(1, caller.call(arguments));
-        Assert.assertFalse("Legacy call split during execution", caller.isCallTargetCloned());
+        Assert.assertTrue("Legacy call did not split during execution", caller.isCallTargetCloned());
         Assert.assertEquals(1, bytecodeIndexCaller.call(42, arguments));
-        Assert.assertFalse("Bytecode-index call split during execution", bytecodeIndexCaller.isCallTargetCloned());
+        Assert.assertTrue("Bytecode-index call did not split during execution", bytecodeIndexCaller.isCallTargetCloned());
         Assert.assertEquals(1, rootTypeCaller.call(SplittingTestRootNode.class, 42, arguments));
-        Assert.assertFalse("Root-type call split during execution", rootTypeCaller.isCallTargetCloned());
-        Assert.assertEquals(0, listener.splitCount);
+        Assert.assertTrue("Root-type call did not split during execution", rootTypeCaller.isCallTargetCloned());
+        Assert.assertEquals(3, listener.splitCount);
     }
 
     @Test
@@ -209,18 +209,22 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         }
         Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callee));
 
-        caller.getCallTarget().call(0);
+        callee.call(0);
         Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(callee));
         for (DirectCallNode callNode : callNodes) {
-            Assert.assertFalse("Target split before compilation preparation", callNode.isCallTargetCloned());
+            Assert.assertFalse("Target split before the next direct call", callNode.isCallTargetCloned());
         }
 
         OptimizedCallTarget callerTarget = (OptimizedCallTarget) caller.getCallTarget();
-        Assert.assertFalse("Compilation was not delayed after splitting", callerTarget.prepareForCompilation(true, 1, false));
+        Assert.assertTrue(callerTarget.prepareForCompilation(false, 1, false));
+        Assert.assertTrue(callerTarget.prepareForCompilation(true, 1, false));
         for (DirectCallNode callNode : callNodes) {
-            Assert.assertTrue("Bytecode DSL cached call target was not split during compilation preparation", callNode.isCallTargetCloned());
+            Assert.assertFalse("Compilation preparation split the call target", callNode.isCallTargetCloned());
         }
-        Assert.assertTrue("Compilation was delayed more than once", callerTarget.prepareForCompilation(true, 1, false));
+        callerTarget.call(1);
+        for (DirectCallNode callNode : callNodes) {
+            Assert.assertTrue("Bytecode DSL cached call target was not split during execution", callNode.isCallTargetCloned());
+        }
     }
 
     private static SplittingBytecodeRootNode createBytecodeCaller(RootCallTarget callee) {
@@ -279,6 +283,29 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
     }
 
     @Test
+    public void testPreparationDoesNotSplitDirectCalls() {
+        OptimizedCallTarget callee = (OptimizedCallTarget) new SplittingTestRootNode(
+                        NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
+        runtime.createDirectCallNode(callee);
+        CallsInnerNode caller = new CallsInnerNode(callee);
+        OptimizedCallTarget callerTarget = (OptimizedCallTarget) caller.getCallTarget();
+        Assert.assertFalse(callerTarget.prepareForCompilation(true, 1, false));
+        callerTarget.call(1);
+        callerTarget.call(1);
+        callerTarget.call(0);
+        Assert.assertTrue(getNeedsSplit(callee));
+        Assert.assertFalse(caller.callNode.isCallTargetCloned());
+
+        Assert.assertTrue(callerTarget.prepareForCompilation(false, 1, false));
+        Assert.assertFalse("Inline preparation split the call target", caller.callNode.isCallTargetCloned());
+        Assert.assertTrue(callerTarget.prepareForCompilation(true, 1, false));
+        Assert.assertFalse("Root preparation split the call target", caller.callNode.isCallTargetCloned());
+
+        callerTarget.call(1);
+        Assert.assertTrue("The next interpreter call did not split", caller.callNode.isCallTargetCloned());
+    }
+
+    @Test
     public void testDoesNotSplitsDirectCalls() {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
                         NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroButClassIsExcludedNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
@@ -312,18 +339,55 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         }
     }
 
-    class EagerCallsInnerNode extends SplittableRootNode {
+    @Test
+    public void testSplitPropagatesThroughSoleCallers() {
+        OptimizedCallTarget turnsPolymorphic = (OptimizedCallTarget) new SplittingTestRootNode(
+                        NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
+        testPropagatesThroughSoleCallers(turnsPolymorphic, new Object[]{1}, new Object[]{0});
+        turnsPolymorphic = (OptimizedCallTarget) new SplittingTestRootNode(NodeSplittingStrategyTestFactory.HasInlineCacheNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
+        Object[] first = new Object[]{new DummyRootNode().getCallTarget()};
+        Object[] second = new Object[]{new DummyRootNode().getCallTarget()};
+        testPropagatesThroughSoleCallers(turnsPolymorphic, first, second);
+    }
 
-        @Child private OptimizedDirectCallNode callNode;
+    private void testPropagatesThroughSoleCallers(OptimizedCallTarget turnsPolymorphic, Object[] firstArgs, Object[] secondArgs) {
+        final OptimizedCallTarget callsInner = (OptimizedCallTarget) new CallsInnerNode(turnsPolymorphic).getCallTarget();
+        final OptimizedCallTarget callsCallsInner = (OptimizedCallTarget) new CallsInnerNode(callsInner).getCallTarget();
+        // two callers for a target are needed
+        runtime.createDirectCallNode(callsCallsInner);
+        final DirectCallNode directCallNode = runtime.createDirectCallNode(callsCallsInner);
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callsCallsInner));
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callsInner));
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(turnsPolymorphic));
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callsCallsInner));
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callsInner));
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(turnsPolymorphic));
+        directCallNode.call(secondArgs);
+        Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(callsCallsInner));
+        Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(callsInner));
+        Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(turnsPolymorphic));
 
-        EagerCallsInnerNode(RootCallTarget toCall) {
-            this.callNode = (OptimizedDirectCallNode) runtime.createDirectCallNode(toCall);
-        }
+        directCallNode.call(secondArgs);
+        Assert.assertTrue("Target needs split but not split", directCallNode.isCallTargetCloned());
+        CallsInnerNode clonedOuter = (CallsInnerNode) ((RootCallTarget) directCallNode.getCurrentCallTarget()).getRootNode();
+        Assert.assertTrue("Call in the outer clone did not split", clonedOuter.callNode.isCallTargetCloned());
+        CallsInnerNode clonedInner = (CallsInnerNode) clonedOuter.callNode.getCurrentCallTarget().getRootNode();
+        Assert.assertTrue("Call in the inner clone did not split", clonedInner.callNode.isCallTargetCloned());
 
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return callNode.call(frame.getArguments());
-        }
+        // Test new directCallNode will split
+        DirectCallNode newCallNode = runtime.createDirectCallNode(callsCallsInner);
+        newCallNode.call(secondArgs);
+        Assert.assertTrue("new call node to \"needs split\" target is not split", newCallNode.isCallTargetCloned());
+
+        newCallNode = runtime.createDirectCallNode(callsInner);
+        newCallNode.call(secondArgs);
+        Assert.assertTrue("new call node to \"needs split\" target is not split", newCallNode.isCallTargetCloned());
+
+        newCallNode = runtime.createDirectCallNode(turnsPolymorphic);
+        newCallNode.call(secondArgs);
+        Assert.assertTrue("new call node to \"needs split\" target is not split", newCallNode.isCallTargetCloned());
     }
 
     @Test
@@ -356,8 +420,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
     public void testIncreaseInPolymorphism() {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
                         NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
-        CallsInnerNode outerRoot = new CallsInnerNode(callTarget);
-        final OptimizedCallTarget outerTarget = (OptimizedCallTarget) outerRoot.getCallTarget();
+        final RootCallTarget outerTarget = new CallsInnerNode(callTarget).getCallTarget();
         Object[] firstArgs = new Object[]{1};
         outerTarget.call(firstArgs);
         Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
@@ -376,10 +439,10 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         outerTarget.call(new Object[]{"foo"});
         Assert.assertTrue("Target does not need split after increase in polymorphism", getNeedsSplit(callTarget));
 
-        Assert.assertFalse("Compilation was not delayed after splitting", outerTarget.prepareForCompilation(true, 1, false));
-        Assert.assertTrue("Call site in compiling root was not split", outerRoot.callNode.isCallTargetCloned());
+        // A new call node to a marked target also splits.
+        outerTarget.call(firstArgs);
         directCallNode.call(firstArgs);
-        Assert.assertFalse("Unadopted call node was split", directCallNode.isCallTargetCloned());
+        Assert.assertTrue("new call node to \"needs split\" target is not split", directCallNode.isCallTargetCloned());
     }
 
     static class ExposesReportPolymorphicSpecializeNode extends Node {
@@ -419,38 +482,6 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         rootNode.report();
     }
 
-    @Test
-    public void testRootPreparationDoesNotTraverseUnmarkedCallees() {
-        CallableOnlyOnceRootNode innerRoot = new CallableOnlyOnceRootNode();
-        OptimizedCallTarget inner = (OptimizedCallTarget) innerRoot.getCallTarget();
-        EagerCallsInnerNode middleRoot = new EagerCallsInnerNode(inner);
-        OptimizedCallTarget middle = (OptimizedCallTarget) middleRoot.getCallTarget();
-        EagerCallsInnerNode outerRoot = new EagerCallsInnerNode(middle);
-        OptimizedCallTarget outer = (OptimizedCallTarget) outerRoot.getCallTarget();
-        DirectCallNode outerCaller1 = runtime.createDirectCallNode(outer);
-        DirectCallNode outerCaller2 = runtime.createDirectCallNode(outer);
-
-        int innerCallers = inner.getKnownCallSiteCount();
-        outer.call(noArguments);
-        outer.call(noArguments);
-        Assert.assertTrue("Retained copied call node was not registered", inner.getKnownCallSiteCount() > innerCallers);
-        innerRoot.report();
-
-        // Retained copies make caller counts imprecise and stop propagation at inner.
-        Assert.assertFalse(getNeedsSplit(outer));
-        Assert.assertFalse(getNeedsSplit(middle));
-        Assert.assertTrue(getNeedsSplit(inner));
-        Assert.assertTrue(outer.prepareForCompilation(true, 1, false));
-        Assert.assertEquals(0, listener.splitCount);
-        Assert.assertFalse(outerRoot.callNode.isCallTargetCloned());
-        Assert.assertFalse(middleRoot.callNode.isCallTargetCloned());
-        Assert.assertFalse(middle.prepareForCompilation(true, 1, false));
-        Assert.assertEquals(1, listener.splitCount);
-        Assert.assertTrue(middleRoot.callNode.isCallTargetCloned());
-        Assert.assertSame(outer, outerCaller1.getCurrentCallTarget());
-        Assert.assertSame(outer, outerCaller2.getCurrentCallTarget());
-    }
-
     static class CallableOnlyOnceRootNode extends ExposesReportPolymorphicSpecializeRootNode {
         boolean called;
         boolean active;
@@ -482,8 +513,6 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         callsInner2.call(noArguments);
         rootNode.active = true;
         rootNode.report();
-        Assert.assertFalse(((OptimizedCallTarget) callsInner1).prepareForCompilation(true, 1, false));
-        Assert.assertFalse(((OptimizedCallTarget) callsInner2).prepareForCompilation(true, 1, false));
         callsInner1.call(noArguments);
         callsInner2.call(noArguments);
     }
@@ -511,29 +540,28 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         testMegamorphicHelper(callTarget, args);
     }
 
-    private static void testMegamorphicHelper(OptimizedCallTarget callTarget, int[] args) {
-        CallsTargetRootNode callerRoot1 = new CallsTargetRootNode(callTarget);
-        CallsTargetRootNode callerRoot2 = new CallsTargetRootNode(callTarget);
-        OptimizedCallTarget caller1 = (OptimizedCallTarget) callerRoot1.getCallTarget();
-        OptimizedCallTarget caller2 = (OptimizedCallTarget) callerRoot2.getCallTarget();
+    private static void testMegamorphicHelper(CallTarget callTarget, int[] args) {
+        final DirectCallNode callNode1 = runtime.createDirectCallNode(callTarget);
+        final DirectCallNode callNode2 = runtime.createDirectCallNode(callTarget);
         // Goes monomorphic
-        caller1.call(args[0]);
-        Assert.assertFalse(callerRoot1.callNode.isCallTargetCloned());
-        Assert.assertFalse(callerRoot2.callNode.isCallTargetCloned());
+        callNode1.call(args[0]);
+        Assert.assertFalse(callNode1.isCallTargetCloned());
+        Assert.assertFalse(callNode2.isCallTargetCloned());
         // Goes polymorphic
-        caller2.call(args[1]);
-        Assert.assertFalse(callerRoot1.callNode.isCallTargetCloned());
-        Assert.assertFalse(callerRoot2.callNode.isCallTargetCloned());
-        // Goes megamorphic and marks the target for splitting.
-        caller1.call(args[2]);
-        Assert.assertFalse(callerRoot1.callNode.isCallTargetCloned());
-        Assert.assertFalse(callerRoot2.callNode.isCallTargetCloned());
-        Assert.assertFalse(caller1.prepareForCompilation(true, 1, false));
-        Assert.assertFalse(caller2.prepareForCompilation(true, 1, false));
-        Assert.assertTrue(callerRoot1.callNode.isCallTargetCloned());
-        Assert.assertTrue(callerRoot2.callNode.isCallTargetCloned());
-        caller2.call(args[3]);
-        caller1.call(args[4]);
+        callNode2.call(args[1]);
+        Assert.assertFalse(callNode1.isCallTargetCloned());
+        Assert.assertFalse(callNode2.isCallTargetCloned());
+        // Goes megamorphic
+        callNode1.call(args[2]);
+        Assert.assertFalse(callNode1.isCallTargetCloned());
+        Assert.assertFalse(callNode2.isCallTargetCloned());
+        // Gets split
+        callNode2.call(args[3]);
+        Assert.assertFalse(callNode1.isCallTargetCloned());
+        Assert.assertTrue(callNode2.isCallTargetCloned());
+        // Gets split
+        callNode1.call(args[4]);
+        Assert.assertTrue(callNode1.isCallTargetCloned());
     }
 
     @NodeChild
@@ -597,8 +625,24 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
                         NodeSplittingStrategyTestFactory.PolymorphicAndMegamorpicNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
         // activates the first spec 2 times than the last (megamorphic)
-        int[] args = {1, 2, 3, 4, 5};
-        testMegamorphicHelper(callTarget, args);
+        int[] args = {1, 2, 3, 4};
+        final DirectCallNode callNode1 = runtime.createDirectCallNode(callTarget);
+        final DirectCallNode callNode2 = runtime.createDirectCallNode(callTarget);
+        // Goes monomorphic
+        callNode1.call(args[0]);
+        Assert.assertFalse(callNode1.isCallTargetCloned());
+        Assert.assertFalse(callNode2.isCallTargetCloned());
+        // Goes polymorphic
+        callNode2.call(args[1]);
+        Assert.assertFalse(callNode1.isCallTargetCloned());
+        Assert.assertFalse(callNode2.isCallTargetCloned());
+        // Gets split
+        callNode2.call(args[2]);
+        Assert.assertFalse(callNode1.isCallTargetCloned());
+        Assert.assertTrue(callNode2.isCallTargetCloned());
+        // Gets split
+        callNode1.call(args[3]);
+        Assert.assertTrue(callNode1.isCallTargetCloned());
     }
 
     @Test
@@ -606,202 +650,69 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
                         NodeSplittingStrategyTestFactory.PolymorphicAndMegamorpicNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
         // activates the first spec 2 times than the last (megamorphic)
-        int[] args = {1, 0, 3, 4, 5};
-        testMegamorphicHelper(callTarget, args);
+        int[] args = {1, 0, 3, 4};
+        final DirectCallNode callNode1 = runtime.createDirectCallNode(callTarget);
+        final DirectCallNode callNode2 = runtime.createDirectCallNode(callTarget);
+        // Goes monomorphic
+        callNode1.call(args[0]);
+        Assert.assertFalse(callNode1.isCallTargetCloned());
+        Assert.assertFalse(callNode2.isCallTargetCloned());
+        // Goes megamorphic
+        callNode2.call(args[1]);
+        Assert.assertFalse(callNode1.isCallTargetCloned());
+        Assert.assertFalse(callNode2.isCallTargetCloned());
+        // Gets split
+        callNode2.call(args[2]);
+        Assert.assertFalse(callNode1.isCallTargetCloned());
+        Assert.assertTrue(callNode2.isCallTargetCloned());
+        // Gets split
+        callNode1.call(args[3]);
+        Assert.assertTrue(callNode1.isCallTargetCloned());
     }
 
-    abstract static class CrossPreparationLanguage extends TruffleLanguage<Object> {
+    @TruffleLanguage.Registration(id = PreparationLanguage.ID, name = PreparationLanguage.ID)
+    static final class PreparationLanguage extends TruffleLanguage<Object> {
+        static final String ID = "SplittingPreparationLanguage";
+        static final LanguageReference<PreparationLanguage> LANGUAGE_REFERENCE = LanguageReference.create(PreparationLanguage.class);
+        static final ContextReference<Object> CONTEXT_REFERENCE = ContextReference.create(PreparationLanguage.class);
+        static volatile OptimizedCallTarget target;
 
         @Override
         protected Object createContext(Env env) {
             return new Object();
         }
-    }
-
-    @TruffleLanguage.Registration(id = CrossPreparationLanguageC.ID, name = CrossPreparationLanguageC.ID)
-    static final class CrossPreparationLanguageC extends CrossPreparationLanguage {
-        static final String ID = "CrossPreparationLanguageC";
-        static final LanguageReference<CrossPreparationLanguageC> LANGUAGE_REFERENCE = LanguageReference.create(CrossPreparationLanguageC.class);
-        static final ContextReference<Object> CONTEXT_REFERENCE = ContextReference.create(CrossPreparationLanguageC.class);
-
-        static volatile OptimizedCallTarget target;
 
         @Override
         protected CallTarget parse(ParsingRequest request) {
-            target = (OptimizedCallTarget) new CrossPreparationCloneRootNode(this, LANGUAGE_REFERENCE, CONTEXT_REFERENCE, null).getCallTarget();
+            target = (OptimizedCallTarget) new RootNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return 42;
+                }
+
+                @Override
+                protected boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+                    Assert.assertSame(PreparationLanguage.this, LANGUAGE_REFERENCE.get(this));
+                    Assert.assertNull(CONTEXT_REFERENCE.get(this));
+                    return true;
+                }
+            }.getCallTarget();
             return target;
-        }
-    }
-
-    @TruffleLanguage.Registration(id = CrossPreparationLanguageB.ID, name = CrossPreparationLanguageB.ID)
-    static final class CrossPreparationLanguageB extends CrossPreparationLanguage {
-        static final String ID = "CrossPreparationLanguageB";
-        static final LanguageReference<CrossPreparationLanguageB> LANGUAGE_REFERENCE = LanguageReference.create(CrossPreparationLanguageB.class);
-        static final ContextReference<Object> CONTEXT_REFERENCE = ContextReference.create(CrossPreparationLanguageB.class);
-
-        static volatile OptimizedCallTarget target;
-
-        @Override
-        protected CallTarget parse(ParsingRequest request) {
-            target = (OptimizedCallTarget) new CrossPreparationCloneRootNode(this, LANGUAGE_REFERENCE, CONTEXT_REFERENCE, CrossPreparationLanguageC.target).getCallTarget();
-            return target;
-        }
-    }
-
-    @TruffleLanguage.Registration(id = CrossPreparationLanguageA.ID, name = CrossPreparationLanguageA.ID)
-    static final class CrossPreparationLanguageA extends CrossPreparationLanguage {
-        static final String ID = "CrossPreparationLanguageA";
-        static final LanguageReference<CrossPreparationLanguageA> LANGUAGE_REFERENCE = LanguageReference.create(CrossPreparationLanguageA.class);
-        static final ContextReference<Object> CONTEXT_REFERENCE = ContextReference.create(CrossPreparationLanguageA.class);
-
-        static volatile CrossPreparationState state;
-
-        @Override
-        protected CallTarget parse(ParsingRequest request) {
-            CrossPreparationCallerRootNode callerRoot = new CrossPreparationCallerRootNode(this, CrossPreparationLanguageB.target);
-            state = new CrossPreparationState(callerRoot, (OptimizedDirectCallNode) runtime.createDirectCallNode(CrossPreparationLanguageB.target),
-                            (OptimizedDirectCallNode) runtime.createDirectCallNode(CrossPreparationLanguageC.target));
-            return callerRoot.getCallTarget();
-        }
-    }
-
-    static final class CrossPreparationState {
-        final CrossPreparationCallerRootNode callerRoot;
-        final OptimizedDirectCallNode additionalBCaller;
-        final OptimizedDirectCallNode additionalCCaller;
-
-        CrossPreparationState(CrossPreparationCallerRootNode callerRoot, OptimizedDirectCallNode additionalBCaller, OptimizedDirectCallNode additionalCCaller) {
-            this.callerRoot = callerRoot;
-            this.additionalBCaller = additionalBCaller;
-            this.additionalCCaller = additionalCCaller;
-        }
-    }
-
-    static final class CrossPreparationCloneRootNode extends RootNode {
-        private final TruffleLanguage<?> language;
-        private final LanguageReference<?> languageReference;
-        private final ContextReference<?> contextReference;
-        @Child private SplittingTestNode body = NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode());
-        @Child private OptimizedDirectCallNode callNode;
-
-        CrossPreparationCloneRootNode(TruffleLanguage<?> language, LanguageReference<?> languageReference, ContextReference<?> contextReference, OptimizedCallTarget calleeTarget) {
-            super(language);
-            this.language = language;
-            this.languageReference = languageReference;
-            this.contextReference = contextReference;
-            this.callNode = calleeTarget == null ? null : (OptimizedDirectCallNode) runtime.createDirectCallNode(calleeTarget);
-        }
-
-        @Override
-        public boolean isCloningAllowed() {
-            return true;
-        }
-
-        @Override
-        protected boolean isCloneUninitializedSupported() {
-            return true;
-        }
-
-        @Override
-        protected RootNode cloneUninitialized() {
-            Assert.assertSame(language, languageReference.get(this));
-            Assert.assertNull(contextReference.get(this));
-            OptimizedCallTarget calleeTarget = callNode == null ? null : callNode.getCallTarget();
-            return new CrossPreparationCloneRootNode(language, languageReference, contextReference, calleeTarget);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            if (frame.getArguments().length == 0) {
-                return 42;
-            }
-            if (callNode != null) {
-                callNode.call(frame.getArguments());
-            }
-            return body.execute(frame);
-        }
-    }
-
-    static final class CrossPreparationCallerRootNode extends RootNode {
-        private final CrossPreparationLanguageA language;
-        @Child private OptimizedDirectCallNode callNode;
-        boolean rootPrepared;
-        boolean inlinePrepared;
-
-        CrossPreparationCallerRootNode(CrossPreparationLanguageA language, OptimizedCallTarget calleeTarget) {
-            super(language);
-            this.language = language;
-            this.callNode = (OptimizedDirectCallNode) runtime.createDirectCallNode(calleeTarget);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            callNode.call(1);
-            callNode.call(1);
-            callNode.call(0);
-            return 42;
-        }
-
-        @Override
-        protected boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
-            Assert.assertSame(language, CrossPreparationLanguageA.LANGUAGE_REFERENCE.get(this));
-            Assert.assertNull(CrossPreparationLanguageA.CONTEXT_REFERENCE.get(this));
-            if (rootCompilation) {
-                rootPrepared = true;
-            } else {
-                inlinePrepared = true;
-            }
-            return true;
         }
     }
 
     @Test
-    public void testCalleeLanguagesEnteredDuringSeparateRootPreparation() throws Exception {
-        try (Context context = Context.newBuilder(CrossPreparationLanguageA.ID, CrossPreparationLanguageB.ID, CrossPreparationLanguageC.ID).allowExperimentalOptions(true).option(
-                        "engine.Compilation", "false").option("engine.SplittingGrowthLimit", "10.0").build()) {
-            context.eval(CrossPreparationLanguageC.ID, "");
-            context.eval(CrossPreparationLanguageB.ID, "");
-            context.eval(CrossPreparationLanguageA.ID, "");
-            CrossPreparationState state = CrossPreparationLanguageA.state;
-            OptimizedCallTarget callerTarget = (OptimizedCallTarget) state.callerRoot.getCallTarget();
-            Assert.assertTrue(getNeedsSplit(CrossPreparationLanguageB.target));
-            Assert.assertTrue(getNeedsSplit(CrossPreparationLanguageC.target));
-            int cCallers = CrossPreparationLanguageC.target.getKnownCallSiteCount();
-
+    public void testLanguageEnteredDuringPreparation() throws Exception {
+        try (Context context = Context.newBuilder(PreparationLanguage.ID).allowExperimentalOptions(true).option("engine.Compilation", "false").build()) {
+            context.eval(PreparationLanguage.ID, "");
+            OptimizedCallTarget target = PreparationLanguage.target;
             FutureTask<Void> preparation = new FutureTask<>(() -> {
-                Assert.assertTrue(callerTarget.prepareForCompilation(false, 1, false));
-                Assert.assertFalse(state.callerRoot.callNode.isCallTargetCloned());
-                Assert.assertFalse(callerTarget.prepareForCompilation(true, 1, false));
-                Assert.assertTrue(callerTarget.prepareForCompilation(true, 1, false));
+                Assert.assertTrue(target.prepareForCompilation(false, 1, false));
+                Assert.assertTrue(target.prepareForCompilation(true, 1, false));
                 return null;
             });
             new Thread(preparation).start();
             preparation.get();
-
-            Assert.assertTrue(state.callerRoot.callNode.isCallTargetCloned());
-            Assert.assertTrue(state.callerRoot.rootPrepared);
-            Assert.assertTrue(state.callerRoot.inlinePrepared);
-            Assert.assertSame(CrossPreparationLanguageB.target, state.additionalBCaller.getCurrentCallTarget());
-            Assert.assertTrue("Recreated call node was not registered", CrossPreparationLanguageC.target.getKnownCallSiteCount() > cCallers);
-            CrossPreparationCloneRootNode clonedBRoot = (CrossPreparationCloneRootNode) state.callerRoot.callNode.getCurrentCallTarget().getRootNode();
-            Assert.assertFalse(clonedBRoot.callNode.isCallTargetCloned());
-
-            // B's clone must execute before its own root preparation can split its call to C.
-            context.enter();
-            try {
-                state.callerRoot.callNode.getCurrentCallTarget().call(1);
-            } finally {
-                context.leave();
-            }
-            FutureTask<Void> calleePreparation = new FutureTask<>(() -> {
-                OptimizedCallTarget clonedB = (OptimizedCallTarget) clonedBRoot.getCallTarget();
-                Assert.assertFalse(clonedB.prepareForCompilation(true, 1, false));
-                Assert.assertTrue(clonedB.prepareForCompilation(true, 1, false));
-                return null;
-            });
-            new Thread(calleePreparation).start();
-            calleePreparation.get();
-            Assert.assertTrue(clonedBRoot.callNode.isCallTargetCloned());
         }
     }
 
@@ -816,8 +727,8 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
                 final OptimizedCallTarget target = (OptimizedCallTarget) new SplittingTestRootNode(
                                 NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
 
-                @Child private OptimizedDirectCallNode callNode1 = (OptimizedDirectCallNode) runtime.createDirectCallNode(target);
-                @Child private OptimizedDirectCallNode callNode2 = (OptimizedDirectCallNode) runtime.createDirectCallNode(target);
+                final OptimizedDirectCallNode callNode1 = (OptimizedDirectCallNode) insert(runtime.createDirectCallNode(target));
+                final OptimizedDirectCallNode callNode2 = (OptimizedDirectCallNode) insert(runtime.createDirectCallNode(target));
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -825,16 +736,18 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
                     callNode1.call(1);
                     // Target turns polymorphic on 0
                     callNode2.call(0);
+                    // Give each a chance to split
+                    callNode1.call(0);
+                    callNode2.call(0);
                     assertExpectations();
                     return 42;
                 }
 
                 @CompilerDirectives.TruffleBoundary
                 private void assertExpectations() {
-                    Assert.assertTrue(getNeedsSplit(target));
-                    Assert.assertTrue(((OptimizedCallTarget) getCallTarget()).prepareForCompilation(true, 1, false));
-                    // The context has no remaining splitting budget.
-                    Assert.assertFalse(callNode1.isCallTargetCloned());
+                    // First is split because we have the budget
+                    Assert.assertTrue(callNode1.isCallTargetCloned());
+                    // Second is not because we don't have the budget
                     Assert.assertFalse(callNode2.isCallTargetCloned());
                 }
             }.getCallTarget();
@@ -843,8 +756,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     @Test
     public void testSplittingBudgetLimit() {
-        try (Context c = Context.newBuilder(SplittingLimitTestLanguage.ID).allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option(
-                        "engine.SplittingGrowthLimit", "0.0").build()) {
+        try (Context c = Context.newBuilder(SplittingLimitTestLanguage.ID).option("engine.CompileImmediately", "false").build()) {
             c.eval(SplittingLimitTestLanguage.ID, "");
         }
     }
