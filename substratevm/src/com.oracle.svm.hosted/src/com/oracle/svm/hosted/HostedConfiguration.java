@@ -27,6 +27,7 @@ package com.oracle.svm.hosted;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -62,6 +63,7 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
+import com.oracle.svm.hosted.code.SnippetCompilationPolicy;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
@@ -96,6 +98,13 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class HostedConfiguration {
+
+    /**
+     * Prepares snippets for standard AOT compilation using the builder's default providers and folding
+     * behavior. Owns the snippet template registry shared with additional policies, which prepare their
+     * own encodings and specialized-template caches.
+     */
+    private final SnippetCompilationPolicy defaultSnippetCompilationPolicy = new SnippetCompilationPolicy();
 
     public HostedConfiguration() {
     }
@@ -327,17 +336,19 @@ public class HostedConfiguration {
     /**
      * Selects providers for post-analysis hosted graph preparation and compilation of a method variant.
      * Implementations must be thread-safe, leave the supplied providers unchanged, and preserve
-     * backend compatibility.
+     * backend compatibility. Selected providers must remain stable while graphs and templates use them.
+     * <p>
+     * Selecting different providers cannot undo folding or specialization already performed in
+     * application or snippet graphs. Changing constant-reflection, constant-field, or
+     * meta-access-extension providers requires a {@link SnippetCompilationPolicy} registered before
+     * analysis. Return its prepared providers for the method's backend, and ensure application graphs
+     * were also prepared with compatible providers.
+     * <p>
+     * Inlining requires identical providers and graph-builder plugins for caller and inlinee,
+     * except that each backend may retain its original calling-convention code cache. Incompatible
+     * graphs are rejected even for forced inlining.
      *
-     * Selected providers must be compatible with previously prepared graphs and snippets, including
-     * template-cache sharing. This hook cannot undo earlier folding or specialization.
-     *
-     * Hosted inlining requires identical selected provider services and graph-builder plugins for
-     * caller and selected inlinee. Copies sharing those services remain compatible. Importing an
-     * incompatible graph fails, including for forced inlining. Each backend may retain its original
-     * calling-convention code cache.
-     *
-     * @return the supplied providers, or a compatible bundle with selected services replaced
+     * @return the supplied providers, or a compatible bundle with selected providers replaced
      */
     public HostedProviders selectCompilationProviders(@SuppressWarnings("unused") HostedMethod method, HostedProviders providers) {
         return providers;
@@ -367,6 +378,18 @@ public class HostedConfiguration {
      */
     public HostedMethod selectInlineeMethod(@SuppressWarnings("unused") HostedMethod caller, HostedMethod callee) {
         return callee;
+    }
+
+    public final SnippetCompilationPolicy getDefaultSnippetCompilationPolicy() {
+        return defaultSnippetCompilationPolicy;
+    }
+
+    /**
+     * Returns the snippet policies for this image. Overrides must include the default policy first
+     * and exactly once, and return the same policy instances in the same order throughout the build.
+     */
+    public List<SnippetCompilationPolicy> getSnippetCompilationPolicies() {
+        return List.of(defaultSnippetCompilationPolicy);
     }
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {

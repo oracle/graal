@@ -73,6 +73,16 @@ public class HostedProviders extends Providers {
         this.graphBuilderPlugins = graphBuilderPlugins;
     }
 
+    /**
+     * Returns a copy with the supplied code cache provider, sharing all other providers and
+     * graph-builder plugins.
+     */
+    public HostedProviders copyWith(CodeCacheProvider substitution) {
+        assert this.getClass() == HostedProviders.class : "must override in " + getClass();
+        return new HostedProviders(getMetaAccess(), substitution, getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), getLowerer(), getReplacements(), getStampProvider(),
+                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), getLoopsDataProvider(), getGraphBuilderPlugins());
+    }
+
     @Override
     public HostedProviders copyWith(MetaAccessExtensionProvider substitution) {
         assert this.getClass() == HostedProviders.class : "must override in " + getClass();

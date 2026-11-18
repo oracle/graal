@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.code;
 import java.util.IdentityHashMap;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -35,7 +36,7 @@ import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.SnippetTemplateRegistry;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -62,11 +63,23 @@ public class HostedReplacements extends SubstrateReplacements {
     private final HostedUniverse hUniverse;
     private final SubstrateReplacements analysisReplacements;
 
-    public HostedReplacements(HostedUniverse hUniverse, Providers providers, TargetDescription target, SubstrateReplacements analysisReplacements,
+    public HostedReplacements(HostedUniverse hUniverse, HostedProviders providers, TargetDescription target, SubstrateReplacements analysisReplacements,
                     BytecodeProvider bytecodeProvider) {
         super(providers, bytecodeProvider, target, null);
         this.hUniverse = hUniverse;
         this.analysisReplacements = analysisReplacements;
+    }
+
+    public HostedReplacements(HostedUniverse hUniverse, HostedProviders providers, TargetDescription target, SubstrateReplacements analysisReplacements,
+                    BytecodeProvider bytecodeProvider, SnippetTemplateRegistry templateRegistry) {
+        super(providers, bytecodeProvider, target, null, templateRegistry);
+        this.hUniverse = hUniverse;
+        this.analysisReplacements = analysisReplacements;
+    }
+
+    @Override
+    public HostedProviders getProviders() {
+        return (HostedProviders) super.getProviders();
     }
 
     @Override
