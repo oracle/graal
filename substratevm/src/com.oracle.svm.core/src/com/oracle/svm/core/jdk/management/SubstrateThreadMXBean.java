@@ -55,7 +55,7 @@ import sun.management.Util;
  * with JMX. These still need to be implemented (GR-44559).
  */
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
+public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean, VMManagementBean {
     private final AtomicLong totalStartedThreadCount = new AtomicLong(0);
     private final AtomicInteger peakThreadCount = new AtomicInteger(0);
     private final AtomicInteger threadCount = new AtomicInteger(0);

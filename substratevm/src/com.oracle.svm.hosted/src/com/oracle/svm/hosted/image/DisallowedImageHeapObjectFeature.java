@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,14 +49,15 @@ import javax.management.MBeanServerConnection;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.svm.core.ForeignSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.image.DisallowedImageHeapObjects;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
+import com.oracle.svm.core.jdk.management.VMManagementBean;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 
 /**
@@ -179,7 +180,19 @@ public class DisallowedImageHeapObjectFeature implements InternalFeature {
      * See {@link ManagementSupport} for details why these objects are not allowed.
      */
     private static void onPlatformManagedObjectReachable(PlatformManagedObject platformManagedObject, DisallowedImageHeapObjects.DisallowedObjectReporter reporter, boolean extensionLayer) {
-        if (extensionLayer || !ManagementSupport.getSingleton().isAllowedPlatformManagedObject(platformManagedObject)) {
+        /*
+         * Registry insertion requires the marker, including for VM-owned proxies and suppliers.
+         * Reject fresh VM objects in every extension layer; constants imported from earlier layers
+         * have already been validated. Independent application beans may be added in any layer.
+         */
+        if (extensionLayer && platformManagedObject instanceof VMManagementBean) {
+            throw reporter.raise("Detected a new VM management bean in an extension-layer image heap. " +
+                            "VM management beans must be reused from the initial layer. " +
+                            "Class of disallowed object: " + platformManagedObject.getClass().getTypeName(),
+                            platformManagedObject, "Try to avoid initializing the class that stores the object in a static field");
+        }
+        boolean disallowed = ManagementSupport.isHostedPlatformManagedObject(platformManagedObject, extensionLayer);
+        if (disallowed) {
             throw reporter.raise("Detected a PlatformManagedObject (a MXBean defined by the virtual machine) in the image heap. " +
                             "This bean is introspecting the VM that runs the image builder, i.e., a VM instance that is no longer available at image runtime. " +
                             "Class of disallowed object: " + platformManagedObject.getClass().getTypeName(),

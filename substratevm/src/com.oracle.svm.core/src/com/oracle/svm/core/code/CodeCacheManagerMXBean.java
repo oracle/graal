@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,9 +36,11 @@ import javax.management.ObjectName;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.jdk.management.VMManagementBean;
+
 import sun.management.Util;
 
-public final class CodeCacheManagerMXBean implements MemoryManagerMXBean, NotificationEmitter {
+public final class CodeCacheManagerMXBean implements MemoryManagerMXBean, NotificationEmitter, VMManagementBean {
     public static final String CODE_CACHE_CODE_AND_DATA_POOL = "runtime code cache (code and data)";
     public static final String CODE_CACHE_NATIVE_METADATA_POOL = "runtime code cache (native metadata)";
     public static final String CODE_CACHE_MANAGER = "code cache";
