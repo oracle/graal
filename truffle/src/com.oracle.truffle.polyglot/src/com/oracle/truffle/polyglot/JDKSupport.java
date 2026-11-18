@@ -214,7 +214,9 @@ final class JDKSupport {
                 StringWriter message = new StringWriter();
                 try (PrintWriter err = new PrintWriter(message)) {
                     err.println(formatErrorMessage(reason));
-                    t.printStackTrace(err);
+                    if (t != null) {
+                        t.printStackTrace(err);
+                    }
                 }
                 PolyglotEngineImpl.logFallback(message.toString());
             }
