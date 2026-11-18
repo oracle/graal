@@ -122,6 +122,7 @@ These deprecated URL protocol options are omitted from the generated table; see 
 Native Image argument files use UTF-8 and follow the [Java launcher argument-file specification](https://docs.oracle.com/en/java/javase/25/docs/specs/man/java.html#java-command-line-argument-files).
 All of its syntax rules apply.
 Command-line argument-file paths follow the Java launcher's filesystem lookup rules, including symbolic links and `..`.
+For compatibility with the Java launcher, Native Image does not restrict these paths to a containing directory.
 Recursive includes from those files use the same lookup rules.
 A standalone `# native-image:` directive must start the first line; unknown settings or misplaced directives are errors.
 Separate settings with a single space.
@@ -184,7 +185,10 @@ You can also use `@file` in the `Args` property of _native-image.properties_.
 The top-level file path is relative to the directory containing the properties file; nested references are relative to the including file.
 For properties embedded in a JAR, all referenced files are read from that JAR.
 For macro options, paths are relative to the macro option directory.
-References must stay within the containing class-path or module-path entry, or macro option directory; references that escape it are rejected.
+Embedded references must be relative paths that, after normalization of `.` and `..`, stay within the containing class-path or module-path entry, or macro option directory.
+This containment check is lexical: it does not resolve symbolic links.
+For files read from the filesystem, symbolic links are followed and can lead outside that entry or directory.
+These Native Image containment rules apply to both top-level embedded references and their recursive includes.
 Expanded options retain the origin of the properties file and its restrictions.
 
 ## List of Useful Options
