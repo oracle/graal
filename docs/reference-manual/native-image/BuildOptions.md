@@ -139,10 +139,10 @@ Continuation headers are recognized after Java-style tokenization removes quotes
 To pass `...` as a literal option value, specify the option directly on the command line or in an argument file without the marker.
 
 To include another argument file, put its `@file` reference in an argument file whose first line includes the `recursive-argument-files` setting.
-The included file's arguments appear at the location of the reference.
+The included file's arguments are inlined at the location of the `@file` reference.
 Resolve nested references relative to the file that contains them.
 Each file controls its own recursion setting, so an unmarked file is a leaf and its `@file` tokens remain literal.
-When a file enables both settings, Native Image joins its option-value continuations before expanding includes.
+When a file enables both `value-continuations` and `recursive-argument-files`, Native Image joins its option-value continuations before expanding includes.
 An `@file` token consumed as a continuation value remains a value, and continuations do not cross file boundaries.
 Use `@@file` to pass a literal `@file` token from a file that enables recursive argument files.
 The `--disable-@files` option prevents later argument-file references from being expanded.
@@ -159,7 +159,7 @@ For example, _layer.args_ can include _common.args_ before its own options:
     my/application/.*
 ```
 
-For example, _preserve.args_ can contain:
+The following _preserve.args_ file groups `-H:Preserve` and `-H:IncludeResources` values using option-value continuations:
 
 ```text
 # native-image: value-continuations
