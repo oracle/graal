@@ -36,7 +36,6 @@ import java.util.Map;
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.ObjectScanner.EmbeddedRootScan;
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadStaticFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph.GraphKind;
@@ -248,7 +247,7 @@ public class MethodTypeFlowBuilder {
     public static void optimizeGraphBeforeAnalysis(AbstractAnalysisEngine bb, AnalysisMethod method, StructuredGraph graph) {
         CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
         canonicalizerPhase.apply(graph, bb.getProviders(method));
-        if (PointstoOptions.ConditionalEliminationBeforeAnalysis.getValue(bb.getOptions())) {
+        if (bb.conditionalEliminationBeforeAnalysis()) {
             /*
              * Removing unnecessary conditions before the static analysis runs reduces the size of
              * the type flow graph. For example, this removes redundant null checks: the bytecode
@@ -257,7 +256,7 @@ public class MethodTypeFlowBuilder {
              */
             new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders(method));
         }
-        if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions())) {
+        if (bb.escapeAnalysisBeforeAnalysis()) {
             if (method.isOriginalMethod()) {
                 /*
                  * Deoptimization Targets cannot have virtual objects in frame states.

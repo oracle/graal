@@ -65,6 +65,10 @@ public interface BigBang extends ReachabilityAnalysis {
 
     boolean isPointsToAnalysis();
 
+    boolean conditionalEliminationBeforeAnalysis();
+
+    boolean escapeAnalysisBeforeAnalysis();
+
     /**
      * Checks if all user defined limitations such as the number of types are satisfied.
      */

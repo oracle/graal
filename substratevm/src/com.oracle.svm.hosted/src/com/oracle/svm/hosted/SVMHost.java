@@ -57,7 +57,6 @@ import org.graalvm.word.impl.Word.Operation;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.GraphMetadata;
@@ -897,7 +896,7 @@ public class SVMHost extends HostVM {
     }
 
     protected void optimizeAfterParsing(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
-        if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions())) {
+        if (bb.escapeAnalysisBeforeAnalysis()) {
             if (method.isOriginalMethod()) {
                 /*
                  * Deoptimization Targets cannot have virtual objects in frame states.
