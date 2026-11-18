@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,12 @@
 
 package com.oracle.svm.with.space.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import java.io.IOException;
+import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -45,6 +51,18 @@ public class NativeImageResourceUtils {
     public static final class TestFeature implements Feature {
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
+            /* Verify the input JAR before its resources are embedded in the native executable. */
+            URL resource = access.getApplicationClassLoader().getResource(RESOURCE_FILE_IN_JAR_WITH_SPACE.substring(1));
+            assertNotNull("Test resource is missing from the image-build class path", resource);
+            assertEquals("Test resource must come from a JAR: " + resource, "jar", resource.getProtocol());
+            try {
+                JarURLConnection connection = (JarURLConnection) resource.openConnection();
+                Path jarPath = Path.of(connection.getJarFileURL().toURI());
+                assertTrue("Test resource JAR filename must contain a space: " + jarPath, jarPath.getFileName().toString().contains(" "));
+            } catch (IOException | URISyntaxException e) {
+                throw new AssertionError("Cannot determine the test resource JAR", e);
+            }
+
             // Remove leading / for the resource patterns
             Module resourceModule = TestFeature.class.getModule();
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_DIR.substring(1));

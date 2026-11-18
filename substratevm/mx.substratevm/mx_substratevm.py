@@ -1454,7 +1454,7 @@ def _native_unittest(native_image, cmdline_args, custom_batch=None, configure_sv
     return _run_native_unittest(native_image, _parse_native_unittest_args(cmdline_args), custom_batch=custom_batch, configure_svm_tests=configure_svm_tests)
 
 
-_default_native_only_junit_projects = ['com.oracle.svm.test.junit.nativeimage']
+_default_native_only_junit_projects = ['com.oracle.svm.test.junit.nativeimage', 'com.oracle.svm.with.space.test']
 
 
 def _run_native_unittest(native_image, pargs, custom_batch=None, configure_svm_tests=False):
