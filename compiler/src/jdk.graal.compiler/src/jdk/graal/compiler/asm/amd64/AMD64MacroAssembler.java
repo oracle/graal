@@ -296,13 +296,17 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     /**
      * Non-atomic write of a 64-bit constant to memory. Do not use if the address might be a
      * volatile field!
+     *
+     * @throws GraalError if splitting the store requires an unencodable upper-word displacement
      */
     public final void movlong(AMD64Address dst, long src, boolean annotateImm) {
         GraalError.guarantee(!annotateImm, "patching not implemented for 8-byte stores");
         if (NumUtil.isInt(src)) {
             emitAMD64MIOp(AMD64MIOp.MOV, OperandSize.QWORD, dst, (int) src, false);
         } else {
-            AMD64Address high = new AMD64Address(dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4, dst.getDisplacementAnnotation(), dst.instructionStartPosition,
+            long highDisplacement = (long) dst.getDisplacement() + Integer.BYTES;
+            GraalError.guarantee(NumUtil.isInt(highDisplacement), "Displacement too large for split 64-bit store: %s", dst);
+            AMD64Address high = new AMD64Address(dst.getBase(), dst.getIndex(), dst.getScale(), (int) highDisplacement, dst.getDisplacementAnnotation(), dst.instructionStartPosition,
                             dst.canSkipMemoryReadFence());
             movl(dst, (int) (src & 0xFFFFFFFF));
             movl(high, (int) (src >> 32));
