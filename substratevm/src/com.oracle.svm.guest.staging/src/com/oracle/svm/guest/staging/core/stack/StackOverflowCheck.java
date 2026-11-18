@@ -175,9 +175,9 @@ public interface StackOverflowCheck {
     void disableStackOverflowChecksForFatalError();
 
     /**
-     * Updates the stack overflow boundary of the current thread.
+     * Limits the main thread's OS-provided stack to its requested stack size, if necessary.
      */
-    void updateStackOverflowBoundary();
+    void updateMainThreadStackOverflowBoundary();
 
     /**
      * Returns the stack overflow boundary of the current thread.

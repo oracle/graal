@@ -569,7 +569,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         /* Adjust stack overflow boundary of main thread. */
-        StackOverflowCheck.singleton().updateStackOverflowBoundary();
+        StackOverflowCheck.singleton().updateMainThreadStackOverflowBoundary();
 
         assert !isolateInitialized;
         isolateInitialized = true;
