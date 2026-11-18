@@ -350,6 +350,11 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
 
     def extra_image_build_argument(self, benchmark, args):
         extra_image_build_args = []
+        if benchmark == "micronaut-pegasus":
+            # JipherFeature loads the native library in the builder. CryptoSelector only reloads it
+            # when the build-time provider is retained, which run-time security providers do not do.
+            # Reinitialize the native-library holder so constructing Jipher at run time loads JNI.
+            extra_image_build_args.append("--initialize-at-run-time=com.oracle.jipher.internal.openssl.OsslFactory")
         if benchmark == "quarkus-tika":
             extra_image_build_args += [
                 # Band-aid solution for class initizalization deadlock due to org.openxmlformats.schemas.drawingml.x2006 (GR-59899)
