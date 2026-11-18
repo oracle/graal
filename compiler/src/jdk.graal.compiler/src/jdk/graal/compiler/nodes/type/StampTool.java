@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,21 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Helper class that is used to keep all stamp-related operations in one place.
  */
 public class StampTool {
+
+    /// Verifies that `value` has a 32-bit or 64-bit integer stamp.
+    ///
+    /// Subword values also have an int stack kind, so this check uses the stamp's bit width. This
+    /// method is intended for use in an `assert` statement.
+    ///
+    /// @return `true` if `value` has a supported stamp
+    /// @throws AssertionError if `value` does not have a 32-bit or 64-bit integer stamp
+    public static boolean verifyIntOrLong(ValueNode value) {
+        Stamp stamp = value.stamp(NodeView.DEFAULT);
+        if (stamp instanceof IntegerStamp integerStamp && (integerStamp.getBits() == Integer.SIZE || integerStamp.getBits() == Long.SIZE)) {
+            return true;
+        }
+        throw new AssertionError("Expected a 32-bit int or 64-bit long input, but " + value + " has stamp " + stamp);
+    }
 
     public static Stamp meet(Iterable<? extends ValueNode> values) {
         Stamp stamp = meetOrNull(values, null);
