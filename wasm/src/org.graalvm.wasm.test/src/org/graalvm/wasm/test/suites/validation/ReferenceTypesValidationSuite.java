@@ -984,6 +984,144 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
     }
 
     @Test
+    public void testBrOnCastRejectsMissingLabelOperand() throws IOException {
+        // (module
+        // (type $A (func (result i64)))
+        // (type $B (func (result f64)))
+        // (type $bt (func (result (ref $A) (ref $B))))
+        // (type $main (func (result f64)))
+        // (func $a (type $A) (i64.const 1))
+        // (func $b (type $B) (f64.const 2))
+        // (elem declare func $a $b)
+        // (func (export "_main") (type $main)
+        // (block $l (type $bt)
+        // (ref.func $b)
+        // (ref.func $a)
+        // (ref.func $a)
+        // (br_on_cast $l funcref (ref $B))
+        // drop
+        // (call_ref $B)
+        // return)
+        // unreachable))
+        final int functionAType = WasmType.withNullable(false, 0);
+        final int functionBType = WasmType.withNullable(false, 1);
+        final byte[] binary = newBuilder().addType(EMPTY_INTS, new int[]{WasmType.I64_TYPE}).addType(EMPTY_INTS, new int[]{WasmType.F64_TYPE}).addType(EMPTY_INTS,
+                        new int[]{functionAType, functionBType}).addType(EMPTY_INTS, new int[]{WasmType.F64_TYPE}).addFunction(0, EMPTY_INTS, "42 01 0B").addFunction(1,
+                                        EMPTY_INTS, "44 00 00 00 00 00 00 00 40 0B").addFunction(3, EMPTY_INTS,
+                                                        "02 02 D2 01 D2 00 D2 00 FB 18 01 00 70 01 1A 14 01 0F 0B 00 0B").addFunctionExport(2, "_main").addElements(
+                                                                        "03 00 02 00 01").build();
+        runParserTest(binary, (context, source) -> {
+            try {
+                context.eval(source);
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected type mismatch", e.getMessage().contains("Expected type"));
+            }
+        });
+    }
+
+    @Test
+    public void testBrOnCastFailRejectsMissingLabelOperand() throws IOException {
+        // (module
+        // (type $A (func (result i64)))
+        // (type $B (func (result f64)))
+        // (type $bt (func (result (ref $A) funcref)))
+        // (type $main (func (result f64)))
+        // (func $a (type $A) (i64.const 1))
+        // (func $b (type $B) (f64.const 2))
+        // (elem declare func $a $b)
+        // (func (export "_main") (type $main)
+        // (block $l (type $bt)
+        // (ref.func $b)
+        // (ref.func $a)
+        // (ref.func $b)
+        // (br_on_cast_fail $l funcref (ref $B))
+        // drop
+        // (call_ref $B)
+        // return)
+        // unreachable))
+        final int functionAType = WasmType.withNullable(false, 0);
+        final byte[] binary = newBuilder().addType(EMPTY_INTS, new int[]{WasmType.I64_TYPE}).addType(EMPTY_INTS, new int[]{WasmType.F64_TYPE}).addType(EMPTY_INTS,
+                        new int[]{functionAType, WasmType.FUNCREF_TYPE}).addType(EMPTY_INTS, new int[]{WasmType.F64_TYPE}).addFunction(0, EMPTY_INTS, "42 01 0B").addFunction(1,
+                                        EMPTY_INTS, "44 00 00 00 00 00 00 00 40 0B").addFunction(3, EMPTY_INTS,
+                                                        "02 02 D2 01 D2 00 D2 01 FB 19 01 00 70 01 1A 14 01 0F 0B 00 0B").addFunctionExport(2, "_main").addElements(
+                                                                        "03 00 02 00 01").build();
+        runParserTest(binary, (context, source) -> {
+            try {
+                context.eval(source);
+                Assert.fail("Should have thrown");
+            } catch (PolyglotException e) {
+                Assert.assertTrue("Expected type mismatch", e.getMessage().contains("Expected type"));
+            }
+        });
+    }
+
+    @Test
+    public void testBrOnCastPreservesLabelOperandsOnFallThrough() throws IOException {
+        // (module
+        // (type $A (func (result i64)))
+        // (type $B (func (result f64)))
+        // (type $bt (func (result (ref $A) (ref $B))))
+        // (type $main (func (result i32)))
+        // (func $a (type $A) (i64.const 1))
+        // (func $b (type $B) (f64.const 2))
+        // (elem declare func $a $b)
+        // (func (export "_main") (type $main)
+        // (block $l (type $bt)
+        // (ref.func $a)
+        // (ref.func $a)
+        // (br_on_cast $l funcref (ref $B))
+        // drop
+        // (call_ref $A)
+        // drop
+        // (ref.func $a)
+        // (ref.func $b))
+        // drop
+        // drop
+        // i32.const 42))
+        final int functionAType = WasmType.withNullable(false, 0);
+        final int functionBType = WasmType.withNullable(false, 1);
+        final byte[] binary = newBuilder().addType(EMPTY_INTS, new int[]{WasmType.I64_TYPE}).addType(EMPTY_INTS, new int[]{WasmType.F64_TYPE}).addType(EMPTY_INTS,
+                        new int[]{functionAType, functionBType}).addType(EMPTY_INTS, new int[]{WasmType.I32_TYPE}).addFunction(0, EMPTY_INTS, "42 01 0B").addFunction(1,
+                                        EMPTY_INTS, "44 00 00 00 00 00 00 00 40 0B").addFunction(3, EMPTY_INTS,
+                                                        "02 02 D2 00 D2 00 FB 18 01 00 70 01 1A 14 00 1A D2 00 D2 01 0B 1A 1A 41 2A 0B").addFunctionExport(2,
+                                                                        "_main").addElements("03 00 02 00 01").build();
+        runParserTest(binary, Context::eval);
+    }
+
+    @Test
+    public void testBrOnCastFailPreservesLabelOperandsOnFallThrough() throws IOException {
+        // (module
+        // (type $A (func (result i64)))
+        // (type $B (func (result f64)))
+        // (type $bt (func (result (ref $A) funcref)))
+        // (type $main (func (result i32)))
+        // (func $a (type $A) (i64.const 1))
+        // (func $b (type $B) (f64.const 2))
+        // (elem declare func $a $b)
+        // (func (export "_main") (type $main)
+        // (block $l (type $bt)
+        // (ref.func $a)
+        // (ref.func $b)
+        // (br_on_cast_fail $l funcref (ref $B))
+        // drop
+        // (call_ref $A)
+        // drop
+        // (ref.func $a)
+        // (ref.func $b))
+        // drop
+        // drop
+        // i32.const 42))
+        final int functionAType = WasmType.withNullable(false, 0);
+        final byte[] binary = newBuilder().addType(EMPTY_INTS, new int[]{WasmType.I64_TYPE}).addType(EMPTY_INTS, new int[]{WasmType.F64_TYPE}).addType(EMPTY_INTS,
+                        new int[]{functionAType, WasmType.FUNCREF_TYPE}).addType(EMPTY_INTS, new int[]{WasmType.I32_TYPE}).addFunction(0, EMPTY_INTS, "42 01 0B").addFunction(1,
+                                        EMPTY_INTS, "44 00 00 00 00 00 00 00 40 0B").addFunction(3, EMPTY_INTS,
+                                                        "02 02 D2 00 D2 01 FB 19 01 00 70 01 1A 14 00 1A D2 00 D2 01 0B 1A 1A 41 2A 0B").addFunctionExport(2,
+                                                                        "_main").addElements("03 00 02 00 01").build();
+        runParserTest(binary, Context::eval);
+    }
+
+    @Test
     public void testMultiValueWithReferenceTypes() throws IOException {
         // (table 2 2 funcref)
         // (table 2 2 externref)

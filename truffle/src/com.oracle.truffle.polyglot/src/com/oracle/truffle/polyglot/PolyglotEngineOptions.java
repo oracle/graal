@@ -147,7 +147,7 @@ final class PolyglotEngineOptions {
                     "On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts", usageSyntax = "true|false")//
     static final OptionKey<Boolean> RelaxStaticObjectSafetyChecks = new OptionKey<>(false);
 
-    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, sandbox = SandboxPolicy.UNTRUSTED, help = "" +
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "" +
                     "On property accesses, the Static Object Model always performs safety checks, overriding engine.RelaxStaticObjectSafetyChecks and builder-level safety check configuration.", usageSyntax = "true|false")//
     static final OptionKey<Boolean> ForceStaticObjectSafetyChecks = new OptionKey<>(false);
 
