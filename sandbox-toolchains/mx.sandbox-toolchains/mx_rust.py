@@ -139,6 +139,7 @@ def _get_bootstrap_toolchain(dist):
 class RustBuilderProject(mx.AbstractNativeProject):
     def __init__(self, suite, name, deps, workingSets, output=None, **kwArgs):
         self._source_name = kwArgs.pop('source')
+        self._bootstrap_sources = kwArgs.pop('bootstrapSources', {})
         self._bootstrap_path = kwArgs.pop('bootstrapPath', 'RUST_BOOTSTRAP_PATH')
         self.results = kwArgs.pop('results', ['install'])
         self.output = output
@@ -146,7 +147,7 @@ class RustBuilderProject(mx.AbstractNativeProject):
         self._toolchain = _get_bootstrap_toolchain(kwArgs.pop('toolchain'))
         self._host_toolchain = kwArgs.pop('hostToolchain', 'LLVM_TOOLCHAIN')
         buildDependencies = kwArgs.pop('buildDependencies', [])
-        for dependency in [self._source_name, self._bootstrap_path, self._toolchain.get_toolchain_dist(), self._host_toolchain]:
+        for dependency in [self._source_name, self._bootstrap_path, self._toolchain.get_toolchain_dist(), self._host_toolchain] + list(self._bootstrap_sources.values()):
             if dependency and dependency not in buildDependencies:
                 buildDependencies.append(dependency)
         super(RustBuilderProject, self).__init__(suite, name, subDir='src', srcDirs=['patches'], deps=deps, workingSets=workingSets,
@@ -253,7 +254,7 @@ class RustBuilderBuildTask(mx.AbstractNativeBuildTask):
         return os.path.join(self._work_dir, 'rustup-home')
 
     def _get_extracted_source_dir(self):
-        extracted_dirs = [entry for entry in os.listdir(self._work_dir) if os.path.isdir(os.path.join(self._work_dir, entry)) and entry not in {'.cargo', 'cargo-home', 'rustup-home'}]
+        extracted_dirs = [entry for entry in os.listdir(self._work_dir) if os.path.isdir(os.path.join(self._work_dir, entry)) and entry not in {'.cargo', 'cargo-home', 'rustup-home', 'target-specs'}]
         if len(extracted_dirs) != 1:
             mx.abort(f"Expected exactly one extracted source directory in {self._work_dir}, but got {extracted_dirs}.")
         return os.path.join(self._work_dir, extracted_dirs[0])
@@ -596,6 +597,17 @@ directory = "{vendor_dir}"
             f'remove the Rust output/work directory and retry.'
         )
 
+    def _cache_bootstrap_sources(self, source_dir):
+        """Link checksum-verified mx bootstrap archives into Rust's cache."""
+        cache_dir = os.path.join(source_dir, 'build', 'cache')
+        for relative_path, library_name in self.subject._bootstrap_sources.items():
+            source = mx.library(library_name).get_path(True)
+            destination = os.path.join(cache_dir, relative_path)
+            mx_util.ensure_dir_exists(os.path.dirname(destination))
+            if os.path.lexists(destination):
+                os.unlink(destination)
+            os.symlink(source, destination)
+
     def build(self):
         if not self._host_openssl_available():
             mx.abort('Host OpenSSL is unavailable via pkg-config; This is a mandatory dependency of rust/cargo')
@@ -608,7 +620,7 @@ directory = "{vendor_dir}"
 
         extracted_source_dir = None
         if os.path.isdir(self._work_dir):
-            extracted_dirs = [entry for entry in os.listdir(self._work_dir) if os.path.isdir(os.path.join(self._work_dir, entry)) and entry not in {'.cargo', 'cargo-home', 'rustup-home'}]
+            extracted_dirs = [entry for entry in os.listdir(self._work_dir) if os.path.isdir(os.path.join(self._work_dir, entry)) and entry not in {'.cargo', 'cargo-home', 'rustup-home', 'target-specs'}]
             if len(extracted_dirs) == 1:
                 extracted_source_dir = os.path.join(self._work_dir, extracted_dirs[0])
             elif extracted_dirs:
@@ -621,6 +633,7 @@ directory = "{vendor_dir}"
 
         mx.log('Applying patches...')
         source_dir = os.path.realpath(extracted_source_dir)
+        self._cache_bootstrap_sources(source_dir)
         for patch in self.subject.patches():
             self._apply_patch(source_dir, patch)
 
