@@ -80,6 +80,8 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -550,6 +552,23 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     public boolean usePredicates() {
         return usePredicates;
+    }
+
+    public void registerUsedElements(StructuredGraph graph) {
+        registerUsedElements(graph, !usePredicates);
+    }
+
+    public void registerUsedElements(StructuredGraph graph, boolean registerNewInstanceNodes) {
+        AnalysisGraphScanner.registerUsedElements(this, graph, node -> {
+            if (registerNewInstanceNodes && node instanceof NewInstanceNode allocation) {
+                AnalysisType type = (AnalysisType) allocation.instanceClass();
+                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(allocation));
+                for (var f : type.getInstanceFields(true)) {
+                    PointsToAnalysisField field = (PointsToAnalysisField) f;
+                    field.getInitialFlow().addState(this, TypeState.defaultValueForKind(this, field.getStorageKind()));
+                }
+            }
+        });
     }
 
     public interface TypeFlowRunnable extends DebugContextRunnable {

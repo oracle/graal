@@ -103,7 +103,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     @Override
     public void processSnippetGraph(StructuredGraph graph) {
-        MethodTypeFlowBuilder.registerUsedElements(this, graph, false);
+        registerUsedElements(graph, true);
     }
 
     @Override
