@@ -36,6 +36,8 @@ public interface SubstrateRegisterConfig extends RegisterConfig, com.oracle.svm.
         NATIVE_TO_JAVA,
     }
 
+    ConfigKind getConfigKind();
+
     @Override
     default Register getFrameRegister() {
         return ReservedRegisters.singleton().getFrameRegister();

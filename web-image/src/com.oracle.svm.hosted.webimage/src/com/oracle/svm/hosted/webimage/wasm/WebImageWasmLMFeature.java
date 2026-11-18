@@ -96,7 +96,7 @@ public class WebImageWasmLMFeature implements InternalFeature {
     private static final class WebImageWasmLMSubstrateRegisterConfigFactory implements SubstrateRegisterConfigFactory {
         @Override
         public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer) {
-            return new WebImageNoRegisterConfig();
+            return new WebImageNoRegisterConfig(config);
         }
     }
 

@@ -102,6 +102,7 @@ import jdk.vm.ci.meta.ValueKind;
 
 public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
 
+    private final ConfigKind configKind;
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
     private final List<Register> generalParameterRegs;
@@ -115,6 +116,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
 
     @SuppressWarnings("this-escape")
     public SubstrateAArch64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean preserveFramePointer) {
+        this.configKind = config;
         this.target = target;
         this.metaAccess = metaAccess;
         this.preserveFramePointer = preserveFramePointer;
@@ -183,6 +185,11 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
 
         }
         attributesMap = RegisterAttributes.createMap(this, AArch64.allRegisters);
+    }
+
+    @Override
+    public ConfigKind getConfigKind() {
+        return configKind;
     }
 
     @Override

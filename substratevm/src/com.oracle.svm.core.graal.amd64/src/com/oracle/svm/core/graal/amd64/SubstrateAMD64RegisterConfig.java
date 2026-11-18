@@ -107,6 +107,7 @@ import jdk.vm.ci.meta.ValueKind;
 
 public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
+    private final ConfigKind configKind;
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
     private final List<Register> javaGeneralParameterRegs;
@@ -122,6 +123,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
     @SuppressWarnings("this-escape")
     public SubstrateAMD64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean useBasePointer) {
+        this.configKind = config;
         this.target = target;
         this.metaAccess = metaAccess;
         this.useBasePointer = useBasePointer;
@@ -210,6 +212,11 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
         }
         attributesMap = RegisterAttributes.createMap(this, AMD64.allRegisters);
+    }
+
+    @Override
+    public ConfigKind getConfigKind() {
+        return configKind;
     }
 
     @Override

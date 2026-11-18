@@ -106,6 +106,7 @@ import jdk.vm.ci.meta.ValueKind;
 
 public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
 
+    private final ConfigKind configKind;
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
     private final List<Register> generalParameterRegs;
@@ -117,6 +118,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
 
     @SuppressWarnings("this-escape")
     public SubstrateRISCV64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean preserveFramePointer) {
+        this.configKind = config;
         this.target = target;
         this.metaAccess = metaAccess;
 
@@ -158,6 +160,11 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
         }
 
         attributesMap = RegisterAttributes.createMap(this, allRegisters);
+    }
+
+    @Override
+    public ConfigKind getConfigKind() {
+        return configKind;
     }
 
     @Override
