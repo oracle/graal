@@ -43,23 +43,24 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Owns the providers, snippet encodings and specialized-template cache for one compilation policy.
- * The default policy uses the default providers; additional policies registered through
- * {@link HostedConfiguration#getSnippetCompilationPolicies()} derive their providers by replacing
+ * Prepares snippet graphs with a specific set of providers. Use an additional policy when a Native
+ * Image feature needs the same snippets prepared with different folding or specialization decisions.
+ * The default policy uses the standard providers; {@link HostedConfiguration} subclasses can provide
+ * additional policies through {@code getAdditionalSnippetCompilationPolicies()}, replacing
  * constant-reflection, constant-field or meta-access-extension providers.
  * <p>
- * The default policy forwards snippet declarations to every additional policy. Each policy parses
- * and analyzes them independently, then transplants its graphs to hosted metadata for compilation.
- * Hosted policies share the default policy's registry of snippet template objects, but each owns its
- * encoding and cache of specialized template graphs.
+ * Register snippet declarations with the default policy's replacements; they are forwarded to every
+ * additional policy. Each policy parses and analyzes the declarations with its analysis providers,
+ * then transplants its graphs to hosted metadata for compilation. Policies share the default policy's
+ * registry of snippet template caches, while each prepares separate encodings and specialized-template
+ * graphs.
  * <p>
  * The {@link #forAnalysis} and {@link #forCompilation} hooks run once per image and must describe
  * matching policies in the analysis and hosted metadata universes. Analysis preparation must preserve
- * every operation needed by compilation.
- * Consumers must ensure retained operations have compatible runtime storage and layout; a policy
- * that preserves otherwise folded static-field reads must explicitly request their storage.
- * Provider behavior must remain stable after preparation. Application graphs require their own
- * compatible analysis policy; this class only prepares snippets.
+ * every operation needed by compilation. Retained operations must have compatible runtime storage and
+ * layout; a policy that preserves otherwise folded static-field reads must explicitly request their
+ * storage. Provider behavior must remain stable after preparation. Application graphs require their own
+ * compatible analysis policy; this class prepares snippets only.
  */
 public class SnippetCompilationPolicy {
     /** Uses analysis metadata to prepare snippet graphs and discover their analysis dependencies. */
@@ -72,7 +73,12 @@ public class SnippetCompilationPolicy {
      */
     private final Map<ConfigKind, HostedProviders> compilationProviders = new EnumMap<>(ConfigKind.class);
 
-    /** Selects providers for snippet graph preparation before analysis, not for global analysis itself. */
+    /**
+     * Selects providers for snippet graph preparation before analysis. Overrides may change folding
+     * decisions. A copied provider bundle retains its lowerer, which uses its original meta-access
+     * extension provider. Overrides must preserve the field and array element storage kinds and
+     * object layout assumed by that lowerer.
+     */
     protected HostedProviders forAnalysis(HostedProviders providers) {
         return providers;
     }
@@ -82,12 +88,16 @@ public class SnippetCompilationPolicy {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisStarted(), "Snippet compilation policies must be prepared before analysis starts");
         VMError.guarantee(analysisProviders == null, "Snippet compilation policy registered twice");
         HostedProviders providers = forAnalysis(original);
-        if (this == HostedConfiguration.instance().getDefaultSnippetCompilationPolicy()) {
-            analysisProviders = new DefaultAnalysisReplacements(providers).getProviders();
+        SnippetCompilationPolicy defaultPolicy = HostedConfiguration.instance().getDefaultSnippetCompilationPolicy();
+        SubstrateReplacements replacements;
+        if (this == defaultPolicy) {
+            replacements = new DefaultAnalysisReplacements(providers);
         } else {
-            analysisProviders = (HostedProviders) new SubstrateReplacements(providers, new ResolvedJavaMethodBytecodeProvider(), SubstrateTarget.singleton(), new SubstrateGraphMakerFactory())
-                            .getProviders();
+            var templateRegistry = defaultPolicy.getAnalysisReplacements().getSnippetTemplateRegistry();
+            replacements = new SubstrateReplacements(providers, new ResolvedJavaMethodBytecodeProvider(), SubstrateTarget.singleton(), new SubstrateGraphMakerFactory(),
+                            templateRegistry);
         }
+        analysisProviders = (HostedProviders) replacements.getProviders();
         return analysisProviders;
     }
 
@@ -99,7 +109,10 @@ public class SnippetCompilationPolicy {
         return (SubstrateReplacements) analysisProviders.getReplacements();
     }
 
-    /** Selects matching providers for decoding, specializing and compiling the analyzed variants. */
+    /**
+     * Selects matching providers for decoding, specializing and compiling the analyzed variants.
+     * The storage and layout requirements of {@link #forAnalysis} apply here as well.
+     */
     protected HostedProviders forCompilation(HostedProviders providers) {
         return providers;
     }
@@ -170,11 +183,6 @@ public class SnippetCompilationPolicy {
     private static final class DefaultAnalysisReplacements extends SubstrateReplacements {
         DefaultAnalysisReplacements(HostedProviders providers) {
             super(providers, new ResolvedJavaMethodBytecodeProvider(), SubstrateTarget.singleton(), new SubstrateGraphMakerFactory());
-        }
-
-        @Override
-        public HostedProviders getProviders() {
-            return (HostedProviders) super.getProviders();
         }
 
         @Override

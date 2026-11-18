@@ -98,9 +98,10 @@ public class SnippetFoldingPolicyTest extends SnippetsTest {
 
     private void checkFolding(boolean bound, boolean useCache) {
         Providers ordinary = installer.getProviders();
+        OptionValues templateOptions = getInitialOptions().derive(SnippetTemplate.Options.UseSnippetTemplateCache, useCache);
         if (!bound) {
-            // Warm the source-graph cache under the ordinary policy before selecting no folding.
-            var prepared = installer.getSnippet(getResolvedJavaMethod(TestSnippets.class, "staticField"), null, null, null, false, null, getInitialOptions());
+            // Warm the source-graph cache with the exact options instance used for specialization.
+            var prepared = installer.getSnippet(getResolvedJavaMethod(TestSnippets.class, "staticField"), null, null, null, false, null, templateOptions);
             Assert.assertTrue(prepared.getNodes(ReturnNode.TYPE).first().result().isConstant());
         }
         ConstantFieldProvider fields = new ConstantFieldProvider() {
@@ -126,7 +127,7 @@ public class SnippetFoldingPolicyTest extends SnippetsTest {
         for (boolean restrictedFirst : new boolean[]{false, true}) {
             ordinary.getReplacements().getTemplatesCache().clear();
             restricted.getReplacements().getTemplatesCache().clear();
-            Templates templates = new Templates(getInitialOptions().derive(SnippetTemplate.Options.UseSnippetTemplateCache, useCache), ordinary);
+            Templates templates = new Templates(templateOptions, ordinary);
             StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), getDebugContext()).build();
             Providers first = restrictedFirst ? restricted : ordinary;
             Providers second = restrictedFirst ? ordinary : restricted;

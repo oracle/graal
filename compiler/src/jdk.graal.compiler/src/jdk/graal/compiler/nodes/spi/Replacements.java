@@ -76,9 +76,10 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     DebugContext openSnippetDebugContext(String idPrefix, ResolvedJavaMethod method, DebugContext outer, OptionValues options);
 
     /**
-     * Gets the snippet graph derived from a given method using this replacements instance's
-     * providers for preparation, decoding and constant binding. A different snippet policy requires
-     * its own replacements instance and compatible prepared graphs.
+     * Gets the snippet graph for a given method. Source graph preparation may happen in another
+     * replacements instance; prepared graphs must use providers compatible with this instance, whose
+     * providers decode the graph and bind the supplied arguments. When preparation happens here, this
+     * instance's providers are used.
      *
      * @param recursiveEntry original method for which {@code method} is a substitute
      * @param args arguments to the snippet if available, otherwise {@code null}

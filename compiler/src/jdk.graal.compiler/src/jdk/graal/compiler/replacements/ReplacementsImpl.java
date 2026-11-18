@@ -248,9 +248,9 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     }
 
     /**
-     * Uses the supplied registry, which may be an owner or a shared read-only view. The owner must
-     * finish registration and seal the registry before concurrent use. Snippet graphs and caches of
-     * specialized templates remain local to this replacements instance.
+     * Uses the supplied registry, which may be an owner or a shared read-only view. Registration
+     * must finish before concurrent lookup; hosted AOT enforces this by sealing its shared registry.
+     * Snippet graphs and caches of specialized templates remain local to this replacements instance.
      */
     @SuppressWarnings("this-escape")
     protected ReplacementsImpl(DebugDumpHandlersFactory debugHandlersFactory, Providers providers, BytecodeProvider bytecodeProvider, TargetDescription target,
@@ -269,7 +269,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
         return snippetTemplateRegistry.readOnlyView();
     }
 
-    /** Ends registration by this owner before its registry is used concurrently. */
+    /** Seals the shared registry before concurrent lookup; hosted AOT uses this after registration. */
     public final void sealSnippetTemplateRegistry() {
         snippetTemplateRegistry.seal();
     }

@@ -31,23 +31,23 @@ import jdk.graal.compiler.api.replacements.SnippetTemplateCache;
 import jdk.graal.compiler.debug.GraalError;
 
 /**
- * Registered snippet template objects, not specialized snippet graphs. The owner registers and seals
- * the registry; consumers share live read-only views. Registration is single-threaded and must finish
- * before concurrent lookups. Sealing does not make the template objects immutable: they retain their
- * own provider-compatibility and concurrency requirements.
+ * Registry for snippet template caches shared by replacements instances. Register caches before
+ * concurrent lookups. A read-only view permits lookup but rejects registration and sealing. The
+ * registry does not make registered cache objects immutable; the caches' contracts still apply.
  */
 public abstract sealed class SnippetTemplateRegistry permits SnippetTemplateRegistry.RegistrationOwner, SnippetTemplateRegistry.ReadOnlyView {
-    private SnippetTemplateRegistry() {
-    }
-
     /** Creates a registry whose owner may register templates and seal registration. */
     public static SnippetTemplateRegistry create() {
         return new RegistrationOwner();
     }
 
+    /** Returns the registered cache for {@code templatesClass}, or {@code null} if none is registered. */
     public abstract <T extends SnippetTemplateCache> T get(Class<T> templatesClass);
 
-    /** Returns a live view that permits lookup but rejects registration and sealing. */
+    /**
+     * Returns an idempotent live view that permits lookup but rejects registration and sealing. Calling
+     * this method on a read-only view returns that view.
+     */
     public abstract SnippetTemplateRegistry readOnlyView();
 
     public void register(@SuppressWarnings("unused") SnippetTemplateCache templates) {

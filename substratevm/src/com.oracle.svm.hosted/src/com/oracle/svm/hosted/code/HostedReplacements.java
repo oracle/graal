@@ -65,9 +65,7 @@ public class HostedReplacements extends SubstrateReplacements {
 
     public HostedReplacements(HostedUniverse hUniverse, HostedProviders providers, TargetDescription target, SubstrateReplacements analysisReplacements,
                     BytecodeProvider bytecodeProvider) {
-        super(providers, bytecodeProvider, target, null);
-        this.hUniverse = hUniverse;
-        this.analysisReplacements = analysisReplacements;
+        this(hUniverse, providers, target, analysisReplacements, bytecodeProvider, SnippetTemplateRegistry.create());
     }
 
     public HostedReplacements(HostedUniverse hUniverse, HostedProviders providers, TargetDescription target, SubstrateReplacements analysisReplacements,
@@ -88,10 +86,14 @@ public class HostedReplacements extends SubstrateReplacements {
         assert analysisReplacements.getSnippet(((HostedMethod) method).wrapped, null, null, null, trackNodeSourcePosition, null, options) != null;
     }
 
-    @Override
-    public void encodeSnippets(GraphEncoder encoder) {
+    public void transplantSnippets() {
         /* Copy over all snippets from the analysis replacements, changing out metadata objects. */
         IdentityHashMap<Object, Object> mapping = new IdentityHashMap<>();
         super.copyFrom(analysisReplacements, obj -> AnalysisToHostedGraphTransplanter.replaceAnalysisObjects(obj, null, mapping, hUniverse));
+    }
+
+    @Override
+    public void encodeSnippets(@SuppressWarnings("unused") GraphEncoder encoder) {
+        transplantSnippets();
     }
 }

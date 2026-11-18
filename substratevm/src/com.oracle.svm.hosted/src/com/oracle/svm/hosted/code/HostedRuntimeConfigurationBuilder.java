@@ -29,7 +29,7 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
-import com.oracle.svm.core.graal.meta.SubstrateReplacements;
+import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedConstantFieldProvider;
@@ -38,8 +38,6 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.bytecode.BytecodeProvider;
-import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -65,18 +63,11 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
      */
     private final HostedUniverse hostedUniverse;
 
-    /**
-     * Source of snippets parsed before analysis, reused by {@link HostedReplacements} after metadata
-     * transplantation into the hosted universe.
-     */
-    private final SubstrateReplacements analysisReplacements;
-
     public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse hostedUniverse, HostedMetaAccess metaAccess,
-                    SubstrateReplacements analysisReplacements, ClassInitializationSupport classInitializationSupport, SubstratePlatformConfigurationProvider platformConfig,
+                    ClassInitializationSupport classInitializationSupport, SubstratePlatformConfigurationProvider platformConfig,
                     SnippetReflectionProvider snippetReflection) {
         super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, classInitializationSupport, platformConfig, snippetReflection);
         this.hostedUniverse = hostedUniverse;
-        this.analysisReplacements = analysisReplacements;
     }
 
     @Override
@@ -104,8 +95,7 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     @Override
     protected Replacements createReplacements(Providers providers) {
-        BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        return new HostedReplacements(hostedUniverse, (HostedProviders) providers, SubstrateTarget.singleton(), analysisReplacements, bytecodeProvider);
+        return HostedConfiguration.instance().getDefaultSnippetCompilationPolicy().createHostedProviders((HostedProviders) providers, hostedUniverse).getReplacements();
     }
 
     @Override

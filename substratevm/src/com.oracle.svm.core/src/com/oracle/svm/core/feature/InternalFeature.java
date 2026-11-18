@@ -54,21 +54,21 @@ public interface InternalFeature extends InternalFeatureBridge {
     }
 
     /**
-     * Called to register Graal invocation plugins.
+     * Registers Graal invocation plugins. Repeat calls in the same parsing phase receive separate plugin collections.
      *
      * @param providers Providers that the lowering can use.
      * @param plugins Contains the invocation plugins to add to.
-     * @param reason The parsing phase that the plugins are registered for
+     * @param reason The parsing phase that the plugins are registered for.
      */
     default void registerInvocationPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
     }
 
     /**
-     * Called to register Graal node plugins.
+     * Registers Graal node plugins. Repeat calls in the same parsing phase receive separate plugin collections.
      *
      * @param providers Providers that the node plugins can use.
      * @param plugins The Plugins object where node plugins can be added to.
-     * @param reason The parsing phase that the plugins are registered for
+     * @param reason The parsing phase that the plugins are registered for.
      */
     default void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
     }

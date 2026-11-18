@@ -84,12 +84,12 @@ import jdk.graal.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.SnippetParameterInfo;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.replacements.SnippetTemplateRegistry;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.ConstantBindingParameterPlugin;
 import jdk.graal.compiler.replacements.PEGraphDecoder;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
+import jdk.graal.compiler.replacements.SnippetTemplateRegistry;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaConstant;
@@ -156,15 +156,12 @@ public class SubstrateReplacements extends ReplacementsImpl {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateReplacements(Providers providers, BytecodeProvider bytecodeProvider, TargetDescription target, GraphMakerFactory graphMakerFactory) {
-        // Snippets cannot have optimistic assumptions.
-        super(new GraalDebugHandlersFactory(providers.getSnippetReflection()), providers, bytecodeProvider, target);
-        this.builder = new Builder(graphMakerFactory);
+        this(providers, bytecodeProvider, target, graphMakerFactory, SnippetTemplateRegistry.create());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected SubstrateReplacements(Providers providers, BytecodeProvider bytecodeProvider, TargetDescription target, GraphMakerFactory graphMakerFactory,
+    public SubstrateReplacements(Providers providers, BytecodeProvider bytecodeProvider, TargetDescription target, GraphMakerFactory graphMakerFactory,
                     SnippetTemplateRegistry templateRegistry) {
-        // Snippets cannot have optimistic assumptions.
         super(new GraalDebugHandlersFactory(providers.getSnippetReflection()), providers, bytecodeProvider, target, templateRegistry);
         this.builder = new Builder(graphMakerFactory);
     }
