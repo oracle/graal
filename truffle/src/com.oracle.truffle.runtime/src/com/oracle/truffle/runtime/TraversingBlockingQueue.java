@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * See https://github.com/oracle/graal/blob/master/truffle/docs/TraversingCompilationQueue.md .
@@ -51,6 +52,8 @@ import java.util.concurrent.TimeUnit;
 class TraversingBlockingQueue implements BlockingQueue<Runnable> {
 
     final BlockingQueue<Runnable> entries;
+    /* Installed by the owning executor before any tasks are submitted. */
+    Consumer<Runnable> onDiscard;
 
     TraversingBlockingQueue(BlockingQueue<Runnable> entries) {
         this.entries = entries;
@@ -112,8 +115,13 @@ class TraversingBlockingQueue implements BlockingQueue<Runnable> {
                 CompilationTask task = task(entry);
                 // updateWeight returns false only if the task's target does not exist
                 if (task.isCancelled() || !task.updateWeight(time)) {
-                    it.remove();
-                    removed--;
+                    if (entries.remove(entry)) {
+                        // Clear the target's submitted state before waking compilation waiters.
+                        task.finish();
+                        ((CompilationTask.ExecutorServiceWrapper) entry).cancel(false);
+                        onDiscard.accept(entry);
+                        removed--;
+                    }
                     continue;
                 }
                 if (max == null || task.isHigherPriorityThan(task(max))) {

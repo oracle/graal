@@ -216,7 +216,8 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
         cancelled = false;
     }
 
-    private void finish() {
+    /* Also used by the queue for tasks it removes without executing. */
+    void finish() {
         if (claimCompletion()) {
             resetCompilationTask();
         }
