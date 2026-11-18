@@ -29,6 +29,7 @@ import org.graalvm.word.impl.BarrieredAccess;
 
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.shared.BuildPhaseProvider;
+import com.oracle.svm.shared.ShouldBe;
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -197,8 +198,8 @@ public class DynamicHubOffsets {
         return companionOffsets.additionalFlagsOffset;
     }
 
-    /* Restore DynamicHub and DynamicHubCompanion receiver types after they move to guest staging (GR-78110). */
-    public static void writeObject(Object hub, int offset, Object value) {
+    /* Restore the annotated receiver type when DynamicHub moves to guest staging (GR-78110). */
+    public static void writeObject(@ShouldBe(typeName = "com.oracle.svm.core.hub.DynamicHub") Object hub, int offset, Object value) {
         if (offset < 0) {
             /* field removed by analysis */
             return;
@@ -206,8 +207,8 @@ public class DynamicHubOffsets {
         BarrieredAccess.writeObject(hub, offset, value);
     }
 
-    /* Restore DynamicHub and DynamicHubCompanion receiver types after they move to guest staging (GR-78110). */
-    public static void writeInt(Object hub, int offset, int value) {
+    /* Restore the annotated receiver type when DynamicHub moves to guest staging (GR-78110). */
+    public static void writeInt(@ShouldBe(typeName = "com.oracle.svm.core.hub.DynamicHub") Object hub, int offset, int value) {
         if (offset < 0) {
             /* field removed by analysis */
             return;
@@ -215,8 +216,8 @@ public class DynamicHubOffsets {
         BarrieredAccess.writeInt(hub, offset, value);
     }
 
-    /* Restore DynamicHub and DynamicHubCompanion receiver types after they move to guest staging (GR-78110). */
-    public static void writeShort(Object hub, int offset, short value) {
+    /* Restore the annotated receiver type when DynamicHub moves to guest staging (GR-78110). */
+    public static void writeShort(@ShouldBe(typeName = "com.oracle.svm.core.hub.DynamicHub") Object hub, int offset, short value) {
         if (offset < 0) {
             /* field removed by analysis */
             return;
@@ -224,8 +225,8 @@ public class DynamicHubOffsets {
         BarrieredAccess.writeShort(hub, offset, value);
     }
 
-    /* Restore DynamicHub and DynamicHubCompanion receiver types after they move to guest staging (GR-78110). */
-    public static void writeChar(Object hub, int offset, char value) {
+    /* Restore the annotated receiver type when DynamicHub moves to guest staging (GR-78110). */
+    public static void writeChar(@ShouldBe(typeName = "com.oracle.svm.core.hub.DynamicHub") Object hub, int offset, char value) {
         if (offset < 0) {
             /* field removed by analysis */
             return;
