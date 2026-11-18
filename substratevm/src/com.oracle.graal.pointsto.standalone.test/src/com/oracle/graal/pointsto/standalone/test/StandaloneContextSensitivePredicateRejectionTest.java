@@ -31,6 +31,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.Test;
 
@@ -43,7 +44,8 @@ import com.oracle.graal.pointsto.util.AnalysisError;
  * Verifies that context-sensitive analysis rejects primitive-value tracking and predicates, which
  * it does not support yet, whatever route selects the context-sensitive policy. Each test passes
  * its policy after any analysis options given on the command line, so every context-sensitive
- * policy is covered whatever policy the suite runs under.
+ * policy is covered whatever policy the suite runs under. The diagnostic names the mode in effect,
+ * the option that selected it, and the remedy.
  */
 public class StandaloneContextSensitivePredicateRejectionTest extends StandaloneAnalysisTest {
 
@@ -51,15 +53,19 @@ public class StandaloneContextSensitivePredicateRejectionTest extends Standalone
     private static final String USE_PREDICATES = "-H:+UsePredicates";
     private static final String NO_USE_PREDICATES = "-H:-UsePredicates";
     private static final String ALLOCATION_SITE_SENSITIVE_HEAP = "-H:+AllocationSiteSensitiveHeap";
+    private static final String NO_ALLOCATION_SITE_SENSITIVE_HEAP = "-H:-AllocationSiteSensitiveHeap";
+    private static final String CALLING_CONTEXT_MODE = "Calling-context-sensitive analysis (";
+    private static final String HEAP_MODE = "Context-insensitive analysis with an allocation-site-sensitive heap (";
+    private static final String TURN_OFF_BOTH = "Pass -H:-TrackPrimitiveValues -H:-UsePredicates";
 
     /**
      * Predicates enabled after the policy, so the policy's own reset does not turn them off.
      */
     @Test
     public void testPredicatesRejected() {
-        for (String policy : contextSensitivePolicies()) {
-            String message = assertRejected(policy, USE_PREDICATES);
-            assertContains(message, policy, USE_PREDICATES);
+        for (ContextSensitivity policy : contextSensitivePolicies()) {
+            String message = assertPolicyRejected(policy, USE_PREDICATES);
+            assertContains(message, USE_PREDICATES);
             assertNotContains(message, TRACK_PRIMITIVE_VALUES);
         }
     }
@@ -69,9 +75,9 @@ public class StandaloneContextSensitivePredicateRejectionTest extends Standalone
      */
     @Test
     public void testPrimitivesAndPredicatesRejected() {
-        for (String policy : contextSensitivePolicies()) {
-            String message = assertRejected(policy, TRACK_PRIMITIVE_VALUES, USE_PREDICATES);
-            assertContains(message, policy, TRACK_PRIMITIVE_VALUES, USE_PREDICATES);
+        for (ContextSensitivity policy : contextSensitivePolicies()) {
+            String message = assertPolicyRejected(policy, TRACK_PRIMITIVE_VALUES, USE_PREDICATES);
+            assertContains(message, TRACK_PRIMITIVE_VALUES, USE_PREDICATES);
         }
     }
 
@@ -80,23 +86,37 @@ public class StandaloneContextSensitivePredicateRejectionTest extends Standalone
      */
     @Test
     public void testPrimitiveTrackingRejected() {
-        for (String policy : contextSensitivePolicies()) {
-            String message = assertRejected(policy, TRACK_PRIMITIVE_VALUES, NO_USE_PREDICATES);
-            assertContains(message, policy, TRACK_PRIMITIVE_VALUES);
+        for (ContextSensitivity policy : contextSensitivePolicies()) {
+            String message = assertPolicyRejected(policy, TRACK_PRIMITIVE_VALUES, NO_USE_PREDICATES);
+            assertContains(message, TRACK_PRIMITIVE_VALUES);
             assertNotContains(message, USE_PREDICATES);
         }
     }
 
     /**
      * {@code AllocationSiteSensitiveHeap} selects a context-sensitive policy on its own and does
-     * not reset the two options. The diagnostic names that option rather than the {@code insens}
-     * value of {@code AnalysisContextSensitivity}.
+     * not reset the two options. Calling contexts stay insensitive, so the diagnostic names the
+     * allocation-site-sensitive heap and that option rather than the {@code insens} value of
+     * {@code AnalysisContextSensitivity}.
      */
     @Test
     public void testHeapSensitivityOptionRejected() {
         String message = assertRejected(policyOption(ContextSensitivity.insens), ALLOCATION_SITE_SENSITIVE_HEAP, TRACK_PRIMITIVE_VALUES, USE_PREDICATES);
-        assertContains(message, ALLOCATION_SITE_SENSITIVE_HEAP, TRACK_PRIMITIVE_VALUES, USE_PREDICATES);
+        assertContains(message, HEAP_MODE + ALLOCATION_SITE_SENSITIVE_HEAP + ")", TRACK_PRIMITIVE_VALUES, USE_PREDICATES, TURN_OFF_BOTH,
+                        "turn off the allocation-site-sensitive heap with " + NO_ALLOCATION_SITE_SENSITIVE_HEAP + ".");
         assertNotContains(message, policyOption(ContextSensitivity.insens));
+    }
+
+    /**
+     * {@code AllocationSiteSensitiveHeap} with a positive {@code MaxCallingContextDepth} makes
+     * calling contexts sensitive, so the diagnostic names that mode and both options.
+     */
+    @Test
+    public void testHeapSensitivityWithCallingContextsRejected() {
+        String depth = "-H:MaxCallingContextDepth=1";
+        String message = assertRejected(policyOption(ContextSensitivity.insens), ALLOCATION_SITE_SENSITIVE_HEAP, depth, USE_PREDICATES);
+        assertContains(message, CALLING_CONTEXT_MODE + ALLOCATION_SITE_SENSITIVE_HEAP + " " + depth + ")", USE_PREDICATES, TURN_OFF_BOTH,
+                        "select context-insensitive analysis with " + NO_ALLOCATION_SITE_SENSITIVE_HEAP + ".");
     }
 
     /**
@@ -105,8 +125,8 @@ public class StandaloneContextSensitivePredicateRejectionTest extends Standalone
      */
     @Test
     public void testForcingOrderAccepted() {
-        for (String policy : contextSensitivePolicies()) {
-            PointsToAnalysis analysis = createAnalysis(StandalonePrimitivePredicateCase.class, TRACK_PRIMITIVE_VALUES, USE_PREDICATES, policy);
+        for (ContextSensitivity policy : contextSensitivePolicies()) {
+            PointsToAnalysis analysis = createAnalysis(StandalonePrimitivePredicateCase.class, TRACK_PRIMITIVE_VALUES, USE_PREDICATES, policyOption(policy));
             assertTrue(policy + " should select a context-sensitive policy", analysis.analysisPolicy().isContextSensitiveAnalysis());
             assertFalse(policy + " should turn off primitive-value tracking", analysis.trackPrimitiveValues());
             assertFalse(policy + " should turn off predicates", analysis.usePredicates());
@@ -127,12 +147,27 @@ public class StandaloneContextSensitivePredicateRejectionTest extends Standalone
         assertNotImplementationInvoked(findMethod(StandalonePrimitivePredicateCase.class, "unreachable1"));
     }
 
-    private static List<String> contextSensitivePolicies() {
-        return Arrays.stream(ContextSensitivity.values()).filter(policy -> policy != ContextSensitivity.insens).map(StandaloneContextSensitivePredicateRejectionTest::policyOption).toList();
+    private static List<ContextSensitivity> contextSensitivePolicies() {
+        return Arrays.stream(ContextSensitivity.values()).filter(policy -> policy != ContextSensitivity.insens).toList();
     }
 
     private static String policyOption(ContextSensitivity policy) {
         return "-H:AnalysisContextSensitivity=" + policy.value();
+    }
+
+    /**
+     * Asserts that the policy, followed by the enabled options, is rejected with a diagnostic that
+     * names the policy's mode, the policy selector, and the remedy. Only {@code allocsens} keeps
+     * calling contexts insensitive.
+     */
+    private String assertPolicyRejected(ContextSensitivity policy, String... enabledOptions) {
+        String selector = policyOption(policy);
+        String message = assertRejected(Stream.concat(Stream.of(selector), Arrays.stream(enabledOptions)).toArray(String[]::new));
+        boolean callingContextSensitive = policy != ContextSensitivity.allocsens;
+        String mode = callingContextSensitive ? CALLING_CONTEXT_MODE : HEAP_MODE;
+        String remedy = callingContextSensitive ? "select context-insensitive analysis" : "turn off the allocation-site-sensitive heap";
+        assertContains(message, mode + selector + ")", TURN_OFF_BOTH, remedy + " with " + policyOption(ContextSensitivity.insens) + ".");
+        return message;
     }
 
     /**
