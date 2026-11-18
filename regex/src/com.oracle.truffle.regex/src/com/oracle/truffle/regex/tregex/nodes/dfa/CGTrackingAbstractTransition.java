@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,15 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-public abstract class DFAAbstractTransitionNode extends DFAAbstractNode {
+public abstract class CGTrackingAbstractTransition extends DFAAbstractTransition {
 
-    private final short successor;
+    static final int FIELD_TRANSITION_REF = COMMON_RECORD_SIZE;
 
-    DFAAbstractTransitionNode(short id, short successor) {
-        super(id);
-        this.successor = successor;
+    CGTrackingAbstractTransition(short id, short successor) {
+        super(id, successor);
     }
 
-    public final short getSuccessor() {
-        return successor;
+    static int getTransitionRef(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getInt(records, recordRef + FIELD_TRANSITION_REF);
     }
-
-    abstract void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor);
 }

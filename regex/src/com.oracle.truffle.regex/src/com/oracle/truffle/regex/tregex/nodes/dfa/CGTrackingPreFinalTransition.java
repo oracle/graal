@@ -40,11 +40,55 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-public abstract class CGTrackingAbstractTransitionNode extends DFAAbstractTransitionNode {
+/**
+ * A generic capture-group pre-final transition. Its packed record appends a lazy-transition
+ * reference to the common {@link DFAAbstractTransition} fields.
+ *
+ * <pre>
+ * +-------------+------+---------------------------+
+ * | byte offset | size | field                     |
+ * +-------------+------+---------------------------+
+ * | 5           | 4    | lazy-transition reference |
+ * +-------------+------+---------------------------+
+ * </pre>
+ */
+public final class CGTrackingPreFinalTransition extends CGTrackingAbstractTransition {
 
-    CGTrackingAbstractTransitionNode(short id, short successor) {
+    private static final int RECORD_SIZE = FIELD_TRANSITION_REF + Integer.BYTES;
+
+    /** Reference to a {@link DFACaptureGroupLazyTransition}. */
+    private final int transitionRef;
+
+    private CGTrackingPreFinalTransition(short id, short successor, int transitionRef) {
         super(id, successor);
+        this.transitionRef = transitionRef;
     }
 
-    public abstract int getCGTrackingCost(TRegexDFAExecutorNode executor);
+    public static CGTrackingPreFinalTransition create(short id, short successor, int transitionRef) {
+        return new CGTrackingPreFinalTransition(id, successor, transitionRef);
+    }
+
+    @Override
+    int encodedSize() {
+        return RECORD_SIZE;
+    }
+
+    @Override
+    void encode(DFAExecutorRecords.Encoder encoder, int recordRef) {
+        encodeCommon(encoder, recordRef, DFAExecutorRecords.Kind.genericCGPreFinalTransition);
+        encoder.putInt(recordRef + FIELD_TRANSITION_REF, transitionRef);
+    }
+
+    static int getEncodedSize() {
+        return RECORD_SIZE;
+    }
+
+    static int apply(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        DFACaptureGroupLazyTransition.apply(getTransitionRef(records, recordRef), locals, executor, true);
+        return getSuccessor(records, recordRef);
+    }
+
+    static int getCGTrackingCost(byte[] records, int recordRef, TRegexDFAExecutorNode executor) {
+        return DFACaptureGroupLazyTransition.getCost(getTransitionRef(records, recordRef), executor);
+    }
 }

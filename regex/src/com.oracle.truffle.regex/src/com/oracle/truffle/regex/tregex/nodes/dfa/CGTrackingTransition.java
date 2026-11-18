@@ -44,42 +44,78 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 
-public final class CGTrackingTransitionNode extends CGTrackingAbstractTransitionNode {
+/**
+ * A generic capture-group transition. Its packed record appends a lazy-transition reference and a
+ * last-transition index to the common {@link DFAAbstractTransition} fields.
+ *
+ * <pre>
+ * +-------------+------+--------------------------------+
+ * | byte offset | size | field                          |
+ * +-------------+------+--------------------------------+
+ * | 5           | 4    | lazy-transition reference      |
+ * | 9           | 2    | last-transition index (int16)  |
+ * +-------------+------+--------------------------------+
+ * </pre>
+ */
+public final class CGTrackingTransition extends CGTrackingAbstractTransition {
+
+    private static final int FIELD_LAST_TRANSITION_INDEX = FIELD_TRANSITION_REF + Integer.BYTES;
+    private static final int RECORD_SIZE = FIELD_LAST_TRANSITION_INDEX + Short.BYTES;
 
     /** Reference to a {@link DFACaptureGroupLazyTransition}. */
     private final int transitionRef;
     private final short lastTransitionIndex;
 
-    public CGTrackingTransitionNode(short id, short successor, int transitionRef, short lastTransitionIndex) {
+    public CGTrackingTransition(short id, short successor, int transitionRef, short lastTransitionIndex) {
         super(id, successor);
         this.transitionRef = transitionRef;
         this.lastTransitionIndex = lastTransitionIndex;
     }
 
-    public static CGTrackingTransitionNode create(short id, short successor, int transitionRef, short lastTransitionIndex) {
+    public static CGTrackingTransition create(short id, short successor, int transitionRef, short lastTransitionIndex) {
         if (DFACaptureGroupLazyTransition.isEmpty(transitionRef) && lastTransitionIndex < 0) {
             return null;
         }
-        return new CGTrackingTransitionNode(id, successor, transitionRef, lastTransitionIndex);
+        return new CGTrackingTransition(id, successor, transitionRef, lastTransitionIndex);
     }
 
     @Override
-    public int getCGTrackingCost(TRegexDFAExecutorNode executor) {
-        return DFACaptureGroupLazyTransition.getCost(transitionRef, executor);
+    int encodedSize() {
+        return RECORD_SIZE;
     }
 
     @Override
-    public void apply(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        CompilerAsserts.partialEvaluationConstant(this);
-        DFACaptureGroupLazyTransition.apply(transitionRef, locals, executor, false);
+    void encode(DFAExecutorRecords.Encoder encoder, int recordRef) {
+        encodeCommon(encoder, recordRef, DFAExecutorRecords.Kind.genericCGTransition);
+        encoder.putInt(recordRef + FIELD_TRANSITION_REF, transitionRef);
+        encoder.putShort(recordRef + FIELD_LAST_TRANSITION_INDEX, lastTransitionIndex);
+    }
+
+    static int getLastTransitionIndex(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getShort(records, recordRef + FIELD_LAST_TRANSITION_INDEX);
+    }
+
+    static int getEncodedSize() {
+        return RECORD_SIZE;
+    }
+
+    static int apply(byte[] records, int recordRef, TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        CompilerAsserts.partialEvaluationConstant(recordRef);
+        DFACaptureGroupLazyTransition.apply(getTransitionRef(records, recordRef), locals, executor, false);
+        int lastTransitionIndex = getLastTransitionIndex(records, recordRef);
         if (lastTransitionIndex >= 0) {
-            locals.setLastTransition(lastTransitionIndex);
+            locals.setLastTransition((short) lastTransitionIndex);
         }
+        return getSuccessor(records, recordRef);
+    }
+
+    static int getCGTrackingCost(byte[] records, int recordRef, TRegexDFAExecutorNode executor) {
+        return DFACaptureGroupLazyTransition.getCost(getTransitionRef(records, recordRef), executor);
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof CGTrackingTransitionNode o)) {
+        if (!(obj instanceof CGTrackingTransition o)) {
             return false;
         }
         return getSuccessor() == o.getSuccessor() && lastTransitionIndex == o.lastTransitionIndex && transitionRef == o.transitionRef;

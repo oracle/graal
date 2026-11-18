@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,7 @@ package com.oracle.truffle.regex.tregex.automaton;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFABQTrackingTransitionOpsNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFABQTrackingTransitionOps;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -62,7 +62,7 @@ public class TransitionBuilder<SI extends StateIndex<? super S>, S extends Abstr
     // the DFA executor.
     // This is only used so that it gets displayed correctly in the dfa visualizer.
     private long[] operations;
-    private DFABQTrackingTransitionOpsNode bqTransition;
+    private DFABQTrackingTransitionOps bqTransition;
 
     public TransitionBuilder(T[] transitions, StateSet<SI, S> targetStateSet, CodePointSet matcherBuilder, long[] constraints, long[] operations) {
         this(new TransitionSet<>(transitions, targetStateSet), matcherBuilder, constraints, operations);
@@ -122,11 +122,11 @@ public class TransitionBuilder<SI extends StateIndex<? super S>, S extends Abstr
         return bqTransition != null;
     }
 
-    public DFABQTrackingTransitionOpsNode getBqTransition() {
+    public DFABQTrackingTransitionOps getBqTransition() {
         return bqTransition;
     }
 
-    public void setBqTransition(DFABQTrackingTransitionOpsNode bqTransition) {
+    public void setBqTransition(DFABQTrackingTransitionOps bqTransition) {
         assert this.bqTransition == null;
         this.bqTransition = bqTransition;
     }

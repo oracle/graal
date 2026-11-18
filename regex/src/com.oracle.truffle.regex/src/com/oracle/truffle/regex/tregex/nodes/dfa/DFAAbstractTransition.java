@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,40 +40,44 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.regex.tregex.automaton.TransitionConstraint;
-import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.api.CompilerDirectives;
 
-public final class DFABQTrackingTransitionConstraintsNode extends DFAAbstractStateNode {
+/**
+ * Base class for DFA transitions with one successor. Their packed records begin with these common
+ * fields:
+ *
+ * <pre>
+ * +-------------+------+-------------------+
+ * | byte offset | size | field             |
+ * +-------------+------+-------------------+
+ * | 0           | 1    | kind              |
+ * | 1           | 4    | successor (int32) |
+ * +-------------+------+-------------------+
+ * </pre>
+ */
+public abstract class DFAAbstractTransition extends DFAAbstractNode {
 
-    @CompilationFinal(dimensions = 2) public final long[][] constraints;
+    static final int FIELD_SUCCESSOR = 1;
+    static final int COMMON_RECORD_SIZE = FIELD_SUCCESSOR + Integer.BYTES;
 
-    public DFABQTrackingTransitionConstraintsNode(short id, short[] successors, long[][] constraints) {
-        super(id, successors);
-        this.constraints = constraints;
+    private final short successor;
+
+    DFAAbstractTransition(short id, short successor) {
+        super(id);
+        this.successor = successor;
     }
 
-    @ExplodeLoop
-    public static boolean constraintsAreSatisfied(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, long[] constraints) {
-        CompilerAsserts.partialEvaluationConstant(executor);
-        CompilerAsserts.partialEvaluationConstant(constraints);
-        for (long constraint : constraints) {
-            int qId = TransitionConstraint.getQuantifierID(constraint);
-            CompilerAsserts.partialEvaluationConstant(constraint);
-            CompilerAsserts.partialEvaluationConstant(qId);
-            CounterTracker counterTracker = executor.getCounterTrackers()[qId];
-            CompilerAsserts.partialEvaluationConstant(counterTracker);
-            if (!counterTracker.canExecute(constraint, locals.getFixedData(), locals.getIntArrays())) {
-                return false;
-            }
-        }
-        return true;
+    public final short getSuccessor() {
+        return successor;
     }
 
-    @Override
-    public JsonValue toJson() {
-        return null;
+    final void encodeCommon(DFAExecutorRecords.Encoder encoder, int recordRef, DFAExecutorRecords.Kind kind) {
+        encoder.putKind(recordRef, kind);
+        encoder.putNodeRef(recordRef + FIELD_SUCCESSOR, successor);
+    }
+
+    @CompilerDirectives.EarlyInline
+    static int getSuccessor(byte[] records, int recordRef) {
+        return DFAExecutorRecords.getInt(records, recordRef + FIELD_SUCCESSOR);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -136,7 +136,9 @@ public abstract class TRegexExecutorNode extends TRegexExecutorBaseNode {
     }
 
     public boolean inputHasNext(TRegexExecutorLocals locals, int index, boolean forward) {
-        return forward ? index < getMaxIndex(locals) : index > getMinIndex(locals);
+        // Input indices are non-negative. Match TruffleString's unsigned bounds checks so that the
+        // compiler can eliminate redundant checks even if merged DFA paths lose that range stamp.
+        return forward ? Integer.compareUnsigned(index, getMaxIndex(locals)) < 0 : index > getMinIndex(locals);
     }
 
     public int inputReadAndDecode(TRegexExecutorLocals locals, TruffleString.CodeRange codeRange) {
