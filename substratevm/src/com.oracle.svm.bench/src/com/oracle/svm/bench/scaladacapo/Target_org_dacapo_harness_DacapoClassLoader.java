@@ -35,9 +35,10 @@ final class Target_org_dacapo_harness_DacapoClassLoader {
      * build time. Reuse those classes instead of the harness's child-first lookup, which attempts
      * to define another copy of each class at run time. In particular, findLoadedClass cannot find
      * application classes through this loader when ClassForNameRespectsClassLoader is enabled.
+     * The classes are already linked at image build time, so resolve requires no run-time work.
      */
     @Substitute
-    protected synchronized Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+    protected synchronized Class<?> loadClass(String name, @SuppressWarnings("unused") boolean resolve) throws ClassNotFoundException {
         return Class.forName(name, false, ClassLoader.getSystemClassLoader());
     }
 }
