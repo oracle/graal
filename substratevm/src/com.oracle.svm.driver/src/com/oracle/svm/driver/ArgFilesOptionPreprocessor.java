@@ -69,7 +69,7 @@ public class ArgFilesOptionPreprocessor {
                 remainingCharacters = MAX_ARGUMENT_FILE_EXPANSION_SIZE;
             }
             if (contents.length() > remainingCharacters) {
-                NativeImage.showError("Argument-file expansion rooted at '" + activeFiles.getFirst().displayPath() + "' exceeds the maximum cumulative input size of " +
+                throw NativeImage.showError("Argument-file expansion rooted at '" + activeFiles.getFirst().displayPath() + "' exceeds the maximum cumulative input size of " +
                                 MAX_ARGUMENT_FILE_EXPANSION_SIZE + " characters while expanding '" + activeFiles.getLast().displayPath() +
                                 "'. Reduce repeated includes or the argument-file contents.");
             }
@@ -120,13 +120,13 @@ public class ArgFilesOptionPreprocessor {
                 chain.add(activeFiles.get(i).displayPath());
             }
             chain.add(displayArgumentFile(resolvedFile, origin));
-            NativeImage.showError("Argument-file inclusion cycle detected: " + chain);
+            throw NativeImage.showError("Argument-file inclusion cycle detected: " + chain);
         }
         if (activeFiles.size() >= MAX_ARGUMENT_FILE_NESTING) {
             StringJoiner chain = new StringJoiner(" -> ");
             activeFiles.forEach(file -> chain.add(file.displayPath()));
             chain.add(displayArgumentFile(resolvedFile, origin));
-            NativeImage.showError("Argument-file inclusion exceeds the maximum nesting depth of " + MAX_ARGUMENT_FILE_NESTING + ": " + chain);
+            throw NativeImage.showError("Argument-file inclusion exceeds the maximum nesting depth of " + MAX_ARGUMENT_FILE_NESTING + ": " + chain);
         }
 
         activeFiles.add(new ActiveArgumentFile(identity, displayArgumentFile(resolvedFile, origin)));
@@ -154,7 +154,7 @@ public class ArgFilesOptionPreprocessor {
 
     private static Path resolveArgumentFile(Path argFile, OptionOrigin origin, Path includingFile) {
         if (origin != null && argFile.isAbsolute()) {
-            NativeImage.showError("Argument file '" + argFile + "' must be relative to " + origin);
+            throw NativeImage.showError("Argument file '" + argFile + "' must be relative to " + origin);
         }
         Path resolved = argFile;
         if (includingFile != null) {
@@ -169,7 +169,7 @@ public class ArgFilesOptionPreprocessor {
             // Check before JAR filesystem resolution, which would discard leading '..' components.
             Path relativeToContainer = origin.resolveRedirectionPath(resolved);
             if (relativeToContainer.getRoot() != null || relativeToContainer.startsWith("..")) {
-                NativeImage.showError("Argument file '" + argFile + "' referenced by " + origin + " escapes its containing directory or JAR");
+                throw NativeImage.showError("Argument file '" + argFile + "' referenced by " + origin + " escapes its containing directory or JAR");
             }
         }
         return resolved;
@@ -233,7 +233,7 @@ public class ArgFilesOptionPreprocessor {
         try {
             options = origin == null ? new String(Files.readAllBytes(file), StandardCharsets.UTF_8) : origin.readRedirectionFile(file);
         } catch (IOException e) {
-            NativeImage.showError("Cannot read argument file '" + file + "'", e);
+            throw NativeImage.showError("Cannot read argument file '" + file + "'", e);
         }
 
         ArgumentFileSettings settings = getArgumentFileSettings(options, file);
@@ -279,25 +279,19 @@ public class ArgFilesOptionPreprocessor {
     }
 
     private static ArgumentFileSettings parseDirective(String directive, Path file, long line) {
-        String settingText = directive.substring(DIRECTIVE_PREFIX.length());
-        String reportedSettings = settingText.stripLeading();
-        if (!settingText.startsWith(" ")) {
-            NativeImage.showError(file + ":" + line + ": Unknown argument-file setting: '" + reportedSettings + "'. Expected '" + VALUE_CONTINUATIONS_SETTING + "' or '" +
-                            RECURSIVE_ARGUMENT_FILES_SETTING + "'.");
-        }
-        String[] settingNames = settingText.substring(1).split(" ", -1);
+        String settingText = directive.substring(DIRECTIVE_PREFIX.length()).strip();
+        String[] settingNames = settingText.split(" +");
         Set<String> seen = new HashSet<>();
         boolean valueContinuations = false;
         boolean recursiveArgumentFiles = false;
         for (String settingName : settingNames) {
-            if (settingName.isEmpty() || !seen.add(settingName)) {
-                NativeImage.showError(file + ":" + line + ": Unknown argument-file setting: '" + reportedSettings + "'. Expected '" + VALUE_CONTINUATIONS_SETTING + "' or '" +
-                                RECURSIVE_ARGUMENT_FILES_SETTING + "'.");
+            if (!seen.add(settingName)) {
+                throw NativeImage.showError(file + ":" + line + ": Duplicate argument-file setting: '" + settingName + "'.");
             }
             switch (settingName) {
                 case VALUE_CONTINUATIONS_SETTING -> valueContinuations = true;
                 case RECURSIVE_ARGUMENT_FILES_SETTING -> recursiveArgumentFiles = true;
-                default -> NativeImage.showError(file + ":" + line + ": Unknown argument-file setting: '" + settingName + "'. Expected '" + VALUE_CONTINUATIONS_SETTING + "' or '" +
+                default -> throw NativeImage.showError(file + ":" + line + ": Unknown argument-file setting: '" + settingName + "'. Expected '" + VALUE_CONTINUATIONS_SETTING + "' or '" +
                                 RECURSIVE_ARGUMENT_FILES_SETTING + "'.");
             }
         }
@@ -366,7 +360,7 @@ public class ArgFilesOptionPreprocessor {
         long line = options.substring(0, commentStart + 1).lines().count();
         String location = ctx.file + ":" + line + ": ";
         if (commentStart != 0) {
-            NativeImage.showError(location + "Native Image argument-file directives must start the first line. Move the directive before any leading comments or whitespace.");
+            throw NativeImage.showError(location + "Native Image argument-file directives must start the first line. Move the directive before any leading comments or whitespace.");
         }
         int lineEnd = commentStart;
         while (lineEnd < options.length() && options.charAt(lineEnd) != '\n' && options.charAt(lineEnd) != '\r') {

@@ -124,8 +124,9 @@ All of its syntax rules apply.
 Command-line argument-file paths follow the Java launcher's filesystem lookup rules, including symbolic links and `..`.
 For compatibility with the Java launcher, Native Image does not restrict these paths to a containing directory.
 Recursive includes from those files use the same lookup rules.
-A standalone `# native-image:` directive must start the first line; unknown settings or misplaced directives are errors.
-Separate settings with a single space.
+A standalone `# native-image:` directive must start the first line; unknown or duplicate settings and misplaced directives are errors.
+Separate settings with one or more spaces.
+Whitespace after the colon and at the end of the directive is optional.
 Use `value-continuations` to enable option-value continuations, and `recursive-argument-files` to let the file include other argument files.
 You can enable both settings on the same line.
 
