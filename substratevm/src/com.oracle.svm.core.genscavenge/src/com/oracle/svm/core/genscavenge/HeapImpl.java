@@ -171,10 +171,8 @@ public final class HeapImpl extends Heap {
             ChunkBasedCommittedMemoryProvider.get().uncommitUnusedMemory();
         }
 
-        if (mode == Mode.CONSERVATIVE) {
-            getChunkProvider().cleanUnusedAlignedChunks();
-        } else if (mode == Mode.BALANCED || mode == Mode.SIZE) {
-            boolean cleanFillerObjectMemory = mode == Mode.SIZE;
+        if (mode == Mode.CONSERVATIVE || mode == Mode.BALANCED || mode == Mode.SIZE) {
+            boolean cleanFillerObjectMemory = mode == Mode.CONSERVATIVE || mode == Mode.SIZE;
             getHeapImpl().makeParseable();
             getYoungGeneration().clean(true, cleanFillerObjectMemory);
             getOldGeneration().clean(true, cleanFillerObjectMemory);
