@@ -266,6 +266,7 @@ GraalTags = Tags([
     'standalone_pointsto_unittests',
     'driver_unittests',
     'scismoketest',
+    'scifallbacktest',
     'native_unittests',
     'generic_field_type',
     'runtime_assertions',
@@ -554,6 +555,11 @@ def svm_gate_body(args, tasks):
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 scismoketest(['--output-path', svmbuild_dir()] + args.extra_image_builder_arguments)
+
+    with Task('image scifallbacktest', tasks, tags=[GraalTags.scifallbacktest]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                scifallbacktest(['--output-path', svmbuild_dir()] + args.extra_image_builder_arguments)
 
     with Task('image debughelpertest', tasks, tags=[GraalTags.debuginfotest]) as t:
         if t:
@@ -1989,6 +1995,51 @@ def _assert_scismoke_histogram(tracker, is_sci_enabled, variant_name):
     elif not tracker.has_single:
         mx.abort(variant_name + ': singleCallsiteHelper should appear in histogram with SCI disabled')
 
+def _scifallbacktest(native_image, path, args):
+    mx_util.ensure_dir_exists(path)
+    binary_path = join(path, 'scifallback')
+    # Generate enough non-foldable work to cross the production 50,000 size limit.
+    # Each adjacent pair stays below the limit, so only tracking the immediate
+    # caller (instead of the root's accumulated size) incorrectly inlines it all.
+    source_path = join(path, 'SciFallbackTest.java')
+    classes_path = join(path, 'scifallback-classes')
+    mx_util.ensure_dir_exists(classes_path)
+    chain_length = 128
+    with open(source_path, 'w') as source:
+        source.write('import com.oracle.svm.core.NeverInlineTrivial;\n'
+                     'public class SciFallbackTest {\n'
+                     '    private static volatile int input = 17;\n'
+                     '    public static void main(String[] args) {\n'
+                     '        System.out.println("Result: " + chainLink0(args.length));\n'
+                     '    }\n')
+        for method in range(chain_length):
+            source.write('    @NeverInlineTrivial(reason = "Exercise single-callsite inlining")\n'
+                         f'    private static int chainLink{method}(int result) {{\n')
+            # Volatile accesses prevent folding; straight-line code grows the graph
+            # without relying on loop unrolling or creating additional callsites.
+            # Stores also avoid long arithmetic dependency chains if all callees
+            # are incorrectly inlined, so the size assertion detects the regression.
+            for operation in range(128):
+                source.write(f'        input = (result ^ input) * 31 + {operation};\n')
+            result = f'chainLink{method + 1}(input)' if method + 1 < chain_length else 'input'
+            source.write(f'        return {result};\n    }}\n')
+        source.write('}\n')
+    mx.run([mx.get_jdk().javac, '-cp', mx.classpath('com.oracle.svm.core'),
+            '-d', classes_path, source_path])
+    build_args = [
+        '-cp', classes_path,
+        '--initialize-at-build-time=SciFallbackTest',
+        'SciFallbackTest',
+    ] + svm_experimental_options([
+        '-H:+AOTSingleCallsiteInline',
+    ]) + [
+        '-o', binary_path,
+    ] + args
+
+    # Build should not assert
+    native_image(build_args)
+    mx.run([binary_path])
+
 
 def _scismoketest(native_image, path, args):
     mx_util.ensure_dir_exists(path)
@@ -3004,6 +3055,25 @@ def scismoketest(args, config=None):
     native_image_context_run(
         lambda native_image, a:
             _scismoketest(native_image, output_path, a), unmask(parsed.image_args),
+        config=config
+    )
+
+@mx.command(suite_name=suite.name, command_name='scifallbacktest', usage_msg='[options]')
+def scifallbacktest(args, config=None):
+    """
+    Build and run an app with nested single callsite calls with AOTSingleCallsiteInline enabled.
+    Ensure the root method size limit is respected.
+    """
+    parser = ArgumentParser(prog='mx scifallbacktest')
+    all_args = ['--output-path', '--build-only']
+    masked_args = [_mask(arg, all_args) for arg in args]
+    parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir()])
+    parser.add_argument('image_args', nargs='*', default=[])
+    parsed = parser.parse_args(masked_args)
+    output_path = unmask(parsed.output_path)[0]
+    native_image_context_run(
+        lambda native_image, a:
+        _scifallbacktest(native_image, output_path, a), unmask(parsed.image_args),
         config=config
     )
 

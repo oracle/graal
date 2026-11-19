@@ -1052,12 +1052,18 @@ public class CompileQueue {
     /** This plugin will allow inlining methods that have a single callsite. */
     class SingleCallsiteInliningPlugin implements InlineInvokePlugin {
         boolean inlinedDuringDecoding;
+        int accumulatedInlinedSize;
+
+        SingleCallsiteInliningPlugin(HostedMethod root) {
+            accumulatedInlinedSize = root.compilationInfo.sizeLastRound;
+        }
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
             HostedMethod caller = (HostedMethod) b.getMethod();
-            HostedMethod inlinee = makeSingleCallsiteInlineDecision(caller, (HostedMethod) method);
+            HostedMethod inlinee = makeSingleCallsiteInlineDecision(caller, (HostedMethod) method, accumulatedInlinedSize);
             if (inlinee != null && b.recursiveInliningDepth(inlinee) == 0) {
+                accumulatedInlinedSize += inlinee.compilationInfo.sizeLastRound;
                 return InlineInfo.createStandardInlineInfo(inlinee);
             } else {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
@@ -1154,7 +1160,7 @@ public class CompileQueue {
         var providers = selectCompilationProviders(method, runtimeConfig);
         var graph = method.compilationInfo.createGraph(debug, getCustomizedOptions(method, debug), CompilationIdentifier.INVALID_COMPILATION_ID, false);
         try (var _ = debug.scope("InlineSingleCallsites", graph, method, this)) {
-            var inliningPlugin = new SingleCallsiteInliningPlugin();
+            var inliningPlugin = new SingleCallsiteInliningPlugin(method);
             var decoder = new InliningGraphDecoder(graph, providers, inliningPlugin, runtimeConfig);
             new InlinePhase(decoder, method, "SingleCallsiteInline").apply(graph);
 
@@ -1164,6 +1170,13 @@ public class CompileQueue {
             }
             if (inliningPlugin.inlinedDuringDecoding || inliningRound == 0) {
                 method.compilationInfo.sizeLastRound = NodeCostUtil.computeGraphSize(graph);
+                /*
+                 * Add a small +100 buffer to account for canonicalizations changing the final
+                 * expected size.
+                 */
+                assert !inliningPlugin.inlinedDuringDecoding || method.compilationInfo.sizeLastRound <= FALLBACK_SIZE + 100 :
+                        "Single-callsite inlining produced oversized method " + method.format("%H.%n(%p)") +
+                        ": size=" + method.compilationInfo.sizeLastRound + ", threshold=" + FALLBACK_SIZE;
             }
         } catch (Throwable ex) {
             throw debug.handle(ex);
@@ -1206,7 +1219,7 @@ public class CompileQueue {
         return false;
     }
 
-    private HostedMethod makeSingleCallsiteInlineDecision(HostedMethod caller, HostedMethod callee) {
+    private HostedMethod makeSingleCallsiteInlineDecision(HostedMethod caller, HostedMethod callee, int accumulatedInlinedSize) {
         HostedMethod inlinee = selectInlineeMethod(caller, callee);
         if (!isCalleeGraphAvailable(caller, callee, inlinee) || !callee.getWrapped().canBeInlined()) {
             return null;
@@ -1222,7 +1235,7 @@ public class CompileQueue {
             return null;
         }
 
-        if (caller.compilationInfo.sizeLastRound + inlinee.compilationInfo.sizeLastRound >= FALLBACK_SIZE) {
+        if (accumulatedInlinedSize + inlinee.compilationInfo.sizeLastRound >= FALLBACK_SIZE) {
             sciLastRoundFailed.put(callee, inliningRound);
             return null;
         }
