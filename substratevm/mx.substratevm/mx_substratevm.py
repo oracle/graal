@@ -523,6 +523,8 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 image_demo_task(args.extra_image_builder_arguments)
                 helloworld(svm_experimental_options(['-H:+RunMainInNewThread']) + args.extra_image_builder_arguments)
+                # GR-81380: primitive tracking without predicates must preserve void returns.
+                helloworld(['--build-only'] + svm_experimental_options(['-H:+TrackPrimitiveValues', '-H:-UsePredicates']) + args.extra_image_builder_arguments)
                 # GR-74135: Instantiate the configured concrete class when its instance main is
                 # inherited from an abstract superclass.
                 helloworld(['--variant', 'inheritedInstance'] + args.extra_image_builder_arguments)
