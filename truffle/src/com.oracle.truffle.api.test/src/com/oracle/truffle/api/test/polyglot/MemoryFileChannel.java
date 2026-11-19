@@ -90,7 +90,7 @@ abstract sealed class MemoryFileChannel implements FileChannel permits MemoryFil
         if (available == 0) {
             return -1;
         }
-        final int toRead = Math.min((int) available, dst.limit());
+        final int toRead = Math.min((int) available, dst.remaining());
         dst.put(data, (int) pos, toRead);
         pos += toRead;
         return toRead;
