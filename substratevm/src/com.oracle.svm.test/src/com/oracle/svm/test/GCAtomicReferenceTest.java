@@ -24,17 +24,21 @@
  */
 package com.oracle.svm.test;
 
+import static com.oracle.svm.test.GCTestUtils.TIMEOUT_MS;
 import static com.oracle.svm.test.GCTestUtils.allocateGarbage;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.junit.Assert;
 import org.junit.Test;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
 
 /**
  * Tests atomic operations on reference fields while the garbage collector is active.
@@ -49,6 +53,10 @@ import org.junit.Test;
  * Each test therefore performs a lot of atomic reference traffic while allocating and collecting, and
  * verifies afterwards that the values are exactly what the atomic operations should have produced.
  * The tests work with any garbage collector and use only standard Java APIs.
+ *
+ * The compare-and-set tests request a collection after reading the expected value and before using
+ * it, so that the expected value is a reference that the collector may have moved in the meantime.
+ * The objects that the atomic operations are performed on are made to escape, see {@link #escape}.
  */
 public class GCAtomicReferenceTest {
 
@@ -64,18 +72,20 @@ public class GCAtomicReferenceTest {
     @Test
     public void testCompareAndSetAlwaysSucceedsWhileCollecting() {
         final int iterations = 20_000;
-        AtomicReference<Value> ref = new AtomicReference<>(new Value(0));
+        AtomicReference<Value> ref = escape(new AtomicReference<>(new Value(0)));
 
         for (int i = 1; i <= iterations; i++) {
             Value expected = ref.get();
-            Value updated = new Value(i);
-            boolean ok = ref.compareAndSet(expected, updated);
-            Assert.assertTrue("compareAndSet failed at iteration " + i + " although the value had not changed", ok);
 
             if (i % 100 == 0) {
+                /* Collect after reading the expected value and before using it. */
                 allocateGarbage();
                 System.gc();
             }
+
+            Value updated = new Value(i);
+            boolean ok = ref.compareAndSet(expected, updated);
+            Assert.assertTrue("compareAndSet failed at iteration " + i + " although the value had not changed", ok);
         }
 
         Assert.assertEquals("the reference does not hold the last value written", iterations, ref.get().id);
@@ -94,7 +104,7 @@ public class GCAtomicReferenceTest {
         Value actual = new Value(1);
         Value wrongExpectation = new Value(2);
         Value replacement = new Value(3);
-        AtomicReference<Value> ref = new AtomicReference<>(actual);
+        AtomicReference<Value> ref = escape(new AtomicReference<>(actual));
 
         allocateGarbage();
         System.gc();
@@ -112,7 +122,7 @@ public class GCAtomicReferenceTest {
     @Test
     public void testGetAndSetReturnsPreviousValueWhileCollecting() {
         final int iterations = 20_000;
-        AtomicReference<Value> ref = new AtomicReference<>(new Value(0));
+        AtomicReference<Value> ref = escape(new AtomicReference<>(new Value(0)));
 
         for (int i = 1; i <= iterations; i++) {
             Value previous = ref.getAndSet(new Value(i));
@@ -138,18 +148,20 @@ public class GCAtomicReferenceTest {
                         .findVarHandle(Holder.class, "field", Value.class);
 
         final int iterations = 10_000;
-        Holder holder = new Holder();
+        Holder holder = escape(new Holder());
         handle.set(holder, new Value(0));
 
         for (int i = 1; i <= iterations; i++) {
             Value expected = (Value) handle.get(holder);
-            boolean ok = handle.compareAndSet(holder, expected, new Value(i));
-            Assert.assertTrue("VarHandle compareAndSet failed at iteration " + i, ok);
 
             if (i % 100 == 0) {
+                /* Collect after reading the expected value and before using it. */
                 allocateGarbage();
                 System.gc();
             }
+
+            boolean ok = handle.compareAndSet(holder, expected, new Value(i));
+            Assert.assertTrue("VarHandle compareAndSet failed at iteration " + i, ok);
         }
 
         Value finalValue = (Value) handle.get(holder);
@@ -160,24 +172,33 @@ public class GCAtomicReferenceTest {
      * Same operations again, but on the many slots of an {@link AtomicReferenceArray}. Array elements
      * are addressed differently from object fields, so this covers an additional code path, and using
      * many slots increases the chance of catching a collector that mishandles one of them.
+     *
+     * In each round, the expected values of all slots are read first, then a collection is requested,
+     * and only then the slots are updated.
      */
     @Test
     public void testAtomicReferenceArraySlotsStayConsistent() {
         final int slots = 512;
         final int rounds = 40;
-        AtomicReferenceArray<Value> array = new AtomicReferenceArray<>(slots);
+        AtomicReferenceArray<Value> array = escape(new AtomicReferenceArray<>(slots));
         for (int i = 0; i < slots; i++) {
             array.set(i, new Value(i));
         }
 
+        Value[] expected = new Value[slots];
         for (int round = 1; round <= rounds; round++) {
             for (int i = 0; i < slots; i++) {
-                Value expected = array.get(i);
-                boolean ok = array.compareAndSet(i, expected, new Value(round * slots + i));
-                Assert.assertTrue("compareAndSet failed for slot " + i + " in round " + round, ok);
+                expected[i] = array.get(i);
             }
+
+            /* Collect after reading the expected values and before using them. */
             allocateGarbage();
             System.gc();
+
+            for (int i = 0; i < slots; i++) {
+                boolean ok = array.compareAndSet(i, expected[i], new Value(round * slots + i));
+                Assert.assertTrue("compareAndSet failed for slot " + i + " in round " + round, ok);
+            }
         }
 
         int base = rounds * slots;
@@ -192,51 +213,62 @@ public class GCAtomicReferenceTest {
      *
      * With real concurrency an individual compare-and-set is allowed to fail, because another thread
      * may have won the race, so the test does not check individual attempts. Instead each thread
-     * retries until it succeeds and counts its own successes, and at the end the total number of
-     * successful updates must match the counter stored in the reference. If the VM ever let two
-     * threads believe they both won, or lost an update, the two numbers would disagree.
+     * counts its own successful updates, and at the end the total must match the counter stored in
+     * the reference, which every successful update increments by one. If the VM ever let two threads
+     * believe they both won, or lost an update, the two numbers would disagree.
+     *
+     * The threads keep updating until the test tells them to stop, which it does only after all
+     * collections were requested. This way every collection happens while all threads are updating,
+     * no matter how fast they are.
      */
     @Test
     public void testConcurrentCompareAndSetDoesNotLoseUpdates() throws InterruptedException {
         final int threads = 4;
-        final int updatesPerThread = 5_000;
+        final int collections = 50;
         AtomicReference<Value> ref = new AtomicReference<>(new Value(0));
-        CountDownLatch start = new CountDownLatch(1);
-        CountDownLatch done = new CountDownLatch(threads);
+        AtomicBoolean stop = new AtomicBoolean();
+        CountDownLatch running = new CountDownLatch(threads);
+        long[] successes = new long[threads];
+        Thread[] workers = new Thread[threads];
 
         for (int t = 0; t < threads; t++) {
-            Thread worker = new Thread(() -> {
-                try {
-                    start.await();
-                    for (int i = 0; i < updatesPerThread; i++) {
-                        /* Retry until this thread wins the race; each success increments the id by one. */
-                        while (true) {
-                            Value expected = ref.get();
-                            if (ref.compareAndSet(expected, new Value(expected.id + 1))) {
-                                break;
-                            }
-                        }
+            int slot = t;
+            workers[t] = new Thread(() -> {
+                running.countDown();
+                long count = 0;
+                while (!stop.get()) {
+                    Value expected = ref.get();
+                    if (ref.compareAndSet(expected, new Value(expected.id + 1))) {
+                        count++;
                     }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                } finally {
-                    done.countDown();
                 }
+                successes[slot] = count;
             });
-            worker.setDaemon(true);
-            worker.start();
+            workers[t].setDaemon(true);
+            workers[t].start();
         }
 
-        start.countDown();
-        /* Keep the collector busy while the threads are competing. */
-        for (int i = 0; i < 50 && done.getCount() > 0; i++) {
-            allocateGarbage();
-            System.gc();
-            Thread.sleep(5);
+        try {
+            Assert.assertTrue("worker threads did not start in time", running.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+            /* Keep the collector busy while the threads are competing. */
+            for (int i = 0; i < collections; i++) {
+                allocateGarbage();
+                System.gc();
+                Thread.sleep(5);
+            }
+        } finally {
+            stop.set(true);
         }
-        Assert.assertTrue("worker threads did not finish in time", done.await(60, TimeUnit.SECONDS));
 
-        Assert.assertEquals("updates were lost or double-counted", threads * updatesPerThread, ref.get().id);
+        long total = 0;
+        for (int t = 0; t < threads; t++) {
+            workers[t].join(TIMEOUT_MS);
+            Assert.assertFalse("worker thread " + t + " did not finish in time", workers[t].isAlive());
+            total += successes[t];
+        }
+
+        Assert.assertTrue("the worker threads did not update the reference", total > 0);
+        Assert.assertEquals("updates were lost or double-counted", total, ref.get().id);
     }
 
     /** A value object that remembers which iteration created it. */
@@ -251,5 +283,15 @@ public class GCAtomicReferenceTest {
     /** Target of the {@link VarHandle} test above. */
     private static final class Holder {
         @SuppressWarnings("unused") private volatile Value field;
+    }
+
+    /**
+     * Makes {@code target} escape from the test method. Without this, the compiler could replace an
+     * object that never leaves the method by plain loads and stores, and the atomic operations that
+     * the test is about would never be executed.
+     */
+    private static <T> T escape(T target) {
+        GraalDirectives.blackhole(target);
+        return target;
     }
 }
