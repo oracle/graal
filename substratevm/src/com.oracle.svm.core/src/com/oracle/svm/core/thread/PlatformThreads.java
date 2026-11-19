@@ -114,13 +114,6 @@ import jdk.internal.misc.Unsafe;
  */
 @InternalVMMethod
 public abstract class PlatformThreads {
-    /// Using a small stack size, such as 64 KiB, on a machine that has a large page size, such as
-    /// 64 KiB, and address space randomization enabled may result in transient isolate
-    /// initialization failures. A `StackOverflowError` can be thrown early on because there is
-    /// hardly any usable stack space available. Therefore, SVM uses 128 KiB as the minimum usable
-    /// stack size for explicit Java thread stack sizes for now.
-    private static final long USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE = 128L * 1024L;
-
     @Fold
     public static PlatformThreads singleton() {
         return ImageSingletons.lookup(PlatformThreads.class);
@@ -418,6 +411,13 @@ public abstract class PlatformThreads {
         /* If the user set a thread stack size on the command line, then use that. */
         stackSize = SubstrateGuestOptions.StackSize.getValue();
         if (stackSize != 0) {
+            if (isolateStartedThread) {
+                long minimumStackSize = getJavaThreadMinimumStackSize();
+                /* Compare before adding guard zones, which can overflow for a large stack size. */
+                if (stackSize < minimumStackSize - StackOverflowCheck.singleton().yellowAndRedZoneSize()) {
+                    return minimumStackSize;
+                }
+            }
             return addStackOverflowGuardZones(stackSize);
         }
         /*
@@ -446,8 +446,7 @@ public abstract class PlatformThreads {
         return stackSize + StackOverflowCheck.singleton().yellowAndRedZoneSize();
     }
 
-    /// Returns the minimum stack size for Java threads created with an explicit `Thread`
-    /// constructor stack size.
+    /// Returns the minimum stack size for isolate-started Java threads with an explicit stack size.
     ///
     /// HotSpot keeps `_java_thread_min_stack_allowed` separate from the default Java thread stack
     /// size. It starts with an os/cpu value for the stack needed to create a Java thread and enter
@@ -457,7 +456,7 @@ public abstract class PlatformThreads {
     /// and thread start path are specific to SVM. The SVM yellow and red zones are then added so
     /// the result can be compared with [#addStackOverflowGuardZones].
     public static long getJavaThreadMinimumStackSize() {
-        long minimumStackSizeWithGuards = addStackOverflowGuardZones(USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE);
+        long minimumStackSizeWithGuards = addStackOverflowGuardZones(SubstrateGuestOptions.USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE);
         long pageSize = VirtualMemoryProvider.get().getGranularity().rawValue();
         return NumUtil.roundUp(minimumStackSizeWithGuards, pageSize);
     }
