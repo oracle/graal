@@ -1903,6 +1903,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return getReflectionFactory().copyMethod(method);
     }
 
+    /** Returns the declared method matching the complete JVM descriptor. */
+    public Method getDeclaredMethodByDescriptor(String methodName, Class<?> returnType, Class<?>[] parameterTypes) throws NoSuchMethodException {
+        Objects.requireNonNull(methodName);
+        Method method = searchMethods(privateGetDeclaredMethods(false), methodName, returnType, parameterTypes);
+        checkMethod(methodName, parameterTypes, method, false);
+        return getReflectionFactory().copyMethod(method);
+    }
+
     @KeepOriginal
     private native Constructor<?> getDeclaredConstructor(Class<?>... parameterTypes);
 
@@ -1967,6 +1975,17 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @KeepOriginal
     private static native Method searchMethods(Method[] allMethods, String name, Class<?>[] parameterTypes);
+
+    private static Method searchMethods(Method[] allMethods, String name, Class<?> returnType, Class<?>[] parameterTypes) {
+        ReflectionFactory reflectionFactory = getReflectionFactory();
+        for (Method m : allMethods) {
+            if (m.getName().equals(name) && m.getReturnType() == returnType &&
+                            arrayContentsEq(parameterTypes, reflectionFactory.getExecutableSharedParameterTypes(m))) {
+                return m;
+            }
+        }
+        return null;
+    }
 
     @Substitute
     private Constructor<?> getConstructor0(Class<?>[] parameterTypes, int which) throws NoSuchMethodException {

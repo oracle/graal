@@ -152,9 +152,11 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             return RuntimeReflectionMetadata.fromResolvedMethod(cremaMethod);
         } else if (method instanceof InterpreterResolvedJavaMethod interpreterMethod) {
             Class<?> declaringClass = interpreterMethod.getDeclaringClass().getJavaClass();
-            Class<?>[] parameterTypes = MethodType.fromMethodDescriptorString(interpreterMethod.getSignature().toMethodDescriptor(), declaringClass.getClassLoader()).parameterArray();
+            MethodType methodType = MethodType.fromMethodDescriptorString(interpreterMethod.getSymbolicSignature().toString(), declaringClass.getClassLoader());
             try {
-                return interpreterMethod.isConstructor() ? declaringClass.getDeclaredConstructor(parameterTypes) : declaringClass.getDeclaredMethod(interpreterMethod.getName(), parameterTypes);
+                return interpreterMethod.isConstructor() ? declaringClass.getDeclaredConstructor(methodType.parameterArray())
+                                : DynamicHub.fromClass(declaringClass).getDeclaredMethodByDescriptor(interpreterMethod.getName(), methodType.returnType(),
+                                                methodType.parameterArray());
             } catch (NoSuchMethodException e) {
                 return null;
             }

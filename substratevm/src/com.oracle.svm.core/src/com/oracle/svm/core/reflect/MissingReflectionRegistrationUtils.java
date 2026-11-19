@@ -183,6 +183,7 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
                                     "getMethod",
                                     "getMethods",
                                     "getDeclaredMethod",
+                                    "getDeclaredMethodByDescriptor",
                                     "getDeclaredMethods",
                                     "getNestMembers",
                                     "getPermittedSubclasses",
