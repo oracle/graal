@@ -281,7 +281,8 @@ GraalTags = Tags([
     'check_libcontainer_annotations',
     'check_libcontainer_namespace',
     'check_svm_invariants',
-    'java_agent'
+    'java_agent',
+    'pgo'
 ])
 
 NATIVE_UNITTEST_CUSTOM_BATCHES = ('1/2', '2/2')
@@ -590,6 +591,10 @@ def svm_gate_body(args, tasks):
     with Task('runtime assertions', tasks, tags=runtime_assertions_tags) as t:
         if t:
             runtime_assertions_test_task(args.extra_image_builder_arguments)
+
+    with Task('pgo profile counts', tasks, tags=[GraalTags.pgo]) as t:
+        if t:
+            pgo_profile_counts_task(args.extra_image_builder_arguments)
 
     with Task('runtime classpath resource lookup', tasks, tags=[GraalTags.native_unittests]) as t:
         if t:
@@ -931,6 +936,251 @@ def generic_field_type_test_task(extra_build_args=None):
         ]
         if field_output != expected_field_output:
             mx.abort('Unexpected generic field types: ' + str(field_output) + ' != ' + str(expected_field_output))
+
+
+def pgo_profile_counts_task(extra_image_args=None):
+    """
+    Builds ProfileCountsWorkload as a --pgo-instrument image, runs it once and checks that the
+    profile holds exactly what the program counted itself: both outcomes of a branch, of a loop
+    condition and of a branch that only a second thread runs, every successor of a switch, two
+    call edges, the receiver types of an interface call for each calling context, and the types of
+    the locked objects. It checks that the types and methods tables spell the signature of every
+    workload method as its bytecode does, and that the stack samples show the sampled call chain,
+    with the right call sites, on both threads, and a spin in a loop over an int range, whose
+    safepoint polls a sampling image keeps. It also checks what the profile must not hold:
+    anything from the collector after full collections, a stack sample inside ProfileDumper, or a
+    profiled type of com.oracle.svm.core.pgo, which only the dump puts into JDK collections.
+    """
+    test_dir = join(suite.dir, 'src', 'native-image-tests', 'pgo')
+    output_dir = join(svmbuild_dir(), 'pgo-profile-counts')
+    if exists(output_dir):
+        mx.rmtree(output_dir)
+    mx_util.ensure_dir_exists(output_dir)
+    mx.run([mx.get_jdk().javac, '-d', output_dir, join(test_dir, 'ProfileCountsWorkload.java')])
+    workload = 'pgocounts.ProfileCountsWorkload'
+    image = join(output_dir, 'profile-counts')
+    profile_path = join(output_dir, 'profile-counts.iprof')
+
+    def fail(message):
+        mx.abort('PGO profile counts check failed: ' + message)
+
+    # The workload's methods as javap shows them: each descriptor, and the bcis of the calls to each method of the same class.
+    javap_lines = []
+    mx.run([mx.get_jdk().javap, '-c', '-p', '-s', '-cp', output_dir, workload], out=lambda line: javap_lines.append(line.rstrip()))
+    bytecode = {}
+    header = None
+    current = None
+    for line in javap_lines:
+        descriptor = re.match(r'^\s+descriptor: (\S+)$', line)
+        call = re.match(r'^\s+(\d+): invoke\w+\s+#\d+(?:,\s*\d+)?\s+// (?:Interface)?Method ([\w$<>]+):', line)
+        if descriptor and header is not None and ('(' in header or header.strip() == 'static {};'):
+            name = '<clinit>' if header.strip() == 'static {};' else re.search(r'([\w$<>]+)\(', header).group(1)
+            name = '<init>' if name == workload.rsplit('.', 1)[-1] else name
+            current = bytecode.setdefault(name, {'descriptor': descriptor.group(1), 'calls': {}})
+        elif call and current is not None:
+            current['calls'].setdefault(call.group(2), []).append(int(call.group(1)))
+        elif re.match(r'^  \S', line):
+            header = line
+            current = None
+
+    with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+        native_image(['-cp', output_dir, '-o', image, '--pgo-instrument', workload] + (extra_image_args or []))
+
+    lines = []
+    # Sampling every millisecond gives the spin many samples, and makes a dump that samples itself show up.
+    mx.run([image, '-XX:ProfilesDumpFile=' + profile_path, '-XX:PGOSamplingIntervalMillis=1'], out=lambda line: lines.append(line.rstrip()))
+    counted = {parts[1]: int(parts[2]) for parts in (line.split() for line in lines) if len(parts) == 3 and parts[0] == 'count'}
+    with open(profile_path) as fp:
+        profile = json.load(fp)
+
+    def expect(what, found, expected):
+        if found != expected:
+            fail(what + ': the profile has ' + str(found) + ', the program counted ' + str(expected))
+        mx.log('pgo profile counts: ' + what + ': ' + str(found))
+
+    types = {t['id']: t['name'] for t in profile['types']}
+    if len(types) != len(profile['types']) or len(set(types.values())) != len(types):
+        fail('the types table repeats an id or a name')
+    monitor_records = [record for entry in profile.get('monitorProfiles', []) for record in entry['records']]
+    used_type_ids = {type_id for m in profile['methods'] for type_id in m['signature']}
+    used_type_ids.update(type_id for entry in profile['virtualInvokeProfiles'] for type_id in entry['records'][0::2])
+    used_type_ids.update(monitor_records[0::2])
+    expect('type ids missing from the types table', sorted(used_type_ids - set(types)), [])
+    methods = {m['id']: (types[m['signature'][0]], m['name']) for m in profile['methods']}
+    if len(methods) != len(profile['methods']):
+        fail('the methods table repeats an id')
+
+    primitive_names = {'Z': 'boolean', 'B': 'byte', 'C': 'char', 'S': 'short', 'I': 'int', 'J': 'long', 'F': 'float', 'D': 'double', 'V': 'void'}
+
+    def descriptor_types(descriptor):
+        """The return type, then the parameter types, of a method descriptor, named as the types table names them."""
+        def split(part):
+            tokens = []
+            index = 0
+            while index < len(part):
+                start = index
+                while part[index] == '[':
+                    index += 1
+                index = part.index(';', index) + 1 if part[index] == 'L' else index + 1
+                tokens.append(part[start:index])
+            return tokens
+
+        def name(token):
+            if token.startswith('['):
+                return token.replace('/', '.')
+            return token[1:-1].replace('/', '.') if token.startswith('L') else primitive_names[token]
+        parameters, result = descriptor[1:].split(')')
+        return [name(token) for token in split(result) + split(parameters)]
+
+    signatures = {m['name']: [types[type_id] for type_id in m['signature']] for m in profile['methods'] if types[m['signature'][0]] == workload}
+    expect('signatures of the workload methods in the methods table', signatures,
+           {name: [workload] + descriptor_types(bytecode[name]['descriptor']) for name in signatures if name in bytecode})
+
+    def frames(entry):
+        """The calling context of a profile entry, innermost frame first, as ((type, method), bci) pairs."""
+        result = []
+        for frame in entry['ctx'].split('<'):
+            method_id, bci = frame.split(':')
+            result.append((methods[int(method_id)], int(bci)))
+        return result
+
+    def readable(context):
+        return ' <- '.join(type_name.rsplit('.', 1)[-1] + '.' + name + ':' + str(bci) for (type_name, name), bci in context)
+
+    def workload_method(name):
+        return (workload, name)
+
+    def only_conditional(name):
+        """The one branch or switch of a workload method: its bci, and the count of each successor bci summed over all calling contexts."""
+        sites = {}
+        for entry in profile['conditionalProfiles']:
+            (method, bci) = frames(entry)[0]
+            if method == workload_method(name):
+                successors = sites.setdefault(bci, {})
+                records = entry['records']
+                for i in range(0, len(records), 3):
+                    successors[records[i]] = successors.get(records[i], 0) + records[i + 2]
+        if len(sites) != 1:
+            fail(name + ' must have one profiled branch or switch, the profile has ' + str(sites))
+        return next(iter(sites.items()))
+
+    def fallthrough_and_jump(name):
+        """The counts of the one branch of a workload method: the successor it falls through to (if-instructions are 3 bytes), then the one it jumps to."""
+        bci, successors = only_conditional(name)
+        if len(successors) != 2 or bci + 3 not in successors:
+            fail(name + ': the branch at bci ' + str(bci) + ' has successors ' + str(successors))
+        return [successors[bci + 3]] + [count for successor, count in successors.items() if successor != bci + 3]
+
+    # javac jumps over the then-block, so the branch falls through to it.
+    expect('branch, then and else', fallthrough_and_jump('branch'), [counted['thenRuns'], counted['elseRuns']])
+    expect('branch on the second thread, then and else', fallthrough_and_jump('threadBranch'), [counted['threadThenRuns'], counted['threadElseRuns']])
+
+    # javac tests a for loop's condition at its top: it falls through to the body and jumps to the exit.
+    expect('loop condition, body and exit', fallthrough_and_jump('loop'), [counted['loopBodyRuns'], counted['loopCalls']])
+
+    # javac lays out the case blocks in source order, the default last.
+    _, switch = only_conditional('choose')
+    expect('switch successors', [switch[bci] for bci in sorted(switch)], [counted['case0Runs'], counted['case1Runs'], counted['case2Runs'], counted['defaultRuns']])
+
+    calls = {}
+    for entry in profile['callCountProfiles']:
+        context = frames(entry)
+        if len(context) >= 2 and context[0] == (workload_method('callee'), 0) and context[1][0] == workload_method('caller'):
+            calls[context[1][1]] = calls.get(context[1][1], 0) + entry['records'][0]
+    expect('calls of callee from its two call sites', [calls[bci] for bci in sorted(calls)], [counted['firstSiteCalls'], counted['secondSiteCalls']])
+
+    # Where countSides is inlined, its receiver profile names the caller; where it is not, it holds the receivers of every such caller.
+    expected_receivers = {
+        'sidesOfFirstCaller': {workload + '$Circle': counted['firstCallerCircles'], workload + '$Square': counted['firstCallerSquares']},
+        'sidesOfSecondCaller': {workload + '$Circle': counted['secondCallerCircles'], workload + '$Square': counted['secondCallerSquares'],
+                                workload + '$Triangle': counted['secondCallerTriangles']},
+    }
+    receivers = {}
+    for entry in profile['virtualInvokeProfiles']:
+        context = frames(entry)
+        if context[0][0] == workload_method('countSides'):
+            caller = context[1][0][1] if len(context) > 1 and context[1][0][0] == workload else None
+            if caller is not None and caller not in expected_receivers:
+                fail('the receiver profile of countSides has an unknown caller: ' + readable(context))
+            counts = receivers.setdefault(caller, {})
+            records = entry['records']
+            for i in range(0, len(records), 2):
+                counts[types[records[i]]] = counts.get(types[records[i]], 0) + records[i + 1]
+    for caller, expected in expected_receivers.items():
+        if caller in receivers:
+            expect('receiver types of countSides inlined into ' + caller, receivers[caller], expected)
+    not_inlined = {}
+    for caller, expected in expected_receivers.items():
+        if caller not in receivers:
+            for type_name, count in expected.items():
+                not_inlined[type_name] = not_inlined.get(type_name, 0) + count
+    expect('receiver types of countSides where it was not inlined', receivers.get(None, {}), not_inlined)
+
+    locked = {types[monitor_records[i]]: monitor_records[i + 1] for i in range(0, len(monitor_records), 2)}
+    expect('locked-object types', {name: count for name, count in locked.items() if name.startswith(workload)},
+           {workload + '$FirstLock': counted['firstLocks'], workload + '$SecondLock': counted['secondLocks']})
+
+    def calls_to(method, target):
+        bcis = bytecode.get(method, {}).get('calls', {}).get(target, [])
+        if len(bcis) != 1:
+            fail(method + ' must call ' + target + ' once, its bytecode calls it at ' + str(bcis))
+        return bcis[0]
+
+    # Every sample in sampleLeaf must show its callers at their call sites: sampleMiddle, sampleOuter, then main or threadWork.
+    chain = [(workload_method('sampleMiddle'), calls_to('sampleMiddle', 'sampleLeaf')), (workload_method('sampleOuter'), calls_to('sampleOuter', 'sampleMiddle'))]
+    roots = {name: (workload_method(name), calls_to(name, 'sampleOuter')) for name in ('main', 'threadWork')}
+    spin_samples = dict.fromkeys(roots, 0)
+    for entry in profile.get('samplingProfiles', []):
+        context = frames(entry)
+        leaf = next((index for index, (method, _) in enumerate(context) if method == workload_method('sampleLeaf')), None)
+        if leaf is None:
+            continue
+        root = next((name for name, frame in roots.items() if context[leaf + 3:leaf + 4] == [frame]), None)
+        if context[leaf + 1:leaf + 3] != chain or root is None:
+            fail('a stack sample in sampleLeaf has the wrong callers: ' + readable(context))
+        spin_samples[root] += entry['records'][0]
+    # One sample a millisecond would give each spin spinMillis samples; a tenth allows for a slow or busy machine.
+    minimum = counted['spinMillis'] // 10
+    if any(samples < minimum for samples in spin_samples.values()):
+        fail('the spin has ' + str(spin_samples) + ' stack samples with its full call chain, fewer than ' + str(minimum) + ' on a thread')
+    mx.log('pgo profile counts: stack samples of the spin with its full call chain: ' + str(spin_samples))
+
+    # A sampling image keeps the safepoint polls of loops over an int range, so the spin in spinIntLoop is sampled there.
+    int_loop_caller = (workload_method('main'), calls_to('main', 'spinIntLoop'))
+    int_loop_samples = 0
+    for entry in profile.get('samplingProfiles', []):
+        context = frames(entry)
+        frame = next((index for index, (method, _) in enumerate(context) if method == workload_method('spinIntLoop')), None)
+        if frame is None:
+            continue
+        if context[frame + 1:frame + 2] != [int_loop_caller]:
+            fail('a stack sample in spinIntLoop has the wrong caller: ' + readable(context))
+        int_loop_samples += entry['records'][0]
+    if int_loop_samples < minimum:
+        fail('the spin in an int-range loop has ' + str(int_loop_samples) + ' stack samples, fewer than ' + str(minimum))
+    mx.log('pgo profile counts: stack samples of the spin in an int-range loop: ' + str(int_loop_samples))
+
+    # A collection runs in Native Image code, which is not instrumented. Its frames may show up only where the program
+    # calls the collector (System.gc, with the collector's entry inlined), at most once per collection.
+    collector = 'com.oracle.svm.core.genscavenge.'
+    system_gc = (('java.lang.System', 'gc'), ('java.lang.Runtime', 'gc'))
+    collector_entries = []
+    for section, events in (('conditionalProfiles', lambda records: sum(records[2::3])), ('callCountProfiles', lambda records: records[0]),
+                            ('virtualInvokeProfiles', lambda records: sum(records[1::2]))):
+        for entry in profile.get(section, []):
+            context = frames(entry)
+            if any(method[0].startswith(collector) for method, _ in context):
+                collector_entries.append((section, readable(context), events(entry['records']), any(method in system_gc for method, _ in context)))
+    expect('entries in the collector after ' + str(counted['collections']) + ' full collections, other than once per System.gc call',
+           [entry for entry in collector_entries if not entry[3] or entry[2] > counted['collections']], [])
+    mx.log('pgo profile counts: entries on the System.gc path into the collector: ' + str([entry[:3] for entry in collector_entries]))
+
+    profiled_types = set(locked)
+    for entry in profile['virtualInvokeProfiles']:
+        profiled_types.update(types[type_id] for type_id in entry['records'][0::2])
+    expect('profiled types of the profiler itself', sorted(name for name in profiled_types if name.startswith('com.oracle.svm.core.pgo.')), [])
+    dumper = 'com.oracle.svm.core.pgo.ProfileDumper'
+    expect('stack samples inside the dump', [readable(frames(entry)) for entry in profile.get('samplingProfiles', []) if any(method[0] == dumper for method, _ in frames(entry))], [])
 
 
 def runtime_assertions_test_task(extra_image_args=None):

@@ -298,11 +298,19 @@ public class SubgraphNode extends ParentNode {
             return BenefitCostTuple.ZERO_COST;
         }
 
-        return InliningMath.getLocalCost(getReadonlySubgraph(), !monomorphic);
+        return InliningMath.getLocalCost(getCompilerNodeCount(), !monomorphic);
     }
 
     public int getRawLocalCost() {
-        return getReadonlySubgraph().getNodeCount();
+        return getCompilerNodeCount();
+    }
+
+    /**
+     * Size of this node's graph as the inlining heuristics see it; see
+     * {@link jdk.graal.compiler.phases.common.priorityinline.CallTree#compilerNodeCount}.
+     */
+    public int getCompilerNodeCount() {
+        return callTree().compilerNodeCount(getReadonlySubgraph());
     }
 
     @Override

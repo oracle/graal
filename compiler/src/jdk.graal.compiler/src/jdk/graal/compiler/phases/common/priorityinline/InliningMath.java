@@ -71,8 +71,16 @@ public final class InliningMath {
      * Estimate the code size cost of a single node in the call tree.
      */
     public static int getLocalCost(StructuredGraph compilerGraph, boolean requiresDispatching) {
+        return getLocalCost(compilerGraph.getNodeCount(), requiresDispatching);
+    }
+
+    /**
+     * Estimate the code size cost of a single node in the call tree from the node count of its
+     * graph.
+     */
+    public static int getLocalCost(int compilerNodeCount, boolean requiresDispatching) {
         // We favor trivial methods that are with less than 20 nodes.
-        int cost = compilerGraph.getNodeCount() - COST_NODE_DISCOUNT;
+        int cost = compilerNodeCount - COST_NODE_DISCOUNT;
         if (requiresDispatching) {
             cost += IC_CHECK_NODE_COST;
         }
@@ -117,7 +125,7 @@ public final class InliningMath {
      * Compute the number of inlining rounds after which the inliner must perform all optimizations.
      */
     public static int defaultFrequencyForAllOptimizations(CallTree callTree) {
-        int nodeCount = callTree.root().getReadonlySubgraph().getNodeCount();
+        int nodeCount = callTree.root().getCompilerNodeCount();
         return (int) (1 + MAX_OPTIMIZATION_PERIOD * Math.min(1.0, 1.0 * nodeCount / LARGE_GRAPH_SIZE));
     }
 

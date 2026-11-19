@@ -71,6 +71,7 @@ import com.oracle.svm.jvmci.shared.meta.SharedField;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.pgo.StackSampleRecorder;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.espresso.classfile.Constants;
@@ -569,9 +570,10 @@ public class CodeInfoEncoder {
     public static boolean shouldEncodeMethodSignatureAndModifiers() {
         /*
          * JFR stack traces need the method signature and modifiers. By default, we don't include
-         * this extra metadata as it increases the binary size.
+         * this extra metadata as it increases the binary size. The PGO stack sampler needs the
+         * signature to name methods unambiguously in the profile.
          */
-        return HasJfrSupport.get();
+        return HasJfrSupport.get() || StackSampleRecorder.requiresMethodSignatures();
     }
 
     public static int getEntryOffset(Infopoint infopoint) {

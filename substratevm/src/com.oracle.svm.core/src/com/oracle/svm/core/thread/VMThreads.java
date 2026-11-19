@@ -380,6 +380,15 @@ public abstract class VMThreads {
          * the VM can start a safepoint at any time.
          */
         IsolateThreadCache.set(currentThread);
+        /*
+         * Listeners that set up per-thread state for instrumented code, such as the PGO counter
+         * tables, must run before the thread executes any Java code, because instrumented code uses
+         * that state without checking whether it exists. This is the last step of attaching: the
+         * thread is registered but has not run Java code yet. Java code runs as soon as this method
+         * returns (the caller then creates or sets up the Thread object, which can run class
+         * initializers), and every later listener callback comes after it.
+         */
+        ThreadListenerSupport.get().afterThreadAttach(currentThread);
 
         if (startedByCurrentIsolate) {
             ThreadLocalHandshake.blockForHandshake();

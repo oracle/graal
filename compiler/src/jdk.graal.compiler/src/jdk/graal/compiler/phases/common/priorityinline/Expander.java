@@ -311,7 +311,7 @@ public class Expander {
         @Override
         public boolean isInlinedGraphTooBig(CallTree callTree) {
             final OptionValues options = callTree.getOptions();
-            return callTree.root().getReadonlySubgraph().getNodeCount() > InlinedCompilerNodeLimit.getValue(options);
+            return callTree.root().getCompilerNodeCount() > InlinedCompilerNodeLimit.getValue(options);
         }
 
         @Override
@@ -319,7 +319,7 @@ public class Expander {
             if (isCallGraphTooBig(callTree)) {
                 return true;
             }
-            if (callTree.root().getReadonlySubgraph().getNodeCount() > MAX_PEELING_SIZE) {
+            if (callTree.root().getCompilerNodeCount() > MAX_PEELING_SIZE) {
                 return true;
             }
             return false;
@@ -349,12 +349,12 @@ public class Expander {
             benefitThreshold += callTreeSize * getCallGraphSizePenaltyCoefficientValue(options) * tuning.callGraphSizePenaltyMultiplier(node);
 
             // Increase the threshold if the root graph is very large.
-            int rootSize = Math.max(0, root.getReadonlySubgraph().getNodeCount() - rootSizePenaltyTypicalGraphSize(options));
+            int rootSize = Math.max(0, root.getCompilerNodeCount() - rootSizePenaltyTypicalGraphSize(options));
             benefitThreshold += rootSize * getRootSizePenaltyCoefficientValue(options) * tuning.rootSizePenaltyMultiplier(node);
 
             // Increase the threshold if the explored IR size is much larger than the root IR size.
             final int exploredIr = root.getSubtreeTotalCompilerNodeCount();
-            final int inlinedIr = root.getReadonlySubgraph().getNodeCount();
+            final int inlinedIr = root.getCompilerNodeCount();
             if (exploredIr > 2 * inlinedIr && exploredIr > LARGE_EXPLORED_IR_CHECK_THRESHOLD) {
                 benefitThreshold += SmallRootIrPenaltyCoefficient.getValue(options) * exploredIr / inlinedIr * tuning.smallRootIrPenaltyMultiplier(node);
             }
