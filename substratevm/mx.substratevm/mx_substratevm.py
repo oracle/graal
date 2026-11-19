@@ -264,11 +264,8 @@ GraalTags = Tags([
     'terminus',
     'debuginfotest',
     'standalone_pointsto_unittests',
-<<<<<<< HEAD
     'driver_unittests',
-=======
     'scismoketest',
->>>>>>> 999c51ab5 (add mx test for inliner)
     'native_unittests',
     'generic_field_type',
     'runtime_assertions',
