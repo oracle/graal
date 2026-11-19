@@ -246,13 +246,18 @@ public final class Target_java_lang_ClassLoader {
     Class<?> loadClass(Module module, String className) {
         /*
          * When runtime class loading is disabled, named-module lookups still need to resolve
-         * classes already linked into the image.
+         * classes already linked into the image. Unlike the JDK, which searches only the given
+         * module via findClass(String, String), this delegates through the regular loader
+         * hierarchy. The lookup can therefore find a class of another module, e.g., one of a
+         * parent loader, so the result must be filtered by module like the JDK does.
          */
+        Class<?> clazz;
         try {
-            return loadClass(className, false);
+            clazz = loadClass(className, false);
         } catch (ClassNotFoundException e) {
             return null;
         }
+        return clazz != null && clazz.getModule() == module ? clazz : null;
     }
 
     @Substitute //
