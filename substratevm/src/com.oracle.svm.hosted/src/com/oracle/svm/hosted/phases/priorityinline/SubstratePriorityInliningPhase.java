@@ -45,6 +45,7 @@ import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.pgo.PGOInstrumentationFeature;
 import com.oracle.svm.hosted.pgo.phases.PGOApplyProfilesPhase;
 import com.oracle.svm.hosted.pgo.profiles.PGOProfilesLookup;
 import com.oracle.svm.hosted.phases.OOMEExceptionEdgePolicy;
@@ -294,6 +295,16 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
             return OOMEExceptionEdgePolicy.supportsOOMEExceptionEdges(method);
         }
 
+        /**
+         * Leaves out the counters that {@code --pgo-instrument} adds. Counted, they make every
+         * instrumented root and expanded callee look larger, and the build inlines fewer methods
+         * than one without counters.
+         */
+        @Override
+        public int compilerNodeCount(StructuredGraph graph) {
+            return graph.getNodeCount() - PGOInstrumentationFeature.instrumentationNodeCount(graph);
+        }
+
         @Override
         public GraphCache.Ref<ResolvedJavaMethod, StructuredGraph> createGraph(ResolvedJavaMethod targetMethod, Invoke invoke, boolean withNodeSourcePosition,
                         NodeSourcePosition replaceePosition, boolean inOOMEProtectedInlineContext) {
@@ -303,7 +314,13 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
             CompileQueue.verifyInliningProviders((HostedMethod) root.getReadonlySubgraph().method(), inlinee, runtimeConfig);
 
             GraphCache<ResolvedJavaMethod, StructuredGraph> selectedGraphCache = getGraphCache(inOOMEProtectedInlineContext);
-            GraphCache.Ref<ResolvedJavaMethod, StructuredGraph> ref = UseGraphCache.getValue(getOptions()) ? selectedGraphCache.getRef(inlinee) : null;
+            /*
+             * Instrumented expansions carry counters keyed by this expansion's caller context, so a
+             * cached copy would count every later expansion of the callee under the first context.
+             * Therefore the graph cache is not used while --pgo-instrument is enabled.
+             */
+            boolean useCache = UseGraphCache.getValue(getOptions()) && !PGOInstrumentationFeature.enabled();
+            GraphCache.Ref<ResolvedJavaMethod, StructuredGraph> ref = useCache ? selectedGraphCache.getRef(inlinee) : null;
             if (ref == null) {
                 DecodeContext decodeContext = inOOMEProtectedInlineContext ? DecodeContext.OOME_EXCEPTION_EDGES : DecodeContext.DEFAULT;
                 StructuredGraph graphCopy = inlinee.compilationInfo.createGraph(getDebug(), getOptions(), CompilationIdentifier.INVALID_COMPILATION_ID, true, decodeContext);
@@ -312,8 +329,9 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
                 CallTree.mergeUnwinds(graphCopy);
 
                 applyPGOProfiles(graphCopy, getContext(), replaceePosition);
+                PGOInstrumentationFeature.instrumentExpandedGraph(graphCopy, replaceePosition);
 
-                ref = UseGraphCache.getValue(getOptions()) ? selectedGraphCache.createRef(inlinee, graphCopy) : selectedGraphCache.createNonCounted(graphCopy);
+                ref = useCache ? selectedGraphCache.createRef(inlinee, graphCopy) : selectedGraphCache.createNonCounted(graphCopy);
             }
             totalNodes += ref.readonly().getNodeCount();
             assert !withNodeSourcePosition || ref.readonly().trackNodeSourcePosition();

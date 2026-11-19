@@ -2166,6 +2166,7 @@ suite = {
                     "com.oracle.svm.core.graal.snippets           to jdk.graal.compiler",
                     "com.oracle.svm.hosted.fieldfolding           to jdk.graal.compiler",
                     "com.oracle.svm.hosted.phases                 to jdk.graal.compiler",
+                    "com.oracle.svm.hosted.pgo                    to jdk.graal.compiler",
                     "com.oracle.svm.hosted.reflect                to jdk.graal.compiler",
                 ],
                 "requires": [
