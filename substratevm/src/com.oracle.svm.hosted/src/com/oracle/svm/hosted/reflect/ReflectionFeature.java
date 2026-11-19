@@ -334,7 +334,8 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.reflect");
+        // Builder access must not authorize application lookups into JDK reflection internals.
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ReflectionFeature.class, false, "java.base", "jdk.internal.reflect");
 
         ImageSingletons.add(ReflectionSubstitutionSupport.class, this);
 
