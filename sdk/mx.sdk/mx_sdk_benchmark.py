@@ -2525,10 +2525,36 @@ class AnalysisReportJsonFileRule(mx_benchmark.JsonStdOutFileRule):
         return found_json_files
 
 
+class _FixedWindowAveraging(mx_benchmark.AveragingBenchmarkMixin):
+    """Select an explicit scoring window without changing automatic iteration padding."""
+
+    def __init__(self, average_over):
+        self._average_over = average_over
+
+    def getExtraIterationCount(self, iterations):
+        # mx uses this hook to select how many samples to average.
+        # This helper is used only after execution, so it does not add iterations.
+        if self._average_over > iterations:
+            mx.abort(f"Cannot average over {self._average_over} iterations: only {iterations} iterations were recorded")
+        return self._average_over
+
+
 class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):
     """Base benchmark suite for DaCapo-based benchmarks.
 
     This suite can only run a single benchmark in one VM invocation.
+    The run argument --average-over=N reports the mean of the last N warmup samples and
+    records metric.average-over=N. N must be positive and no greater than the sample count.
+    The option is independent of the VM configuration and does not change the iteration
+    count or automatic padding. Without an iteration policy, omitting it retains the
+    default mx averaging policy.
+    The run argument --iteration-policy=interpreter selects 10 total iterations and averages
+    the last 5, except factorie and tmt, which run twice and score only the second iteration.
+    Explicit -n and --average-over values override the policy independently.
+    Policy iteration counts do not receive automatic padding.
+    These options are consumed here, not passed to the benchmark JAR.
+    The window is checked against the resolved iteration count before launching the VM
+    and against the recorded samples after the run.
     """
     def group(self):
         return "Graal"
@@ -2578,12 +2604,32 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def validateReturnCode(self, retcode):
         return retcode == 0
 
-    def postprocessRunArgs(self, benchname, runArgs):
+    @staticmethod
+    def _parse_run_args(runArgs):
         parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument("-n", "--iterations", default=None)
         parser.add_argument("-sf", default=1, type=float, help="The total number of iterations is equivalent to the value selected by the '-n' flag scaled by this factor.")
         parser.add_argument("-s", "--size", default=None)
+        parser.add_argument("--average-over", type=int, metavar="N", help="Report the mean of the last N iterations without changing the iteration count.")
+        parser.add_argument("--iteration-policy", choices=["interpreter"], help="Use per-benchmark interpreter iteration counts and scoring windows.")
         args, remaining = parser.parse_known_args(runArgs)
+        if args.average_over is not None and args.average_over <= 0:
+            parser.error("--average-over must be a positive integer")
+        return args, remaining
+
+    @staticmethod
+    def _iteration_settings(benchname, args):
+        """Resolve total iterations and averaging; None retains the existing mx default."""
+        iterations, average_over = None, None
+        if args.iteration_policy == "interpreter":
+            iterations, average_over = {"factorie": (2, 1), "tmt": (2, 1)}.get(benchname, (10, 5))
+        if args.average_over is not None:
+            average_over = args.average_over
+        return iterations, average_over
+
+    def postprocessRunArgs(self, benchname, runArgs):
+        args, remaining = self._parse_run_args(runArgs)
+        iterations, average_over = self._iteration_settings(benchname, args)
 
         if args.size:
             if args.size not in self.existingSizes():
@@ -2600,17 +2646,20 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
             otherArgs += ["--no-validation"]
 
         if args.iterations:
-            if args.iterations.isdigit():
-                return ["-n", str(int(args.sf * int(args.iterations)))] + otherArgs
-            if args.iterations == "-1":
+            if not args.iterations.isdigit():
                 return None
-        else:
+            iterations = int(args.sf * int(args.iterations))
+        elif iterations is None:
             iterations = self.daCapoIterations()[benchname]
             if iterations == -1:
                 return None
-            else:
-                iterations = iterations + int(self.getExtraIterationCount(iterations) * args.sf)
-                return ["-n", str(iterations)] + otherArgs
+            iterations = iterations + int(self.getExtraIterationCount(iterations) * args.sf)
+        else:
+            iterations = int(args.sf * iterations)
+
+        if average_over is not None and average_over > iterations:
+            mx.abort(f"Cannot average over {average_over} iterations: only {iterations} iterations will run")
+        return ["-n", str(iterations)] + otherArgs
 
     def jarPath(self, benchmark):
         if self.version() == "23.11-MR2-chopin":
@@ -2722,8 +2771,11 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         ]
 
     def run(self, benchmarks, bmSuiteArgs):
+        args, _ = self._parse_run_args(self.runArgs(bmSuiteArgs))
         results = super().run(benchmarks, bmSuiteArgs)
-        self.addAverageAcrossLatestResults(results)
+        _, average_over = self._iteration_settings(benchmarks[0], args)
+        averaging = self if average_over is None else _FixedWindowAveraging(average_over)
+        averaging.addAverageAcrossLatestResults(results)
         return results
 
 
