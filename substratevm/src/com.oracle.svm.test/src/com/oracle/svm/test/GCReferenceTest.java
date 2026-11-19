@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.test;
 
+import static com.oracle.svm.test.GCTestUtils.TIMEOUT_MS;
+import static com.oracle.svm.test.GCTestUtils.allocateGarbage;
+import static com.oracle.svm.test.GCTestUtils.awaitGC;
+
 import java.lang.ref.Cleaner;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
@@ -34,7 +38,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -49,87 +52,13 @@ import org.junit.Test;
  * These tests work with any garbage collector. They only use standard Java to trigger collections
  * ({@link System#gc()} plus allocating garbage), never GC-specific flags or internal APIs. Because
  * no collector promises to collect an object at an exact moment, tests that need a collection call
- * {@link #awaitGC}, which keeps retrying until a deadline instead of assuming that one
+ * {@link GCTestUtils#awaitGC}, which keeps retrying until a deadline instead of assuming that one
  * {@link System#gc()} call is enough. That also keeps the tests correct for concurrent collectors,
  * which finish their work in the background.
  *
  * Object finalization is deliberately not tested here, because Native Image does not run finalizers.
  */
 public class GCReferenceTest {
-
-    /** How long a test is willing to wait for the GC to do its work before failing. */
-    private static final long TIMEOUT_MS = 30_000;
-
-    /** How much garbage to allocate between collection attempts, to create memory pressure. */
-    private static final int GARBAGE_CHUNK = 64 * 1024;
-
-    /** A simple test object. The id only exists to make failure messages readable. */
-    private static final class Payload {
-        private final int id;
-
-        Payload(int id) {
-            this.id = id;
-        }
-
-        @Override
-        public String toString() {
-            return "Payload(" + id + ")";
-        }
-    }
-
-    /**
-     * Keeps asking for a garbage collection until {@code condition} becomes true, then returns. If
-     * the condition is still false when the timeout expires, the test fails.
-     *
-     * Why the loop is necessary: a single {@link System#gc()} is only a hint. Some collectors need
-     * allocation to happen before they start a cycle, and a concurrent collector does its work on
-     * background threads, so the result may only be visible a little later. Allocating garbage and
-     * sleeping briefly on each attempt covers both cases.
-     */
-    private static void awaitGC(BooleanSupplier condition, String message) {
-        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
-        int attempts = 0;
-        while (System.currentTimeMillis() < deadline) {
-            if (condition.getAsBoolean()) {
-                return;
-            }
-            attempts++;
-            System.gc();
-            consume(new byte[GARBAGE_CHUNK]);
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new AssertionError("interrupted while waiting for GC", e);
-            }
-        }
-        Assert.fail(message + " (still not satisfied after " + attempts + " GC attempts in " + TIMEOUT_MS + "ms)");
-    }
-
-    /** Written to a volatile field so the compiler cannot delete the allocation above. */
-    private static volatile Object sink;
-
-    private static void consume(Object o) {
-        sink = o;
-        sink = null;
-    }
-
-    /*
-     * The two helpers below create the object being watched inside their own method. That matters:
-     * when the helper returns, the only strong reference to the object is gone, so the object really
-     * is unreachable. If the object were created in the test method instead, the test method's own
-     * local variable could keep it alive and the test would pass for the wrong reason.
-     */
-
-    private static WeakReference<Payload> newWeak(ReferenceQueue<Payload> queue) {
-        Payload referent = new Payload(1);
-        return new WeakReference<>(referent, queue);
-    }
-
-    private static PhantomReference<Payload> newPhantom(ReferenceQueue<Payload> queue) {
-        Payload referent = new Payload(2);
-        return new PhantomReference<>(referent, queue);
-    }
 
     /**
      * Checks the most basic weak-reference promise: once the only way to reach an object is through a
@@ -191,7 +120,7 @@ public class GCReferenceTest {
 
         for (int i = 0; i < 20; i++) {
             System.gc();
-            consume(new byte[GARBAGE_CHUNK]);
+            allocateGarbage();
         }
 
         Assert.assertFalse("a strongly reachable weak referent must not be cleared", weak.refersTo(null));
@@ -231,16 +160,6 @@ public class GCReferenceTest {
     }
 
     /**
-     * Registers the cleanup action. The action counts down a latch and deliberately does not
-     * mention the watched object: a cleanup action that referred to its own object would keep that
-     * object alive forever and the cleanup would never run.
-     */
-    private static void registerCleanable(Cleaner cleaner, CountDownLatch cleaned) {
-        Payload referent = new Payload(4);
-        cleaner.register(referent, cleaned::countDown);
-    }
-
-    /**
      * Scales the first test up from one reference to a thousand. A GC that only processed some of the
      * references it found would pass the single-reference test but fail here, so this checks that
      * every single one is cleared.
@@ -257,5 +176,46 @@ public class GCReferenceTest {
 
         long remaining = refs.stream().filter(r -> !r.refersTo(null)).count();
         Assert.assertEquals("all weak references must be cleared", 0, remaining);
+    }
+
+    /** A simple test object. The id only exists to make failure messages readable. */
+    private static final class Payload {
+        private final int id;
+
+        Payload(int id) {
+            this.id = id;
+        }
+
+        @Override
+        public String toString() {
+            return "Payload(" + id + ")";
+        }
+    }
+
+    /*
+     * The two helpers below create the object being watched inside their own method. That matters:
+     * when the helper returns, the only strong reference to the object is gone, so the object really
+     * is unreachable. If the object were created in the test method instead, the test method's own
+     * local variable could keep it alive and the test would pass for the wrong reason.
+     */
+
+    private static WeakReference<Payload> newWeak(ReferenceQueue<Payload> queue) {
+        Payload referent = new Payload(1);
+        return new WeakReference<>(referent, queue);
+    }
+
+    private static PhantomReference<Payload> newPhantom(ReferenceQueue<Payload> queue) {
+        Payload referent = new Payload(2);
+        return new PhantomReference<>(referent, queue);
+    }
+
+    /**
+     * Registers the cleanup action. The action counts down a latch and deliberately does not
+     * mention the watched object: a cleanup action that referred to its own object would keep that
+     * object alive forever and the cleanup would never run.
+     */
+    private static void registerCleanable(Cleaner cleaner, CountDownLatch cleaned) {
+        Payload referent = new Payload(4);
+        cleaner.register(referent, cleaned::countDown);
     }
 }

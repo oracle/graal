@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.test;
 
+import static com.oracle.svm.test.GCTestUtils.allocateGarbage;
+
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.concurrent.CountDownLatch;
@@ -49,28 +51,6 @@ import org.junit.Test;
  * The tests work with any garbage collector and use only standard Java APIs.
  */
 public class GCAtomicReferenceTest {
-
-    /** Written to a volatile field so the compiler cannot delete the allocations. */
-    private static volatile Object sink;
-
-    private static void allocateGarbage() {
-        sink = new byte[16 * 1024];
-        sink = null;
-    }
-
-    /** A value object that remembers which iteration created it. */
-    private static final class Value {
-        private final int id;
-
-        Value(int id) {
-            this.id = id;
-        }
-    }
-
-    /** Target of the {@link VarHandle} test below. */
-    private static final class Holder {
-        @SuppressWarnings("unused") private volatile Value field;
-    }
 
     /**
      * Repeatedly replaces the contents of an {@link AtomicReference} with
@@ -257,5 +237,19 @@ public class GCAtomicReferenceTest {
         Assert.assertTrue("worker threads did not finish in time", done.await(60, TimeUnit.SECONDS));
 
         Assert.assertEquals("updates were lost or double-counted", threads * updatesPerThread, ref.get().id);
+    }
+
+    /** A value object that remembers which iteration created it. */
+    private static final class Value {
+        private final int id;
+
+        Value(int id) {
+            this.id = id;
+        }
+    }
+
+    /** Target of the {@link VarHandle} test above. */
+    private static final class Holder {
+        @SuppressWarnings("unused") private volatile Value field;
     }
 }

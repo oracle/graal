@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.test;
 
+import static com.oracle.svm.test.GCTestUtils.allocateGarbage;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +33,8 @@ import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
+
+import jdk.graal.compiler.api.directives.GraalDirectives;
 
 /**
  * Tests that the garbage collector never damages the object graph.
@@ -46,37 +50,6 @@ import org.junit.Test;
  * to provoke collections, and they make no assumption about when a collection happens.
  */
 public class GCObjectGraphTest {
-
-    /** How much garbage to allocate per step, to keep the collector busy. */
-    private static final int GARBAGE_CHUNK = 32 * 1024;
-
-    /** Written to a volatile field so the compiler cannot delete the allocations. */
-    private static volatile Object sink;
-
-    private static void allocateGarbage(int chunks) {
-        for (int i = 0; i < chunks; i++) {
-            sink = new byte[GARBAGE_CHUNK];
-        }
-        sink = null;
-    }
-
-    /** Requests several collections, allocating in between so that collectors make progress. */
-    private static void collectRepeatedly(int rounds) {
-        for (int i = 0; i < rounds; i++) {
-            allocateGarbage(8);
-            System.gc();
-        }
-    }
-
-    /** A node in a linked chain. Each node stores its own index so it can be verified later. */
-    private static final class Node {
-        private final int index;
-        private Node next;
-
-        Node(int index) {
-            this.index = index;
-        }
-    }
 
     /**
      * Builds a long chain of objects, collects, then walks the whole chain.
@@ -211,17 +184,6 @@ public class GCObjectGraphTest {
     }
 
     /**
-     * Creates two nodes that point at each other and then returns, so the pair is unreachable but
-     * still referenced from within itself.
-     */
-    private static void createCycle() {
-        Node a = new Node(-1);
-        Node b = new Node(-2);
-        a.next = b;
-        b.next = a;
-    }
-
-    /**
      * A stress test with a mixture of object sizes and lifetimes, closer to how a real program
      * behaves than the focused tests above.
      *
@@ -243,10 +205,10 @@ public class GCObjectGraphTest {
             if (i % 100 == 0) {
                 survivors.add(data);
             } else {
-                sink = data;
+                /* Without this, the compiler could remove the allocation of an array nobody uses. */
+                GraalDirectives.blackhole(data);
             }
         }
-        sink = null;
         System.gc();
 
         Assert.assertEquals("unexpected number of survivors", iterations / 100, survivors.size());
@@ -254,6 +216,35 @@ public class GCObjectGraphTest {
             byte[] data = (byte[]) survivors.get(i);
             int originalIteration = i * 100;
             Assert.assertEquals("survivor " + i + " has corrupted contents", (byte) originalIteration, data[0]);
+        }
+    }
+
+    /** A node in a linked chain. Each node stores its own index so it can be verified later. */
+    private static final class Node {
+        private final int index;
+        private Node next;
+
+        Node(int index) {
+            this.index = index;
+        }
+    }
+
+    /**
+     * Creates two nodes that point at each other and then returns, so the pair is unreachable but
+     * still referenced from within itself.
+     */
+    private static void createCycle() {
+        Node a = new Node(-1);
+        Node b = new Node(-2);
+        a.next = b;
+        b.next = a;
+    }
+
+    /** Requests several collections, allocating in between so that collectors make progress. */
+    private static void collectRepeatedly(int rounds) {
+        for (int i = 0; i < rounds; i++) {
+            allocateGarbage(8);
+            System.gc();
         }
     }
 }
