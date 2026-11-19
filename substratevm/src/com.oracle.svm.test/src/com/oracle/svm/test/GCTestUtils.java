@@ -24,16 +24,19 @@
  */
 package com.oracle.svm.test;
 
+import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 
 import org.junit.Assert;
+import org.junit.Assume;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.NeverInline;
 
 /**
  * Helpers shared by the garbage collector tests ({@link GCReferenceTest}, {@link GCObjectGraphTest}
- * and {@link GCAtomicReferenceTest}). They only use standard Java to provoke collections, so they
- * work with any garbage collector.
+ * and {@link GCAtomicReferenceTest}). They only use standard Java to provoke collections, so they do
+ * not depend on a particular garbage collector.
  */
 final class GCTestUtils {
 
@@ -50,17 +53,26 @@ final class GCTestUtils {
      * Keeps asking for a garbage collection until {@code condition} becomes true, then returns. If
      * the condition is still false when the timeout expires, the test fails.
      *
+     * The test is skipped instead if the collector never reclaims memory (the Epsilon GC), because
+     * the condition could then never become true.
+     *
      * Why the loop is necessary: a single {@link System#gc()} is only a hint. Some collectors need
      * allocation to happen before they start a cycle, and a concurrent collector does its work on
      * background threads, so the result may only be visible a little later. Allocating garbage and
      * sleeping briefly on each attempt covers both cases.
+     *
+     * The condition is checked after each attempt and before the deadline, so a result that becomes
+     * visible during the last sleep is still seen. The deadline uses {@link System#nanoTime()}
+     * because, unlike the wall clock, it is not affected by clock adjustments.
      */
     static void awaitGC(BooleanSupplier condition, String message) {
-        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        Assume.assumeFalse("The Epsilon GC never reclaims memory", SubstrateOptions.useEpsilonGC());
+
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(TIMEOUT_MS);
         int attempts = 0;
-        while (System.currentTimeMillis() < deadline) {
-            if (condition.getAsBoolean()) {
-                return;
+        while (!condition.getAsBoolean()) {
+            if (System.nanoTime() - deadline >= 0) {
+                Assert.fail(message + " (still not satisfied after " + attempts + " GC attempts in " + TIMEOUT_MS + "ms)");
             }
             attempts++;
             System.gc();
@@ -72,7 +84,6 @@ final class GCTestUtils {
                 throw new AssertionError("interrupted while waiting for GC", e);
             }
         }
-        Assert.fail(message + " (still not satisfied after " + attempts + " GC attempts in " + TIMEOUT_MS + "ms)");
     }
 
     /**

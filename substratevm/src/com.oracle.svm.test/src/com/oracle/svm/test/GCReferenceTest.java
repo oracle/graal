@@ -49,12 +49,13 @@ import org.junit.Test;
  * were watching it must be updated (cleared) and reported (enqueued). An object that is still in
  * use must never be collected.
  *
- * These tests work with any garbage collector. They only use standard Java to trigger collections
- * ({@link System#gc()} plus allocating garbage), never GC-specific flags or internal APIs. Because
- * no collector promises to collect an object at an exact moment, tests that need a collection call
- * {@link GCTestUtils#awaitGC}, which keeps retrying until a deadline instead of assuming that one
- * {@link System#gc()} call is enough. That also keeps the tests correct for concurrent collectors,
- * which finish their work in the background.
+ * These tests work with any garbage collector that reclaims memory. They only use standard Java to
+ * trigger collections ({@link System#gc()} plus allocating garbage), never GC-specific flags or
+ * internal APIs. Because no collector promises to collect an object at an exact moment, tests that
+ * need a collection call {@link GCTestUtils#awaitGC}, which keeps retrying until a deadline instead
+ * of assuming that one {@link System#gc()} call is enough. That also keeps the tests correct for
+ * concurrent collectors, which finish their work in the background. With the Epsilon GC, which
+ * never collects, {@link GCTestUtils#awaitGC} skips the test.
  *
  * Object finalization is deliberately not tested here, because Native Image does not run finalizers.
  */

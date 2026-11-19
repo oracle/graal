@@ -25,7 +25,9 @@
 package com.oracle.svm.test;
 
 import static com.oracle.svm.test.GCTestUtils.allocateGarbage;
+import static com.oracle.svm.test.GCTestUtils.awaitGC;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +35,8 @@ import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.svm.shared.NeverInline;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 
@@ -47,7 +51,9 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
  * element and every map entry still holds exactly what it held before.
  *
  * The tests are written for any garbage collector: they only use {@link System#gc()} and allocation
- * to provoke collections, and they make no assumption about when a collection happens.
+ * to provoke collections, and they make no assumption about when a collection happens. The one test
+ * that waits for the collector to reclaim cyclic garbage is skipped with the Epsilon GC, which never
+ * collects.
  */
 public class GCObjectGraphTest {
 
@@ -158,11 +164,12 @@ public class GCObjectGraphTest {
     }
 
     /**
-     * Builds a structure where objects reference each other in a cycle, then drops it entirely.
+     * Builds structures where objects reference each other in a cycle, then drops them entirely.
      *
      * Cycles are worth testing because a collector that freed memory by counting references would
-     * never reclaim them. The point here is simply that the program keeps running correctly and the
-     * still-live structure stays intact while the abandoned cycles are collected.
+     * never reclaim them. To make the outcome visible, a weak reference watches every node of every
+     * cycle. Once the cycles are unreachable, the collector must clear all of these references.
+     * Meanwhile the still-live structure must stay intact.
      */
     @Test
     public void testCyclicGarbageIsCollectedAndLiveDataSurvives() {
@@ -172,10 +179,13 @@ public class GCObjectGraphTest {
             live.add(new Node(i));
         }
 
+        List<WeakReference<Node>> cycleNodes = new ArrayList<>();
         for (int round = 0; round < 20; round++) {
-            createCycle();
+            createCycle(cycleNodes);
             System.gc();
         }
+
+        awaitGC(() -> cycleNodes.stream().allMatch(r -> r.refersTo(null)), "cyclic garbage was not collected");
 
         Assert.assertEquals("the live list changed size", 100, live.size());
         for (int i = 0; i < live.size(); i++) {
@@ -231,13 +241,19 @@ public class GCObjectGraphTest {
 
     /**
      * Creates two nodes that point at each other and then returns, so the pair is unreachable but
-     * still referenced from within itself.
+     * still referenced from within itself. A weak reference to each node is added to
+     * {@code watchers}, so that the caller can check whether the pair gets collected. Weak
+     * references do not keep the nodes alive. They also make the nodes escape, so the compiler cannot
+     * remove the allocations.
      */
-    private static void createCycle() {
+    @NeverInline("Keep references to the nodes out of the caller's frame.")
+    private static void createCycle(List<WeakReference<Node>> watchers) {
         Node a = new Node(-1);
         Node b = new Node(-2);
         a.next = b;
         b.next = a;
+        watchers.add(new WeakReference<>(a));
+        watchers.add(new WeakReference<>(b));
     }
 
     /** Requests several collections, allocating in between so that collectors make progress. */
