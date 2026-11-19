@@ -135,6 +135,17 @@ public abstract class StandaloneAnalysisTest {
     }
 
     /**
+     * Creates the analyzer for the supplied entry class with the same options as
+     * {@link #runAnalysis}, but does not run it. Returns the created analysis, so tests can check
+     * option validation that happens before any root is registered or any method is analyzed.
+     */
+    protected final PointsToAnalysis createAnalysis(Class<?> entryClass, String... extraOptions) {
+        resetAnalysisState();
+        analyzer = PointsToAnalyzer.createAnalyzer(createArguments(entryClass, extraOptions));
+        return analyzer.getResultAnalysis();
+    }
+
+    /**
      * Runs standalone analysis using a specific entry method selected by name and parameter types.
      */
     protected final void runAnalysisMethod(Class<?> entryClass, String entryMethodName, Class<?>... parameterTypes) {
