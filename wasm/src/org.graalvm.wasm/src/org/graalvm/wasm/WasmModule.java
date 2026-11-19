@@ -88,6 +88,7 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     private final WasmLanguage language;
     @CompilationFinal private boolean isParsed;
     private volatile boolean hasBeenInstantiated;
+    private volatile boolean hasSharedCallTargets;
 
     private final ReentrantLock lock = new ReentrantLock();
 
@@ -152,8 +153,16 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         return hasBeenInstantiated;
     }
 
-    public void setHasBeenInstantiated() {
+    /** Whether all code entries have fully initialized, instance-independent cached targets. */
+    public boolean hasSharedCallTargets() {
+        return hasSharedCallTargets;
+    }
+
+    public void setHasBeenInstantiated(boolean sharedCallTargets) {
+        assert !hasSharedCallTargets;
         this.hasBeenInstantiated = true;
+        // Publish cached targets only after every root and direct call site has been initialized.
+        this.hasSharedCallTargets = sharedCallTargets;
     }
 
     /**

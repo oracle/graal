@@ -446,11 +446,11 @@ public class WasmInstantiator {
     private void instantiateCodeEntries(WasmStore store, WasmInstance instance) {
         final WasmModule module = instance.module();
         final boolean multiContext = language.isMultiContext();
-        if (multiContext && module.hasBeenInstantiated()) {
+        if (module.hasSharedCallTargets()) {
             // If the module has already been instantiated and the call targets are shared,
             // there's no need to read and instantiate the code entries again.
             // We only need to initialize the code entry call targets in the new instance.
-            resolveInstantiatedCodeEntries(store, instance, module);
+            resolveInstantiatedCodeEntries(instance, module);
             return;
         }
         // If module instantiation were to happen concurrently, one thread might have already
@@ -460,11 +460,14 @@ public class WasmInstantiator {
         var lock = module.getLock();
         lock.lock();
         try {
-            if (multiContext && module.hasBeenInstantiated()) {
-                resolveInstantiatedCodeEntries(store, instance, module);
+            if (module.hasSharedCallTargets()) {
+                resolveInstantiatedCodeEntries(instance, module);
                 return;
             }
 
+            // Keep the first single-context instance bound for peak performance. Subsequent
+            // instances share unbound roots, so repeated instantiation does not reset profiling.
+            final boolean sharedCallTargets = multiContext || module.hasBeenInstantiated();
             CodeEntry[] codeEntries = module.codeEntries();
             if (codeEntries == null) {
                 // Reread the code section if the module is instantiated multiple times
@@ -475,7 +478,7 @@ public class WasmInstantiator {
             }
             for (int entry = 0; entry != codeEntries.length; ++entry) {
                 CodeEntry codeEntry = codeEntries[entry];
-                var callTarget = instantiateCodeEntry(store, module, instance, codeEntry);
+                var callTarget = instantiateCodeEntry(store, module, instance, codeEntry, sharedCallTargets);
                 instance.setTarget(codeEntry.functionIndex(), callTarget);
             }
             // Now that the call targets of all the code entries are set, we can resolve all local
@@ -484,7 +487,7 @@ public class WasmInstantiator {
                 CodeEntry codeEntry = codeEntries[entry];
                 resolveDirectCallTargets(instance, instance.target(codeEntry.functionIndex()), codeEntry.callFunctionIndices());
             }
-            module.setHasBeenInstantiated();
+            module.setHasBeenInstantiated(sharedCallTargets);
         } finally {
             lock.unlock();
         }
@@ -493,8 +496,8 @@ public class WasmInstantiator {
     /**
      * Resolves the call targets of already instantiated code entries in a new instance.
      */
-    private static void resolveInstantiatedCodeEntries(WasmStore store, WasmInstance instance, WasmModule module) {
-        assert store.language().isMultiContext() && module.hasBeenInstantiated();
+    private static void resolveInstantiatedCodeEntries(WasmInstance instance, WasmModule module) {
+        assert module.hasSharedCallTargets();
         for (int functionIndex = 0; functionIndex != module.numFunctions(); ++functionIndex) {
             WasmFunction function = module.symbolTable().function(functionIndex);
             CallTarget target = function.target();
@@ -511,17 +514,17 @@ public class WasmInstantiator {
         return builder.build();
     }
 
-    private CallTarget instantiateCodeEntry(WasmStore store, WasmModule module, WasmInstance instance, CodeEntry codeEntry) {
+    private CallTarget instantiateCodeEntry(WasmStore store, WasmModule module, WasmInstance instance, CodeEntry codeEntry, boolean sharedCallTargets) {
         final int functionIndex = codeEntry.functionIndex();
         final WasmFunction function = module.symbolTable().function(functionIndex);
         var cachedTarget = function.target();
         if (cachedTarget != null) {
-            assert store.language().isMultiContext();
+            assert sharedCallTargets;
             return cachedTarget;
         }
         final WasmRootNode rootNode = instantiateCodeEntryRootNode(store, module, codeEntry, function);
         var callTarget = rootNode.getCallTarget();
-        if (store.language().isMultiContext()) {
+        if (sharedCallTargets) {
             function.setTarget(callTarget);
         } else {
             rootNode.setBoundModuleInstance(instance);
