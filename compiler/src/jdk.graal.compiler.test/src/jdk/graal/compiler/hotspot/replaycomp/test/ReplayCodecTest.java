@@ -28,8 +28,6 @@ import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.StringReader;
-import java.io.StringWriter;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
@@ -45,7 +43,6 @@ import jdk.graal.compiler.hotspot.replaycomp.CompilationProxies;
 import jdk.graal.compiler.hotspot.replaycomp.CompilationProxyMapper;
 import jdk.graal.compiler.hotspot.replaycomp.CompilationTaskProduct;
 import jdk.graal.compiler.hotspot.replaycomp.CompilerInterfaceDeclarations;
-import jdk.graal.compiler.hotspot.replaycomp.JsonReplayCodec;
 import jdk.graal.compiler.hotspot.replaycomp.OperationRecorder;
 import jdk.graal.compiler.hotspot.replaycomp.RecordedCompilationUnit;
 import jdk.graal.compiler.hotspot.replaycomp.RecordedForeignCallLinkages;
@@ -53,7 +50,6 @@ import jdk.graal.compiler.hotspot.replaycomp.SpecialResultMarker;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxy;
 import jdk.graal.compiler.hotspot.replaycomp.proxy.CompilationProxyBase;
 import jdk.graal.compiler.util.EconomicHashMap;
-import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
@@ -63,47 +59,30 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
- * Tests replay-file serialization and deserialization for JSON and binary codecs.
+ * Tests replay-file serialization and deserialization for the binary codec.
  */
 public class ReplayCodecTest extends GraalCompilerTest {
-    @Test
-    public void dumpsAndLoadsJson() throws Exception {
-        checkRoundTrip((jsonCodec, ignored, compilationUnit, proxyFactory) -> {
-            String json;
-            try (StringWriter stringWriter = new StringWriter(); JsonWriter jsonWriter = new JsonWriter(stringWriter)) {
-                jsonCodec.dump(compilationUnit, jsonWriter);
-                json = stringWriter.toString();
-            }
-            try (StringReader reader = new StringReader(json)) {
-                return jsonCodec.load(reader, proxyFactory);
-            }
-        });
-    }
-
+    /**
+     * Checks that a binary round trip preserves recorded operations and proxy identities.
+     */
     @Test
     public void dumpsAndLoadsBinary() throws Exception {
-        checkRoundTrip((ignored, binaryCodec, compilationUnit, proxyFactory) -> {
-            byte[] binary;
-            try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-                binaryCodec.write(compilationUnit, output);
-                binary = output.toByteArray();
-            }
-            try (ByteArrayInputStream input = new ByteArrayInputStream(binary)) {
-                return binaryCodec.read(input, proxyFactory);
-            }
-        });
-    }
-
-    private void checkRoundTrip(RoundTrip roundTrip) throws Exception {
         CompilerInterfaceDeclarations declarations = CompilerInterfaceDeclarations.build();
         Platform hostPlatform = Platform.ofCurrentHost();
         var hostTarget = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget();
-        JsonReplayCodec jsonCodec = new JsonReplayCodec(declarations, hostPlatform, hostTarget);
         BinaryReplayCodec binaryCodec = new BinaryReplayCodec(declarations, hostPlatform, hostTarget);
         RecordedCompilationUnit compilationUnit = createRecordedCompilationUnit();
         TestProxyFactory proxyFactory = new TestProxyFactory(declarations);
         List<OperationRecorder.RecordedOperation> expectedOperations = proxifyOperations(compilationUnit, declarations, proxyFactory);
-        RecordedCompilationUnit roundTrippedCompilationUnit = roundTrip.roundTrip(jsonCodec, binaryCodec, compilationUnit, proxyFactory);
+        byte[] binary;
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            binaryCodec.write(compilationUnit, output);
+            binary = output.toByteArray();
+        }
+        RecordedCompilationUnit roundTrippedCompilationUnit;
+        try (ByteArrayInputStream input = new ByteArrayInputStream(binary)) {
+            roundTrippedCompilationUnit = binaryCodec.read(input, proxyFactory);
+        }
         assertRoundTrippedOperations(expectedOperations, roundTrippedCompilationUnit.operations());
     }
 
@@ -166,12 +145,6 @@ public class ReplayCodecTest extends GraalCompilerTest {
         Assumptions assumptions = new Assumptions();
         assumptionResult.recordTo(assumptions);
         return assumptions;
-    }
-
-    @FunctionalInterface
-    private interface RoundTrip {
-        RecordedCompilationUnit roundTrip(JsonReplayCodec persistence, BinaryReplayCodec binaryReplayCodec,
-                        RecordedCompilationUnit compilationUnit, CompilationProxies.ProxyFactory proxyFactory) throws Exception;
     }
 
     public static Object dummyMethod() {

@@ -13,8 +13,7 @@ Recording is enabled with the option `-Djdk.graal.RecordForReplay=*`. The value 
 to be recorded. The syntax of method filters is explained `MethodFilter.java`.
 
 The below command records and serializes every compilation into `./replay-files/replaycomp/<compile-id>.replay`.
-The directories are created if they do not exist. To use the legacy JSON format instead, use
-`-Djdk.graal.ReplayFileFormat=Json`.
+The directories are created if they do not exist.
 
 ```shell
 mx benchmark renaissance:scrabble -- -Djdk.graal.RecordForReplay='*' -Djdk.graal.DumpPath=$PWD/replay-files -- -r 1
@@ -25,9 +24,8 @@ overhead for the methods in the binary format can be around 5x. The size of a ty
 and compression reduces it by 75%. Note that if the VM exits during an ongoing compilation, some of the replay files may
 be incomplete.
 
-The `mx replaycomp` command finds all replay files found in a given directory (and subdirectories) and invokes the
-replay compiler on each. It supports the default binary `.replay` format and the legacy `.json` format. The command
-also accepts a path to a single file.
+The `mx replaycomp` command recursively finds binary `.replay` files in a given directory and replays each compilation.
+The command also accepts a path to a single file.
 
 ```shell
 mx replaycomp ./replay-files

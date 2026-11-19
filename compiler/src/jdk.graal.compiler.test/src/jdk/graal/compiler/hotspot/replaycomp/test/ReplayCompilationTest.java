@@ -187,7 +187,7 @@ public class ReplayCompilationTest extends GraalCompilerTest {
              * A replay file may not be parsable when the compiler thread exits during writing -
              * this is not an error.
              */
-            assertTrue(Path.of(temp.path.toString(), "empty" + ReplayCompilationSupport.ReplayFileFormat.Binary.fileExtension()).toFile().createNewFile());
+            assertTrue("The empty replay file must be created", Path.of(temp.path.toString(), "empty" + ReplayCompilationSupport.REPLAY_FILE_EXTENSION).toFile().createNewFile());
             ReplayCompilationRunner.ExitStatus status = ReplayCompilationRunner.run(new String[]{temp.path.toString()}, TTY.out().out(), new HardwarePerformanceCounters.JargraalPAPIBridge());
             assertTrue(status == ReplayCompilationRunner.ExitStatus.Success);
         });
