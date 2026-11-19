@@ -175,14 +175,16 @@ public final class IsolateThreadCache {
          * other Isolate.
          */
         if (pt.getUnmanagedThreadLocalValue(isolateKey).rawValue() == Isolates.getIsolateId()) {
-            assert CEntryPointSnippets.isIsolateInitialized();
             /*
              * If the cache entry belongs to the current isolate, we expect that the IsolateThread
-             * pointer is non-null. There is one exception: The reference handler thread for the
-             * first isolate (with isolate ID == 0) may have been started before the initialization
-             * of the Isolate was finished. On isolate tear down, there may be a cache "hit" because
-             * the cache was actually never written and its value was initialized with 0.
+             * pointer is non-null and the isolate is initialized. There is one exception: The
+             * reference handler thread for the first isolate (with isolate ID == 0) may have been
+             * started before the initialization of the isolate was finished. Initialization may
+             * also fail before any cache entry was written. On isolate teardown, there may be a
+             * cache "hit" because the cache was actually never written and its value was
+             * initialized with 0.
              */
+            assert Isolates.isCurrentFirst() || CEntryPointSnippets.isIsolateInitialized();
             assert Isolates.isCurrentFirst() || pt.getUnmanagedThreadLocalValue(threadKey) != Word.nullPointer();
             pt.setUnmanagedThreadLocalValue(threadKey, Word.nullPointer());
             pt.setUnmanagedThreadLocalValue(isolateKey, Word.signed(-1L));

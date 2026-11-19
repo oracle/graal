@@ -145,6 +145,8 @@ import jdk.internal.misc.Unsafe;
  */
 public final class CEntryPointSnippets extends SubstrateTemplates implements Snippets {
 
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+
     public static final SubstrateForeignCallDescriptor CREATE_ISOLATE = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "createIsolate",
                     HAS_SIDE_EFFECT, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor INITIALIZE_ISOLATE = SnippetRuntime.findForeignCall(CEntryPointSnippets.class, "initializeIsolate",
@@ -412,11 +414,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         static final int FAILED = -1;
     }
 
-    /**
-     * Certain initialization tasks must be done exactly once per process, by the first launched
-     * isolate, which is coordinated via this variable.
-     */
+    /// Certain initialization tasks must be done exactly once per process, by the isolate that
+    /// claims process initialization. This variable coordinates that claim and its completion.
     private static final CGlobalData<PointerBase> FIRST_ISOLATE_INIT_STATE = CGlobalDataFactory.createWord();
+
     private static boolean isolateInitialized;
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -424,13 +425,21 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return isolateInitialized;
     }
 
-    @Uninterruptible(reason = "Must be uninterruptible because thread state is not set up after leaveTearDownIsolate().")
+    /// Initializes the isolate and tears it down on failure.
+    @Uninterruptible(reason = "Thread state is not set up after leaveTearDownIsolate().")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static int initializeIsolate(CEntryPointCreateIsolateParameters parameters) {
         int result = initializeIsolateInterruptibly(parameters);
         if (result != CEntryPointErrors.NO_ERROR) {
+            if (Isolates.isCurrentFirst()) {
+                /*
+                 * Publish an unfinished initialization's failure before teardown discards the image
+                 * heap. Failures after successful process initialization must preserve SUCCESSFUL.
+                 */
+                UNSAFE.compareAndSetInt(null, FIRST_ISOLATE_INIT_STATE.get().rawValue(), FirstIsolateInitStates.IN_PROGRESS, FirstIsolateInitStates.FAILED);
+            }
             CEntryPointActions.leaveTearDownIsolate();
-            /* Extra return is needed because of validation. */
+            /* Keep the return directly after teardown for CEntryPointLeaveNode validation. */
             return result;
         }
         return result;
@@ -454,7 +463,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private static int initializeIsolateInterruptibly1(CEntryPointCreateIsolateParameters parameters) {
         /* Initialize the isolate id (the id is needed for isolate teardown). */
         long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();
-        boolean firstIsolate = Unsafe.getUnsafe().compareAndSetInt(null, initStateAddr, FirstIsolateInitStates.UNINITIALIZED, FirstIsolateInitStates.IN_PROGRESS);
+        boolean firstIsolate = UNSAFE.compareAndSetInt(null, initStateAddr, FirstIsolateInitStates.UNINITIALIZED, FirstIsolateInitStates.IN_PROGRESS);
         Isolates.assignIsolateId(firstIsolate);
 
         /*
@@ -480,20 +489,20 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         if (!firstIsolate) {
             /*
-             * Always do a volatile read so that memory barriers are emitted. Together with the
-             * volatile write to initStateAddr below, this guarantees that subsequently created
-             * isolates see consistent values for the process-global state that was initialized by
-             * the first isolate.
+             * Always do a volatile read so that memory barriers are emitted. Together with volatile
+             * publication by the owner, this guarantees that subsequently created isolates see
+             * consistent values for the process-global state initialized by the first isolate.
              */
-            int state = Unsafe.getUnsafe().getIntVolatile(null, initStateAddr);
-            if (state != FirstIsolateInitStates.SUCCESSFUL) {
-                while (state == FirstIsolateInitStates.IN_PROGRESS) { // spin-wait for first isolate
-                    PauseNode.pause();
-                    state = Unsafe.getUnsafe().getIntVolatile(null, initStateAddr);
+            int state;
+            while (true) {
+                state = UNSAFE.getIntVolatile(null, initStateAddr);
+                if (state == FirstIsolateInitStates.SUCCESSFUL || state == FirstIsolateInitStates.FAILED) {
+                    break;
                 }
-                if (state == FirstIsolateInitStates.FAILED) {
-                    return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
-                }
+                PauseNode.pause();
+            }
+            if (state == FirstIsolateInitStates.FAILED) {
+                return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
             }
         }
 
@@ -557,15 +566,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
         }
 
-        boolean success = PlatformNativeLibrarySupport.singleton().initializeLibrariesDuringIsolateInit();
-        if (firstIsolate) { // let other isolates (if any) initialize now
-            int state = success ? FirstIsolateInitStates.SUCCESSFUL : FirstIsolateInitStates.FAILED;
-            /* Do a volatile write to ensure that other threads see a consistent state. */
-            Unsafe.getUnsafe().putIntVolatile(null, initStateAddr, state);
+        if (!PlatformNativeLibrarySupport.singleton().initializeLibrariesDuringIsolateInit()) {
+            return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
 
-        if (!success) {
-            return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
+        if (firstIsolate) { // let other isolates (if any) initialize now
+            /* Do a volatile write to ensure that other threads see a consistent state. */
+            UNSAFE.putIntVolatile(null, initStateAddr, FirstIsolateInitStates.SUCCESSFUL);
         }
 
         /* Adjust stack overflow boundary of main thread. */

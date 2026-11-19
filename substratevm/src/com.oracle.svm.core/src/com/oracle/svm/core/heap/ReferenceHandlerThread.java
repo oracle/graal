@@ -89,14 +89,19 @@ public final class ReferenceHandlerThread implements Runnable {
         return singleton().stopped;
     }
 
+    /// Waits for a started reference-handler thread to detach. Initialization failure can leave
+    /// the handler unstarted, in which case there is no thread to wait for.
     @Uninterruptible(reason = "Executed during teardown after VMThreads#threadExit")
     public static void waitInNativeUntilDetached() {
         if (!isSupported()) {
             return;
         }
 
-        VMThreads.waitInNativeUntilDetached(singleton().isolateThread);
-        singleton().isolateThread = Word.nullPointer();
+        IsolateThread isolateThread = singleton().isolateThread;
+        if (isolateThread.isNonNull()) {
+            VMThreads.waitInNativeUntilDetached(isolateThread);
+            singleton().isolateThread = Word.nullPointer();
+        }
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
