@@ -351,7 +351,6 @@ suite = {
                 "SVM_GUEST_STAGING",
                 "SVM_SHARED",
                 "SVM_JVMCI_SHARED",
-                "espresso-shared:ESPRESSO_SVM",
             ],
             "requires" : [
                 "java.compiler",
@@ -1583,6 +1582,7 @@ suite = {
                 "sdk:NATIVEIMAGE",
                 "sdk:COLLECTIONS",
                 "compiler:GRAAL_OPTIONS",
+                "espresso-shared:ESPRESSO_SVM",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -2122,7 +2122,6 @@ suite = {
                 "SVM_JVMCI_GUEST_STAGING",
                 "SVM_JVMCI_SHARED",
                 "compiler:HOSTVMACCESS",
-                "espresso-shared:ESPRESSO_SVM",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.builder",
@@ -2257,6 +2256,7 @@ suite = {
                 "sdk:NATIVEIMAGE",
                 "sdk:COLLECTIONS",
                 "compiler:GRAAL_OPTIONS",
+                "espresso-shared:ESPRESSO_SVM",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.shared",
@@ -2292,6 +2292,7 @@ suite = {
                 "opens" : [],
                 "requires": [
                     "transitive org.graalvm.nativeimage",
+                    "transitive org.graalvm.espresso.shared.svm",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",

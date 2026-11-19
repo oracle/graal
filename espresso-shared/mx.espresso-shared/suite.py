@@ -142,6 +142,8 @@ suite = {
                 "name" : "org.graalvm.espresso.shared.svm",
                 "exports": [
                     "* to org.graalvm.nativeimage.builder",
+                    "com.oracle.svm.espresso.classfile to org.graalvm.nativeimage.guest,org.graalvm.nativeimage.guest.staging,org.graalvm.nativeimage.shared",
+                    "com.oracle.svm.espresso.classfile.descriptors to org.graalvm.nativeimage.guest,org.graalvm.nativeimage.guest.staging,org.graalvm.nativeimage.shared",
                 ],
             },
             "description" : "Espresso shared code for runtime class loading (shaded for SVM)",

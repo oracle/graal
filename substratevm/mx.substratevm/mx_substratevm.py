@@ -2162,6 +2162,8 @@ svm = mx_sdk_vm.GraalVmJreComponent(
     dependencies=['GraalVM compiler', 'SubstrateVM Static Libraries', 'Graal SDK Native Image', 'svmt'],
     # Note that SVM_GUEST_STAGING is loaded by the guest (`jar_distributions`) and the builder (`builder_jar_distributions`).
     # It is a transitional module will be merged to SVM_GUEST once all dependencies from the builder are removed.
+    # ESPRESSO_SVM is a dependency of SVM_SHARED, so it must be available in both the guest and
+    # the builder.
     # On the other hand, SVM_SHARED contains code that is shared between the guest and the builder. Conceptually, the
     # module is loaded twice, once in the guest and once in the builder. Thus, it can not be used for data sharing,
     # e.g., via static fields. It is only for sharing implementation for functionality that is used in both.
@@ -2173,6 +2175,7 @@ svm = mx_sdk_vm.GraalVmJreComponent(
         'substratevm:SVM_JVMCI_GUEST',
         'substratevm:SVM_JVMCI_GUEST_STAGING',
         'substratevm:SVM_JVMCI_SHARED',
+        'espresso-shared:ESPRESSO_SVM',
         'sdk:VMACCESS_GUEST',
     ],
     builder_jar_distributions=[
