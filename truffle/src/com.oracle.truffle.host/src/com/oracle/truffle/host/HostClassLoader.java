@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.host;
 
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.host.ZipUtils.Info;
 
 import java.io.Closeable;
 import java.io.EOFException;
@@ -50,9 +51,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 import java.security.CodeSigner;
 import java.security.CodeSource;
@@ -62,7 +62,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -71,10 +70,6 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.Function;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipInputStream;
 
 final class HostClassLoader extends ClassLoader implements Closeable {
 
@@ -379,7 +374,7 @@ final class HostClassLoader extends ClassLoader implements Closeable {
         /**
          * Cache for fast resource lookup. Map of folder to files in the folder.
          */
-        private volatile Map<String, Map<String, ZipUtils.Info>> content;
+        private volatile Map<String, Map<String, Info>> content;
 
         JarLoader(TruffleFile root) {
             super(root);
@@ -387,13 +382,13 @@ final class HostClassLoader extends ClassLoader implements Closeable {
 
         @Override
         public Resource findResource(String name) {
-            String[] parts = split(name);
+            String[] parts = ZipUtils.split(name);
             try {
-                Map<String, ZipUtils.Info> folderContent = getResourceMap().get(parts[0]);
+                Map<String, Info> folderContent = getResourceMap().get(parts[0]);
                 if (folderContent == null) {
                     return null;
                 }
-                ZipUtils.Info info = folderContent.get(parts[1]);
+                Info info = folderContent.get(parts[1]);
                 if (info == null) {
                     return null;
                 }
@@ -406,7 +401,7 @@ final class HostClassLoader extends ClassLoader implements Closeable {
                         StringBuilder url = new StringBuilder("jar:");
                         url.append(root.toUri());
                         url.append("!/");
-                        url.append(name);
+                        url.append(encodeResourcePath(name));
                         try {
                             return new URL(null, url.toString(), new ResourceURLStreamHandler(this));
                         } catch (MalformedURLException malformed) {
@@ -421,7 +416,7 @@ final class HostClassLoader extends ClassLoader implements Closeable {
 
                     @Override
                     InputStream getInputStream() throws IOException {
-                        return ZipUtils.getInputStream(getChannel(), info.offset);
+                        return ZipUtils.getInputStream(getChannel(), info);
                     }
                 };
             } catch (IOException ioe) {
@@ -437,8 +432,24 @@ final class HostClassLoader extends ClassLoader implements Closeable {
             return root.newByteChannel(EnumSet.of(StandardOpenOption.READ));
         }
 
-        private Map<String, Map<String, ZipUtils.Info>> getResourceMap() throws IOException {
-            Map<String, Map<String, ZipUtils.Info>> res = content;
+        private static String encodeResourcePath(String name) {
+            StringBuilder encoded = new StringBuilder(name.length());
+            // Quote path data as UTF-8, preserving ZIP separators and Unicode spelling.
+            for (byte b : name.getBytes(StandardCharsets.UTF_8)) {
+                int value = Byte.toUnsignedInt(b);
+                if (value <= 0x20 || value >= 0x7f || "=;?#<>%\"{}|\\^[]`".indexOf(value) >= 0) {
+                    encoded.append('%');
+                    encoded.append(Character.forDigit(value >>> 4, 16));
+                    encoded.append(Character.forDigit(value & 0xf, 16));
+                } else {
+                    encoded.append((char) value);
+                }
+            }
+            return encoded.toString();
+        }
+
+        private Map<String, Map<String, Info>> getResourceMap() throws IOException {
+            Map<String, Map<String, Info>> res = content;
             if (res == null) {
                 synchronized (this) {
                     res = content;
@@ -451,255 +462,6 @@ final class HostClassLoader extends ClassLoader implements Closeable {
                 }
             }
             return res;
-        }
-
-        /**
-         * Splits a {@code resourceName} into folder and base file name.
-         *
-         * @param resourceName the name to split
-         * @return an array containing parent folder and base file name.
-         */
-        private static String[] split(String resourceName) {
-            int index = resourceName.lastIndexOf('/');
-            if (index < 0) {
-                return new String[]{"", resourceName};
-            } else {
-                return new String[]{
-                                resourceName.substring(0, index),
-                                resourceName.substring(index + 1, resourceName.length())
-                };
-            }
-        }
-
-        /**
-         * Utility methods to read zip file.
-         */
-        static final class ZipUtils {
-
-            private static final int LIMIT = 1 << 16;
-            private static final long UINT32_MAX_VALUE = 0xffffffffL;
-            private static final int UINT16_MAX_VALUE = 0xffff;
-
-            private ZipUtils() {
-                throw new IllegalStateException("No instance allowed.");
-            }
-
-            /**
-             * Adapts {@link SeekableByteChannel} to {@link InputStream}.
-             */
-            private static class ChannelInputStream extends InputStream {
-
-                private final SeekableByteChannel channel;
-                private final long len;
-
-                ChannelInputStream(SeekableByteChannel channel) throws IOException {
-                    this.channel = channel;
-                    this.len = channel.size();
-                }
-
-                ChannelInputStream(SeekableByteChannel channel, long len) throws IOException {
-                    assert channel != null;
-                    assert len >= 0;
-                    this.channel = channel;
-                    this.len = channel.position() + len;
-                }
-
-                @Override
-                public int read(byte[] data, int offset, int size) throws IOException {
-                    int rem = available();
-                    if (rem == 0) {
-                        return -1;
-                    }
-                    int rlen = size < rem ? size : rem;
-                    ByteBuffer buffer = ByteBuffer.wrap(data, offset, rlen);
-                    return this.channel.read(buffer);
-                }
-
-                @Override
-                public int read() throws java.io.IOException {
-                    if (available() == 0) {
-                        return -1;
-                    } else {
-                        ByteBuffer buffer = ByteBuffer.allocate(1);
-                        channel.read(buffer);
-                        buffer.flip();
-                        return buffer.get();
-                    }
-                }
-
-                @Override
-                public int available() throws IOException {
-                    return (int) (len - this.channel.position());
-                }
-
-                @Override
-                public void close() throws IOException {
-                    channel.close();
-                }
-            }
-
-            static final class Info {
-                /**
-                 * Offset of a zip entry in the zip file.
-                 */
-                final long offset;
-                /**
-                 * Uncompressed size of the zipped file.
-                 */
-                final long size;
-
-                Info(long offset, long size) {
-                    this.offset = offset;
-                    this.size = size;
-                }
-            }
-
-            /**
-             * Returns an {@link InputStream} for zip entry in given channel starting at given
-             * offset.
-             *
-             * @param channel the channel to read the entry from
-             * @param offset the starting offset
-             * @return the {@link InputStream} to read the uncompressed zipped file content
-             * @throws IOException in case of IO error
-             */
-            static InputStream getInputStream(SeekableByteChannel channel, long offset) throws IOException {
-                channel.position(offset);
-                ZipInputStream in = new ZipInputStream(new ChannelInputStream(channel));
-                ZipEntry e = in.getNextEntry();
-                if (e != null && e.getCrc() == 0L && e.getMethod() == ZipEntry.STORED) {
-                    in.close();
-                    return new ChannelInputStream(channel, e.getSize());
-                }
-                return in;
-            }
-
-            /**
-             * Reads the zip file central table into map of folders.
-             *
-             * @param channel to read from
-             * @return the map mapping folders to simple names and {@link Info infos}
-             * @throws IOException in case of IO error
-             */
-            static Map<String, Map<String, Info>> readEntries(SeekableByteChannel channel) throws IOException {
-                long size = (int) channel.size();
-                channel.position(size - ZipFile.ENDHDR);
-
-                ByteBuffer data = ByteBuffer.allocate(ZipFile.ENDHDR);
-                data.order(ByteOrder.LITTLE_ENDIAN);
-                int giveup = 0;
-
-                do {
-                    data.clear();
-                    if (readFully(channel, data) != ZipFile.ENDHDR) {
-                        throw new IOException();
-                    }
-                    channel.position(channel.position() - (ZipFile.ENDHDR + 1));
-                    giveup++;
-                    if (giveup > LIMIT) {
-                        throw new IOException();
-                    }
-                } while (getsig(data) != ZipFile.ENDSIG);
-
-                long censize = endsiz(data);
-                long cenoff = endoff(data);
-                channel.position(cenoff);
-
-                Map<String, Map<String, Info>> result = new HashMap<>();
-                int cenread = 0;
-                data = ByteBuffer.allocate(ZipFile.CENHDR);
-                data.order(ByteOrder.LITTLE_ENDIAN);
-                while (cenread < censize) {
-                    data.clear();
-                    if (readFully(channel, data) != ZipFile.CENHDR) {
-                        throw new IOException("No central table");         // NOI18N
-                    }
-                    if (getsig(data) != ZipFile.CENSIG) {
-                        throw new IOException("No central table");          // NOI18N
-                    }
-                    int cennam = cennam(data);
-                    int cenext = cenext(data);
-                    int cencom = cencom(data);
-                    long lhoff = cenoff(data);
-                    long cenlen = cenlen(data);
-                    String name = name(channel, cennam);
-                    int seekby = cenext + cencom;
-                    int cendatalen = ZipFile.CENHDR + cennam + seekby;
-                    cenread += cendatalen;
-                    if (!isDirectory(name)) {
-                        String[] parts = split(name);
-                        Map<String, ZipUtils.Info> names = result.computeIfAbsent(parts[0], new Function<String, Map<String, ZipUtils.Info>>() {
-                            @Override
-                            public Map<String, ZipUtils.Info> apply(String t) {
-                                return new HashMap<>();
-                            }
-                        });
-                        names.put(parts[1], new Info(lhoff, cenlen));
-                    }
-                    seekBy(channel, seekby);
-                }
-                return result;
-            }
-
-            private static String name(SeekableByteChannel channel, int cennam) throws IOException {
-                ByteBuffer name = ByteBuffer.allocate(cennam);
-                if (readFully(channel, name) != cennam) {
-                    throw new IOException("Unexpected EOF.");
-                }
-                return new String(name.array(), "UTF-8");
-            }
-
-            private static boolean isDirectory(String name) {
-                return name.endsWith("/");
-            }
-
-            private static int readFully(SeekableByteChannel channel, ByteBuffer buffer) throws IOException {
-                int res = 0;
-                while (buffer.remaining() > 0) {
-                    int read = channel.read(buffer);
-                    if (read == -1) {
-                        break;
-                    }
-                    res += read;
-                }
-                return res;
-            }
-
-            private static long getsig(ByteBuffer b) {
-                return b.getInt(0) & UINT32_MAX_VALUE;
-            }
-
-            private static long endsiz(ByteBuffer b) {
-                return b.getInt(ZipFile.ENDSIZ) & UINT32_MAX_VALUE;
-            }
-
-            private static long endoff(ByteBuffer b) {
-                return b.getInt(ZipFile.ENDOFF) & UINT32_MAX_VALUE;
-            }
-
-            private static long cenlen(ByteBuffer b) {
-                return b.getInt(ZipFile.CENLEN) & UINT32_MAX_VALUE;
-            }
-
-            private static int cennam(ByteBuffer b) {
-                return b.getShort(ZipFile.CENNAM) & UINT16_MAX_VALUE;
-            }
-
-            private static int cenext(ByteBuffer b) {
-                return b.getShort(ZipFile.CENEXT) & UINT16_MAX_VALUE;
-            }
-
-            private static int cencom(ByteBuffer b) {
-                return b.getShort(ZipFile.CENCOM) & UINT16_MAX_VALUE;
-            }
-
-            private static long cenoff(ByteBuffer b) {
-                return b.getInt(ZipFile.CENOFF) & UINT32_MAX_VALUE;
-            }
-
-            private static void seekBy(final SeekableByteChannel ch, int offset) throws IOException {
-                ch.position(ch.position() + offset);
-            }
         }
     }
 }
