@@ -2300,7 +2300,13 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 varArgsIndex = varArgParameter ? Math.abs(childIndex - i) : -1;
                 child = children.get(childIndex);
             }
-            executions.add(new NodeExecutionData(child, i, varArgsIndex));
+            boolean constantOperand = false;
+            if (mode == ParseMode.OPERATION) {
+                // Keep operand stability available to guard idempotence analysis.
+                var constantOperands = customOperationModel.operation.constantOperands;
+                constantOperand = i < constantOperands.before().size() || i >= maxSignatureSize - constantOperands.after().size();
+            }
+            executions.add(new NodeExecutionData(child, i, varArgsIndex, constantOperand));
         }
         return executions;
     }

@@ -541,7 +541,8 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public Idempotence getIdempotence(DSLExpression expression) {
-        if (isDynamicParameterBound(expression, true)) {
+        // Constant operands are execute arguments, but do not vary after activation.
+        if (isDynamicParameterBound(expression, true, true)) {
             return Idempotence.NON_IDEMPOTENT;
         }
 
@@ -576,6 +577,10 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public boolean isDynamicParameterBound(DSLExpression expression, boolean transitive) {
+        return isDynamicParameterBound(expression, transitive, false);
+    }
+
+    private boolean isDynamicParameterBound(DSLExpression expression, boolean transitive, boolean ignoreConstantOperands) {
         if (expression == null) {
             return false;
         }
@@ -590,6 +595,10 @@ public final class SpecializationData extends TemplateMethod {
         }
         Set<VariableElement> boundVariables = expression.findBoundVariableElements();
         for (Parameter parameter : getDynamicParameters()) {
+            NodeExecutionData execution = parameter.getSpecification().getExecution();
+            if (ignoreConstantOperands && execution != null && execution.isConstantOperand()) {
+                continue;
+            }
             if (boundVariables.contains(parameter.getVariableElement())) {
                 return true;
             }
@@ -608,7 +617,7 @@ public final class SpecializationData extends TemplateMethod {
                         // they are initialized every time
                         continue;
                     }
-                    if (isDynamicParameterBound(cache.getDefaultExpression(), true)) {
+                    if (isDynamicParameterBound(cache.getDefaultExpression(), true, ignoreConstantOperands)) {
                         return true;
                     }
                 }
