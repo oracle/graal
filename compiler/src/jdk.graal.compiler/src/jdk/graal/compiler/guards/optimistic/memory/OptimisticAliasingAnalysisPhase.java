@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GuardedValueNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.LogicConstantNode;
@@ -63,9 +64,11 @@ import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.extended.MultiGuardNode;
 import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
 import jdk.graal.compiler.nodes.loop.InductionVariable.Direction;
+import jdk.graal.compiler.nodes.loop.InductionVariableHelper;
 import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.memory.AddressableMemoryAccess;
@@ -627,7 +630,7 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
 
     // Test aliasing between an access (which may be a read or a write) and a list of writes. The
     // writes are either all before or all after the access, as given by writesAfterAccess.
-    private static <ValueAccess extends ValueNode & AddressableMemoryAccess> LogicNode testPotentialAliasing(Loop loop, ValueAccess access, ArrayList<WriteNode> potentialAliasingWrites,
+    private <ValueAccess extends ValueNode & AddressableMemoryAccess> LogicNode testPotentialAliasing(Loop loop, ValueAccess access, ArrayList<WriteNode> potentialAliasingWrites,
                     boolean useStrictObjectEquality, ConstantReflectionProvider constantReflection) {
         LogicNode isAliasing = null;
         for (WriteNode write : potentialAliasingWrites) {
@@ -644,13 +647,11 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
         return isAliasing;
     }
 
-    // Test aliasing between an access (which may be a read or a write) and a write. The write comes
-    // after the access iff writeAfterAccess is true. If useStrictObjectEquality is true, any
-    // accesses to the same object are considered aliasing; otherwise, analyze indices to find safe
-    // cases of writes after reads.
-    // Returns a LogicNode that evaluates to true if the accesses alias in a way that prevents
-    // vectorization.
-    private static <ValueAccess extends ValueNode & AddressableMemoryAccess> LogicNode testLoopAccessAliasing(Loop loop, ValueAccess access, WriteNode write,
+    /// Tests whether an access and a write can alias in a way that prevents vectorization. If
+    /// `useStrictObjectEquality` is true, accesses to the same object are considered aliasing;
+    /// otherwise, the access order and induction variables may establish independence between
+    /// iterations.
+    private <ValueAccess extends ValueNode & AddressableMemoryAccess> LogicNode testLoopAccessAliasing(Loop loop, ValueAccess access, WriteNode write,
                     boolean useStrictObjectEquality, ConstantReflectionProvider constantReflection) {
         StructuredGraph graph = loop.loopBegin().graph();
         boolean accessIsRead = access instanceof FloatingReadNode || access instanceof ReadNode;
@@ -664,6 +665,7 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
         ValueNode writeLow = null;
         ValueNode writeHigh = null;
         boolean rawPointerComparison = false;
+        ArrayList<LogicNode> rawAddressWrapConditions = null;
 
         Stamp accessBaseStamp = accessBase.stamp(NodeView.DEFAULT);
         Stamp writeBaseStamp = writeBase.stamp(NodeView.DEFAULT);
@@ -673,11 +675,12 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
         } else if (accessBaseStamp instanceof IntegerStamp && writeBaseStamp instanceof IntegerStamp) {
             /* Both the access and the write are to raw off-heap addresses. */
             rawPointerComparison = true;
+            rawAddressWrapConditions = new ArrayList<>();
 
-            Pair<ValueNode, ValueNode> accessBounds = accessBounds(access, loop);
+            Pair<ValueNode, ValueNode> accessBounds = accessBounds(access, loop, rawAddressWrapConditions, constantReflection);
             accessLow = accessBounds.getLeft();
             accessHigh = accessBounds.getRight();
-            Pair<ValueNode, ValueNode> writeBounds = accessBounds(write, loop);
+            Pair<ValueNode, ValueNode> writeBounds = accessBounds(write, loop, rawAddressWrapConditions, constantReflection);
             writeLow = writeBounds.getLeft();
             writeHigh = writeBounds.getRight();
 
@@ -709,19 +712,37 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
 
         LogicNode mayAlias = objectEquals;
         if (writeAfterRead && !useStrictObjectEquality) {
-            // if the access is to the same index, we know the loop iterations are independent
-            // therefore writes that come after the read don't alias regardless of object equality
+            // Writes that consume the read are independent if they cannot overtake later reads.
             InductionVariable readIndex = getOffsetInductionVariable(access, loop);
             InductionVariable writeIndex = getOffsetInductionVariable(write, loop);
 
             if (readIndex != null && readIndex.isConstantStride() && writeIndex != null && writeIndex.isConstantStride()) {
                 CanonicalCondition lessThanOp = CanonicalCondition.LT;
+                ValueNode readStart = readIndex.initNode();
+                ValueNode writeStart = writeIndex.initNode();
                 if (rawPointerComparison) {
                     lessThanOp = CanonicalCondition.BT;
+                    /*
+                     * Range overlap above is spatial; proving that writes only touch values
+                     * already read also needs the order of accesses across iterations. For
+                     * descending accesses, minima describe the last iteration, not the first.
+                     *
+                     * @formatter:off
+                     * With base 0x100 and i descending from 2 to 0:
+                     *   reads  at base + 8*i: 0x110, 0x108, 0x100
+                     *   writes at base + 4*i: 0x108, 0x104, 0x100
+                     * Both sequences have minimum address 0x100, but the first write
+                     * overwrites the next iteration's read at 0x108.
+                     * @formatter:on
+                     *
+                     * Compare first-iteration addresses to preserve that dependence. Unlike heap
+                     * indices, raw offsets must include their potentially different bases before
+                     * the unsigned comparison can establish which access leads.
+                     */
+                    readStart = AddNode.create(accessBase, readStart, NodeView.DEFAULT);
+                    writeStart = AddNode.create(writeBase, writeStart, NodeView.DEFAULT);
                 } else {
                     assert accessLow == null && writeLow == null : accessLow + " " + writeLow;
-                    accessLow = readIndex.initNode();
-                    writeLow = writeIndex.initNode();
                 }
 
                 LogicNode badIndices;
@@ -731,22 +752,33 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
                 // greater than or equal to the initial write index and the write stride,
                 // respectively. The case for negative strides is symmetric.
                 if (readIndex.constantStride() > 0 && readIndex.constantStride() >= writeIndex.constantStride()) {
-                    badIndices = CompareNode.createCompareNode(graph, lessThanOp, accessLow, writeLow, constantReflection, NodeView.DEFAULT);
+                    badIndices = CompareNode.createCompareNode(graph, lessThanOp, readStart, writeStart, constantReflection, NodeView.DEFAULT);
                 } else if (readIndex.constantStride() < 0 && readIndex.constantStride() <= writeIndex.constantStride()) {
-                    badIndices = CompareNode.createCompareNode(graph, lessThanOp, writeLow, accessLow, constantReflection, NodeView.DEFAULT);
+                    badIndices = CompareNode.createCompareNode(graph, lessThanOp, writeStart, readStart, constantReflection, NodeView.DEFAULT);
                 } else {
                     // indices may cross
                     badIndices = LogicConstantNode.tautology(graph);
                 }
 
-                // When constantStride > 0:
-                // mayAlias is equivalent to (a == b) && (a.readIndex < a.writeIndex)
-                // When constantStride < 0:
-                // mayAlias is equivalent to (a == b) && (a.writeIndex < a.readIndex)
+                // For compatible strides, mayAlias is equivalent to:
+                // positive: objectEquals && (readStart < writeStart)
+                // negative: objectEquals && (writeStart < readStart)
+                // Here objectEquals means equal heap bases or overlapping raw address ranges.
+                // Raw comparisons are unsigned; the overflow checks below also apply.
                 mayAlias = LogicNode.and(objectEquals, false, badIndices, false, BranchProbabilityNode.SLOW_PATH_PROFILE);
             }
         }
 
+        if (rawAddressWrapConditions != null) {
+            // Neither range disjointness nor access order proves independence if addresses wrap.
+            for (LogicNode wrap : rawAddressWrapConditions) {
+                if (wrap.isTautology()) {
+                    return wrap;
+                } else if (!wrap.isContradiction()) {
+                    mayAlias = LogicNode.or(mayAlias, wrap, BranchProbabilityNode.SLOW_PATH_PROFILE);
+                }
+            }
+        }
         return mayAlias;
     }
 
@@ -776,19 +808,47 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
         return TriState.FALSE;
     }
 
-    /**
-     * Computes the lowest and highest byte addresses touched by a raw memory access in a loop. The
-     * highest address is the address of the last byte accessed.
-     */
-    private static Pair<ValueNode, ValueNode> accessBounds(AddressableMemoryAccess access, Loop loop) {
+    /// Computes the lowest and highest byte addresses touched by a raw memory access in a loop.
+    /// The highest address is the address of the last byte accessed. Returns null bounds unless the
+    /// offset calculation is proven not to overflow. Adds conditions to `addressWrapConditions`
+    /// that must be false before these bounds or the access order can be used to prove independence.
+    private Pair<ValueNode, ValueNode> accessBounds(AddressableMemoryAccess access, Loop loop, ArrayList<LogicNode> addressWrapConditions,
+                    ConstantReflectionProvider constantReflection) {
         StructuredGraph graph = loop.loopBegin().graph();
         ValueNode accessBase = getBase(access, loop);
         InductionVariable accessIndex = getOffsetInductionVariable(access, loop);
-        if (accessIndex == null) {
+        if (accessIndex == null || accessIndex.direction() == null) {
             return Pair.create(null, null);
         }
-        ValueNode accessStart = AddNode.create(accessBase, accessIndex.initNode(), NodeView.DEFAULT);
-        ValueNode accessEnd = AddNode.create(accessBase, accessIndex.extremumNode(true, accessBase.stamp(NodeView.DEFAULT)), NodeView.DEFAULT);
+        CountedLoopInfo countedLoop = loop.counted();
+        // The counted-loop guard covers the counter, but derived arithmetic can wrap before widening.
+        InductionVariable limitCheckedIV = countedLoop.getLimitCheckedIV();
+        InductionVariable bodyIV = countedLoop.getBodyIVEqualsLimitCheckedIV() ? limitCheckedIV : InductionVariableHelper.previousIteration(limitCheckedIV);
+        InductionVariable.Endpoints endpoints = accessIndex.computeEndpoints(true, countedLoop.maxTripCountNode(true), accessBase.stamp(NodeView.DEFAULT),
+                        bodyIV, limitCheckedIV);
+        GuardingNode endpointGuard = null;
+        for (LogicNode overflowCondition : endpoints.overflowConditions()) {
+            if (overflowCondition.isTautology()) {
+                return Pair.create(null, null);
+            } else if (!overflowCondition.isContradiction()) {
+                if (!graph.getGuardsStage().allowsFloatingGuards()) {
+                    return Pair.create(null, null);
+                }
+                GuardingNode overflowGuard = createRawAddressOverflowGuard(countedLoop, overflowCondition);
+                if (overflowGuard == null) {
+                    return Pair.create(null, null);
+                }
+                endpointGuard = MultiGuardNode.addGuard(endpointGuard, overflowGuard);
+            }
+        }
+        ValueNode accessInit = endpoints.init();
+        ValueNode accessExtremum = endpoints.extremum();
+        if (endpointGuard != null) {
+            accessInit = graph.unique(new GuardedValueNode(accessInit, endpointGuard));
+            accessExtremum = graph.unique(new GuardedValueNode(accessExtremum, endpointGuard));
+        }
+        ValueNode accessStart = AddNode.create(accessBase, accessInit, NodeView.DEFAULT);
+        ValueNode accessEnd = AddNode.create(accessBase, accessExtremum, NodeView.DEFAULT);
 
         // Ensure that the lower component of the pair is always the smaller of the bounds.
         ValueNode accessLow;
@@ -804,10 +864,19 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
         if (accessSize == 0) {
             return Pair.create(null, null);
         }
+        // Adding the base or the access width can wrap the unsigned address range.
+        addressWrapConditions.add(CompareNode.createCompareNode(graph, CanonicalCondition.BT, accessHigh, accessLow, constantReflection, NodeView.DEFAULT));
         ValueNode sizeMinusOne = ConstantNode.forIntegerStamp(accessHigh.stamp(NodeView.DEFAULT), accessSize - 1, graph);
-        accessHigh = AddNode.create(accessHigh, sizeMinusOne, NodeView.DEFAULT);
+        ValueNode lastByte = AddNode.create(accessHigh, sizeMinusOne, NodeView.DEFAULT);
+        addressWrapConditions.add(CompareNode.createCompareNode(graph, CanonicalCondition.BT, lastByte, accessHigh, constantReflection, NodeView.DEFAULT));
 
-        return Pair.create(accessLow, accessHigh);
+        return Pair.create(accessLow, lastByte);
+    }
+
+    /// Creates a guard that ensures a raw address offset stays within its arithmetic range.
+    /// Returning null leaves the access bounds unknown so the caller conservatively assumes aliasing.
+    protected GuardingNode createRawAddressOverflowGuard(CountedLoopInfo countedLoop, LogicNode overflowCondition) {
+        return countedLoop.createOverflowGuard(overflowCondition, DeoptimizationReason.Aliasing);
     }
 
     /**
