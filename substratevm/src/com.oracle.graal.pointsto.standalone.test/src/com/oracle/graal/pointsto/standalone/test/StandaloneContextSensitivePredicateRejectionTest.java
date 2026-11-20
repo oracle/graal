@@ -65,8 +65,8 @@ public class StandaloneContextSensitivePredicateRejectionTest extends Standalone
     public void testPredicatesRejected() {
         for (ContextSensitivity policy : contextSensitivePolicies()) {
             String message = assertPolicyRejected(policy, USE_PREDICATES);
-            assertContains(message, USE_PREDICATES);
-            assertNotContains(message, TRACK_PRIMITIVE_VALUES);
+            // Enabling predicates also enables primitive-value tracking.
+            assertContains(message, TRACK_PRIMITIVE_VALUES, USE_PREDICATES);
         }
     }
 
