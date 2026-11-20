@@ -102,8 +102,6 @@ def _espresso_standalone_command(args, with_sulong=False, allow_jacoco=True, jdk
 
 def javavm_deps():
     result = [espresso_runtime_resources_distribution()]
-    if mx.suite('truffle-enterprise', fatalIfMissing=False):
-        result.append('truffle-enterprise:TRUFFLE_ENTERPRISE')
     if mx.suite('regex', fatalIfMissing=False):
         result.append('regex:TREGEX')
     return result
@@ -144,8 +142,6 @@ def jvm_standalone_deps():
             "sulong:SULONG_NATIVE",
             "sulong:SULONG_NFI",
         ]
-    if mx.suite('truffle-enterprise', fatalIfMissing=False):
-        result.append('truffle-enterprise:TRUFFLE_ENTERPRISE')
     return result
 
 def _send_sigquit(p):

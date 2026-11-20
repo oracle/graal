@@ -513,7 +513,6 @@ suite = {
                 "sdk:TOOLS_FOR_STANDALONE",
             ],
             # optionally provides:
-            # - truffle-enterprise:TRUFFLE_ENTERPRISE
             # - regex:TREGEX
             # - espresso:ESPRESSO_RUNTIME_RESOURCES or espresso-tests:ESPRESSO_RUNTIME_RESOURCES
             "dynamicDependencies": "javavm_deps",
@@ -1105,7 +1104,6 @@ suite = {
             # - sulong:SULONG_CORE
             # - sulong:SULONG_NATIVE
             # - sulong:SULONG_NFI
-            # - truffle-enterprise:TRUFFLE_ENTERPRISE
             "dynamicDistDependencies": "jvm_standalone_deps",
             "maven": False,
         },
