@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -253,8 +253,8 @@ public class LaneSymmetricSimdPermuteNode extends UnaryNode implements VectorLIR
                  */
                 maskKind = features.contains(AMD64.CPUFeature.AVX512DQ) ? AMD64Kind.MASK8 : AMD64Kind.MASK16;
             }
-            assert tool instanceof AMD64AVX512ArithmeticLIRGenerator : "expected AMD64AVX512ArithmeticLIRGenerator, got " + tool.getClass().getName();
-            Value kReg = ((AMD64AVX512ArithmeticLIRGenerator) tool).emitConstOpmask(maskKind, constMask);
+            GraalError.guarantee(gen instanceof AMD64AVX512ArithmeticLIRGenerator, "expected AMD64AVX512ArithmeticLIRGenerator, got %s", gen.getClass().getName());
+            Value kReg = ((AMD64AVX512ArithmeticLIRGenerator) gen).emitConstOpmask(maskKind, constMask);
             tool.append(new AMD64VectorShuffle.ShuffleWordOpWithMask(op, result, tool.asAllocatable(vector), imm, tool.asAllocatable(kReg)));
         }
         builder.setResult(this, result);

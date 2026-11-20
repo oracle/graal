@@ -1572,6 +1572,22 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
         return result;
     }
 
+    /** Widens a shuffle input without changing the bytes selected from the original vector. */
+    private AllocatableValue widenShuffleSource(Value vector, int vectorBytes) {
+        AllocatableValue source = asAllocatable(vector);
+        if (source.getPlatformKind().getSizeInBytes() < vectorBytes && source.getPlatformKind().getSizeInBytes() <= 16) {
+            AllocatableValue widened = getLIRGen().newVariable(source.getValueKind().changeType(AMD64Kind.V256_BYTE));
+            getLIRGen().append(new AMD64VectorShuffle.Insert128Op(widened, source, source, 0, EVEX));
+            source = widened;
+        }
+        if (source.getPlatformKind().getSizeInBytes() < vectorBytes && source.getPlatformKind().getSizeInBytes() <= 32) {
+            AllocatableValue widened = getLIRGen().newVariable(source.getValueKind().changeType(AMD64Kind.V512_BYTE));
+            getLIRGen().append(new AMD64VectorShuffle.Insert256Op(widened, source, source, 0));
+            source = widened;
+        }
+        return source;
+    }
+
     @Override
     public Value emitConstShuffleBytes(LIRKind resultKind, Value vector, byte[] selector) {
         if (selector.length <= AVXSize.XMM.getBytes()) {
@@ -1590,22 +1606,32 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
         }
 
         if (supports(AMD64.CPUFeature.AVX512_VBMI)) {
-            // if AVX512 VBMI is supported, we can use VPERMT2B for shuffles lager than 128 bit
-            Variable result = getLIRGen().newVariable(resultKind);
-            byte tableMask = (byte) Integer.highestOneBit(vector.getPlatformKind().getSizeInBytes());
+            /*
+             * If AVX512 VBMI is supported, we can use VPERMT2B for shuffles larger than 128 bits.
+             * Widen the source when the result is wider than the input. Compute the table-selection
+             * bit and opmask width from the operation width, not the original input width.
+             */
+            int vectorBytes = Math.max(resultKind.getPlatformKind().getSizeInBytes(), vector.getPlatformKind().getSizeInBytes());
+            AllocatableValue source = widenShuffleSource(vector, vectorBytes);
+            boolean truncateResult = vectorBytes > resultKind.getPlatformKind().getSizeInBytes();
+            LIRKind shuffleKind = truncateResult ? resultKind.changeType(source.getPlatformKind()) : resultKind;
+            Variable result = getLIRGen().newVariable(shuffleKind);
+            byte[] tableSelector = Arrays.copyOf(selector, vectorBytes);
+            Arrays.fill(tableSelector, selector.length, vectorBytes, (byte) -1);
+            byte tableMask = (byte) Integer.highestOneBit(vectorBytes);
             long maskValue = 0;
-            for (int i = selector.length - 1; i > -1; --i) {
-                if (selector[i] == -1) {
+            for (int i = tableSelector.length - 1; i > -1; --i) {
+                if (tableSelector[i] == -1) {
                     maskValue = (maskValue << 1) | 1;
-                    selector[i] = 0;
+                    tableSelector[i] = 0;
                 } else {
                     maskValue <<= 1;
-                    selector[i] |= tableMask;
+                    tableSelector[i] |= tableMask;
                 }
             }
             JavaConstant constMask;
             AMD64Kind maskKind;
-            switch (vector.getPlatformKind().getSizeInBytes()) {
+            switch (vectorBytes) {
                 case 1, 2, 4, 8 -> {
                     constMask = JavaConstant.forByte((byte) (~maskValue & 0xff));
                     maskKind = AMD64Kind.MASK8;
@@ -1622,12 +1648,12 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
                     constMask = JavaConstant.forLong(~maskValue);
                     maskKind = AMD64Kind.MASK64;
                 }
-                default -> throw GraalError.shouldNotReachHere("Unsupported platform kind for permute - size " + vector.getPlatformKind().getSizeInBytes()); // ExcludeFromJacocoGeneratedReport
+                default -> throw GraalError.shouldNotReachHere("Unsupported platform kind for permute - size " + vectorBytes); // ExcludeFromJacocoGeneratedReport
             }
 
             Value mask = emitConstOpmask(maskKind, constMask);
-            getLIRGen().append(new AMD64VectorShuffle.ConstPermuteBytesUsingTableOp(getLIRGen(), asAllocatable(result), asAllocatable(vector), selector, asAllocatable(mask)));
-            return result;
+            getLIRGen().append(new AMD64VectorShuffle.ConstPermuteBytesUsingTableOp(getLIRGen(), asAllocatable(result), source, tableSelector, asAllocatable(mask)));
+            return truncateResult ? new CastValue(resultKind, result) : result;
         }
 
         if (selector.length == AVXSize.YMM.getBytes()) {
@@ -1639,13 +1665,7 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
              * shuffles.
              */
 
-            // widen source vector to YMM
-            AllocatableValue v = asAllocatable(vector);
-            if (v.getPlatformKind().getSizeInBytes() <= 16) {
-                AllocatableValue widenedV = getLIRGen().newVariable(v.getValueKind().changeType(AMD64Kind.V256_BYTE));
-                getLIRGen().append(new AMD64VectorShuffle.Insert128Op(widenedV, v, v, 0, EVEX));
-                v = widenedV;
-            }
+            AllocatableValue v = widenShuffleSource(vector, AVXSize.YMM.getBytes());
 
             // Create shuffle constants
             // Masks all values obtained via an in-lane shuffle
@@ -1726,18 +1746,7 @@ public class AMD64AVX512ArithmeticLIRGenerator extends AMD64VectorArithmeticLIRG
          */
         GraalError.guarantee(selector.length == AVXSize.ZMM.getBytes(), "unexpected selector size %s", selector.length);
 
-        // widen source vector to ZMM
-        AllocatableValue originalDataVector = asAllocatable(vector);
-        if (originalDataVector.getPlatformKind().getSizeInBytes() <= 16) {
-            AllocatableValue widenedV = getLIRGen().newVariable(originalDataVector.getValueKind().changeType(AMD64Kind.V256_BYTE));
-            getLIRGen().append(new AMD64VectorShuffle.Insert128Op(widenedV, originalDataVector, originalDataVector, 0, EVEX));
-            originalDataVector = widenedV;
-        }
-        if (originalDataVector.getPlatformKind().getSizeInBytes() <= 32) {
-            AllocatableValue widenedV = getLIRGen().newVariable(originalDataVector.getValueKind().changeType(AMD64Kind.V512_BYTE));
-            getLIRGen().append(new AMD64VectorShuffle.Insert256Op(widenedV, originalDataVector, originalDataVector, 0));
-            originalDataVector = widenedV;
-        }
+        AllocatableValue originalDataVector = widenShuffleSource(vector, AVXSize.ZMM.getBytes());
 
         /*
          * 'exportsTo' is a table that describes, which lanes each lane of the original data export
