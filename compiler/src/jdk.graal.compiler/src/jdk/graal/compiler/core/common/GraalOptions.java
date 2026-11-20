@@ -264,8 +264,8 @@ public final class GraalOptions {
     @Option(help = "Hoists identical field loads and lowered reads from control-split successors into their common predecessor.", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptDeduplicateReadsAcrossBranches = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Integer> ReadEliminationMaxLoopVisits = new OptionKey<>(5);
+    @Option(help = "Loop-visit threshold for discarding cached locations during read elimination.", type = OptionType.Debug)
+    public static final OptionKey<Integer> ReadEliminationMaxLoopVisits = new OptionKey<>(10);
 
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptDeoptimizationGrouping = new OptionKey<>(true);

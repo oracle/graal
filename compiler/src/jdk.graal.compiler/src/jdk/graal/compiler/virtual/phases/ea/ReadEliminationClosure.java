@@ -103,6 +103,12 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 LocationIdentity identity = ((SingleMemoryKill) node).getKilledLocationIdentity();
                 if (identity.isSingle() && (node instanceof WriteNode || node instanceof StoreFieldNode || node instanceof RawStoreNode)) {
                     if (node instanceof WriteNode || node instanceof StoreFieldNode) {
+                        if (node instanceof WriteNode write && write.getAddress().hasExactlyOneUsage()) {
+                            // A single-use address cannot match another cached access. The write
+                            // must still invalidate accesses through potentially aliasing addresses.
+                            killReadCacheByIdentity(state, identity, node);
+                            return false;
+                        }
                         ValueNode value = null;
                         ValueNode object = null;
                         if (node instanceof StoreFieldNode) {
@@ -185,6 +191,11 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             } else if (node instanceof ReadNode read) {
                                 if (!read.getBarrierType().canReadEliminate()) {
                                     assert deleted == false;
+                                    return false;
+                                }
+                                if (read.getAddress().hasExactlyOneUsage()) {
+                                    // Address keys match by node identity and cannot be introduced
+                                    // by object-phi merging because addresses have a non-object stamp.
                                     return false;
                                 }
                                 object = read.getAddress();
