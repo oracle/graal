@@ -598,10 +598,17 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 if (accessibility == NONE) {
                     data.inHeap = true;
                 }
-                if (accessibility.includes(QUERIED) && (previous == null || !previous.includes(QUERIED))) {
+                if (accessibility.includes(QUERIED) && (previous == null || !previous.includes(accessibility))) {
+                    /*
+                     * Also forward an upgrade from QUERIED to ACCESSED to the annotation proxy
+                     * method. Otherwise, the proxy method keeps the accessibility of whichever
+                     * registration of the annotation method happened to run first.
+                     */
                     if (!aMethod.isConstructor() && aMethod.getDeclaringClass().isAnnotation()) {
                         processAnnotationMethod(accessibility, aMethod);
                     }
+                }
+                if (accessibility.includes(QUERIED) && (previous == null || !previous.includes(QUERIED))) {
                     if (!throwMissingRegistrationErrors()) {
                         checkHidingMethods(aMethod);
                     }
