@@ -70,6 +70,7 @@ import org.graalvm.wasm.test.suites.debugging.DebugValidationSuite;
 import org.graalvm.wasm.test.suites.linker.LinkerSuite;
 import org.graalvm.wasm.test.suites.memory.Memory64Suite;
 import org.graalvm.wasm.test.suites.memory.MemoryFillSuite;
+import org.graalvm.wasm.test.suites.memory.MemoryOOBRecompilationSuite;
 import org.graalvm.wasm.test.suites.memory.MemorySuite;
 import org.graalvm.wasm.test.suites.memory.MultiMemorySuite;
 import org.graalvm.wasm.test.suites.memory.ThreadsSuite;
@@ -99,6 +100,7 @@ import org.junit.runners.Suite;
                 LoopBlockSuite.class,
                 IfThenElseSuite.class,
                 MemorySuite.class,
+                MemoryOOBRecompilationSuite.class,
                 Memory64Suite.class,
                 MemoryFillSuite.class,
                 TableSuite.class,
