@@ -30,6 +30,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.Objects;
@@ -877,12 +878,16 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
                 Field targetField = asConstantObject(b, Field.class, fieldNode);
-                if (targetField != null) {
-                    ResolvedJavaField resolvedJavaField = b.getMetaAccess().lookupJavaField(targetField);
-                    return processFieldOffset(b, receiver, isSunMiscUnsafe, resolvedJavaField);
+                if (targetField == null) {
+                    /* The field is either null or unknown at build time. */
+                    return false;
                 }
-                /* A NullPointerException will be thrown at run time for this call. */
-                return false;
+                if (Modifier.isStatic(targetField.getModifiers())) {
+                    /* Let objectFieldOffset(Field) reject the static field. */
+                    return false;
+                }
+                ResolvedJavaField resolvedJavaField = b.getMetaAccess().lookupJavaField(targetField);
+                return processFieldOffset(b, receiver, isSunMiscUnsafe, resolvedJavaField);
             }
         });
         SubstrateSharedGraphBuilderPlugins.registerUnsafeAllocateInstancePlugin(r);
