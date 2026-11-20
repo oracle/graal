@@ -187,6 +187,19 @@ public final class IntegerEqualsNode extends CompareNode implements Canonicaliza
                 }
             }
 
+            // optimization for (x & y) == (x | y) -> (x == y).
+            // first, resolve which side has which operator (& or |)
+            if ((forX instanceof AndNode && forY instanceof OrNode) ||
+                            (forX instanceof OrNode && forY instanceof AndNode)) {
+                AndNode andNode = (forX instanceof AndNode) ? (AndNode) forX : (AndNode) forY;
+                OrNode orNode = (forX instanceof OrNode) ? (OrNode) forX : (OrNode) forY;
+                if (((andNode.getX() == orNode.getX()) && (andNode.getY() == orNode.getY())) ||
+                                ((andNode.getX() == orNode.getY()) && (andNode.getY() == orNode.getX()))) {
+                    // both nodes have the same inputs, compare them directly (each node is guaranteed to have both x and y)
+                    return create(andNode.getX(), andNode.getY(), view);
+                }
+            }
+
             if (forX instanceof AddNode || forX instanceof XorNode) {
                 BinaryNode binaryNode = (BinaryNode) forX;
                 if (binaryNode.getX() == forY) {
