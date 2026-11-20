@@ -194,9 +194,10 @@ final class Target_java_net_URL {
             try {
                 Object handler = Class.forName(name, false, ClassLoader.getSystemClassLoader()).getDeclaredConstructor().newInstance();
                 return (URLStreamHandler) handler;
-            } catch (ClassNotFoundException e) {
+            } catch (ClassNotFoundException | NoSuchMethodException e) {
+                /* A reachable handler class can still lack constructor reflection metadata. */
                 if (JavaNetSubstitutions.KNOWN_JDK_PROTOCOLS.contains(protocol)) {
-                    JavaNetSubstitutions.unsupported(protocol, name);
+                    JavaNetSubstitutions.unsupported(protocol, name, e);
                 }
             } catch (Exception e) {
                 // For compatibility, all Exceptions are ignored.
@@ -356,10 +357,12 @@ public final class JavaNetSubstitutions {
         }
     }
 
-    static void unsupported(String protocol, String handlerClassName) {
-        throw sneakyThrow(new MalformedURLException("Accessing a URL protocol that was not enabled. The URL protocol " + protocol +
-                        " is supported but not enabled by default. It must be enabled by adding the " + handlerClassName +
-                        " to reachability metadata."));
+    static void unsupported(String protocol, String handlerClassName, ReflectiveOperationException cause) {
+        MalformedURLException exception = new MalformedURLException("Accessing a URL protocol that was not enabled. The URL protocol " + protocol +
+                        " requires the handler class " + handlerClassName + " and its no-argument constructor. " +
+                        "Check that both are available and registered in reachability metadata.");
+        exception.initCause(cause);
+        throw sneakyThrow(exception);
     }
 
     @SuppressWarnings("unchecked")
