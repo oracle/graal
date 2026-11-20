@@ -80,21 +80,22 @@ public class Isolates {
     private static long initDoneTimeMillis;
     private static long isolateId = -1;
 
-    /**
-     * Indicates if the current isolate is the first isolate in this process. If so, it can be
-     * responsible for taking certain initialization steps (and, symmetrically, shutdown steps).
-     * Such steps can be installing signals handlers or initializing built-in libraries that are
-     * explicitly or implicitly shared between the isolates of the process (for example, because
-     * they have a single native state that does not distinguish between isolates).
-     */
+    /// Indicates if the current isolate is the first isolate responsible for process initialization.
+    /// If so, it can be responsible for taking certain initialization steps (and, symmetrically,
+    /// shutdown steps). Such steps can be installing signal handlers or initializing built-in
+    /// libraries that are explicitly or implicitly shared between the isolates of the process (for
+    /// example, because they have a single native state that does not distinguish between isolates).
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isCurrentFirst() {
         VMError.guarantee(isolateId >= 0);
         return isolateId == 0;
     }
 
+    /// Assigns ID zero when `isFirstIsolate` is `true`, otherwise assigns a unique positive ID.
+    /// The identifier is assigned once and remains stable for the lifetime of the isolate.
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void assignIsolateId(boolean isFirstIsolate) {
+        assert isolateId == -1;
         if (isFirstIsolate) {
             isolateId = 0;
         } else {
