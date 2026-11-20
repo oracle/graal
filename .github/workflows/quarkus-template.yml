@@ -60,6 +60,8 @@ permissions: {}
 jobs:
   build-graalvm:
     uses: ./.github/workflows/build-graalvm.yml
+    permissions:
+      contents: read # to fetch code (actions/checkout)
   build-quarkus:
     permissions:
       contents: read # to fetch code (actions/checkout)

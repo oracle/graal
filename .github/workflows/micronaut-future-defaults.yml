@@ -49,6 +49,9 @@ on:
   - cron: '0 2 * * 1'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   call-template:
     uses: './.github/workflows/micronaut-template.yml'

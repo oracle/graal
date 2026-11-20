@@ -86,6 +86,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   build_from_source:
     name: Build GraalVM
