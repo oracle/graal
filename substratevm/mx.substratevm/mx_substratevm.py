@@ -992,12 +992,12 @@ def pgo_profile_counts_task(extra_image_args=None):
     javap_lines = []
     mx.run([mx.get_jdk().javap, '-c', '-p', '-s', '-cp', output_dir, workload], out=lambda line: javap_lines.append(line.rstrip()))
     bytecode = {}
-    header = None
+    header = ''
     current = None
     for line in javap_lines:
         descriptor = re.match(r'^\s+descriptor: (\S+)$', line)
         call = re.match(r'^\s+(\d+): invoke\w+\s+#\d+(?:,\s*\d+)?\s+// (?:Interface)?Method ([\w$<>]+):', line)
-        if descriptor and header is not None and ('(' in header or header.strip() == 'static {};'):
+        if descriptor and header and ('(' in header or header.strip() == 'static {};'):
             name = '<clinit>' if header.strip() == 'static {};' else re.search(r'([\w$<>]+)\(', header).group(1)
             name = '<init>' if name == workload.rsplit('.', 1)[-1] else name
             current = bytecode.setdefault(name, {'descriptor': descriptor.group(1), 'calls': {}})
@@ -1014,7 +1014,7 @@ def pgo_profile_counts_task(extra_image_args=None):
     # Sampling every millisecond gives the spin many samples, and makes a dump that samples itself show up.
     mx.run([image, '-XX:ProfilesDumpFile=' + profile_path, '-XX:PGOSamplingIntervalMillis=1'], out=lambda line: lines.append(line.rstrip()))
     counted = {parts[1]: int(parts[2]) for parts in (line.split() for line in lines) if len(parts) == 3 and parts[0] == 'count'}
-    with open(profile_path) as fp:
+    with open(profile_path, encoding='utf-8') as fp:
         profile = json.load(fp)
 
     def expect(what, found, expected):
