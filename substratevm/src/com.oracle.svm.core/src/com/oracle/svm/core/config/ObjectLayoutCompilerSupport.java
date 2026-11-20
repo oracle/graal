@@ -58,10 +58,14 @@ public final class ObjectLayoutCompilerSupport {
 
     public static int sizeInBytes(ObjectLayout layout, JavaKind kind) {
         Objects.requireNonNull(layout);
-        return layout.sizeInBytes(toEspressoJavaKind(kind));
+        return layout.sizeInBytes(toGuestJavaKind(kind));
     }
 
-    public static com.oracle.svm.espresso.classfile.JavaKind toEspressoJavaKind(JavaKind kind) {
+    /**
+     * Maps a JVMCI kind to the guest-facing enum representation in the current context; it does not
+     * transfer a value to another VM.
+     */
+    public static com.oracle.svm.espresso.classfile.JavaKind toGuestJavaKind(JavaKind kind) {
         return switch (kind) {
             case Boolean -> com.oracle.svm.espresso.classfile.JavaKind.Boolean;
             case Byte -> com.oracle.svm.espresso.classfile.JavaKind.Byte;
@@ -79,34 +83,34 @@ public final class ObjectLayoutCompilerSupport {
 
     public static int getArrayIndexScale(ObjectLayout layout, JavaKind kind) {
         Objects.requireNonNull(layout);
-        return layout.getArrayIndexScale(toEspressoJavaKind(kind));
+        return layout.getArrayIndexScale(toGuestJavaKind(kind));
     }
 
     public static int getArrayIndexShift(ObjectLayout layout, JavaKind kind) {
         Objects.requireNonNull(layout);
-        return layout.getArrayIndexShift(toEspressoJavaKind(kind));
+        return layout.getArrayIndexShift(toGuestJavaKind(kind));
     }
 
     public static int getArrayBaseOffset(ObjectLayout layout, JavaKind kind) {
         Objects.requireNonNull(layout);
-        return layout.getArrayBaseOffset(toEspressoJavaKind(kind));
+        return layout.getArrayBaseOffset(toGuestJavaKind(kind));
     }
 
     public static long getArrayElementOffset(ObjectLayout layout, JavaKind kind, int index) {
         Objects.requireNonNull(layout);
-        return layout.getArrayElementOffset(toEspressoJavaKind(kind), index);
+        return layout.getArrayElementOffset(toGuestJavaKind(kind), index);
     }
 
     public static long getArraySize(ObjectLayout layout, JavaKind kind, int length, boolean withOptionalIdHashField) {
         Objects.requireNonNull(layout);
         assert length >= 0 : length;
-        return layout.getArraySize(toEspressoJavaKind(kind), length, withOptionalIdHashField);
+        return layout.getArraySize(toGuestJavaKind(kind), length, withOptionalIdHashField);
     }
 
     public static long getArrayIdentityHashOffset(ObjectLayout layout, JavaKind kind, int length) {
         Objects.requireNonNull(layout);
         assert length >= 0 : length;
-        return layout.getArrayIdentityHashOffset(toEspressoJavaKind(kind), length);
+        return layout.getArrayIdentityHashOffset(toGuestJavaKind(kind), length);
     }
 
     public static JavaKind getCallSignatureKind(boolean isEntryPoint, JavaType type, MetaAccessProvider metaAccess, TargetDescription target) {
