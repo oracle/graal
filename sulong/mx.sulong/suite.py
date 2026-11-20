@@ -1208,6 +1208,19 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+    "com.oracle.truffle.llvm.tests.sulongavx2fma.native" : {
+      "subDir" : "tests",
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["bitcode-O1", "bitcode-O2", "bitcode-O3"],
+      "cmakeConfig" : {
+        "CMAKE_C_FLAGS" : "-mavx2 -mfma",
+        "CMAKE_EXE_LINKER_FLAGS" : "-lm",
+      },
+      "dependencies" : ["SULONG_TEST"],
+      "buildDependencies" : ["LINUX_AMD64_SUPPORT"],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests.pthread.native" : {
       "subDir" : "tests",
       "class" : "SulongCMakeTestSuite",
@@ -2500,6 +2513,7 @@ LDFLAGS=
           "dependency:com.oracle.truffle.llvm.tests.sulong.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulong.Os.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulongavx.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.sulongavx2fma.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulongcpp.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulongobjc.native/*",
           "dependency:com.oracle.truffle.llvm.tests.libc.native/*",
