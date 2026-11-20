@@ -323,11 +323,17 @@ public final class ThreadLocalAllocation {
         Object array;
         if (!GenScavengeAllocationSupport.shouldAllocateInAlignedChunk(size)) {
             /*
-             * Large arrays go into their own unaligned chunk. Only arrays and stored continuations
-             * may be allocated in an unaligned chunk.
+             * Large arrays go into their own unaligned chunk.
+             *
+             * Instance objects with object reference fields, including hybrid objects such as pods,
+             * must not be allocated in unaligned chunks because field write barriers assume an
+             * aligned chunk.
              */
             int layoutEncoding = hub.getLayoutEncoding();
-            assert LayoutEncoding.isArray(layoutEncoding) || StoredContinuation.class.isAssignableFrom(DynamicHub.toClass(hub));
+            if (!LayoutEncoding.isArray(layoutEncoding) && !StoredContinuation.class.isAssignableFrom(DynamicHub.toClass(hub))) {
+                throw VMError.shouldNotReachHere("Only arrays and StoredContinuation may be allocated in an unaligned chunk. " +
+                                "Hybrid objects such as pods must be small enough to be allocated in an aligned chunk.");
+            }
 
             boolean needsZeroing = !HeapChunkProvider.areUnalignedChunksZeroed();
             UnalignedHeapChunk.UnalignedHeader newTlabChunk = HeapImpl.getChunkProvider().produceUnalignedChunk(size);
