@@ -1725,7 +1725,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 polymorphicType = genericParameter.getType();
             } else {
                 NodeExecutionData execution = genericParameter.getSpecification().getExecution();
-                Collection<TypeMirror> usedTypes = new HashSet<>();
+                Collection<TypeMirror> usedTypes = new LinkedHashSet<>();
                 for (SpecializationData specialization : node.getSpecializations()) {
                     Parameter parameter = specialization.findParameter(genericParameter.getLocalName());
                     if (parameter == specialization.getReturnType() && specialization.isFallback() && specialization.getMethod() == null) {
@@ -3265,7 +3265,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     private static boolean renameDuplicateIds(List<String> signatures) {
         boolean changed = false;
-        Map<String, Integer> counts = new HashMap<>();
+        Map<String, Integer> counts = new LinkedHashMap<>();
         for (String s1 : signatures) {
             Integer count = counts.get(s1.toLowerCase());
             if (count == null) {
@@ -4747,7 +4747,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
 
         List<Element> elements = ElementUtils.newElementList(originalElements);
-        Set<Element> unusedElements = new HashSet<>(elements);
+        Set<Element> unusedElements = new LinkedHashSet<>(elements);
         for (ExecutableElement method : nodeData.getAllTemplateMethods()) {
             unusedElements.remove(method);
         }

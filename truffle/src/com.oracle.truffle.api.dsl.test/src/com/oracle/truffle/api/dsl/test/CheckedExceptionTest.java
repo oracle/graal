@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import java.io.IOException;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -50,6 +52,7 @@ import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.CheckedExceptionTestFactory.Default1NodeGen;
 import com.oracle.truffle.api.dsl.test.CheckedExceptionTestFactory.Default2NodeGen;
+import com.oracle.truffle.api.dsl.test.CheckedExceptionTestFactory.GuardExceptionOrderNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused"})
@@ -116,6 +119,36 @@ public class CheckedExceptionTest {
             Assert.fail();
         } catch (CheckedException e) {
         }
+    }
+
+    @GenerateInline(false)
+    abstract static class GuardExceptionOrderNode extends Node {
+
+        abstract int execute(Object left, Object right) throws IOException, ReflectiveOperationException;
+
+        @Specialization(guards = "leftGuard(left) || rightGuard(right)")
+        static int pair(String left, String right) {
+            return left.length() + right.length();
+        }
+
+        static boolean leftGuard(String value) throws IOException {
+            return !value.isEmpty();
+        }
+
+        static boolean rightGuard(String value) throws ReflectiveOperationException {
+            return !value.isEmpty();
+        }
+
+        @Fallback
+        static int other(Object left, Object right) {
+            return -1;
+        }
+    }
+
+    @Test
+    public void testGuardExceptionOrder() throws ReflectiveOperationException {
+        Assert.assertArrayEquals(new Class<?>[]{IOException.class, ReflectiveOperationException.class},
+                        GuardExceptionOrderNodeGen.class.getDeclaredMethod("fallbackGuard_", Object.class, Object.class).getExceptionTypes());
     }
 
     abstract static class Error1Node extends Node {

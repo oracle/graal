@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -176,7 +176,7 @@ public final class SLBytecodeParser extends SLBaseParser {
     }
 
     public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, Source source) {
-        Map<TruffleString, RootCallTarget> roots = new HashMap<>();
+        Map<TruffleString, RootCallTarget> roots = new LinkedHashMap<>();
         parseSL(language, source, roots);
         return roots;
     }

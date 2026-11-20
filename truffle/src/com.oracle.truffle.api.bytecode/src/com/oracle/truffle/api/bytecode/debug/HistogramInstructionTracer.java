@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -448,13 +447,13 @@ public final class HistogramInstructionTracer implements InstructionTracer {
          */
         public Map<InstructionDescriptor, LongSummaryStatistics> getStatistics() {
             if (subGroups == null) {
-                return data.entrySet().stream().collect(Collectors.toMap(
-                                Map.Entry::getKey,
-                                e -> {
-                                    LongSummaryStatistics s = new LongSummaryStatistics();
-                                    s.accept(e.getValue());
-                                    return s;
-                                }));
+                Map<InstructionDescriptor, LongSummaryStatistics> statistics = new LinkedHashMap<>();
+                for (var entry : data.entrySet()) {
+                    LongSummaryStatistics s = new LongSummaryStatistics();
+                    s.accept(entry.getValue());
+                    statistics.put(entry.getKey(), s);
+                }
+                return statistics;
             } else {
                 Map<InstructionDescriptor, LongSummaryStatistics> aggregated = new LinkedHashMap<>();
                 for (Histogram child : subGroups.values()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,7 @@ package com.oracle.truffle.api.frame;
 
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
@@ -385,7 +385,7 @@ public final class FrameDescriptor implements Cloneable {
     public Map<Object, Integer> getAuxiliarySlots() {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (this) {
-            Map<Object, Integer> result = new HashMap<>();
+            Map<Object, Integer> result = new LinkedHashMap<>();
             EconomicMap<Object, Integer> map = auxiliarySlotMap;
             BitSet disabled = disabledAuxiliarySlots;
             if (map != null) {

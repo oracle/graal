@@ -575,7 +575,7 @@ final class PolyglotMarshallerConfig {
         @Override
         public Map<String, Object> read(Isolate<?> isolate, BinaryInput in) {
             int size = in.readInt();
-            Map<String, Object> res = new HashMap<>(size);
+            Map<String, Object> res = new LinkedHashMap<>(size);
             for (int i = 0; i < size; i++) {
                 String name = in.readUTF();
                 long objectHandle = in.readLong();
@@ -610,7 +610,7 @@ final class PolyglotMarshallerConfig {
         @Override
         public Map<String, Object> read(Isolate<?> isolate, BinaryInput in) {
             int size = in.readInt();
-            Map<String, Object> res = new HashMap<>(size);
+            Map<String, Object> res = new LinkedHashMap<>(size);
             for (int i = 0; i < size; i++) {
                 String name = in.readUTF();
                 long objectHandle = in.readLong();

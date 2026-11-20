@@ -114,7 +114,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
      * the booleanConverter class; if the same converter is used multiple times (or the converter is
      * itself declared as an operation), we should create just a single operation for all usages.
      */
-    private final HashMap<TypeElement, CustomOperationModel> customRegularOperations = new HashMap<>();
+    private final LinkedHashMap<TypeElement, CustomOperationModel> customRegularOperations = new LinkedHashMap<>();
     private final List<CustomOperationModel> customShortCircuitOperations = new ArrayList<>();
     private final HashMap<OperationModel, CustomOperationModel> operationsToCustomOperations = new HashMap<>();
     private final List<CustomOperationModel> instrumentations = new ArrayList<>();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import static org.junit.Assert.fail;
 import java.io.ByteArrayOutputStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +75,15 @@ public class SLJavaInteropTest extends AbstractSLTest {
     @After
     public void dispose() {
         context.close();
+    }
+
+    @Test
+    public void testFunctionMemberDeclarationOrder() {
+        List<String> builtins = new ArrayList<>(context.getBindings("sl").getMemberKeys());
+        context.eval("sl", "function zeta() {} function alpha() {} function mu() {}");
+        List<String> members = new ArrayList<>(context.getBindings("sl").getMemberKeys());
+        members.removeAll(builtins);
+        assertEquals(List.of("zeta", "alpha", "mu"), members);
     }
 
     @Test
