@@ -51,8 +51,25 @@ suite = {
         "RUST_SOURCE": {
             # don't unpack into the mx cache, we want to patch this
             "resource": True,
-            "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/sandbox-toolchain-deps/rust-1.94.0-2.tar.gz"],
-            "digest": "sha512:3aa092b03bd45fa42af50dd791bc0bf065f422fb5a889f999cc576c3e2298bd4b8403359e2d4e7cb536bc0d24b77887998041a1b26c9bca50b6cc8c37678697c",
+            "urls": ["https://static.rust-lang.org/dist/rustc-1.100.0-src.tar.xz"],
+            "digest": "sha512:35b8ad7f6449d5c68de483d989043e8297fa29b37e6a448ef710d1b4e8f92bc0dd21704a1c924344cf721f1b2f8010fff2b64368d507cffc7cd2b11f2f56c12b",
+        },
+
+        # Rust 1.100.0 bootstraps with Rust 1.99.0, as pinned in its src/stage0.
+        "RUST_BOOTSTRAP_RUSTC": {
+            "resource": True,
+            "urls": ["https://static.rust-lang.org/dist/2026-10-01/rustc-1.99.0-x86_64-unknown-linux-gnu.tar.xz"],
+            "digest": "sha256:77171ba2a0345fdf2abc4fedda55d6de078dae7a68527c28be8c77dcc9604bd5",
+        },
+        "RUST_BOOTSTRAP_STD": {
+            "resource": True,
+            "urls": ["https://static.rust-lang.org/dist/2026-10-01/rust-std-1.99.0-x86_64-unknown-linux-gnu.tar.xz"],
+            "digest": "sha256:3e58dff2d0b72196b5ea4e90536e174d400de88564a52694686b81e091169933",
+        },
+        "RUST_BOOTSTRAP_CARGO": {
+            "resource": True,
+            "urls": ["https://static.rust-lang.org/dist/2026-10-01/cargo-1.99.0-x86_64-unknown-linux-gnu.tar.xz"],
+            "digest": "sha256:d7674918d28093097614cd9728b6ca60db9ea3038f640f0bd1e9a4188c7568ce",
         },
 
         # build tools
@@ -1101,6 +1118,11 @@ suite = {
         "rust": {
             "class": "RustBuilderProject",
             "source": "RUST_SOURCE",
+            "bootstrapSources": {
+                "2026-10-01/rustc-1.99.0-x86_64-unknown-linux-gnu.tar.xz": "RUST_BOOTSTRAP_RUSTC",
+                "2026-10-01/rust-std-1.99.0-x86_64-unknown-linux-gnu.tar.xz": "RUST_BOOTSTRAP_STD",
+                "2026-10-01/cargo-1.99.0-x86_64-unknown-linux-gnu.tar.xz": "RUST_BOOTSTRAP_CARGO",
+            },
             "toolchain": "SANDBOXED_MUSL_TOOLCHAIN",
             "hostToolchain": "sdk:LLVM_TOOLCHAIN",
             "bootstrapPath": "RUST_BOOTSTRAP_PATH",

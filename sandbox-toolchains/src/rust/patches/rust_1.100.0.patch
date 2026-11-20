@@ -1,8 +1,8 @@
 diff --git a/compiler/rustc_codegen_llvm/src/back/write.rs b/compiler/rustc_codegen_llvm/src/back/write.rs
-index bcadb6f0de9..55dd18f0975 100644
+index deaa78f..8019b02 100644
 --- a/compiler/rustc_codegen_llvm/src/back/write.rs
 +++ b/compiler/rustc_codegen_llvm/src/back/write.rs
-@@ -754,6 +754,7 @@ pub(crate) unsafe fn llvm_optimize(
+@@ -781,6 +781,7 @@ pub(crate) unsafe fn llvm_optimize(
              config.no_builtins,
              config.emit_lifetime_markers,
              enzyme_fn,
@@ -11,7 +11,7 @@ index bcadb6f0de9..55dd18f0975 100644
              print_after_enzyme,
              print_passes,
 diff --git a/compiler/rustc_codegen_llvm/src/llvm/ffi.rs b/compiler/rustc_codegen_llvm/src/llvm/ffi.rs
-index a90013801c8..58c689d7b40 100644
+index 655a79e..9794f15 100644
 --- a/compiler/rustc_codegen_llvm/src/llvm/ffi.rs
 +++ b/compiler/rustc_codegen_llvm/src/llvm/ffi.rs
 @@ -19,6 +19,7 @@ use std::ptr;
@@ -22,7 +22,7 @@ index a90013801c8..58c689d7b40 100644
  
  use super::RustString;
  use super::debuginfo::{
-@@ -2374,6 +2375,7 @@ unsafe extern "C" {
+@@ -2463,6 +2464,7 @@ unsafe extern "C" {
          DisableSimplifyLibCalls: bool,
          EmitLifetimeMarkers: bool,
          RunEnzyme: *const c_void,
@@ -31,48 +31,49 @@ index a90013801c8..58c689d7b40 100644
          PrintAfterEnzyme: bool,
          PrintPasses: bool,
 diff --git a/compiler/rustc_codegen_ssa/src/back/write.rs b/compiler/rustc_codegen_ssa/src/back/write.rs
-index 3e36bd8552b..3078a66c9f6 100644
+index 9f239bb..42932c2 100644
 --- a/compiler/rustc_codegen_ssa/src/back/write.rs
 +++ b/compiler/rustc_codegen_ssa/src/back/write.rs
-@@ -29,6 +29,7 @@ use rustc_middle::ty::TyCtxt;
- use rustc_session::Session;
+@@ -23,7 +23,7 @@ use rustc_metadata::fs::copy_to_stdout;
+ use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
+ use rustc_middle::ty::TyCtxt;
  use rustc_session::config::{
-     self, CrateType, Lto, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath,
-+    SandboxMode,
+-    self, Lto, OptLevel, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath,
++    self, Lto, OptLevel, OutFileName, OutputFilenames, OutputType, Passes, SandboxMode, SwitchWithOptPath,
  };
+ use rustc_session::{IncrCompSession, Session};
  use rustc_span::source_map::SourceMap;
- use rustc_span::{FileName, InnerSpan, Span, SpanData, sym};
-@@ -326,6 +327,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
+@@ -322,6 +322,7 @@ pub type TargetMachineFactoryFn<B> = Arc<
+ pub struct CodegenContext {
      // Resources needed when running LTO
-     pub prof: SelfProfilerRef,
      pub lto: Lto,
 +    pub sandbox: SandboxMode,
-     pub save_temps: bool,
-     pub fewer_names: bool,
-     pub time_trace: bool,
-@@ -1292,6 +1294,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
-     let cgcx = CodegenContext::<B> {
+     pub use_linker_plugin_lto: bool,
+     pub dylib_lto: bool,
+     pub prefer_dynamic: bool,
+@@ -1278,6 +1279,7 @@ fn start_executing_work<B: WriteBackendMethods>(
+     let cgcx = CodegenContext {
          crate_types: tcx.crate_types().to_vec(),
          lto: sess.lto(),
 +        sandbox: sess.sandbox(),
-         fewer_names: sess.fewer_names(),
-         save_temps: sess.opts.cg.save_temps,
-         time_trace: sess.opts.unstable_opts.llvm_time_trace,
+         use_linker_plugin_lto: sess.opts.cg.linker_plugin_lto.enabled(),
+         dylib_lto: sess.opts.unstable_opts.dylib_lto,
+         prefer_dynamic: sess.opts.cg.prefer_dynamic,
 diff --git a/compiler/rustc_driver_impl/src/lib.rs b/compiler/rustc_driver_impl/src/lib.rs
-index a328298d3b1..b8e9efe1ed6 100644
+index 210f04a..d944a7c 100644
 --- a/compiler/rustc_driver_impl/src/lib.rs
 +++ b/compiler/rustc_driver_impl/src/lib.rs
-@@ -52,7 +52,7 @@ use rustc_parse::lexer::StripTokens;
+@@ -53,7 +53,7 @@ use rustc_parse::lexer::StripTokens;
  use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
  use rustc_session::config::{
-     CG_OPTIONS, CrateType, ErrorOutputType, Input, OptionDesc, OutFileName, OutputType, Sysroot,
+     CG_OPTIONS, ErrorOutputType, Input, OptionDesc, OutFileName, OutputType, Sysroot,
 -    UnstableOptions, Z_OPTIONS, nightly_options, parse_target_triple,
 +    SandboxMode, UnstableOptions, Z_OPTIONS, nightly_options, parse_target_triple,
  };
  use rustc_session::getopts::{self, Matches};
- use rustc_session::lint::{Lint, LintId};
-@@ -212,6 +212,29 @@ pub fn diagnostics_registry() -> Registry {
-     Registry::new(rustc_errors::codes::DIAGNOSTICS)
+ use rustc_session::output::invalid_output_for_target;
+@@ -169,6 +169,29 @@ impl Callbacks for TimePassesCallbacks {
+     }
  }
  
 +fn parse_explicit_target(args: &[String]) -> Option<String> {
@@ -101,7 +102,7 @@ index a328298d3b1..b8e9efe1ed6 100644
  /// This is the primary entry point for rustc.
  pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) {
      let mut default_early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
-@@ -226,12 +249,31 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send))
+@@ -183,7 +206,20 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send))
      // the compiler with @empty_file as argv[0] and no more arguments.
      let at_args = at_args.get(1..).unwrap_or_default();
  
@@ -121,12 +122,13 @@ index a328298d3b1..b8e9efe1ed6 100644
 +        args.push("-Ctarget-feature=-crt-static".to_string());
 +    }
  
-     let Some(matches) = handle_options(&default_early_dcx, &args) else {
-         return;
+     let (matches, help_only) = match handle_options(&default_early_dcx, &args) {
+         HandledOptions::None => return,
+@@ -191,6 +227,11 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send))
+         HandledOptions::HelpOnly(matches) => (matches, true),
      };
  
-+    let verbose = matches.opt_present("verbose");
-+    if verbose {
++    if matches.opt_present("verbose") {
 +        safe_println!("[rustc-driver] sandbox_mode:     {}", sandbox_mode.as_str());
 +        safe_println!("[rustc-driver] cli:              {}", args.join(" "));
 +    }
@@ -135,10 +137,10 @@ index a328298d3b1..b8e9efe1ed6 100644
      // fully initialize ice path static once unstable options are available as context
      let ice_file = ice_path_with_config(Some(&sopts.unstable_opts)).clone();
 diff --git a/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp b/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
-index 733f5fd0df0..24306a6b091 100644
+index beb63ad..d84b6b4 100644
 --- a/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
 +++ b/compiler/rustc_llvm/llvm-wrapper/PassWrapper.cpp
-@@ -51,6 +51,8 @@
+@@ -55,6 +55,8 @@
  #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
  #include "llvm/Transforms/Utils/FunctionImportUtils.h"
  #include "llvm/Transforms/Utils/NameAnonGlobals.h"
@@ -147,7 +149,7 @@ index 733f5fd0df0..24306a6b091 100644
  #include <set>
  #include <string>
  #include <vector>
-@@ -187,6 +189,12 @@ static OptimizationLevel fromRust(LLVMRustPassBuilderOptLevel Level) {
+@@ -223,6 +225,12 @@ static OptimizationLevel fromRust(LLVMRustPassBuilderOptLevel Level) {
    }
  }
  
@@ -160,20 +162,20 @@ index 733f5fd0df0..24306a6b091 100644
  enum class LLVMRustRelocModel {
    Static,
    PIC,
-@@ -565,7 +573,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
-     bool EmitThinLTOSummary, bool MergeFunctions, bool UnrollLoops,
-     bool SLPVectorize, bool LoopVectorize, bool DisableSimplifyLibCalls,
-     bool EmitLifetimeMarkers, registerEnzymeAndPassPipelineFn EnzymePtr,
--    bool PrintBeforeEnzyme, bool PrintAfterEnzyme, bool PrintPasses,
-+    LLVMRustSandboxMode SandboxMode, bool PrintBeforeEnzyme,
-+    bool PrintAfterEnzyme, bool PrintPasses,
+@@ -690,7 +698,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
+     LLVMRustBuffer **ThinLTOSummaryBufferRef, bool MergeFunctions,
+     bool UnrollLoops, bool SLPVectorize, bool LoopVectorize,
+     bool DisableSimplifyLibCalls, bool EmitLifetimeMarkers,
+-    registerEnzymeAndPassPipelineFn EnzymePtr, bool PrintBeforeEnzyme,
++    registerEnzymeAndPassPipelineFn EnzymePtr, LLVMRustSandboxMode SandboxMode,
++    bool PrintBeforeEnzyme,
+     bool PrintAfterEnzyme, bool PrintPasses,
      LLVMRustSanitizerOptions *SanitizerOptions, const char *PGOGenPath,
      const char *PGOUsePath, bool InstrumentCoverage,
-     const char *InstrProfileOutput, const char *PGOSampleUsePath,
-@@ -924,6 +933,19 @@ extern "C" LLVMRustResult LLVMRustOptimize(
-       MPM.addPass(PrintModulePass(outs(), Banner, true, false));
+@@ -1068,6 +1077,19 @@ extern "C" LLVMRustResult LLVMRustOptimize(
      }
    }
+ 
 +  if (SandboxMode == LLVMRustSandboxMode::SWCFI ||
 +      SandboxMode == LLVMRustSandboxMode::HWCFI) {
 +    if (SandboxMode == LLVMRustSandboxMode::SWCFI) {
@@ -190,31 +192,16 @@ index 733f5fd0df0..24306a6b091 100644
    if (PrintPasses) {
      // Print all passes from the PM:
      std::string Pipeline;
-@@ -940,6 +962,14 @@ extern "C" LLVMRustResult LLVMRustOptimize(
-   for (Module::iterator I = TheModule->begin(), E = TheModule->end(); I != E;)
-     UpgradeCallsToIntrinsic(&*I++); // must be post-increment, as we remove
- 
-+  // printf("print pipeline\n");
-+  // outs() << "===================================PIPELINE======================================================\n";
-+  // MPM.printPipeline(outs(), [&PIC](StringRef ClassName) {
-+  //   auto PassName = PIC.getPassNameForClassName(ClassName);
-+  //   return PassName.empty() ? ClassName : PassName;
-+  // });
-+  // outs() << "\n";
-+
-   MPM.run(*TheModule, MAM);
-   return LLVMRustResult::Success;
- }
 diff --git a/compiler/rustc_session/src/config.rs b/compiler/rustc_session/src/config.rs
-index f0dc5b9ac48..f8d0322ecec 100644
+index 753a4ed..bccc613 100644
 --- a/compiler/rustc_session/src/config.rs
 +++ b/compiler/rustc_session/src/config.rs
-@@ -497,6 +497,39 @@ pub enum IncrementalStateAssertion {
+@@ -552,6 +552,39 @@ pub enum IncrementalStateAssertion {
      NotLoaded,
  }
  
 +/// Sandbox mode derived from the compilation target.
-+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
++#[derive(Clone, Copy, PartialEq, Hash, Debug, Encodable, Decodable)]
 +#[repr(C)]
 +pub enum SandboxMode {
 +    OFF,
@@ -250,19 +237,20 @@ index f0dc5b9ac48..f8d0322ecec 100644
  #[derive(Copy, Clone, PartialEq, Hash, Debug)]
  pub struct LocationDetail {
 diff --git a/compiler/rustc_session/src/session.rs b/compiler/rustc_session/src/session.rs
-index 1a0ec600af4..48a55a656ec 100644
+index 060e614..e2968ec 100644
 --- a/compiler/rustc_session/src/session.rs
 +++ b/compiler/rustc_session/src/session.rs
-@@ -39,6 +39,7 @@ pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, Varian
+@@ -38,7 +38,7 @@ pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, Varian
  use crate::config::{
-     self, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType, FunctionReturn,
-     Input, InstrumentCoverage, OptLevel, OutFileName, OutputType, SwitchWithOptPath,
-+    SandboxMode,
+     self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, DebugInfo,
+     ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, LtoCli,
+-    NATIVE_CPU, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
++    NATIVE_CPU, OutFileName, OutputType, PAuthKey, PointerAuthOption, SandboxMode, SwitchWithOptPath,
  };
  use crate::filesearch::FileSearch;
  use crate::lint::LintId;
-@@ -578,6 +579,14 @@ impl Session {
-             .unwrap_or_else(|| if self.opts.optimize != OptLevel::No { 2 } else { 1 })
+@@ -975,6 +975,14 @@ impl Session {
+         self.opts.unstable_opts.mir_opt_level.unwrap_or_else(|| self.opts.optimize.mir_opt_level())
      }
  
 +    pub fn sandbox(&self) -> SandboxMode {
@@ -277,11 +265,11 @@ index 1a0ec600af4..48a55a656ec 100644
      pub fn lto(&self) -> config::Lto {
          // If our target has codegen requirements ignore the command line
 diff --git a/compiler/rustc_target/src/spec/mod.rs b/compiler/rustc_target/src/spec/mod.rs
-index 57effe3a866..c5ec9250538 100644
+index 2d7cd04..9c8efcd 100644
 --- a/compiler/rustc_target/src/spec/mod.rs
 +++ b/compiler/rustc_target/src/spec/mod.rs
-@@ -1482,6 +1482,8 @@ supported_targets! {
-     ("aarch64-unknown-linux-musl", aarch64_unknown_linux_musl),
+@@ -1359,6 +1359,8 @@ supported_targets! {
+     ("aarch64-unknown-linux-pauthtest", aarch64_unknown_linux_pauthtest),
      ("aarch64_be-unknown-linux-musl", aarch64_be_unknown_linux_musl),
      ("x86_64-unknown-linux-musl", x86_64_unknown_linux_musl),
 +    ("x86_64-graalos_swcfi-linux-musl", x86_64_unknown_linux_musl_swcfi),
@@ -291,7 +279,7 @@ index 57effe3a866..c5ec9250538 100644
      ("mips-unknown-linux-musl", mips_unknown_linux_musl),
 diff --git a/compiler/rustc_target/src/spec/targets/x86_64_unknown_linux_musl_hwcfi.rs b/compiler/rustc_target/src/spec/targets/x86_64_unknown_linux_musl_hwcfi.rs
 new file mode 100644
-index 00000000000..729a7a12861
+index 0000000..729a7a1
 --- /dev/null
 +++ b/compiler/rustc_target/src/spec/targets/x86_64_unknown_linux_musl_hwcfi.rs
 @@ -0,0 +1,8 @@
@@ -305,7 +293,7 @@ index 00000000000..729a7a12861
 +}
 diff --git a/compiler/rustc_target/src/spec/targets/x86_64_unknown_linux_musl_swcfi.rs b/compiler/rustc_target/src/spec/targets/x86_64_unknown_linux_musl_swcfi.rs
 new file mode 100644
-index 00000000000..0eb8526c1d6
+index 0000000..0eb8526
 --- /dev/null
 +++ b/compiler/rustc_target/src/spec/targets/x86_64_unknown_linux_musl_swcfi.rs
 @@ -0,0 +1,8 @@
@@ -318,7 +306,7 @@ index 00000000000..0eb8526c1d6
 +    target
 +}
 diff --git a/library/std/src/sys/process/unix/unix.rs b/library/std/src/sys/process/unix/unix.rs
-index 460d5ec0f07..51c49d1b018 100644
+index aa47fcb..1d74701 100644
 --- a/library/std/src/sys/process/unix/unix.rs
 +++ b/library/std/src/sys/process/unix/unix.rs
 @@ -52,6 +52,20 @@ cfg_select! {
@@ -350,7 +338,7 @@ index 460d5ec0f07..51c49d1b018 100644
  
          #[cfg(target_os = "linux")]
          let (input, output) = sys::net::Socket::new_pair(libc::AF_UNIX, libc::SOCK_SEQPACKET)?;
-@@ -432,6 +447,7 @@ impl Command {
+@@ -438,6 +453,7 @@ impl Command {
          _: &ChildPipes,
          _: Option<&CStringArray>,
      ) -> io::Result<Option<Process>> {
@@ -358,9 +346,9 @@ index 460d5ec0f07..51c49d1b018 100644
          Ok(None)
      }
  
-@@ -457,13 +473,30 @@ impl Command {
-         use crate::mem::MaybeUninit;
-         use crate::sys::{self, cvt_nz, on_broken_pipe_flag_used};
+@@ -466,13 +482,30 @@ impl Command {
+         use crate::sys::helpers::COpaque;
+         use crate::sys::{self, cvt_nz, on_broken_pipe_used};
  
 -        if self.get_gid().is_some()
 -            || self.get_uid().is_some()
@@ -396,7 +384,7 @@ index 460d5ec0f07..51c49d1b018 100644
              return Ok(None);
          }
  
-@@ -494,6 +527,7 @@ impl Command {
+@@ -503,6 +536,7 @@ impl Command {
                  if self.get_create_pidfd() {
                      let mut support = PIDFD_SUPPORTED.load(Ordering::Relaxed);
                      if support == FORK_EXEC {
@@ -404,7 +392,7 @@ index 460d5ec0f07..51c49d1b018 100644
                          return Ok(None);
                      }
                      if support == UNKNOWN {
-@@ -521,6 +555,7 @@ impl Command {
+@@ -537,6 +571,7 @@ impl Command {
                          }
                          PIDFD_SUPPORTED.store(support, Ordering::Relaxed);
                          if support == FORK_EXEC {
@@ -412,9 +400,9 @@ index 460d5ec0f07..51c49d1b018 100644
                              return Ok(None);
                          }
                      }
-@@ -539,9 +574,11 @@ impl Command {
+@@ -555,9 +590,11 @@ impl Command {
          {
-             if let Some(version) = sys::os::glibc_version() {
+             if let Some(version) = sys::pal::conf::glibc_version() {
                  if version < (2, 24) {
 +                    self.spawn_trace("posix_spawn rejected: glibc version is older than 2.24");
                      return Ok(None);
@@ -424,7 +412,7 @@ index 460d5ec0f07..51c49d1b018 100644
                  return Ok(None);
              }
          }
-@@ -647,6 +684,7 @@ impl Command {
+@@ -663,6 +700,7 @@ impl Command {
                      // ENOENT when used with posix_spawn_file_actions_addchdir_np
                      // which was introduced in macOS 10.15.
                      if self.get_program_kind() == ProgramKind::Relative {
@@ -432,7 +420,7 @@ index 460d5ec0f07..51c49d1b018 100644
                          return Ok(None);
                      }
                  }
-@@ -655,7 +693,10 @@ impl Command {
+@@ -671,7 +709,10 @@ impl Command {
                  // fork/exec path.
                  match get_posix_spawn_addchdir() {
                      Some(f) => Some((f, cwd)),
@@ -444,8 +432,8 @@ index 460d5ec0f07..51c49d1b018 100644
                  }
              }
              None => None,
-@@ -768,6 +809,10 @@ impl Command {
-             #[cfg(target_os = "nto")]
+@@ -784,6 +825,10 @@ impl Command {
+             #[cfg(any(target_os = "nto", target_os = "qnx"))]
              let spawn_fn = retrying_libc_posix_spawnp;
  
 +            if needs_path_search {
@@ -455,7 +443,7 @@ index 460d5ec0f07..51c49d1b018 100644
              #[cfg(target_os = "linux")]
              if self.get_create_pidfd() && PIDFD_SUPPORTED.load(Ordering::Relaxed) == SPAWN {
                  let mut pidfd: libc::c_int = -1;
-@@ -785,6 +830,7 @@ impl Command {
+@@ -801,6 +846,7 @@ impl Command {
                      && e.raw_os_error() == Some(libc::ENOSYS)
                  {
                      PIDFD_SUPPORTED.store(FORK_EXEC, Ordering::Relaxed);
@@ -464,10 +452,10 @@ index 460d5ec0f07..51c49d1b018 100644
                  }
                  spawn_res?;
 diff --git a/src/bootstrap/bootstrap.py b/src/bootstrap/bootstrap.py
-index 2e16f2cf27e..fd50ee78371 100644
+index fcec091..5435ce5 100644
 --- a/src/bootstrap/bootstrap.py
 +++ b/src/bootstrap/bootstrap.py
-@@ -1159,7 +1159,8 @@ class RustBuild(object):
+@@ -1193,7 +1193,8 @@ class RustBuild(object):
          if self.use_locked_deps:
              args.append("--locked")
          if self.use_vendored_sources:
@@ -478,10 +466,10 @@ index 2e16f2cf27e..fd50ee78371 100644
              args.append("--features")
              args.append("build-metrics")
 diff --git a/src/bootstrap/src/core/builder/cargo.rs b/src/bootstrap/src/core/builder/cargo.rs
-index dda0b40cb69..cce3b6b81e9 100644
+index 754f4a5..2949cad 100644
 --- a/src/bootstrap/src/core/builder/cargo.rs
 +++ b/src/bootstrap/src/core/builder/cargo.rs
-@@ -1355,7 +1355,11 @@ impl Builder<'_> {
+@@ -1416,7 +1416,11 @@ impl Builder<'_> {
              cargo.arg("--locked");
          }
          if self.config.vendor || self.is_sudo {
