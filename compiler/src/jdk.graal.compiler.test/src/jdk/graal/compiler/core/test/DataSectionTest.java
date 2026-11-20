@@ -35,25 +35,29 @@ import jdk.graal.compiler.code.DataSection.Data;
 import jdk.graal.compiler.code.DataSection.RawData;
 import jdk.vm.ci.code.site.DataSectionReference;
 
-/// Checks that closing a data section preserves its computed layout and emitted contents.
+/// Checks that closing a data section preserves its computed layout and emitted contents, including
+/// layouts with padding from `ForceAdversarialLayout`.
 public class DataSectionTest extends GraalCompilerTest {
     @Test
     public void retainedAlignmentUpdateAfterClose() {
         DataSection section = new DataSection();
-        section.insertData(new RawData(new byte[]{1}, 1));
+        DataSectionReference firstReference = section.insertData(new RawData(new byte[]{1}, 1));
         Data data = new RawData(new byte[]{2}, 1);
         DataSectionReference reference = section.insertData(data);
         section.close(getInitialOptions(), 1);
 
+        int sectionSize = section.getSectionSize();
+        int referenceOffset = reference.getOffset();
         Assert.assertThrows(IllegalStateException.class, () -> data.updateAlignment(8));
         Assert.assertEquals(1, data.getAlignment());
-        Assert.assertEquals(1, reference.getOffset());
+        Assert.assertEquals(referenceOffset, reference.getOffset());
         Assert.assertEquals(1, section.getSectionAlignment());
-        Assert.assertEquals(2, section.getSectionSize());
-        ByteBuffer buffer = ByteBuffer.allocate(2);
+        Assert.assertEquals(sectionSize, section.getSectionSize());
+        ByteBuffer buffer = ByteBuffer.allocate(sectionSize);
         section.buildDataSection(buffer, (position, constant) -> {
         });
-        Assert.assertArrayEquals(new byte[]{1, 2}, buffer.array());
+        Assert.assertEquals(1, buffer.get(firstReference.getOffset()));
+        Assert.assertEquals(2, buffer.get(referenceOffset));
     }
 
     @Test
@@ -68,7 +72,8 @@ public class DataSectionTest extends GraalCompilerTest {
 
     private void checkIteratorRemoval(boolean retainBeforeClose) {
         DataSection section = new DataSection();
-        section.insertData(new RawData(new byte[]{7}, 1));
+        Data data = new RawData(new byte[]{7}, 1);
+        DataSectionReference reference = section.insertData(data);
         Iterator<Data> iterator = null;
         if (retainBeforeClose) {
             iterator = section.iterator();
@@ -79,13 +84,18 @@ public class DataSectionTest extends GraalCompilerTest {
             iterator = section.iterator();
             iterator.next();
         }
+        int sectionSize = section.getSectionSize();
+        int referenceOffset = reference.getOffset();
         Assert.assertThrows(UnsupportedOperationException.class, iterator::remove);
-        Assert.assertTrue(section.iterator().hasNext());
-        Assert.assertEquals(1, section.getSectionSize());
-        ByteBuffer buffer = ByteBuffer.allocate(1);
+        Iterator<Data> remainingItems = section.iterator();
+        Assert.assertSame(data, remainingItems.next());
+        Assert.assertFalse(remainingItems.hasNext());
+        Assert.assertEquals(sectionSize, section.getSectionSize());
+        Assert.assertEquals(referenceOffset, reference.getOffset());
+        ByteBuffer buffer = ByteBuffer.allocate(sectionSize);
         section.buildDataSection(buffer, (position, constant) -> {
         });
-        Assert.assertEquals(7, buffer.get(0));
+        Assert.assertEquals(7, buffer.get(referenceOffset));
     }
 
     @Test
