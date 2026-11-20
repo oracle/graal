@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.heapBaseRegister;
 
 import jdk.graal.compiler.asm.BranchTargetOutOfBoundsException;
+import jdk.graal.compiler.asm.JumpTableOutOfBoundsException;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
@@ -413,15 +414,34 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
 
     @Override
     public void emitCode(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
+        AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+        // Branch expansion and table relocation may each require a retry, in either order.
+        boolean conservativeBranches = false;
         crb.buildLabelOffsets();
-        try {
-            emitCodeHelper(crb, installedCodeOwner, entryPointDecorator);
-        } catch (BranchTargetOutOfBoundsException e) {
-            // A branch estimation was wrong, now retry with conservative label ranges, this
-            // should always work
-            crb.resetForEmittingCode();
-            crb.setConservativeLabelRanges();
-            emitCodeHelper(crb, installedCodeOwner, entryPointDecorator);
+        while (true) { // TERMINATION ARGUMENT: Each retry enables a fallback once; repeated failures throw.
+            try {
+                emitCodeHelper(crb, installedCodeOwner, entryPointDecorator);
+                return;
+            } catch (BranchTargetOutOfBoundsException e) {
+                if (e instanceof JumpTableOutOfBoundsException) {
+                    if (masm.isInlineJumpTables()) {
+                        throw e;
+                    }
+                    masm.setInlineJumpTables();
+                } else {
+                    if (conservativeBranches) {
+                        throw e;
+                    }
+                    // A branch estimation was wrong; retry with conservative label ranges.
+                    conservativeBranches = true;
+                }
+                crb.resetForEmittingCode();
+                if (conservativeBranches) {
+                    crb.setConservativeLabelRanges();
+                } else {
+                    crb.buildLabelOffsets();
+                }
+            }
         }
     }
 
