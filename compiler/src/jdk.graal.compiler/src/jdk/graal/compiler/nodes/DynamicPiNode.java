@@ -91,6 +91,10 @@ public final class DynamicPiNode extends PiNode {
         return null;
     }
 
+    public boolean allowsNull() {
+        return allowsNull;
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool) {
         ValueNode synonym = findSynonym(tool.getAssumptions(), tool.getConstantReflection(), object, guard, typeMirror, allowsNull, exact);
