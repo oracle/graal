@@ -415,10 +415,11 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         assert Integer.bitCount(REPORT_LOOP_STRIDE) == 1 : "must be a power of 2";
     }
 
-    // Nodes for bytecodes that were replaced with QUICK, indexed by the constant pool index
-    // referenced by the bytecode.
-    // Must not be of type QuickNode as it might be wrapped by instrumentation
+    // QUICK operands index the installed children in [0, quickNodeCount). The remaining slots
+    // are null. The array uses BaseQuickNode to allow instrumentation wrappers.
     @Children private BaseQuickNode[] nodes = BaseQuickNode.EMPTY_ARRAY;
+    // Accessed under the node lock.
+    private int quickNodeCount;
     @Children private BaseQuickNode[] sparseNodes = BaseQuickNode.EMPTY_ARRAY;
 
     /**
@@ -473,7 +474,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         Method method = methodVersion.getMethod();
         assert method.hasBytecodes();
         this.methodVersion = methodVersion;
-        byte[] originalCode = method.getOriginalCode();
+        byte[] originalCode = methodVersion.getOriginalCode();
         byte[] customCode = Arrays.copyOf(originalCode, originalCode.length + 2);
         customCode[returnValueBci = originalCode.length] = (byte) Bytecodes.RETURN_VALUE;
         customCode[throwValueBci = originalCode.length + 1] = (byte) THROW_VALUE;
@@ -2179,10 +2180,18 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     private char addQuickNode(BaseQuickNode node) {
         CompilerAsserts.neverPartOfCompilation();
+        assert lockIsHeld();
         Objects.requireNonNull(node);
-        nodes = Arrays.copyOf(nodes, nodes.length + 1);
-        int nodeIndex = nodes.length - 1; // latest empty slot
+        int nodeIndex = quickNodeCount;
+        assert nodeIndex <= Character.MAX_VALUE;
+        if (nodeIndex == nodes.length) {
+            int maxCapacity = methodVersion.getMaxQuickNodeCount();
+            assert nodeIndex < maxCapacity;
+            int newCapacity = Math.min(maxCapacity, Math.max(1, nodes.length * 2));
+            nodes = Arrays.copyOf(nodes, newCapacity);
+        }
         nodes[nodeIndex] = insert(node);
+        quickNodeCount = nodeIndex + 1;
         return (char) nodeIndex;
     }
 
@@ -2384,9 +2393,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      */
     private void generifyBytecodeLevelInlining() {
         atomic(() -> {
-            for (BaseQuickNode quick : nodes) {
-                if (quick instanceof InlinedMethodNode) {
-                    notifyInserted(((InlinedMethodNode) quick).revertToGeneric(this));
+            for (int i = 0; i < quickNodeCount; i++) {
+                if (nodes[i] instanceof InlinedMethodNode quick) {
+                    notifyInserted(quick.revertToGeneric(this));
                 }
             }
         });

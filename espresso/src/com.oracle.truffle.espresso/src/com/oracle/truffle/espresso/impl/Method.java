@@ -1659,6 +1659,8 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         private static final int CODE_FLAGS_HAS_JSR = 0x2;
         private static final int CODE_FLAGS_USES_MONITORS = 0x4;
         private static final int CODE_FLAGS_HAS_INDY = 0x8;
+        private static final int REF_KIND_SHIFT = Byte.SIZE;
+        private static final int QUICK_NODE_COUNT_SHIFT = REF_KIND_SHIFT + Byte.SIZE;
 
         /**
          * During KlassVersion initialization, the ObjectKlass is not yet linked to the newest
@@ -1681,8 +1683,14 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         @CompilationFinal private int vtableIndex = UNINITIALIZED_DISPATCH_INDEX;
         @CompilationFinal private int itableIndex = UNINITIALIZED_DISPATCH_INDEX;
 
-        @CompilationFinal private byte refKind;
-        @CompilationFinal private byte methodFlags;
+        /**
+         * The low byte holds the flags, the next byte holds the reference kind, and the upper
+         * 16 bits hold the number of quickenable sites.
+         * <p>
+         * All the code info is grouped together since it is lazily initialized without any synchronization.
+         * The reference kind is packed in there since there is room.
+         */
+        @CompilationFinal private int methodInfo;
 
         @CompilationFinal(dimensions = 1) //
         private ObjectKlass[] checkedExceptions;
@@ -1701,9 +1709,9 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             this.exceptionsAttribute = parserMethod.getAttribute(ExceptionsAttribute.NAME, ExceptionsAttribute.class);
             this.poisonPill = poisonPill;
             if (klassVersion.isInterface()) {
-                methodFlags |= METHOD_FLAGS_IS_INTERFACE_METHOD;
+                methodInfo |= METHOD_FLAGS_IS_INTERFACE_METHOD;
             }
-            initRefKind();
+            methodInfo |= Byte.toUnsignedInt(computeRefKind()) << REF_KIND_SHIFT;
         }
 
         public SourceSection getWholeMethodSourceSection() {
@@ -1754,16 +1762,16 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             return s.createSection(line);
         }
 
-        public void initRefKind() {
+        private byte computeRefKind() {
             if (Modifier.isStatic(parserMethod.getFlags())) {
-                this.refKind = REF_invokeStatic;
+                return REF_invokeStatic;
             } else if (Modifier.isPrivate(parserMethod.getFlags()) || Names._init_.equals(parserMethod.getName())) {
-                this.refKind = REF_invokeSpecial;
+                return REF_invokeSpecial;
             } else if (klassVersion.isInterface()) {
-                this.refKind = REF_invokeInterface;
+                return REF_invokeInterface;
             } else {
                 assert !declaringKlass.isPrimitive();
-                this.refKind = REF_invokeVirtual;
+                return REF_invokeVirtual;
             }
         }
 
@@ -2060,47 +2068,60 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         }
 
         public boolean isInterfaceMethod() {
-            return (methodFlags & METHOD_FLAGS_IS_INTERFACE_METHOD) != 0;
+            return (methodInfo & METHOD_FLAGS_IS_INTERFACE_METHOD) != 0;
         }
 
         public boolean usesMonitors() {
             // Whether we need to use an additional frame slot for monitor unlock on kill.
-            return isSynchronized() || (getCodeFlags() & CODE_FLAGS_USES_MONITORS) != 0;
+            return isSynchronized() || (getCodeInfo() & CODE_FLAGS_USES_MONITORS) != 0;
         }
 
         /**
          * Returns true if this method uses the JSR/RET bytecodes.
          */
         public boolean hasJsr() {
-            return (getCodeFlags() & CODE_FLAGS_HAS_JSR) != 0;
+            return (getCodeInfo() & CODE_FLAGS_HAS_JSR) != 0;
         }
 
         public boolean usesIndy() {
-            return (getCodeFlags() & CODE_FLAGS_HAS_INDY) != 0;
+            return (getCodeInfo() & CODE_FLAGS_HAS_INDY) != 0;
         }
 
-        private byte getCodeFlags() {
-            byte localFlags = (byte) (methodFlags & CODE_FLAGS_MASK);
-            if ((localFlags & CODE_FLAGS_READY) == 0) {
+        /**
+         * Returns the number of bytecodes in this method that can be replaced with
+         * {@link Bytecodes#QUICK QUICK}.
+         */
+        public int getMaxQuickNodeCount() {
+            return getCodeInfo() >>> QUICK_NODE_COUNT_SHIFT;
+        }
+
+        private int getCodeInfo() {
+            int localInfo = methodInfo;
+            if ((localInfo & CODE_FLAGS_READY) == 0) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
+                int codeInfo;
                 if (codeAttribute == null) {
-                    localFlags = CODE_FLAGS_READY;
+                    codeInfo = CODE_FLAGS_READY;
                 } else {
-                    localFlags = computeCodeFlags(codeAttribute.getOriginalCode());
+                    codeInfo = computeCodeInfo(codeAttribute.getOriginalCode());
                 }
-                assert (localFlags & CODE_FLAGS_READY) != 0;
-                assert localFlags == (localFlags & CODE_FLAGS_MASK);
-                methodFlags |= localFlags;
+                assert (codeInfo & CODE_FLAGS_READY) != 0;
+                localInfo |= codeInfo;
+                methodInfo = localInfo;
             }
-            return localFlags;
+            return localInfo;
         }
 
-        private static byte computeCodeFlags(byte[] code) {
+        private static int computeCodeInfo(byte[] code) {
             BytecodeStream bs = new BytecodeStream(code);
             int bci = 0;
             int flags = CODE_FLAGS_READY;
+            int quickNodeCount = 0;
             while (bci < bs.endBCI()) {
                 int opcode = bs.opcode(bci);
+                if (Bytecodes.isQuickenable(opcode)) {
+                    quickNodeCount++;
+                }
                 switch (opcode) {
                     case JSR, JSR_W, RET ->
                         flags |= CODE_FLAGS_HAS_JSR;
@@ -2111,11 +2132,14 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
                 }
                 bci = bs.nextBCI(bci);
             }
-            return (byte) flags;
+            assert flags == (flags & CODE_FLAGS_MASK);
+            // A method has at most 65535 bytes of code, and each QUICK instruction needs at least three.
+            assert quickNodeCount <= Character.MAX_VALUE;
+            return flags | (quickNodeCount << QUICK_NODE_COUNT_SHIFT);
         }
 
         public int getRefKind() {
-            return refKind;
+            return Byte.toUnsignedInt((byte) (methodInfo >>> REF_KIND_SHIFT));
         }
 
         public ObjectKlass[] getCheckedExceptions() {
