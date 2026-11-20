@@ -121,6 +121,7 @@ Code must stop depending on builder-only helpers and compiler-only annotations u
 | Guest code must call a builder-owned service, such as `UserError.abort(...)` | Shared service interface plus a builder implementation installed in the guest as a host proxy | Register the builder implementation in the builder `ImageSingletons`; for a fully isolated guest, use `GuestAccess.createHostProxy(...)` and `GuestImageSingletonSupport.add(...)` under the shared interface key. Host proxies cannot pass a guest `Object[]` directly to a host `Object[]`; accept it as a `JavaConstant` in the host proxy target and convert it with `GuestAccess.asHostObject(...)`. |
 | Static builder helper such as `ImageLayerBuildingSupport` | Guest helper such as `GuestImageLayerBuildingSupport` | Use the guest helper from moved code so the moved code does not depend on builder-only packages. |
 | Builder read of a guest-owned static `RuntimeOptionKey` field | `GuestOptionKey.forField(...)` | Every `getValue()` reads in the guest context, avoiding a stale builder-side copy. |
+| `jdk.vm.ci.meta.JavaKind` | `com.oracle.svm.espresso.classfile.JavaKind` | Use the shaded `ESPRESSO_SVM` enum. Convert JVMCI kinds in the builder, as in [`ObjectLayoutCompilerSupport`](../src/com.oracle.svm.core/src/com/oracle/svm/core/config/ObjectLayoutCompilerSupport.java). |
 
 ### Document Extracted Support Classes And Bridges
 
