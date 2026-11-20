@@ -4,6 +4,8 @@ This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM 25.6
 
+* Initialize `sun.net.InetAddressCachePolicy` at run time so DNS cache TTL properties can be configured before the policy is first used by the application.
+  This applies to positive, negative, and stale cache policies; property changes after policy initialization do not reconfigure the cache.
 * (GR-80932) Fixed image build failures caused by unused service providers with missing optional dependencies.
   Requesting an unlinkable provider still fails at run time.
 * (GR-80734) Added initial runtime support for `PrintFlagsFinal`.
