@@ -694,7 +694,12 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                 vmOptions.add("-Dpolyglot.engine.CompileImmediately=true");
                 vmOptions.add("-Dpolyglot.engine.BackgroundCompilation=false");
             }
-            SubprocessTestUtils.newBuilder(PolyglotExceptionTest.class, test).prefixVmOption(vmOptions.toArray(new String[0])).postfixVmOption("-Djdk.graal.CompilationFailureAction=Print").run();
+            /*
+             * Graal host compilation shares the heap exhausted by this test. Disable it to prevent
+             * unrelated OOMs in JVMCI compiler threads, even if enabled by the parent VM.
+             */
+            SubprocessTestUtils.newBuilder(PolyglotExceptionTest.class, test).prefixVmOption(vmOptions.toArray(new String[0])).postfixVmOption("-XX:+UnlockExperimentalVMOptions",
+                            "-XX:-UseJVMCICompiler").run();
         }
     }
 
