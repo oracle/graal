@@ -389,7 +389,7 @@ public final class VectorAArch64 extends VectorArchitecture {
         private static final AArch64Kind[] FLOAT_KINDS = {SINGLE, DOUBLE};
         private static final AArch64Kind[] INTEGER_KINDS = {BYTE, WORD, DWORD, QWORD};
         /*
-         * Some NEON integer arithmetic instructions, such as multiply, do not support long types.
+         * Some NEON integer arithmetic instructions, such as min and max, do not support long types.
          */
         private static final AArch64Kind[] NON_LONG_INTEGER_KINDS = {BYTE, WORD, DWORD};
         private static final AArch64Kind[] NONE = new AArch64Kind[0];
@@ -401,7 +401,8 @@ public final class VectorAArch64 extends VectorArchitecture {
             register(ArithmeticOpTable::getNeg, INTEGER_KINDS, FLOAT_KINDS);
             register(ArithmeticOpTable::getAdd, INTEGER_KINDS, FLOAT_KINDS);
             register(ArithmeticOpTable::getSub, INTEGER_KINDS, FLOAT_KINDS);
-            register(ArithmeticOpTable::getMul, NON_LONG_INTEGER_KINDS, FLOAT_KINDS);
+            /* Long multiplication is emitted lane-wise, see AArch64VectorLongMulOp. */
+            register(ArithmeticOpTable::getMul, INTEGER_KINDS, FLOAT_KINDS);
             register(ArithmeticOpTable::getDiv, NONE, FLOAT_KINDS);
             register(ArithmeticOpTable::getNot, INTEGER_KINDS, NONE);
             register(ArithmeticOpTable::getAnd, INTEGER_KINDS, FLOAT_KINDS);
