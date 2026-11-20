@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -280,6 +280,21 @@ public class SimdStamp extends ArithmeticStamp {
     public boolean hasValues() {
         for (Stamp c : components) {
             if (c.isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * SIMD stamps are only distinct if all corresponding elements are distinct.
+     */
+    @Override
+    public boolean alwaysDistinct(Stamp otherStamp) {
+        GraalError.guarantee(isCompatible(otherStamp), "incompatible stamps: %s, %s", this, otherStamp);
+        SimdStamp other = (SimdStamp) otherStamp;
+        for (int i = 0; i < components.length; i++) {
+            if (!components[i].alwaysDistinct(other.components[i])) {
                 return false;
             }
         }
