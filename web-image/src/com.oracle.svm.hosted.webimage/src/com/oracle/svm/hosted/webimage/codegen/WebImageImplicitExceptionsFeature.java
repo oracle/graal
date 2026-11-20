@@ -91,6 +91,7 @@ public final class WebImageImplicitExceptionsFeature implements InternalFeature 
             case ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY -> "createNewArgumentIsNotArrayException";
             case ASSERTION_ERROR_OBJECT -> "createNewAssertionErrorObject";
             case ASSERTION_ERROR_NULLARY -> "createNewAssertionErrorNullary";
+            case UNSTRUCTURED_LOCKING -> "createNewIllegalMonitorStateException";
 
             default -> throw GraalError.shouldNotReachHereUnexpectedValue(exceptionKind);
         };
