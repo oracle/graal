@@ -115,27 +115,42 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
 
     @Substitution
     public static int maxDirectTransferSize0() {
-        throw JavaSubstitution.unimplemented();
+        // Direct transfers are not supported (see transferTo0), so there is no limit to impose.
+        // This mirrors sun.nio.ch.UnixFileDispatcherImpl#maxDirectTransferSize. The value must be
+        // positive: FileChannelImpl.transferTo uses it to bound the count of the direct attempt.
+        return Integer.MAX_VALUE;
     }
 
     @Substitution
     @SuppressWarnings("unused")
-    public static long transferTo0(@JavaType(FileDescriptor.class) StaticObject src, long position, long count, @JavaType(FileDescriptor.class) StaticObject dst, boolean append) {
+    public static long transferTo0(@JavaType(FileDescriptor.class) StaticObject src, long position, long count, @JavaType(FileDescriptor.class) StaticObject dst, boolean append,
+                    @Inject TruffleIO io) {
         /*
+         * Direct transfers (sendfile, copy_file_range) are not supported. Returning UNSUPPORTED
+         * makes sun.nio.ch.FileChannelImpl remember this and fall back to its mapped or read/write
+         * transfer paths, like sun.nio.ch.UnixFileDispatcherImpl does.
+         *
          * sun.nio.ch.FileChannelImpl.transferTo throws ClosedByInterrupt. Have this in mind when
-         * implementing this method and take com.oracle.truffle.espresso.io.TruffleIO.accept as reference.
+         * implementing direct transfers and take com.oracle.truffle.espresso.io.TruffleIO.accept as
+         * reference.
          */
-        throw JavaSubstitution.unimplemented();
+        return io.ioStatusSync.UNSUPPORTED;
     }
 
     @Substitution
     @SuppressWarnings("unused")
-    public static long transferFrom0(@JavaType(FileDescriptor.class) StaticObject src, @JavaType(FileDescriptor.class) StaticObject dst, long position, long count, boolean append) {
+    public static long transferFrom0(@JavaType(FileDescriptor.class) StaticObject src, @JavaType(FileDescriptor.class) StaticObject dst, long position, long count, boolean append,
+                    @Inject TruffleIO io) {
         /*
+         * Direct transfers (copy_file_range) are not supported. Returning UNSUPPORTED makes
+         * sun.nio.ch.FileChannelImpl remember this and fall back to its mapped or read/write
+         * transfer paths, like sun.nio.ch.UnixFileDispatcherImpl does.
+         *
          * sun.nio.ch.FileChannelImpl.transferFrom throws ClosedByInterrupt. Have this in mind when
-         * implementing this method and take com.oracle.truffle.espresso.io.TruffleIO.accept as reference.
+         * implementing direct transfers and take com.oracle.truffle.espresso.io.TruffleIO.accept as
+         * reference.
          */
-        throw JavaSubstitution.unimplemented();
+        return io.ioStatusSync.UNSUPPORTED;
     }
 
     @Substitution
@@ -204,9 +219,21 @@ public final class Target_sun_nio_ch_FileDispatcherImpl {
 
     @Substitution
     @Throws(IOException.class)
-    @SuppressWarnings("unused")
-    public static int pwrite0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len, long position) {
-        throw JavaSubstitution.unimplemented();
+    public static int pwrite0(@JavaType(FileDescriptor.class) StaticObject fd, long address, int len, long position,
+                    @Inject TruffleIO io) {
+        // Currently, this is not thread safe as we temporarily update the position of the file.
+        long oldPos = io.position(fd, FDAccess.forFileDescriptor());
+        try {
+            io.seek(fd, FDAccess.forFileDescriptor(), position);
+            /*
+             * This might not write the full requested length which is acceptable according to the
+             * documentation of the syscall pwrite. Additionally native method reads the memory in
+             * plain mode.
+             */
+            return io.writeAddress(fd, FDAccess.forFileDescriptor(), address, len);
+        } finally {
+            io.seek(fd, FDAccess.forFileDescriptor(), oldPos);
+        }
     }
 
     @Substitution
