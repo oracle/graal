@@ -63,6 +63,7 @@ import jdk.graal.compiler.truffle.PartialEvaluationMethodInfo;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
+import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 import jdk.graal.compiler.truffle.TruffleElementCache;
 import jdk.graal.compiler.truffle.TruffleTierContext;
 import jdk.graal.compiler.truffle.phases.DeoptimizeOnExceptionPhase;
@@ -74,6 +75,10 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
     private static final int CONSTANT_INFO_CACHE_SIZE = 1024;
     private static final int METHOD_INFO_CACHE_SIZE = 1024;
+
+    private final GraphBuilderConfiguration graphBuilderConfigPrototype;
+    // TODO GR-37097 Move to TruffleCompilerImpl
+    private volatile GraphBuilderConfiguration graphBuilderConfigForParsing;
 
     private final AtomicReference<EconomicMap<ResolvedJavaMethod, EncodedGraph>> graphCacheRef;
 
@@ -88,6 +93,7 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
     public HotSpotPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
         super(config, configForRoot);
+        this.graphBuilderConfigPrototype = createGraphBuilderConfig(configForRoot, true);
         this.graphCacheRef = new AtomicReference<>();
         this.disableEncodedGraphCachePurges = false;
         this.graphCacheConstantFieldProvider = new TruffleCachingConstantFieldProvider(this, getProviders().getConstantFieldProvider());
@@ -109,6 +115,21 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     @Override
     protected void initialize(OptionValues options) {
         super.initialize(options);
+        graphBuilderConfigForParsing = graphBuilderConfigPrototype.withNodeSourcePosition(trackNodeSourcePositions()).withOmitAssertions(
+                        TruffleCompilerOptions.ExcludeAssertions.getValue(options));
+    }
+
+    /**
+     * Returns the parsing configuration with engine options applied.
+     *
+     * @return the initialized parsing configuration
+     * @throws IllegalStateException if this partial evaluator is not yet initialized
+     */
+    public GraphBuilderConfiguration getGraphBuilderConfigForParsing() {
+        if (graphBuilderConfigForParsing == null) {
+            throw new IllegalStateException("PartialEvaluator is not yet initialized");
+        }
+        return graphBuilderConfigForParsing;
     }
 
     @Override
@@ -138,7 +159,8 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePluginList, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache,
                     Supplier<AutoCloseable> createCachedGraphScope) {
-        final GraphBuilderConfiguration newConfig = getGraphBuilderConfigurationCopy(context.forceNodeSourcePositions);
+        GraphBuilderConfiguration newConfig = getGraphBuilderConfigForParsing().copy();
+        newConfig = newConfig.withNodeSourcePosition(newConfig.trackNodeSourcePosition() || context.forceNodeSourcePositions);
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
 
         Plugins plugins = newConfig.getPlugins();

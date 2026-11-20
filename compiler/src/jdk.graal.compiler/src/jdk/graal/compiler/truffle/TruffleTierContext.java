@@ -166,7 +166,7 @@ public final class TruffleTierContext extends HighTierContext {
                 method(method).
                 speculationLog(this.log).
                 compilationId(this.compilationId).
-                trackNodeSourcePosition(forceSourcePositions || partialEvaluator.getGraphBuilderConfigForParsing().trackNodeSourcePosition()).
+                trackNodeSourcePosition(forceSourcePositions || partialEvaluator.trackNodeSourcePositions()).
                 cancellable(new CancellableTask(this.task));
         // @formatter:on
         return partialEvaluator.customizeStructuredGraphBuilder(builder).build();

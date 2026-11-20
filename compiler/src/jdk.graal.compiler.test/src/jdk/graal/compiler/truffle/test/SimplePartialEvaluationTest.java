@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -111,7 +111,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         } catch (GraalBailoutException t) {
             // Expected verification error occurred.
             StackTraceElement[] trace = t.getStackTrace();
-            if (getTruffleCompiler(null).getPartialEvaluator().getGraphBuilderConfigForParsing().trackNodeSourcePosition() || GraalOptions.TrackNodeSourcePosition.getValue(getInitialOptions())) {
+            if (getTruffleCompiler(null).getPartialEvaluator().trackNodeSourcePositions() || GraalOptions.TrackNodeSourcePosition.getValue(getInitialOptions())) {
                 assertStack(trace[0], MethodSource.of(CompilerAsserts.class, "neverPartOfCompilation"));
                 assertStack(trace[1], MethodSource.of(NeverPartOfCompilationTestNode.class, "execute"));
                 assertStack(trace[2], MethodSource.of(RootTestNode.class, "execute"));

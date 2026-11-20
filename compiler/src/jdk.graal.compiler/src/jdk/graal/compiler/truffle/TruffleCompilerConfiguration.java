@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,14 +32,12 @@ import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.target.Backend;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment.TruffleRuntimeScope;
 import jdk.vm.ci.code.Architecture;
 
 public final class TruffleCompilerConfiguration {
     private final TruffleCompilerRuntime runtime;
-    private final GraphBuilderConfiguration.Plugins plugins;
     private final SnippetReflectionProvider provider;
     private final TruffleTierConfiguration firstTier;
     private final TruffleTierConfiguration lastTier;
@@ -49,7 +47,6 @@ public final class TruffleCompilerConfiguration {
 
     public TruffleCompilerConfiguration(
                     TruffleCompilerRuntime runtime,
-                    GraphBuilderConfiguration.Plugins plugins,
                     SnippetReflectionProvider provider,
                     TruffleTierConfiguration firstTier,
                     TruffleTierConfiguration lastTier,
@@ -57,7 +54,6 @@ public final class TruffleCompilerConfiguration {
                     Suites hostSuite,
                     Supplier<TruffleRuntimeScope> openCanCallTruffleRuntimeScope) {
         this.runtime = runtime;
-        this.plugins = plugins;
         this.provider = provider;
         this.firstTier = firstTier;
         this.lastTier = lastTier;
@@ -68,10 +64,6 @@ public final class TruffleCompilerConfiguration {
 
     public TruffleCompilerRuntime runtime() {
         return runtime;
-    }
-
-    public GraphBuilderConfiguration.Plugins plugins() {
-        return plugins;
     }
 
     public SnippetReflectionProvider snippetReflection() {
@@ -95,7 +87,7 @@ public final class TruffleCompilerConfiguration {
     }
 
     public TruffleCompilerConfiguration withFirstTier(TruffleTierConfiguration tier) {
-        return new TruffleCompilerConfiguration(runtime, plugins, provider, tier, lastTier, types, hostSuite, openCanCallTruffleRuntimeScope);
+        return new TruffleCompilerConfiguration(runtime, provider, tier, lastTier, types, hostSuite, openCanCallTruffleRuntimeScope);
     }
 
     public List<Backend> backends() {
