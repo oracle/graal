@@ -40,7 +40,6 @@
 #
 
 name: Build GraalVM
-description: 'Build GraalVM and set up environment for testing'
 
 on:
   workflow_call:
