@@ -22,10 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
-import static com.oracle.svm.test.GCTestUtils.TIMEOUT_MS;
-import static com.oracle.svm.test.GCTestUtils.allocateGarbage;
+import static com.oracle.svm.test.junit.nativeimage.GCTestUtils.TIMEOUT_MS;
+import static com.oracle.svm.test.junit.nativeimage.GCTestUtils.allocateGarbage;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -41,7 +41,7 @@ import org.junit.Test;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 
 /**
- * Tests atomic operations on reference fields while the garbage collector is active.
+ * Tests atomic operations on reference fields and array elements across garbage collections.
  *
  * Ordinary reference stores and atomic ones (compare-and-set, get-and-set) are handled by different
  * code in the VM: an atomic operation has to both perform the hardware atomic instruction and do the
@@ -50,13 +50,12 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
  * field may be the old location of an object that has just been moved. A buggy implementation can
  * then make a compare-and-set fail when it should have succeeded, or leave a stale reference behind.
  *
- * Each test therefore performs a lot of atomic reference traffic while allocating and collecting, and
- * verifies afterwards that the values are exactly what the atomic operations should have produced.
- * The tests work with any garbage collector and use only standard Java APIs.
+ * The tests use allocation and {@link System#gc()} to request collections without collector-specific
+ * controls.
  *
- * The compare-and-set tests request a collection after reading the expected value and before using
- * it, so that the expected value is a reference that the collector may have moved in the meantime.
- * The objects that the atomic operations are performed on are made to escape, see {@link #escape}.
+ * The single-threaded tests that expect compare-and-set to succeed request collections between
+ * reading and using the expected reference. This gives the collector a chance to move the referent.
+ * These tests use {@link #escape} to keep the atomic operation targets from being optimized away.
  */
 public class GCAtomicReferenceTest {
 
@@ -217,23 +216,23 @@ public class GCAtomicReferenceTest {
      * the reference, which every successful update increments by one. If the VM ever let two threads
      * believe they both won, or lost an update, the two numbers would disagree.
      *
-     * The threads keep updating until the test tells them to stop, which it does only after all
-     * collections were requested. This way every collection happens while all threads are updating,
-     * no matter how fast they are.
+     * The main thread waits for every worker to reach the start latch before requesting collections.
+     * Workers can keep attempting updates until the main thread finishes requesting collections and
+     * signals them to stop.
      */
     @Test
-    public void testConcurrentCompareAndSetDoesNotLoseUpdates() throws InterruptedException {
+    public void testConcurrentCompareAndSetDoesNotLoseUpdates() throws Throwable {
         final int threads = 4;
         final int collections = 50;
         AtomicReference<Value> ref = new AtomicReference<>(new Value(0));
         AtomicBoolean stop = new AtomicBoolean();
         CountDownLatch running = new CountDownLatch(threads);
         long[] successes = new long[threads];
-        Thread[] workers = new Thread[threads];
+        Stressor.Worker[] workers = new Stressor.Worker[threads];
 
         for (int t = 0; t < threads; t++) {
             int slot = t;
-            workers[t] = new Thread(() -> {
+            workers[t] = new Stressor.Worker(() -> {
                 running.countDown();
                 long count = 0;
                 while (!stop.get()) {
@@ -245,11 +244,12 @@ public class GCAtomicReferenceTest {
                 successes[slot] = count;
             });
             workers[t].setDaemon(true);
-            workers[t].start();
         }
 
         try {
+            Stressor.startAll(workers);
             Assert.assertTrue("worker threads did not start in time", running.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+
             /* Keep the collector busy while the threads are competing. */
             for (int i = 0; i < collections; i++) {
                 allocateGarbage();
@@ -258,13 +258,13 @@ public class GCAtomicReferenceTest {
             }
         } finally {
             stop.set(true);
+            Stressor.joinAll(workers, TIMEOUT_MS);
         }
+        Stressor.checkWorkers(workers);
 
         long total = 0;
-        for (int t = 0; t < threads; t++) {
-            workers[t].join(TIMEOUT_MS);
-            Assert.assertFalse("worker thread " + t + " did not finish in time", workers[t].isAlive());
-            total += successes[t];
+        for (long count : successes) {
+            total += count;
         }
 
         Assert.assertTrue("the worker threads did not update the reference", total > 0);

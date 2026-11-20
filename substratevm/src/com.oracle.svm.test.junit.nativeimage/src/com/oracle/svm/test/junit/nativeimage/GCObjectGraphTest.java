@@ -22,10 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
-import static com.oracle.svm.test.GCTestUtils.allocateGarbage;
-import static com.oracle.svm.test.GCTestUtils.awaitGC;
+import static com.oracle.svm.test.junit.nativeimage.GCTestUtils.allocateGarbage;
+import static com.oracle.svm.test.junit.nativeimage.GCTestUtils.awaitGC;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -47,8 +47,8 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
  * them. If it misses one, or updates one incorrectly, the program is left with a reference to the
  * wrong place. The symptom is usually a crash or nonsense data much later, far away from the real
  * bug, which makes it hard to find. These tests make the damage visible immediately: they build data
- * structures with known contents, force collections, and then check that every field, every array
- * element and every map entry still holds exactly what it held before.
+ * structures with known contents, request collections, and then check node indexes, array values,
+ * and map lookups.
  *
  * The tests are written for any garbage collector: they only use {@link System#gc()} and allocation
  * to provoke collections, and they make no assumption about when a collection happens. The one test
@@ -132,13 +132,9 @@ public class GCObjectGraphTest {
     }
 
     /**
-     * Exercises the case where the program keeps changing references while the collector is running.
-     *
-     * Every time a reference field is overwritten, the GC has to be told about it; that is what a
-     * write barrier does. This test overwrites many references, interleaved with allocation and
-     * collections, and then verifies that the surviving objects are exactly the ones that were last
-     * written. A broken or missing write barrier typically shows up here as a stale or corrupted
-     * entry.
+     * Reuses the same array across collection requests, replacing each slot with a newly allocated
+     * node in every round. After the final request, checks that each slot still holds the value
+     * written in the last round.
      */
     @Test
     public void testReferenceUpdatesDuringGCAreTracked() {
@@ -204,7 +200,7 @@ public class GCObjectGraphTest {
     @Test
     public void testMixedAllocationStressKeepsSurvivorsIntact() {
         final int iterations = 50_000;
-        List<Object> survivors = new ArrayList<>();
+        List<byte[]> survivors = new ArrayList<>();
 
         for (int i = 0; i < iterations; i++) {
             /* Vary the size so that both small objects and larger arrays are exercised. */
@@ -223,7 +219,7 @@ public class GCObjectGraphTest {
 
         Assert.assertEquals("unexpected number of survivors", iterations / 100, survivors.size());
         for (int i = 0; i < survivors.size(); i++) {
-            byte[] data = (byte[]) survivors.get(i);
+            byte[] data = survivors.get(i);
             int originalIteration = i * 100;
             Assert.assertEquals("survivor " + i + " has corrupted contents", (byte) originalIteration, data[0]);
         }

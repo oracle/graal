@@ -22,11 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.junit.nativeimage;
 
-import static com.oracle.svm.test.GCTestUtils.TIMEOUT_MS;
-import static com.oracle.svm.test.GCTestUtils.allocateGarbage;
-import static com.oracle.svm.test.GCTestUtils.awaitGC;
+import static com.oracle.svm.test.junit.nativeimage.GCTestUtils.TIMEOUT_MS;
+import static com.oracle.svm.test.junit.nativeimage.GCTestUtils.allocateGarbage;
+import static com.oracle.svm.test.junit.nativeimage.GCTestUtils.awaitGC;
 
 import java.lang.ref.Cleaner;
 import java.lang.ref.PhantomReference;
@@ -37,17 +37,18 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.svm.shared.NeverInline;
+
 /**
  * Tests that the garbage collector handles {@link java.lang.ref} reference objects correctly.
  *
- * In short: an object that nobody uses any more must be collected, and the reference objects that
- * were watching it must be updated (cleared) and reported (enqueued). An object that is still in
- * use must never be collected.
+ * When the collector determines that an object is weakly or phantom reachable, it clears the
+ * corresponding references. It also enqueues references registered with a queue, possibly later.
+ * Weak and soft references to a strongly reachable object must stay intact.
  *
  * These tests work with any garbage collector that reclaims memory. They only use standard Java to
  * trigger collections ({@link System#gc()} plus allocating garbage), never GC-specific flags or
@@ -63,8 +64,8 @@ public class GCReferenceTest {
 
     /**
      * Checks the most basic weak-reference promise: once the only way to reach an object is through a
-     * {@link WeakReference}, the GC is allowed to collect it, and afterwards the reference must read
-     * as empty ({@code get()} returns null).
+     * {@link WeakReference}, the GC is allowed to collect it. After the collector clears the
+     * reference, {@code get()} must return {@code null}.
      */
     @Test
     public void testWeakReferenceIsCleared() {
@@ -89,10 +90,9 @@ public class GCReferenceTest {
     }
 
     /**
-     * Same idea as the weak-reference queue test, but for {@link PhantomReference}, which the GC
-     * handles in a later phase. Note that {@code get()} on a phantom reference always returns null
-     * by design, so whether the object is still reachable is checked with
-     * {@link Reference#refersTo} instead.
+     * Checks clearing and enqueueing for a {@link PhantomReference}. The test uses
+     * {@code refersTo(null)} to detect clearing because {@link PhantomReference#get} always
+     * returns {@code null}.
      */
     @Test
     public void testPhantomReferenceIsEnqueued() throws InterruptedException {
@@ -151,13 +151,12 @@ public class GCReferenceTest {
      * release resources.
      */
     @Test
-    public void testCleanerRunsAfterObjectBecomesUnreachable() throws InterruptedException {
+    public void testCleanerRunsAfterObjectBecomesUnreachable() {
         Cleaner cleaner = Cleaner.create();
         CountDownLatch cleaned = new CountDownLatch(1);
         registerCleanable(cleaner, cleaned);
 
         awaitGC(() -> cleaned.getCount() == 0, "cleaner action did not run");
-        Assert.assertTrue("cleaner action must have run", cleaned.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
     }
 
     /**
@@ -174,9 +173,6 @@ public class GCReferenceTest {
         }
 
         awaitGC(() -> refs.stream().allMatch(r -> r.refersTo(null)), "not all weak references were cleared");
-
-        long remaining = refs.stream().filter(r -> !r.refersTo(null)).count();
-        Assert.assertEquals("all weak references must be cleared", 0, remaining);
     }
 
     /** A simple test object. The id only exists to make failure messages readable. */
@@ -194,17 +190,18 @@ public class GCReferenceTest {
     }
 
     /*
-     * The two helpers below create the object being watched inside their own method. That matters:
-     * when the helper returns, the only strong reference to the object is gone, so the object really
-     * is unreachable. If the object were created in the test method instead, the test method's own
-     * local variable could keep it alive and the test would pass for the wrong reason.
+     * The helpers below create the object being watched inside their own method. That matters:
+     * when the helper returns, the only strong reference to the object is gone. If the object were
+     * created in the test method instead, the test method's own local variable could keep it alive
+     * and cause the test to time out.
      */
-
+    @NeverInline("Keep the referent out of the caller's frame.")
     private static WeakReference<Payload> newWeak(ReferenceQueue<Payload> queue) {
         Payload referent = new Payload(1);
         return new WeakReference<>(referent, queue);
     }
 
+    @NeverInline("Keep the referent out of the caller's frame.")
     private static PhantomReference<Payload> newPhantom(ReferenceQueue<Payload> queue) {
         Payload referent = new Payload(2);
         return new PhantomReference<>(referent, queue);
@@ -215,6 +212,7 @@ public class GCReferenceTest {
      * mention the watched object: a cleanup action that referred to its own object would keep that
      * object alive forever and the cleanup would never run.
      */
+    @NeverInline("Keep the referent out of the caller's frame.")
     private static void registerCleanable(Cleaner cleaner, CountDownLatch cleaned) {
         Payload referent = new Payload(4);
         cleaner.register(referent, cleaned::countDown);
