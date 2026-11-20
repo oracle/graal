@@ -65,7 +65,8 @@ public enum CPUTypeAArch64 implements CPUType {
     COMPATIBILITY(NativeImageOptions.MICRO_ARCHITECTURE_COMPATIBILITY, ARMV8_A),
     NATIVE(NativeImageOptions.MICRO_ARCHITECTURE_NATIVE, getNativeOrEmpty());
 
-    private static final String AVAILABLE_FEATURE_MODIFIERS = StringUtil.joinSingleQuoted("aes", "lse", "fp", "simd");
+    private static final String AES_MODIFIER = "aes";
+    private static final String AVAILABLE_FEATURE_MODIFIERS = StringUtil.joinSingleQuoted(AES_MODIFIER, "lse", "fp", "simd");
 
     private static CPUFeature[] getNativeOrEmpty() {
         CPUFeature[] empty = new CPUFeature[0];
@@ -115,6 +116,9 @@ public enum CPUTypeAArch64 implements CPUType {
     }
 
     public static String getDefaultName(boolean printFallbackWarning) {
+        if (Platform.includedIn(Platform.MACOS_AARCH64.class)) {
+            return ARMV8_1_A.getName() + "+" + AES_MODIFIER;
+        }
         if (NATIVE.getFeatures().containsAll(ARMV8_1_A.getFeatures())) {
             return ARMV8_1_A.getName();
         } else {
@@ -177,7 +181,7 @@ public enum CPUTypeAArch64 implements CPUType {
     private static List<CPUFeature> getFeatures(String featureModifier) {
         return switch (featureModifier) {
             case "lse", "nolse" -> List.of(LSE);
-            case "aes", "noaes" -> List.of(AES, PMULL);
+            case AES_MODIFIER, "no" + AES_MODIFIER -> List.of(AES, PMULL);
             // fp and simd are required
             case "fp", "simd" -> Collections.emptyList();
             case "nofp", "nosimd" -> throw UserError.abort("The '%s' CPU feature is required by the Graal compiler and thus cannot be disabled.%s", featureModifier, getUserAction());

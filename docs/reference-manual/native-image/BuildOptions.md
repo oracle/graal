@@ -84,7 +84,7 @@ These deprecated URL protocol options are omitted from the generated table; see 
 | `-ea` | String | also -ea[:[packagename]...\|:classname] or -enableassertions[:[packagename]...\|:classname]. Enable assertions with specified granularity at run time. |  | `-ea=-ea` |
 | `-esa` | String | also -enablesystemassertions. Enables assertions in all system classes at run time. | None | `-esa=-esa` |
 | `-g` | String | generate debugging information | 2 | `-g=-g` |
-| `-march` | String | generate instructions for a specific machine type. Defaults to 'x86-64-v3' on AMD64 and 'armv8.1-a' on AArch64. Use -march=compatibility for best compatibility, or -march=native for best performance if the native executable is deployed on the same machine or on a machine with the same CPU features. To list all available machine types, use -march=list. | None | `-march=-march` |
+| `-march` | String | generate instructions for a specific machine type. Defaults to 'x86-64-v3' on AMD64, 'armv8.1-a' on Linux AArch64, and 'armv8.1-a+aes' on macOS AArch64. Use -march=compatibility for best compatibility, or -march=native for best performance if the native executable is deployed on the same machine or on a machine with the same CPU features. To list all available machine types, use -march=list. | None | `-march=-march` |
 | `-o` | String | name of the output file to be generated | None | `-o=-o` |
 | `--gc` | Enum | select native-image garbage collector implementation. Allowed values: 'epsilon', 'serial', 'G1'. | serial | `--gc=<value>` |
 | `--add-modules` | String | root modules to resolve in addition to the initial module. &lt;module name&gt; can also be ALL-DEFAULT, ALL-SYSTEM, ALL-MODULE-PATH. |  | `--add-modules <module name>[,<module name>...]` |
