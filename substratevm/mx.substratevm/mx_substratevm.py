@@ -24,6 +24,7 @@
 #
 
 import filecmp
+import gzip
 import json
 import os
 import pathlib
@@ -32,6 +33,7 @@ import re
 import shutil
 import tempfile
 import textwrap
+import zlib
 from glob import glob
 from contextlib import contextmanager
 from itertools import islice
@@ -1553,6 +1555,8 @@ def _unittest_on_hotspot(args, *, excluded_test_classes=None):
     delimiter = args.index('--') if '--' in args else len(args)
     parser = ArgumentParser(add_help=False)
     parser.add_argument('--blacklist')
+    if excluded_test_classes is not None:
+        parser.add_argument('--json-results')
     parsed, remaining = parser.parse_known_args(args[:delimiter])
     remaining += args[delimiter:]
 
@@ -1570,7 +1574,46 @@ def _unittest_on_hotspot(args, *, excluded_test_classes=None):
                 output.write(test_class + '\n')
                 # mx retains the method suffix when applying exclusion patterns.
                 output.write(test_class + '#*\n')
-        return mx_unittest.unittest(['--blacklist', blacklist] + remaining)
+        unittest_args = ['--blacklist', blacklist] + remaining
+        if excluded_test_classes is None:
+            return mx_unittest.unittest(unittest_args)
+
+        # mx can succeed when filters leave no tests. Always request a fresh
+        # report to verify that this invocation ran tests.
+        report_path = parsed.json_results
+        # mx writes gzip-compressed JSON when the --json-results filename ends in .gz.
+        # Use the same suffix for the temporary file because we copy the report byte for byte.
+        results_file = join(directory, 'results.json.gz' if report_path and report_path.endswith('.gz') else 'results.json')
+        try:
+            result = mx_unittest.unittest(['--json-results', results_file] + unittest_args)
+        except BaseException:
+            # A failed test produces a report. An interrupted JVM can leave a partial file.
+            if report_path and exists(results_file):
+                try:
+                    _finish_junit_report(results_file, report_path)
+                except (OSError, EOFError, ValueError, zlib.error) as report_error:
+                    mx.warn(f'Could not publish JUnit report to {report_path}: {report_error}')
+            raise
+        if not _finish_junit_report(results_file, report_path):
+            mx.abort('No tests executed. Check the test selectors, filters, project restrictions, and skipped tests.')
+        return result
+
+
+def _finish_junit_report(results_file, report_path):
+    open_results = gzip.open if results_file.endswith('.gz') else open
+    if not exists(results_file):
+        # mx returns without starting JUnit when its filters remove all tests.
+        if report_path:
+            with open_results(report_path, 'wt', encoding='utf-8') as results:
+                json.dump([], results)
+        return False
+
+    with open_results(results_file, 'rt', encoding='utf-8') as results:
+        executed_tests = any(test['status'] != 'IGNORED' for test in json.load(results))
+    if report_path:
+        with open(results_file, 'rb') as source, open(report_path, 'wb') as target:
+            shutil.copyfileobj(source, target)
+    return executed_tests
 
 
 @mx.command(suite_name=suite.name, command_name='standalone-pointsto-unittest', usage_msg='[host|espresso] [test-spec] [analysis-option ...]')
