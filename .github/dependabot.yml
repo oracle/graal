@@ -1,7 +1,13 @@
 version: 2
 
 multi-ecosystem-groups:
-  maven-gradle:
+  gha:
+    schedule:
+      interval: 'monthly'
+  jvm:
+    schedule:
+      interval: 'monthly'
+  bundler:
     schedule:
       interval: 'monthly'
 
@@ -9,32 +15,30 @@ updates:
   - package-ecosystem: 'github-actions'
     directory: '/'
     patterns: ['*']
-    schedule:
-      interval: 'monthly'
-    groups:
-      github-actions-updates:
-        patterns:
-          - '*'
+    multi-ecosystem-group: 'gha'
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: 'maven'
     directories:
       - '**/*'
     patterns: ['*']
-    multi-ecosystem-group: 'maven-gradle'
+    multi-ecosystem-group: 'jvm'
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: 'gradle'
     directories:
       - '**/*'
     patterns: ['*']
-    multi-ecosystem-group: 'maven-gradle'
+    multi-ecosystem-group: 'jvm'
+    cooldown:
+      default-days: 7
 
-  - package-ecosystem: 'bundler' # Jekyll projects
+  - package-ecosystem: 'bundler'
     directories:
       - '**/*'
     patterns: ['*']
-    schedule:
-      interval: 'monthly'
-    groups:
-      bundler-updates:
-        patterns:
-          - '*'
+    multi-ecosystem-group: 'bundler'
+    cooldown:
+      default-days: 7
