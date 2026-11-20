@@ -2005,7 +2005,7 @@ def _scifallbacktest(native_image, path, args):
     classes_path = join(path, 'scifallback-classes')
     mx_util.ensure_dir_exists(classes_path)
     chain_length = 128
-    with open(source_path, 'w') as source:
+    with open(source_path, 'w', encoding='utf-8') as source:
         source.write('import com.oracle.svm.core.NeverInlineTrivial;\n'
                      'public class SciFallbackTest {\n'
                      '    private static volatile int input = 17;\n'

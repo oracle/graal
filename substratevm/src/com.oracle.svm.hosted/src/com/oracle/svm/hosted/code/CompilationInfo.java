@@ -48,13 +48,18 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 
 public class CompilationInfo {
-    int sizeLastRound;
-
-    AtomicInteger callsites = new AtomicInteger();
-
     protected final HostedMethod method;
 
     protected final AtomicBoolean inParseQueue = new AtomicBoolean(false);
+
+    final AtomicBoolean sciImplsMarked = new AtomicBoolean(false);
+
+    AtomicInteger callsites = new AtomicInteger();
+
+    int sizeLastRound;
+
+    boolean sciIneligible;
+
     /**
      * No need for this flag to be atomic, because {@link CompileQueue#compilations} is used to
      * ensure each method is compiled only once.
