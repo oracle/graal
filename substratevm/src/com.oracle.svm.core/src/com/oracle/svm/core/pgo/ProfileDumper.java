@@ -42,9 +42,9 @@ import jdk.graal.compiler.options.Option;
  * <p>
  * The teardown hook takes a snapshot of every enabled recorder (branches, switches, receiver and
  * monitor types, call counts and stack samples), writes all of them into one iprof file with
- * {@link IprofWriter} and prints what the file contains and what each recorder saw. It takes the
- * snapshots and stops sampling its own thread before it runs any instrumented code, so the file
- * holds none of the dump's own work.
+ * {@link IprofWriter} and, unless {@code -XX:-ProfilesDumpStatistics} is given, prints what the file
+ * contains and what each recorder saw. It takes the snapshots and stops sampling its own thread
+ * before it runs any instrumented code, so the file holds none of the dump's own work.
  */
 public final class ProfileDumper {
 
@@ -52,6 +52,9 @@ public final class ProfileDumper {
         @Option(help = "File path for the profile produced by a --pgo-instrument image. %p is replaced by the process id and %t by the time of the dump in " +
                         "milliseconds, so that several training runs can write into one directory without overwriting each other.")//
         public static final RuntimeOptionKey<String> ProfilesDumpFile = new RuntimeOptionKey<>("default.iprof");
+
+        @Option(help = "Print what the profile dump wrote and what each recorder saw, one line per profile kind. Disable with -XX:-ProfilesDumpStatistics.")//
+        public static final RuntimeOptionKey<Boolean> ProfilesDumpStatistics = new RuntimeOptionKey<>(true);
     }
 
     private ProfileDumper() {
@@ -86,7 +89,6 @@ public final class ProfileDumper {
         if (TypeProfileRecorder.isEnabled()) {
             TypeProfileRecorder.prepareSnapshot();
         }
-        List<BranchProfileKey> branchKeys = BranchProfileRecorder.isEnabled() ? BranchProfileRecorder.getKeys() : List.of();
 
         String fileName = Options.ProfilesDumpFile.getValue();
         if (fileName == null || fileName.isEmpty()) {
@@ -94,19 +96,26 @@ public final class ProfileDumper {
         }
         fileName = expandDumpFilePattern(fileName);
         try {
+            List<BranchProfileKey> branchKeys = BranchProfileRecorder.isEnabled() ? BranchProfileRecorder.getKeys() : List.of();
+            List<SwitchProfileKey> switchKeys = SwitchProfileRecorder.isEnabled() ? SwitchProfileRecorder.getKeys() : List.of();
+            List<CallCountProfileKey> callCountKeys = CallCountProfileRecorder.isEnabled() ? CallCountProfileRecorder.getKeys() : List.of();
             List<StackSampleRecorder.DecodedSample> stackSamples = StackSampleRecorder.hasSamples() ? StackSampleRecorder.decodeSamples() : List.of();
-            List<TypeProfileRecorder.DecodedReceiverProfile> receiverProfiles;
-            Map<String, Long> monitorProfiles;
+            List<TypeProfileRecorder.DecodedReceiverProfile> receiverProfiles = List.of();
+            /*
+             * Null, not an empty map, while monitor profiling is off. The writer then leaves
+             * monitorProfiles out of the file, whereas an empty map writes an empty section, which
+             * says that monitors were recorded and none was entered. For receivers no such
+             * difference exists: the writer leaves virtualInvokeProfiles out when the list is empty.
+             */
+            Map<String, Long> monitorProfiles = null;
             if (TypeProfileRecorder.isEnabled()) {
                 TypeProfileRecorder.DecodedTypeProfiles profiles = TypeProfileRecorder.decodeProfiles();
                 receiverProfiles = profiles.receiverProfiles();
-                monitorProfiles = TypeProfileRecorder.monitorProfilesEnabled() ? profiles.monitorProfiles() : null;
-            } else {
-                receiverProfiles = List.of();
-                monitorProfiles = null;
+                if (TypeProfileRecorder.monitorProfilesEnabled()) {
+                    monitorProfiles = profiles.monitorProfiles();
+                }
             }
-            List<CallCountProfileKey> callCountKeys = CallCountProfileRecorder.isEnabled() ? CallCountProfileRecorder.getKeys() : List.of();
-            List<SwitchProfileKey> switchKeys = SwitchProfileRecorder.isEnabled() ? SwitchProfileRecorder.getKeys() : List.of();
+
             Path profilePath = Path.of(fileName);
             Path parent = profilePath.toAbsolutePath().getParent();
             if (parent != null) {
@@ -114,39 +123,46 @@ public final class ProfileDumper {
             }
             IprofWriter.DumpStatistics statistics = IprofWriter.write(profilePath, branchKeys, stackSamples, receiverProfiles, callCountKeys, switchKeys,
                             monitorProfiles);
-            Log.log().string("[PGO] wrote profile '").string(fileName).string("': conditional contexts=").signed(statistics.conditionalProfiles())
-                            .string(", receiver contexts=").signed(statistics.receiverProfiles())
-                            .string(", call-count contexts=").signed(statistics.callCountProfiles())
-                            .string(", switch contexts=").signed(statistics.switchProfiles())
-                            .string(", monitor types=").signed(statistics.monitorTypes())
-                            .string(", monitor events=").signed(statistics.monitorEvents())
-                            .string(", methods=").signed(statistics.methods())
-                            .string(", types=").signed(statistics.types())
-                            .string(", branch events=").signed(statistics.branchEvents()).newline();
-            if (StackSampleRecorder.hasSamples()) {
-                StackSampleRecorder.Statistics sampling = StackSampleRecorder.statistics(stackSamples.size());
-                Log.log().string("[PGO] stack samples=").signed(sampling.samples()).string(", threads=").signed(sampling.tables())
-                                .string(", decoded stacks=").signed(sampling.decodedStacks()).string(", truncated=").signed(sampling.truncated())
-                                .string(", dropped=").signed(sampling.dropped()).string(", unresolved addresses=").signed(sampling.unresolvedAddresses()).newline();
-            }
-            if (TypeProfileRecorder.isEnabled()) {
-                TypeProfileRecorder.Statistics types = TypeProfileRecorder.statistics();
-                Log.log().string("[PGO] dynamic type profiles: receiver sites=").signed(types.receiverSites())
-                                .string(", receiver events=").signed(types.receiverEvents())
-                                .string(", monitor events=").signed(types.monitorEvents())
-                                .string(", total events=").signed(types.events())
-                                .string(", dropped=").signed(types.dropped())
-                                .string(", unknown receivers=").signed(types.unknownReceivers())
-                                .string(", unknown monitors=").signed(types.unknownMonitors()).newline();
-            }
-            if (CallCountProfileRecorder.isEnabled()) {
-                CallCountProfileRecorder.Statistics calls = CallCountProfileRecorder.statistics();
-                Log.log().string("[PGO] call counts: call edges=").signed(calls.callEdges()).string(", events=").signed(calls.events())
-                                .string(", attributed=").signed(calls.attributedEvents()).string(", keys=").signed(calls.keys()).string(", mapped keys=").signed(calls.mappedKeys())
-                                .string(", dropped=").signed(calls.dropped()).newline();
+            if (Options.ProfilesDumpStatistics.getValue()) {
+                printStatistics(fileName, statistics, stackSamples.size());
             }
         } catch (IOException | RuntimeException exception) {
             Log.log().string("[PGO] could not write profile '").string(fileName).string("': ").exception(exception).newline();
+        }
+    }
+
+    /** Prints what the profile file holds, then what each enabled recorder saw while the application ran. */
+    private static void printStatistics(String fileName, IprofWriter.DumpStatistics statistics, int decodedStacks) {
+        Log.log().string("[PGO] wrote profile '").string(fileName).string("': conditional contexts=").signed(statistics.conditionalProfiles())
+                        .string(", receiver contexts=").signed(statistics.receiverProfiles())
+                        .string(", call-count contexts=").signed(statistics.callCountProfiles())
+                        .string(", switch contexts=").signed(statistics.switchProfiles())
+                        .string(", monitor types=").signed(statistics.monitorTypes())
+                        .string(", monitor events=").signed(statistics.monitorEvents())
+                        .string(", methods=").signed(statistics.methods())
+                        .string(", types=").signed(statistics.types())
+                        .string(", branch events=").signed(statistics.branchEvents()).newline();
+        if (StackSampleRecorder.hasSamples()) {
+            StackSampleRecorder.Statistics sampling = StackSampleRecorder.statistics(decodedStacks);
+            Log.log().string("[PGO] stack samples=").signed(sampling.samples()).string(", threads=").signed(sampling.tables())
+                            .string(", decoded stacks=").signed(sampling.decodedStacks()).string(", truncated=").signed(sampling.truncated())
+                            .string(", dropped=").signed(sampling.dropped()).string(", unresolved addresses=").signed(sampling.unresolvedAddresses()).newline();
+        }
+        if (TypeProfileRecorder.isEnabled()) {
+            TypeProfileRecorder.Statistics types = TypeProfileRecorder.statistics();
+            Log.log().string("[PGO] dynamic type profiles: receiver sites=").signed(types.receiverSites())
+                            .string(", receiver events=").signed(types.receiverEvents())
+                            .string(", monitor events=").signed(types.monitorEvents())
+                            .string(", total events=").signed(types.events())
+                            .string(", dropped=").signed(types.dropped())
+                            .string(", unknown receivers=").signed(types.unknownReceivers())
+                            .string(", unknown monitors=").signed(types.unknownMonitors()).newline();
+        }
+        if (CallCountProfileRecorder.isEnabled()) {
+            CallCountProfileRecorder.Statistics calls = CallCountProfileRecorder.statistics();
+            Log.log().string("[PGO] call counts: call edges=").signed(calls.callEdges()).string(", events=").signed(calls.events())
+                            .string(", attributed=").signed(calls.attributedEvents()).string(", keys=").signed(calls.keys()).string(", mapped keys=").signed(calls.mappedKeys())
+                            .string(", dropped=").signed(calls.dropped()).newline();
         }
     }
 }

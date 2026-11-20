@@ -77,6 +77,11 @@ public final class BranchProfileCounterNode extends PGOInstrumentationNode {
     }
 
     private static final class CounterSnippet implements Snippets {
+        /* The names of the snippet and of its parameters, by which Templates binds arguments. */
+        static final String INCREMENT = "increment";
+        static final String COUNTER_INDEX = "counterIndex";
+        static final String ON_TRUE_SUCCESSOR = "onTrueSuccessor";
+
         /** Increments the true or the false count of the key numbered {@code counterIndex}. */
         @Snippet
         private static void increment(@ConstantParameter int counterIndex, @ConstantParameter boolean onTrueSuccessor) {
@@ -89,15 +94,15 @@ public final class BranchProfileCounterNode extends PGOInstrumentationNode {
 
         Templates(OptionValues options, Providers providers) {
             super(options, providers);
-            increment = snippet(providers, CounterSnippet.class, "increment", BranchProfileThreadCounters.blockLocation(), BranchProfileRecorder.COUNTER_LOCATION);
+            increment = snippet(providers, CounterSnippet.class, CounterSnippet.INCREMENT, BranchProfileThreadCounters.blockLocation(), BranchProfileRecorder.COUNTER_LOCATION);
         }
 
         void lower(BranchProfileCounterNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
             Arguments args = new Arguments(increment, graph, tool.getLoweringStage());
             /* Numbers the key now: only keys whose counters reach machine code get counter memory. */
-            args.add("counterIndex", node.key.counterIndexForCode());
-            args.add("onTrueSuccessor", node.onTrueSuccessor);
+            args.add(CounterSnippet.COUNTER_INDEX, node.key.counterIndexForCode());
+            args.add(CounterSnippet.ON_TRUE_SUCCESSOR, node.onTrueSuccessor);
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
     }

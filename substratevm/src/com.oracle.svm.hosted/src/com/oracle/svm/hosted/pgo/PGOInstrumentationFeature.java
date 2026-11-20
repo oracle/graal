@@ -122,7 +122,7 @@ public final class PGOInstrumentationFeature implements InternalFeature {
                     /* The stack sampler runs as a recurring callback on every Java thread. */
                     RecurringCallbackSupport.ConcealedOptions.SupportRecurringCallback.update(values, true);
                     /* Instrument at the level of the optimized build. */
-                    PGOOptimizationLevel.raiseDefaultToO3(values);
+                    PGOUtils.raiseDefaultToO3(values);
                 }
                 updateLoopSafepoints(values);
             }

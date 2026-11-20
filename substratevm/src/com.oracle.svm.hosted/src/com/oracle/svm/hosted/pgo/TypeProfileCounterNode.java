@@ -112,6 +112,13 @@ public final class TypeProfileCounterNode extends PGOInstrumentationNode impleme
     }
 
     private static final class CounterSnippet implements Snippets {
+        /* The names of the snippets and of their parameters, by which Templates binds arguments. */
+        static final String RECORD = "record";
+        static final String RECORD_KNOWN_TYPE = "recordKnownType";
+        static final String SITE_INDEX = "siteIndex";
+        static final String OBJECT = "object";
+        static final String TYPE_ID = "typeId";
+
         @Snippet
         private static void record(@ConstantParameter int siteIndex, Object object) {
             TypeProfileRecorder.record(siteIndex, object);
@@ -129,8 +136,8 @@ public final class TypeProfileCounterNode extends PGOInstrumentationNode impleme
 
         Templates(OptionValues options, Providers providers) {
             super(options, providers);
-            record = snippet(providers, CounterSnippet.class, "record", TypeProfileRecorder.tablePointerLocation(), TypeProfileRecorder.TABLE_LOCATION);
-            recordKnownType = snippet(providers, CounterSnippet.class, "recordKnownType", TypeProfileRecorder.tablePointerLocation(), TypeProfileRecorder.TABLE_LOCATION);
+            record = snippet(providers, CounterSnippet.class, CounterSnippet.RECORD, TypeProfileRecorder.tablePointerLocation(), TypeProfileRecorder.TABLE_LOCATION);
+            recordKnownType = snippet(providers, CounterSnippet.class, CounterSnippet.RECORD_KNOWN_TYPE, TypeProfileRecorder.tablePointerLocation(), TypeProfileRecorder.TABLE_LOCATION);
         }
 
         void lower(TypeProfileCounterNode node, LoweringTool tool) {
@@ -139,12 +146,12 @@ public final class TypeProfileCounterNode extends PGOInstrumentationNode impleme
             if (node.object == null) {
                 args = new Arguments(recordKnownType, graph, tool.getLoweringStage());
                 /* Numbers the key now: only keys whose counters reach machine code get an index. */
-                args.add("siteIndex", node.key.siteIndexForCode());
-                args.add("typeId", node.knownTypeId);
+                args.add(CounterSnippet.SITE_INDEX, node.key.siteIndexForCode());
+                args.add(CounterSnippet.TYPE_ID, node.knownTypeId);
             } else {
                 args = new Arguments(record, graph, tool.getLoweringStage());
-                args.add("siteIndex", node.key.siteIndexForCode());
-                args.add("object", node.object);
+                args.add(CounterSnippet.SITE_INDEX, node.key.siteIndexForCode());
+                args.add(CounterSnippet.OBJECT, node.object);
             }
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }

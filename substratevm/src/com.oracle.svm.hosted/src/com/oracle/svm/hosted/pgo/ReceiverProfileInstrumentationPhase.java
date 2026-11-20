@@ -66,11 +66,17 @@ final class ReceiverProfileInstrumentationPhase extends BasePhase<HighTierContex
             return;
         }
         for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE).snapshot()) {
-            if (!callTarget.invokeKind().isIndirect() || callTarget.receiver() == null || !(callTarget instanceof SubstrateMethodCallTargetNode substrateTarget)) {
+            if (!callTarget.invokeKind().isIndirect()) {
+                /* A direct call has one target, so it has no receiver type to record. */
+                continue;
+            }
+            /* Indirect calls that cannot be instrumented are counted, so the build summary accounts for every one. */
+            if (callTarget.receiver() == null || !(callTarget instanceof SubstrateMethodCallTargetNode substrateTarget) || callTarget.invoke() == null) {
+                SKIPPED_INVOKES.incrementAndGet();
                 continue;
             }
             NodeSourcePosition position = PGOApplyProfilesPhase.createPointContext(callTarget.getNodeSourcePosition(), inliningContext);
-            if (position == null || callTarget.invoke() == null) {
+            if (position == null) {
                 SKIPPED_INVOKES.incrementAndGet();
                 continue;
             }
