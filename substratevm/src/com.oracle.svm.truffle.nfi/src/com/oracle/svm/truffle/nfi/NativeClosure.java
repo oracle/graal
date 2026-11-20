@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle.nfi;
 
+import static com.oracle.svm.shared.NeverInline.CALLER_CATCHES_IMPLICIT_EXCEPTIONS;
 import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.getOffset;
 import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.getTag;
 import static com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_closure_alloc;
@@ -44,18 +45,20 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.core.handles.PrimitiveArrayView;
+import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.guest.staging.c.CGlobalData;
+import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.NoPrologue;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.handles.PrimitiveArrayView;
-import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.guest.staging.c.CGlobalData;
-import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.truffle.nfi.LibFFI.ClosureData;
 import com.oracle.svm.truffle.nfi.LibFFI.NativeClosureHandle;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleEnv;
@@ -238,7 +241,7 @@ final class NativeClosure {
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     @Uninterruptible(reason = "contains prologue and epilogue for thread state transition")
-    static void invokeClosureBufferRet(@SuppressWarnings("unused") ffi_cif cif, Pointer ret, WordPointer args, ClosureData user) {
+    static void invokeClosureBufferRet(ffi_cif cif, Pointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
         int errno = getErrno();
 
@@ -256,7 +259,7 @@ final class NativeClosure {
             }
         }
 
-        errno = invokeClosureBufferRet0(ret, args, user, errno);
+        errno = invokeClosureBufferRet0(cif, ret, args, user, errno);
 
         CEntryPointActions.leave();
         /* Restore the C error number after being back in the Native state. */
@@ -266,46 +269,63 @@ final class NativeClosure {
     /**
      * This code must be in a separate method to guarantee memory accesses do not get reordered with
      * thread isolate setup & exit.
+     * See {@link #invokeClosureObjectRet0} for the exception-handling structure.
      */
     @NeverInline("Boundary must exist after isolate setup.")
     @Uninterruptible(reason = "Transitioning from prologue to Java code.", calleeMustBe = false)
-    private static int invokeClosureBufferRet0(Pointer ret, WordPointer args, ClosureData user, int errno) {
+    private static int invokeClosureBufferRet0(ffi_cif cif, Pointer ret, WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
-        doInvokeClosureBufferRet(ret, args, user);
+        try {
+            doInvokeClosureBufferRet1(cif, ret, args, user);
+        } catch (Throwable t) {
+            zeroReturnValue(cif, ret);
+            handleException(user, t, true);
+        }
 
         return ErrnoMirror.errnoMirror.getAddress().read();
     }
 
-    private static void doInvokeClosureBufferRet(Pointer ret, WordPointer args, ClosureData user) {
+    /** See {@link #doInvokeClosureObjectRet1} for the pending-exception handling. */
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
+    private static void doInvokeClosureBufferRet1(ffi_cif cif, Pointer ret, WordPointer args, ClosureData user) {
         NativeClosure closure = lookup(user);
+        Target_com_oracle_truffle_nfi_backend_spi_NFIState state = closure.language.getNFIState();
+        Throwable saved = state.savePendingException();
         try {
-            Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_Pointer retBuffer = new Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_Pointer(ret.rawValue());
-            Target_com_oracle_truffle_nfi_backend_libffi_LibFFIClosure_RetPatches patches = (Target_com_oracle_truffle_nfi_backend_libffi_LibFFIClosure_RetPatches) closure.call(args, retBuffer);
+            doInvokeClosureBufferRet(cif, ret, args, closure);
+        } catch (Throwable t) {
+            zeroReturnValue(cif, ret);
+            handleException(user, t);
+        } finally {
+            state.restorePendingException(saved);
+        }
+    }
 
-            if (patches != null) {
-                for (int i = 0; i < patches.count; i++) {
-                    Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag tag = getTag(patches.patches[i]);
-                    int offset = getOffset(patches.patches[i]);
-                    Object obj = patches.objects[i];
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
+    private static void doInvokeClosureBufferRet(ffi_cif cif, Pointer ret, WordPointer args, NativeClosure closure) {
+        Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_Pointer retBuffer = new Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_Pointer(ret.rawValue());
+        Target_com_oracle_truffle_nfi_backend_libffi_LibFFIClosure_RetPatches patches = (Target_com_oracle_truffle_nfi_backend_libffi_LibFFIClosure_RetPatches) closure.call(args, retBuffer);
 
-                    if (tag == Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.OBJECT) {
-                        WordBase handle = ImageSingletons.lookup(TruffleNFISupport.class).createGlobalHandle(obj);
-                        ret.writeWord(offset, handle);
-                    } else if (tag == Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.STRING) {
-                        ret.writeWord(offset, serializeStringRet(obj));
-                    } else {
-                        // nothing to do
-                    }
+        if (patches != null) {
+            if (patches.count < 0) {
+                zeroReturnValue(cif, ret);
+                return;
+            }
+            for (int i = 0; i < patches.count; i++) {
+                Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag tag = getTag(patches.patches[i]);
+                int offset = getOffset(patches.patches[i]);
+                Object obj = patches.objects[i];
+
+                if (tag == Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.OBJECT) {
+                    WordBase handle = ImageSingletons.lookup(TruffleNFISupport.class).createGlobalHandle(obj);
+                    ret.writeWord(offset, handle);
+                } else if (tag == Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.STRING) {
+                    ret.writeWord(offset, serializeStringRet(obj));
+                } else {
+                    // nothing to do
                 }
             }
-        } catch (Throwable t) {
-            /*
-             * Normally no exceptions can happen here, since the NFI frontend already does all the
-             * exception handling. But certain exceptions can slip through to here, e.g. stack
-             * overflows or async exceptions from Truffle safepoints.
-             */
-            closure.language.getNFIState().setPendingException(t);
         }
     }
 
@@ -340,29 +360,40 @@ final class NativeClosure {
     /**
      * This code must be in a separate method to guarantee memory accesses do not get reordered with
      * thread isolate setup & exit.
+     * See {@link #invokeClosureObjectRet0} for the exception-handling structure.
      */
     @NeverInline("Boundary must exist after isolate setup.")
     @Uninterruptible(reason = "Transitioning from prologue to Java code.", calleeMustBe = false)
     private static int invokeClosureVoidRet0(WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
-        doInvokeClosureVoidRet(args, user);
+        try {
+            doInvokeClosureVoidRet1(args, user);
+        } catch (Throwable t) {
+            handleException(user, t, true);
+        }
 
         return ErrnoMirror.errnoMirror.getAddress().read();
     }
 
-    private static void doInvokeClosureVoidRet(WordPointer args, ClosureData user) {
+    /** See {@link #doInvokeClosureObjectRet1} for the pending-exception handling. */
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
+    private static void doInvokeClosureVoidRet1(WordPointer args, ClosureData user) {
         NativeClosure closure = lookup(user);
+        Target_com_oracle_truffle_nfi_backend_spi_NFIState state = closure.language.getNFIState();
+        Throwable saved = state.savePendingException();
         try {
-            closure.call(args, null);
+            doInvokeClosureVoidRet(args, closure);
         } catch (Throwable t) {
-            /*
-             * Normally no exceptions can happen here, since the NFI frontend already does all the
-             * exception handling. But certain exceptions can slip through to here, e.g. stack
-             * overflows or async exceptions from Truffle safepoints.
-             */
-            closure.language.getNFIState().setPendingException(t);
+            handleException(user, t);
+        } finally {
+            state.restorePendingException(saved);
         }
+    }
+
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
+    private static void doInvokeClosureVoidRet(WordPointer args, NativeClosure closure) {
+        closure.call(args, null);
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
@@ -396,30 +427,43 @@ final class NativeClosure {
     /**
      * This code must be in a separate method to guarantee memory accesses do not get reordered with
      * thread isolate setup & exit.
+     * See {@link #invokeClosureObjectRet0} for the exception-handling structure.
      */
     @NeverInline("Boundary must exist after isolate setup.")
     @Uninterruptible(reason = "Transitioning from prologue to Java code.", calleeMustBe = false)
     private static int invokeClosureStringRet0(WordPointer ret, WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
-        doInvokeClosureStringRet(ret, args, user);
+        try {
+            doInvokeClosureStringRet1(ret, args, user);
+        } catch (Throwable t) {
+            ret.write(Word.zero());
+            handleException(user, t, true);
+        }
 
         return ErrnoMirror.errnoMirror.getAddress().read();
     }
 
-    private static void doInvokeClosureStringRet(WordPointer ret, WordPointer args, ClosureData user) {
+    /** See {@link #doInvokeClosureObjectRet1} for the pending-exception handling. */
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
+    private static void doInvokeClosureStringRet1(WordPointer ret, WordPointer args, ClosureData user) {
         NativeClosure closure = lookup(user);
+        Target_com_oracle_truffle_nfi_backend_spi_NFIState state = closure.language.getNFIState();
+        Throwable saved = state.savePendingException();
         try {
-            Object retValue = closure.call(args, null);
-            ret.write(serializeStringRet(retValue));
+            doInvokeClosureStringRet(ret, args, closure);
         } catch (Throwable t) {
-            /*
-             * Normally no exceptions can happen here, since the NFI frontend already does all the
-             * exception handling. But certain exceptions can slip through to here, e.g. stack
-             * overflows or async exceptions from Truffle safepoints.
-             */
-            closure.language.getNFIState().setPendingException(t);
+            ret.write(Word.zero());
+            handleException(user, t);
+        } finally {
+            state.restorePendingException(saved);
         }
+    }
+
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
+    private static void doInvokeClosureStringRet(WordPointer ret, WordPointer args, NativeClosure closure) {
+        Object retValue = closure.call(args, null);
+        ret.write(serializeStringRet(retValue));
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
@@ -459,29 +503,87 @@ final class NativeClosure {
     private static int invokeClosureObjectRet0(WordPointer ret, WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
-        doInvokeClosureObjectRet(ret, args, user);
+        try {
+            doInvokeClosureObjectRet1(ret, args, user);
+        } catch (Throwable t) {
+            /*
+             * Last barrier against exceptions causing a fatal error while unwinding through a CEntryPoint.
+             * Most exceptions should be handled in doInvokeClosureObjectRet1, but it calls some interruptible methods
+             * that could throw and unwind to here.
+             */
+            ret.write(Word.zero());
+            handleException(user, t, true);
+        }
 
         return ErrnoMirror.errnoMirror.getAddress().read();
     }
 
-    private static void doInvokeClosureObjectRet(WordPointer ret, WordPointer args, ClosureData user) {
+    /**
+     * Wraps {@link #doInvokeClosureObjectRet} to save, clear, and restore pending exceptions.
+     * <p>
+     * This avoids issues if native code performs an upcall while an exception is pending: the new upcall will be
+     * performed with a clean state, but the previous exception is restored once that upcall is done.
+     * This outer scope also covers native argument and return marshalling, which happens outside
+     * the LibFFIClosure root's scope. The separate non-inlined callee ensures that its stack overflow
+     * check runs inside this scope's exception handler.
+     * <p>
+     * Note that this is not uninterruptible and may throw {@link StackOverflowError} on entry or in one of the
+     * interruptible methods called at the start of this method. Such exceptions will be handled in
+     * {@link #invokeClosureObjectRet0}.
+     */
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
+    private static void doInvokeClosureObjectRet1(WordPointer ret, WordPointer args, ClosureData user) {
         NativeClosure closure = lookup(user);
+        Target_com_oracle_truffle_nfi_backend_spi_NFIState state = closure.language.getNFIState();
+        Throwable saved = state.savePendingException();
         try {
-            Object obj = closure.call(args, null);
-            if (obj == null) {
-                ret.write(Word.zero());
-            } else {
-                TruffleObjectHandle handle = ImageSingletons.lookup(TruffleNFISupport.class).createGlobalHandle(obj);
-                ret.write(handle);
-            }
+            doInvokeClosureObjectRet(ret, args, closure);
         } catch (Throwable t) {
-            /*
-             * Normally no exceptions can happen here, since the NFI frontend already does all the
-             * exception handling. But certain exceptions can slip through to here, e.g. stack
-             * overflows or async exceptions from Truffle safepoints.
-             */
-            closure.language.getNFIState().setPendingException(t);
+            ret.write(Word.zero());
+            handleException(user, t);
+        } finally {
+            state.restorePendingException(saved);
         }
+    }
+
+    @NeverInline(CALLER_CATCHES_IMPLICIT_EXCEPTIONS)
+    private static void doInvokeClosureObjectRet(WordPointer ret, WordPointer args, NativeClosure closure) {
+        Object obj = closure.call(args, null);
+        if (obj == null) {
+            ret.write(Word.zero());
+        } else {
+            TruffleObjectHandle handle = ImageSingletons.lookup(TruffleNFISupport.class).createGlobalHandle(obj);
+            ret.write(handle);
+        }
+    }
+
+    @Uninterruptible(reason = "Must be able to record an exception even when the stack is exhausted.")
+    private static void handleException(ClosureData user, Throwable t) {
+        handleException(user, t, false);
+    }
+
+    @Uninterruptible(reason = "Must be able to record an exception even when the stack is exhausted.", calleeMustBe = false)
+    private static void handleException(ClosureData user, Throwable t, boolean preservePending) {
+        /*
+         * The NFI frontend handles exceptions from the callback itself. Stack overflows can also
+         * happen before reaching it, including in the prologue of the doInvokeClosure* helpers. The
+         * callers have no stack overflow check, and the yellow zone provides space to record the
+         * exception.
+         */
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            Target_com_oracle_truffle_nfi_backend_spi_NFIState state = lookup(user).language.getNFIState();
+            if (!preservePending || !state.hasPendingException) {
+                state.setPendingException(t);
+            }
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
+    }
+
+    @Uninterruptible(reason = "Initialize the native return value while handling an exception.")
+    private static void zeroReturnValue(ffi_cif cif, Pointer ret) {
+        UnmanagedMemoryUtil.fill(ret, cif.rtype().size(), (byte) 0);
     }
 
     static final CEntryPointLiteral<ffi_closure_callback> INVOKE_CLOSURE_BUFFER_RET = CEntryPointLiteral.create(NativeClosure.class, "invokeClosureBufferRet",

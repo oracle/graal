@@ -768,7 +768,15 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "Thread is no longer attached in error case.", calleeMustBe = false)
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static int ensureJavaThread(boolean wasAlreadyAttached) {
-        VMError.guarantee(!wasAlreadyAttached || PlatformThreads.isCurrentAssigned(), "thread was already attached but does not have a Thread object and we would assign one");
+        if (PlatformThreads.isCurrentAssigned()) {
+            /*
+             * A nested native callback may enter with an almost exhausted stack. Avoid calling
+             * interruptible thread initialization code when the Thread object already exists:
+             * even a no-op call could fail its stack overflow check and detach this thread.
+             */
+            return CEntryPointErrors.NO_ERROR;
+        }
+        VMError.guarantee(!wasAlreadyAttached, "thread was already attached but does not have a Thread object and we would assign one");
 
         try {
             PlatformThreads.ensureCurrentThreadHasThreadObject(null, null, true);

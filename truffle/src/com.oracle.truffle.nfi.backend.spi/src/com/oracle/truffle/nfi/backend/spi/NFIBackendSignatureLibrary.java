@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,6 +72,12 @@ public abstract class NFIBackendSignatureLibrary extends Library {
      *
      * NFI backends can assume that the execute message of the executable object will never throw.
      * Exceptions are instead stored as "pending" and rethrown at the next managed frame.
+     * Before an upcall, backends must save and clear any earlier pending exception using
+     * {@link NFIState#savePendingException()}. They must restore it using
+     * {@link NFIState#restorePendingException(Throwable)} in a {@code finally} block after the
+     * upcall. This scope must include argument and return conversion so nested native calls see
+     * a clean exception state and successful upcalls still return their results to native code.
+     * An earlier pending exception takes precedence over an exception from the new upcall.
      */
     public abstract Object createClosure(Object signature, Object executable);
 }

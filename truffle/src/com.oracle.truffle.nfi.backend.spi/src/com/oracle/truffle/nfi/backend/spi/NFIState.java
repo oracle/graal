@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -106,6 +106,35 @@ public final class NFIState {
     public void clearPendingException() {
         pendingException = null;
         hasPendingException = false;
+    }
+
+    /**
+     * Saves and clears the pending exception so an upcall and its nested calls see a clean state.
+     * Pair this with {@link #restorePendingException(Throwable)} in a {@code finally} block.
+     *
+     * @return the previous pending exception, or {@code null}
+     * @since 25.6
+     */
+    public Throwable savePendingException() {
+        Throwable saved = pendingException;
+        if (saved != null) {
+            clearPendingException();
+        }
+        return saved;
+    }
+
+    /**
+     * Restores a non-null saved exception, replacing any exception produced by the upcall. If
+     * {@code saved} is {@code null}, leaves the current pending exception untouched so a new
+     * exception can propagate to the enclosing downcall.
+     *
+     * @param saved the exception returned by {@link #savePendingException()}
+     * @since 25.6
+     */
+    public void restorePendingException(Throwable saved) {
+        if (saved != null) {
+            setPendingException(saved);
+        }
     }
 
     private static long initNfiErrnoAddress(@SuppressWarnings("unused") Thread thread) {

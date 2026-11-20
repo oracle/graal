@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,6 +39,9 @@
  * SOFTWARE.
  */
 #include "common.h"
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
 #include <trufflenfi.h>
 
 EXPORT void native_just_call(void (*callback)()) {
@@ -48,6 +51,41 @@ EXPORT void native_just_call(void (*callback)()) {
 EXPORT void native_just_call_2(void (*callback1)(), void (*callback2)()) {
     callback1();
     callback2();
+}
+
+EXPORT void native_call_after_exception(void (*fail)(), int (*success)(), void (*observe)(int)) {
+    fail();
+    observe(success());
+}
+
+EXPORT int native_exception_check(TruffleEnv *env) {
+    return (*env)->exceptionCheck(env);
+}
+
+EXPORT void native_exception_flag_after_callback(TruffleEnv *env, void (*fail)(), void (*success)(), void (*observe)(int, int)) {
+    fail();
+    int after_failure = (*env)->exceptionCheck(env);
+    success();
+    int after_success = (*env)->exceptionCheck(env);
+    observe(after_failure, after_success);
+}
+
+EXPORT void native_object_after_exception(TruffleEnv *env, void (*fail)(), TruffleObject (*success)(), TruffleObject expected, void (*observe)(int)) {
+    fail();
+    TruffleObject result = success();
+    int same = result != NULL && (*env)->isSameObject(env, result, expected);
+    if (result != NULL) {
+        (*env)->releaseObjectRef(env, result);
+    }
+    observe(same);
+}
+
+EXPORT void native_string_after_exception(void (*fail)(), char *(*success)(), void (*observe)(int)) {
+    fail();
+    char *result = success();
+    int same = result != NULL && strcmp(result, "callback result") == 0;
+    free(result);
+    observe(same);
 }
 
 EXPORT void native_check_exception(TruffleEnv *env, void (*callback)(), void (*onSuccess)()) {

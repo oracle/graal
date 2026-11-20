@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,17 +40,23 @@
  */
 package com.oracle.truffle.nfi.test.parser.backend;
 
+import java.util.ArrayList;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
-import java.util.ArrayList;
 
 @ExportLibrary(NFIBackendSignatureBuilderLibrary.class)
 @ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = false)
 public class TestSignature implements TruffleObject {
+
+    public interface TestFunction extends TruffleObject {
+        Object call(Object[] args) throws InteropException;
+    }
 
     public Object retType;
     public final ArrayList<Object> argTypes = new ArrayList<>();
@@ -82,6 +88,13 @@ public class TestSignature implements TruffleObject {
 
     @ExportMessage
     final Object call(Object function, Object... args) {
+        if (function instanceof TestFunction testFunction) {
+            try {
+                return testFunction.call(args);
+            } catch (InteropException e) {
+                throw new AssertionError(e);
+            }
+        }
         return new TestCallInfo(this, function, args);
     }
 
