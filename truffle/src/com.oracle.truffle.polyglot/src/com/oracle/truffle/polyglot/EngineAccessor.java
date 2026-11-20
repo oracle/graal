@@ -169,11 +169,11 @@ final class EngineAccessor extends Accessor {
 
     /**
      * Check that Truffle classes loaded by {@code loader} are the same as active Truffle runtime
-     * classes.
+     * classes without initializing the loaded class.
      */
     private static boolean isValidLoader(ClassLoader loader) {
         try {
-            Class<?> truffleClassAsSeenByLoader = Class.forName(Truffle.class.getName(), true, loader);
+            Class<?> truffleClassAsSeenByLoader = Class.forName(Truffle.class.getName(), false, loader);
             return truffleClassAsSeenByLoader == Truffle.class;
         } catch (ClassNotFoundException ex) {
             return false;
