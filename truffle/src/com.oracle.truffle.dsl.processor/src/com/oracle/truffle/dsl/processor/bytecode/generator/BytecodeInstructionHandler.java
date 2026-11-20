@@ -2118,6 +2118,9 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
         final boolean generic = ElementUtils.typeEquals(type(Object.class), inputType) && ElementUtils.typeEquals(inputType, slotType);
 
         Operand value = instruction.signature.dynamicOperands().get(instruction.signature.dynamicOperandCount() - 1);
+        if (!value.isPrimitive() && !model().disableLocalNullChecks) {
+            b.startAssert().string(value.localName()).string(" != null : ").doubleQuote("Local values must not be null.").end();
+        }
 
         final String localsFrame;
         if (materialized) {

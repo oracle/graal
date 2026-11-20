@@ -1089,7 +1089,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
 
     private static <T extends BasicInterpreterBuilder> void storeLocal(T b, BytecodeLocal local) {
         b.beginStoreLocal(local);
-        b.emitLoadNull();
+        b.emitLoadConstant(42L);
         b.endStoreLocal();
     }
 
@@ -1099,13 +1099,13 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
 
     private static <T extends BasicInterpreterBuilder> void teeLocal(T b, BytecodeLocal local) {
         b.beginTeeLocal(local);
-        b.emitLoadNull();
+        b.emitLoadConstant(42L);
         b.endTeeLocal();
     }
 
     private static <T extends BasicInterpreterBuilder> void teeLocalRange(T b, BytecodeLocal local) {
         b.beginTeeLocalRange(new BytecodeLocal[]{local});
-        b.emitLoadNull();
+        b.emitLoadConstant(42L);
         b.endTeeLocalRange();
     }
 
@@ -1181,7 +1181,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
     private static <T extends BasicInterpreterBuilder> void storeLocalMaterialized(T b, BytecodeLocal local) {
         b.beginStoreLocalMaterialized(local);
         b.emitMaterializeFrame(); // uses current frame
-        b.emitLoadNull();
+        b.emitLoadConstant(42L);
         b.endStoreLocalMaterialized();
     }
 
@@ -1222,7 +1222,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
                     b.beginRoot(); // x is statically in scope
                     b.beginStoreLocalMaterialized(x);
                     b.emitLoadArgument(0);
-                    b.emitLoadNull();
+                    b.emitLoadConstant(42L);
                     b.endStoreLocalMaterialized();
                     b.endRoot();
 

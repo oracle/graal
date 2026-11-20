@@ -624,7 +624,7 @@ public abstract class BytecodeNode extends Node {
      * operations or {@link LocalAccessor}) when possible.
      * <p>
      * This accessor does not respect the {@link GenerateBytecode#illegalLocalException()}
-     * attribute; if the attribute is set, this method will return null for cleared locals.
+     * attribute; if the attribute is set, this method will return null for illegal locals.
      *
      * @param bytecodeIndex the current bytecode index of the given frame. A valid bytecode index
      *            can be obtained by calling {@link BytecodeLocation#getBytecodeIndex()} or
@@ -636,8 +636,7 @@ public abstract class BytecodeNode extends Node {
      *            {@code [0, getLocalCount(bytecodeIndex))} (and may come from
      *            {@link BytecodeLocal#getLocalOffset()} or {@link LocalVariable#getLocalOffset()}).
      *            The value must be a partial evaluation constant.
-     * @return the current local value, or null if the local was never written to (and there is no
-     *         {@link GenerateBytecode#defaultLocalValue() default local value}).
+     * @return the current local value, or {@code null} if the frame slot is illegal
      * @see GenerateBytecode#enableBlockScoping
      * @since 24.2
      */
@@ -749,6 +748,7 @@ public abstract class BytecodeNode extends Node {
      * locals directly in the bytecode (via {@code StoreLocal} operations or
      * {@link LocalRangeAccessor}) when possible.
      * <p>
+     * Each store uses the semantics of {@link #setLocalValue(int, Frame, int, Object)}.
      *
      * @param bytecodeIndex the current bytecode index of the given frame. A valid bytecode index
      *            can be obtained by calling {@link BytecodeLocation#getBytecodeIndex()} or
@@ -778,7 +778,13 @@ public abstract class BytecodeNode extends Node {
     /**
      * Copies the values of the live locals from the source frame to the destination frame. The
      * frames must have the same {@link Frame#getFrameDescriptor() descriptor} as this bytecode
-     * node.
+     * node. Cleared locals remain cleared, and copying default local values does not update local
+     * type profiles.
+     * <p>
+     * Prefer this method or the range overload to explicit
+     * {@link #getLocalValue(int, Frame, int) getLocalValue}/{@link #setLocalValue(int, Frame, int, Object)
+     * setLocalValue} round trips; the latter can unnecessarily generalize local type profiles when
+     * reading a {@link GenerateBytecode#defaultLocalValue() default local value}.
      *
      * @param bytecodeIndex the current bytecode index of the given frames. A valid bytecode index
      *            can be obtained by calling {@link BytecodeLocation#getBytecodeIndex()} or
@@ -795,7 +801,7 @@ public abstract class BytecodeNode extends Node {
         CompilerAsserts.partialEvaluationConstant(bytecodeIndex);
         int count = getLocalCount(bytecodeIndex);
         for (int i = 0; i < count; i++) {
-            setLocalValue(bytecodeIndex, destination, i, getLocalValue(bytecodeIndex, source, i));
+            copyLocalValue(bytecodeIndex, source, destination, i);
         }
     }
 
@@ -842,8 +848,17 @@ public abstract class BytecodeNode extends Node {
         }
         int endLocal = Math.min(localOffset + localCount, getLocalCount(bytecodeIndex));
         for (int i = localOffset; i < endLocal; i++) {
-            setLocalValue(bytecodeIndex, destination, i, getLocalValue(bytecodeIndex, source, i));
+            copyLocalValue(bytecodeIndex, source, destination, i);
         }
+    }
+
+    /**
+     * Internal method to be overridden by generated code.
+     *
+     * @since 25.7
+     */
+    protected void copyLocalValue(int bytecodeIndex, Frame source, Frame destination, int localOffset) {
+        setLocalValue(bytecodeIndex, destination, localOffset, getLocalValue(bytecodeIndex, source, localOffset));
     }
 
     /**
@@ -851,6 +866,16 @@ public abstract class BytecodeNode extends Node {
      * should be used for uncommon scenarios, like setting a local in the prolog/epilog or from
      * another root node. Prefer setting locals directly in the bytecode (via {@code StoreLocal}
      * operations or {@link LocalAccessor}) when possible.
+     * <p>
+     * Passing {@code null} clears the local, marking the slot illegal. This happens even if a
+     * {@link GenerateBytecode#defaultLocalValue() default local value} is declared. Passing a
+     * value identical ({@code ==}) to the configured default restores that default value instead.
+     * Neither operation changes the local's type profile. When
+     * {@link GenerateBytecode#disableLocalNullChecks()} is enabled, {@code null} is instead stored
+     * as an object value and updates the type profile. These semantics also apply through
+     * {@link #setLocalValues(int, Frame, Object[])}. Prefer
+     * {@link #copyLocalValues(int, Frame, Frame)} or its range overload when copying locals
+     * between frames.
      * <p>
      * This method will be generated by the Bytecode DSL. Do not override.
      *

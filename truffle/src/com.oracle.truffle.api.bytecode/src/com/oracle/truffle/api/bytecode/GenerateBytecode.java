@@ -568,13 +568,30 @@ public @interface GenerateBytecode {
      * </pre>
      *
      * The expression supports a subset of Java (see the {@link com.oracle.truffle.api.dsl.Cached
-     * Cached} documentation), including other expressions like <code>null</code> or a static method
-     * call. Note that instance members of the root node cannot be bound with the default local
-     * value expression for efficiency reasons.
+     * Cached} documentation), including static method calls. The expression must evaluate to a
+     * non-null value. A literal {@code null} is rejected by the annotation processor; other
+     * expressions that evaluate to {@code null} cause a {@link NullPointerException} during
+     * initialization of the generated class. Note that instance members of the root node cannot
+     * be bound with the default local value expression for efficiency reasons.
      *
      * @since 24.2
      */
     String defaultLocalValue() default "";
+
+    /**
+     * Disables the assertions that reject {@code null} values in local stores and local accessor
+     * stores. The default is {@code false}. It also configures
+     * {@link BytecodeNode#setLocalValue(int, com.oracle.truffle.api.frame.Frame, int, Object)} to
+     * treat {@code null} as a valid store value instead of a clear.
+     * <p>
+     * This option provides temporary compatibility for interpreters that store {@code null} in
+     * locals. Such interpreters should migrate to non-null sentinel values. This option will be
+     * deprecated in a future release. It does not permit a {@code null}
+     * {@link #defaultLocalValue() default local value}.
+     *
+     * @since 25.7
+     */
+    boolean disableLocalNullChecks() default false;
 
     /**
      * Specifies the exception to throw when attempting to load a cleared {@link BytecodeLocal

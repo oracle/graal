@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
@@ -51,6 +52,7 @@ import static org.junit.Assume.assumeTrue;
 import java.lang.reflect.Field;
 import java.util.List;
 
+import org.graalvm.polyglot.Context;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -866,6 +868,25 @@ public class IllegalLocalExceptionTest extends AbstractInstructionTest {
             assertIllegalLocalExceptionFields(ex, inner.getBytecodeNode(), "x", "load.local.mat");
         }
     }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testStoreNull() {
+        try (Context c = BytecodeDSLTestLanguage.createPolyglotContextWithCompilationDisabled()) {
+            IllegalLocalExceptionRootNode root = parse(b -> {
+                b.beginRoot();
+                BytecodeLocal local = b.createLocal();
+                b.beginStoreLocal(local);
+                b.emitLoadArgument(0);
+                b.endStoreLocal();
+                b.endRoot();
+            });
+            assertThrows(AssertionError.class, () -> root.getCallTarget().call((Object) null));
+            root.getCallTarget().call(42L);
+            assertThrows(AssertionError.class, () -> root.getCallTarget().call((Object) null));
+        }
+    }
+
 }
 
 @GenerateBytecodeTestVariants({
@@ -1163,7 +1184,7 @@ final class MyOtherIllegalLocalException extends MyIllegalLocalException {
 }
 
 @ExpectError("The defaultLocalValue and illegalLocalException attributes are mutually exclusive.%")
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, defaultLocalValue = "null", illegalLocalException = MyIllegalLocalException.class)
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, defaultLocalValue = "42", illegalLocalException = MyIllegalLocalException.class)
 abstract class MutuallyExclusiveLocalSettings extends RootNode implements BytecodeRootNode {
     protected MutuallyExclusiveLocalSettings(BytecodeDSLTestLanguage language, FrameDescriptor fd) {
         super(language, fd);
@@ -1171,7 +1192,7 @@ abstract class MutuallyExclusiveLocalSettings extends RootNode implements Byteco
 }
 
 @ExpectError("The defaultLocalValue and illegalLocalException attributes are mutually exclusive.%")
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, defaultLocalValue = "null", illegalLocalException = MyOtherIllegalLocalException.class, illegalLocalExceptionFactory = "factoryMethod")
+@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, defaultLocalValue = "42", illegalLocalException = MyOtherIllegalLocalException.class, illegalLocalExceptionFactory = "factoryMethod")
 abstract class MutuallyExclusiveLocalSettings2 extends RootNode implements BytecodeRootNode {
     protected MutuallyExclusiveLocalSettings2(BytecodeDSLTestLanguage language, FrameDescriptor fd) {
         super(language, fd);

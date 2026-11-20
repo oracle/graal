@@ -300,6 +300,8 @@ An operation may need to produce more than one result, or to modify local variab
 
 The Bytecode DSL supports local variables using its [`BytecodeLocal`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeLocal.java) abstraction.
 You can allocate a `BytecodeLocal` in the current frame using the builder's `createLocal` method.
+A local can store any non-null Java value.
+When [boxing elimination](Optimization.md#boxing-elimination) is enabled, the interpreter will automatically try to specialize the storage representation of each local.
 
 ### Accessing locals
 In bytecode, you can use `LoadLocal` and `StoreLocal` operations to access the local.
@@ -344,6 +346,7 @@ The behaviour when loading an uninitialized or cleared local is configurable:
 - By default, the load throws a [`FrameSlotTypeException`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api/src/com/oracle/truffle/api/frame/FrameSlotTypeException.java).
 - Set `@GenerateBytecode(illegalLocalException=...)` to throw a custom exception instead.
 - Set `@GenerateBytecode(defaultLocalValue=...)` to make the load produce a default value instead of throwing.
+  The default value must be non-null; use a non-null sentinel to represent a guest-language null value.
   - Note: When a default value is used, loading a cleared local can sometimes inhibit [boxing elimination](Optimization.md#boxing-elimination).
 
 

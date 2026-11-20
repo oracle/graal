@@ -182,6 +182,7 @@ meth protected final static java.lang.Object createDefaultStackTraceElement(com.
 meth protected float getLocalValueInternalFloat(com.oracle.truffle.api.frame.Frame,int,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth protected int getLocalValueInternalInt(com.oracle.truffle.api.frame.Frame,int,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
 meth protected long getLocalValueInternalLong(com.oracle.truffle.api.frame.Frame,int,int) throws com.oracle.truffle.api.nodes.UnexpectedResultException
+meth protected void copyLocalValue(int,com.oracle.truffle.api.frame.Frame,com.oracle.truffle.api.frame.Frame,int)
 meth protected void setLocalValueInternalBoolean(com.oracle.truffle.api.frame.Frame,int,int,boolean)
 meth protected void setLocalValueInternalByte(com.oracle.truffle.api.frame.Frame,int,int,byte)
 meth protected void setLocalValueInternalDouble(com.oracle.truffle.api.frame.Frame,int,int,double)
@@ -420,6 +421,7 @@ intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean additionalAssertions()
 meth public abstract !hasdefault boolean allowUnsafe()
 meth public abstract !hasdefault boolean captureFramesForTrace()
+meth public abstract !hasdefault boolean disableLocalNullChecks()
 meth public abstract !hasdefault boolean enableBlockScoping()
 meth public abstract !hasdefault boolean enableBytecodeDebugListener()
 meth public abstract !hasdefault boolean enableCompressedSources()

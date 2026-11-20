@@ -250,6 +250,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.enableSpecializationIntrospection = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableSpecializationIntrospection");
         model.inlinePrimitiveConstants = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "inlinePrimitiveConstants");
         model.allowUnsafe = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "allowUnsafe");
+        model.disableLocalNullChecks = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "disableLocalNullChecks");
         model.enableMaterializedLocalAccesses = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableMaterializedLocalAccesses");
         model.enableYield = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableYield");
         VariableElement bytecodeIndexMode = ElementUtils.getAnnotationValue(VariableElement.class, generateBytecodeMirror, "bytecodeIndexMode");
@@ -465,6 +466,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
             model.defaultLocalValueExpression = DSLExpression.parse(model, "defaultLocalValue", model.defaultLocalValue);
             if (model.defaultLocalValueExpression != null) {
                 model.defaultLocalValueExpression = DSLExpression.resolve(resolver, model, "defaultLocalValue", model.defaultLocalValueExpression, model.defaultLocalValue);
+                if (model.defaultLocalValueExpression != null && model.defaultLocalValueExpression.getResolvedType().getKind() == TypeKind.NULL) {
+                    model.addError(generateBytecodeMirror, ElementUtils.getAnnotationValue(generateBytecodeMirror, "defaultLocalValue"), "The defaultLocalValue must not be null.");
+                }
             }
         } else if (model.illegalLocalException != null) {
             model.loadIllegalLocalStrategy = LoadIllegalLocalStrategy.CUSTOM_EXCEPTION;
