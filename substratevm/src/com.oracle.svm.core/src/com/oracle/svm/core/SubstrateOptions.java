@@ -1272,7 +1272,7 @@ public class SubstrateOptions {
     };
 
     private static void validateGenerateDebugInfo(HostedOptionKey<Integer> optionKey) {
-        if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue() > 0) {
+        if (OS.DARWIN.isCurrent() && optionKey.hasBeenSet() && optionKey.getValue() > 0) {
             LogUtils.warning("Using %s is not supported on macOS", SubstrateOptionsParser.commandArgument(optionKey, optionKey.getValue().toString()));
         }
     }
@@ -1307,14 +1307,14 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Use a separate file for debug info.")//
-    public static final HostedOptionKey<Boolean> StripDebugInfo = new HostedOptionKey<>(OS.getCurrent() != OS.DARWIN, SubstrateOptions::validateStripDebugInfo);
+    public static final HostedOptionKey<Boolean> StripDebugInfo = new HostedOptionKey<>(!OS.DARWIN.isCurrent(), SubstrateOptions::validateStripDebugInfo);
 
     private static void validateStripDebugInfo(HostedOptionKey<Boolean> optionKey) {
         Boolean optionValue = optionKey.getValue();
-        if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue()) {
+        if (OS.DARWIN.isCurrent() && optionKey.hasBeenSet() && optionKey.getValue()) {
             throw UserError.invalidOptionValue(optionKey, optionValue, "The option is not supported on macOS");
         }
-        if (OS.getCurrent() == OS.WINDOWS && optionKey.hasBeenSet() && !optionKey.getValue()) {
+        if (OS.WINDOWS.isCurrent() && optionKey.hasBeenSet() && !optionKey.getValue()) {
             throw UserError.invalidOptionValue(optionKey, optionValue, "The option is not supported on Windows (debug info is always generated in a separate file)");
         }
     }
