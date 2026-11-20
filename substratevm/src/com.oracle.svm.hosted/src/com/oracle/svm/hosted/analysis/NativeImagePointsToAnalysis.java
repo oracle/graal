@@ -53,6 +53,7 @@ import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodePosition;
@@ -98,6 +99,11 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     @Override
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod methodFlow, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
         return HostedConfiguration.instance().createMethodTypeFlowBuilder(bb, methodFlow, flowsGraph, graphKind);
+    }
+
+    @Override
+    public void processSnippetGraph(StructuredGraph graph) {
+        registerUsedElements(graph, true);
     }
 
     @Override

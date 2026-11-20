@@ -27,7 +27,7 @@ package com.oracle.graal.reachability;
 import java.lang.reflect.Modifier;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
-import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
+import com.oracle.graal.pointsto.AnalysisGraphScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.util.GuestAnnotationAccess;
@@ -74,10 +74,7 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
     }
 
     private static void analyzeStructuredGraph(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method, StructuredGraph graph) {
-        /* First, reuse all the registrations done before the type flow graph creation. */
-        MethodTypeFlowBuilder.registerUsedElements(bb, graph, true);
-
-        /* Then, perform extra registrations that happen in PTA during the analysis. */
+        /* Register method signature types, which are used by the points-to analysis. */
         if (method != null) {
             boolean isStatic = Modifier.isStatic(method.getModifiers());
             int parameterCount = method.getSignature().getParameterCount(!isStatic);
@@ -90,38 +87,40 @@ public class DirectMethodProcessingHandler implements ReachabilityMethodProcessi
             method.getSignature().getReturnType().registerAsReachable("Return type for " + method.format("%H.%n(%p)"));
         }
 
-        for (Node n : graph.getNodes()) {
-            if (n instanceof NewInstanceNode node) {
-                ((AnalysisType) node.instanceClass()).registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-            } else if (n instanceof VirtualInstanceNode node) {
-                ((AnalysisType) node.type()).registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-            } else if (n instanceof VirtualArrayNode node) {
-                ((AnalysisType) node.componentType()).getArrayClass().registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-            } else if (n instanceof CommitAllocationNode node) {
-                for (AllocatedObjectNode allocatedObjectNode : node.usages().filter(AllocatedObjectNode.class)) {
-                    var type = ((AnalysisType) allocatedObjectNode.getVirtualObject().type());
-                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(allocatedObjectNode));
-                }
-            } else if (n instanceof DynamicNewInstanceNode node && node.getInstanceType() instanceof GetClassNode getClassNode) {
-                var receiverType = (AnalysisType) StampTool.typeOrNull(getClassNode.getObject(), bb.getMetaAccess());
-                receiverType.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-            } else if (n instanceof RawLoadNode node) {
-                processUnsafeField(node, node.offset());
-            } else if (n instanceof RawStoreNode node) {
-                processUnsafeField(node, node.offset());
-            } else if (n instanceof UnsafeCompareAndSwapNode node) {
-                processUnsafeField(node, node.offset());
-            } else if (n instanceof UnsafeCompareAndExchangeNode node) {
-                processUnsafeField(node, node.offset());
-            } else if (n instanceof AtomicReadAndWriteNode node) {
-                processUnsafeField(node, node.offset());
-            } else if (n instanceof AtomicReadAndAddNode node) {
-                processUnsafeField(node, node.offset());
-            } else if (n instanceof Invoke node) {
-                processInvoke(bb, method, ((ReachabilityAnalysisMethod) node.getTargetMethod()), node.getInvokeKind(), node);
-            } else if (n instanceof MacroInvokable node) {
-                processInvoke(bb, method, ((ReachabilityAnalysisMethod) node.getTargetMethod()), node.getInvokeKind(), node);
+        AnalysisGraphScanner.registerUsedElements(bb, graph, node -> registerReachabilitySpecificElements(bb, method, node));
+    }
+
+    private static void registerReachabilitySpecificElements(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method, Node n) {
+        if (n instanceof NewInstanceNode node) {
+            ((AnalysisType) node.instanceClass()).registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+        } else if (n instanceof VirtualInstanceNode node) {
+            ((AnalysisType) node.type()).registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+        } else if (n instanceof VirtualArrayNode node) {
+            ((AnalysisType) node.componentType()).getArrayClass().registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+        } else if (n instanceof CommitAllocationNode node) {
+            for (AllocatedObjectNode allocatedObjectNode : node.usages().filter(AllocatedObjectNode.class)) {
+                var type = ((AnalysisType) allocatedObjectNode.getVirtualObject().type());
+                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(allocatedObjectNode));
             }
+        } else if (n instanceof DynamicNewInstanceNode node && node.getInstanceType() instanceof GetClassNode getClassNode) {
+            var receiverType = (AnalysisType) StampTool.typeOrNull(getClassNode.getObject(), bb.getMetaAccess());
+            receiverType.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
+        } else if (n instanceof RawLoadNode node) {
+            processUnsafeField(node, node.offset());
+        } else if (n instanceof RawStoreNode node) {
+            processUnsafeField(node, node.offset());
+        } else if (n instanceof UnsafeCompareAndSwapNode node) {
+            processUnsafeField(node, node.offset());
+        } else if (n instanceof UnsafeCompareAndExchangeNode node) {
+            processUnsafeField(node, node.offset());
+        } else if (n instanceof AtomicReadAndWriteNode node) {
+            processUnsafeField(node, node.offset());
+        } else if (n instanceof AtomicReadAndAddNode node) {
+            processUnsafeField(node, node.offset());
+        } else if (n instanceof Invoke node) {
+            processInvoke(bb, method, ((ReachabilityAnalysisMethod) node.getTargetMethod()), node.getInvokeKind(), node);
+        } else if (n instanceof MacroInvokable node) {
+            processInvoke(bb, method, ((ReachabilityAnalysisMethod) node.getTargetMethod()), node.getInvokeKind(), node);
         }
     }
 

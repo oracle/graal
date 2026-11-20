@@ -528,7 +528,8 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         /*
          * Ensure runtime snippet graphs are analyzed.
          */
-        NativeImageGenerator.performSnippetGraphAnalysis(config.getBigBang(), replacements, config.getBigBang().getOptions(), objectTransformer);
+        Inflation bb = (Inflation) config.getBigBang();
+        NativeImageGenerator.performSnippetGraphAnalysis(bb, replacements, bb.getOptions(), objectTransformer);
 
         /*
          * Ensure that all snippet methods have their SubstrateMethod object created by the object

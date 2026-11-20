@@ -84,7 +84,6 @@ import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
@@ -306,7 +305,6 @@ import jdk.graal.compiler.java.BciBlockMapping;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import jdk.graal.compiler.nodes.GraphEncoder;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
@@ -1562,18 +1560,10 @@ public class NativeImageGenerator {
         bb.getMetaAccess().lookupJavaMethod(ReflectionUtil.lookupMethod(ImageSingletons.class, "contains", Class.class)).setGuaranteeFolded();
     }
 
-    public static void performSnippetGraphAnalysis(BigBang bb, SubstrateReplacements replacements, OptionValues options, Function<Object, Object> objectTransformer) {
-        Collection<StructuredGraph> snippetGraphs = replacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options, objectTransformer);
-        if (bb instanceof NativeImagePointsToAnalysis pointsToAnalysis) {
-            for (StructuredGraph graph : snippetGraphs) {
-                MethodTypeFlowBuilder.registerUsedElements(pointsToAnalysis, graph, false);
-            }
-        } else if (bb instanceof NativeImageReachabilityAnalysisEngine reachabilityAnalysis) {
-            for (StructuredGraph graph : snippetGraphs) {
-                reachabilityAnalysis.processGraph(graph);
-            }
-        } else {
-            throw VMError.shouldNotReachHere("Unknown analysis type - please specify how to handle snippets");
+    public static void performSnippetGraphAnalysis(Inflation bb, SubstrateReplacements replacements, OptionValues options, Function<Object, Object> objectTransformer) {
+        boolean trackNodeSourcePosition = GraalOptions.TrackNodeSourcePosition.getValue(options);
+        for (var graph : replacements.getSnippetGraphs(trackNodeSourcePosition, options, objectTransformer)) {
+            bb.processSnippetGraph(graph);
         }
     }
 
