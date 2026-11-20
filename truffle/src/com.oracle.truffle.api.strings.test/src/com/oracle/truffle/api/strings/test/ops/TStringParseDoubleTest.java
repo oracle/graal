@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,7 +78,80 @@ public class TStringParseDoubleTest extends TStringTestBase {
     }
 
     @Test
+    public void testLargeDecimalExponent() throws Exception {
+        String zeros = "0".repeat(9_999_999);
+        // The truncated exponent cancels the decimal-point adjustment, hiding overflow or underflow.
+        assertLargeInput(Double.POSITIVE_INFINITY, "0." + zeros + "1e100000000");
+        assertLargeInput(Double.NEGATIVE_INFINITY, "-0." + zeros + "1e100000000");
+        assertLargeInput(0.0, "1" + zeros + "e-100000000");
+        assertLargeInput(-0.0, "-1" + zeros + "e-100000000");
+        // Exponents that are fully accumulated must still allow exact cancellation.
+        assertLargeInput(1.0, "0." + zeros + "1e10000000");
+        assertLargeInput(10.0, "0." + zeros + "1e10000001");
+    }
+
+    @Test
+    public void testLargeHexadecimalExponent() throws Exception {
+        String fraction = "0x0." + "0".repeat(2_499_999) + "1p";
+        // Each fractional hexadecimal digit contributes four bits to the exponent adjustment.
+        assertLargeInput(Double.POSITIVE_INFINITY, fraction + "100000000");
+        assertLargeInput(Double.NEGATIVE_INFINITY, "-" + fraction + "100000000");
+        assertLargeInput(1.0, fraction + "10000000");
+        assertLargeInput(2.0, fraction + "10000001");
+    }
+
+    @Test
+    public void testLargeExponent() throws Exception {
+        for (String input : new String[]{"1e100000000", "-1e100000000", "1e-100000000", "-1e-100000000", "0e100000000", "-0e100000000",
+                        "0x1p100000000", "-0x1p100000000", "0x1p-100000000", "-0x1p-100000000", "0x0p100000000", "-0x0p100000000"}) {
+            double expected = Double.parseDouble(input);
+            checkAsciiString(input, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
+                // Boxed comparison distinguishes positive and negative zero.
+                Assert.assertEquals(Double.valueOf(expected), Double.valueOf(node.execute(a)));
+            });
+        }
+    }
+
+    @Test
+    public void testLargeExponentInvalidSuffix() throws Exception {
+        for (String input : new String[]{"1e100000000+", "1e100000000e1", "0x1p100000000+", "0x1p100000000p1"}) {
+            checkAsciiString(input, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
+                Assert.assertThrows(TruffleString.NumberFormatException.class, () -> node.execute(a));
+            });
+        }
+    }
+
+    @Test
+    public void testEmptyHexadecimalSignificand() throws Exception {
+        for (String input : new String[]{"0x.p100000000", "0x.p-100000000", "-0x.p100000000", "+0X.P+100000000", " \t0x.p100000000\r\n",
+                        "0xp0", "0x.p0", "-0x.p0", "+0X.P0"}) {
+            checkAsciiString(input, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
+                Assert.assertThrows(TruffleString.NumberFormatException.class, () -> node.execute(a));
+            });
+        }
+    }
+
+    @Test
+    public void testHexadecimalSignificand() throws Exception {
+        for (String input : new String[]{"0x0p0", "0x0.p0", "0x.0p0", "0x1.p0", "0x.1p4", "-0x0.p100000000", "-0x.0p-100000000"}) {
+            double expected = Double.parseDouble(input);
+            checkAsciiString(input, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
+                Assert.assertEquals(Double.valueOf(expected), Double.valueOf(node.execute(a)));
+            });
+        }
+    }
+
+    @Test
     public void testNull() throws Exception {
         checkNullS((s) -> node.execute(s));
+    }
+
+    private void assertLargeInput(double expected, String input) throws Exception {
+        // Limit storage variants for multi-megabyte inputs; the short cases exercise all variants.
+        String padded = "x" + input + "x";
+        for (TruffleString.Encoding encoding : new TruffleString.Encoding[]{TruffleString.Encoding.UTF_8, TruffleString.Encoding.UTF_16, TruffleString.Encoding.UTF_32}) {
+            TruffleString string = TruffleString.fromJavaStringUncached(padded, 1, input.length(), encoding, false);
+            Assert.assertEquals(encoding.toString(), Double.valueOf(expected), Double.valueOf(node.execute(string)));
+        }
     }
 }
