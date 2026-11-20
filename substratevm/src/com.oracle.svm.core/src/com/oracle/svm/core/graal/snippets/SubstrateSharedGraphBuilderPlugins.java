@@ -92,7 +92,12 @@ public final class SubstrateSharedGraphBuilderPlugins {
     }
 
     public static void registerSecurityManagerPlugin(InvocationPlugins plugins) {
-        if (!SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
+        registerSecurityManagerPlugin(plugins, SubstrateOptions.FoldSecurityManagerGetter.getValue());
+    }
+
+    /// Registers the same getter fold with an explicit option value, without reading image globals.
+    public static void registerSecurityManagerPlugin(InvocationPlugins plugins, boolean foldSecurityManagerGetter) {
+        if (!foldSecurityManagerGetter) {
             return;
         }
         Registration registration = new Registration(plugins, System.class);

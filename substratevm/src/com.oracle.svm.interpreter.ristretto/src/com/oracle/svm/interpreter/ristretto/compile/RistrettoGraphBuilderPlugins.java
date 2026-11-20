@@ -31,7 +31,9 @@ import java.lang.invoke.MutableCallSite;
 import java.lang.invoke.VolatileCallSite;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.util.function.Function;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.graal.snippets.SubstrateSharedGraphBuilderPlugins;
 import com.oracle.svm.interpreter.ristretto.IsInRuntimeCompiledCodeNode;
@@ -85,9 +87,20 @@ public final class RistrettoGraphBuilderPlugins {
      * Registers runtime plugins required for Crema and Ristretto compiled code.
      */
     public static void setRuntimeGraphBuilderPlugins(GraphBuilderConfiguration.Plugins plugins) {
+        setRuntimeGraphBuilderPlugins(plugins, SubstrateOptions.FoldSecurityManagerGetter.getValue(), RistrettoGraphBuilderPlugins::lookupForCaller);
+    }
+
+    /**
+     * Registers the runtime plugins with explicit image configuration and caller-sensitive lookup
+     * access. The lookup factory returns null for callers ignored by security stack walking.
+     * Supplying equivalent JVM lookups lets hosted graph tests exercise these plugin implementations
+     * without installing image singleton services.
+     */
+    public static void setRuntimeGraphBuilderPlugins(GraphBuilderConfiguration.Plugins plugins, boolean foldSecurityManagerGetter,
+                    Function<GraphBuilderContext, MethodHandles.Lookup> lookupForCaller) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         registerRistrettoDirectivePlugins(invocationPlugins);
-        registerSharedRuntimePlugins(invocationPlugins);
+        registerSharedRuntimePlugins(invocationPlugins, foldSecurityManagerGetter, lookupForCaller);
     }
 
     /**
@@ -109,34 +122,24 @@ public final class RistrettoGraphBuilderPlugins {
     /**
      * Registers the hosted-derived runtime-safe plugins shared with hosted SVM code paths.
      */
-    private static void registerSharedRuntimePlugins(InvocationPlugins invocationPlugins) {
-        SubstrateSharedGraphBuilderPlugins.registerSecurityManagerPlugin(invocationPlugins);
+    private static void registerSharedRuntimePlugins(InvocationPlugins invocationPlugins, boolean foldSecurityManagerGetter,
+                    Function<GraphBuilderContext, MethodHandles.Lookup> lookupForCaller) {
+        SubstrateSharedGraphBuilderPlugins.registerSecurityManagerPlugin(invocationPlugins, foldSecurityManagerGetter);
         SubstrateSharedGraphBuilderPlugins.registerSystemIdentityHashCodePlugin(invocationPlugins);
         SubstrateSharedGraphBuilderPlugins.registerObjectPlugins(invocationPlugins);
         SubstrateSharedGraphBuilderPlugins.registerUnsafeAllocateInstancePlugin(new Registration(invocationPlugins, "jdk.internal.misc.Unsafe"));
         SubstrateSharedGraphBuilderPlugins.registerUnsafeAllocateInstancePlugin(new Registration(invocationPlugins, "sun.misc.Unsafe"));
-        registerMethodHandlesPlugins(invocationPlugins);
+        registerMethodHandlesPlugins(invocationPlugins, lookupForCaller);
         registerCallSiteTargetPlugins(invocationPlugins);
         /*
-         * registerClassPlugins(...) accepts two optional hosted hooks. We intentionally disable
-         * both here for semantic correctness of runtime-loaded code, not just because hosted
-         * services are absent in runtime parsing.
-         *
-         * - classNameEncoder: hosted path can canonicalize names for image metadata/symbol
-         * encoding. Runtime-loaded classes must keep runtime class-loader-visible naming semantics,
-         * so this parse path must not apply hosted class-name encoding policy. -
-         * desiredAssertionStatusProvider: hosted path can answer assertion status from hosted
-         * metadata. Runtime-loaded classes derive assertion state from runtime loader directives,
-         * so using hosted state here would incorrectly freeze image-build semantics into runtime
-         * compilation.
-         *
-         * Passing null for both keeps shared runtime-safe class plugins while avoiding hosted-only
-         * semantic assumptions on runtime-loaded classes.
+         * Keep runtime class names without hosted encoding. Decline assertion-status folding even
+         * for constant Class receivers: loader directives can change after compilation, and this
+         * plugin has no dependency that would invalidate the installed code.
          */
-        SubstrateSharedGraphBuilderPlugins.registerClassPlugins(invocationPlugins, null, null);
+        SubstrateSharedGraphBuilderPlugins.registerClassPlugins(invocationPlugins, null, _ -> null);
     }
 
-    private static void registerMethodHandlesPlugins(InvocationPlugins invocationPlugins) {
+    private static void registerMethodHandlesPlugins(InvocationPlugins invocationPlugins, Function<GraphBuilderContext, MethodHandles.Lookup> lookupForCaller) {
         /*
          * Hosted SVM can bake MethodHandles.lookup() as a constant for the image-built caller
          * during image generation. Runtime compilation must synthesize that same constant from the
@@ -147,15 +150,22 @@ public final class RistrettoGraphBuilderPlugins {
         registration.register(new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("lookup") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver) {
-                if (StackTraceUtils.ignoredBySecurityStackWalk(b.getMetaAccess(), b.getMetaAccessExtensionProvider(), b.getMethod())) {
+                MethodHandles.Lookup lookup = lookupForCaller.apply(b);
+                if (lookup == null) {
                     return false;
                 }
-                // Build the lookup from the current parse caller, not from image-build metadata.
-                MethodHandles.Lookup lookup = ReflectionUtil.newInstance(LOOKUP_CONSTRUCTOR, RistrettoUtils.getDeclaringJavaClass(b.getMethod()));
                 b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(lookup), b.getMetaAccess(), b.getGraph()));
                 return true;
             }
         });
+    }
+
+    /// Builds the lookup from the current parse caller, excluding ignored security-stack frames.
+    private static MethodHandles.Lookup lookupForCaller(GraphBuilderContext b) {
+        if (StackTraceUtils.ignoredBySecurityStackWalk(b.getMetaAccess(), b.getMetaAccessExtensionProvider(), b.getMethod())) {
+            return null;
+        }
+        return ReflectionUtil.newInstance(LOOKUP_CONSTRUCTOR, RistrettoUtils.getDeclaringJavaClass(b.getMethod()));
     }
 
     /**
