@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -88,7 +89,6 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
-import com.oracle.svm.hosted.phases.OOMEExceptionEdgePolicy;
 import com.oracle.svm.hosted.phases.priorityinline.SubstratePriorityInliningPhase;
 import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
@@ -256,6 +256,8 @@ public class CompileQueue {
     private final ConcurrentMap<HostedMethod, Integer> sciLastRoundFailed = new ConcurrentHashMap<>();
 
     private final LayeredDispatchTableFeature layeredDispatchTableSupport = ImageLayerBuildingSupport.buildingSharedLayer() ? LayeredDispatchTableFeature.singleton() : null;
+
+    private final Set<HostedMethod> sciIneligible = ConcurrentHashMap.newKeySet();
 
     private int inliningRound = 0;
 
@@ -430,6 +432,10 @@ public class CompileQueue {
 
         @Override
         public void run(DebugContext debug) {
+            if (inliningRound == 0) {
+                sciSetup(debug, method);
+                return;
+            }
             doInlineSingleCallsite(debug, method);
         }
 
@@ -530,7 +536,8 @@ public class CompileQueue {
             try (ProgressReporter.ReporterClosable _ = reporter.printInlining()) {
                 // The trivial stage must be run to handle any forced inlining due to annotations
                 inlineTrivialMethods(debug);
-                if (SubstrateOptions.AOTSingleCallsiteInline.getValue()) {
+                // We cannot know whether later layers will call a method, so disable.
+                if (SubstrateOptions.AOTSingleCallsiteInline.getValue() && !ImageLayerBuildingSupport.buildingImageLayer()) {
                     inlineSingleCallsiteMethods(debug);
                 }
             }
@@ -941,6 +948,22 @@ public class CompileQueue {
         } while (inliningProgress);
     }
 
+    // Methods that are compiled regardless of whether they are called should not be single callsite inlined.
+    private void computeSciStaticIneligible() {
+        for (HostedMethod m : universe.getMethods()) {
+            for (MethodVariant v : m.getAllMethodVariants()) {
+                HostedMethod hm = (HostedMethod) v;
+                if (hm.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hm) ||
+                                (hm.wrapped.isDirectRootMethod() && hm.wrapped.isSimplyImplementationInvoked())) {
+                    sciIneligible.add(hm);
+                }
+                if (hm.wrapped.isVirtualRootMethod() && hm.getImplementations() != null) {
+                    sciIneligible.addAll(Arrays.asList(hm.getImplementations()));
+                }
+            }
+        }
+    }
+
     /**
      * Single callsite methods should be able to be inlined without duplicating code area. Single
      * callsite inlining happens after trivial inlining to maximize the amount of trivial inlining
@@ -953,6 +976,8 @@ public class CompileQueue {
      */
     @SuppressWarnings("try")
     protected void inlineSingleCallsiteMethods(DebugContext debug) throws InterruptedException {
+        computeSciStaticIneligible();
+
         inliningRound = 0;
         // First count callsites
         try (Indent _ = debug.logAndIndent("==== Single Callsite Inlining: counting callsites")) {
@@ -992,6 +1017,8 @@ public class CompileQueue {
             }
             unpublishedMethods.clear();
         } while (inliningProgress);
+
+        sciIneligible.clear();
     }
 
     private boolean shouldEvaluateRootForSingleCallsiteInlining(HostedMethod root) {
@@ -1156,6 +1183,29 @@ public class CompileQueue {
         }
     }
 
+    // Count callsites and record ineligible callees before doing any inlining.
+    private void sciSetup(DebugContext debug, HostedMethod method) {
+        var graph = method.compilationInfo.createGraph(debug, getCustomizedOptions(method, debug), CompilationIdentifier.INVALID_COMPILATION_ID, true);
+        for (Node n : graph.getNodes()) {
+            if (n instanceof MethodCallTargetNode targetNode) {
+                HostedMethod targetMethod = (HostedMethod) targetNode.targetMethod();
+                if (targetNode.invokeKind().isDirect()) {
+                    targetMethod.compilationInfo.callsites.incrementAndGet();
+                } else if (targetMethod.getImplementations() != null) {
+                    // All implementations of virtual callees get compiled
+                    sciIneligible.addAll(Arrays.asList(targetMethod.getImplementations()));
+                }
+            } else if (n instanceof ConstantNode c) {
+                // Offsets/pointers to methods force them to later be compiled no matter what
+                MethodRef ref = c.getValue() instanceof SubstrateMethodPointerConstant p ? p.pointer() : c.getValue() instanceof SubstrateMethodOffsetConstant o ? o.offset() : null;
+                if (ref != null) {
+                    sciIneligible.add((HostedMethod) MethodRefSupport.getMethod(ref));
+                }
+            }
+        }
+        method.compilationInfo.sizeLastRound = NodeCostUtil.computeGraphSize(graph);
+    }
+
     private void doInlineSingleCallsite(DebugContext debug, HostedMethod method) {
         var providers = selectCompilationProviders(method, runtimeConfig);
         var graph = method.compilationInfo.createGraph(debug, getCustomizedOptions(method, debug), CompilationIdentifier.INVALID_COMPILATION_ID, false);
@@ -1168,15 +1218,14 @@ public class CompileQueue {
                 CanonicalizerPhase.create().apply(graph, providers);
                 unpublishedMethods.put(method, new UnpublishedMethodInfo(CompilationGraph.encode(graph), true));
             }
-            if (inliningPlugin.inlinedDuringDecoding || inliningRound == 0) {
+            if (inliningPlugin.inlinedDuringDecoding) {
                 method.compilationInfo.sizeLastRound = NodeCostUtil.computeGraphSize(graph);
                 /*
                  * Add a small +100 buffer to account for canonicalizations changing the final
                  * expected size.
                  */
-                assert !inliningPlugin.inlinedDuringDecoding || method.compilationInfo.sizeLastRound <= FALLBACK_SIZE + 100 :
-                        "Single-callsite inlining produced oversized method " + method.format("%H.%n(%p)") +
-                        ": size=" + method.compilationInfo.sizeLastRound + ", threshold=" + FALLBACK_SIZE;
+                assert method.compilationInfo.sizeLastRound <= FALLBACK_SIZE + 100 : "Single-callsite inlining produced oversized method " + method.format("%H.%n(%p)") +
+                                ": size=" + method.compilationInfo.sizeLastRound + ", threshold=" + FALLBACK_SIZE;
             }
         } catch (Throwable ex) {
             throw debug.handle(ex);
@@ -1224,13 +1273,9 @@ public class CompileQueue {
         if (!isCalleeGraphAvailable(caller, callee, inlinee) || !callee.getWrapped().canBeInlined()) {
             return null;
         }
-
-        // During the preliminary single callsite inlining round we must count callsites
-        if (inliningRound == 0) {
-            callee.compilationInfo.callsites.incrementAndGet();
+        if (sciIneligible.contains(callee)) {
             return null;
         }
-
         if (callee.compilationInfo.callsites.get() != 1) {
             return null;
         }
