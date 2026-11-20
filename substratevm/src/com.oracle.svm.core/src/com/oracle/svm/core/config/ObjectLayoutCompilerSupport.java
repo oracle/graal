@@ -41,7 +41,17 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
-/** Compiler-dependent support for {@link ObjectLayout}. */
+/**
+ * Provides JVMCI-based layout queries and call-signature classification for compiler, image-building,
+ * and runtime implementation code.
+ * <p>
+ * These operations were extracted from {@code com.oracle.svm.core.config.ObjectLayout} when the
+ * layout model moved to shared code. Keeping the JVMCI types and guest annotation queries here lets
+ * {@link ObjectLayout} remain usable without those dependencies.
+ * <p>
+ * The separation remains useful while callers need these JVMCI-facing operations; moving the layout
+ * model does not by itself make this adapter obsolete.
+ */
 public final class ObjectLayoutCompilerSupport {
 
     private ObjectLayoutCompilerSupport() {

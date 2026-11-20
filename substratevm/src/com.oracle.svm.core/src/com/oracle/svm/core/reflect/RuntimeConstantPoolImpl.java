@@ -27,7 +27,19 @@ package com.oracle.svm.core.reflect;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.guest.staging.reflect.RuntimeConstantPool;
 
-/** Core-side checked adapter for the runtime class-file constant pool. */
+/**
+ * Adapts an Espresso {@link ConstantPool} to the checked {@link RuntimeConstantPool} interface used
+ * by the guest-staging constant-pool substitution for runtime-loaded classes. The
+ * {@code GuestStagingDependencyBridgeImpl} supplies this adapter using the pool obtained from
+ * {@code CremaSupport}.
+ * <p>
+ * The checked getters were extracted from {@code Target_jdk_internal_reflect_ConstantPool}, and tag
+ * validation from its helper, when the substitution moved to guest staging. Keeping the adapter
+ * separate avoids introducing an Espresso dependency into guest staging.
+ * <p>
+ * Guest-side placement or direct constant-pool access can be reconsidered when the Espresso and
+ * Crema dependency separation permits it; whether this adapter remains necessary is undecided.
+ */
 public final class RuntimeConstantPoolImpl implements RuntimeConstantPool {
     private final ConstantPool constantPool;
 

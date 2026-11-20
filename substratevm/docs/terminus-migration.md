@@ -122,6 +122,18 @@ Code must stop depending on builder-only helpers and compiler-only annotations u
 | Static builder helper such as `ImageLayerBuildingSupport` | Guest helper such as `GuestImageLayerBuildingSupport` | Use the guest helper from moved code so the moved code does not depend on builder-only packages. |
 | Builder read of a guest-owned static `RuntimeOptionKey` field | `GuestOptionKey.forField(...)` | Every `getValue()` reads in the guest context, avoiding a stale builder-side copy. |
 
+### Document Extracted Support Classes And Bridges
+
+When you extract functionality into a support class or bridge during migration, document its architectural role in the class Javadoc:
+
+- Explain who calls the class, what it provides or adapts, and which dependency constraint requires the separation.
+- Use the established [context and lifecycle terminology](terminus-terminology.md).
+  Describe builder-side or guest-side roles rather than inventing architectural labels such as "core-side" from package names.
+- Record the verified origin of extracted functionality and why it remains separate from the migrated code.
+  Preserve relevant rationale so future changes can reassess the boundary without reconstructing its history.
+- Describe known conditions for reconsidering the split without promising removal.
+  Call the class temporary only when that lifecycle is established; otherwise explain that it may remain a builder/guest bridge.
+
 ### Document Guest-to-Builder Proxy Contracts
 
 [`@GuestInvoked`](../src/com.oracle.svm.util/src/com/oracle/svm/util/GuestInvoked.java) marks a builder-side method called by the guest through a host proxy.
