@@ -142,6 +142,7 @@ suite = {
                 "name" : "org.graalvm.espresso.shared.svm",
                 "exports": [
                     "* to org.graalvm.nativeimage.builder",
+                    # These qualified exports primarily make JavaKind available to guest code.
                     "com.oracle.svm.espresso.classfile to org.graalvm.nativeimage.guest,org.graalvm.nativeimage.guest.staging,org.graalvm.nativeimage.shared",
                     "com.oracle.svm.espresso.classfile.descriptors to org.graalvm.nativeimage.guest,org.graalvm.nativeimage.guest.staging,org.graalvm.nativeimage.shared",
                 ],
