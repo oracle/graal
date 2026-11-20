@@ -24,10 +24,11 @@
  */
 package jdk.graal.compiler.nodes.spi;
 
-import jdk.graal.compiler.nodes.memory.MemoryKill;
 import org.graalvm.word.LocationIdentity;
 
-public interface MemoryEdgeProxy extends Proxy, MemoryKill {
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
+
+public interface MemoryEdgeProxy extends Proxy, SingleMemoryKill {
 
     LocationIdentity getLocationIdentity();
 }

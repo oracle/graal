@@ -35,6 +35,8 @@ import static jdk.graal.compiler.nodes.Invoke.SIZE_UNKNOWN_RATIONALE;
 
 import java.util.Map;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.IterableNodeType;
 import jdk.graal.compiler.graph.Node;
@@ -43,6 +45,7 @@ import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
+import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -50,8 +53,6 @@ import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.spi.UncheckedInterfaceProvider;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.code.BytecodeFrame;
 
 /**
@@ -73,10 +74,22 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     @Input(Extension) CallTargetNode callTarget;
     @OptionalInput(State) FrameState stateDuring;
     @OptionalInput(State) FrameState stateAfter;
+    @OptionalInput(Memory) MemoryKill lastLocationAccess;
     protected int bci;
     protected boolean polymorphic;
     protected InlineControl inlineControl;
     private boolean isInOOMETry;
+    /**
+     * The location killed by the invoke. Typically, it will be {@link LocationIdentity#any()}, but
+     * an interprocedural analysis can provide more precise location.
+     */
+    private LocationIdentity killedLocationIdentity = LocationIdentity.any();
+    /**
+     * The location accessed by the invoke. Typically, it will be {@link LocationIdentity#any()},
+     * but an interprocedural analysis can provide a more precise location.
+     */
+    private LocationIdentity locationIdentity = LocationIdentity.any();
+    private boolean sideEffect = true;
 
     public InvokeWithExceptionNode(CallTargetNode callTarget, AbstractBeginNode exceptionEdge, int bci) {
         this(callTarget, exceptionEdge, bci, callTarget.returnStamp().getTrustedStamp());
@@ -169,12 +182,43 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
 
     @Override
     public boolean hasSideEffect() {
-        return true;
+        return sideEffect;
+    }
+
+    public void setSideEffect(boolean withSideEffects) {
+        this.sideEffect = withSideEffects;
     }
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        return LocationIdentity.any();
+        return killedLocationIdentity;
+    }
+
+    public void setKilledLocationIdentity(LocationIdentity killedLocationIdentity) {
+        this.killedLocationIdentity = killedLocationIdentity;
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return locationIdentity;
+    }
+
+    /**
+     * Sets the location accessed by this invoke.
+     */
+    public void setLocationIdentity(LocationIdentity identity) {
+        this.locationIdentity = identity;
+    }
+
+    @Override
+    public MemoryKill getLastLocationAccess() {
+        return lastLocationAccess;
+    }
+
+    @Override
+    public void setLastLocationAccess(MemoryKill lla) {
+        updateUsagesInterface(lastLocationAccess, lla);
+        lastLocationAccess = lla;
     }
 
     @Override
@@ -232,6 +276,8 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     public InvokeNode replaceWithInvoke() {
         try (InliningLog.UpdateScope updateScope = InliningLog.openUpdateScopeTrackingReplacement(graph().getInliningLog(), this)) {
             InvokeNode newInvoke = graph().add(new InvokeNode(callTarget, bci, stamp, this.getKilledLocationIdentity()));
+            newInvoke.setLocationIdentity(getLocationIdentity());
+            newInvoke.setLastLocationAccess(getLastLocationAccess());
             newInvoke.setStateAfter(stateAfter);
             newInvoke.setStateDuring(stateDuring);
             newInvoke.setInlineControl(inlineControl);

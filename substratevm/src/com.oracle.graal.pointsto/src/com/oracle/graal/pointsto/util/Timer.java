@@ -54,8 +54,8 @@ public class Timer {
     }
 
     /** Get timer total time in milliseconds. */
-    public double getTotalTime() {
-        return totalTime / 1000000d;
+    public double getTotalTimeMs() {
+        return totalTime / 1_000_000d;
     }
 
     /** Get total VM memory in bytes. */
