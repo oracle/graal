@@ -66,24 +66,33 @@ public class UnsignedDivNode extends IntegerDivRemNode implements LIRLowerable {
 
     @SuppressWarnings("unused")
     private static ValueNode canonical(UnsignedDivNode self, ValueNode forX, ValueNode forY, GuardingNode zeroCheck, Stamp stamp, NodeView view) {
-        if (!(stamp instanceof IntegerStamp)) {
+        if (!(stamp instanceof IntegerStamp integerStamp)) {
             return self != null ? self : new UnsignedDivNode(forX, forY, zeroCheck);
         }
-        int bits = ((IntegerStamp) stamp).getBits();
+        int stampBits = integerStamp.getBits();
         if (forX.isConstant() && forY.isConstant()) {
-            long yConst = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), bits);
+            long yConst = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), stampBits);
             if (yConst == 0) {
                 /* This will trap, cannot canonicalize. */
                 return self != null ? self : new UnsignedDivNode(forX, forY, zeroCheck);
             }
-            return ConstantNode.forIntegerStamp(stamp, Long.divideUnsigned(CodeUtil.zeroExtend(forX.asJavaConstant().asLong(), bits), yConst));
+            return ConstantNode.forIntegerStamp(stamp, Long.divideUnsigned(CodeUtil.zeroExtend(forX.asJavaConstant().asLong(), stampBits), yConst));
         } else if (forY.isConstant()) {
-            long c = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), bits);
+            long c = CodeUtil.zeroExtend(forY.asJavaConstant().asLong(), stampBits);
             if (c == 1) {
                 return forX;
-            }
-            if (CodeUtil.isPowerOf2(c)) {
-                return new UnsignedRightShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(c)));
+            } else if (CodeUtil.isPowerOf2(c)) {
+                int stackBits = forX.getStackKind().getBitCount();
+                assert stampBits <= stackBits : stampBits + " > " + stackBits;
+
+                // A full-width dividend (forX) needs no zero-extension before the logical shift.
+                if (stampBits == stackBits) {
+                    return new UnsignedRightShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(c)));
+                }
+                // Clear upper stack bits before shifting them into the narrow result.
+                ValueNode castedValue = ZeroExtendNode.create(forX, stackBits, view);
+                ValueNode quotient = new UnsignedRightShiftNode(castedValue, ConstantNode.forInt(CodeUtil.log2(c)));
+                return NarrowNode.create(quotient, stampBits, view);
             }
         }
         return self != null ? self : new UnsignedDivNode(forX, forY, zeroCheck);
