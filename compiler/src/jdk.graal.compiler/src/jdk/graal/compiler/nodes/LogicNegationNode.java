@@ -28,6 +28,8 @@ import static jdk.graal.compiler.nodeinfo.InputType.Condition;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import java.util.function.Consumer;
+
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
@@ -79,6 +81,19 @@ public final class LogicNegationNode extends LogicNode implements Canonicalizabl
             return synonym;
         }
         return this;
+    }
+
+    @Override
+    public ValueNode getImplicationKey() {
+        return getValue().getImplicationKey();
+    }
+
+    @Override
+    public boolean forEachImplicationKey(Consumer<ValueNode> consumer) {
+        LogicNode condition = getValue();
+        // Changing the wrapped condition's inputs can change the delegated keys.
+        consumer.accept(condition);
+        return condition.forEachImplicationKey(consumer);
     }
 
     @Override

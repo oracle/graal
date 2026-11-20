@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.phases.common;
 
-import java.util.ArrayDeque;
-
 import org.graalvm.collections.Pair;
 
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
@@ -111,6 +109,9 @@ public class ConditionalEliminationUtil {
         public boolean isNegated() {
             return negated;
         }
+    }
+
+    public record Implication(GuardedCondition condition, boolean result) {
     }
 
     /**
@@ -612,7 +613,7 @@ public class ConditionalEliminationUtil {
         return false;
     }
 
-    public static boolean tryProveGuardCondition(InfoElementProvider infoElementProvider, ArrayDeque<GuardedCondition> conditions, GuardFolding guardFolding, DeoptimizingGuard thisGuard,
+    public static boolean tryProveGuardCondition(InfoElementProvider infoElementProvider, ConditionalEliminationConditionStack conditions, GuardFolding guardFolding, DeoptimizingGuard thisGuard,
                     LogicNode node,
                     GuardRewirer rewireGuardFunction, boolean allowControlFlowDependentOtherStamp, SafeStampInputSearch search) {
         InfoElement infoElement = infoElementProvider.infoElements(node);
@@ -626,11 +627,9 @@ public class ConditionalEliminationUtil {
             infoElement = infoElementProvider.nextElement(infoElement);
         }
 
-        for (GuardedCondition guardedCondition : conditions) {
-            TriState result = guardedCondition.getCondition().implies(guardedCondition.isNegated(), node);
-            if (result.isKnown()) {
-                return rewireGuards(guardedCondition.getGuard(), result.toBoolean(), null, null, rewireGuardFunction);
-            }
+        Implication implication = conditions.findImplication(node);
+        if (implication != null) {
+            return rewireGuards(implication.condition().getGuard(), implication.result(), null, null, rewireGuardFunction);
         }
         if (tryProveMaskedBelow(infoElementProvider, node, rewireGuardFunction)) {
             return true;
@@ -667,8 +666,9 @@ public class ConditionalEliminationUtil {
             ValueNode x = binaryOpLogicNode.getX();
             ValueNode y = binaryOpLogicNode.getY();
             infoElement = infoElementProvider.infoElements(x);
+            Stamp otherStampY = infoElement == null ? null : getOtherSafeStampForConditionProof(y, allowControlFlowDependentOtherStamp, search);
             while (infoElement != null) {
-                TriState result = binaryOpLogicNode.tryFold(infoElement.getStamp(), getOtherSafeStampForConditionProof(y, allowControlFlowDependentOtherStamp, search));
+                TriState result = binaryOpLogicNode.tryFold(infoElement.getStamp(), otherStampY);
                 if (result.isKnown()) {
                     return rewireGuards(infoElement.getGuard(), result.toBoolean(), infoElement.getProxifiedInput(), infoElement.getStamp(), rewireGuardFunction);
                 }
@@ -685,8 +685,9 @@ public class ConditionalEliminationUtil {
                 }
             } else {
                 infoElement = infoElementProvider.infoElements(y);
+                Stamp otherStampX = infoElement == null ? null : getOtherSafeStampForConditionProof(x, allowControlFlowDependentOtherStamp, search);
                 while (infoElement != null) {
-                    TriState result = binaryOpLogicNode.tryFold(getOtherSafeStampForConditionProof(x, allowControlFlowDependentOtherStamp, search), infoElement.getStamp());
+                    TriState result = binaryOpLogicNode.tryFold(otherStampX, infoElement.getStamp());
                     if (result.isKnown()) {
                         return rewireGuards(infoElement.getGuard(), result.toBoolean(), infoElement.getProxifiedInput(), infoElement.getStamp(), rewireGuardFunction);
                     }
@@ -759,7 +760,7 @@ public class ConditionalEliminationUtil {
      * Proves a short circuit OR from proofs of its operands. Operand proofs are collected before
      * applying the rewrite, so the second proof cannot depend on a graph mutation from the first.
      */
-    private static boolean tryProveShortCircuitOr(InfoElementProvider infoElementProvider, ArrayDeque<GuardedCondition> conditions, ShortCircuitOrNode node,
+    private static boolean tryProveShortCircuitOr(InfoElementProvider infoElementProvider, ConditionalEliminationConditionStack conditions, ShortCircuitOrNode node,
                     GuardRewirer rewireGuardFunction, boolean allowControlFlowDependentOtherStamp, SafeStampInputSearch search) {
         ConditionProof xProof = proveCondition(infoElementProvider, conditions, node.getX(), allowControlFlowDependentOtherStamp, search);
         ConditionProof yProof = proveCondition(infoElementProvider, conditions, node.getY(), allowControlFlowDependentOtherStamp, search);
@@ -784,34 +785,22 @@ public class ConditionalEliminationUtil {
      * ordered from the closest dominator to the farthest one, so the first matching guard is safe
      * to use when rewiring a condition proven false by both operands.
      */
-    private static ConditionProof findProofWithDeepestGuard(ArrayDeque<GuardedCondition> conditions, ConditionProof xProof, ConditionProof yProof) {
+    private static ConditionProof findProofWithDeepestGuard(ConditionalEliminationConditionStack conditions, ConditionProof xProof, ConditionProof yProof) {
         if (xProof.guard == yProof.guard) {
             return xProof;
         }
-        ConditionProof deepestProof = null;
-        boolean foundXProofGuard = false;
-        boolean foundYProofGuard = false;
-        for (GuardedCondition condition : conditions) {
-            if (condition.getGuard() == xProof.guard) {
-                foundXProofGuard = true;
-                if (deepestProof == null) {
-                    deepestProof = xProof;
-                }
-            } else if (condition.getGuard() == yProof.guard) {
-                foundYProofGuard = true;
-                if (deepestProof == null) {
-                    deepestProof = yProof;
-                }
-            }
+        GuardedCondition deepest = conditions.findDeepestCondition(xProof.guard, yProof.guard);
+        if (deepest == null) {
+            return null;
         }
-        return foundXProofGuard && foundYProofGuard ? deepestProof : null;
+        return deepest.getGuard() == xProof.guard ? xProof : yProof;
     }
 
     /**
      * Uses the regular condition proof machinery but records its result instead of changing the
      * graph.
      */
-    private static ConditionProof proveCondition(InfoElementProvider infoElementProvider, ArrayDeque<GuardedCondition> conditions, LogicNode node,
+    private static ConditionProof proveCondition(InfoElementProvider infoElementProvider, ConditionalEliminationConditionStack conditions, LogicNode node,
                     boolean allowControlFlowDependentOtherStamp, SafeStampInputSearch search) {
         ConditionProof proof = new ConditionProof();
         if (tryProveGuardCondition(infoElementProvider, conditions, null, null, node, (guard, result, guardedValueStamp, newInput) -> {
