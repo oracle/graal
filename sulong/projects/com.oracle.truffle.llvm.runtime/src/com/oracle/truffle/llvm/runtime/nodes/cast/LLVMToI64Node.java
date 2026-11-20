@@ -228,7 +228,7 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
         @Specialization
         protected long doDoubleVector(LLVMDoubleVector from) {
             assert from.getLength() == 1 : "invalid vector size";
-            return Double.doubleToLongBits(from.getValue(0));
+            return Double.doubleToRawLongBits(from.getValue(0));
         }
 
         @ExplodeLoop
@@ -276,7 +276,7 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
             assert from.getLength() == elem : "invalid vector size";
             long res = 0;
             for (int i = 0; i < elem; i++) {
-                res |= (Float.floatToIntBits(from.getValue(i)) & LLVMExpressionNode.I32_MASK) << (i * Integer.SIZE);
+                res |= (Float.floatToRawIntBits(from.getValue(i)) & LLVMExpressionNode.I32_MASK) << (i * Integer.SIZE);
             }
             return res;
         }

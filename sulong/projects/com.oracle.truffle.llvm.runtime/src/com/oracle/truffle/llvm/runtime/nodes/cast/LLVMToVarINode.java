@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.cast;
 
+import java.nio.ByteBuffer;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -45,7 +48,11 @@ import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVarINodeGen.LLVMBitcastT
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVarINodeGen.LLVMSignedCastToIVarNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVarINodeGen.LLVMUnsignedCastToIVarNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 @NodeField(type = int.class, name = "bits")
@@ -300,12 +307,12 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
 
         @Specialization
         protected LLVMIVarBit doFloat(float from) {
-            return LLVMIVarBit.fromInt(getBits(), Float.floatToIntBits(from));
+            return LLVMIVarBit.fromInt(getBits(), Float.floatToRawIntBits(from));
         }
 
         @Specialization
         protected LLVMIVarBit doDouble(double from) {
-            return LLVMIVarBit.fromLong(getBits(), Double.doubleToLongBits(from));
+            return LLVMIVarBit.fromLong(getBits(), Double.doubleToRawLongBits(from));
         }
 
         @Specialization
@@ -325,6 +332,55 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         protected LLVMIVarBit doI1Vector(LLVMI1Vector from) {
             assert getBits() == from.getLength();
             return LLVMIVarBit.fromI1Vector(getBits(), from);
+        }
+
+        /*
+         * Wide-vector bitcasts (e.g. <4 x double> -> i256) appear in AVX2 code
+         * vectorized by clang; LLVMIVarBit.create consumes big-endian bytes, so the
+         * highest-index vector element is written first.
+         */
+        @Specialization
+        @TruffleBoundary
+        protected LLVMIVarBit doI32Vector(LLVMI32Vector from) {
+            assert getBits() == from.getLength() * Integer.SIZE;
+            ByteBuffer buffer = ByteBuffer.allocate(from.getLength() * Integer.BYTES);
+            for (int i = from.getLength() - 1; i >= 0; i--) {
+                buffer.putInt(from.getValue(i));
+            }
+            return LLVMIVarBit.create(getBits(), buffer.array(), getBits(), false);
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected LLVMIVarBit doI64Vector(LLVMI64Vector from) {
+            assert getBits() == from.getLength() * Long.SIZE;
+            ByteBuffer buffer = ByteBuffer.allocate(from.getLength() * Long.BYTES);
+            for (int i = from.getLength() - 1; i >= 0; i--) {
+                buffer.putLong(from.getValue(i));
+            }
+            return LLVMIVarBit.create(getBits(), buffer.array(), getBits(), false);
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected LLVMIVarBit doFloatVector(LLVMFloatVector from) {
+            assert getBits() == from.getLength() * Float.SIZE;
+            ByteBuffer buffer = ByteBuffer.allocate(from.getLength() * Float.BYTES);
+            for (int i = from.getLength() - 1; i >= 0; i--) {
+                buffer.putFloat(from.getValue(i));
+            }
+            return LLVMIVarBit.create(getBits(), buffer.array(), getBits(), false);
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected LLVMIVarBit doDoubleVector(LLVMDoubleVector from) {
+            assert getBits() == from.getLength() * Double.SIZE;
+            ByteBuffer buffer = ByteBuffer.allocate(from.getLength() * Double.BYTES);
+            for (int i = from.getLength() - 1; i >= 0; i--) {
+                buffer.putDouble(from.getValue(i));
+            }
+            return LLVMIVarBit.create(getBits(), buffer.array(), getBits(), false);
         }
     }
 }
