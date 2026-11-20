@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,7 +41,6 @@ public class EspressoSymbols {
     static {
         Names.ensureInitialized();
         Types.ensureInitialized();
-        Signatures.ensureInitialized();
     }
 
     public static void ensureInitialized() {
@@ -556,6 +555,11 @@ public class EspressoSymbols {
         public static final Symbol<Type> jdk_internal_foreign_abi_NativeEntryPoint = SYMBOLS.putType("Ljdk/internal/foreign/abi/NativeEntryPoint;");
         public static final Symbol<Type> jdk_internal_foreign_abi_UpcallLinker_CallRegs = SYMBOLS.putType("Ljdk/internal/foreign/abi/UpcallLinker$CallRegs;");
         public static final Symbol<Type> jdk_internal_foreign_abi_VMStorage_array = SYMBOLS.putType("[Ljdk/internal/foreign/abi/VMStorage;");
+
+        static {
+            /* Signatures depend on the type symbols, so initialize them only after all fields above are assigned. */
+            Signatures.ensureInitialized();
+        }
     }
 
     /**

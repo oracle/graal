@@ -60,6 +60,7 @@ import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.InterceptedFieldType;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 
@@ -79,7 +80,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
-public abstract class AnalysisType extends AnalysisElement implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
+public abstract class AnalysisType extends AnalysisElement implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType>, InterceptedFieldType {
 
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> UNSAFE_ACCESS_FIELDS_UPDATER = //
                     AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, Object.class, "unsafeAccessedFields");
@@ -912,19 +913,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * the field on the Java type system level). For example {@link WordBase word types} have a
      * {@link #getJavaKind} of {@link JavaKind#Object}, but a primitive {@link #storageKind}.
      */
+    @Override
     public final JavaKind getStorageKind() {
         return storageKind;
-    }
-
-    /**
-     * Returns true if this type is part of the word type hierarchy, i.e, implements
-     * {@link WordBase}.
-     */
-    public boolean isWordType() {
-        /* Word types are currently the only types where kind and storageKind differ. */
-        boolean wordType = getJavaKind() != getStorageKind();
-        assert !wordType || getJavaKind().isObject() : Assertions.errorMessage("Only words are expected to have a discrepancy between java kind and storage kind", this);
-        return wordType;
     }
 
     @Override

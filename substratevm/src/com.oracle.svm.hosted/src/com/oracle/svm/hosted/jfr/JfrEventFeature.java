@@ -33,8 +33,8 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.shared.BuildPhaseProvider;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.JVMCIFieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -45,18 +45,26 @@ import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
-import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.GuestTypes;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
+import com.oracle.svm.shared.BuildPhaseProvider;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
 import jdk.internal.event.Event;
 import jdk.jfr.internal.JVM;
+import jdk.jfr.internal.JVMSupport;
+import jdk.jfr.internal.MetadataRepository;
+import jdk.jfr.internal.TypeLibrary;
+import jdk.jfr.internal.event.EventConfiguration;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -68,6 +76,8 @@ import sun.nio.ch.FileChannelImpl;
  */
 @AutomaticallyRegisteredFeature
 public class JfrEventFeature implements InternalFeature {
+    private JfrEventSubstitution eventSubstitution;
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return JfrFeature.isInConfiguration(false);
@@ -97,7 +107,9 @@ public class JfrEventFeature implements InternalFeature {
             String reason = "from feature " + JfrEventFeature.class + " with '" + eventSubClass.toJavaName(false) + "'";
             JVMCIRuntimeClassInitializationSupport.singleton().initializeAtBuildTime(eventSubClass, reason);
         }
-        config.registerSubstitutionProcessor(new JfrEventSubstitution(metaAccess, config.getUniverse().getHeapScanner()));
+
+        eventSubstitution = new JfrEventSubstitution(metaAccess);
+        config.registerSubstitutionProcessor(eventSubstitution);
 
         /*
          * The value of this field is set later in the beforeCompilation method after analysis
@@ -116,6 +128,53 @@ public class JfrEventFeature implements InternalFeature {
                 return originalValue;
             }
         });
+
+        ImageHeapScanner heapScanner = config.getUniverse().getHeapScanner();
+        config.registerOnTypeCreatedCallback(type -> {
+            if (!eventSubstitution.needsClassRedefinition(type.getWrapped())) {
+                return;
+            }
+            VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished());
+
+            Class<? extends Event> eventClass = OriginalClassProvider.getJavaClass(type).asSubclass(Event.class);
+
+            EventConfiguration configuration = eventSubstitution.takeEventConfiguration(eventClass);
+            if (configuration != null) {
+                /*
+                 * Set the previously created configuration back for this event class.
+                 * This process allows JfrEventSubstitution be used outside the analysis,
+                 * without affecting the image heap with extra configuration and type objects.
+                 * These objects are only used, if an analysis type is created for said event class.
+                 */
+                JVMSupport.setConfiguration(eventClass, configuration);
+                MetadataRepository.getInstance().register(eventClass);
+            }
+
+            /*
+             * The rest of the code was previously present in JfrEventSubstitution,
+             * but also required the analysis to be used for heap scanning.
+             * Now, registration and heap scanning is only performed after AnalysisType is created.
+             */
+            JfrJavaEvents.registerEventClass(eventClass);
+
+            configuration = JVMSupport.getConfiguration(eventClass);
+            if (!configuration.isRegistered()) {
+                /* Keep previous behavior, register events that are not registered*/
+                configuration.platformEventType().setRegistered(true);
+            }
+
+            ObjectScanner.ScanReason reason = new ObjectScanner.OtherReason("Manual rescan for " + eventClass + " triggered from " + JfrEventFeature.class);
+            heapScanner.rescanObject(configuration, reason);
+        });
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        /* Prune unregistered types that were added from
+         * the substitution processor, but did not access onTypeCreated part.
+         * This can for example be custom metadata type.
+         */
+        TypeLibrary.clearUnregistered();
     }
 
     @Override

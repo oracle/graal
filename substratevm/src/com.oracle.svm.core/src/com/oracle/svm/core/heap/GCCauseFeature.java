@@ -43,6 +43,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.HeapObjectReplacer;
 
 import jdk.graal.compiler.debug.Assertions;
 
@@ -67,11 +68,14 @@ class GCCauseFeature implements InternalFeature {
              * In traditional builds we lazily register GCCauses as they become visible to the
              * native-image generator.
              */
-            access.registerObjectReplacer(obj -> {
-                if (obj instanceof GCCause gcCause) {
-                    GCCause.registerGCCause(gcCause);
+            access.registerObjectReplacer(new HeapObjectReplacer() {
+                @Override
+                public Object replaceObject(Object source, boolean reachable) {
+                    if (reachable && source instanceof GCCause gcCause) {
+                        GCCause.registerGCCause(gcCause);
+                    }
+                    return source;
                 }
-                return obj;
             });
         } else {
             /*

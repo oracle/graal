@@ -268,12 +268,35 @@ public interface Feature {
     }
 
     /**
+     * Interface that encapsulates registration of field value transformers. Under
+     * {@code --future-defaults=predictable-build-time-initialization}, registration of transformers
+     * will only be possible before analysis starts or in a
+     * {@link BeforeAnalysisAccess#registerBeforeFieldValueAccessHandler(BiConsumer, Class) before-field-value-access handler},
+     * which is triggered before the first field of the selected class is accessed.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface BeforeFieldValueAccess {
+        /**
+         * Registers a field value transformer for the provided field.
+         * Under {@code --future-defaults=predictable-build-time-initialization}, registration of
+         * transformers will only be possible before analysis starts or in a
+         * {@link BeforeAnalysisAccess#registerBeforeFieldValueAccessHandler(BiConsumer, Class) before-field-value-access handler}.
+         *
+         * <p>
+         * See the JavaDoc of
+         * {@link FieldValueTransformer} for details.
+         * </p>
+         */
+        void registerFieldValueTransformer(Field field, FieldValueTransformer transformer);
+    }
+
+    /**
      * Access methods available for {@link Feature#beforeAnalysis}.
      *
      * @since 19.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface BeforeAnalysisAccess extends FeatureAccess {
+    interface BeforeAnalysisAccess extends FeatureAccess, BeforeFieldValueAccess {
 
         /**
          * Registers the provided type a used, i.e., metadata for the type is put into the native
@@ -380,12 +403,18 @@ public interface Feature {
         void registerClassInitializerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Class<?> clazz);
 
         /**
-         * Registers a field value transformer for the provided field. See the JavaDoc of
-         * {@link FieldValueTransformer} for details.
-         * 
-         * @since 22.3
+         * Registers a callback that allows registration of field value transformers on demand. The
+         * callback is triggered for every subclass of {@code baseClass}, including
+         * {@code baseClass} itself, before the first field value of the class is accessed. The class
+         * is passed as the callback's second parameter.
+         *
+         * <p>
+         * This is a replacement for registration done in type/subtype reachability handlers, where
+         * this behavior can no longer be supported. Handlers must be registered in a
+         * {@link Feature#beforeAnalysis beforeAnalysis} callback.
+         * </p>
          */
-        void registerFieldValueTransformer(Field field, FieldValueTransformer transformer);
+        void registerBeforeFieldValueAccessHandler(BiConsumer<BeforeFieldValueAccess, Class<?>> callback, Class<?> baseClass);
     }
 
     /**

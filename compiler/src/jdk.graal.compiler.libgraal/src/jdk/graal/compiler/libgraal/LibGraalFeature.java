@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.nativeimage.hosted.FieldValueTransformerRequiresUniverse;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
@@ -261,7 +262,7 @@ public final class LibGraalFeature implements Feature {
      * Transformer for {@code Fields.offsets} and {@code Edges.iterationMask} which need to be
      * recomputed to use SVM field offsets instead of HotSpot field offsets.
      */
-    class FieldOffsetsTransformer implements FieldValueTransformer {
+    class FieldOffsetsTransformer implements FieldValueTransformer, FieldValueTransformerRequiresUniverse {
         /**
          * Map from {@link Fields} objects to a (newOffsets, newIterationMask) tuple represented as
          * a {@link java.util.Map.Entry} value.

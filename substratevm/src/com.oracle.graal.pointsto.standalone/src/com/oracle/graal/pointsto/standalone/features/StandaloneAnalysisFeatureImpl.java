@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -247,6 +247,10 @@ public class StandaloneAnalysisFeatureImpl {
 
         @Override
         public void registerFieldValueTransformer(Field field, FieldValueTransformer transformer) {
+        }
+
+        @Override
+        public void registerBeforeFieldValueAccessHandler(BiConsumer<Feature.BeforeFieldValueAccess, Class<?>> callback, Class<?> subclass) {
         }
     }
 
