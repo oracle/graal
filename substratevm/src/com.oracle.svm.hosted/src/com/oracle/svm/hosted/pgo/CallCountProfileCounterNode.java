@@ -63,6 +63,10 @@ public final class CallCountProfileCounterNode extends PGOInstrumentationNode {
     }
 
     private static final class CounterSnippet implements Snippets {
+        /* The names of the snippet and of its parameter, by which Templates binds arguments. */
+        static final String INCREMENT = "increment";
+        static final String COUNTER_INDEX = "counterIndex";
+
         @Snippet
         private static void increment(@ConstantParameter int counterIndex) {
             CallCountProfileRecorder.increment(counterIndex);
@@ -74,14 +78,14 @@ public final class CallCountProfileCounterNode extends PGOInstrumentationNode {
 
         Templates(OptionValues options, Providers providers) {
             super(options, providers);
-            increment = snippet(providers, CounterSnippet.class, "increment", CallCountProfileRecorder.tablePointerLocation(), CallCountProfileRecorder.TABLE_LOCATION);
+            increment = snippet(providers, CounterSnippet.class, CounterSnippet.INCREMENT, CallCountProfileRecorder.tablePointerLocation(), CallCountProfileRecorder.TABLE_LOCATION);
         }
 
         void lower(CallCountProfileCounterNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
             Arguments args = new Arguments(increment, graph, tool.getLoweringStage());
             /* Numbers the counter now: only counters that reach machine code get an index. */
-            args.add("counterIndex", node.slot.counterIndexForCode());
+            args.add(CounterSnippet.COUNTER_INDEX, node.slot.counterIndexForCode());
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
     }

@@ -46,7 +46,12 @@ public final class ProfileFrame {
 
     /**
      * Orders calling contexts by their method descriptors, frame by frame, and then by their
-     * bytecode indexes. The writer and the registries use it to produce a deterministic order.
+     * bytecode indexes. The writer and the recorders sort keys with it before they write them.
+     * <p>
+     * Keys are created in compile order, which differs from build to build because compilation is
+     * parallel, and the recorders keep them in hash maps. Sorting makes the file depend only on the
+     * counts: two runs with the same counts write the same file, with the same method and type ids,
+     * so profiles can be compared with {@code diff} and checked exactly by tests.
      */
     public static final Comparator<List<ProfileFrame>> CONTEXT_LIST_ORDER = Comparator.comparing(ProfileFrame::descriptorKey).thenComparing(ProfileFrame::bciKey);
 

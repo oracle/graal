@@ -75,7 +75,7 @@ public class RecurringCallbackSupport {
     /**
      * A background callback (see {@link #installBackgroundCallback}), or null. While it runs, it is
      * also the value of {@link #timerTL}; it gives way to any other callback and comes back when
-     * that one is uninstalled.
+     * that one is uninstalled. The PGO stack sampler is the only user.
      */
     private static final FastThreadLocalObject<RecurringCallbackTimer> backgroundTimerTL = FastThreadLocalFactory.createObject(RecurringCallbackTimer.class,
                     "RecurringCallbackSupport.backgroundTimer");
@@ -121,6 +121,10 @@ public class RecurringCallbackSupport {
      * uninstalled. {@link #getCallback} does not report it, so code that installs its callback only
      * into an empty slot, such as the JFR execution sampler, still does. Uninstalling the regular
      * callback does not remove the background callback; {@link #uninstallBackgroundCallback} does.
+     * <p>
+     * A thread has only one callback slot. The stack sampler of a {@code --pgo-instrument} image
+     * uses this background slot so that it never takes that slot away from the JFR execution
+     * sampler or from a callback registered with {@code Threading.registerRecurringCallback}.
      */
     public static void installBackgroundCallback(long intervalNanos, RecurringCallback callback) {
         installBackgroundCallback0(CurrentIsolate.getCurrentThread(), createCallbackTimer(intervalNanos, callback));
