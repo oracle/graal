@@ -66,7 +66,7 @@ public abstract class DilithiumNode extends MemoryKillStubIntrinsicNode {
         if (arch instanceof AMD64 amd64) {
             return amd64.getFeatures().containsAll(minFeaturesAMD64());
         }
-        return arch instanceof AArch64;
+        return arch instanceof AArch64 aarch64 && aarch64.getFeatures().contains(AArch64.CPUFeature.ASIMD);
     }
 
     protected DilithiumNode(NodeClass<? extends DilithiumNode> c, EnumSet<?> runtimeCheckedCPUFeatures) {

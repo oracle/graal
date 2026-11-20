@@ -217,7 +217,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
     public static boolean isSupported(Architecture arch, Stride stride, ArrayIndexOfVariant variant) {
         return switch (arch) {
             case AMD64 amd64 -> amd64.getFeatures().containsAll(minFeaturesAMD64(stride, variant));
-            case AArch64 aarch64 -> true;
+            case AArch64 aarch64 -> aarch64.getFeatures().contains(AArch64.CPUFeature.ASIMD);
             default -> false;
         };
     }

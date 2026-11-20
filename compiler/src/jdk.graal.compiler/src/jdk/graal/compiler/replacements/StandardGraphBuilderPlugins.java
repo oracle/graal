@@ -1282,18 +1282,28 @@ public class StandardGraphBuilderPlugins {
         registerRound(r, "ceil", RoundingMode.UP);
         registerRound(r, "floor", RoundingMode.DOWN);
 
-        r.register(new InvocationPlugin("signum", float.class) {
+        r.register(new ConditionalInvocationPlugin("signum", float.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode f) {
                 b.addPush(JavaKind.Float, new SignumNode(f));
                 return true;
             }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return SignumNode.isSupported(arch);
+            }
         });
-        r.register(new InvocationPlugin("signum", double.class) {
+        r.register(new ConditionalInvocationPlugin("signum", double.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode d) {
                 b.addPush(JavaKind.Double, new SignumNode(d));
                 return true;
+            }
+
+            @Override
+            public boolean isApplicable(Architecture arch) {
+                return SignumNode.isSupported(arch);
             }
         });
         r.register(new InvocationPlugin("abs", int.class) {

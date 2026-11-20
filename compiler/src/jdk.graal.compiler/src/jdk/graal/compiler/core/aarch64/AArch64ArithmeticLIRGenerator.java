@@ -64,6 +64,7 @@ import jdk.graal.compiler.lir.aarch64.AArch64ReinterpretOp;
 import jdk.graal.compiler.lir.aarch64.AArch64RoundFloatToIntegerOp;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGenerator;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
@@ -521,6 +522,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitMathSignum(Value input) {
+        GraalError.guarantee(getLIRGen().supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitMathSignum requires ASIMD");
         assert input.getPlatformKind() == AArch64Kind.DOUBLE ||
                         input.getPlatformKind() == AArch64Kind.SINGLE : input;
         Variable result = getLIRGen().newVariable(input.getValueKind());
@@ -530,6 +532,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitMathCopySign(Value magnitude, Value sign) {
+        GraalError.guarantee(getLIRGen().supportsCPUFeature(AArch64.CPUFeature.ASIMD), "emitMathCopySign requires ASIMD");
         assert magnitude.getPlatformKind() == AArch64Kind.DOUBLE ||
                         magnitude.getPlatformKind() == AArch64Kind.SINGLE : magnitude;
         Variable result = getLIRGen().newVariable(magnitude.getValueKind());

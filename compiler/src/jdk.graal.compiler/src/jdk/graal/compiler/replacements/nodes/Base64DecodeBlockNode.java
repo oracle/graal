@@ -94,7 +94,7 @@ public final class Base64DecodeBlockNode extends MemoryKillStubIntrinsicNode {
     public static boolean isSupported(Architecture arch) {
         return switch (arch) {
             case AMD64 amd64 -> amd64.getFeatures().containsAll(minFeaturesAMD64());
-            case AArch64 aarch64 -> true;
+            case AArch64 aarch64 -> aarch64.getFeatures().contains(AArch64.CPUFeature.ASIMD);
             default -> false;
         };
     }
