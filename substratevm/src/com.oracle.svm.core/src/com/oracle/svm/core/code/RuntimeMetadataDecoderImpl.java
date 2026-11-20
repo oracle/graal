@@ -374,7 +374,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                  * a public one should not result in a missing registration exception.
                  */
                 return ReflectionObjectFactory.newField(dynamicAccessMetadata, declaringClass, field.getName(), Object.class, field.getModifiers() | NEGATIVE_FLAG_MASK, false,
-                                null, null, ReflectionObjectFactory.FIELD_OFFSET_NONE, null, null);
+                                null, null, ReflectionObjectFactory.FIELD_OFFSET_NONE, null, null, layerId);
             }
             if (reflectOnly) {
                 return complete ? field : null;
@@ -403,7 +403,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
                 return new FieldDescriptor(declaringClass, name);
             }
             return ReflectionObjectFactory.newField(dynamicAccessMetadata, declaringClass, name, negative ? Object.class : type, modifiers, false, null, null,
-                            ReflectionObjectFactory.FIELD_OFFSET_NONE, null, null);
+                            ReflectionObjectFactory.FIELD_OFFSET_NONE, null, null, layerId);
         }
         boolean trustedFinal = buf.getU1() == 1;
         String signature = decodeOtherString(buf, layerId);
@@ -417,7 +417,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         }
 
         Field reflectField = ReflectionObjectFactory.newField(dynamicAccessMetadata, declaringClass, name, type, modifiers, trustedFinal, signature, annotations, offset, installedLayerNumber,
-                        deletedReason, typeAnnotations);
+                        deletedReason, typeAnnotations, layerId);
         return reflectOnly ? reflectField : new FieldDescriptor(reflectField);
     }
 

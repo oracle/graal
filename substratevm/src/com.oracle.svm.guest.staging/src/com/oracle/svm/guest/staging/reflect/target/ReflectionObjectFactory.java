@@ -40,18 +40,19 @@ public final class ReflectionObjectFactory {
     public static final int FIELD_OFFSET_NONE = 0;
 
     public static Field newField(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Class<?> declaringClass, String name, Class<?> type, int modifiers,
-                    boolean trustedFinal, String signature, byte[] annotations, int offset, String deletedReason, byte[] typeAnnotations) {
+                    boolean trustedFinal, String signature, byte[] annotations, int offset, String deletedReason, byte[] typeAnnotations, int layerId) {
         return newField(dynamicAccessMetadata, declaringClass, name, type, modifiers, trustedFinal, signature, annotations, offset,
-                        MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED, deletedReason, typeAnnotations);
+                        MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED, deletedReason, typeAnnotations, layerId);
     }
 
     public static Field newField(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Class<?> declaringClass, String name, Class<?> type, int modifiers,
-                    boolean trustedFinal, String signature, byte[] annotations, int offset, int installedLayerNumber, String deletedReason, byte[] typeAnnotations) {
+                    boolean trustedFinal, String signature, byte[] annotations, int offset, int installedLayerNumber, String deletedReason, byte[] typeAnnotations, int layerId) {
         Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
         field.constructor(declaringClass, name, type, modifiers, trustedFinal, -1, signature, annotations);
         field.offset = offset;
         field.deletedReason = deletedReason;
         field.installedLayerNumber = installedLayerNumber;
+        field.layerId = layerId;
         Target_java_lang_reflect_AccessibleObject accessibleObject = SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class);
         accessibleObject.typeAnnotations = typeAnnotations;
         accessibleObject.dynamicAccessMetadata = dynamicAccessMetadata;

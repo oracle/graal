@@ -41,14 +41,11 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
 import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
-import com.oracle.svm.guest.staging.reflect.ConstantPoolProvider;
 import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
-import jdk.internal.reflect.ConstantPool;
 import sun.reflect.annotation.AnnotationParser;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.annotation.ExceptionProxy;
@@ -149,21 +146,8 @@ public final class Target_java_lang_reflect_Method {
         }
         Class<?> memberType = AnnotationType.invocationHandlerReturnType(getReturnType());
         int layerId = SubstrateUtil.cast(this, Target_java_lang_reflect_Executable.class).layerId;
-        Target_jdk_internal_reflect_ConstantPool constPool;
-        if (GuestStagingDependencyBridge.singleton().isRuntimeLoadedClass(getDeclaringClass())) {
-            constPool = new Target_jdk_internal_reflect_ConstantPool(layerId, getDeclaringClass());
-        } else if (GuestImageLayerBuildingSupport.buildingImageLayer()) {
-            /*
-             * The layer id of the method is not necessarily the same as the declaring class, so the
-             * constant pool used need to be chosen using the layer id of the method.
-             */
-            constPool = ConstantPoolProvider.singletons()[layerId].getConstantPool();
-        } else {
-            constPool = null;
-        }
         Object result = AnnotationParser.parseMemberValue(memberType, ByteBuffer.wrap(annotationDefault),
-                        SubstrateUtil.cast(constPool, ConstantPool.class),
-                        getDeclaringClass());
+                        ReflectionHelper.getAnnotationConstantPool(getDeclaringClass(), layerId), getDeclaringClass());
         if (result instanceof ExceptionProxy) {
             if (result instanceof TypeNotPresentExceptionProxy proxy) {
                 throw new TypeNotPresentException(proxy.typeName(), proxy.getCause());
