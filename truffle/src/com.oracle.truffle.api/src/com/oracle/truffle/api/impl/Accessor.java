@@ -52,6 +52,7 @@ import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.time.ZoneId;
@@ -347,6 +348,8 @@ public abstract class Accessor {
         public abstract Class<?> getRawTypeFromGenericType(Type genericType, Class<?> defaultRawType);
 
         public abstract Type findActualTypeArgument(Type typeOrTypeVar, Type genericTargetType);
+
+        public abstract Map<String, Map<String, Long>> readZipEntries(SeekableByteChannel channel) throws IOException;
     }
 
     public abstract static class StringsSupport extends Support {

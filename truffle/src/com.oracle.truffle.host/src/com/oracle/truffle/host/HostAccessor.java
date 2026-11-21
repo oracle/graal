@@ -40,10 +40,14 @@
  */
 package com.oracle.truffle.host;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
 import java.math.BigInteger;
+import java.nio.channels.SeekableByteChannel;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
@@ -193,6 +197,11 @@ final class HostAccessor extends Accessor {
         public Type findActualTypeArgument(Type typeOrTypeVar, Type genericTargetType) {
             return HostToTypeNode.findActualTypeArgument(typeOrTypeVar, genericTargetType);
         }
-    }
 
+        @Override
+        public Map<String, Map<String, Long>> readZipEntries(SeekableByteChannel channel) throws IOException {
+            return ZipUtils.readEntries(channel).entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey,
+                            (e) -> e.getValue().entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, (e2) -> e2.getValue().offset))));
+        }
+    }
 }
