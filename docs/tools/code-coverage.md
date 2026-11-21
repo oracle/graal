@@ -193,6 +193,11 @@ Code coverage histogram.
 
 The code coverage tool provides ways to integrate with other tools.
 Running with `--coverage.Output=lcov` produces output in the commonly used [lcov](https://linux.die.net/man/1/lcov) format which is used by multiple tools (for example, `genhtml`) to display coverage data.
+The `SF:` field identifies a source by its path when a path is available.
+For a source created from characters without a path, it uses the source URI.
+If you supply an empty URI, the tool generates a default URI from the source content and name.
+A URI identifies the coverage record; tools such as `genhtml` may still require a file path to display the source text.
+
 Take a look at the next example that shows how to visualize coverage of a Node.js app with Visual Studio Code.
 
 1. Copy the following code into a new file named `nodeapp.js`:
