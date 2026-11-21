@@ -53,10 +53,10 @@ public final class ProfileFrame {
      * counts: two runs with the same counts write the same file, with the same method and type ids,
      * so profiles can be compared with {@code diff} and checked exactly by tests.
      */
-    public static final Comparator<List<ProfileFrame>> CONTEXT_LIST_ORDER = Comparator.comparing(ProfileFrame::descriptorKey).thenComparing(ProfileFrame::bciKey);
+    public static final Comparator<List<ProfileFrame>> CONTEXT_LIST_ORDER = ProfileFrame::compareContexts;
 
     /** {@link #CONTEXT_LIST_ORDER} for contexts held in arrays. */
-    public static final Comparator<ProfileFrame[]> CONTEXT_ORDER = Comparator.comparing(Arrays::asList, CONTEXT_LIST_ORDER);
+    public static final Comparator<ProfileFrame[]> CONTEXT_ORDER = (left, right) -> compareContexts(Arrays.asList(left), Arrays.asList(right));
 
     @UnknownObjectField(availability = AfterCompilation.class) private final String methodDescriptor;
     @UnknownPrimitiveField(availability = AfterCompilation.class) private final int bci;
@@ -89,25 +89,23 @@ public final class ProfileFrame {
         return methodDescriptor + ":" + bci;
     }
 
-    private static String descriptorKey(List<ProfileFrame> context) {
-        StringBuilder result = new StringBuilder();
-        for (ProfileFrame frame : context) {
-            if (!result.isEmpty()) {
-                result.append('\u0000');
+    /**
+     * Compares the method descriptors frame by frame, a context that is a prefix of the other one
+     * first, then the bytecode indexes frame by frame. Builds no strings: the dump sorts every
+     * context it writes.
+     */
+    private static int compareContexts(List<ProfileFrame> left, List<ProfileFrame> right) {
+        int length = Math.min(left.size(), right.size());
+        for (int i = 0; i < length; i++) {
+            int result = left.get(i).methodDescriptor.compareTo(right.get(i).methodDescriptor);
+            if (result != 0) {
+                return result;
             }
-            result.append(frame.methodDescriptor());
         }
-        return result.toString();
-    }
-
-    private static String bciKey(List<ProfileFrame> context) {
-        StringBuilder result = new StringBuilder("[");
-        for (ProfileFrame frame : context) {
-            if (result.length() > 1) {
-                result.append(", ");
-            }
-            result.append(frame.bci());
+        int result = Integer.compare(left.size(), right.size());
+        for (int i = 0; result == 0 && i < length; i++) {
+            result = Integer.compare(left.get(i).bci, right.get(i).bci);
         }
-        return result.append(']').toString();
+        return result;
     }
 }

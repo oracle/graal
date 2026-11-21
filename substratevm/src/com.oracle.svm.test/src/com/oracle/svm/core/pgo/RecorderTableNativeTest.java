@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.core.pgo;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.nativeimage.ImageInfo;
@@ -42,7 +44,8 @@ import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 /**
  * Drives the native counter tables of the PGO recorders through their production paths: growth,
  * long probe chains, the flush of a table at its cap, a thread without a table, the safepoint
- * snapshot, clearing and reuse.
+ * snapshot, also while other threads take the shared locks, clearing and reuse, and the reuse of
+ * an exited thread's stack-sample table.
  * <p>
  * The tests reach the recorders' private table code through {@link Alias} declarations. Only the
  * thread's table pointer is set and read through the recorders' {@code currentTableForTesting} and
@@ -73,6 +76,8 @@ public class RecorderTableNativeTest {
     /** Arrays that each of those threads keeps alive, and their length, so that its allocation requests collections. */
     private static final int GARBAGE_SLOTS = 1024;
     private static final int GARBAGE_LONGS = 64;
+    /** Threads that the stack-sample table test starts one after another. */
+    private static final int SEQUENTIAL_THREADS = 20;
 
     @Before
     public void requireNativeImageRuntime() {
@@ -403,6 +408,30 @@ public class RecorderTableNativeTest {
             CallCountProfileRecorder.setTableForTesting(callCountTable);
         }
         return events;
+    }
+
+    /**
+     * A thread that starts after another one exited takes over a stack-sample table of an exited
+     * thread, so the tables do not grow with the number of threads an image runs. Only the threads
+     * of a sampling {@code --pgo-instrument} image have tables. A thread joins before its table is
+     * back in the free list, so the next thread may still allocate one; most must not.
+     */
+    @Test
+    public void stackSampleTablesOfExitedThreadsAreReused() throws InterruptedException {
+        Assume.assumeTrue("threads have stack-sample tables only in a sampling --pgo-instrument image", StackSampleRecorder.currentTableForTesting().isNonNull());
+        long[] tables = new long[SEQUENTIAL_THREADS];
+        for (int i = 0; i < SEQUENTIAL_THREADS; i++) {
+            int thread = i;
+            Thread started = new Thread(() -> tables[thread] = StackSampleRecorder.currentTableForTesting().rawValue());
+            started.start();
+            started.join();
+        }
+        Set<Long> distinct = new HashSet<>();
+        for (long table : tables) {
+            Assert.assertNotEquals("a thread of a sampling image has no stack-sample table", 0, table);
+            distinct.add(table);
+        }
+        Assert.assertTrue(SEQUENTIAL_THREADS + " threads that ran one after another had " + distinct.size() + " stack-sample tables", distinct.size() <= SEQUENTIAL_THREADS / 2);
     }
 
     @Test

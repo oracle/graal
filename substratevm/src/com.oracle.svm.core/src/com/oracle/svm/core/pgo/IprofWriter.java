@@ -25,9 +25,14 @@
 package com.oracle.svm.core.pgo;
 
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 
 import jdk.graal.compiler.util.json.JsonWriter;
 
@@ -62,12 +66,28 @@ public final class IprofWriter {
     /**
      * Writes all profile categories. A null monitor map omits {@code monitorProfiles}; a non-null
      * empty map records that monitor profiling was enabled but observed no monitor operations.
+     * <p>
+     * The file is written next to {@code path} and moved over it once complete, so a write that
+     * fails leaves the previous profile at {@code path}, not a truncated one. The name of that
+     * temporary file holds the process id and the time, so that concurrent dumps do not share it.
      */
     public static DumpStatistics write(Path path, List<BranchProfileKey> branchKeys, List<StackSampleRecorder.DecodedSample> stackSamples,
                     List<TypeProfileRecorder.DecodedReceiverProfile> receiverProfiles, List<CallCountProfileKey> callCountKeys,
                     List<SwitchProfileKey> switchKeys, Map<String, Long> monitorProfiles) throws IOException {
-        try (JsonWriter writer = new JsonWriter(path)) {
-            return write(writer, branchKeys, stackSamples, receiverProfiles, callCountKeys, switchKeys, monitorProfiles);
+        Path temporary = path.resolveSibling(path.getFileName() + "." + ProcessHandle.current().pid() + "." + System.nanoTime() + ".tmp");
+        try {
+            DumpStatistics statistics;
+            try (JsonWriter writer = new JsonWriter(temporary, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+                statistics = write(writer, branchKeys, stackSamples, receiverProfiles, callCountKeys, switchKeys, monitorProfiles);
+            }
+            try {
+                Files.move(temporary, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException notSupported) {
+                Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING);
+            }
+            return statistics;
+        } finally {
+            Files.deleteIfExists(temporary);
         }
     }
 
@@ -84,6 +104,15 @@ public final class IprofWriter {
         /* A context represented by an If profile is ambiguous for a context-only switch record. */
         switchProfiles.keySet().removeAll(branchEntries.keySet());
         Metadata metadata = Metadata.create(branchCounts.keySet(), stackSamples, receiverProfiles, callCounts.keySet(), switchProfiles.keySet(), monitorProfiles);
+        /*
+         * An entry whose context holds a method that the methods table leaves out, because its
+         * descriptor is malformed, is left out too: the file would refer to a method it does not
+         * define.
+         */
+        int skippedEntries = removeUndescribed(branchEntries.keySet(), metadata) + removeUndescribed(switchProfiles.keySet(), metadata) + removeUndescribed(callCounts.keySet(), metadata);
+        List<TypeProfileRecorder.DecodedReceiverProfile> receivers = receiverProfiles.stream().filter(profile -> metadata.describes(ContextKey.of(profile.context()))).toList();
+        List<StackSampleRecorder.DecodedSample> samples = stackSamples.stream().filter(sample -> metadata.describes(ContextKey.of(sample.context()))).toList();
+        skippedEntries += receiverProfiles.size() - receivers.size() + stackSamples.size() - samples.size();
         writer.appendObjectStart();
         writer.appendKeyValue("version", IPROF_VERSION).appendSeparator();
         writeTypes(writer, metadata).appendSeparator();
@@ -93,23 +122,30 @@ public final class IprofWriter {
             writer.appendSeparator();
             writeCallCountProfiles(writer, metadata, callCounts);
         }
-        if (!receiverProfiles.isEmpty()) {
+        if (!receivers.isEmpty()) {
             writer.appendSeparator();
-            writeReceiverProfiles(writer, metadata, receiverProfiles);
+            writeReceiverProfiles(writer, metadata, receivers);
         }
         if (monitorProfiles != null) {
             writer.appendSeparator();
             writeMonitorProfiles(writer, metadata, monitorProfiles);
         }
-        if (!stackSamples.isEmpty()) {
+        if (!samples.isEmpty()) {
             writer.appendSeparator();
-            writeSamplingProfiles(writer, metadata, stackSamples);
+            writeSamplingProfiles(writer, metadata, samples);
         }
         writer.appendObjectEnd();
         long branchEvents = activeBranchKeys.stream().mapToLong(key -> key.getTrueCount() + key.getFalseCount()).sum();
         long monitorEvents = monitorProfiles == null ? 0 : monitorProfiles.values().stream().mapToLong(Long::longValue).sum();
-        return new DumpStatistics(metadata.typesByName.size(), metadata.methodsByDescriptor.size(), branchEntries.size() + switchProfiles.size(), receiverProfiles.size(), callCounts.size(),
-                        switchProfiles.size(), monitorProfiles == null ? 0 : monitorProfiles.size(), branchEvents, monitorEvents);
+        return new DumpStatistics(metadata.typesByName.size(), metadata.methodsByDescriptor.size(), branchEntries.size() + switchProfiles.size(), receivers.size(), callCounts.size(),
+                        switchProfiles.size(), monitorProfiles == null ? 0 : monitorProfiles.size(), branchEvents, monitorEvents, skippedEntries);
+    }
+
+    /** Removes the contexts that hold a method the methods table leaves out; returns how many. */
+    private static int removeUndescribed(Set<ContextKey> contexts, Metadata metadata) {
+        int before = contexts.size();
+        contexts.removeIf(context -> !metadata.describes(context));
+        return before - contexts.size();
     }
 
     private static Map<ContextKey, long[]> aggregateSwitchProfiles(List<SwitchProfileKey> switchKeys) {
@@ -385,10 +421,11 @@ public final class IprofWriter {
     /**
      * What a write produced, for the summary line that {@link ProfileDumper} prints. Only
      * {@code branchEvents} and {@code monitorEvents} count events; the other recorders print their
-     * own event counts.
+     * own event counts. {@code skippedEntries} counts the entries left out because their context
+     * holds a method with a malformed descriptor.
      */
     public record DumpStatistics(int types, int methods, int conditionalProfiles, int receiverProfiles, int callCountProfiles, int switchProfiles,
-                    int monitorTypes, long branchEvents, long monitorEvents) {
+                    int monitorTypes, long branchEvents, long monitorEvents, int skippedEntries) {
     }
 
     /** A calling context as a map key: frames, innermost first, compared by value. */
@@ -435,18 +472,34 @@ public final class IprofWriter {
      * monitor profiles mention, and numbers them in sorted order.
      */
     private static final class Metadata {
-        private final TreeMap<String, Integer> typesByName;
-        private final TreeMap<String, Integer> methodsByDescriptor;
+        /** Ids by type name and by method descriptor; both iterate in sorted order. */
+        private final Map<String, Integer> typesByName;
+        private final Map<String, Integer> methodsByDescriptor;
 
-        private Metadata(TreeMap<String, Integer> typesByName, TreeMap<String, Integer> methodsByDescriptor) {
+        private Metadata(Map<String, Integer> typesByName, Map<String, Integer> methodsByDescriptor) {
             this.typesByName = typesByName;
             this.methodsByDescriptor = methodsByDescriptor;
         }
 
+        /** Whether the methods table holds every method of {@code context}. */
+        private boolean describes(ContextKey context) {
+            for (ProfileFrame frame : context.frames) {
+                if (!methodsByDescriptor.containsKey(frame.methodDescriptor())) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /**
+         * Collects the methods of every context and the types they and the type profiles name. A
+         * method whose descriptor is malformed is left out of the methods table, and so are the
+         * entries whose contexts hold it ({@link #describes}).
+         */
         private static Metadata create(Iterable<BranchIdentity> branchIdentities, List<StackSampleRecorder.DecodedSample> stackSamples,
                         List<TypeProfileRecorder.DecodedReceiverProfile> receiverProfiles, Iterable<ContextKey> callCountProfiles,
                         Iterable<ContextKey> switchProfiles, Map<String, Long> monitorProfiles) {
-            TreeSet<String> descriptors = new TreeSet<>();
+            Set<String> descriptors = new HashSet<>();
             for (BranchIdentity identity : branchIdentities) {
                 identity.context.addMethodDescriptorsTo(descriptors);
             }
@@ -462,9 +515,14 @@ public final class IprofWriter {
             for (ContextKey context : switchProfiles) {
                 context.addMethodDescriptorsTo(descriptors);
             }
-            TreeSet<String> types = new TreeSet<>();
+            List<String> methods = new ArrayList<>(descriptors.size());
+            Set<String> types = new HashSet<>();
             for (String descriptor : descriptors) {
-                ParsedMethod method = ParsedMethod.parse(descriptor);
+                ParsedMethod method = ParsedMethod.parseOrNull(descriptor);
+                if (method == null) {
+                    continue;
+                }
+                methods.add(descriptor);
                 types.add(method.declaringType);
                 types.add(method.returnType);
                 types.addAll(method.parameterTypes);
@@ -479,14 +537,16 @@ public final class IprofWriter {
                     types.add(ParsedMethod.typeName(descriptor));
                 }
             }
-            return new Metadata(assignIds(types), assignIds(descriptors));
+            return new Metadata(assignIds(types), assignIds(methods));
         }
 
-        private static TreeMap<String, Integer> assignIds(TreeSet<String> values) {
-            TreeMap<String, Integer> ids = new TreeMap<>();
-            int nextId = 0;
-            for (String value : values) {
-                ids.put(value, nextId++);
+        /** Numbers {@code values} in sorted order, so that the ids depend only on what the file holds. */
+        private static Map<String, Integer> assignIds(Collection<String> values) {
+            String[] sorted = values.toArray(new String[0]);
+            Arrays.sort(sorted);
+            Map<String, Integer> ids = new LinkedHashMap<>();
+            for (String value : sorted) {
+                ids.put(value, ids.size());
             }
             return ids;
         }
@@ -508,6 +568,15 @@ public final class IprofWriter {
             this.name = name;
             this.returnType = returnType;
             this.parameterTypes = parameterTypes;
+        }
+
+        /** {@link #parse}, or null if {@code methodDescriptor} is malformed. */
+        private static ParsedMethod parseOrNull(String methodDescriptor) {
+            try {
+                return parse(methodDescriptor);
+            } catch (IllegalArgumentException | IndexOutOfBoundsException malformed) {
+                return null;
+            }
         }
 
         private static ParsedMethod parse(String methodDescriptor) {

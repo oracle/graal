@@ -32,11 +32,15 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.guest.staging.c.CGlobalData;
+import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.guest.staging.core.thread.ThreadListener;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.shared.Uninterruptible;
+
+import jdk.internal.misc.Unsafe;
 
 /**
  * Per-thread storage for conditional branch counters.
@@ -53,6 +57,8 @@ public final class BranchProfileThreadCounters implements ThreadListener {
 
     /** The thread's private block, or the shared counters if none could be allocated. */
     static final FastThreadLocalWord<Pointer> BLOCK = FastThreadLocalFactory.createWord("BranchProfileThreadCounters.block");
+    private static final CGlobalData<Pointer> THREADS_WITHOUT_BLOCK = CGlobalDataFactory.createWord();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     /** Location of the per-thread block pointer; a snippet that reads it must declare it private. */
     public static LocationIdentity blockLocation() {
@@ -102,14 +108,23 @@ public final class BranchProfileThreadCounters implements ThreadListener {
         /* calloc keeps untouched pages unmapped, so sparse counter use costs little memory. */
         Pointer block = UntrackedNullableNativeMemory.calloc(Word.unsigned(slots).multiply(Long.BYTES));
         if (block.isNull()) {
-            /* Degrade to the shared counters rather than crash. */
+            /*
+             * Degrade to the shared counters rather than crash. Their increments are not atomic, so
+             * such threads can lose counts; the dump reports how many threads did this.
+             */
             block = BranchProfileRecorder.sharedCounts();
+            UNSAFE.getAndAddLong(null, THREADS_WITHOUT_BLOCK.get().rawValue(), 1);
         }
         BLOCK.set(isolateThread, block);
     }
 
-    /** Adds every live thread's private counters into {@code target} at a safepoint. */
-    public static void collectLiveThreads(long[] target) {
+    /** Threads that count into the shared counters because their block could not be allocated. */
+    public static long threadsWithoutBlock() {
+        return THREADS_WITHOUT_BLOCK.get().readLong(0);
+    }
+
+    /** Adds the shared totals and every live thread's private counters into {@code target} at a safepoint. */
+    public static void collect(long[] target) {
         CollectOperation operation = new CollectOperation(target);
         operation.enqueue();
     }
@@ -125,6 +140,15 @@ public final class BranchProfileThreadCounters implements ThreadListener {
         @Override
         protected void operate() {
             int slots = BranchProfileRecorder.registeredSlots();
+            /*
+             * The shared totals are read at the safepoint too: a thread that exits before the
+             * safepoint folds its block into them and frees the block, so totals read before the
+             * safepoint would miss its counts.
+             */
+            Pointer shared = BranchProfileRecorder.sharedCounts();
+            for (int slot = 0; slot < slots; slot++) {
+                target[slot] += shared.readLong(slot * Long.BYTES);
+            }
             for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
                 Pointer block = blockOf(thread);
                 if (block.isNull()) {

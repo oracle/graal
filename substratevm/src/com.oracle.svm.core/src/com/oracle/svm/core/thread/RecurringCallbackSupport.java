@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -124,7 +124,8 @@ public class RecurringCallbackSupport {
      * <p>
      * A thread has only one callback slot. The stack sampler of a {@code --pgo-instrument} image
      * uses this background slot so that it never takes that slot away from the JFR execution
-     * sampler or from a callback registered with {@code Threading.registerRecurringCallback}.
+     * sampler or from a callback registered with {@code Threading.registerRecurringCallback}. In
+     * turn, the sampler takes no samples of a thread while such a callback is installed on it.
      */
     public static void installBackgroundCallback(long intervalNanos, RecurringCallback callback) {
         installBackgroundCallback0(CurrentIsolate.getCurrentThread(), createCallbackTimer(intervalNanos, callback));
@@ -143,6 +144,12 @@ public class RecurringCallbackSupport {
         }
     }
 
+    /**
+     * Removes the background callback of {@code thread}; a regular callback stays. The PGO stack
+     * sampler calls it when a thread exits. It does not reset {@link SafepointCheckCounter}, just as
+     * {@link #uninstallCallback} does not when it leaves no callback: when the counter runs out and
+     * no callback is installed, {@link #maybeExecuteCallback} sets it to its maximum.
+     */
     @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
     public static void uninstallBackgroundCallback(IsolateThread thread) {
         assert isEnabled();
@@ -210,6 +217,11 @@ public class RecurringCallbackSupport {
         }
     }
 
+    /**
+     * Whether any callback is installed, a background callback included, unlike
+     * {@link #getCallback}: this predicate and {@link #needsNativeToJavaSlowpath} are about the
+     * timer that drives {@link SafepointCheckCounter}, and a background callback has one too.
+     */
     @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.", callerMustBe = true)
     static boolean isCallbackInstalled(IsolateThread thread) {
         return isEnabled() && timerTL.get(thread) != null;

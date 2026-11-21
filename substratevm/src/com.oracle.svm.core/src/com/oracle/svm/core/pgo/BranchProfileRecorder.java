@@ -225,13 +225,8 @@ public final class BranchProfileRecorder {
     }
 
     private static void takeSnapshot() {
-        int slots = registeredSlots;
-        long[] merged = new long[slots];
-        Pointer shared = sharedCounts();
-        for (int slot = 0; slot < slots; slot++) {
-            merged[slot] = shared.readLong(slot * Long.BYTES);
-        }
-        BranchProfileThreadCounters.collectLiveThreads(merged);
+        long[] merged = new long[registeredSlots];
+        BranchProfileThreadCounters.collect(merged);
         snapshot = merged;
     }
 
