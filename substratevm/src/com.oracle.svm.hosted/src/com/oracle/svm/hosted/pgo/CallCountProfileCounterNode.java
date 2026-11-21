@@ -31,7 +31,6 @@ import com.oracle.svm.core.pgo.CallCountProfileRecorder;
 import com.oracle.svm.core.pgo.CallCountProfileSlot;
 
 import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -67,8 +66,13 @@ public final class CallCountProfileCounterNode extends PGOInstrumentationNode {
         static final String INCREMENT = "increment";
         static final String COUNTER_INDEX = "counterIndex";
 
+        /**
+         * The index is not a constant parameter, for the reason given at
+         * {@code BranchProfileCounterNode}: it is bound as a constant, and the canonicalizer folds
+         * the key and its hash.
+         */
         @Snippet
-        private static void increment(@ConstantParameter int counterIndex) {
+        private static void increment(int counterIndex) {
             CallCountProfileRecorder.increment(counterIndex);
         }
     }

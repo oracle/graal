@@ -82,9 +82,15 @@ public final class BranchProfileCounterNode extends PGOInstrumentationNode {
         static final String COUNTER_INDEX = "counterIndex";
         static final String ON_TRUE_SUCCESSOR = "onTrueSuccessor";
 
-        /** Increments the true or the false count of the key numbered {@code counterIndex}. */
+        /**
+         * Increments the true or the false count of the key numbered {@code counterIndex}. The
+         * index is not a {@link ConstantParameter}: those are part of the key of the template cache,
+         * so every counter would build a template of its own and push the templates of other
+         * snippets out of the shared cache. The index is bound as a constant all the same, and the
+         * canonicalizer folds the offset arithmetic.
+         */
         @Snippet
-        private static void increment(@ConstantParameter int counterIndex, @ConstantParameter boolean onTrueSuccessor) {
+        private static void increment(int counterIndex, @ConstantParameter boolean onTrueSuccessor) {
             BranchProfileRecorder.increment(counterIndex, onTrueSuccessor);
         }
     }

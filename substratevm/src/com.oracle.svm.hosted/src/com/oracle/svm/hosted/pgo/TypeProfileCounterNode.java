@@ -32,7 +32,6 @@ import com.oracle.svm.core.pgo.TypeProfileKey;
 import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -119,13 +118,18 @@ public final class TypeProfileCounterNode extends PGOInstrumentationNode impleme
         static final String OBJECT = "object";
         static final String TYPE_ID = "typeId";
 
+        /*
+         * The site index and the type id are not constant parameters, for the reason given at
+         * BranchProfileCounterNode: they are bound as constants, and the canonicalizer folds them
+         * into the key.
+         */
         @Snippet
-        private static void record(@ConstantParameter int siteIndex, Object object) {
+        private static void record(int siteIndex, Object object) {
             TypeProfileRecorder.record(siteIndex, object);
         }
 
         @Snippet
-        private static void recordKnownType(@ConstantParameter int siteIndex, @ConstantParameter int typeId) {
+        private static void recordKnownType(int siteIndex, int typeId) {
             TypeProfileRecorder.recordKnownType(siteIndex, typeId);
         }
     }
