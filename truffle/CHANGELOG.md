@@ -4,6 +4,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 25.7
 
+* GR-81626: Bytecode DSL: Added `InstructionDescriptor.getOperationClass()` to identify the custom operation class behind an instruction, including quickened instructions and operation proxies.
 * GR-80168: Bytecode DSL: Added `BytecodeConfig.matches` to compare configurations for a particular interpreter.
 * GR-80168: Bytecode DSL: Added `serializeBuilderBytecode`, `deserializeBuilderBytecode`, `serializeExecutionBytecode`, and `deserializeExecutionBytecode` methods. Execution bytecode can be loaded without reading or replaying builder calls. Deprecated the builder-only `serialize` and `deserialize` methods.
 * GR-79412: Restored automatic splitting during interpreter direct-call execution instead of compilation preparation. See [Splitting](docs/splitting/Splitting.md) for details.
