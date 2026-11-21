@@ -25,12 +25,15 @@
 package com.oracle.svm.hosted.snapshot.elements;
 
 import com.oracle.svm.hosted.snapshot.dynamichub.ClassInitializationInfoData;
+import com.oracle.svm.hosted.snapshot.dynamichub.ObjectLayoutData;
 import com.oracle.svm.hosted.snapshot.util.SnapshotPrimitiveList;
 import com.oracle.svm.hosted.snapshot.util.SnapshotStructList;
 
 /** Persisted representation of an analysis type. */
 public interface PersistedAnalysisTypeData {
     interface Writer {
+        ObjectLayoutData.Writer initObjectLayout();
+
         void setHubIdentityHashCode(int value);
 
         void setHasArrayType(boolean value);
@@ -99,6 +102,10 @@ public interface PersistedAnalysisTypeData {
     }
 
     interface Loader {
+        boolean hasObjectLayout();
+
+        ObjectLayoutData.Loader getObjectLayout();
+
         int getHubIdentityHashCode();
 
         boolean getHasArrayType();

@@ -99,6 +99,7 @@ import com.oracle.svm.hosted.sboutlining.OutlinedSBMethodSupport;
 import com.oracle.svm.hosted.snapshot.c.CGlobalDataInfoData;
 import com.oracle.svm.hosted.snapshot.constant.ConstantReferenceData;
 import com.oracle.svm.hosted.snapshot.dynamichub.DynamicHubInfoData;
+import com.oracle.svm.hosted.snapshot.dynamichub.ObjectLayoutData;
 import com.oracle.svm.hosted.snapshot.elements.PersistedAnalysisFieldData;
 import com.oracle.svm.hosted.snapshot.elements.PersistedAnalysisMethodData;
 import com.oracle.svm.hosted.snapshot.elements.PersistedAnalysisMethodData.WrappedMethod;
@@ -971,6 +972,17 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
         return result;
     }
 
+    /** Returns the layout fixed by a previous layer's installed hub, if any. */
+    private ObjectLayoutData.Loader getPersistedObjectLayout(AnalysisType type) {
+        if (!type.isInSharedLayer()) {
+            return null;
+        }
+        var typeData = findType(getBaseLayerTypeId(type));
+        guarantee(typeData.hasObjectLayout(), "Missing object layout metadata for %s. Rebuild the shared layer with this version of Native Image.", type);
+        var layout = typeData.getObjectLayout();
+        return layout.getInstalled() ? layout : null;
+    }
+
     public void verifyObjectLayoutCompatibility(HostedType type) {
         if (type.getWrapped().getWrapped() instanceof BaseLayerType) {
             /*
@@ -981,16 +993,16 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             return;
         }
 
-        var layout = constantLoader.getPersistedHubLayout(type.getWrapped());
+        var layout = getPersistedObjectLayout(type.getWrapped());
         if (layout == null) {
             /* No hub was installed in a shared layer, so there is no layout to preserve. */
             return;
         }
 
         DynamicHub hub = type.getHub();
-        verifyLayoutProperty(type, "layoutEncoding", layout.layoutEncoding(), hub.getLayoutEncoding());
-        verifyLayoutProperty(type, "monitorOffset", layout.monitorOffset(), hub.getMonitorOffset());
-        verifyLayoutProperty(type, "identityHashOffset", layout.identityHashOffset(), hub.getIdentityHashOffsetOrZero());
+        verifyLayoutProperty(type, "layoutEncoding", layout.getLayoutEncoding(), hub.getLayoutEncoding());
+        verifyLayoutProperty(type, "monitorOffset", layout.getMonitorOffset(), hub.getMonitorOffset());
+        verifyLayoutProperty(type, "identityHashOffset", layout.getIdentityHashOffset(), hub.getIdentityHashOffsetOrZero());
 
         for (HostedField field : type.getInstanceFields(true)) {
             if (field.hasLocation()) {

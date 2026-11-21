@@ -42,7 +42,7 @@ import org.graalvm.nativeimage.Platforms;
 @SuppressWarnings("all")
 public final class SharedLayerSnapshotCapnProtoSchemaHolder {
   public static class PersistedAnalysisType {
-    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)14);
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)15);
     public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -374,6 +374,15 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setBooleanField(109, value);
       }
 
+      public final com.oracle.svm.hosted.snapshot.capnproto.generated.SharedLayerSnapshotCapnProtoSchemaHolder.ObjectLayout.Builder getObjectLayout() {
+        return _getPointerField(com.oracle.svm.hosted.snapshot.capnproto.generated.SharedLayerSnapshotCapnProtoSchemaHolder.ObjectLayout.factory, 14, null, 0);
+      }
+      public final void setObjectLayout(com.oracle.svm.hosted.snapshot.capnproto.generated.SharedLayerSnapshotCapnProtoSchemaHolder.ObjectLayout.Reader value) {
+        _setPointerField(com.oracle.svm.hosted.snapshot.capnproto.generated.SharedLayerSnapshotCapnProtoSchemaHolder.ObjectLayout.factory,14, value);
+      }
+      public final com.oracle.svm.hosted.snapshot.capnproto.generated.SharedLayerSnapshotCapnProtoSchemaHolder.ObjectLayout.Builder initObjectLayout() {
+        return _initPointerField(com.oracle.svm.hosted.snapshot.capnproto.generated.SharedLayerSnapshotCapnProtoSchemaHolder.ObjectLayout.factory,14, 0);
+      }
     }
 
     public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -549,10 +558,17 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getBooleanField(109);
       }
 
+      public boolean hasObjectLayout() {
+        return !_pointerFieldIsNull(14);
+      }
+      public com.oracle.svm.hosted.snapshot.capnproto.generated.SharedLayerSnapshotCapnProtoSchemaHolder.ObjectLayout.Reader getObjectLayout() {
+        return _getPointerField(com.oracle.svm.hosted.snapshot.capnproto.generated.SharedLayerSnapshotCapnProtoSchemaHolder.ObjectLayout.factory,14,null, 0);
+      }
+
     }
 
     public static class WrappedType {
-      public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)14);
+      public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)15);
       public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
         public Factory() {
         }
@@ -696,7 +712,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _NOT_IN_SCHEMA,
       }
       public static class SerializationGenerated {
-        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)14);
+        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)15);
         public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
           public Factory() {
           }
@@ -758,7 +774,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
       public static class Lambda {
-        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)14);
+        public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)5,(short)15);
         public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
           public Factory() {
           }
@@ -843,6 +859,90 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
     }
 
+
+  }
+
+
+  public static class ObjectLayout {
+    public static final com.oracle.svm.shaded.org.capnproto.StructSize STRUCT_SIZE = new com.oracle.svm.shaded.org.capnproto.StructSize((short)2,(short)0);
+    public static final class Factory extends com.oracle.svm.shaded.org.capnproto.StructFactory<Builder, Reader> {
+      public Factory() {
+      }
+      public final Reader constructReader(com.oracle.svm.shaded.org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
+        return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
+      }
+      public final Builder constructBuilder(com.oracle.svm.shaded.org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
+        return new Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final com.oracle.svm.shaded.org.capnproto.StructSize structSize() {
+        return ObjectLayout.STRUCT_SIZE;
+      }
+      public final Reader asReader(Builder builder) {
+        return builder.asReader();
+      }
+    }
+    public static final Factory factory = new Factory();
+    public static final com.oracle.svm.shaded.org.capnproto.StructList.Factory<Builder,Reader> listFactory =
+      new com.oracle.svm.shaded.org.capnproto.StructList.Factory<Builder, Reader>(factory);
+    public static final class Builder extends com.oracle.svm.shaded.org.capnproto.StructBuilder {
+      Builder(com.oracle.svm.shaded.org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
+        super(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final Reader asReader() {
+        return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
+      }
+      public final boolean getInstalled() {
+        return _getBooleanField(0);
+      }
+      public final void setInstalled(boolean value) {
+        _setBooleanField(0, value);
+      }
+
+      public final int getLayoutEncoding() {
+        return _getIntField(1);
+      }
+      public final void setLayoutEncoding(int value) {
+        _setIntField(1, value);
+      }
+
+      public final int getMonitorOffset() {
+        return _getIntField(2);
+      }
+      public final void setMonitorOffset(int value) {
+        _setIntField(2, value);
+      }
+
+      public final int getIdentityHashOffset() {
+        return _getIntField(3);
+      }
+      public final void setIdentityHashOffset(int value) {
+        _setIntField(3, value);
+      }
+
+    }
+
+    public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
+      Reader(com.oracle.svm.shaded.org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
+        super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+      }
+
+      public final boolean getInstalled() {
+        return _getBooleanField(0);
+      }
+
+      public final int getLayoutEncoding() {
+        return _getIntField(1);
+      }
+
+      public final int getMonitorOffset() {
+        return _getIntField(2);
+      }
+
+      public final int getIdentityHashOffset() {
+        return _getIntField(3);
+      }
+
+    }
 
   }
 
