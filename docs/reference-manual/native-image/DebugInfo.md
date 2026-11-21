@@ -62,6 +62,8 @@ resulting image file.
 
 > Note: Native Image debugging currently works on Linux with initial support for macOS. The feature is experimental.
 
+On macOS, the debug info is written to a _.dSYM_ bundle next to the native executable (for example, _hello.dSYM_), and the executable itself is stripped. LLDB locates the bundle automatically when it is in the same directory as the executable.
+
 > Note: Debug info support for `perf` and `valgrind` on Linux is an experimental feature.
 
 ## Source File Caching

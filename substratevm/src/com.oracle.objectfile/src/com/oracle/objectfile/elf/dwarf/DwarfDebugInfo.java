@@ -30,6 +30,7 @@ import java.nio.ByteOrder;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.DebugInfoBase;
 import com.oracle.objectfile.debugentry.FieldEntry;
@@ -139,6 +140,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     private final DwarfLineSectionImpl dwarfLineSection;
     private final DwarfFrameSectionImpl dwarfFameSection;
     public final ELFMachine elfMachine;
+    private final ObjectFile.Format format;
     /**
      * Register used to hold the heap base.
      */
@@ -171,9 +173,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
     private final EconomicMap<Range, DwarfRangeProperties> rangePropertiesIndex = EconomicMap.create();
 
     @SuppressWarnings("this-escape")
-    public DwarfDebugInfo(ELFMachine elfMachine, ByteOrder byteOrder) {
+    public DwarfDebugInfo(ELFMachine elfMachine, ByteOrder byteOrder, ObjectFile.Format format) {
         super(byteOrder);
         this.elfMachine = elfMachine;
+        this.format = format;
         dwarfStrSection = new DwarfStrSectionImpl(this);
         dwarfLineStrSection = new DwarfLineStrSectionImpl(this);
         dwarfAbbrevSection = new DwarfAbbrevSectionImpl(this);
@@ -192,6 +195,11 @@ public class DwarfDebugInfo extends DebugInfoBase {
             this.heapbaseRegister = rheapbase_x86;
             this.threadRegister = rthread_x86;
         }
+    }
+
+    /** Returns the format of the object file the debug info is written to. */
+    public ObjectFile.Format getFormat() {
+        return format;
     }
 
     public DwarfStrSectionImpl getStrSectionImpl() {
