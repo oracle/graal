@@ -41,6 +41,7 @@
 package org.graalvm.polyglot;
 
 import java.lang.annotation.Annotation;
+import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -752,6 +753,43 @@ public final class HostAccess {
     }
 
     /**
+     * Requests an implementation optimized for invocation speed when converting a guest value to
+     * this interface with {@link Value#as(Class)}. Use this annotation for interfaces whose methods
+     * are called frequently from Java.
+     * <p>
+     * Interfaces may declare multiple methods. In Native Image, annotated interfaces included in
+     * the image are available for conversion without additional proxy configuration.
+     *
+     * <pre>{@code
+     * @HostAccess.Optimized
+     * @FunctionalInterface
+     * public interface Adder {
+     *     int add(int left, int right);
+     * }
+     *
+     * try (Context context = Context.newBuilder("js")
+     *                 .allowHostAccess(HostAccess.EXPLICIT)
+     *                 .build()) {
+     *     Adder adder = context.eval("js", "(x, y) => x + y").as(Adder.class);
+     *     assert adder.add(40, 2) == 42;
+     * }
+     * }</pre>
+     * <p>
+     * This annotation does not authorize host access. Conversion remains subject to the configured
+     * {@link HostAccess} policy. It also does not guarantee allocation-free conversion or
+     * invocation. Only non-sealed interfaces are currently supported. The interface and reference
+     * types in its method signatures must be public and their packages must be exported to unnamed
+     * modules.
+     *
+     * @since 25.7
+     */
+    @Documented
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    public @interface Optimized {
+    }
+
+    /**
      * If {@link HostAccess#SCOPED} is used, placing this annotation on an exported host function
      * excludes it from parameter scoping, i.e. parameters will not be released after invocation of
      * a callback.
@@ -1288,8 +1326,10 @@ public final class HostAccess {
          * <p>
          * Primitive boxed target types will be applied to the primitive and boxed values. It is
          * therefore enough to specify a target mapping to {@link Integer} to also map to the target
-         * type <code>int.class</code>. Primitive target types can not be used as target types. They
-         * throw an {@link IllegalArgumentException} if used.
+         * type <code>int.class</code>. If the converter returns {@code null} when converting to a
+         * primitive type, the conversion throws a {@link NullPointerException}. Primitive target
+         * types can not be used as target types. They throw an {@link IllegalArgumentException} if
+         * used.
          * <p>
          * If the converter function or the accepts predicate calls {@link Value#as(Class)}
          * recursively then custom target mappings are applied. Special care must be taken in order
@@ -1350,8 +1390,9 @@ public final class HostAccess {
          *            <code>true</code> if the mapping is applicable else false. If set to
          *            <code>null</code> then all values of a given source type are applicable.
          * @param converter a function that produces the converted value of the mapping. May return
-         *            <code>null</code>. May throw {@link ClassCastException} if the source value is
-         *            not convertible.
+         *            {@code null} for reference target types. Returning {@code null} for a primitive
+         *            conversion causes a {@link NullPointerException}. May throw
+         *            {@link ClassCastException} if the source value is not convertible.
          * @param precedence the precedence of the defined mapping which influences conversion order
          *            and precedence with default mappings and other target type mappings.
          * @throws IllegalArgumentException for primitive target types.
