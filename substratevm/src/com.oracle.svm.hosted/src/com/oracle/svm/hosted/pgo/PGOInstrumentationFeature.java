@@ -90,8 +90,10 @@ public final class PGOInstrumentationFeature implements InternalFeature {
         public static final HostedOptionKey<Boolean> PGOInstrument = new InstrumentationOption();
 
         @Option(help = "Also sample call stacks periodically in the instrumented image and emit samplingProfiles. Interval: -XX:PGOSamplingIntervalMillis. " +
-                       "The sampler runs at safepoint polls, so a sampling image keeps the polls of counted loops; -H:+RemoveLoopSafepoints removes them again.")//
-        public static final HostedOptionKey<Boolean> PGOSampleStacks = new SamplingOption();
+                       "The sampler runs at safepoint polls, so a sampling image keeps the polls of counted loops unless -H:RemoveLoopSafepoints is given. " +
+                       "It uses a thread's recurring callback, so a thread is not sampled while another recurring callback is installed on it, " +
+                       "such as one registered with Threading.registerRecurringCallback.")//
+        public static final HostedOptionKey<Boolean> PGOSampleStacks = new HostedOptionKey<>(true);
 
         @Option(help = "Record branch (IfNode) frequencies in conditionalProfiles. Disable with -H:-PGOProfileBranches.")//
         public static final HostedOptionKey<Boolean> PGOProfileBranches = new HostedOptionKey<>(true);
@@ -124,56 +126,33 @@ public final class PGOInstrumentationFeature implements InternalFeature {
                     /* Instrument at the level of the optimized build. */
                     PGOUtils.raiseDefaultToO3(values);
                 }
-                updateLoopSafepoints(values);
-            }
-        }
-
-        private static final class SamplingOption extends HostedOptionKey<Boolean> {
-            private SamplingOption() {
-                super(true);
-            }
-
-            @Override
-            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-                super.onValueUpdate(values, oldValue, newValue);
-                updateLoopSafepoints(values);
-            }
-        }
-
-        /** Whether {@link #updateLoopSafepoints} set {@code RemoveLoopSafepoints}, rather than the command line. */
-        private static boolean loopSafepointsKeptForSampling;
-
-        /**
-         * Keeps the safepoint polls of counted loops in an instrumented image that samples stacks.
-         * The sampler runs only at polls, and the compiler removes the polls of counted loops over
-         * an int range. Without them, a hot counted loop gets one sample at the first poll after
-         * it, however long it ran, so its time is missing from the profile. Called whenever
-         * {@link #PGOInstrument} or {@link #PGOSampleStacks} changes, so the result does not
-         * depend on their order; {@code -H:+RemoveLoopSafepoints} on the command line wins in any
-         * order.
-         */
-        private static void updateLoopSafepoints(EconomicMap<OptionKey<?>, Object> values) {
-            OptionKey<Boolean> removeLoopSafepoints = LoopSafepointEliminationPhase.Options.RemoveLoopSafepoints;
-            if (loopSafepointsKeptForSampling && !Boolean.FALSE.equals(values.get(removeLoopSafepoints))) {
-                /* The command line changed the value after this method set it. */
-                loopSafepointsKeptForSampling = false;
-            }
-            if (values.containsKey(removeLoopSafepoints) && !loopSafepointsKeptForSampling) {
-                return;
-            }
-            boolean sampling = Boolean.TRUE.equals(values.get(PGOInstrument)) && !Boolean.FALSE.equals(values.get(PGOSampleStacks));
-            if (sampling) {
-                removeLoopSafepoints.update(values, false);
-                loopSafepointsKeptForSampling = true;
-            } else if (loopSafepointsKeptForSampling) {
-                values.removeKey(removeLoopSafepoints);
-                loopSafepointsKeptForSampling = false;
             }
         }
     }
 
     public static boolean enabled() {
         return Options.PGOInstrument.getValue();
+    }
+
+    /**
+     * The options for compiling a method of the image: {@code options}, except that an
+     * instrumented image that samples stacks keeps the safepoint polls of counted loops. The
+     * sampler runs only at polls, and the compiler removes the polls of counted loops over an int
+     * range. Without them, a hot counted loop gets one sample at the first poll after it, however
+     * long it ran, so its time is missing from the profile. Decided from the parsed options, so
+     * the order of the options on the command line does not matter, and a
+     * {@code -H:RemoveLoopSafepoints} given there wins.
+     */
+    public static OptionValues compilationOptions(OptionValues options) {
+        if (keepsLoopSafepoints(options)) {
+            return new OptionValues(options, LoopSafepointEliminationPhase.Options.RemoveLoopSafepoints, false);
+        }
+        return options;
+    }
+
+    /** Whether {@link #compilationOptions} keeps the safepoint polls of counted loops. */
+    static boolean keepsLoopSafepoints(OptionValues options) {
+        return Options.PGOInstrument.getValue(options) && Options.PGOSampleStacks.getValue(options) && !LoopSafepointEliminationPhase.Options.RemoveLoopSafepoints.hasBeenSet(options);
     }
 
     /**

@@ -34,70 +34,99 @@ import jdk.graal.compiler.options.OptionValues;
 
 /**
  * An instrumented image that samples stacks keeps the safepoint polls of counted loops, because the
- * sampler runs only at polls. These tests apply the options in command-line order, in every order
- * that matters.
+ * sampler runs only at polls, unless {@code -H:RemoveLoopSafepoints} is given. These tests apply
+ * the options in command-line order, in every order that matters, and check the value of
+ * {@code RemoveLoopSafepoints} that a compilation of the image sees.
  */
 public class PGOLoopSafepointsTest {
 
     private static final OptionKey<Boolean> REMOVE_LOOP_SAFEPOINTS = LoopSafepointEliminationPhase.Options.RemoveLoopSafepoints;
 
-    private static void instrument(EconomicMap<OptionKey<?>, Object> values) {
-        PGOInstrumentationFeature.Options.PGOInstrument.update(values, true);
+    private static void instrument(EconomicMap<OptionKey<?>, Object> values, boolean enabled) {
+        PGOInstrumentationFeature.Options.PGOInstrument.update(values, enabled);
     }
 
     private static void sampleStacks(EconomicMap<OptionKey<?>, Object> values, boolean enabled) {
         PGOInstrumentationFeature.Options.PGOSampleStacks.update(values, enabled);
     }
 
+    private static void removeLoopSafepoints(EconomicMap<OptionKey<?>, Object> values, boolean enabled) {
+        REMOVE_LOOP_SAFEPOINTS.update(values, enabled);
+    }
+
+    /** Whether a compilation of the image built with {@code values} removes the polls of counted loops. */
+    private static boolean compilationRemovesLoopSafepoints(EconomicMap<OptionKey<?>, Object> values) {
+        return REMOVE_LOOP_SAFEPOINTS.getValue(PGOInstrumentationFeature.compilationOptions(new OptionValues(values)));
+    }
+
     @Test
     public void samplingImageKeepsLoopSafepoints() {
         EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
-        instrument(values);
-        Assert.assertEquals(Boolean.FALSE, values.get(REMOVE_LOOP_SAFEPOINTS));
+        instrument(values, true);
+        Assert.assertFalse(compilationRemovesLoopSafepoints(values));
 
         values = OptionValues.newOptionMap();
         sampleStacks(values, true);
-        instrument(values);
-        Assert.assertEquals(Boolean.FALSE, values.get(REMOVE_LOOP_SAFEPOINTS));
+        instrument(values, true);
+        Assert.assertFalse(compilationRemovesLoopSafepoints(values));
     }
 
     @Test
     public void imageWithoutSamplingRemovesLoopSafepoints() {
         EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
-        instrument(values);
+        instrument(values, true);
         sampleStacks(values, false);
-        Assert.assertFalse(values.containsKey(REMOVE_LOOP_SAFEPOINTS));
+        Assert.assertTrue(compilationRemovesLoopSafepoints(values));
 
         values = OptionValues.newOptionMap();
         sampleStacks(values, false);
-        instrument(values);
-        Assert.assertFalse(values.containsKey(REMOVE_LOOP_SAFEPOINTS));
+        instrument(values, true);
+        Assert.assertTrue(compilationRemovesLoopSafepoints(values));
     }
 
     @Test
     public void imageWithoutInstrumentationRemovesLoopSafepoints() {
         EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
         sampleStacks(values, true);
-        Assert.assertFalse(values.containsKey(REMOVE_LOOP_SAFEPOINTS));
+        Assert.assertTrue(compilationRemovesLoopSafepoints(values));
 
         values = OptionValues.newOptionMap();
-        instrument(values);
-        PGOInstrumentationFeature.Options.PGOInstrument.update(values, false);
-        Assert.assertFalse(values.containsKey(REMOVE_LOOP_SAFEPOINTS));
+        instrument(values, true);
+        instrument(values, false);
+        Assert.assertTrue(compilationRemovesLoopSafepoints(values));
     }
 
     @Test
     public void removeLoopSafepointsOnTheCommandLineWins() {
         EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
-        REMOVE_LOOP_SAFEPOINTS.update(values, true);
-        instrument(values);
+        removeLoopSafepoints(values, true);
+        instrument(values, true);
         sampleStacks(values, true);
-        Assert.assertEquals(Boolean.TRUE, values.get(REMOVE_LOOP_SAFEPOINTS));
+        Assert.assertTrue(compilationRemovesLoopSafepoints(values));
 
         values = OptionValues.newOptionMap();
-        instrument(values);
-        REMOVE_LOOP_SAFEPOINTS.update(values, true);
+        instrument(values, true);
+        removeLoopSafepoints(values, true);
         sampleStacks(values, true);
-        Assert.assertEquals(Boolean.TRUE, values.get(REMOVE_LOOP_SAFEPOINTS));
+        Assert.assertTrue(compilationRemovesLoopSafepoints(values));
+    }
+
+    @Test
+    public void keepLoopSafepointsOnTheCommandLineWins() {
+        EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
+        instrument(values, true);
+        removeLoopSafepoints(values, false);
+        sampleStacks(values, false);
+        Assert.assertFalse(compilationRemovesLoopSafepoints(values));
+
+        values = OptionValues.newOptionMap();
+        removeLoopSafepoints(values, false);
+        sampleStacks(values, false);
+        instrument(values, true);
+        Assert.assertFalse(compilationRemovesLoopSafepoints(values));
+
+        values = OptionValues.newOptionMap();
+        removeLoopSafepoints(values, false);
+        Assert.assertFalse(compilationRemovesLoopSafepoints(values));
     }
 }

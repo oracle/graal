@@ -38,8 +38,9 @@ import jdk.graal.compiler.nodes.spi.LoweringTool;
 /**
  * A profile counter that the {@code --pgo-instrument} phases insert ({@link PGOInstrumentationPhases}).
  * <p>
- * The counters must not change how the rest of the code is compiled, so that the instrumented
- * image takes the decisions of an image built without them:
+ * The counters should change how the rest of the code is compiled as little as possible, so that
+ * the instrumented image takes about the decisions of an image built without them, and its
+ * calling contexts match the ones the optimized build looks up:
  * <ul>
  * <li>The compiler's cost models ignore them ({@link jdk.graal.compiler.nodeinfo.NodeCycles#CYCLES_IGNORED},
  * {@link jdk.graal.compiler.nodeinfo.NodeSize#SIZE_IGNORED}), for example when they decide whether to
@@ -50,6 +51,10 @@ import jdk.graal.compiler.nodes.spi.LoweringTool;
  * <li>They lower only once frame states are attached to deoptimization points, after the high-tier
  * transformations, and keep their place in the control flow until then.</li>
  * </ul>
+ * This is an approximation. Policies that count nodes themselves see the counters, for example
+ * the loop policies that decide on peeling and unrolling, and a branch whose successors hold
+ * counters is not empty, so it is not folded into a conditional move. The instrumented image can
+ * therefore take some decisions differently from the optimized build.
  */
 @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
 public abstract class PGOInstrumentationNode extends FixedWithNextNode implements Lowerable, IterableNodeType {

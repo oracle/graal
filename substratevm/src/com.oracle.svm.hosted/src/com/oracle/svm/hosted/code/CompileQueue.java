@@ -87,6 +87,7 @@ import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableFeature;
 import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.pgo.PGOInstrumentationFeature;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.OOMEExceptionEdgePolicy;
@@ -1370,6 +1371,7 @@ public class CompileQueue {
             customizedOptions = new OptionValues(customizedOptions, GraalOptions.OptFloatingReads, false, GraalOptions.OptDeduplicateReadsAcrossBranches, false,
                             LinearScan.Options.LIROptLSRACallClobberAwareSpilling, true);
         }
+        customizedOptions = PGOInstrumentationFeature.compilationOptions(customizedOptions);
         if (omitPriorityInliningTuning()) {
             return customizedOptions;
         }
