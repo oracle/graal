@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -61,7 +61,8 @@ import com.oracle.truffle.sl.SLLanguage;
 @SuppressWarnings("static-method")
 final class FunctionsObject implements TruffleObject {
 
-    final Map<TruffleString, SLFunction> functions = new HashMap<>();
+    // Preserve registration order when exposing the global scope's members.
+    final Map<TruffleString, SLFunction> functions = new LinkedHashMap<>();
 
     FunctionsObject() {
     }

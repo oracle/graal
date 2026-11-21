@@ -48,7 +48,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -464,8 +464,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @since 0.8 or earlier
      */
     public Map<String, Object> getDebugProperties() {
-        Map<String, Object> properties = new HashMap<>();
-        return properties;
+        return new LinkedHashMap<>();
     }
 
     /**
