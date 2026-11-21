@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.heap.VMOperationInfos;
@@ -50,10 +51,12 @@ import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.guest.staging.core.thread.ThreadListener;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -91,6 +94,11 @@ public final class TypeProfileRecorder implements ThreadListener {
     private static final int MAX_BUCKETS = 262_144;
     /** Buckets of a fresh shared table. */
     private static final int INITIAL_SHARED_BUCKETS = 131_072;
+    /**
+     * Largest shared table (1 GB): bucket offsets are int byte offsets. A shared table at this cap
+     * fills up instead of growing.
+     */
+    private static final int MAX_SHARED_BUCKETS = 1 << 26;
     /** Longest probe chain the inlined fast path follows before it calls the slow path. */
     private static final int MAX_PROBES = 8;
     private static final int HEADER_BYTES = 32;
@@ -516,8 +524,9 @@ public final class TypeProfileRecorder implements ThreadListener {
     }
 
     /**
-     * The shared table, allocated on first use and doubled when half full, so merges never run out of
-     * space. Caller holds {@link #SHARED_LOCK}. Null only on allocation failure.
+     * The shared table, allocated on first use and doubled when half full up to
+     * {@link #MAX_SHARED_BUCKETS}, so merges do not run out of space. Caller holds
+     * {@link #SHARED_LOCK}. Null only on allocation failure.
      */
     @Uninterruptible(reason = "Operates only on native counter tables under the shared lock.")
     private static Pointer sharedTableForInsert() {
@@ -528,7 +537,7 @@ public final class TypeProfileRecorder implements ThreadListener {
             return shared;
         }
         long buckets = shared.readLong(MASK_OFFSET, TABLE_LOCATION) + 1;
-        if (shared.readLong(SIZE_OFFSET, TABLE_LOCATION) * 2 >= buckets) {
+        if (buckets < MAX_SHARED_BUCKETS && shared.readLong(SIZE_OFFSET, TABLE_LOCATION) * 2 >= buckets) {
             Pointer grown = rehash(shared, (int) (buckets * 2));
             if (grown.isNonNull()) {
                 SHARED.get().writeWord(0, grown);
@@ -566,31 +575,50 @@ public final class TypeProfileRecorder implements ThreadListener {
             snapshotDropped = 0;
             return;
         }
-        new MergeLiveOperation().enqueue();
+        SnapshotOperation operation = new SnapshotOperation();
+        operation.enqueue();
+        snapshotTotal = operation.total;
+        snapshotDropped = operation.dropped;
+        if (operation.copyFailed) {
+            Log.log().string("[PGO] no native memory to copy the dynamic type profiles; their ").signed(operation.total).string(" events count as dropped").newline();
+        }
         Map<Long, Long> copied = new HashMap<>();
-        lockShared();
-        Pointer shared = SHARED.get().readWord(0);
-        snapshotTotal = 0;
-        snapshotDropped = SHARED_DROPPED.get().readLong(0);
-        if (shared.isNonNull()) {
-            snapshotTotal = shared.readLong(TOTAL_OFFSET);
-            snapshotDropped += shared.readLong(DROPPED_OFFSET);
-            int mask = (int) shared.readLong(MASK_OFFSET);
-            for (int index = 0; index <= mask; index++) {
-                int bucket = HEADER_BYTES + index * BUCKET_BYTES;
-                long key = shared.readLong(bucket + BUCKET_KEY);
-                if (key != 0) {
-                    copied.put(key, shared.readLong(bucket + BUCKET_COUNT));
+        Pointer copy = operation.copy;
+        if (copy.isNonNull()) {
+            try {
+                int mask = (int) copy.readLong(MASK_OFFSET);
+                for (int index = 0; index <= mask; index++) {
+                    int bucket = HEADER_BYTES + index * BUCKET_BYTES;
+                    long key = copy.readLong(bucket + BUCKET_KEY);
+                    if (key != 0) {
+                        copied.put(key, copy.readLong(bucket + BUCKET_COUNT));
+                    }
                 }
+            } finally {
+                UntrackedNullableNativeMemory.free(copy);
             }
         }
-        unlockShared();
         snapshot = copied;
     }
 
-    private static final class MergeLiveOperation extends JavaVMOperation {
-        MergeLiveOperation() {
-            super(VMOperationInfos.get(MergeLiveOperation.class, "Collect PGO type profiles", SystemEffect.SAFEPOINT));
+    /**
+     * Folds the live threads' tables into the shared table at a safepoint and copies the shared
+     * table into native memory, which {@link #takeSnapshot} reads into a map after the operation.
+     * Nothing may allocate or reach a safepoint while it holds the shared lock: the other holders
+     * spin on the lock in uninterruptible code, so a holder that stopped at a safepoint would wait
+     * for a safepoint that a spinning thread keeps from being reached. Allocating on the Java heap
+     * in the operation would make running out of memory fatal.
+     */
+    private static final class SnapshotOperation extends JavaVMOperation {
+        /** Copy of the shared table; null if there is no shared table or no memory for the copy. */
+        private Pointer copy = Word.nullPointer();
+        private long total;
+        private long dropped;
+        /** Whether there was no memory for the copy; the shared table's events then count as dropped. */
+        private boolean copyFailed;
+
+        SnapshotOperation() {
+            super(VMOperationInfos.get(SnapshotOperation.class, "Collect PGO type profiles", SystemEffect.SAFEPOINT));
         }
 
         @Override
@@ -601,6 +629,27 @@ public final class TypeProfileRecorder implements ThreadListener {
                     mergeIntoShared(table, true);
                 }
             }
+            copyShared();
+        }
+
+        @Uninterruptible(reason = "Holds the shared lock, which other threads take in uninterruptible code.")
+        private void copyShared() {
+            lockShared();
+            Pointer shared = SHARED.get().readWord(0);
+            dropped = SHARED_DROPPED.get().readLong(0);
+            if (shared.isNonNull()) {
+                total = shared.readLong(TOTAL_OFFSET);
+                dropped += shared.readLong(DROPPED_OFFSET);
+                UnsignedWord bytes = Word.unsigned(HEADER_BYTES).add(Word.unsigned(shared.readLong(MASK_OFFSET) + 1).multiply(BUCKET_BYTES));
+                copy = UntrackedNullableNativeMemory.malloc(bytes);
+                if (copy.isNonNull()) {
+                    UnmanagedMemoryUtil.copy(shared, copy, bytes);
+                } else {
+                    dropped += total;
+                    copyFailed = true;
+                }
+            }
+            unlockShared();
         }
     }
 

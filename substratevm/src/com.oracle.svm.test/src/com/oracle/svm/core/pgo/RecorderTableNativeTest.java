@@ -25,6 +25,7 @@
 package com.oracle.svm.core.pgo;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.word.Pointer;
@@ -61,6 +62,17 @@ public class RecorderTableNativeTest {
     private static final int GROWTH_KEYS_PER_INITIAL_BUCKET = 3;
     /** Largest share of keys, in percent, that may need more probes than the fast path follows. */
     private static final int MAX_LONG_CHAIN_PERCENT = 1;
+    /** Like {@link #TEST_KEYS}, for the test that takes snapshots while other threads take the shared locks. */
+    private static final int SNAPSHOT_TEST_KEYS = 1_900_000_000;
+    /** Keys that test puts into each shared table first, so that reading a shared table takes a while. */
+    private static final int SNAPSHOT_TEST_SHARED_KEYS = 100_000;
+    /** Threads that take the shared locks while that test takes snapshots. */
+    private static final int LOCK_THREADS = 4;
+    /** How long that test takes snapshots. */
+    private static final long SNAPSHOT_TEST_NANOS = 2_000_000_000L;
+    /** Arrays that each of those threads keeps alive, and their length, so that its allocation requests collections. */
+    private static final int GARBAGE_SLOTS = 1024;
+    private static final int GARBAGE_LONGS = 64;
 
     @Before
     public void requireNativeImageRuntime() {
@@ -308,6 +320,89 @@ public class RecorderTableNativeTest {
             TypeProfileRecorder.setTableForTesting(previous);
             freeUnlessSame(current, previous);
         }
+    }
+
+    /**
+     * Takes snapshots while other threads count events in the shared tables and allocate. A thread
+     * without a table of its own takes the shared lock in uninterruptible code, and allocating
+     * requests collections, that is, safepoints. A snapshot that held the lock where it can stop at
+     * a safepoint would hang the image: it would wait for the safepoint, and the safepoint would
+     * wait for a thread that spins on the lock. Then every event the threads counted must be in the
+     * last snapshot.
+     */
+    @Test
+    public void snapshotsWhileOtherThreadsTakeTheSharedLocks() throws InterruptedException {
+        Pointer callCountTable = CallCountProfileRecorder.currentTableForTesting();
+        Pointer typeTable = TypeProfileRecorder.currentTableForTesting();
+        CallCountProfileRecorder.setTableForTesting(Word.nullPointer());
+        TypeProfileRecorder.setTableForTesting(Word.nullPointer());
+        try {
+            for (int index = SNAPSHOT_TEST_KEYS + LOCK_THREADS; index < SNAPSHOT_TEST_KEYS + LOCK_THREADS + SNAPSHOT_TEST_SHARED_KEYS; index++) {
+                CallCountTables.incrementSlowPath(index + 1L);
+                TypeProfileTables.recordSlowPath(typeTableKey(index));
+            }
+        } finally {
+            TypeProfileRecorder.setTableForTesting(typeTable);
+            CallCountProfileRecorder.setTableForTesting(callCountTable);
+        }
+
+        AtomicBoolean stop = new AtomicBoolean();
+        long[] events = new long[LOCK_THREADS];
+        Thread[] threads = new Thread[LOCK_THREADS];
+        for (int i = 0; i < LOCK_THREADS; i++) {
+            int thread = i;
+            threads[i] = new Thread(() -> events[thread] = countInSharedTablesUntil(stop, SNAPSHOT_TEST_KEYS + thread));
+            threads[i].start();
+        }
+        int snapshots = 0;
+        try {
+            long end = System.nanoTime() + SNAPSHOT_TEST_NANOS;
+            while (System.nanoTime() < end) {
+                TypeProfileTables.takeSnapshot();
+                CallCountTables.takeSnapshot();
+                snapshots++;
+            }
+        } finally {
+            stop.set(true);
+            for (Thread thread : threads) {
+                thread.join();
+            }
+        }
+        TypeProfileTables.takeSnapshot();
+        CallCountTables.takeSnapshot();
+        Assert.assertTrue(snapshots > 0);
+        for (int thread = 0; thread < LOCK_THREADS; thread++) {
+            int index = SNAPSHOT_TEST_KEYS + thread;
+            Assert.assertTrue("thread " + thread + " counted no events", events[thread] > 0);
+            Assert.assertEquals(events[thread], TypeProfileTables.snapshot.getOrDefault(typeTableKey(index), 0L).longValue());
+            Assert.assertEquals(events[thread], CallCountTables.snapshot.getOrDefault(index, 0L).longValue());
+        }
+    }
+
+    /**
+     * Counts events of {@code index} in the shared tables, as a thread without tables does, and
+     * allocates, until {@code stop} is set. Returns the events counted in each table.
+     */
+    private static long countInSharedTablesUntil(AtomicBoolean stop, int index) {
+        Pointer callCountTable = CallCountProfileRecorder.currentTableForTesting();
+        Pointer typeTable = TypeProfileRecorder.currentTableForTesting();
+        CallCountProfileRecorder.setTableForTesting(Word.nullPointer());
+        TypeProfileRecorder.setTableForTesting(Word.nullPointer());
+        Object[] garbage = new Object[GARBAGE_SLOTS];
+        long events = 0;
+        try {
+            while (!stop.get()) {
+                CallCountTables.incrementSlowPath(index + 1L);
+                TypeProfileTables.recordSlowPath(typeTableKey(index));
+                garbage[(int) (events % GARBAGE_SLOTS)] = new long[GARBAGE_LONGS];
+                events++;
+            }
+        } finally {
+            /* At exit, an instrumented image merges these tables into the shared ones and frees them. */
+            TypeProfileRecorder.setTableForTesting(typeTable);
+            CallCountProfileRecorder.setTableForTesting(callCountTable);
+        }
+        return events;
     }
 
     @Test
