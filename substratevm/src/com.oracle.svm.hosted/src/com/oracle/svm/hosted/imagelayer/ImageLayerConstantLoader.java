@@ -323,39 +323,6 @@ final class ImageLayerConstantLoader {
         return hasValueForType(hubToType(hub));
     }
 
-    PersistedHubLayout getPersistedHubLayout(AnalysisType type) {
-        Integer constantId = typeToConstant.get(type.getId());
-        if (constantId == null) {
-            return null;
-        }
-        PersistedConstantData.Loader hub = findConstant(constantId);
-        if (hub.getObjectOffset() == -1) {
-            return null;
-        }
-        /* Read the persisted values because the hosted hub is populated again in each layer. */
-        AnalysisType hubType = loader.getAnalysisTypeForBaseLayerId(hub.getTypeId());
-        int layoutEncoding = readPersistedHubIntField(hub, hubType, "layoutEncoding");
-        int monitorOffset = readPersistedHubIntField(hub, hubType, "monitorOffset");
-        int identityHashOffset = readPersistedHubIntField(hub, hubType, "identityHashOffset");
-        return new PersistedHubLayout(layoutEncoding, monitorOffset, identityHashOffset);
-    }
-
-    private static int readPersistedHubIntField(PersistedConstantData.Loader hub, AnalysisType hubType, String name) {
-        for (var field : hubType.getInstanceFields(true)) {
-            if (!field.getName().equals(name)) {
-                continue;
-            }
-
-            int position = ((AnalysisField) field).getPosition();
-            var value = hub.getObject().getData().get(position);
-            VMError.guarantee(value.kind() == ConstantReferenceData.Kind.PRIMITIVE_VALUE, "Persisted hub field %s must be a primitive value.", name);
-            var primitiveValue = value.getPrimitiveValue();
-            VMError.guarantee(primitiveValue.getTypeChar() == 'I', "Persisted hub field %s must be an int.", name);
-            return (int) primitiveValue.getRawValue();
-        }
-        throw VMError.shouldNotReachHere("Missing persisted hub field: " + name);
-    }
-
     ImageHeapConstant getValueForConstant(JavaConstant javaConstant) {
         int constantId;
         if (SVMImageLayerSnapshotUtil.DYNAMIC_HUB.isInstance(javaConstant)) {
@@ -867,6 +834,4 @@ final class ImageLayerConstantLoader {
         };
     }
 
-    record PersistedHubLayout(int layoutEncoding, int monitorOffset, int identityHashOffset) {
-    }
 }

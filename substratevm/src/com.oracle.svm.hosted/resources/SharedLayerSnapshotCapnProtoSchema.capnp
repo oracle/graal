@@ -65,6 +65,16 @@ struct PersistedAnalysisType {
     proxyType @35 :Void;
   }
   isRecord @36 :Bool;
+  # Always present; distinguishes uninstalled hubs from missing layout metadata.
+  objectLayout @38 :ObjectLayout;
+}
+
+struct ObjectLayout {
+  # A hub installed in this or an earlier layer fixes the object's layout.
+  installed @0 :Bool;
+  layoutEncoding @1 :Int32;
+  monitorOffset @2 :Int32;
+  identityHashOffset @3 :Int32;
 }
 
 struct ClassInitializationInfo {
