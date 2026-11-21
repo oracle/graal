@@ -175,6 +175,15 @@ public class CallTree extends Graph {
         return root;
     }
 
+    /**
+     * Returns the number of nodes of {@code graph} that the inlining heuristics count as code size.
+     * A subclass can leave out nodes that the compilation adds only for bookkeeping, for example
+     * profiling counters, so that they do not change what is inlined.
+     */
+    public int compilerNodeCount(StructuredGraph graph) {
+        return graph.getNodeCount();
+    }
+
     public void filteredPostOrder(Predicate<CallTreeNode> p, Consumer<CallTreeNode> f) {
         if (p.test(root)) {
             traverseFilteredPostOrder(root, p, f);

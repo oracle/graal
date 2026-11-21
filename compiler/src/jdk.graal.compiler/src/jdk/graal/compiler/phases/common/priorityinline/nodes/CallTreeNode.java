@@ -303,7 +303,7 @@ public abstract class CallTreeNode extends Node implements Comparable<CallTreeNo
     public void updateSubtreeStatistics() {
         int totalCompilerNodeCount = 0;
         if (this instanceof SubgraphNode) {
-            totalCompilerNodeCount += ((SubgraphNode) this).getReadonlySubgraph().getNodeCount();
+            totalCompilerNodeCount += ((SubgraphNode) this).getCompilerNodeCount();
         }
         int totalCutoffCodeSize = 0;
         if (this instanceof CutoffNode) {
