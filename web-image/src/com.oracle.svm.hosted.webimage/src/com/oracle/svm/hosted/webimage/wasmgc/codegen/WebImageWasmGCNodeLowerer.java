@@ -1034,6 +1034,11 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
      * <pre> {@code
      * (checkedHub.closedTypeWorldTypeCheckSlots[slot] - start) < range
      * }</pre>
+     *
+     * Type ids, {@code start}, {@code range}, and {@code slot} are unsigned 16-bit values stored in
+     * {@code short}s. As in {@code TypeSnippets#slotTypeCheck}, all of them have to be zero-extended
+     * before the unsigned comparison, otherwise the check is wrong for any id above
+     * {@link Short#MAX_VALUE}.
      */
     protected Instruction lowerSlotTypeCheck(Instructions args) {
         List<Instruction> instrs = args.get();
@@ -1043,13 +1048,20 @@ public class WebImageWasmGCNodeLowerer extends WebImageWasmNodeLowerer {
         WasmId.Field typeCheckSlotsField = masm().getKnownIds().typeCheckSlotsField;
         WasmId.ArrayType typeCheckSlotsFieldType = masm().getKnownIds().typeCheckSlotsFieldType;
 
-        Instruction start = instrs.get(0);
-        Instruction range = instrs.get(1);
-        Instruction slot = instrs.get(2);
+        Instruction start = zeroExtendShort(instrs.get(0));
+        Instruction range = zeroExtendShort(instrs.get(1));
+        Instruction slot = zeroExtendShort(instrs.get(2));
         Instruction checkedHub = instrs.get(3);
         Instruction typeCheckSlots = new Instruction.StructGet(hubType, typeCheckSlotsField, Extension.None, checkedHub);
-        Instruction checkedTypeId = new Instruction.ArrayGet(typeCheckSlotsFieldType, Extension.forKind(JavaKind.Short), typeCheckSlots, slot);
+        Instruction checkedTypeId = new Instruction.ArrayGet(typeCheckSlotsFieldType, Extension.Zero, typeCheckSlots, slot);
         return Instruction.Binary.Op.I32LtU.create(Instruction.Binary.Op.I32Sub.create(checkedTypeId, start), range);
+    }
+
+    /**
+     * Equivalent of {@link Short#toUnsignedInt(short)} for a sign-extended {@code short} value.
+     */
+    private static Instruction zeroExtendShort(Instruction value) {
+        return Instruction.Binary.Op.I32And.create(value, Const.forInt(0xFFFF));
     }
 
     /**
