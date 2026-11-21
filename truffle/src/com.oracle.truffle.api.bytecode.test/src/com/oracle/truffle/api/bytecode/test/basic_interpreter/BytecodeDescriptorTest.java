@@ -59,9 +59,12 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.InstructionDescriptor;
 import com.oracle.truffle.api.bytecode.InstructionDescriptor.ArgumentDescriptor;
+import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.InstructionTracingTest;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -92,6 +95,71 @@ public class BytecodeDescriptorTest extends AbstractBasicInterpreterTest {
                 assertNotNull(ad.toString());
             }
             assertNotNull(d.toString());
+        }
+    }
+
+    @Test
+    public void testOperationClasses() {
+        int addInstructions = 0;
+        int proxyInstructions = 0;
+        for (InstructionDescriptor d : run.bytecode().getInstructionDescriptors()) {
+            String name = d.getName();
+            if (name.equals("c.AddProxy") || name.startsWith("c.AddProxy$")) {
+                assertSame(name, AddProxy.class, d.getOperationClass());
+                proxyInstructions++;
+            } else if (name.startsWith("c.")) {
+                assertNotNull(name, d.getOperationClass());
+                assertSame(name, BasicInterpreter.class, d.getOperationClass().getEnclosingClass());
+                if (name.equals("c.Add") || name.startsWith("c.Add$")) {
+                    assertSame(name, BasicInterpreter.Add.class, d.getOperationClass());
+                    addInstructions++;
+                } else if (name.equals("c.ToBoolean") || name.startsWith("c.ToBoolean$")) {
+                    assertSame(name, BasicInterpreter.ToBoolean.class, d.getOperationClass());
+                } else if (name.equals("c.IncrementValue") || name.startsWith("c.IncrementValue$")) {
+                    assertSame(name, BasicInterpreter.IncrementValue.class, d.getOperationClass());
+                }
+            } else {
+                // Includes builtins, short-circuit instructions, tag instrumentation, and tracing.
+                assertNull(name, d.getOperationClass());
+            }
+        }
+        assertTrue(addInstructions > 0);
+        assertTrue(proxyInstructions > 0);
+        if (run.hasBoxingElimination()) {
+            assertTrue(addInstructions > 1);
+            assertTrue(proxyInstructions > 1);
+        }
+
+        BasicInterpreter node = parseNode("add", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginAdd();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endAdd();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(42L, node.getCallTarget().call(40L, 2L));
+        for (var instruction : node.getBytecodeNode().getInstructions()) {
+            assertSame(instruction.getDescriptor(), run.bytecode().getInstructionDescriptor(instruction.getOperationCode()));
+            if (instruction.getName().startsWith("c.Add")) {
+                assertSame(BasicInterpreter.Add.class, instruction.getDescriptor().getOperationClass());
+            } else {
+                assertNull(instruction.getDescriptor().getOperationClass());
+            }
+        }
+    }
+
+    @SuppressWarnings("truffle-inlining")
+    @OperationProxy.Proxyable(allowUncached = true)
+    public abstract static class AddProxy extends Node {
+
+        public abstract long execute(long lhs, long rhs);
+
+        @Specialization
+        static long add(long lhs, long rhs) {
+            return lhs + rhs;
         }
     }
 
