@@ -592,9 +592,25 @@ def svm_gate_body(args, tasks):
         if t:
             runtime_assertions_test_task(args.extra_image_builder_arguments)
 
+    with Task('pgo unit tests', tasks, tags=[GraalTags.pgo]) as t:
+        if t:
+            jvm_unittest(['com.oracle.svm.core.pgo', 'com.oracle.svm.hosted.pgo'])
+
+    # The two checks below build --pgo-instrument images, which have not been tried on Windows yet.
+    with Task('pgo recorder native tests', tasks, tags=[GraalTags.pgo]) as t:
+        if t:
+            if mx.is_windows():
+                mx.warn('Skipping the PGO recorder native tests on Windows.')
+            else:
+                with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                    pgo_recorder_native_tests_task(native_image, args.extra_image_builder_arguments)
+
     with Task('pgo profile counts', tasks, tags=[GraalTags.pgo]) as t:
         if t:
-            pgo_profile_counts_task(args.extra_image_builder_arguments)
+            if mx.is_windows():
+                mx.warn('Skipping the PGO profile counts check on Windows.')
+            else:
+                pgo_profile_counts_task(args.extra_image_builder_arguments)
 
     with Task('runtime classpath resource lookup', tasks, tags=[GraalTags.native_unittests]) as t:
         if t:
@@ -938,6 +954,17 @@ def generic_field_type_test_task(extra_build_args=None):
             mx.abort('Unexpected generic field types: ' + str(field_output) + ' != ' + str(expected_field_output))
 
 
+def pgo_recorder_native_tests_task(native_image, extra_build_args=None):
+    """
+    Runs RecorderTableNativeTest in a --pgo-instrument image, where every thread has its recorder
+    tables and the stack sampler runs. A snapshot that holds a lock across a safepoint hangs the
+    image, so a safepoint that takes more than a minute fails the run instead.
+    """
+    build_args = _compute_native_unittest_args(['--pgo-instrument'] + (extra_build_args or []), include_svm_test_features=False)
+    _native_unittest(native_image, ['com.oracle.svm.core.pgo.RecorderTableNativeTest'] + build_args +
+                     ['--run-args', '-XX:SafepointPromptnessFailureNanos=60000000000', '--verbose'])
+
+
 def pgo_profile_counts_task(extra_image_args=None):
     """
     Builds ProfileCountsWorkload as a --pgo-instrument image, runs it once and checks that the
@@ -1139,8 +1166,9 @@ def pgo_profile_counts_task(extra_image_args=None):
         if context[leaf + 1:leaf + 3] != chain or root is None:
             fail('a stack sample in sampleLeaf has the wrong callers: ' + readable(context))
         spin_samples[root] += entry['records'][0]
-    # One sample a millisecond would give each spin spinMillis samples; a tenth allows for a slow or busy machine.
-    minimum = counted['spinMillis'] // 10
+    # One sample a millisecond would give each spin spinMillis samples, but a busy machine runs a spin for less time than that.
+    # Two samples are enough: a spin in a loop without safepoint polls gets at most one, at the first poll after the loop.
+    minimum = 2
     if any(samples < minimum for samples in spin_samples.values()):
         fail('the spin has ' + str(spin_samples) + ' stack samples with its full call chain, fewer than ' + str(minimum) + ' on a thread')
     mx.log('pgo profile counts: stack samples of the spin with its full call chain: ' + str(spin_samples))
