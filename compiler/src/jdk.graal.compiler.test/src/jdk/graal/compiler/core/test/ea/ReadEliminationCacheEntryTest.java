@@ -33,11 +33,14 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.nodes.FieldLocationIdentity;
+import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationBlockState.ArrayCloneCacheEntry;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationBlockState.CacheEntry;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationBlockState.IndexedCacheEntry;
@@ -96,6 +99,31 @@ public class ReadEliminationCacheEntryTest extends GraalCompilerTest {
                 Assert.assertEquals(i == j, key.equals(equalKeys.get(j)));
                 Assert.assertEquals(i == j, equalKeys.get(j).equals(key));
             }
+        }
+    }
+
+    @Test
+    public void testUnregisteredPhiReceiver() throws NoSuchFieldException {
+        StructuredGraph graph = parseEager("snippet", AllowAssumptions.NO);
+        ValuePhiNode phi = new ValuePhiNode(StampFactory.object(), graph.add(new MergeNode()));
+        Assert.assertTrue(phi.isUnregistered());
+        List<CacheEntry<?>> keys = entries(phi, location("first"), graph.getParameter(2), JavaKind.Int);
+        EconomicMap<CacheEntry<?>, Integer> cache = EconomicMap.create();
+        int[] hashes = new int[keys.size()];
+        for (int i = 0; i < keys.size(); i++) {
+            hashes[i] = keys.get(i).hashCode();
+            cache.put(keys.get(i), i);
+        }
+        EconomicMap<CacheEntry<?>, Integer> copy = EconomicMap.create(Equivalence.DEFAULT, cache);
+        graph.addWithoutUnique(phi);
+        Assert.assertTrue(phi.isAlive());
+        List<CacheEntry<?>> registeredKeys = entries(phi, location("first"), graph.getParameter(2), JavaKind.Int);
+        for (int i = 0; i < keys.size(); i++) {
+            Assert.assertEquals(hashes[i], keys.get(i).hashCode());
+            Assert.assertEquals(keys.get(i), registeredKeys.get(i));
+            Assert.assertEquals(hashes[i], registeredKeys.get(i).hashCode());
+            Assert.assertEquals(Integer.valueOf(i), cache.get(registeredKeys.get(i)));
+            Assert.assertEquals(Integer.valueOf(i), copy.get(registeredKeys.get(i)));
         }
     }
 

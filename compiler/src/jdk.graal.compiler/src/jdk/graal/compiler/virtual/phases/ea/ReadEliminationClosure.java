@@ -103,12 +103,6 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 LocationIdentity identity = ((SingleMemoryKill) node).getKilledLocationIdentity();
                 if (identity.isSingle() && (node instanceof WriteNode || node instanceof StoreFieldNode || node instanceof RawStoreNode)) {
                     if (node instanceof WriteNode || node instanceof StoreFieldNode) {
-                        if (node instanceof WriteNode write && write.getAddress().hasExactlyOneUsage()) {
-                            // A single-use address cannot match another cached access. The write
-                            // must still invalidate accesses through potentially aliasing addresses.
-                            killReadCacheByIdentity(state, identity, node);
-                            return false;
-                        }
                         ValueNode value = null;
                         ValueNode object = null;
                         if (node instanceof StoreFieldNode) {
@@ -117,6 +111,12 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             object = GraphUtil.unproxify(store.object());
                         } else if (node instanceof WriteNode) {
                             WriteNode write = (WriteNode) node;
+                            if (write.getAddress().hasExactlyOneUsage()) {
+                                // A single-use address cannot match another cached access. The write
+                                // must still invalidate accesses through potentially aliasing addresses.
+                                killReadCacheByIdentity(state, identity, node);
+                                return false;
+                            }
                             value = getScalarAlias(write.value());
                             object = GraphUtil.unproxify(write.getAddress());
                         } else {
