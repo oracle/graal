@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import static jdk.graal.compiler.core.common.cfg.BasicBlock.BLOCK_ID_COMPARATOR;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import jdk.graal.compiler.debug.Assertions;
 
 /**
  * An abstract representation of a loop inside the {@link AbstractControlFlowGraph}. Such a loop is
@@ -131,6 +133,18 @@ public abstract class CFGLoop<T extends BasicBlock<T>> {
             p = p.getParent();
         }
         return false;
+    }
+
+    /**
+     * Tests whether {@code block} belongs to this loop, including its nested loops, by walking the
+     * loop hierarchy rather than searching {@link #getBlocks()}. Requires completed loop information
+     * for the control-flow graph.
+     */
+    public boolean containsBlock(T block) {
+        CFGLoop<T> blockLoop = block.getLoop();
+        boolean contains = blockLoop != null && blockLoop.isAncestorOrSelf(this);
+        assert contains == blocks.contains(block) : Assertions.errorMessageContext("loop", this, "block", block);
+        return contains;
     }
 
     /**
