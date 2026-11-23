@@ -104,7 +104,7 @@ public interface MetaAccessExtensionProvider {
      * @param physicalOffset the VM's offset, which may be a missing-location sentinel for a
      *            symbolic offset query
      */
-    default int getStaticFieldOffset(ResolvedJavaField field, int physicalOffset) {
+    default int getStaticFieldOffset(@SuppressWarnings("unused") ResolvedJavaField field, int physicalOffset) {
         return physicalOffset;
     }
 

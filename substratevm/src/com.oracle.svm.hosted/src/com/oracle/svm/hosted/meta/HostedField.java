@@ -113,17 +113,6 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
         return location >= 0;
     }
 
-    /**
-     * The offset or index of the field. The value depends on the kind of field:
-     * <ul>
-     * <li>instance fields: the offset (in bytes) from the origin of the instance.
-     * <li>static fields of primitive type: the offset (in bytes) into the static primitive data
-     * area.
-     * <li>static reference fields: the offset (in bytes) into the static object data area.
-     * <li>static fields that are never written (including but not limited to static final fields):
-     * unused, this method must not be called.
-     * </ul>
-     */
     @Override
     public int getLocation() {
         return location;

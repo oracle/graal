@@ -35,17 +35,18 @@ public interface SharedField extends ResolvedJavaField {
     int LOC_UNINITIALIZED = -1;
 
     /**
-     * The offset or index of the field. The value depends on the kind of field:
+     * The field's byte offset relative to its storage base, or a negative sentinel if no storage location
+     * was assigned. The base depends on the kind of field:
      * <ul>
      * <li>instance fields: the offset (in bytes) from the origin of the instance.
-     * <li>static fields of primitive type: the offset (in bytes) into the static primitive data
+     * <li>runtime-loaded static fields with directly accessible storage: the offset into the object
+     * returned by {@link #getStaticFieldBaseForRuntimeLoadedClass()}.
+     * <li>image static fields of primitive type: the offset (in bytes) into the static primitive data
      * array {@code StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime} of the
      * {@linkplain #getInstalledLayerNum layer it was installed in}.
-     * <li>static reference fields: the offset (in bytes) into the static object data array
+     * <li>image static reference fields: the offset (in bytes) into the static object data array
      * {@code StaticFieldsSupport.getStaticObjectFieldsAtRuntime} of the
      * {@linkplain #getInstalledLayerNum layer it was installed in}.
-     * <li>static fields that are never written (including but not limited to static final fields):
-     * unused, this method must not be called.
      * </ul>
      */
     int getLocation();
