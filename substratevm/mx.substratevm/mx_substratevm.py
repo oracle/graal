@@ -821,11 +821,6 @@ def _compute_native_unittest_args(extra_build_args=None, include_svm_test_featur
     This logic is shared by the gate task and the mx native-unittest command.
     """
     additional_build_args = []
-    # Windows/JDK specific ignores that affect which tests run
-    if mx.is_windows():
-        # GR-24075
-        mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ProcessPropertiesTest')
-
     # add resources that are not in jar but in the separate directory
     cp_entry_name = join(svmbuild_dir(), 'cpEntryDir')
     resources_from_dir = join(cp_entry_name, 'resourcesFromDir')
@@ -888,10 +883,6 @@ def _compute_native_unittest_args(extra_build_args=None, include_svm_test_featur
         ])
     if extra_build_args is not None:
         additional_build_args += extra_build_args
-
-    if get_jdk().javaCompliance == '17':
-        if mx.is_windows():
-            mx_unittest.add_global_ignore_glob('com.oracle.svm.test.SecurityServiceTest')
 
     # Inject SVM test feature classes only if we are actually running SVM tests.
     # Truffle unit tests (and other suites) do not have com.oracle.svm.test on the classpath,
