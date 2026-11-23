@@ -37,6 +37,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerAddExactSplitNode;
 import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationReason;
 
 public class OptimizeExactMathTest extends GraalCompilerTest {
@@ -170,5 +171,54 @@ public class OptimizeExactMathTest extends GraalCompilerTest {
         test("snippet04", Integer.MAX_VALUE);
         test("snippet04", Integer.MIN_VALUE);
         test("snippet04", Integer.MAX_VALUE - 1);
+    }
+
+    public static int unsignedExactInt(int start, int limit) {
+        int i = start;
+        for (; Integer.compareUnsigned(i, limit) < 0; i = Math.addExact(i, 500009)) {
+        }
+        return i;
+    }
+
+    @Test
+    public void testUnsignedExactInt() throws Exception {
+        StructuredGraph graph = getAfterMidTier("unsignedExactInt");
+        Assert.assertFalse(graph.getNodes().filter(IntegerAddExactSplitNode.class).isEmpty());
+        // Compile before executing: profiling the exception can hide an incorrectly removed guard.
+        InstalledCode code = getCode(getResolvedJavaMethod("unsignedExactInt"), null, true, false, getInitialOptions());
+        Assert.assertEquals(1074035716, code.executeVarargs(16384, 1 << 30));
+        Assert.assertThrows(ArithmeticException.class, () -> code.executeVarargs(16384, Integer.MAX_VALUE - 2));
+    }
+
+    public static long unsignedExactLong(long start, long limit) {
+        long i = start;
+        for (; Long.compareUnsigned(i, limit) < 0; i = Math.addExact(i, 500009L)) {
+        }
+        return i;
+    }
+
+    @Test
+    public void testUnsignedExactLong() throws Exception {
+        StructuredGraph graph = getAfterMidTier("unsignedExactLong");
+        Assert.assertFalse(graph.getNodes().filter(IntegerAddExactSplitNode.class).isEmpty());
+        InstalledCode code = getCode(getResolvedJavaMethod("unsignedExactLong"), null, true, false, getInitialOptions());
+        Assert.assertEquals(500009L, code.executeVarargs(0L, 1L));
+        Assert.assertThrows(ArithmeticException.class, () -> code.executeVarargs(Long.MAX_VALUE - 500000, Long.MAX_VALUE - 2));
+    }
+
+    public static int unsignedExactDown(int start, int limit) {
+        int i = start;
+        for (; Integer.compareUnsigned(i, limit) > 0; i = Math.addExact(i, -500009)) {
+        }
+        return i;
+    }
+
+    @Test
+    public void testUnsignedExactDown() throws Exception {
+        StructuredGraph graph = getAfterMidTier("unsignedExactDown");
+        Assert.assertFalse(graph.getNodes().filter(IntegerAddExactSplitNode.class).isEmpty());
+        InstalledCode code = getCode(getResolvedJavaMethod("unsignedExactDown"), null, true, false, getInitialOptions());
+        Assert.assertEquals(0, code.executeVarargs(500009, 1));
+        Assert.assertThrows(ArithmeticException.class, () -> code.executeVarargs(Integer.MIN_VALUE + 3, Integer.MIN_VALUE));
     }
 }
