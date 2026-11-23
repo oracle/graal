@@ -59,7 +59,6 @@ import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 import javax.rmi.ssl.SslRMIClientSocketFactory;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -99,8 +98,7 @@ public class JmxTest {
 
     @BeforeClass
     public static void setup() throws Exception {
-        assumeTrue("skipping JMX tests", !ImageInfo.inImageCode() ||
-                        (VMInspectionOptions.hasJmxClientSupport() && VMInspectionOptions.hasJmxServerSupport()));
+        assumeTrue("skipping JMX tests", VMInspectionOptions.hasJmxClientSupport() && VMInspectionOptions.hasJmxServerSupport());
 
         System.setProperty(PORT_PROPERTY, TEST_PORT);
         System.setProperty(RMI_PORT_PROPERTY, TEST_PORT);
@@ -256,11 +254,7 @@ public class JmxTest {
         // This test checks to make sure we are able to get the MXBean and do simple things with it.
         MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
         ClassLoadingMXBean classLoadingMXBean = ManagementFactory.getPlatformMXBean(mbsc, ClassLoadingMXBean.class);
-        if (ImageInfo.inImageRuntimeCode()) {
-            assertEquals("Loaded Class count should be 0 (hardcoded at 0): ", 0, classLoadingMXBean.getLoadedClassCount());
-        } else {
-            assertTrue("If in java mode, number of loaded classes should be positive: ", classLoadingMXBean.getLoadedClassCount() > 0);
-        }
+        assertEquals(ManagementFactory.getClassLoadingMXBean().getLoadedClassCount(), classLoadingMXBean.getLoadedClassCount());
     }
 
     @Test
@@ -272,9 +266,6 @@ public class JmxTest {
         assertTrue("Peak thread count should be positive ", count > 0);
         threadMXBean.resetPeakThreadCount();
         assertTrue("Peak thread count should be positive.", threadMXBean.getPeakThreadCount() > 0);
-        if (!ImageInfo.inImageRuntimeCode()) {
-            assertTrue("Current thread user time should be positive in java mode", threadMXBean.getCurrentThreadUserTime() >= 0);
-        }
     }
 
     @Test
