@@ -108,6 +108,20 @@ were only valid because the code previously lived with hosted or compiler depend
 | Moving `com.oracle.svm.core...` code to guest staging | Insert `guest.staging` after `com.oracle.svm`, e.g., `com.oracle.svm.core.memory` to `com.oracle.svm.guest.staging.core.memory` | Preserve the original package suffix so moves stay mechanical and match prior Terminus refactorings. |
 | Javadoc `{@link ...}` to a target that is no longer visible after the move | Use `{@code ...}` | Preserve the referenced name in Javadoc without adding guest/shared dependencies only to keep documentation links resolvable. |
 
+### Add Guest Modules
+
+Guest visibility alone does not make a module part of the Native Image runtime.
+When adding a module to the guest, check three things:
+
+- **Packaging.** For a shipped JAR, add it to guest `jar_distributions` and keep it in `builder_jar_distributions` if the builder also needs it.
+  Qualify internal package exports and update the affected distribution structure manifests.
+- **Initialization.** Check whether the existing build-time initialization rule for `com.oracle.svm` applies and is appropriate.
+  Registering a guest module does not change its initialization policy.
+- **Linking and core types.** Register always-present Native Image runtime modules in [`HostedModuleSupport.STANDARD_GUEST_MODULES`](../src/com.oracle.svm.util/src/com/oracle/svm/util/HostedModuleSupport.java); keep optional modules conditional.
+  Registration gives the module default link-at-build-time treatment in fully isolated builds and includes it in core-type classification, which affects runtime class loaders and open-world and layered-image analysis.
+
+Verify module resolution and the intended policies under both non-isolated Host and fully isolated Espresso VMAccess.
+
 ### Builder-To-Guest API Adaptations
 
 Moving code from the builder into guest staging is not only a package rename.
