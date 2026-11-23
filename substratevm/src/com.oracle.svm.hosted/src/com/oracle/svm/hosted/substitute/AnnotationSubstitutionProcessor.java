@@ -1079,7 +1079,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             kind = recomputeAnnotation.kind();
             targetName = recomputeAnnotation.name();
             isFinal = recomputeAnnotation.isFinal();
-            guarantee(!isFinal || (kind != RecomputeFieldValue.Kind.FieldOffset && kind != RecomputeFieldValue.Kind.TranslateFieldOffset && kind != RecomputeFieldValue.Kind.AtomicFieldUpdaterOffset),
+            guarantee(!isFinal || (kind != RecomputeFieldValue.Kind.FieldOffset && kind != RecomputeFieldValue.Kind.TranslateFieldOffset),
                             "@%s with %s can never be final during analysis: unset isFinal in the annotation on %s",
                             RecomputeFieldValue.class.getSimpleName(), kind, annotated);
             if (!recomputeAnnotation.declClass().equals(guestAccess.lookupType(RecomputeFieldValue.class))) {
@@ -1120,7 +1120,13 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 new ArrayIndexScaleFieldValueTransformer(targetType, original.getType().getJavaKind());
             case ArrayIndexShift ->
                 new ArrayIndexShiftFieldValueTransformer(targetType, original.getType().getJavaKind());
-            case AtomicFieldUpdaterOffset -> new AtomicFieldUpdaterOffsetFieldValueTransformer(original);
+            case AtomicFieldUpdaterOffset -> {
+                /* The transformer supplies the image offset once the hosted universe is built. */
+                guarantee(!isFinal || original.isFinal(),
+                                "@%s with %s and isFinal = true requires a final original field: %s",
+                                RecomputeFieldValue.class.getSimpleName(), kind, original);
+                yield new AtomicFieldUpdaterOffsetFieldValueTransformer(original);
+            }
             case TranslateFieldOffset -> new TranslateFieldOffsetFieldValueTransformer(original, targetType);
             case Custom -> {
                 if (guestAccess.lookupType(JVMCIFieldValueTransformer.class).isAssignableFrom(targetType)) {
