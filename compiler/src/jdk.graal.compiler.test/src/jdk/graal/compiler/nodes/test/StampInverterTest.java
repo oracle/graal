@@ -258,4 +258,18 @@ public class StampInverterTest extends GraalTest {
         Stamp expected = IntegerStamp.create(8, -128, 126, 0, CodeUtil.mask(8) ^ 1);
         assertEquals(expected, invertZeroExtend(stamp));
     }
+
+    @Test
+    public void invertZeroExtendOutOfRangeBounds() {
+        for (int resultBits : new int[]{16, 32, 64}) {
+            for (long upperBound : new long[]{256, 300}) {
+                IntegerStamp output = IntegerStamp.create(resultBits, 0, upperBound);
+                Stamp inverted = IntegerStamp.OPS.getZeroExtend().invertStamp(8, resultBits, output);
+                assertEquals(IntegerStamp.create(8, -128, 127), inverted);
+            }
+        }
+        IntegerStamp output = IntegerStamp.create(64, 0, 1L << 32);
+        assertEquals(IntegerStamp.create(32, Integer.MIN_VALUE, Integer.MAX_VALUE), IntegerStamp.OPS.getZeroExtend().invertStamp(32, 64, output));
+    }
+
 }

@@ -919,6 +919,17 @@ public class IntegerStampTest extends GraphTest {
         assertCanBeZero(union);
     }
 
+    @Test
+    public void testUnsignedOutOfRangeBounds() {
+        assertEquals(IntegerStamp.create(8, -128, 127), StampFactory.forUnsignedInteger(8, 0, 300));
+        assertEquals(IntegerStamp.create(8, -56, -1), StampFactory.forUnsignedInteger(8, 200, 300));
+        Assert.assertTrue(StampFactory.forUnsignedInteger(8, 256, 300).isEmpty());
+        Assert.assertTrue(StampFactory.forUnsignedInteger(8, 300, 200).isEmpty());
+        assertEquals(IntegerStamp.create(8, -128, 127), StampFactory.forUnsignedInteger(8, 0, -1L));
+        assertEquals(IntegerStamp.create(8, 0, 126, 0, 126), StampFactory.forUnsignedInteger(8, 0, 300, 0, 126));
+        assertEquals(IntegerStamp.create(64, Long.MIN_VALUE, -1), StampFactory.forUnsignedInteger(64, Long.MIN_VALUE, -1L));
+    }
+
     /**
      * Tests that an unsigned range crossing the sign boundary preserves its zero hole.
      */
