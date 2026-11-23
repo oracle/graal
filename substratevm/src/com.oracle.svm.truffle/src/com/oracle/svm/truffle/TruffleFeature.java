@@ -798,7 +798,7 @@ public class TruffleFeature implements InternalFeature {
         markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportAccessedField", Field.class, RuntimeDynamicAccessMetadata.class);
         markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportExecutableQuery", Class.class, String.class, Class[].class, RuntimeDynamicAccessMetadata.class);
         markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportClassQuery", Class.class, String.class, RuntimeDynamicAccessMetadata.class);
-        markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportProxyAccess", RuntimeDynamicAccessMetadata.class, Class[].class);
+        markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportProxyAccess", RuntimeDynamicAccessMetadata.class, String.class, Class[].class);
         markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportArrayInstantiation", Class.class, int.class, RuntimeDynamicAccessMetadata.class);
         // Keep the intrinsified array diagnostic path outside runtime compilation.
         markTruffleBoundary(metaAccess, Array.class, "newInstance", Class.class, int.class);

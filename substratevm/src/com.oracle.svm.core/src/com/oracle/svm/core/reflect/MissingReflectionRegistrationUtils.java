@@ -140,13 +140,21 @@ public final class MissingReflectionRegistrationUtils extends MissingRegistratio
     }
 
     public static MissingReflectionRegistrationError reportProxyAccess(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Class<?>... interfaces) {
+        return reportProxyAccess(dynamicAccessMetadata, null, interfaces);
+    }
+
+    public static MissingReflectionRegistrationError reportProxyAccess(RuntimeDynamicAccessMetadata dynamicAccessMetadata, String proxyInterfaceOrderHint, Class<?>... interfaces) {
         List<String> interfaceList = new ArrayList<>(interfaces.length);
         for (Class<?> intf : interfaces) {
             interfaceList.add(intf.getTypeName());
         }
         ConfigurationType type = new ConfigurationType(UnresolvedAccessCondition.unconditional(), new ProxyConfigurationTypeDescriptor(interfaceList), true);
+        String message = reflectionError("access the proxy class inheriting", interfacesString(interfaces), elementToJSON(type), dynamicAccessMetadata);
+        if (proxyInterfaceOrderHint != null && !proxyInterfaceOrderHint.isEmpty()) {
+            message += System.lineSeparator() + System.lineSeparator() + proxyInterfaceOrderHint;
+        }
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(
-                        reflectionError("access the proxy class inheriting", interfacesString(interfaces), elementToJSON(type), dynamicAccessMetadata),
+                        message,
                         Proxy.class, null, null, interfaces);
         report(exception);
         /*
