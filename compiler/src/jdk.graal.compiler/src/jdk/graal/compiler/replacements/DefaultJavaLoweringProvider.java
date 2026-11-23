@@ -158,6 +158,7 @@ import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.IndexAddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
@@ -452,13 +453,16 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         return graph.unique(new OffsetAddressNode(object, o));
     }
 
-    public AddressNode createFieldAddress(StructuredGraph graph, ValueNode object, ResolvedJavaField field) {
+    /** Creates a field address, using the compilation's selected offset for static fields. */
+    private AddressNode createFieldAddress(StructuredGraph graph, ValueNode object, ResolvedJavaField field, CoreProviders providers) {
         int offset = fieldOffset(field);
-        if (offset >= 0) {
-            return createOffsetAddress(graph, object, offset);
-        } else {
+        if (offset < 0) {
             throw GraalError.shouldNotReachHere("Field is missing: " + field.getDeclaringClass().toJavaName(true) + "." + field.getName());
         }
+        if (field.isStatic()) {
+            offset = providers.getMetaAccessExtensionProvider().getStaticFieldOffset(field, offset);
+        }
+        return createOffsetAddress(graph, object, offset);
     }
 
     public final JavaKind getStorageKind(ResolvedJavaField field) {
@@ -477,7 +481,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         object = createNullCheckedValue(object, loadField, tool);
         Stamp loadStamp = loadStamp(loadField.stamp(NodeView.DEFAULT), getStorageKind(field));
 
-        AddressNode address = createFieldAddress(graph, object, field);
+        AddressNode address = createFieldAddress(graph, object, field, tool);
 
         BarrierType barrierType = barrierSet.fieldReadBarrierType(field, getStorageKind(field));
         ReadNode memoryRead = graph.add(new ReadNode(address, overrideFieldLocationIdentity(loadField.getLocationIdentity()),
@@ -493,7 +497,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
         ValueNode object = storeField.isStatic() ? staticFieldBase(graph, field, tool) : storeField.object();
         object = createNullCheckedValue(object, storeField, tool);
         ValueNode value = implicitStoreConvert(graph, getStorageKind(storeField.field()), storeField.value());
-        AddressNode address = createFieldAddress(graph, object, field);
+        AddressNode address = createFieldAddress(graph, object, field, tool);
 
         BarrierType barrierType = barrierSet.fieldWriteBarrierType(field, getStorageKind(field));
         WriteNode memoryWrite = graph.add(new WriteNode(address, overrideFieldLocationIdentity(storeField.getLocationIdentity()), value, barrierType, storeField.getMemoryOrder()));
@@ -1059,7 +1063,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider, V
                         if (virtual instanceof VirtualInstanceNode virtualInstance) {
                             ResolvedJavaField field = virtualInstance.field(i);
                             if (fieldOffset(field) >= 0) {
-                                address = createFieldAddress(graph, newObject, field);
+                                address = createOffsetAddress(graph, newObject, fieldOffset(field));
                                 barrierType = barrierSet.fieldWriteBarrierType(field, getStorageKind(field));
                             }
                         } else {

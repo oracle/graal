@@ -92,6 +92,23 @@ public interface MetaAccessExtensionProvider {
     boolean canVirtualize(ResolvedJavaType instanceType);
 
     /**
+     * Returns the byte offset of a static field relative to the storage base used by this
+     * compilation. The default returns the supplied physical offset. Selecting another offset
+     * requires compatible storage and a consistent mapping for the lifetime of compiled graphs.
+     * {@link #getStaticFieldForAccess} must agree with that mapping or return {@code null}
+     * when the field cannot be identified. Ordinary lowering uses the result directly as the byte
+     * displacement. Native Image requires a positive result for both lowering and symbolic
+     * queries and fails compilation if a symbolic query cannot resolve one. When remapping,
+     * runtime reflection metadata and Unsafe static field bases must describe the same layout.
+     *
+     * @param physicalOffset the VM's offset, which may be a missing-location sentinel for a
+     *            symbolic offset query
+     */
+    default int getStaticFieldOffset(ResolvedJavaField field, int physicalOffset) {
+        return physicalOffset;
+    }
+
+    /**
      * Given an unsafe access, try to find the static field that is being accessed.
      *
      * @param base the base object used in the access.
