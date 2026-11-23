@@ -598,13 +598,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 if (accessibility == NONE) {
                     data.inHeap = true;
                 }
-                if (accessibility.includes(QUERIED) && (previous == null || !previous.includes(QUERIED))) {
-                    if (!aMethod.isConstructor() && aMethod.getDeclaringClass().isAnnotation()) {
-                        processAnnotationMethod(accessibility, aMethod);
-                    }
-                    if (!throwMissingRegistrationErrors()) {
-                        checkHidingMethods(aMethod);
-                    }
+                if (accessibility.includes(QUERIED) && !aMethod.isConstructor() && aMethod.getDeclaringClass().isAnnotation()) {
+                    /*
+                     * Mirror every registration onto the proxy method, not only the first one: a
+                     * later registration can raise the access level or add the preserved bit.
+                     */
+                    processAnnotationMethod(accessibility, preserved, aMethod);
+                }
+                if (accessibility.includes(QUERIED) && (previous == null || !previous.includes(QUERIED)) && !throwMissingRegistrationErrors()) {
+                    checkHidingMethods(aMethod);
                 }
                 if (accessibility.includes(QUERIED)) {
                     data.updateDynamicAccessMetadata(cnd, preserved, accessibility);
@@ -892,12 +894,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     /*
      * Proxy classes for annotations present the annotation default methods and fields as their own.
      */
-    private void processAnnotationMethod(ConfigurationMemberAccessibility accessibility, AnalysisMethod method) {
+    private void processAnnotationMethod(ConfigurationMemberAccessibility accessibility, boolean preserved, AnalysisMethod method) {
         AnalysisType annotationType = method.getDeclaringClass();
         AnalysisType proxyType = classAccess.getProxyType(annotationType);
         AnalysisMethod proxyMethod = proxyType != null ? proxyType.findMethod(method.getName(), method.getSignature()) : null;
         if (proxyMethod != null) {
-            registerMethod(unconditional(), accessibility, false, proxyMethod);
+            registerMethod(unconditional(), accessibility, preserved, proxyMethod);
         }
     }
 
