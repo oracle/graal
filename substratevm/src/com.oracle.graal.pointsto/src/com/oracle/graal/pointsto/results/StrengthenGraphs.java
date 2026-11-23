@@ -251,8 +251,8 @@ public abstract class StrengthenGraphs {
             beforeCounters.collect(graph);
         }
         try (var s = debug.scope("StrengthenGraphs", graph); var a = debug.activate()) {
-            CoreProviders providers = bb.getProviders(method);
             if (bb.getHostVM().allowAnalysisSpecialization(method)) {
+                CoreProviders providers = bb.getProviders(method);
                 GraphStrengtheningSupport strengtheningSupport = new GraphStrengtheningSupport(this, method, graph);
                 if (bb.isPointsToAnalysis()) {
                     FlowSensitiveSimplifier flowSensitiveSimplifier = new FlowSensitiveSimplifier(this, method, graph, strengtheningSupport);
@@ -260,8 +260,6 @@ public abstract class StrengthenGraphs {
                 }
                 FlowInsensitiveSimplifier flowInsensitiveSimplifier = new FlowInsensitiveSimplifier(this, method, graph, strengtheningSupport);
                 CanonicalizerPhase.create().copyWithCustomSimplification(flowInsensitiveSimplifier).apply(graph, providers);
-            } else {
-                CanonicalizerPhase.create().apply(graph, providers);
             }
         } catch (Throwable ex) {
             debug.handle(ex);
