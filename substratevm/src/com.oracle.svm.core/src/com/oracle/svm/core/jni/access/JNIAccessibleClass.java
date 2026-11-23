@@ -31,6 +31,7 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
@@ -39,22 +40,24 @@ import com.oracle.svm.shared.util.VMError;
 /**
  * Information on a class that can be looked up and accessed via JNI.
  */
-public final class JNIAccessibleClass implements PreservableJNIElement {
+public final class JNIAccessibleClass extends JNIConditionalElement implements PreservableJNIElement {
     private final Class<?> classObject;
     private EconomicMap<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> methods;
     private EconomicMap<CharSequence, JNIAccessibleField> fields;
     private boolean preserved;
 
     @Platforms(HOSTED_ONLY.class)
-    public JNIAccessibleClass(Class<?> clazz, boolean preserved) {
+    public JNIAccessibleClass(Class<?> clazz, AccessCondition condition, boolean preserved) {
+        super(condition);
         assert clazz != null;
         this.classObject = clazz;
         this.preserved = preserved;
     }
 
     @Platforms(HOSTED_ONLY.class)
-    JNIAccessibleClass() {
+    JNIAccessibleClass(AccessCondition condition) {
         /* For negative queries */
+        super(condition);
         this.classObject = null;
     }
 
@@ -75,7 +78,7 @@ public final class JNIAccessibleClass implements PreservableJNIElement {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public void addOrUpdateField(String name, boolean updatedPreserved, Function<String, JNIAccessibleField> mappingFunction) {
+    public void addOrUpdateField(String name, AccessCondition condition, boolean updatedPreserved, Function<String, JNIAccessibleField> mappingFunction) {
         if (fields == null) {
             fields = ImageHeapMap.createNonLayeredMap(JNIReflectionDictionary.WRAPPED_CSTRING_EQUIVALENCE);
             JNIReflectionDictionary.currentLayer().rescanFieldsField(this);
@@ -83,13 +86,17 @@ public final class JNIAccessibleClass implements PreservableJNIElement {
         JNIAccessibleField existing = fields.get(name);
         if (existing == null) {
             fields.put(name, mappingFunction.apply(name));
-        } else if (!updatedPreserved) {
-            existing.setNotPreserved();
+        } else {
+            existing.addCondition(condition);
+            if (!updatedPreserved) {
+                existing.setNotPreserved();
+            }
         }
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public void addOrUpdateMethod(JNIAccessibleMethodDescriptor descriptor, boolean updatedPreserved, Function<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> mappingFunction) {
+    public void addOrUpdateMethod(JNIAccessibleMethodDescriptor descriptor, AccessCondition condition, boolean updatedPreserved,
+                    Function<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> mappingFunction) {
         if (methods == null) {
             methods = ImageHeapMap.createNonLayeredMap();
             JNIReflectionDictionary.currentLayer().rescanMethodsField(this);
@@ -97,8 +104,11 @@ public final class JNIAccessibleClass implements PreservableJNIElement {
         JNIAccessibleMethod existing = methods.get(descriptor);
         if (existing == null) {
             methods.put(descriptor, mappingFunction.apply(descriptor));
-        } else if (!updatedPreserved) {
-            existing.setNotPreserved();
+        } else {
+            existing.addCondition(condition);
+            if (!updatedPreserved) {
+                existing.setNotPreserved();
+            }
         }
     }
 

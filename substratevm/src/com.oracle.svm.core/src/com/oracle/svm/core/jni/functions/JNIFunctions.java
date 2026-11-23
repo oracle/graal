@@ -2121,7 +2121,7 @@ public final class JNIFunctions {
         }
 
         static boolean isJNIClassAccessible(DynamicHub hub) {
-            return hub.isJNIAccessible() || RuntimeClassLoading.isJNIRegistrationFallbackSupported();
+            return hub.isJNIAccessible() && JNIReflectionDictionary.isClassRegistrationSatisfied(hub) || RuntimeClassLoading.isJNIRegistrationFallbackSupported();
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

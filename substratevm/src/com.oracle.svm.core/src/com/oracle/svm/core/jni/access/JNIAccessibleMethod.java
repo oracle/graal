@@ -33,6 +33,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
@@ -60,8 +61,9 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember implements Pr
     // Below the runtime metadata flags and above the Java modifiers.
     private static final int CONSTRUCTOR_FLAG_MASK = 1 << 26;
 
-    public static JNIAccessibleMethod negativeMethodQuery(JNIAccessibleClass jniClass) {
-        return new JNIAccessibleMethod(jniClass, NEGATIVE_FLAG_MASK, false, false);
+    @Platforms(HOSTED_ONLY.class)
+    public static JNIAccessibleMethod negativeMethodQuery(JNIAccessibleClass jniClass, AccessCondition condition) {
+        return new JNIAccessibleMethod(jniClass, condition, NEGATIVE_FLAG_MASK, false, false);
     }
 
     @Platforms(HOSTED_ONLY.class)
@@ -108,8 +110,8 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember implements Pr
     @SuppressWarnings("unused") private MethodRef valistNonvirtualWrapper;
 
     @Platforms(HOSTED_ONLY.class)
-    public JNIAccessibleMethod(JNIAccessibleClass declaringClass, int modifiers, boolean isConstructor, boolean preserved) {
-        super(declaringClass);
+    public JNIAccessibleMethod(JNIAccessibleClass declaringClass, AccessCondition condition, int modifiers, boolean isConstructor, boolean preserved) {
+        super(declaringClass, condition);
         assert (modifiers & (PRESERVED_FLAG_MASK | CONSTRUCTOR_FLAG_MASK)) == 0;
         this.modifiers = modifiers | (isConstructor ? CONSTRUCTOR_FLAG_MASK : 0) | (preserved ? PRESERVED_FLAG_MASK : 0);
     }

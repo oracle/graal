@@ -38,6 +38,7 @@ import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
@@ -94,7 +95,7 @@ public final class JNIReflectionDictionary {
         }
     };
 
-    private static final JNIAccessibleClass NEGATIVE_CLASS_LOOKUP = new JNIAccessibleClass();
+    private static final JNIAccessibleClass NEGATIVE_CLASS_LOOKUP = new JNIAccessibleClass(AccessCondition.unconditional());
 
     public static void create() {
         ImageSingletons.add(JNIReflectionDictionary.class, new JNIReflectionDictionary());
@@ -121,6 +122,8 @@ public final class JNIReflectionDictionary {
     private Consumer<JNIAccessibleClass> methodsFieldRescanner;
     @Platforms(HOSTED_ONLY.class) //
     private Consumer<JNIAccessibleClass> fieldsFieldRescanner;
+    @Platforms(HOSTED_ONLY.class) //
+    private Consumer<JNIConditionalElement> dynamicAccessMetadataFieldRescanner;
 
     /**
      * JNI registrations are collected during analysis, before final {@link DynamicHub} type IDs are
@@ -176,7 +179,7 @@ public final class JNIReflectionDictionary {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public JNIAccessibleClass addOrUpdateClass(Class<?> classObj, DynamicHub hub, boolean updatedPreserved, Function<Class<?>, JNIAccessibleClass> mappingFunction) {
+    public JNIAccessibleClass addOrUpdateClass(Class<?> classObj, DynamicHub hub, AccessCondition condition, boolean updatedPreserved, Function<Class<?>, JNIAccessibleClass> mappingFunction) {
         assert !isSealed() : "The JNIReflectionDictionary is already sealed";
         DynamicHubKey key = new DynamicHubKey(hub);
         JNIAccessibleClass existing = classes.getHosted(key);
@@ -188,6 +191,7 @@ public final class JNIReflectionDictionary {
             rescanObject(instance);
             return instance;
         } else {
+            existing.addCondition(condition);
             if (!updatedPreserved) {
                 existing.setNotPreserved();
             }
@@ -196,14 +200,20 @@ public final class JNIReflectionDictionary {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public void addNegativeClassLookupIfAbsent(String typeName) {
+    public void addNegativeClassLookup(String typeName, AccessCondition condition) {
         assert !isSealed() : "The JNIReflectionDictionary is already sealed";
-        classesByName.putIfAbsent(typeName, NEGATIVE_CLASS_LOOKUP);
+        JNIAccessibleClass existing = classesByName.get(typeName);
+        if (existing == null) {
+            classesByName.put(typeName, new JNIAccessibleClass(condition));
+        } else if (existing.isNegative()) {
+            existing.addCondition(condition);
+        }
     }
 
     /**
      * Looks up a class across all layers. Positive metadata takes precedence over negative metadata,
-     * so a negative entry does not terminate the search.
+     * so a negative entry does not terminate the search. Entries whose conditions are not satisfied
+     * are treated as if they were not registered.
      */
     private static JNIAccessibleClass lookupClassByName(CharSequence name) {
         if (!ClassNameSupport.isValidJNIName(name)) {
@@ -213,7 +223,7 @@ public final class JNIReflectionDictionary {
         JNIAccessibleClass negativeResult = null;
         for (var dictionary : layeredSingletons()) {
             JNIAccessibleClass clazz = dictionary.classesByName.get(name);
-            if (clazz != null) {
+            if (clazz != null && clazz.isSatisfied()) {
                 if (!clazz.isNegative()) {
                     return clazz;
                 }
@@ -251,6 +261,24 @@ public final class JNIReflectionDictionary {
     private static JNIAccessibleClass getJniAccessibleClass(JNIReflectionDictionary dictionary, Class<?> classObject) {
         int typeId = DynamicHub.fromClass(classObject).getTypeID();
         return dictionary.classes.getRuntime(typeId);
+    }
+
+    /**
+     * Returns {@code false} if the class is registered for JNI access only under conditions that
+     * are all unsatisfied, i.e., if its registration must be treated as missing.
+     */
+    public static boolean isClassRegistrationSatisfied(DynamicHub hub) {
+        boolean registered = false;
+        for (var dictionary : layeredSingletons()) {
+            JNIAccessibleClass clazz = dictionary.classes.getRuntime(hub.getTypeID());
+            if (clazz != null) {
+                if (clazz.isSatisfied()) {
+                    return true;
+                }
+                registered = true;
+            }
+        }
+        return !registered;
     }
 
     public static Class<?> getClassObjectByName(CharSequence name) {
@@ -356,7 +384,7 @@ public final class JNIReflectionDictionary {
             if (clazz != null) {
                 foundClass = true;
                 JNIAccessibleMethod method = clazz.getMethod(descriptor);
-                if (method != null) {
+                if (method != null && method.isSatisfied()) {
                     result = method;
                     break;
                 }
@@ -428,7 +456,7 @@ public final class JNIReflectionDictionary {
             if (clazz != null) {
                 foundClass = true;
                 JNIAccessibleField field = clazz.getField(name);
-                if (field != null && (field.isStatic() == isStatic || field.isNegative())) {
+                if (field != null && (field.isStatic() == isStatic || field.isNegative()) && field.isSatisfied()) {
                     result = field;
                     break;
                 }
@@ -530,11 +558,14 @@ public final class JNIReflectionDictionary {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public void setObjectRescanners(Consumer<Object> objectRescanner, Consumer<JNIAccessibleClass> methodsFieldRescanner, Consumer<JNIAccessibleClass> fieldsFieldRescanner) {
-        VMError.guarantee(this.objectRescanner == null && this.methodsFieldRescanner == null && this.fieldsFieldRescanner == null, "Cannot set object rescanners again");
+    public void setObjectRescanners(Consumer<Object> objectRescanner, Consumer<JNIAccessibleClass> methodsFieldRescanner, Consumer<JNIAccessibleClass> fieldsFieldRescanner,
+                    Consumer<JNIConditionalElement> dynamicAccessMetadataFieldRescanner) {
+        VMError.guarantee(this.objectRescanner == null && this.methodsFieldRescanner == null && this.fieldsFieldRescanner == null && this.dynamicAccessMetadataFieldRescanner == null,
+                        "Cannot set object rescanners again");
         this.objectRescanner = objectRescanner;
         this.methodsFieldRescanner = methodsFieldRescanner;
         this.fieldsFieldRescanner = fieldsFieldRescanner;
+        this.dynamicAccessMetadataFieldRescanner = dynamicAccessMetadataFieldRescanner;
     }
 
     @Platforms(HOSTED_ONLY.class)
@@ -553,5 +584,11 @@ public final class JNIReflectionDictionary {
     void rescanFieldsField(JNIAccessibleClass receiver) {
         VMError.guarantee(fieldsFieldRescanner != null, "Fields field rescanner is not initialized");
         fieldsFieldRescanner.accept(receiver);
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    void rescanDynamicAccessMetadataField(JNIConditionalElement receiver) {
+        VMError.guarantee(dynamicAccessMetadataFieldRescanner != null, "Dynamic access metadata field rescanner is not initialized");
+        dynamicAccessMetadataFieldRescanner.accept(receiver);
     }
 }
