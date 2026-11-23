@@ -149,7 +149,7 @@ public final class ObjectLayout {
         return switch (kind) {
             case Object -> getReferenceSize();
             case Boolean, Byte, Char, Short, Int, Long, Float, Double -> kind.getByteCount();
-            default -> throw new NullPointerException();
+            case Void, ReturnAddress, Illegal -> throw VMError.shouldNotReachHere("No storage size for Java kind " + kind.name());
         };
     }
 
