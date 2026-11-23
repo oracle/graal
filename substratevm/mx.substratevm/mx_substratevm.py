@@ -38,7 +38,7 @@ from itertools import islice
 import importlib
 from os.path import join, exists, dirname
 import shlex
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentTypeError
 import fnmatch
 import collections
 from abc import ABC, abstractmethod
@@ -815,12 +815,7 @@ def _run_terminus_gate(args):
     mx.log(mx.colorize("Detected the expected failure pattern!", color="green"))
 
 
-def _compute_native_unittest_args(extra_build_args=None, include_svm_test_features=True):
-    """
-    Compute the arguments and environment necessary to run the native unit tests.
-    This logic is shared by the gate task and the mx native-unittest command.
-    """
-    additional_build_args = []
+def _native_unittest_resource_args():
     # add resources that are not in jar but in the separate directory
     cp_entry_name = join(svmbuild_dir(), 'cpEntryDir')
     resources_from_dir = join(cp_entry_name, 'resourcesFromDir')
@@ -866,31 +861,21 @@ def _compute_native_unittest_args(extra_build_args=None, include_svm_test_featur
         'com.oracle.svm.test.impl.ServiceCImpl',
     ])
 
-    # Always add our extra classpath entry with resources
-    additional_build_args += svm_experimental_options([
+    return svm_experimental_options([
         '-cp', os.pathsep.join([cp_entry_name, micronaut_style_cp_entry_a, micronaut_style_cp_entry_b])
     ])
-    # Only add SVM test-specific security provider/service overrides when running the SVM tests.
-    # Truffle/native unittests (and others) don't have com.oracle.svm.test on the classpath.
-    if include_svm_test_features:
-        additional_build_args += svm_experimental_options([
-            '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
-            '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.libjvm=ALL-UNNAMED',
-            '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.properties=ALL-UNNAMED',
-            '--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
-            '-H:AdditionalSecurityProviders=com.oracle.svm.test.services.SecurityServiceTest$NoOpProvider,sun.security.pkcs11.SunPKCS11',
-            '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.services.SecurityServiceTest$JCACompliantNoOpService',
-        ])
-    if extra_build_args is not None:
-        additional_build_args += extra_build_args
 
-    # Inject SVM test feature classes only if we are actually running SVM tests.
-    # Truffle unit tests (and other suites) do not have com.oracle.svm.test on the classpath,
-    # so adding these features would fail with "Feature class not found".
-    if include_svm_test_features:
-        return ['--build-args', _native_unittest_features] + additional_build_args
-    else:
-        return ['--build-args'] + additional_build_args
+
+def _svm_unittest_feature_args():
+    return [_native_unittest_features] + svm_experimental_options([
+        '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
+        '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.libjvm=ALL-UNNAMED',
+        '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.properties=ALL-UNNAMED',
+        '--add-opens=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
+        '-H:AdditionalSecurityProviders=com.oracle.svm.test.services.SecurityServiceTest$NoOpProvider,sun.security.pkcs11.SunPKCS11',
+        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.services.SecurityServiceTest$JCACompliantNoOpService',
+    ])
+
 
 # Do not inline this, it's used from the enterprise repository.
 def native_unittests_task(
@@ -898,8 +883,7 @@ def native_unittests_task(
         include_custom_test_groups=False,
         include_default_test_group=True,
         custom_batch=None):
-    # native_unittests runs the SVM test suite => include SVM test features.
-    computed = _compute_native_unittest_args(extra_build_args, include_svm_test_features=True)
+    computed = ['--build-args'] + (extra_build_args or [])
     if include_custom_test_groups:
         computed = computed + ['--all']
     if not include_default_test_group:
@@ -909,6 +893,7 @@ def native_unittests_task(
             native_image,
             native_unittest_args,
             custom_batch=custom_batch,
+            configure_svm_tests=True,
         ),
         computed,
     )
@@ -1045,22 +1030,22 @@ def runtime_classpath_resource_test_task(extra_build_args=None):
     if extra_build_args is not None:
         build_args += extra_build_args
 
-    computed = _compute_native_unittest_args(build_args, include_svm_test_features=True)
     # First exercise the regular embedded-resource tests with loader-aware resource lookup enabled.
     # This keeps their expected resource: URL semantics independent from the runtime classpath jar.
-    native_image_context_run(_native_unittest, [
+    native_unittest([
         'com.oracle.svm.test.NativeImageResourceTest',
-    ] + computed)
+        '--build-args',
+    ] + build_args)
 
     runtime_classpath_build_args = build_args + [
         '-Dsvm.test.expectRuntimeClassPathResource=true',
     ]
-    computed = _compute_native_unittest_args(runtime_classpath_build_args, include_svm_test_features=True)
     # Then exercise runtime classpath lookup in isolation. The SVM tests jar is intentionally added
     # only to this image run, because it changes URL/resource behavior for embedded-resource tests.
-    native_image_context_run(_native_unittest, [
+    native_unittest([
         'com.oracle.svm.test.NativeImageRuntimeClassPathResourceTest',
-    ] + computed + [
+        '--build-args',
+    ] + runtime_classpath_build_args + [
         '--run-args',
         '--verbose',
         '-Dsvm.test.expectRuntimeClassPathResource=true',
@@ -1069,7 +1054,7 @@ def runtime_classpath_resource_test_task(extra_build_args=None):
 
 
 def java_desktop_integration_task(native_image, extra_build_args=None):
-    build_args = _compute_native_unittest_args(extra_build_args, include_svm_test_features=False)
+    build_args = _native_unittest_resource_args() + (extra_build_args or [])
     build_args += svm_experimental_options(['-H:Preserve=module=java.desktop'])
     _native_unittest(native_image, [
         '--test-classes-per-run', '1',
@@ -1078,7 +1063,9 @@ def java_desktop_integration_task(native_image, extra_build_args=None):
         'com.oracle.svm.integrationtest.DynamicJavaLibraryLinkageTest',
         'com.oracle.svm.integrationtest.DynamicJDKLibraryLinkageTest',
         'com.oracle.svm.integrationtest.UserProvidedStaticLibraryTest',
+        '--build-args',
     ] + build_args)
+
 
 def conditional_config_task(native_image):
     agent_path = build_native_image_agent(native_image)
@@ -1257,6 +1244,7 @@ def batched(iterable, n):
 def _native_junit(
         native_image,
         unittest_args,
+        candidates,
         build_args=None,
         run_args=None,
         blacklist=None,
@@ -1265,7 +1253,8 @@ def _native_junit(
         test_classes_per_run=None,
         include_custom_test_groups=True,
         include_default_test_group=True,
-        custom_batch=None):
+        custom_batch=None,
+        configure_svm_test_features=False):
     """
     Builds and runs native JUnit images for the selected tests.
 
@@ -1286,13 +1275,17 @@ def _native_junit(
     # NativeImageBuildArgs grouping can place multiple image-specific subdirectories under this root.
     junit_root_dir = junit_native_dir if preserve_image else tempfile.mkdtemp(dir=junit_native_dir)
     try:
-        unittest_deps = []
-        def dummy_harness(test_deps, vm_launcher, vm_args):
-            unittest_deps.extend(test_deps)
         unittest_file = join(junit_root_dir, 'svmjunit.tests')
-        _run_tests(unittest_args, dummy_harness, _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, blacklist, whitelist, None, None)
+        # An empty selection produces no file. Discard any selection from a preserved image.
+        pathlib.Path(unittest_file).unlink(missing_ok=True)
+        _run_tests(unittest_args, lambda *_: None, _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, blacklist, whitelist, None, None)
         if not exists(unittest_file):
             mx.abort('No matching unit tests found. Skip image build and execution.')
+        # mx filters the test list but reports dependencies from before filtering.
+        with open(unittest_file, encoding='utf-8') as f:
+            selected_tests = f.read().splitlines()
+        test_deps = {test: candidates[test.partition('#')[0]] for test in selected_tests}
+        unittest_deps = list(dict.fromkeys(test_deps.values()))
         # The Java helper inspects the selected test classes and emits a grouped manifest so the
         # Python side only needs to decide which groups to build and run.
         test_groups, skipped_custom_tests = _partition_native_unittest_groups(
@@ -1311,7 +1304,7 @@ def _native_junit(
             if not test_groups:
                 mx.log(f"No custom native-unittest groups are assigned to batch {selected_batch}.")
                 return
-        extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk, exclude_names=mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes)
+        exclude_names = mx_sdk_vm_impl.NativePropertiesBuildTask.implicit_excludes
         failures = []
         for group_index, (group_build_args, group_tests) in enumerate(test_groups.items()):
             group_dir = _native_junit_group_dir(junit_root_dir, len(test_groups), group_index, len(group_build_args) != 0)
@@ -1320,7 +1313,13 @@ def _native_junit(
                 for test_class in group_tests:
                     print(test_class, file=f)
             mx.log('Building junit image for matching: ' + ' '.join(group_tests))
-            group_image_args = ['-ea', '-esa'] + build_args + list(group_build_args) + extra_image_args + ['--macro:junit=' + group_unittest_file] + svm_experimental_options(['-H:Path=' + group_dir])
+            group_deps = list(dict.fromkeys(test_deps[test] for test in group_tests))
+            extra_image_args = mx.get_runtime_jvm_args(group_deps, jdk=mx_compiler.jdk, exclude_names=exclude_names)
+            # Other groups and transitive dependencies must not enable SVM security providers in this image.
+            feature_args = []
+            if configure_svm_test_features and mx.distribution('substratevm:SVM_TESTS') in group_deps:
+                feature_args = _svm_unittest_feature_args()
+            group_image_args = ['-ea', '-esa'] + feature_args + build_args + list(group_build_args) + extra_image_args + ['--macro:junit=' + group_unittest_file] + svm_experimental_options(['-H:Path=' + group_dir])
             unittest_image = native_image(group_image_args)
             image_pattern_replacement = unittest_image + ".exe" if mx.is_windows() else unittest_image
             group_run_args = [arg.replace('${unittest.image}', image_pattern_replacement) for arg in run_args]
@@ -1427,14 +1426,25 @@ def unmask(args):
     return [arg.replace(_mask_str, '-') for arg in args]
 
 
+def _read_native_unittest_filter(masked_path):
+    path = unmask([masked_path])[0]
+    try:
+        with open(path, encoding='utf-8') as fp:
+            return [re.compile(fnmatch.translate(line.rstrip())) for line in fp if not line.startswith('#')]
+    except OSError as error:
+        raise ArgumentTypeError(str(error)) from error
+    except UnicodeDecodeError as error:
+        raise ArgumentTypeError(f'{path}: {error}') from error
+
+
 def _parse_native_unittest_args(cmdline_args):
     parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image.')
     all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image', '--test-classes-per-run', '--all', '--custom-only']
     cmdline_args = [_mask(arg, all_args) for arg in cmdline_args]
     parser.add_argument(all_args[0], metavar='ARG', nargs='*', default=[])
     parser.add_argument(all_args[1], metavar='ARG', nargs='*', default=[])
-    parser.add_argument('--blacklist', help='run all testcases not specified in <file>', metavar='<file>')
-    parser.add_argument('--whitelist', help='run testcases specified in <file> only', metavar='<file>')
+    parser.add_argument('--blacklist', help='run all testcases not specified in <file>', metavar='<file>', type=_read_native_unittest_filter)
+    parser.add_argument('--whitelist', help='run testcases specified in <file> only', metavar='<file>', type=_read_native_unittest_filter)
     parser.add_argument('-p', '--preserve-image', help='do not delete the generated native image', action='store_true')
     parser.add_argument('--test-classes-per-run', help='run N test classes per image run, instead of all tests at once', nargs=1, type=int)
     parser.add_argument('--all', help='include tests that require custom @NativeImageBuildArgs and build one image per effective build-arg group', action='store_true')
@@ -1443,37 +1453,32 @@ def _parse_native_unittest_args(cmdline_args):
     return parser.parse_args(cmdline_args)
 
 
-def _native_unittest(native_image, cmdline_args, custom_batch=None):
-    pargs = _parse_native_unittest_args(cmdline_args)
+def _native_unittest(native_image, cmdline_args, custom_batch=None, configure_svm_tests=False):
+    return _run_native_unittest(native_image, _parse_native_unittest_args(cmdline_args), custom_batch=custom_batch, configure_svm_tests=configure_svm_tests)
+
+
+def _run_native_unittest(native_image, pargs, custom_batch=None, configure_svm_tests=False):
+    build_args = unmask(pargs.build_args)
+    if configure_svm_tests:
+        build_args = _native_unittest_resource_args() + build_args
     if pargs.custom_only:
         pargs.all = True
 
-    blacklist = unmask([pargs.blacklist])[0] if pargs.blacklist else None
-    whitelist = unmask([pargs.whitelist])[0] if pargs.whitelist else None
+    blacklist = pargs.blacklist
+    whitelist = pargs.whitelist
     test_classes_per_run = pargs.test_classes_per_run[0] if pargs.test_classes_per_run else None
-
-    if whitelist:
-        try:
-            with open(whitelist, encoding='utf-8') as fp:
-                whitelist = [re.compile(fnmatch.translate(l.rstrip())) for l in fp.readlines() if not l.startswith('#')]
-        except OSError:
-            mx.log('warning: could not read whitelist: ' + whitelist)
-    if blacklist:
-        try:
-            with open(blacklist, encoding='utf-8') as fp:
-                blacklist = [re.compile(fnmatch.translate(l.rstrip())) for l in fp.readlines() if not l.startswith('#')]
-        except OSError:
-            mx.log('warning: could not read blacklist: ' + blacklist)
 
     user_unittest_args = unmask(pargs.unittest_args)
     unittest_args = user_unittest_args if user_unittest_args else ['com.oracle.svm.test', 'com.oracle.svm.configure.test']
     # Keep the no-argument path cheap for presubmit and GitHub-action usage by only running the
     # default image group. Explicit selectors or --all opt into additional custom-arg images.
     include_custom_test_groups = pargs.all or bool(user_unittest_args)
+    candidates = mx_unittest.find_test_candidates(['@Test', '@Parameters'], None, mx_compiler.jdk)
     _native_junit(
         native_image,
         unittest_args,
-        unmask(pargs.build_args),
+        candidates,
+        build_args,
         unmask(pargs.run_args),
         blacklist,
         whitelist,
@@ -1482,6 +1487,7 @@ def _native_unittest(native_image, cmdline_args, custom_batch=None):
         include_custom_test_groups=include_custom_test_groups,
         include_default_test_group=not pargs.custom_only,
         custom_batch=custom_batch,
+        configure_svm_test_features=configure_svm_tests,
     )
 
 
@@ -4141,25 +4147,10 @@ def _debug_args():
 
 @mx.command(suite.name, 'native-unittest')
 def native_unittest(args):
-    """Builds a native image of JUnit tests and runs them."""
-    arg_list = list(args)
-    # Decide whether to include the SVM test feature injections based on the selectors provided.
-    # If no selectors were provided, native-unittest will default to SVM tests, so include features.
-    def _is_svm_selector(a: str) -> bool:
-        return a.startswith('com.oracle.svm.test')
-    unittest_args = unmask(_parse_native_unittest_args(arg_list).unittest_args)
-    include_svm_test_features = not unittest_args or any(_is_svm_selector(a) for a in unittest_args)
-    computed = _compute_native_unittest_args(include_svm_test_features=include_svm_test_features)
-    # Merge computed build args into an existing --build-args block if present, otherwise append.
-    if '--build-args' in arg_list:
-        idx = arg_list.index('--build-args')
-        # Insert everything after the token so argparse collects both user and computed values.
-        arg_list[idx+1:idx+1] = computed[1:]  # skip the '--build-args' token
-        merged_args = arg_list
-    else:
-        merged_args = arg_list + computed
-    # Important: keep user-provided selectors/args order intact.
-    native_image_context_run(_native_unittest, merged_args)
+    """Builds and runs native JUnit images, grouped by required build arguments."""
+    pargs = _parse_native_unittest_args(args)
+    with native_image_context() as native_image:
+        _run_native_unittest(native_image, pargs, configure_svm_tests=True)
 
 @mx.command(suite, 'javac-image', '[image-options]')
 def javac_image(args):
