@@ -50,7 +50,7 @@ GEM
     google-protobuf (4.36.2-x86_64-linux-gnu)
       bigdecimal
       rake (~> 13.3)
-    hashery (2.1.2)
+    hashery (2.2.2)
     html-proofer (5.2.3)
       addressable (~> 2.3)
       async (~> 2.1)
@@ -98,7 +98,7 @@ GEM
     jekyll-watch (2.2.1)
       listen (~> 3.0)
     json (2.21.2)
-    kramdown (2.5.2)
+    kramdown (2.6.1)
       rexml (>= 3.4.4)
     kramdown-parser-gfm (1.1.0)
       kramdown (~> 2.0)

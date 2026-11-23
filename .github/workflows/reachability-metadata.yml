@@ -49,6 +49,9 @@ on:
   - cron: '0 1 * * 1'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   call-template:
     uses: './.github/workflows/reachability-metadata-template.yml'
