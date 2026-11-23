@@ -27,6 +27,7 @@ package com.oracle.svm.guest.staging.configure;
 
 import java.util.Arrays;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicSet;
@@ -85,6 +86,7 @@ public class RuntimeDynamicAccessMetadata {
         TypeReachabilityCondition reachabilityCondition = (TypeReachabilityCondition) cnd;
         boolean mergedPreserved = current == null ? preserved : current.preserved && preserved;
         if (reachabilityCondition.isAlwaysTrue() || current != null && current.isAlwaysAvailable()) {
+            maybeTrackConditionSatisfied(reachabilityCondition, true);
             return alwaysAvailable(mergedPreserved);
         }
         VMError.guarantee(reachabilityCondition.isRuntimeChecked(), "Only runtime conditions can be added to the ConditionalRuntimeValue.");
@@ -187,6 +189,7 @@ public class RuntimeDynamicAccessMetadata {
             } else {
                 for (Object condition : localConditions) {
                     if (isSatisfied(condition)) {
+                        maybeTrackConditionSatisfied(condition);
                         satisfied = result = true;
                         break;
                     }
@@ -203,6 +206,48 @@ public class RuntimeDynamicAccessMetadata {
         return result;
     }
 
+    private static void maybeTrackConditionSatisfied(Object condition) {
+        maybeTrackConditionSatisfied(condition, false);
+    }
+
+    /**
+     * Logs satisfied conditions matching the {@code TrackConditionSatisfied} option. The option is
+     * read and checked before inspecting the condition so the disabled case does not pay for type
+     * formatting or array traversal.
+     */
+    private static void maybeTrackConditionSatisfied(Object condition, boolean ignoredAtBuildTime) {
+        String trackedType = GuestStagingDependencyBridge.singleton().trackConditionSatisfied();
+        if (trackedType == null || condition == null) {
+            return;
+        }
+        maybeTrackConditionSatisfied(condition, ignoredAtBuildTime, trackedType);
+    }
+
+    private static void maybeTrackConditionSatisfied(Object condition, boolean ignoredAtBuildTime, String trackedType) {
+        if (condition == null) {
+            return;
+        } else if (condition instanceof Object[] conditionsArray) {
+            for (Object singleCondition : conditionsArray) {
+                maybeTrackConditionSatisfied(singleCondition, ignoredAtBuildTime, trackedType);
+            }
+            return;
+        }
+
+        String typeName = null;
+        if (condition instanceof Class<?> reachedTypeCondition) {
+            typeName = reachedTypeCondition.getTypeName();
+        } else if (condition instanceof TypeReachabilityCondition reachedTypeCondition) {
+            typeName = reachedTypeCondition.getType().getTypeName();
+        }
+        if (trackedType != null && typeName != null && ("*".equals(trackedType) || typeName.equals(trackedType)) && !"java.lang.Object".equals(typeName)) {
+            if (ignoredAtBuildTime) {
+                LogUtils.info("Tracked runtime condition reached at build time and ignored: type = " + typeName);
+            } else {
+                LogUtils.info("Tracked runtime condition reached: type = " + typeName);
+            }
+        }
+    }
+
     /*
      * Used in snippets, returns true only if the condition was already satisfied beforehand.
      */
@@ -212,6 +257,36 @@ public class RuntimeDynamicAccessMetadata {
 
     public boolean isPreserved() {
         return preserved;
+    }
+
+    /**
+     * Returns a user-facing description of unresolved runtime conditions.
+     */
+    public String formatUnsatisfiedConditions() {
+        StringJoiner joiner = new StringJoiner(", ");
+        for (String typeName : getUnsatisfiedConditionTypeNames()) {
+            joiner.add("typeReached(" + typeName + ")");
+        }
+        return joiner.toString();
+    }
+
+    /**
+     * Returns the type names of the unresolved {@code typeReached} conditions, or an empty array if
+     * the metadata is unconditional or already satisfied.
+     */
+    public String[] getUnsatisfiedConditionTypeNames() {
+        Object[] localConditions = conditions;
+        if (satisfied || localConditions == null) {
+            return new String[0];
+        }
+        String[] typeNames = new String[localConditions.length];
+        for (int i = 0; i < localConditions.length; i++) {
+            if (!(localConditions[i] instanceof Class<?> reachedTypeCondition)) {
+                throw VMError.shouldNotReachHere("Only typeReached condition is supported.");
+            }
+            typeNames[i] = reachedTypeCondition.getTypeName();
+        }
+        return typeNames;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

@@ -95,7 +95,7 @@ public final class Target_java_lang_reflect_Constructor {
 
         assert constructorAccessor == null : "acquireConstructorAccessor() method must not be called if instance is in image heap.";
         if (constructorAccessorFromMetadata == null || !dynamicAccessMetadata.satisfied()) {
-            throw GuestStagingDependencyBridge.singleton().reportInvokedExecutable(SubstrateUtil.cast(this, Executable.class));
+            throw GuestStagingDependencyBridge.singleton().reportInvokedExecutable(dynamicAccessMetadata, SubstrateUtil.cast(this, Executable.class));
         }
         return constructorAccessorFromMetadata;
     }

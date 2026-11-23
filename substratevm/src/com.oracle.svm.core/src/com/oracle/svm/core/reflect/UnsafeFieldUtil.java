@@ -45,7 +45,7 @@ public class UnsafeFieldUtil {
         int offset = field.root == null ? field.offset : field.root.offset;
         boolean conditionsSatisfied = dynamicAccessMetadata.satisfied();
         if (offset <= 0 || !conditionsSatisfied) {
-            throw MissingReflectionRegistrationUtils.reportAccessedField(SubstrateUtil.cast(field, Field.class));
+            throw MissingReflectionRegistrationUtils.reportAccessedField(SubstrateUtil.cast(field, Field.class), dynamicAccessMetadata);
         }
         return offset;
     }

@@ -280,7 +280,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             if (nullIfMissing) {
                 return null;
             }
-            throw MissingReflectionRegistrationUtils.reportProxyAccess(interfaces);
+            throw MissingReflectionRegistrationUtils.reportProxyAccess(clazzOrError == null ? null : ConditionalRuntimeValue.getDynamicAccessMetadata(clazzOrError), interfaces);
         }
         Object value = ConditionalRuntimeValue.getValue(clazzOrError);
         if (value instanceof Throwable) {

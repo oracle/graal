@@ -41,6 +41,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.reflect.RuntimeConstantPool;
@@ -322,6 +323,14 @@ public interface GuestStagingDependencyBridge {
     boolean trackUnsatisfiedTypeReachedConditions();
 
     /**
+     * Delegates to
+     * {@code com.oracle.svm.core.configure.ConfigurationFiles.Options.TrackConditionSatisfied.getValue()}.
+     * <p>
+     * Remove this method when tracking satisfied type-reached conditions becomes guest-owned.
+     */
+    String trackConditionSatisfied();
+
+    /**
      * Delegates to {@code com.oracle.svm.core.SubstrateOptions.useRistretto()}.
      * <p>
      * Remove this method when Ristretto options move to guest/staging.
@@ -382,7 +391,7 @@ public interface GuestStagingDependencyBridge {
     void traceReflectionExecutableAccess(Executable executable);
 
     /** Remove when missing-reflection-registration reporting moves to guest/staging. */
-    MissingReflectionRegistrationError reportInvokedExecutable(Executable executable);
+    MissingReflectionRegistrationError reportInvokedExecutable(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Executable executable);
 
     /** Remove when layered-image reflection support moves to guest/staging. */
     @Platforms(Platform.HOSTED_ONLY.class)

@@ -436,7 +436,7 @@ final class Target_java_lang_reflect_Array {
         }
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = arrayHub.getDynamicAccessMetadata();
         if (throwMissingRegistrationErrors() && (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied())) {
-            throw MissingReflectionRegistrationUtils.reportArrayInstantiation(componentType, dimensions.length);
+            throw MissingReflectionRegistrationUtils.reportArrayInstantiation(componentType, dimensions.length, dynamicAccessMetadata);
         }
 
         return Util_java_lang_reflect_Array.createMultiArrayAtIndex(0, arrayHub, dimensions);

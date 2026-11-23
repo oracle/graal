@@ -54,6 +54,7 @@ import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -282,6 +283,11 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
+    public String trackConditionSatisfied() {
+        return ConfigurationFiles.Options.TrackConditionSatisfied.getValue();
+    }
+
+    @Override
     public boolean useRistretto() {
         return SubstrateOptions.useRistretto();
     }
@@ -355,8 +361,8 @@ final class GuestStagingDependencyBridgeImpl implements GuestStagingDependencyBr
     }
 
     @Override
-    public MissingReflectionRegistrationError reportInvokedExecutable(Executable executable) {
-        return MissingReflectionRegistrationUtils.reportInvokedExecutable(executable);
+    public MissingReflectionRegistrationError reportInvokedExecutable(RuntimeDynamicAccessMetadata dynamicAccessMetadata, Executable executable) {
+        return MissingReflectionRegistrationUtils.reportInvokedExecutable(dynamicAccessMetadata, executable);
     }
 
     @Override

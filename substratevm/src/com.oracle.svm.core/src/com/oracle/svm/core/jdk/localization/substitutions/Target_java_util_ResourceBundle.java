@@ -40,6 +40,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 
 import jdk.internal.loader.BootLoader;
 
@@ -61,7 +62,8 @@ final class Target_java_util_ResourceBundle {
         // get resource bundles for a named module only if loader is the module's class loader
         if (callerModule.isNamed() && loader == getLoader(callerModule)) {
             if (ResourceBundleMissingRegistrationSupport.shouldReport(baseName, locale, control)) {
-                MissingResourceRegistrationUtils.reportResourceBundleAccess(callerModule, baseName);
+                RuntimeDynamicAccessMetadata unsatisfiedConditionMetadata = LocalizationSupport.getBundleLookupDynamicAccessMetadata(baseName, locale, control);
+                MissingResourceRegistrationUtils.reportResourceBundleAccess(callerModule, baseName, unsatisfiedConditionMetadata);
             }
             return MissingRegistrationUtils.runIgnoringMissingRegistrations(new Supplier<ResourceBundle>() {
                 @Override
@@ -80,7 +82,8 @@ final class Target_java_util_ResourceBundle {
                         : BootLoader.getUnnamedModule();
 
         if (ResourceBundleMissingRegistrationSupport.shouldReport(baseName, locale, control)) {
-            MissingResourceRegistrationUtils.reportResourceBundleAccess(unnamedModule, baseName);
+            RuntimeDynamicAccessMetadata unsatisfiedConditionMetadata = LocalizationSupport.getBundleLookupDynamicAccessMetadata(baseName, locale, control);
+            MissingResourceRegistrationUtils.reportResourceBundleAccess(unnamedModule, baseName, unsatisfiedConditionMetadata);
         }
         return MissingRegistrationUtils.runIgnoringMissingRegistrations(new Supplier<ResourceBundle>() {
             @Override
@@ -103,7 +106,8 @@ final class Target_java_util_ResourceBundle {
          * ensure we show MissingResourceRegistrationError in all relevant situations.
          */
         if (ResourceBundleMissingRegistrationSupport.shouldReport(baseName, locale, control)) {
-            MissingResourceRegistrationUtils.reportResourceBundleAccess(module, baseName);
+            RuntimeDynamicAccessMetadata unsatisfiedConditionMetadata = LocalizationSupport.getBundleLookupDynamicAccessMetadata(baseName, locale, control);
+            MissingResourceRegistrationUtils.reportResourceBundleAccess(module, baseName, unsatisfiedConditionMetadata);
         }
         return MissingRegistrationUtils.runIgnoringMissingRegistrations(() -> getBundleImpl(callerModule, module, baseName, locale, control));
     }

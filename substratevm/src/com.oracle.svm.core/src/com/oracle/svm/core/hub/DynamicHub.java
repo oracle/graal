@@ -116,6 +116,7 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
+import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.guest.staging.core.graal.meta.DynamicHubOffsets;
 import com.oracle.svm.guest.staging.core.heap.Heap;
@@ -940,15 +941,21 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             MetadataTracer.singleton().traceReflectionType(toClass(this));
         }
         if (throwMissingRegistrationErrors() && !(classFlagSet && (dynamicAccessMetadata == null || dynamicAccessMetadata.satisfied()))) {
-            MissingReflectionRegistrationUtils.reportClassQuery(DynamicHub.toClass(this), methodName);
+            MissingReflectionRegistrationUtils.reportClassQuery(DynamicHub.toClass(this), methodName, dynamicAccessMetadata);
         }
     }
 
     @AlwaysInline("For performance reasons")
-    private boolean classDynamicAccessAllowed(RuntimeDynamicAccessMetadata dynamicAccessMetadata, int mask) {
+    private boolean classDynamicAccessAllowed(Class<?> clazz, RuntimeDynamicAccessMetadata dynamicAccessMetadata, String query, int mask) {
         boolean classFlagSet = isClassFlagSet(mask);
         boolean conditionsSatisfied = dynamicAccessMetadata == null || dynamicAccessMetadata.satisfied();
-        return classFlagSet && conditionsSatisfied;
+        boolean accessAllowed = classFlagSet && conditionsSatisfied;
+        if (ConfigurationFiles.Options.trackReflectionClassQueryChecks()) {
+            String conditions = conditionsSatisfied ? "" : dynamicAccessMetadata.formatUnsatisfiedConditions();
+            System.out.format("Class query %s: class=%s, query=%s, classFlagSet=%s, conditionsSatisfied=%s, unsatisfiedConditions=[%s]%n",
+                            accessAllowed ? "succeeded" : "failed", clazz.getTypeName(), query, classFlagSet, conditionsSatisfied, conditions);
+        }
+        return accessAllowed;
     }
 
     private boolean isClassFlagSet(int mask) {
@@ -1691,11 +1698,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (throwMissingRegistrationErrors()) {
             Class<?> clazz = DynamicHub.toClass(this);
             RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadata();
-            if (!classDynamicAccessAllowed(dynamicAccessMetadata, ALL_FIELDS_FLAG)) {
+            String query = (publicOnly ? "getField(" : "getDeclaredField(") + fieldName + ")";
+            if (!classDynamicAccessAllowed(clazz, dynamicAccessMetadata, query, ALL_FIELDS_FLAG)) {
                 if (MetadataTracer.enabled()) {
                     traceFieldLookup(fieldName, null, publicOnly);
                 }
-                MissingReflectionRegistrationUtils.reportFieldQuery(clazz, fieldName);
+                MissingReflectionRegistrationUtils.reportFieldQuery(clazz, fieldName, dynamicAccessMetadata);
             }
         }
     }
@@ -1723,7 +1731,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                 traceFieldLookup(fieldName, field, publicOnly, negative);
             }
             if (throwMissingRegistrationErrors() && hiding) {
-                MissingReflectionRegistrationUtils.reportFieldQuery(DynamicHub.toClass(this), fieldName);
+                MissingReflectionRegistrationUtils.reportFieldQuery(DynamicHub.toClass(this), fieldName, dynamicAccessMetadata);
             }
             if (negative || hiding) {
                 throw new NoSuchFieldException(fieldName);
@@ -1751,7 +1759,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     private Method getMethod(String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {
         Objects.requireNonNull(methodName);
-        checkAccessForExecutableQuery(methodName, parameterTypes, ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG, true);
+        checkAccessForExecutableQuery(methodName, parameterTypes, "getMethod", ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG, true);
         Method method = searchMethods(filterMethods(privateGetPublicMethods()), methodName, parameterTypes);
 
         checkMethod(methodName, parameterTypes, method, true);
@@ -1759,15 +1767,15 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return getReflectionFactory().copyMethod(method);
     }
 
-    private void checkAccessForExecutableQuery(String executable, Class<?>[] parameterTypes, int classFlagMask, boolean publicOnly) {
+    private void checkAccessForExecutableQuery(String executable, Class<?>[] parameterTypes, String queryMethod, int classFlagMask, boolean publicOnly) {
         if (throwMissingRegistrationErrors()) {
             Class<?> clazz = DynamicHub.toClass(this);
             RuntimeDynamicAccessMetadata dynamicAccessMetadata = getDynamicAccessMetadata();
-            if (!classDynamicAccessAllowed(dynamicAccessMetadata, classFlagMask)) {
+            if (!classDynamicAccessAllowed(clazz, dynamicAccessMetadata, queryMethod, classFlagMask)) {
                 if (MetadataTracer.enabled()) {
                     traceMethodLookup(executable, parameterTypes, null, publicOnly);
                 }
-                MissingReflectionRegistrationUtils.reportMethodQuery(clazz, executable, parameterTypes);
+                MissingReflectionRegistrationUtils.reportExecutableQuery(clazz, executable, parameterTypes, dynamicAccessMetadata);
             }
         }
     }
@@ -1830,7 +1838,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                 traceMethodLookup(methodName, parameterTypes, executable, publicOnly, negative);
             }
             if (throwMissingErrors && hiding) {
-                MissingReflectionRegistrationUtils.reportMethodQuery(clazz, methodName, parameterTypes);
+                MissingReflectionRegistrationUtils.reportExecutableQuery(clazz, methodName, parameterTypes, dynamicAccessMetadata);
             }
             return !(negative || hiding);
         }
@@ -1933,7 +1941,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     public Method getDeclaredMethod(String methodName, Class<?>... parameterTypes) throws NoSuchMethodException {
         Objects.requireNonNull(methodName);
-        checkAccessForExecutableQuery(methodName, parameterTypes, ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG, false);
+        checkAccessForExecutableQuery(methodName, parameterTypes, "getDeclaredMethod", ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG, false);
 
         Method method = searchMethods(privateGetDeclaredMethods(false), methodName, parameterTypes);
         // Legacy: GR-72062
@@ -2008,7 +2016,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     private Constructor<?> getConstructor0(Class<?>[] parameterTypes, int which) throws NoSuchMethodException {
-        checkAccessForExecutableQuery("<init>", parameterTypes, ALL_DECLARED_CONSTRUCTORS_FLAG | ALL_CONSTRUCTORS_FLAG, which == Member.PUBLIC);
+        checkAccessForExecutableQuery("<init>", parameterTypes, "getConstructor0", ALL_DECLARED_CONSTRUCTORS_FLAG | ALL_CONSTRUCTORS_FLAG, which == Member.PUBLIC);
 
         ReflectionFactory fact = getReflectionFactory();
         Constructor<?>[] constructors = privateGetDeclaredConstructors((which == Member.PUBLIC));
@@ -2259,7 +2267,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute //
     @SuppressWarnings({"unused"})
     List<Method> getDeclaredPublicMethods(String methodName, Class<?>... parameterTypes) {
-        checkAccessForExecutableQuery(methodName, parameterTypes, ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG, true);
+        checkAccessForExecutableQuery(methodName, parameterTypes, "getDeclaredPublicMethods", ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG, true);
         Method[] methods = privateGetDeclaredMethods(/* publicOnly */ true);
         ReflectionFactory factory = getReflectionFactory();
         List<Method> result = new ArrayList<>();
@@ -2338,12 +2346,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             if (throwMissingRegistrationErrors() &&
                             followReflectionConfiguration &&
                             (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied())) {
-                MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
+                MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]", dynamicAccessMetadata);
             }
         } else {
             if (followReflectionConfiguration && (arrayHub == null || (throwMissingRegistrationErrors() &&
                             (dynamicAccessMetadata == null || !dynamicAccessMetadata.satisfied())))) {
-                MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]");
+                MissingReflectionRegistrationUtils.reportClassAccess(getTypeName() + "[]", dynamicAccessMetadata);
             }
         }
         if (RuntimeClassLoading.isSupported() && arrayHub == null) {

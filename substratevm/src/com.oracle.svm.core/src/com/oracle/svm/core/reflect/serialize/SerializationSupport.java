@@ -250,6 +250,7 @@ public class SerializationSupport {
     public static Object getRuntimeSerializationConstructorAccessor(Class<?> serializationTargetClass, Class<?> targetConstructorClass) {
         SubstrateUtil.guaranteeRuntimeOnly();
         Class<?> declaringClass = serializationTargetClass;
+        RuntimeDynamicAccessMetadata dynamicAccessMetadata = null;
 
         if (LambdaUtils.isLambdaClass(declaringClass)) {
             declaringClass = SerializedLambda.class;
@@ -273,11 +274,15 @@ public class SerializationSupport {
             if (lookup.dynamicAccessMetadata() == null || lookup.dynamicAccessMetadata().satisfied()) {
                 return lookup.constructorAccessor();
             }
+            if (dynamicAccessMetadata == null) {
+                dynamicAccessMetadata = lookup.dynamicAccessMetadata();
+            }
         }
 
         String targetConstructorClassName = targetConstructorClass.getName();
         MissingSerializationRegistrationUtils.reportSerialization(declaringClass,
-                        "type '" + declaringClass.getTypeName() + "' with target constructor class '" + targetConstructorClassName + "'");
+                        "type '" + declaringClass.getTypeName() + "' with target constructor class '" + targetConstructorClassName + "'",
+                        dynamicAccessMetadata);
         return null;
     }
 
@@ -319,6 +324,17 @@ public class SerializationSupport {
             }
         }
         return false;
+    }
+
+    public static RuntimeDynamicAccessMetadata getDynamicAccessMetadataForSerialization(DynamicHub dynamicHub) {
+        SubstrateUtil.guaranteeRuntimeOnly();
+        for (SerializationSupport singleton : SerializationSupport.layeredSingletons()) {
+            var conditionSet = singleton.classes.getRuntime(dynamicHub.getTypeID());
+            if (conditionSet != null) {
+                return conditionSet;
+            }
+        }
+        return null;
     }
 
     public boolean isRegisteredForSerialization0(DynamicHub dynamicHub) {

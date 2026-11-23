@@ -327,7 +327,7 @@ public final class ClassRegistries implements ParsingContext {
 
     private static void maybeThrowMissingRegistrationError(DynamicHub result, String name) {
         if (throwMissingRegistrationErrors() && shouldFollowReflectionConfiguration() && ClassNameSupport.isValidReflectionName(name) && shouldThrowMissingRegistrationError(result)) {
-            MissingReflectionRegistrationUtils.reportClassAccess(name);
+            MissingReflectionRegistrationUtils.reportClassAccess(name, getDynamicAccessMetadata(result, name));
         }
     }
 
@@ -337,6 +337,13 @@ public final class ClassRegistries implements ParsingContext {
         }
         RuntimeDynamicAccessMetadata dynamicAccess = result.getDynamicAccessMetadata();
         return dynamicAccess == null || !dynamicAccess.satisfied();
+    }
+
+    private static RuntimeDynamicAccessMetadata getDynamicAccessMetadata(DynamicHub result, String name) {
+        if (result != null) {
+            return result.getDynamicAccessMetadata();
+        }
+        return getDynamicAccessMetadataForName(name);
     }
 
     public static RuntimeDynamicAccessMetadata getDynamicAccessMetadataFor(Class<?> clazz) {
@@ -423,7 +430,7 @@ public final class ClassRegistries implements ParsingContext {
             if (arrayHub == null) {
                 if (shouldFollowReflectionConfiguration()) {
                     String arrayTypeName = hub.getTypeName() + "[]";
-                    MissingReflectionRegistrationUtils.reportClassAccess(arrayTypeName);
+                    MissingReflectionRegistrationUtils.reportClassAccess(arrayTypeName, getDynamicAccessMetadataForName(arrayTypeName));
                 }
                 return null;
             }
@@ -440,7 +447,7 @@ public final class ClassRegistries implements ParsingContext {
         assert RuntimeClassLoading.isSupported();
         String reflectionName = toReflectionName(name);
         if (throwMissingRegistrationErrors() && shouldFollowReflectionConfiguration() && !isRegisteredClassName(reflectionName)) {
-            MissingReflectionRegistrationUtils.reportClassAccess(reflectionName);
+            MissingReflectionRegistrationUtils.reportClassAccess(reflectionName, getDynamicAccessMetadataForName(reflectionName));
             // The defineClass path usually can't throw ClassNotFoundException
             throw sneakyThrow(new ClassNotFoundException(name));
         }
