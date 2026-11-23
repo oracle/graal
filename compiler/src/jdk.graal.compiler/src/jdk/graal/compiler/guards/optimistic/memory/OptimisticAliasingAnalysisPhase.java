@@ -831,9 +831,6 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
             if (overflowCondition.isTautology()) {
                 return Pair.create(null, null);
             } else if (!overflowCondition.isContradiction()) {
-                if (!graph.getGuardsStage().allowsFloatingGuards()) {
-                    return Pair.create(null, null);
-                }
                 GuardingNode overflowGuard = createRawAddressOverflowGuard(countedLoop, overflowCondition);
                 if (overflowGuard == null) {
                     return Pair.create(null, null);
@@ -876,7 +873,16 @@ public class OptimisticAliasingAnalysisPhase extends PostRunCanonicalizationPhas
     /// Creates a guard that ensures a raw address offset stays within its arithmetic range.
     /// Returning null leaves the access bounds unknown so the caller conservatively assumes aliasing.
     protected GuardingNode createRawAddressOverflowGuard(CountedLoopInfo countedLoop, LogicNode overflowCondition) {
-        return countedLoop.createOverflowGuard(overflowCondition, DeoptimizationReason.Aliasing);
+        StructuredGraph graph = countedLoop.getLimitCheckedIV().valueNode().graph();
+        if (graph.getGuardsStage().allowsFloatingGuards()) {
+            return countedLoop.createOverflowGuard(overflowCondition, DeoptimizationReason.Aliasing);
+        }
+        LoopBeginNode loopBegin = countedLoop.getLimitCheckedIV().getLoop().loopBegin();
+        if (!canUseSpeculation(graph) || !canAssignValidState(loopBegin.forwardEnd())) {
+            return null;
+        }
+        SpeculationLog.Speculation speculation = trySpeculation(loopBegin);
+        return speculation == null ? null : buildOptimisticFixedGuard(loopBegin, overflowCondition, speculation);
     }
 
     /**

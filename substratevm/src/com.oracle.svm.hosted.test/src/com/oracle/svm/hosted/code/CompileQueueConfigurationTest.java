@@ -217,7 +217,7 @@ public class CompileQueueConfigurationTest {
     }
 
     private static Suites createFallbackTestSuites(OptionValues options) {
-        return new Suites(new EconomyHighTier(), new EconomyMidTier(), new EconomyLowTier(options));
+        return new Suites(new EconomyHighTier(options), new EconomyMidTier(), new EconomyLowTier(options));
     }
 
     private static int phaseIndex(PhaseSuite<?> suite, Class<?> phaseClass) {

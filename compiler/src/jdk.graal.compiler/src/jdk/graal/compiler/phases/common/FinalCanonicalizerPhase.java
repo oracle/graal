@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,7 +79,8 @@ public class FinalCanonicalizerPhase extends CanonicalizerPhase {
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
         return NotApplicable.ifAny(
                         super.notApplicableTo(graphState),
-                        NotApplicable.unlessRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState));
+                        NotApplicable.unlessRunAfter(this, StageFlag.LOW_TIER_LOWERING, graphState),
+                        NotApplicable.unlessRunBefore(this, StageFlag.TARGET_VECTOR_LOWERING, graphState));
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package jdk.graal.compiler.vector.phases.amd64;
 
 import java.util.Arrays;
-import java.util.Optional;
 
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
@@ -39,8 +38,6 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.GraphState;
-import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -70,7 +67,6 @@ import jdk.graal.compiler.nodes.calc.ShiftNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.calc.UnaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
-import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.vector.architecture.VectorLoweringProvider;
 import jdk.graal.compiler.vector.architecture.amd64.VectorAMD64;
@@ -98,6 +94,7 @@ import jdk.graal.compiler.vector.nodes.simd.SimdPrimitiveCompareNode;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.graal.compiler.vector.nodes.simd.SimdToBitMaskNode;
 import jdk.graal.compiler.vector.nodes.simd.TargetVectorLoweringUtils;
+import jdk.graal.compiler.vector.phases.TargetVectorLoweringPhase;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Architecture;
@@ -114,20 +111,18 @@ import jdk.vm.ci.meta.JavaConstant;
  * instructions, it might be necessary to adapt the instruction set tables in
  * {@link jdk.graal.compiler.vector.architecture.amd64.VectorAMD64} as well.
  */
-public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
+public class AMD64VectorLoweringPhase extends TargetVectorLoweringPhase {
 
-    @Override
-    public boolean mustApply(GraphState graphState) {
-        return graphState.requiresFutureStage(StageFlag.TARGET_VECTOR_LOWERING) || super.mustApply(graphState);
+    public AMD64VectorLoweringPhase() {
+        this(false);
+    }
+
+    public AMD64VectorLoweringPhase(boolean forceDCE) {
+        super(forceDCE);
     }
 
     @Override
-    public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
-        return NotApplicable.unlessRunAfter(this, StageFlag.FINAL_CANONICALIZATION, graphState);
-    }
-
-    @Override
-    public void run(StructuredGraph graph, LowTierContext context) {
+    protected void lower(StructuredGraph graph, LowTierContext context) {
         VectorAMD64 vectorArch = (VectorAMD64) ((VectorLoweringProvider) context.getLowerer()).getVectorArchitecture();
         /*
          * Match pairwise multiply-add before lowering cuts and permutes. The recognizer relies on
@@ -161,12 +156,6 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
                 }
             }
         }
-    }
-
-    @Override
-    public void updateGraphState(GraphState graphState) {
-        super.updateGraphState(graphState);
-        graphState.removeRequirementToStage(StageFlag.TARGET_VECTOR_LOWERING);
     }
 
     private static void lowerPairwiseMultiplyAdd(StructuredGraph graph, VectorAMD64 vectorArch) {

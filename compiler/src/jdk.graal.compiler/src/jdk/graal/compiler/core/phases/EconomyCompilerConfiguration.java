@@ -49,7 +49,7 @@ public class EconomyCompilerConfiguration implements CompilerConfiguration {
 
     @Override
     public PhaseSuite<HighTierContext> createHighTier(OptionValues options) {
-        return new EconomyHighTier();
+        return new EconomyHighTier(options);
     }
 
     @Override

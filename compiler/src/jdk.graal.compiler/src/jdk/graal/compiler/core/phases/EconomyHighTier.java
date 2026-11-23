@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,23 @@
  */
 package jdk.graal.compiler.core.phases;
 
+import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIExpansionPhase;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIIntrinsics;
 
 public class EconomyHighTier extends BaseTier<HighTierContext> {
 
     @SuppressWarnings("this-escape")
-    public EconomyHighTier() {
+    public EconomyHighTier(OptionValues options) {
         appendPhase(EconomyMarkFixReadsPhase.SINGLETON);
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.createSingleShot();
         appendPhase(canonicalizer);
+        if (VectorAPIIntrinsics.intrinsificationSupported(options)) {
+            appendPhase(new VectorAPIExpansionPhase(canonicalizer));
+        }
         appendPhase(new HighTierLoweringPhase(canonicalizer, true));
     }
 }
