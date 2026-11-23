@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.graal.snippets.SubstrateSharedGraphBuilderPlugins.IntrinsicOnlyInvocationPlugin;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.hosted.SVMHost;
@@ -48,6 +49,7 @@ import com.oracle.svm.interpreter.InterpreterFeature;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
+import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestAccess;
 
@@ -112,6 +114,10 @@ final class PreservedBytecodeEligibility {
         }
         if (method.getCode() == null) {
             return "it has no bytecodes";
+        }
+        var plugins = hostVM.getProviders(method.getMethodVariantKey()).getGraphBuilderPlugins().getInvocationPlugins();
+        if (plugins.lookupInvocation(method, HostedOptionValues.singleton().get()) instanceof IntrinsicOnlyInvocationPlugin) {
+            return "its bytecodes require an intrinsic";
         }
         RestrictHeapAccess.Access restriction = RestrictHeapAccessCalleesImpl.heapAccessRestriction(method);
         if (restriction != RestrictHeapAccess.Access.UNRESTRICTED) {

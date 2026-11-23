@@ -49,6 +49,7 @@ Preservation keeps original bytecodes, so operations removed or rewritten by AOT
 still need executable interpreter semantics and image metadata. Selection rejects:
 
 - class initializers and methods without bytecodes;
+- placeholder bodies explicitly marked by an invocation plugin as requiring intrinsification;
 - methods forbidden by interpreter callability or heap-access restrictions;
 - bodies declared in SVM core types or allocating SVM core types;
 - direct accesses to deleted, guarantee-folded or injected-accessor fields, and inaccessible fields;

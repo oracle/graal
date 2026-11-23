@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import java.lang.reflect.Type;
+
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -59,6 +61,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * so both paths use the same plugin implementations.
  */
 public final class SubstrateSharedGraphBuilderPlugins {
+
+    /** A required plugin whose underlying method body has no executable fallback. */
+    public abstract static class IntrinsicOnlyInvocationPlugin extends RequiredInvocationPlugin {
+        protected IntrinsicOnlyInvocationPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+    }
 
     /** Registers Unsafe allocation with class initialization and the original exception states. */
     public static void registerUnsafeAllocateInstancePlugin(Registration r) {
@@ -113,7 +122,7 @@ public final class SubstrateSharedGraphBuilderPlugins {
 
     public static void registerSystemIdentityHashCodePlugin(InvocationPlugins plugins) {
         Registration registration = new Registration(plugins, System.class);
-        registration.register(new RequiredInvocationPlugin("identityHashCode", Object.class) {
+        registration.register(new IntrinsicOnlyInvocationPlugin("identityHashCode", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.addPush(JavaKind.Int, SubstrateIdentityHashCodeNode.create(object, b.bci(), b));
@@ -133,7 +142,7 @@ public final class SubstrateSharedGraphBuilderPlugins {
             }
         });
 
-        registration.register(new RequiredInvocationPlugin("hashCode", Receiver.class) {
+        registration.register(new IntrinsicOnlyInvocationPlugin("hashCode", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get(true);
