@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,28 +26,127 @@
 package jdk.graal.compiler.core.test;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
+import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import jdk.graal.compiler.nodes.calc.MaxNode;
+import jdk.graal.compiler.nodes.calc.MinMaxNode;
 import jdk.graal.compiler.nodes.calc.MinNode;
+import jdk.graal.compiler.nodes.calc.SignExtendNode;
 import jdk.graal.compiler.nodes.calc.UnsignedMaxNode;
 import jdk.graal.compiler.nodes.calc.UnsignedMinNode;
+import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class MinMaxCanonicalizationTest extends GraalCompilerTest {
 
     record ByteHolder(byte b) {
 
+    }
+
+    @Test
+    public void testFromConditionalWithExtension() {
+        StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), getDebugContext(), StructuredGraph.AllowAssumptions.YES).build();
+        ParameterNode x = graph.addWithoutUnique(new ParameterNode(0, StampPair.createSingle(IntegerStamp.create(8))));
+        for (boolean unsigned : new boolean[]{false, true}) {
+            for (boolean flipped : new boolean[]{false, true}) {
+                for (boolean zeroExtend : new boolean[]{false, true}) {
+                    for (int bound : new int[]{-1, 0, 1}) {
+                        ConstantNode narrowBound = ConstantNode.forIntegerBits(8, bound, graph);
+                        LogicNode condition = graph.addWithoutUnique(unsigned ? new IntegerBelowNode(x, narrowBound) : new IntegerLessThanNode(x, narrowBound));
+                        ValueNode extended = graph.addOrUniqueWithInputs(zeroExtend ? new ZeroExtendNode(x, 32) : new SignExtendNode(x, 32));
+                        ConstantNode wideBound = ConstantNode.forInt(bound, graph);
+                        ValueNode trueValue = flipped ? wideBound : extended;
+                        ValueNode falseValue = flipped ? extended : wideBound;
+                        ValueNode minMax = MinMaxNode.fromConditional(condition, trueValue, falseValue, NodeView.DEFAULT);
+                        if (zeroExtend && bound < 0) {
+                            assertNull(minMax);
+                        } else {
+                            assertNotNull(minMax);
+                        }
+                        ConditionalNode conditional = graph.addWithoutUnique(new ConditionalNode(condition, trueValue, falseValue));
+                        Assert.assertTrue(((IntegerStamp) conditional.stamp(NodeView.DEFAULT)).contains(bound));
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testOffByOneSignExtendOutOfRange() {
+        for (int bits : new int[]{8, 16, 32}) {
+            StructuredGraph graph = new StructuredGraph.Builder(getInitialOptions(), getDebugContext(), StructuredGraph.AllowAssumptions.YES).build();
+            ValueNode x = graph.addWithoutUnique(new ParameterNode(0, StampPair.createSingle(IntegerStamp.create(bits))));
+            long min = NumUtil.minValue(bits);
+            LogicNode condition = graph.addWithoutUnique(new IntegerBelowNode(x, ConstantNode.forIntegerBits(bits, min, graph)));
+            ValueNode extended = graph.addOrUnique(new SignExtendNode(x, 64));
+            ValueNode constant = ConstantNode.forLong(min - 1, graph);
+            for (boolean flipped : new boolean[]{false, true}) {
+                ValueNode trueValue = flipped ? constant : extended;
+                ValueNode falseValue = flipped ? extended : constant;
+                assertNull(MinMaxNode.fromConditional(condition, trueValue, falseValue, NodeView.DEFAULT));
+                ConditionalNode conditional = graph.addWithoutUnique(new ConditionalNode(condition, trueValue, falseValue));
+                Assert.assertTrue(((IntegerStamp) conditional.stamp(NodeView.DEFAULT)).contains(min - 1));
+            }
+        }
+    }
+
+    @Test
+    public void testOffByOneSignExtendInRange() {
+        for (int bits : new int[]{8, 16, 32}) {
+            long min = NumUtil.minValue(bits);
+            for (long value : new long[]{min, min + 1, -1, 0, 1, NumUtil.maxValue(bits)}) {
+                ValueNode x = ConstantNode.forIntegerBits(bits, value);
+                LogicNode condition = new IntegerBelowNode(x, ConstantNode.forIntegerBits(bits, min + 1));
+                ValueNode extended = new SignExtendNode(x, 64);
+                ValueNode constant = ConstantNode.forLong(min);
+                for (boolean flipped : new boolean[]{false, true}) {
+                    ValueNode result = MinMaxNode.fromConditional(condition, flipped ? constant : extended, flipped ? extended : constant, NodeView.DEFAULT);
+                    assertNotNull(result);
+                    boolean below = Long.compareUnsigned(value & NumUtil.maxValueUnsigned(bits), (min + 1) & NumUtil.maxValueUnsigned(bits)) < 0;
+                    Assert.assertEquals(below == flipped ? min : value, result.asJavaConstant().asLong());
+                }
+            }
+        }
+    }
+
+    public static int unsignedMinByteArraySnippet(byte[] array, int index) {
+        byte b = array[index];
+        int u = b & 0xff;
+        int result = Integer.compareUnsigned(u, 255) < 0 ? u : -1;
+        return result + b;
+    }
+
+    public static int minByteZeroExtendArraySnippet(byte[] array, int index) {
+        byte b = array[index];
+        int u = b & 0xff;
+        int result = b < -1 ? u : -1;
+        return result + u;
+    }
+
+    @Test
+    public void testMinByteArrayWithZeroExtension() {
+        for (int b = Byte.MIN_VALUE; b <= Byte.MAX_VALUE; b++) {
+            test("unsignedMinByteArraySnippet", new byte[]{(byte) b}, 0);
+            test("minByteZeroExtendArraySnippet", new byte[]{(byte) b}, 0);
+        }
     }
 
     public static int intParametersSnippet(int a, int b) {
