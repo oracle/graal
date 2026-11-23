@@ -101,4 +101,15 @@ public interface MetaAccessExtensionProvider {
      *         can't be determined.
      */
     ResolvedJavaField getStaticFieldForAccess(JavaConstant base, long offset, JavaKind accessKind);
+
+    /**
+     * Given a typed receiver and an unsafe access with a constant offset, returns the instance
+     * field accessed by that offset, or {@code null} if the offset cannot safely be resolved using
+     * the field layout available to this compilation. The default lookup uses the layout of
+     * {@code receiverType}. Providers must override this method if the offset may use a different
+     * layout.
+     */
+    default ResolvedJavaField getInstanceFieldForAccess(ResolvedJavaType receiverType, long offset, JavaKind accessKind) {
+        return receiverType.findInstanceFieldWithOffset(offset, accessKind);
+    }
 }

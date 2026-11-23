@@ -119,7 +119,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                     field = getStaticFieldUnsafeAccess(tool.getMetaAccessExtensionProvider());
                     if (field == null) {
                         long constantOffset = offset().asJavaConstant().asLong();
-                        field = receiverType.findInstanceFieldWithOffset(constantOffset, accessKind());
+                        field = tool.getMetaAccessExtensionProvider().getInstanceFieldForAccess(receiverType, constantOffset, accessKind());
                     }
                 } else if (offset() instanceof FieldOffsetProvider fieldOffsetProvider) {
                     field = fieldOffsetProvider.getField();
