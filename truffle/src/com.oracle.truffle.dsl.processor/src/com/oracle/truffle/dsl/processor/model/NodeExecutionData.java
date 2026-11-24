@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,11 +52,17 @@ public class NodeExecutionData {
     private String name;
     private final int index;
     private final int childArrayIndex;
+    private final boolean constantOperand;
 
     public NodeExecutionData(NodeChildData child, int index, int childArrayIndex) {
+        this(child, index, childArrayIndex, false);
+    }
+
+    public NodeExecutionData(NodeChildData child, int index, int childArrayIndex, boolean constantOperand) {
         this.child = child;
         this.index = index;
         this.childArrayIndex = childArrayIndex;
+        this.constantOperand = constantOperand;
         this.name = createName();
     }
 
@@ -70,6 +76,11 @@ public class NodeExecutionData {
 
     public int getIndex() {
         return index;
+    }
+
+    /** Whether this execution supplies a constant operand of a Bytecode DSL operation. */
+    public boolean isConstantOperand() {
+        return constantOperand;
     }
 
     public TypeMirror getNodeType() {
