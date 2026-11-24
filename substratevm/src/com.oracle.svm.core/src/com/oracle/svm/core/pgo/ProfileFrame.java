@@ -46,7 +46,7 @@ public final class ProfileFrame {
 
     /**
      * Orders calling contexts by their method descriptors, frame by frame, and then by their
-     * bytecode indexes. The writer and the recorders sort keys with it before they write them.
+     * bytecode indexes. The writer and the recorders sort keys with it before the keys are written.
      * <p>
      * Keys are created in compile order, which differs from build to build because compilation is
      * parallel, and the recorders keep them in hash maps. Sorting makes the file depend only on the

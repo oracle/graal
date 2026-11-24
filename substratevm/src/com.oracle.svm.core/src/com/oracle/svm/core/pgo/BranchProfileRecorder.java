@@ -85,7 +85,7 @@ public final class BranchProfileRecorder {
     @UnknownPrimitiveField(availability = AfterCompilation.class) //
     private static int registeredSlots;
 
-    /** Merged view (shared + live threads) that the writer reads; null outside a dump. */
+    /** Merged view (shared totals + live threads) that the writer reads; null until the first dump takes it. */
     private static long[] snapshot;
 
     /** Whether the image counts branches; false with {@code -H:-PGOProfileBranches}. Set at build time. */
@@ -99,6 +99,26 @@ public final class BranchProfileRecorder {
      */
     private static final BranchProfileKey REACHABILITY_PLACEHOLDER = create(
                     new ProfileFrame[]{new ProfileFrame("Lcom/oracle/svm/core/pgo/BranchProfileRecorder;.__unused__()V", -1)}, -1, -1, "unused", 0L);
+
+    private static final Comparator<BranchProfileKey> COUNTER_COMPARATOR = (left, right) -> {
+        int result = ProfileFrame.CONTEXT_ORDER.compare(left.getContext(), right.getContext());
+        if (result == 0) {
+            result = Integer.compare(left.getTrueSuccessorBci(), right.getTrueSuccessorBci());
+        }
+        if (result == 0) {
+            result = Integer.compare(left.getFalseSuccessorBci(), right.getFalseSuccessorBci());
+        }
+        if (result == 0) {
+            result = left.getConditionKind().compareTo(right.getConditionKind());
+        }
+        if (result == 0) {
+            result = Long.compareUnsigned(left.getConditionFingerprint(), right.getConditionFingerprint());
+        }
+        if (result == 0) {
+            result = Integer.compare(left.getCounterIndex(), right.getCounterIndex());
+        }
+        return result;
+    };
 
     private BranchProfileRecorder() {
     }
@@ -254,42 +274,6 @@ public final class BranchProfileRecorder {
             }
         }
         result.sort(COUNTER_COMPARATOR);
-        return result;
-    }
-
-    private static final Comparator<BranchProfileKey> COUNTER_COMPARATOR = (left, right) -> {
-        int result = compareContexts(left.getContext(), right.getContext());
-        if (result == 0) {
-            result = Integer.compare(left.getTrueSuccessorBci(), right.getTrueSuccessorBci());
-        }
-        if (result == 0) {
-            result = Integer.compare(left.getFalseSuccessorBci(), right.getFalseSuccessorBci());
-        }
-        if (result == 0) {
-            result = left.getConditionKind().compareTo(right.getConditionKind());
-        }
-        if (result == 0) {
-            result = Long.compareUnsigned(left.getConditionFingerprint(), right.getConditionFingerprint());
-        }
-        if (result == 0) {
-            result = Integer.compare(left.getCounterIndex(), right.getCounterIndex());
-        }
-        return result;
-    };
-
-    /** Compares the method descriptors frame by frame, then the bytecode indexes. */
-    private static int compareContexts(ProfileFrame[] left, ProfileFrame[] right) {
-        int length = Math.min(left.length, right.length);
-        for (int i = 0; i < length; i++) {
-            int result = left[i].methodDescriptor().compareTo(right[i].methodDescriptor());
-            if (result != 0) {
-                return result;
-            }
-        }
-        int result = Integer.compare(left.length, right.length);
-        for (int i = 0; result == 0 && i < length; i++) {
-            result = Integer.compare(left[i].bci(), right[i].bci());
-        }
         return result;
     }
 }

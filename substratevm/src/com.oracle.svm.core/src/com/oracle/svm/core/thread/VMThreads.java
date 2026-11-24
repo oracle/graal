@@ -383,10 +383,11 @@ public abstract class VMThreads {
         /*
          * Listeners that set up per-thread state for instrumented code, such as the PGO counter
          * tables, must run before the thread executes any Java code, because instrumented code uses
-         * that state without checking whether it exists. This is the last step of attaching: the
-         * thread is registered but has not run Java code yet. Java code runs as soon as this method
-         * returns (the caller then creates or sets up the Thread object, which can run class
-         * initializers), and every later listener callback comes after it.
+         * that state without checking whether it exists. This runs once the thread is registered,
+         * before it has run any Java code; only the handshake of a thread that this isolate started
+         * follows. Java code runs as soon as this method returns (the caller then creates or sets up
+         * the Thread object, which can run class initializers), and every later listener callback
+         * comes after it.
          */
         ThreadListenerSupport.get().afterThreadAttach(currentThread);
 

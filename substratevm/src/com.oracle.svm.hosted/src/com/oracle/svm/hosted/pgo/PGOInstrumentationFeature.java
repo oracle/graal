@@ -101,7 +101,7 @@ public final class PGOInstrumentationFeature implements InternalFeature {
         @Option(help = "Record concrete receiver frequencies at indirect calls and emit virtualInvokeProfiles.")//
         public static final HostedOptionKey<Boolean> PGOProfileReceivers = new HostedOptionKey<>(true);
 
-        @Option(help = "Record context-sensitive method-entry counts and emit callCountProfiles.")//
+        @Option(help = "Record per-context call counts at call sites with one known target and emit callCountProfiles.")//
         public static final HostedOptionKey<Boolean> PGOProfileCallCounts = new HostedOptionKey<>(true);
 
         @Option(help = "Record switch successor frequencies in conditionalProfiles.")//

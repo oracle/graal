@@ -32,8 +32,8 @@ import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
 
 /**
- * The key that the count of one call edge belongs to, counted at the callee's entry under the
- * caller's context.
+ * The key of one call edge: the callee at bytecode index 0 under the calling context of the call.
+ * The count is taken in the caller, just before the call.
  */
 public final class CallCountProfileKey implements CallCountProfileSlot {
     /** Index of a counter that no compiled code uses (yet). */

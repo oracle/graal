@@ -43,10 +43,12 @@ import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 
 /**
- * Instruments profile-relevant {@link IfNode}s and {@link SwitchNode}s with one counter per
- * physical site; {@code -H:-PGOProfileBranches} and {@code -H:-PGOProfileSwitches} turn off either
- * kind. Part of {@link PGOInstrumentationPhases}; the inliner instruments the graphs it expands the
- * same way (see {@link PGOInstrumentationFeature#instrumentExpandedGraph}).
+ * Instruments every {@link IfNode} and {@link SwitchNode} that has a bytecode position and does
+ * not guard an implicit exception (see {@link ProfilingUtilities#relevantConditionalSitesFromGraph}).
+ * Each graph copy of a branch or switch gets its own profile key, with a counter node at the start
+ * of each successor; {@code -H:-PGOProfileBranches} and {@code -H:-PGOProfileSwitches} turn off
+ * either kind. Part of {@link PGOInstrumentationPhases}; the inliner instruments the graphs it
+ * expands the same way (see {@link PGOInstrumentationFeature#instrumentExpandedGraph}).
  */
 final class BranchProfileInstrumentationPhase extends BasePhase<HighTierContext> {
 

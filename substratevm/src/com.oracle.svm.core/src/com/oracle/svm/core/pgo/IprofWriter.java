@@ -43,13 +43,14 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import jdk.graal.compiler.util.json.JsonWriter;
+import jdk.vm.ci.meta.MetaUtil;
 
 /**
  * Writes all recorded profiles into one iprof file, the JSON format that {@code --pgo} reads (see
- * {@code docs/reference-manual/native-image/PGO-IprofFileFormat.md}): the {@code types} and
- * {@code methods} tables, then {@code conditionalProfiles} (branches and switches),
- * {@code virtualInvokeProfiles} (receiver types), {@code callCountProfiles},
- * {@code monitorProfiles} and {@code samplingProfiles} (stack samples).
+ * {@link IprofFormat}): the {@code version}, the {@code types} and {@code methods} tables, then
+ * {@code conditionalProfiles} (branches and switches), {@code callCountProfiles},
+ * {@code virtualInvokeProfiles} (receiver types), {@code monitorProfiles} and
+ * {@code samplingProfiles} (stack samples).
  * <p>
  * Each {@code conditionalProfiles} entry of a branch describes one bytecode branch at one calling
  * context: the sum over every physical copy of that branch the compiler created (see
@@ -58,7 +59,16 @@ import jdk.graal.compiler.util.json.JsonWriter;
 public final class IprofWriter {
 
     /** Version of the iprof format written, the schema version the file declares. */
-    private static final String IPROF_VERSION = "1.1.0";
+    private static final String IPROF_VERSION = IprofFormat.VERSION_1_1_0;
+
+    private static final Comparator<ContextKey> CONTEXT_COMPARATOR = Comparator.comparing(ContextKey::frames, ProfileFrame.CONTEXT_LIST_ORDER);
+
+    private static final Comparator<BranchIdentity> BRANCH_IDENTITY_COMPARATOR = Comparator
+                    .comparing(BranchIdentity::context, CONTEXT_COMPARATOR)
+                    .thenComparingInt(BranchIdentity::trueSuccessorBci)
+                    .thenComparingInt(BranchIdentity::falseSuccessorBci)
+                    .thenComparing(BranchIdentity::conditionKind)
+                    .thenComparing(BranchIdentity::conditionFingerprint, Long::compareUnsigned);
 
     private IprofWriter() {
     }
@@ -114,7 +124,7 @@ public final class IprofWriter {
         List<StackSampleRecorder.DecodedSample> samples = stackSamples.stream().filter(sample -> metadata.describes(ContextKey.of(sample.context()))).toList();
         skippedEntries += receiverProfiles.size() - receivers.size() + stackSamples.size() - samples.size();
         writer.appendObjectStart();
-        writer.appendKeyValue("version", IPROF_VERSION).appendSeparator();
+        writer.appendKeyValue(IprofFormat.VERSION, IPROF_VERSION).appendSeparator();
         writeTypes(writer, metadata).appendSeparator();
         writeMethods(writer, metadata).appendSeparator();
         writeConditionalProfiles(writer, metadata, branchEntries, switchProfiles);
@@ -262,21 +272,21 @@ public final class IprofWriter {
     }
 
     private static JsonWriter writeTypes(JsonWriter writer, Metadata metadata) throws IOException {
-        writer.quote("types").appendFieldSeparator().appendArrayStart();
+        writer.quote(IprofFormat.TYPES).appendFieldSeparator().appendArrayStart();
         boolean first = true;
         for (Map.Entry<String, Integer> type : metadata.typesByName.entrySet()) {
             if (!first) {
                 writer.appendSeparator();
             }
             first = false;
-            writer.appendObjectStart().appendKeyValue("id", type.getValue()).appendSeparator()
-                            .appendKeyValue("name", type.getKey()).appendObjectEnd();
+            writer.appendObjectStart().appendKeyValue(IprofFormat.ID, type.getValue()).appendSeparator()
+                            .appendKeyValue(IprofFormat.NAME, type.getKey()).appendObjectEnd();
         }
         return writer.appendArrayEnd();
     }
 
     private static JsonWriter writeMethods(JsonWriter writer, Metadata metadata) throws IOException {
-        writer.quote("methods").appendFieldSeparator().appendArrayStart();
+        writer.quote(IprofFormat.METHODS).appendFieldSeparator().appendArrayStart();
         boolean first = true;
         for (Map.Entry<String, Integer> methodEntry : metadata.methodsByDescriptor.entrySet()) {
             if (!first) {
@@ -284,9 +294,9 @@ public final class IprofWriter {
             }
             first = false;
             ParsedMethod method = ParsedMethod.parse(methodEntry.getKey());
-            writer.appendObjectStart().appendKeyValue("id", methodEntry.getValue()).appendSeparator()
-                            .appendKeyValue("name", method.name).appendSeparator()
-                            .quote("signature").appendFieldSeparator().appendArrayStart();
+            writer.appendObjectStart().appendKeyValue(IprofFormat.ID, methodEntry.getValue()).appendSeparator()
+                            .appendKeyValue(IprofFormat.NAME, method.name).appendSeparator()
+                            .quote(IprofFormat.SIGNATURE).appendFieldSeparator().appendArrayStart();
             writer.printValue(metadata.typesByName.get(method.declaringType)).appendSeparator()
                             .printValue(metadata.typesByName.get(method.returnType));
             for (String parameterType : method.parameterTypes) {
@@ -299,7 +309,7 @@ public final class IprofWriter {
 
     private static JsonWriter writeConditionalProfiles(JsonWriter writer, Metadata metadata,
                     Map<ContextKey, Map.Entry<BranchIdentity, BranchCounts>> branchEntries, Map<ContextKey, long[]> switchProfiles) throws IOException {
-        writer.quote("conditionalProfiles").appendFieldSeparator().appendArrayStart();
+        writer.quote(IprofFormat.CONDITIONAL_PROFILES).appendFieldSeparator().appendArrayStart();
         boolean first = true;
         for (Map.Entry<ContextKey, Map.Entry<BranchIdentity, BranchCounts>> entry : branchEntries.entrySet()) {
             if (!first) {
@@ -313,8 +323,8 @@ public final class IprofWriter {
                 writer.appendSeparator();
             }
             first = false;
-            writer.appendObjectStart().appendKeyValue("ctx", context(metadata, profile.getKey())).appendSeparator()
-                            .quote("records").appendFieldSeparator().appendArrayStart();
+            writer.appendObjectStart().appendKeyValue(IprofFormat.CTX, context(metadata, profile.getKey())).appendSeparator()
+                            .quote(IprofFormat.RECORDS).appendFieldSeparator().appendArrayStart();
             for (int i = 0; i < profile.getValue().length; i++) {
                 if (i != 0) {
                     writer.appendSeparator();
@@ -327,21 +337,21 @@ public final class IprofWriter {
     }
 
     private static JsonWriter writeCallCountProfiles(JsonWriter writer, Metadata metadata, Map<ContextKey, Long> profiles) throws IOException {
-        writer.quote("callCountProfiles").appendFieldSeparator().appendArrayStart();
+        writer.quote(IprofFormat.CALL_COUNT_PROFILES).appendFieldSeparator().appendArrayStart();
         boolean first = true;
         for (Map.Entry<ContextKey, Long> profile : profiles.entrySet()) {
             if (!first) {
                 writer.appendSeparator();
             }
             first = false;
-            writer.appendObjectStart().appendKeyValue("ctx", context(metadata, profile.getKey())).appendSeparator()
-                            .quote("records").appendFieldSeparator().appendArrayStart().printValue(profile.getValue()).appendArrayEnd().appendObjectEnd();
+            writer.appendObjectStart().appendKeyValue(IprofFormat.CTX, context(metadata, profile.getKey())).appendSeparator()
+                            .quote(IprofFormat.RECORDS).appendFieldSeparator().appendArrayStart().printValue(profile.getValue()).appendArrayEnd().appendObjectEnd();
         }
         return writer.appendArrayEnd();
     }
 
     private static JsonWriter writeReceiverProfiles(JsonWriter writer, Metadata metadata, List<TypeProfileRecorder.DecodedReceiverProfile> profiles) throws IOException {
-        writer.quote("virtualInvokeProfiles").appendFieldSeparator().appendArrayStart();
+        writer.quote(IprofFormat.VIRTUAL_INVOKE_PROFILES).appendFieldSeparator().appendArrayStart();
         boolean firstProfile = true;
         for (TypeProfileRecorder.DecodedReceiverProfile profile : profiles) {
             if (!firstProfile) {
@@ -349,8 +359,8 @@ public final class IprofWriter {
             }
             firstProfile = false;
             ContextKey context = ContextKey.of(profile.context());
-            writer.appendObjectStart().appendKeyValue("ctx", context(metadata, context)).appendSeparator()
-                            .quote("records").appendFieldSeparator().appendArrayStart();
+            writer.appendObjectStart().appendKeyValue(IprofFormat.CTX, context(metadata, context)).appendSeparator()
+                            .quote(IprofFormat.RECORDS).appendFieldSeparator().appendArrayStart();
             boolean firstReceiver = true;
             for (Map.Entry<String, Long> receiver : new TreeMap<>(profile.countsByTypeDescriptor()).entrySet()) {
                 if (!firstReceiver) {
@@ -365,11 +375,11 @@ public final class IprofWriter {
     }
 
     private static JsonWriter writeMonitorProfiles(JsonWriter writer, Metadata metadata, Map<String, Long> profiles) throws IOException {
-        writer.quote("monitorProfiles").appendFieldSeparator().appendArrayStart();
+        writer.quote(IprofFormat.MONITOR_PROFILES).appendFieldSeparator().appendArrayStart();
         if (!profiles.isEmpty()) {
             /* The iprof format uses one global monitor record anchored at sentinel context 0:0. */
-            writer.appendObjectStart().appendKeyValue("ctx", "0:0").appendSeparator()
-                            .quote("records").appendFieldSeparator().appendArrayStart();
+            writer.appendObjectStart().appendKeyValue(IprofFormat.CTX, "0:0").appendSeparator()
+                            .quote(IprofFormat.RECORDS).appendFieldSeparator().appendArrayStart();
             boolean first = true;
             for (Map.Entry<String, Long> profile : new TreeMap<>(profiles).entrySet()) {
                 if (!first) {
@@ -385,7 +395,7 @@ public final class IprofWriter {
 
     /** {@code samplingProfiles}: sampled call stacks innermost first with their sample counts. */
     private static void writeSamplingProfiles(JsonWriter writer, Metadata metadata, List<StackSampleRecorder.DecodedSample> stackSamples) throws IOException {
-        writer.quote("samplingProfiles").appendFieldSeparator().appendArrayStart();
+        writer.quote(IprofFormat.SAMPLING_PROFILES).appendFieldSeparator().appendArrayStart();
         boolean first = true;
         for (StackSampleRecorder.DecodedSample sample : stackSamples) {
             if (!first) {
@@ -393,27 +403,28 @@ public final class IprofWriter {
             }
             first = false;
             ContextKey context = ContextKey.of(sample.context());
-            writer.appendObjectStart().appendKeyValue("ctx", context(metadata, context)).appendSeparator()
-                            .quote("records").appendFieldSeparator().appendArrayStart().printValue(sample.count()).appendArrayEnd().appendObjectEnd();
+            writer.appendObjectStart().appendKeyValue(IprofFormat.CTX, context(metadata, context)).appendSeparator()
+                            .quote(IprofFormat.RECORDS).appendFieldSeparator().appendArrayStart().printValue(sample.count()).appendArrayEnd().appendObjectEnd();
         }
         writer.appendArrayEnd();
     }
 
     private static void writeBranchEntry(JsonWriter writer, Metadata metadata, ContextKey context, BranchIdentity identity, BranchCounts counts) throws IOException {
-        writer.appendObjectStart().appendKeyValue("ctx", context(metadata, context)).appendSeparator();
-        writer.quote("records").appendFieldSeparator().appendArrayStart()
+        writer.appendObjectStart().appendKeyValue(IprofFormat.CTX, context(metadata, context)).appendSeparator();
+        writer.quote(IprofFormat.RECORDS).appendFieldSeparator().appendArrayStart()
                         .printValue(identity.trueSuccessorBci).appendSeparator().printValue(0).appendSeparator().printValue(counts.counts()[0]).appendSeparator()
                         .printValue(identity.falseSuccessorBci).appendSeparator().printValue(1).appendSeparator().printValue(counts.counts()[1])
                         .appendArrayEnd().appendObjectEnd();
     }
 
+    /** The {@code ctx} string of a context: method ids and bcis, innermost frame first, such as {@code 7:12<3:5}. */
     private static String context(Metadata metadata, ContextKey context) {
         StringBuilder result = new StringBuilder();
         for (ProfileFrame frame : context.frames) {
             if (!result.isEmpty()) {
-                result.append('<');
+                result.append(IprofFormat.FRAME_SEPARATOR);
             }
-            result.append(metadata.methodsByDescriptor.get(frame.methodDescriptor())).append(':').append(frame.bci());
+            result.append(metadata.methodsByDescriptor.get(frame.methodDescriptor())).append(IprofFormat.METHOD_BCI_SEPARATOR).append(frame.bci());
         }
         return result.toString();
     }
@@ -455,15 +466,6 @@ public final class IprofWriter {
     /** The true and false counts of one branch key, or of the keys summed into it. */
     private record BranchCounts(long[] counts) {
     }
-
-    private static final Comparator<ContextKey> CONTEXT_COMPARATOR = Comparator.comparing(ContextKey::frames, ProfileFrame.CONTEXT_LIST_ORDER);
-
-    private static final Comparator<BranchIdentity> BRANCH_IDENTITY_COMPARATOR = Comparator
-                    .comparing(BranchIdentity::context, CONTEXT_COMPARATOR)
-                    .thenComparingInt(BranchIdentity::trueSuccessorBci)
-                    .thenComparingInt(BranchIdentity::falseSuccessorBci)
-                    .thenComparing(BranchIdentity::conditionKind)
-                    .thenComparing(BranchIdentity::conditionFingerprint, Long::compareUnsigned);
 
     /**
      * The {@code types} and {@code methods} tables of the file. Profile entries name types and
@@ -553,9 +555,10 @@ public final class IprofWriter {
     }
 
     /**
-     * A canonical method descriptor such as {@code Ljava/lang/String;.charAt(I)C}, split into its
-     * declaring type, name, return type and parameter types for the {@code types} and
-     * {@code methods} tables.
+     * A canonical method descriptor split into its declaring type, name, return type and parameter
+     * types for the {@code types} and {@code methods} tables. For example,
+     * {@code Ljava/lang/String;.charAt(I)C} gives {@code java.lang.String}, {@code charAt},
+     * {@code char} and {@code [int]}.
      */
     private static final class ParsedMethod {
         private final String declaringType;
@@ -623,46 +626,13 @@ public final class IprofWriter {
             return cursor + 1;
         }
 
-        static String typeName(String descriptor) {
-            int arrays = 0;
-            while (arrays < descriptor.length() && descriptor.charAt(arrays) == '[') {
-                arrays++;
-            }
-            if (arrays != 0) {
-                return internalToBinaryName(descriptor);
-            }
-            if (descriptor.length() == 1) {
-                return switch (descriptor.charAt(0)) {
-                    case 'Z' -> "boolean";
-                    case 'B' -> "byte";
-                    case 'S' -> "short";
-                    case 'C' -> "char";
-                    case 'I' -> "int";
-                    case 'J' -> "long";
-                    case 'F' -> "float";
-                    case 'D' -> "double";
-                    case 'V' -> "void";
-                    default -> throw new IllegalArgumentException("Unknown primitive descriptor: " + descriptor);
-                };
-            }
-            if (descriptor.charAt(0) != 'L' || descriptor.charAt(descriptor.length() - 1) != ';') {
-                throw new IllegalArgumentException("Malformed object descriptor: " + descriptor);
-            }
-            return internalToBinaryName(descriptor.substring(1, descriptor.length() - 1));
-        }
-
         /**
-         * Internal (descriptor) form to binary class name: slashes become dots, and the dot that
-         * JVMCI uses inside a hidden class name ({@code Foo$$Lambda.0x1234}) becomes the slash of
-         * the binary name ({@code Foo$$Lambda/0x1234}). The consumer applies the inverse swap.
+         * The iprof name of a type, which is its {@link Class#getName()}: {@code java.lang.String},
+         * {@code [I} and {@code int} for the descriptors {@code Ljava/lang/String;}, {@code [I} and
+         * {@code I}.
          */
-        private static String internalToBinaryName(String internal) {
-            StringBuilder result = new StringBuilder(internal.length());
-            for (int i = 0; i < internal.length(); i++) {
-                char c = internal.charAt(i);
-                result.append(c == '/' ? '.' : c == '.' ? '/' : c);
-            }
-            return result.toString();
+        static String typeName(String descriptor) {
+            return MetaUtil.internalNameToJava(descriptor, true, true);
         }
     }
 }

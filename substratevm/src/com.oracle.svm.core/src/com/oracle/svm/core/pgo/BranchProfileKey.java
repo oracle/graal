@@ -53,14 +53,14 @@ public final class BranchProfileKey {
      */
     @UnknownObjectField(availability = AfterCompilation.class) private final String conditionKind;
     /**
-     * A 64-bit hash of the tested condition's shape: the classes and source positions of the
-     * branch, of its condition node and of the condition's inputs, three levels deep (see
-     * {@code ProfilingUtilities.conditionFingerprint}). The writer sums keys that share a calling
-     * context and successor bytecode indexes into one entry. When the successors have no bytecode
-     * position (a branch inside an inlined intrinsic or substitution, or on an exception edge),
-     * keys of different branches look alike that way, so the writer merges them only when their
-     * kind and fingerprint also match, that is, when they test the same condition (see
-     * {@code IprofWriter}).
+     * A 64-bit hash of the tested condition's shape: the class of the branch node, then the classes
+     * and source positions of its condition node and of the condition's inputs, three levels of
+     * inputs deep (see {@code ProfilingUtilities.conditionFingerprint}). The writer sums keys that
+     * share a calling context and successor bytecode indexes into one entry. When the successors
+     * have no bytecode position (a branch inside an inlined intrinsic or substitution, or on an
+     * exception edge), keys of different branches look alike that way, so the writer merges them
+     * only when their kind and fingerprint also match, that is, when they test the same condition
+     * (see {@code IprofWriter}).
      */
     @UnknownPrimitiveField(availability = AfterCompilation.class) private final long conditionFingerprint;
     /**

@@ -64,7 +64,7 @@ public final class TypeProfileCounterNode extends PGOInstrumentationNode impleme
     /** The object whose type is recorded; null once the type is known at compile time. */
     @OptionalInput(InputType.Value) private ValueNode object;
     private final TypeProfileKey key;
-    /** Exposed in graph dumps so side-effect checks can distinguish monitor and invoke probes. */
+    /** Whether this probe records a locked object rather than a receiver; shown in graph dumps. */
     private final boolean monitorProfile;
     /** Hub type id recorded without reading an object, or {@link #DYNAMIC_TYPE}. */
     private final int knownTypeId;

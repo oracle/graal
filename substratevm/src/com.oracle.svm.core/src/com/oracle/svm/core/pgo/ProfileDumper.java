@@ -57,7 +57,7 @@ public final class ProfileDumper {
                         "directory without overwriting each other. In containers every run may get the same process id, so use %t or a path per container there.")//
         public static final RuntimeOptionKey<String> ProfilesDumpFile = new RuntimeOptionKey<>("default.iprof");
 
-        @Option(help = "Print what the profile dump wrote and what each recorder saw, one line per profile kind.")//
+        @Option(help = "Print what the profile dump wrote, and what the stack sampler, the type recorder and the call-count recorder saw.")//
         public static final RuntimeOptionKey<Boolean> ProfilesDumpStatistics = new RuntimeOptionKey<>(true);
     }
 

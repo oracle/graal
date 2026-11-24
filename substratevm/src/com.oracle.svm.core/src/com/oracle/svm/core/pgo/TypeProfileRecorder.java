@@ -115,11 +115,6 @@ public final class TypeProfileRecorder implements ThreadListener {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final FastThreadLocalWord<Pointer> TABLE = FastThreadLocalFactory.createWord("TypeProfileRecorder.table");
 
-    /** Location of the per-thread table pointer; a snippet that reads it must declare it private. */
-    public static LocationIdentity tablePointerLocation() {
-        return TABLE.getLocationIdentity();
-    }
-
     /**
      * Location of the table contents. The tables are native memory that is never aliased with any
      * Java-visible memory, so the fast path accesses them under this name and a snippet that contains
@@ -133,7 +128,7 @@ public final class TypeProfileRecorder implements ThreadListener {
     /** Pointer to the shared table; allocated lazily and replaced on growth, always under {@link #SHARED_LOCK}. */
     private static final CGlobalData<Pointer> SHARED = CGlobalDataFactory.createWord();
     private static final CGlobalData<Pointer> SHARED_LOCK = CGlobalDataFactory.createWord();
-    /** Events that could not be placed anywhere (table allocation failed). */
+    /** Events that could not be counted in any table: no table could be allocated, or the shared table is full. */
     private static final CGlobalData<Pointer> SHARED_DROPPED = CGlobalDataFactory.createWord();
     private static final ConcurrentMap<Integer, TypeProfileKey> KEYS = new ConcurrentHashMap<>();
     private static final AtomicInteger NEXT_SITE = new AtomicInteger();
@@ -166,6 +161,11 @@ public final class TypeProfileRecorder implements ThreadListener {
     private static boolean monitorProfilesEnabled;
 
     private TypeProfileRecorder() {
+    }
+
+    /** Location of the per-thread table pointer; a snippet that reads it must declare it private. */
+    public static LocationIdentity tablePointerLocation() {
+        return TABLE.getLocationIdentity();
     }
 
     public static TypeProfileRecorder create() {
@@ -548,15 +548,15 @@ public final class TypeProfileRecorder implements ThreadListener {
         return shared;
     }
 
-    @Uninterruptible(reason = "Native spin lock for rare exit and snapshot merges.")
+    @Uninterruptible(reason = "Native spin lock for rare fallback, exit, and snapshot merges.")
     private static void lockShared() {
         Pointer lock = SHARED_LOCK.get();
         while (!UNSAFE.compareAndSetInt(null, lock.rawValue(), 0, 1)) {
-            // Type recording does not acquire this lock.
+            // Recording into a thread's own table never takes this lock.
         }
     }
 
-    @Uninterruptible(reason = "Native spin lock for rare exit and snapshot merges.")
+    @Uninterruptible(reason = "Native spin lock for rare fallback, exit, and snapshot merges.")
     private static void unlockShared() {
         UNSAFE.putIntRelease(null, SHARED_LOCK.get().rawValue(), 0);
     }
@@ -770,29 +770,17 @@ public final class TypeProfileRecorder implements ThreadListener {
 
     /**
      * What the recorder saw: the numbered receiver sites, the receiver and monitor events, all
-     * events, the events no table had room for, and the events whose type has no name in the image.
+     * events, the events that were lost (no table had room for them, or no memory was left to copy
+     * them for the dump), and the events whose type has no name in the image.
      */
     public record Statistics(int receiverSites, long receiverEvents, long monitorEvents, long events, long dropped, long unknownReceivers, long unknownMonitors) {
     }
 
-    /** A calling context as a map key, ordered frame by frame by method descriptor and BCI. */
+    /** A calling context as a map key, ordered by {@link ProfileFrame#CONTEXT_LIST_ORDER}. */
     private record ContextKey(List<ProfileFrame> frames) implements Comparable<ContextKey> {
         @Override
         public int compareTo(ContextKey other) {
-            int length = Math.min(frames.size(), other.frames.size());
-            for (int i = 0; i < length; i++) {
-                ProfileFrame frame = frames.get(i);
-                ProfileFrame otherFrame = other.frames.get(i);
-                int comparison = frame.methodDescriptor().compareTo(otherFrame.methodDescriptor());
-                if (comparison != 0) {
-                    return comparison;
-                }
-                comparison = Integer.compare(frame.bci(), otherFrame.bci());
-                if (comparison != 0) {
-                    return comparison;
-                }
-            }
-            return Integer.compare(frames.size(), other.frames.size());
+            return ProfileFrame.CONTEXT_LIST_ORDER.compare(frames, other.frames);
         }
     }
 }

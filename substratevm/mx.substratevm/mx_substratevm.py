@@ -596,7 +596,7 @@ def svm_gate_body(args, tasks):
         if t:
             jvm_unittest(['com.oracle.svm.core.pgo', 'com.oracle.svm.hosted.pgo'])
 
-    # The two checks below build --pgo-instrument images, which have not been tried on Windows yet.
+    # The two checks below build --pgo-instrument images and are skipped on Windows, where such images are not tested.
     with Task('pgo recorder native tests', tasks, tags=[GraalTags.pgo]) as t:
         if t:
             if mx.is_windows():
@@ -974,9 +974,10 @@ def pgo_profile_counts_task(extra_image_args=None):
     the locked objects. It checks that the types and methods tables spell the signature of every
     workload method as its bytecode does, and that the stack samples show the sampled call chain,
     with the right call sites, on both threads, and a spin in a loop over an int range, whose
-    safepoint polls a sampling image keeps. It also checks what the profile must not hold:
-    anything from the collector after full collections, a stack sample inside ProfileDumper, or a
-    profiled type of com.oracle.svm.core.pgo, which only the dump puts into JDK collections.
+    safepoint polls a sampling image keeps. It also checks what the profile must not hold: entries
+    in the collector other than on the System.gc path, where at most one event per full collection
+    is allowed, a stack sample inside ProfileDumper, or a profiled type of com.oracle.svm.core.pgo,
+    which only the dump puts into JDK collections.
     """
     test_dir = join(suite.dir, 'src', 'native-image-tests', 'pgo')
     output_dir = join(svmbuild_dir(), 'pgo-profile-counts')

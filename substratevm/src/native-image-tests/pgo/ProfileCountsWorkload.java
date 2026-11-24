@@ -28,7 +28,8 @@ package pgocounts;
  * Runs each kind of code that a {@code --pgo-instrument} image profiles a known number of times,
  * counts the runs itself and prints the counts as {@code count <name> <value>} lines. The
  * {@code pgo profile counts} gate task builds this program as an instrumented image, runs it once
- * and checks that the profile holds exactly these counts.
+ * and checks that the profile holds exactly these counts. Only the stack samples of the spins
+ * depend on timing, so for those it checks a minimum.
  * <p>
  * Each profiled construct is alone in its own method, so the check finds it by method name. Each
  * counter sits on the path it counts, so it counts what the profile must record.
@@ -223,9 +224,10 @@ public final class ProfileCountsWorkload {
 
     /**
      * Spins for {@link #SPIN_MILLIS}, so that the stack sampler sees this call chain. The sampler
-     * runs only at safepoint checks, and the compiler drops the checks from loops over an int range
-     * and from loops that make a call on every trip, so this loop counts with a long and calls
-     * {@link System#nanoTime()} only every 65,536 trips.
+     * runs only at safepoint checks, and the compiler drops the checks from loops that make a call
+     * on every trip, so this loop calls {@link System#nanoTime()} only every 65,536 trips. It counts
+     * with a long, so that its checks do not depend on the sampling image keeping those of loops
+     * over an int range, which {@link #spinIntLoop} tests.
      */
     static long sampleLeaf() {
         long end = System.nanoTime() + SPIN_MILLIS * 1_000_000;

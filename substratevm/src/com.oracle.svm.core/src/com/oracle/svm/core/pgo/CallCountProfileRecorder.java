@@ -112,14 +112,6 @@ public final class CallCountProfileRecorder implements ThreadListener {
     private static final FastThreadLocalWord<Pointer> TABLE = FastThreadLocalFactory.createWord("CallCountProfileRecorder.table");
 
     /**
-     * Location of the per-thread table pointer. The snippet that inlines the fast path lists it as a
-     * private location, see {@link #TABLE_LOCATION}.
-     */
-    public static LocationIdentity tablePointerLocation() {
-        return TABLE.getLocationIdentity();
-    }
-
-    /**
      * Memory location of the table contents. The tables are native memory that no Java code can
      * reach, so the fast path reads and writes them under this location only. The snippet that
      * inlines the fast path into instrumented code lists this location and
@@ -137,7 +129,7 @@ public final class CallCountProfileRecorder implements ThreadListener {
     /** Pointer to the shared table; allocated lazily and replaced on growth, always under {@link #SHARED_LOCK}. */
     private static final CGlobalData<Pointer> SHARED = CGlobalDataFactory.createWord();
     private static final CGlobalData<Pointer> SHARED_LOCK = CGlobalDataFactory.createWord();
-    /** Events that could not be placed anywhere (table allocation failed). */
+    /** Events that could not be counted in any table: no table could be allocated, or the shared table is full. */
     private static final CGlobalData<Pointer> SHARED_DROPPED = CGlobalDataFactory.createWord();
     /** Call edges by counter index. Switch successors take indexes too but have no entry here. */
     private static final ConcurrentMap<Integer, CallCountProfileKey> KEYS = new ConcurrentHashMap<>();
@@ -161,6 +153,14 @@ public final class CallCountProfileRecorder implements ThreadListener {
     private static long snapshotDropped;
 
     private CallCountProfileRecorder() {
+    }
+
+    /**
+     * Location of the per-thread table pointer. The snippet that inlines the fast path lists it as a
+     * private location, see {@link #TABLE_LOCATION}.
+     */
+    public static LocationIdentity tablePointerLocation() {
+        return TABLE.getLocationIdentity();
     }
 
     public static CallCountProfileRecorder createRecorder() {
@@ -242,9 +242,9 @@ public final class CallCountProfileRecorder implements ThreadListener {
 
     /**
      * Counts one execution of counter {@code counterIndex} in the current thread's table. This is the
-     * fast path that the snippet of {@code CallCountProfileCounterNode} inlines into every
-     * instrumented callee entry and switch successor, so it has to stay small and harmless to the
-     * code around it:
+     * fast path that the snippet of {@code CallCountProfileCounterNode} inlines before every
+     * instrumented call and into every instrumented switch successor, so it has to stay small and
+     * harmless to the code around it:
      * <ul>
      * <li>It reads and writes only the thread's table ({@link #TABLE_LOCATION}) and the table pointer
      * ({@link #tablePointerLocation()}), which the snippet declares private. The counter node can

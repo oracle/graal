@@ -187,7 +187,8 @@ public class ProfilingUtilities {
 
     /**
      * The calling context of a node's source position as method descriptors and BCIs, innermost
-     * frame first. Part of {@link #conditionFingerprint}.
+     * frame first, such as {@code Ljava/lang/String;.charAt(I)C:12<Lcom/example/Foo;.bar()V:5}.
+     * Part of {@link #conditionFingerprint}.
      */
     private static String canonicalContext(NodeSourcePosition position) {
         StringBuilder result = new StringBuilder();
@@ -207,10 +208,11 @@ public class ProfilingUtilities {
      * the writer sums them only if their {@link #conditionKind} and fingerprint are equal (see
      * {@code IprofWriter.branchEntries}).
      * <p>
-     * The fingerprint is an FNV-1a hash over the node classes and source positions of the
-     * condition and of its inputs, {@link #FINGERPRINT_DEPTH} levels deep. Three levels cover a
-     * comparison, its operands and their inputs, and bound the cost, which grows with every level
-     * of the input tree.
+     * The fingerprint is an FNV-1a hash over the class of {@code node} and, for an {@link IfNode},
+     * over the classes and source positions of its condition and of the condition's inputs,
+     * {@link #FINGERPRINT_DEPTH} levels of inputs deep: for a comparison, its operands, their
+     * inputs and the inputs of those. The depth bounds the cost, which grows with every level of
+     * the input tree. A switch is hashed by its class only.
      */
     public static long conditionFingerprint(ControlSplitNode node) {
         long hash = fingerprintText(FNV_OFFSET_BASIS, node.getClass().getName());
@@ -273,8 +275,8 @@ public class ProfilingUtilities {
      * tell: substitutions declare uninterruptible code on JDK classes too.</li>
      * <li>Methods of Native Image's own classes, by package: {@code com.oracle.svm},
      * {@code org.graalvm.nativeimage} and {@code org.graalvm.word}. Their profiles would describe the
-     * runtime, not the application. The stack sampler leaves out the same frames
-     * ({@code StackSampleRecorder}).</li>
+     * runtime, not the application. The stack sampler uses the same packages to drop the runtime
+     * frames on top of each sampled stack ({@code StackSampleRecorder}).</li>
      * </ul>
      * JDK methods that the application calls stay instrumented, including substitutions that are
      * not uninterruptible: their branches depend on how the application uses them.
@@ -289,9 +291,11 @@ public class ProfilingUtilities {
 
     /**
      * The calling context of a source position, innermost frame first, as stored by every
-     * instrumented site. Sites share their frame objects: many sites have the same methods and BCIs
-     * in their contexts (every site in one inlined callee, for example), so each distinct frame is
-     * stored once in the image heap.
+     * instrumented site: for {@code String.charAt} at bci 12 inlined into {@code Foo.bar} at bci 5,
+     * the frames {@code Ljava/lang/String;.charAt(I)C:12} and {@code Lcom/example/Foo;.bar()V:5}.
+     * Sites share their frame objects: many sites have the same methods and BCIs in their contexts
+     * (every site in one inlined callee, for example), so each distinct frame is stored once in the
+     * image heap.
      */
     public static ProfileFrame[] context(NodeSourcePosition position) {
         List<ProfileFrame> frames = new ArrayList<>();

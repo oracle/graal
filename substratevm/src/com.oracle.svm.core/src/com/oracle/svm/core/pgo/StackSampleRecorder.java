@@ -62,6 +62,7 @@ import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.graal.compiler.options.Option;
 import jdk.internal.misc.Unsafe;
+import jdk.vm.ci.meta.MetaUtil;
 
 /**
  * Periodic call-stack sampler of a {@code --pgo-instrument} image.
@@ -138,6 +139,9 @@ public final class StackSampleRecorder implements ThreadListener {
     @Platforms(Platform.HOSTED_ONLY.class) //
     private static boolean requiresMethodSignatures;
 
+    /** Sampled code addresses that the dump found in no code info while it decoded the stacks. */
+    private static long unresolvedAddresses;
+
     private StackSampleRecorder() {
     }
 
@@ -175,9 +179,9 @@ public final class StackSampleRecorder implements ThreadListener {
         UNSAFE.getAndAddLong(null, SAMPLED_THREADS.get().rawValue(), 1);
         if (RecurringCallbackSupport.isEnabled()) {
             /*
-             * A background callback, so that a JFR execution sampler that uses recurring callbacks
-             * can take over the thread's only callback slot while it records; sampling resumes when
-             * it stops.
+             * A background callback, so that any other recurring callback, such as the one of the
+             * JFR execution sampler, can take over the thread's only callback slot; sampling
+             * resumes when that callback is uninstalled.
              */
             RecurringCallbackSupport.installBackgroundCallback(TimeUnit.MILLISECONDS.toNanos(interval), CALLBACK);
         }
@@ -358,8 +362,6 @@ public final class StackSampleRecorder implements ThreadListener {
     public record Statistics(long samples, long dropped, long truncated, long threads, long unresolvedAddresses, int decodedStacks) {
     }
 
-    private static long unresolvedAddresses;
-
     /**
      * Stops sampling in every thread; the tables keep the samples they hold. The profile dump
      * calls this first, so that no thread writes a table while the dump reads it and the dump
@@ -479,22 +481,10 @@ public final class StackSampleRecorder implements ThreadListener {
 
     /**
      * {@code Lpkg/Cls;.name(params)ret}: the same canonical form the hosted side derives from a
-     * resolved method. Package dots become slashes; the slash inside a hidden class name (e.g.
-     * {@code Foo$$Lambda/0x1234}) becomes a dot, as JVMCI renders it in type descriptors.
+     * resolved method, for example {@code Ljava/lang/String;.charAt(I)C} for class
+     * {@code java.lang.String}, method {@code charAt} and signature {@code (I)C}.
      */
     static String methodDescriptor(String className, String methodName, String signature) {
-        StringBuilder result = new StringBuilder(className.length() + methodName.length() + signature.length() + 4);
-        boolean array = className.startsWith("[");
-        if (!array) {
-            result.append('L');
-        }
-        for (int i = 0; i < className.length(); i++) {
-            char c = className.charAt(i);
-            result.append(c == '.' ? '/' : c == '/' ? '.' : c);
-        }
-        if (!array) {
-            result.append(';');
-        }
-        return result.append('.').append(methodName).append(signature).toString();
+        return MetaUtil.toInternalName(className) + '.' + methodName + signature;
     }
 }

@@ -44,8 +44,9 @@ import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
 /**
  * Drives the native counter tables of the PGO recorders through their production paths: growth,
  * long probe chains, the flush of a table at its cap, a thread without a table, the safepoint
- * snapshot, also while other threads take the shared locks, clearing and reuse, and the reuse of
- * an exited thread's stack-sample table.
+ * snapshot, also while other threads take the shared locks, clearing and reuse, the reuse of an
+ * exited thread's stack-sample table, and a stack-sample table whose arena is full, with dropped,
+ * truncated and repeated stacks.
  * <p>
  * The tests reach the recorders' private table code through {@link Alias} declarations. Only the
  * thread's table pointer is set and read through the recorders' {@code currentTableForTesting} and
