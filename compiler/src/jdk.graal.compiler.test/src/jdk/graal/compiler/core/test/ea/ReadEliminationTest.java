@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,8 @@ import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.nodes.memory.ReadNode;
+import jdk.graal.compiler.nodes.memory.WriteNode;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.virtual.phases.ea.ReadEliminationPhase;
@@ -158,6 +160,42 @@ public class ReadEliminationTest extends GraalCompilerTest {
         ValueNode result = getReturn("testSimpleConflictSnippet", false).result();
         assertFalse(result.isConstant());
         assertTrue(result instanceof LoadFieldNode);
+
+        // The write through b has a single-use address but can still alias a.
+        result = getReturn("testSimpleConflictSnippet", true).result();
+        assertFalse(result.isConstant());
+        assertTrue(result instanceof ReadNode);
+    }
+
+    public static int testSingleUseWriteSnippet(TestObject a, TestObject b) {
+        int before = a.x;
+        b.x = 3;
+        return before + a.x;
+    }
+
+    @Test
+    public void testSingleUseWriteInvalidatesReadCache() {
+        for (boolean keepWrite : new boolean[]{false, true}) {
+            StructuredGraph graph = parseEager("testSingleUseWriteSnippet", AllowAssumptions.NO);
+            HighTierContext context = getDefaultHighTierContext();
+            new HighTierLoweringPhase(createCanonicalizerPhase()).apply(graph, context);
+            Assert.assertEquals(2, graph.getNodes(ReadNode.TYPE).count());
+            ReadNode firstRead = graph.getNodes(ReadNode.TYPE).first();
+            WriteNode write = graph.getNodes(WriteNode.TYPE).first();
+            for (ReadNode read : graph.getNodes(ReadNode.TYPE)) {
+                Assert.assertSame(firstRead.getAddress(), read.getAddress());
+            }
+            Assert.assertEquals(2, firstRead.getAddress().usages().count());
+            Assert.assertNotSame(firstRead.getAddress(), write.getAddress());
+            Assert.assertEquals(firstRead.getLocationIdentity(), write.getKilledLocationIdentity());
+            Assert.assertTrue(write.getAddress().hasExactlyOneUsage());
+            if (!keepWrite) {
+                // Confirm the reads can share a cached value when the aliasing write is absent.
+                GraphUtil.removeFixedWithUnusedInputs(write);
+            }
+            new ReadEliminationPhase(createCanonicalizerPhase()).apply(graph, context);
+            Assert.assertEquals(keepWrite ? 2 : 1, graph.getNodes(ReadNode.TYPE).count());
+        }
     }
 
     @SuppressWarnings("all")

@@ -111,6 +111,12 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             object = GraphUtil.unproxify(store.object());
                         } else if (node instanceof WriteNode) {
                             WriteNode write = (WriteNode) node;
+                            if (write.getAddress().hasExactlyOneUsage()) {
+                                // A single-use address cannot match another cached access. The write
+                                // must still invalidate accesses through potentially aliasing addresses.
+                                killReadCacheByIdentity(state, identity, node);
+                                return false;
+                            }
                             value = getScalarAlias(write.value());
                             object = GraphUtil.unproxify(write.getAddress());
                         } else {
@@ -185,6 +191,11 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             } else if (node instanceof ReadNode read) {
                                 if (!read.getBarrierType().canReadEliminate()) {
                                     assert deleted == false;
+                                    return false;
+                                }
+                                if (read.getAddress().hasExactlyOneUsage()) {
+                                    // Address keys match by node identity and cannot be introduced
+                                    // by object-phi merging because addresses have a non-object stamp.
                                     return false;
                                 }
                                 object = read.getAddress();
