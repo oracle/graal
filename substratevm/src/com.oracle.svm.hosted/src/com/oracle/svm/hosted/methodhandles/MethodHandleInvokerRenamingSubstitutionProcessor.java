@@ -310,9 +310,9 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
         byte refKind = (byte) MEMBER_NAME_GET_REFERENCE_KIND_METHOD.invoke(memberName);
         String refKindName = (String) METHOD_HANDLE_NATIVES_REF_KIND_NAME_METHOD.invoke(null, refKind);
         key.append("MemberName:{\n");
-        appendString(key, "declaringClass", state.descriptor(declaringClass));
+        appendString(key, "declaringClass", descriptor(declaringClass, state));
         appendString(key, "name", name);
-        appendString(key, "type", type instanceof MethodType methodType ? state.methodDescriptor(methodType) : state.descriptor((Class<?>) type));
+        appendString(key, "type", type instanceof MethodType methodType ? methodDescriptor(methodType, state) : descriptor((Class<?>) type, state));
         appendString(key, "refKind", refKindName);
         key.append("}\n");
     }
@@ -343,8 +343,8 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
      * separately.
      */
     private static void appendMethodHandleStructure(StringBuilder key, MethodHandle methodHandle, KeyState state) throws ReflectiveOperationException {
-        appendString(key, "class", state.descriptor(methodHandle.getClass()));
-        appendString(key, "type", state.methodDescriptor(methodHandle.type()));
+        appendString(key, "class", descriptor(methodHandle.getClass(), state));
+        appendString(key, "type", methodDescriptor(methodHandle.type(), state));
         appendIntrinsic(key, METHOD_HANDLE_INTRINSIC_NAME_METHOD.invoke(methodHandle), METHOD_HANDLE_INTRINSIC_DATA_METHOD.invoke(methodHandle), state);
         if (DIRECT_METHOD_HANDLE_CLASS.isInstance(methodHandle)) {
             appendMemberName(key, DIRECT_METHOD_HANDLE_INTERNAL_MEMBER_NAME_METHOD.invoke(methodHandle), state);
@@ -389,9 +389,9 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
                         value instanceof Character) {
             appendString(key, value.getClass().getName(), String.valueOf(value));
         } else if (value instanceof Class<?> clazz) {
-            appendString(key, "Class", state.descriptor(clazz));
+            appendString(key, "Class", descriptor(clazz, state));
         } else if (value instanceof MethodType methodType) {
-            appendString(key, "MethodType", state.methodDescriptor(methodType));
+            appendString(key, "MethodType", methodDescriptor(methodType, state));
         } else if (value instanceof MethodHandle methodHandle) {
             appendMethodHandle(key, methodHandle, state);
         } else if (MEMBER_NAME_CLASS.isInstance(value)) {
@@ -404,11 +404,11 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
             VMError.guarantee(NAME_INDEX_FIELD.getShort(value) >= 0, "The name %s has no index set, which produces unstable names.", value);
             key.append("NameRef:").append(NAME_INDEX_FIELD.getShort(value)).append('\n');
         } else if (value instanceof Enum<?> enumValue) {
-            appendString(key, "Enum", state.descriptor(enumValue.getDeclaringClass()) + "." + enumValue.name());
+            appendString(key, "Enum", descriptor(enumValue.getDeclaringClass(), state) + "." + enumValue.name());
         } else {
             // Application objects (including arrays) can change after the handle is bound.
             state.opaque = true;
-            appendString(key, "opaque", state.descriptor(value.getClass()));
+            appendString(key, "opaque", descriptor(value.getClass(), state));
         }
     }
 
@@ -541,6 +541,26 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
         return true;
     }
 
+    /** Hidden classes have no name that survives between builds, so they make the key opaque. */
+    private static String descriptor(Class<?> type, KeyState state) {
+        if (type.isArray()) {
+            return "[" + descriptor(type.getComponentType(), state);
+        }
+        if (type.isHidden()) {
+            state.opaque = true;
+            return "<hidden>";
+        }
+        return type.descriptorString();
+    }
+
+    private static String methodDescriptor(MethodType type, KeyState state) {
+        StringBuilder descriptor = new StringBuilder("(");
+        for (int i = 0; i < type.parameterCount(); i++) {
+            descriptor.append(descriptor(type.parameterType(i), state));
+        }
+        return descriptor.append(')').append(descriptor(type.returnType(), state)).toString();
+    }
+
     @FunctionalInterface
     private interface NodeSerializer {
         void serialize(StringBuilder key) throws ReflectiveOperationException;
@@ -561,24 +581,5 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
         /** The lowest path depth that a cycle in the node being serialized returns to. */
         int lowestCycleTarget = Integer.MAX_VALUE;
         boolean opaque;
-
-        String descriptor(Class<?> type) {
-            if (type.isArray()) {
-                return "[" + descriptor(type.getComponentType());
-            }
-            if (type.isHidden()) {
-                opaque = true;
-                return "<hidden>";
-            }
-            return type.descriptorString();
-        }
-
-        String methodDescriptor(MethodType type) {
-            StringBuilder descriptor = new StringBuilder("(");
-            for (int i = 0; i < type.parameterCount(); i++) {
-                descriptor.append(descriptor(type.parameterType(i)));
-            }
-            return descriptor.append(')').append(descriptor(type.returnType())).toString();
-        }
     }
 }
