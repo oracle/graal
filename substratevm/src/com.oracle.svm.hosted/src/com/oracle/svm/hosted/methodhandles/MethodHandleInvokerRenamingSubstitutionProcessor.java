@@ -387,7 +387,7 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
         } else {
             baseName = MH_STABLE_NAME_TEMPLATE + baseName;
         }
-        AtomicInteger duplicateCount = structuralKeyDuplicateCounts.computeIfAbsent(structuralKey, unused -> new AtomicInteger());
+        AtomicInteger duplicateCount = structuralKeyDuplicateCounts.computeIfAbsent(structuralKey, _ -> new AtomicInteger());
         int duplicateIndex = duplicateCount.getAndIncrement();
         /*
          * The same LambdaForm structure can be generated into multiple hidden classes. Such classes
