@@ -64,14 +64,12 @@
     },
     {
       "type": "sun.launcher.LauncherHelper",
-      "jniAccessible": true,
       "allDeclaredConstructors": true,
       "allDeclaredMethods": true,
       "allDeclaredFields": true
     },
     {
       "type": "com.sun.tools.javac.Main",
-      "jniAccessible": true,
       "methods": [
         {
           "name": "main",
@@ -90,7 +88,6 @@
     },
     {
       "type": "sun.tools.jar.Main",
-      "jniAccessible": true,
       "methods": [
         {
           "name": "main",
@@ -102,7 +99,6 @@
     },
     {
       "type": "com.sun.tools.javap.Main",
-      "jniAccessible": true,
       "methods": [
         {
           "name": "main",
@@ -114,7 +110,6 @@
     },
     {
       "type": "com.sun.tools.jdeps.Main",
-      "jniAccessible": true,
       "methods": [
         {
           "name": "main",
@@ -126,7 +121,6 @@
     },
     {
       "type": "jdk.tools.jlink.internal.Main",
-      "jniAccessible": true,
       "methods": [
         {
           "name": "main",
@@ -138,7 +132,6 @@
     },
     {
       "type": "jdk.tools.jmod.Main",
-      "jniAccessible": true,
       "methods": [
         {
           "name": "main",
@@ -150,7 +143,6 @@
     },
     {
       "type": "com.sun.tools.jnativescan.Main",
-      "jniAccessible": true,
       "methods": [
         {
           "name": "main",
@@ -162,7 +154,6 @@
     },
     {
       "type": "jdk.jpackage.main.Main",
-      "jniAccessible": true,
       "methods": [
         {
           "name": "main",
@@ -174,7 +165,6 @@
     },
     {
       "type": "jdk.internal.jshell.tool.JShellToolProvider",
-      "jniAccessible": true,
       "methods": [
         {
           "name": "main",
@@ -186,7 +176,6 @@
     },
     {
       "type": "com.sun.tools.javac.launcher.SourceLauncher",
-      "jniAccessible": true,
       "methods": [
         {
           "name": "main",
