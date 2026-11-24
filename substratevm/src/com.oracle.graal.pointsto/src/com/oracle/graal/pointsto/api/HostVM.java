@@ -636,4 +636,15 @@ public abstract class HostVM {
          */
         return method.isOriginalMethod();
     }
+
+    /**
+     * Whether compilation of this method may specialize its graph using the current analysis
+     * results. A separate method variant can opt out when its callers or heap belong to another
+     * execution universe. This also controls build-state folding of field reads during analysis
+     * decoding and static-final field folding. Local canonicalization remains enabled; callers
+     * must select compatible providers separately.
+     */
+    public boolean allowAnalysisSpecialization(@SuppressWarnings("unused") AnalysisMethod method) {
+        return true;
+    }
 }
