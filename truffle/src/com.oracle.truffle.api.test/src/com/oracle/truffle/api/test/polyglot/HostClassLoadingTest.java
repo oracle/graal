@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,11 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -56,6 +58,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -70,6 +73,7 @@ import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
+import java.util.zip.ZipFile;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
@@ -227,6 +231,157 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, languageEnv.getPublicTruffleFile(jar.toString()));
         Files.deleteIfExists(jar);
         deleteDir(tempDir);
+    }
+
+    @Test
+    public void testEmptyJarOnHostClassPath() throws IOException {
+        for (int commentLength : new int[]{0, 1, 0xffff}) {
+            ByteArrayOutputStream contents = new ByteArrayOutputStream();
+            try (JarOutputStream target = new JarOutputStream(contents)) {
+                target.setComment("x".repeat(commentLength));
+            }
+            assertJarDoesNotPreventClassLoading(contents.toByteArray());
+        }
+    }
+
+    @Test
+    public void testInvalidJarOnHostClassPath() throws IOException {
+        for (int length : new int[]{0, 1, ZipFile.ENDHDR - 1, ZipFile.ENDHDR, ZipFile.ENDHDR + 1, 64}) {
+            assertJarDoesNotPreventClassLoading(new byte[length]);
+        }
+    }
+
+    @Test
+    public void testStoredJarResourcesWithZeroCrc() throws Exception {
+        setupEnv();
+        Class<?> hostClass = HostClassLoadingTestClass1.class;
+        Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
+        Path jar = Files.createTempFile("stored-resources", ".jar");
+        // Both the empty entry and this non-empty byte sequence have a CRC32 == 0.
+        byte[][] contents = {new byte[0], new byte[]{(byte) 0x9d, 0x0a, (byte) 0xd9, 0x6d}};
+        try {
+            try (JarOutputStream target = new JarOutputStream(Files.newOutputStream(jar))) {
+                addJarEntries(tempDir, tempDir, target);
+                for (int i = 0; i < contents.length; i++) {
+                    JarEntry entry = new JarEntry("stored-zero-crc-" + i);
+                    entry.setMethod(JarEntry.STORED);
+                    entry.setSize(contents[i].length);
+                    entry.setCompressedSize(contents[i].length);
+                    entry.setCrc(0);
+                    target.putNextEntry(entry);
+                    target.write(contents[i]);
+                    target.closeEntry();
+                }
+            }
+            languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(jar.toString()));
+            Object symbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
+            Class<?> loadedClass = (Class<?>) INTEROP.asHostObject(symbol);
+            ClassLoader loader = loadedClass.getClassLoader();
+            for (int i = 0; i < contents.length; i++) {
+                String name = "stored-zero-crc-" + i;
+                try (InputStream stream = loader.getResourceAsStream(name)) {
+                    assertNotNull(stream);
+                    assertArrayEquals(contents[i], stream.readAllBytes());
+                    assertEquals(-1, stream.read());
+                }
+                URL resource = loader.getResource(name);
+                assertNotNull(resource);
+                try (InputStream stream = resource.openStream()) {
+                    assertArrayEquals(contents[i], stream.readAllBytes());
+                    assertEquals(-1, stream.read());
+                }
+            }
+        } finally {
+            Files.deleteIfExists(jar);
+            deleteDir(tempDir);
+        }
+    }
+
+    @Test
+    public void testJarResourceUrlEncoding() throws Exception {
+        assertJarResourceUrlEncoding(false);
+    }
+
+    @Test
+    public void testMemoryFileSystemJarResourceUrlEncoding() throws Exception {
+        assertJarResourceUrlEncoding(true);
+    }
+
+    @SuppressWarnings("deprecation")
+    private void assertJarResourceUrlEncoding(boolean memoryFileSystem) throws Exception {
+        if (memoryFileSystem) {
+            IOAccess io = IOAccess.newBuilder().fileSystem(new MemoryFileSystem()).build();
+            setupEnv(Context.newBuilder(ProxyLanguage.ID).allowAllAccess(true).allowIO(io).build());
+        } else {
+            setupEnv();
+        }
+        String[][] resources = {
+                        {"nested/plain-_.txt", "nested/plain-_.txt"},
+                        {"nested/hash#query?.txt", "nested/hash%23query%3f.txt"},
+                        {"nested/space + percent%23.txt", "nested/space%20+%20percent%2523.txt"},
+                        {"nested/literal%2Fslash.txt", "nested/literal%252Fslash.txt"},
+                        {"nested/equals=semi;.txt", "nested/equals%3dsemi%3b.txt"},
+                        {"nested/colon:@&$,!~*'().txt", "nested/colon:@&$,!~*'().txt"},
+                        {"nested/quote\"<>[]{}|\\^`.txt", "nested/quote%22%3c%3e%5b%5d%7b%7d%7c%5c%5e%60.txt"},
+                        {"nested/\u03b1-\u20ac-\ud83d\ude00.txt", "nested/%ce%b1-%e2%82%ac-%f0%9f%98%80.txt"},
+                        {"nested/e\u0301.txt", "nested/e%cc%81.txt"},
+                        {"nested/\u00e9.txt", "nested/%c3%a9.txt"},
+                        {"nested/control\t\n\r\u0000\u007f.txt", "nested/control%09%0a%0d%00%7f.txt"}
+        };
+        Class<?> hostClass = HostClassLoadingTestClass1.class;
+        Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
+        Path jar = Files.createTempFile("resource-urls # % ", ".jar");
+        try {
+            try (JarOutputStream target = new JarOutputStream(Files.newOutputStream(jar))) {
+                addJarEntries(tempDir, tempDir, target);
+                for (int i = 0; i < resources.length; i++) {
+                    target.putNextEntry(new JarEntry(resources[i][0]));
+                    target.write(("resource " + i).getBytes(StandardCharsets.UTF_8));
+                    target.closeEntry();
+                }
+            }
+            TruffleFile classPathEntry;
+            if (memoryFileSystem) {
+                TruffleFile root = languageEnv.getPublicTruffleFile("/");
+                copyToPolyglotFileSystem(jar, root);
+                classPathEntry = root.resolve(jar.getFileName().toString());
+            } else {
+                classPathEntry = languageEnv.getPublicTruffleFile(jar.toString());
+            }
+            languageEnv.addToHostClassPath(classPathEntry);
+            Object symbol = languageEnv.lookupHostSymbol(TEST_REPLACE_QUALIFIED_CLASS_NAME);
+            ClassLoader loader = ((Class<?>) INTEROP.asHostObject(symbol)).getClassLoader();
+            String prefix = "jar:" + classPathEntry.toUri() + "!/";
+            for (int i = 0; i < resources.length; i++) {
+                String name = resources[i][0];
+                byte[] expected = ("resource " + i).getBytes(StandardCharsets.UTF_8);
+                URL resource = loader.getResource(name);
+                assertNotNull(name, resource);
+                assertNull(resource.getRef());
+                assertNull(resource.getQuery());
+                assertEquals(prefix + resources[i][1], resource.toExternalForm());
+                assertEquals(resource.toExternalForm(), resource.toURI().toString());
+                assertEquals(Collections.singletonList(resource), Collections.list(loader.getResources(name)));
+                try (InputStream stream = resource.openStream()) {
+                    assertArrayEquals(expected, stream.readAllBytes());
+                }
+                try (InputStream stream = loader.getResourceAsStream(name)) {
+                    assertNotNull(stream);
+                    assertArrayEquals(expected, stream.readAllBytes());
+                }
+                if (!memoryFileSystem) {
+                    // Reopen the encoded URL without the resource-bound Truffle URL handler.
+                    URLConnection connection = new URL(resource.toExternalForm()).openConnection();
+                    connection.setUseCaches(false);
+                    try (InputStream stream = connection.getInputStream()) {
+                        assertArrayEquals(expected, stream.readAllBytes());
+                    }
+                }
+            }
+        } finally {
+            Files.deleteIfExists(jar);
+            deleteDir(tempDir);
+        }
     }
 
     @Test
@@ -495,6 +650,25 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         assertNotNull(codeSource);
         assertEquals(tempDir.toUri().toURL().toString(), codeSource.getLocation().toString());
         deleteDir(tempDir);
+    }
+
+    private void assertJarDoesNotPreventClassLoading(byte[] contents) throws IOException {
+        setupEnv();
+        Class<?> hostClass = HostClassLoadingTestClass1.class;
+        Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
+        try {
+            Path jar = createJar(tempDir);
+            try {
+                Path precedingJar = tempDir.resolve("preceding.jar");
+                Files.write(precedingJar, contents);
+                languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(precedingJar.toString()));
+                assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, languageEnv.getPublicTruffleFile(jar.toString()));
+            } finally {
+                Files.deleteIfExists(jar);
+            }
+        } finally {
+            deleteDir(tempDir);
+        }
     }
 
     private static void assertHostClassPath(Env env, final Class<?> hostClass, String newName, TruffleFile classPathEntry) {
