@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,8 +54,14 @@ public final class FixedPointMath {
         return (int) (x * (1 << SCALE));
     }
 
+    /**
+     * Multiplies a fixed point value by an integer. The product is computed in {@code long} and
+     * saturated to the {@code int} range, so that a large operand cannot wrap around to a value of
+     * the opposite sign.
+     */
     public static int multiply(int fixedPointValue, int anInteger) {
-        return (fixedPointValue * anInteger) >> SCALE;
+        long result = ((long) fixedPointValue * anInteger) >> SCALE;
+        return (int) Math.max(Integer.MIN_VALUE, Math.min(Integer.MAX_VALUE, result));
     }
 
     public static double toDouble(int fixedPointValue) {
