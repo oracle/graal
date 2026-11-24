@@ -1311,6 +1311,7 @@ suite = {
                     "sun.security.jca",
                 ],
                 "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.code",
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.meta.annotation"
                 ]
