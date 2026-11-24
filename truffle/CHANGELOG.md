@@ -12,6 +12,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-81915: NFI upcalls run with any earlier pending exception temporarily cleared, so subsequent callbacks and their nested native calls see a clean exception state.
   The earlier exception is restored when the upcall finishes and takes precedence over any new exception, while successful callbacks still return their results to native code.
 * GR-81970: Bytecode DSL: Added `GenerateBytecode.version` to select behaviour versions for breaking changes requiring migration. The list of versions and their migration details is maintained in the `BytecodeVersion` enum. Specify a fixed version or `BytecodeVersion.LATEST`. Version 1 is temporarily selected by default; in the future, an explicit version will be required.
+* GR-81970: Bytecode DSL: Introduced `BytecodeVersion.V2`. `BytecodeNode.getLocalValue` now returns `BytecodeNode.INVALID` for illegal slots, and `setLocalValue` marks a slot illegal when passed that marker. Java null remains a valid null value. This preserves illegal slots during get/set round trips and `copyLocalValues`.
 
 ## Version 25.6
 

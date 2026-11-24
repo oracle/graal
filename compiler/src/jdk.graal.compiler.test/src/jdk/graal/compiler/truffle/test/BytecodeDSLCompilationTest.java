@@ -72,6 +72,7 @@ import com.oracle.truffle.api.bytecode.test.basic_interpreter.AbstractBasicInter
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreter;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder;
 import com.oracle.truffle.api.bytecode.test.basic_interpreter.BasicInterpreterBuilder.BytecodeVariant;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -386,6 +387,76 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
         assertCompiled(target);
         assertEquals(42L, target.call());
         assertCompiled(target);
+    }
+
+    /**
+     * getLocalValue distinguishes illegal slots from valid nulls in compiled readers.
+     */
+    @Test
+    public void testGetLocalValueNullAndIllegalStayCompiled() {
+        assumeTrue(hasBoxingElimination());
+        BasicInterpreter root = parseNodeForCompilation(run, "getLocalValueNullAndIllegalStayCompiled", b -> {
+            b.beginRoot();
+            BytecodeLocal local = b.createLocal();
+            b.beginStoreLocal(local);
+            b.emitLoadArgument(0);
+            b.endStoreLocal();
+            b.beginYield();
+            b.emitLoadNull();
+            b.endYield();
+            b.beginReturn();
+            b.emitLoadLocal(local);
+            b.endReturn();
+            b.endRoot();
+        });
+        ContinuationResult continuation = (ContinuationResult) root.getCallTarget().call(42L);
+        BytecodeNode bytecode = root.getBytecodeNode();
+        int bci = continuation.getBytecodeLocation().getBytecodeIndex();
+        Frame locals = continuation.getFrame();
+        assertEquals(FrameSlotKind.Long, bytecode.getLocals().get(0).getTypeProfile());
+
+        OptimizedCallTarget reader = (OptimizedCallTarget) new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return bytecode.getLocalValue(bci, (Frame) frame.getArguments()[0], 0);
+            }
+        }.getCallTarget();
+        assertEquals(42L, reader.call(locals));
+        // Warm both return types without changing the local's primitive cached tag.
+        bytecode.setLocalValue(bci, locals, 0, BytecodeNode.INVALID);
+        assertSame(BytecodeNode.INVALID, reader.call(locals));
+        bytecode.setLocalValue(bci, locals, 0, 42L);
+        reader.compile(true);
+        assertCompiled(reader);
+
+        for (int i = 0; i < 3; i++) {
+            bytecode.setLocalValue(bci, locals, 0, BytecodeNode.INVALID);
+            assertSame(BytecodeNode.INVALID, reader.call(locals));
+            assertCompiled(reader);
+            assertEquals(FrameSlotKind.Long, bytecode.getLocals().get(0).getTypeProfile());
+
+            bytecode.setLocalValue(bci, locals, 0, 42L);
+            assertEquals(42L, reader.call(locals));
+            assertCompiled(reader);
+        }
+
+        // A genuine null is an Object value and generalizes the primitive profile.
+        bytecode.setLocalValue(bci, locals, 0, null);
+        assertEquals(FrameSlotKind.Object, bytecode.getLocals().get(0).getTypeProfile());
+        assertNull(reader.call(locals));
+        bytecode.setLocalValue(bci, locals, 0, BytecodeNode.INVALID);
+        assertEquals(FrameSlotKind.Object, bytecode.getLocals().get(0).getTypeProfile());
+        assertSame(BytecodeNode.INVALID, reader.call(locals));
+        reader.compile(true);
+        assertCompiled(reader);
+        for (int i = 0; i < 3; i++) {
+            bytecode.setLocalValue(bci, locals, 0, null);
+            assertNull(reader.call(locals));
+            assertCompiled(reader);
+            bytecode.setLocalValue(bci, locals, 0, BytecodeNode.INVALID);
+            assertSame(BytecodeNode.INVALID, reader.call(locals));
+            assertCompiled(reader);
+        }
     }
 
     @Test
@@ -2193,7 +2264,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
             assertEquals(123, bytecodeFrame.getLocalValue(0));
         } else {
             // the local gets cleared on exit.
-            assertEquals(AbstractBasicInterpreterTest.getDefaultLocalValue(run.interpreterClass()), bytecodeFrame.getLocalValue(0));
+            assertEquals(run.getBytecodeNodeDefaultLocalValue(), bytecodeFrame.getLocalValue(0));
         }
     }
 

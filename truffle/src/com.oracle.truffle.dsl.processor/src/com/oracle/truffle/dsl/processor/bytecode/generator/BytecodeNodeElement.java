@@ -324,9 +324,15 @@ final class BytecodeNodeElement extends AbstractElement {
             b.startAssign("tag");
             b.string("frame.getTag(frameIndex)");
             b.end();
+            if (parent.model.version.usesInvalidLocalMarker()) {
+                b.startIf().string("tag == ").staticReference(parent.frameTagsElement.getIllegal()).end().startBlock();
+                b.statement("return INVALID");
+                b.end();
+            }
 
             b.end().startElseBlock();
 
+            b.lineComment("Improve compiled performance by using PE-constant tag instead of dynamic frame tag.");
             if (parent.model.enableBlockScoping) {
                 b.declaration(type(int.class), "localIndex", "localOffsetToLocalIndex(bci, localOffset)");
                 b.startAssign("tag").startCall("getCachedLocalTagInternal");
@@ -336,6 +342,13 @@ final class BytecodeNodeElement extends AbstractElement {
             } else {
                 b.startAssign("tag").string("getCachedLocalTag(localOffset)").end();
             }
+            if (parent.model.version.usesInvalidLocalMarker()) {
+                b.lineComment("Explicitly check the frame tag for a cleared frame slot.");
+                b.startIf().string("frame.getTag(frameIndex) == ").staticReference(parent.frameTagsElement.getIllegal()).end().startBlock();
+                b.statement("return INVALID");
+                b.end();
+            }
+
             b.end();
 
             b.startSwitch().string("tag").end().startBlock();
@@ -350,22 +363,25 @@ final class BytecodeNodeElement extends AbstractElement {
             }
 
             b.startCase().staticReference(parent.frameTagsElement.getObject()).end();
+            if (parent.model.version.usesInvalidLocalMarker()) {
+                /*
+                 * We already checked for ILLEGAL frame tag, so this is only reached in compiled code
+                 * if the cached tag wasn't populated. Just expect the frame value as object.
+                 */
+                b.startCase().staticReference(parent.frameTagsElement.getIllegal()).string(" /* reachable in compiled code */").end();
+            }
             b.startCaseBlock();
             b.startReturn();
             BytecodeRootNodeElement.startExpectFrame(b, "frame", type(Object.class), false).string("frameIndex").end();
             b.end();
             b.end(); // case block
 
-            b.startCase().staticReference(parent.frameTagsElement.getIllegal()).end();
-            b.startCaseBlock();
-            b.startReturn();
-            if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
-                b.string("DEFAULT_LOCAL_VALUE");
-            } else {
-                b.string("null");
+            if (!parent.model.version.usesInvalidLocalMarker()) {
+                b.startCase().staticReference(parent.frameTagsElement.getIllegal()).end();
+                b.startCaseBlock();
+                b.statement(parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE ? "return DEFAULT_LOCAL_VALUE" : "return null");
+                b.end();
             }
-            b.end();
-            b.end(); // case block
 
             b.caseDefault().startCaseBlock();
             b.tree(GeneratorUtils.createShouldNotReachHere("Unexpected tag"));
@@ -374,19 +390,19 @@ final class BytecodeNodeElement extends AbstractElement {
             b.end(); // switch block
             b.end().startCatchBlock(types.UnexpectedResultException, "ex");
             b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            b.startReturn().string("ex.getResult()").end();
+            b.statement("return ex.getResult()");
             b.end(); // catch
         } else {
             b.startIf().string("frame.isObject(frameIndex)").end().startBlock();
-            b.startReturn().string("frame.getObject(frameIndex)").end();
+            b.statement("return frame.getObject(frameIndex)");
             b.end();
             if (parent.model.usesBoxingElimination() && tier.isUncached()) {
                 b.startIf().string("frame.getTag(frameIndex) == ").staticReference(parent.frameTagsElement.getIllegal()).end().startBlock();
-                b.statement("return null");
+                b.statement(parent.model.version.usesInvalidLocalMarker() ? "return INVALID" : "return null");
                 b.end();
                 b.statement("return frame.getValue(frameIndex)");
             } else {
-                b.statement("return null");
+                b.statement(parent.model.version.usesInvalidLocalMarker() ? "return INVALID" : "return null");
             }
         }
 
@@ -401,6 +417,7 @@ final class BytecodeNodeElement extends AbstractElement {
         b.statement("assert validateBytecodeIndex(bci)");
         AbstractBytecodeNodeElement.buildVerifyLocalsIndex(b);
         AbstractBytecodeNodeElement.buildVerifyFrameDescriptor(b, true);
+        parent.abstractBytecodeNode.emitMaybeInvalidateLocalValue(b, "USER_LOCALS_START_INDEX + localOffset");
         if (parent.model.usesBoxingElimination() && tier.isCached()) {
             b.startStatement().startCall("setLocalValueImpl");
             b.string("frame").string("localOffset").string("value");

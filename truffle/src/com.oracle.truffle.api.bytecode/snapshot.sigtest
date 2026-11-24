@@ -159,6 +159,7 @@ hfds bytecodeIndex,bytecodes
 
 CLSS public abstract com.oracle.truffle.api.bytecode.BytecodeNode
 cons protected init(java.lang.Object)
+fld public final static java.lang.Object INVALID
 meth protected abstract boolean isLocalClearedInternal(com.oracle.truffle.api.frame.Frame,int,int)
 meth protected abstract boolean validateBytecodeIndex(int)
 meth protected abstract com.oracle.truffle.api.bytecode.BytecodeTransition createTransition(com.oracle.truffle.api.bytecode.BytecodeNode,int,com.oracle.truffle.api.bytecode.BytecodeNode,int,boolean)
@@ -329,6 +330,7 @@ supr java.lang.Object
 CLSS public final !enum com.oracle.truffle.api.bytecode.BytecodeVersion
 fld public final static com.oracle.truffle.api.bytecode.BytecodeVersion LATEST
 fld public final static com.oracle.truffle.api.bytecode.BytecodeVersion V1
+fld public final static com.oracle.truffle.api.bytecode.BytecodeVersion V2
 meth public static com.oracle.truffle.api.bytecode.BytecodeVersion valueOf(java.lang.String)
 meth public static com.oracle.truffle.api.bytecode.BytecodeVersion[] values()
 supr java.lang.Enum<com.oracle.truffle.api.bytecode.BytecodeVersion>

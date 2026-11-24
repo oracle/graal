@@ -51,11 +51,36 @@ package com.oracle.truffle.api.bytecode;
 public enum BytecodeVersion {
 
     /**
-     * Original Bytecode DSL behaviour on initial release.
+     * Original Bytecode DSL behaviour on initial release. Support will be removed in release 25.8.
      *
      * @since 25.7
      */
     V1,
+
+    /**
+     * Distinguishes illegal locals from valid null values in the {@link BytecodeNode} local APIs.
+     * <ul>
+     * <li>{@link BytecodeNode#getLocalValue(int, Frame, int)} returns {@link BytecodeNode#INVALID}
+     * for an illegal slot instead of {@code null}. Java {@code null} continues to represent a
+     * null value.</li>
+     * <li>{@link BytecodeNode#setLocalValue(int, Frame, int, Object)} marks a slot illegal when
+     * passed {@code INVALID} instead of storing {@code null}. Passing {@code null} continues to
+     * store a null value.</li>
+     * <li>The bulk getters and setters use the same representation. Both
+     * {@code BytecodeNode.copyLocalValues} overloads preserve illegal slots and null values.</li>
+     * </ul>
+     * To migrate, replace comparisons against {@code null} that detect illegal locals with
+     * comparisons against {@code BytecodeNode.INVALID}. Keep comparisons against {@code null}
+     * that detect null values. Pass {@code INVALID} when you intend to mark a slot illegal.
+     * Ordinary bytecode local loads and stores and {@link LocalAccessor} retain their behaviour.
+     *
+     * @see BytecodeNode#INVALID
+     * @see BytecodeNode#getLocalValues(int, Frame)
+     * @see BytecodeNode#setLocalValues(int, Frame, Object[])
+     * @see BytecodeNode#copyLocalValues(int, Frame, Frame)
+     * @since 25.7
+     */
+    V2,
 
     /**
      * The newest supported Bytecode DSL behaviour version. Using this constant explicitly opts

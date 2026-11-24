@@ -51,7 +51,8 @@ public record BytecodeVersion(String name, int number, String removalRelease) {
     public static final int MIN_SUPPORTED = 1;
 
     public static final List<BytecodeVersion> VERSIONS = List.of(
-                    new BytecodeVersion("V1", 1, null));
+                    new BytecodeVersion("V1", 1, "25.8"),
+                    new BytecodeVersion("V2", 2, null));
 
     public static List<BytecodeVersion> getSupportedVersions() {
         return VERSIONS.stream().filter(v -> v.number >= MIN_SUPPORTED).toList();
@@ -71,6 +72,13 @@ public record BytecodeVersion(String name, int number, String removalRelease) {
             }
         }
         throw new IllegalArgumentException("Unknown version %s".formatted(name));
+    }
+
+    /**
+     * See {@code com.oracle.truffle.api.bytecode.BytecodeVersion#V2}.
+     */
+    public boolean usesInvalidLocalMarker() {
+        return number >= 2;
     }
 
 }

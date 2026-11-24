@@ -40,17 +40,79 @@
  */
 package com.oracle.truffle.api.bytecode.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+
+import org.junit.Test;
+
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeVersion;
+import com.oracle.truffle.api.bytecode.ConstantOperand;
+import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
+import com.oracle.truffle.api.bytecode.LocalAccessor;
+import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectWarning;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class BytecodeVersionTest {
+    @Test
+    public void testLocalRepresentation() {
+        for (var variant : LocalValueRepresentationRootBuilder.variants()) {
+            boolean legacy = variant.getGeneratedClass() == LocalValueRepresentationRootV1.class || variant.getGeneratedClass() == LocalValueRepresentationRootV1BE.class;
+            for (boolean cached : new boolean[]{false, true}) {
+                LocalValueRepresentationRoot root = variant.create(null, BytecodeConfig.DEFAULT, b -> {
+                    b.beginRoot();
+                    BytecodeLocal local = b.createLocal();
+                    b.beginYield();
+                    b.emitLoadNull();
+                    b.endYield();
+                    b.beginReturn();
+                    b.emitIsCleared(local);
+                    b.endReturn();
+                    b.endRoot();
+                }).getNode(0);
+                root.getBytecodeNode().setUncachedThreshold(cached ? 0 : Integer.MAX_VALUE);
+                ContinuationResult result = (ContinuationResult) root.getCallTarget().call();
+                BytecodeNode node = root.getBytecodeNode();
+                int bci = result.getBytecodeLocation().getBytecodeIndex();
+                Frame frame = result.getFrame();
+                assertSame(legacy ? null : BytecodeNode.INVALID, node.getLocalValue(bci, frame, 0));
+                // A get/set round trip preserves Illegal only with V2.
+                node.setLocalValue(bci, frame, 0, node.getLocalValue(bci, frame, 0));
+                assertSame(legacy ? null : BytecodeNode.INVALID, node.getLocalValue(bci, frame, 0));
+                assertEquals(!legacy, result.continueWith(null));
+                result = (ContinuationResult) root.getCallTarget().call();
+                frame = result.getFrame();
+                node.setLocalValue(bci, frame, 0, 42L);
+                assertEquals(42L, node.getLocalValue(bci, frame, 0));
+                node.setLocalValue(bci, frame, 0, BytecodeNode.INVALID);
+                assertSame(BytecodeNode.INVALID, node.getLocalValue(bci, frame, 0));
+                // In V1 the marker is an ordinary object; in V2 it clears the slot.
+                node.copyLocalValues(bci, frame, frame);
+                assertEquals(!legacy, result.continueWith(null));
+                result = (ContinuationResult) root.getCallTarget().call();
+                frame = result.getFrame();
+                node.setLocalValue(bci, frame, 0, null);
+                assertNull(node.getLocalValue(bci, frame, 0));
+                assertEquals(false, result.continueWith(null));
+            }
+        }
+    }
+
     @SuppressWarnings("truffle-inlining")
     @OperationProxy.Proxyable(allowUncached = true)
     public abstract static class ConstantOperation extends Node {
@@ -64,11 +126,57 @@ public class BytecodeVersionTest {
 
 }
 
-@ExpectWarning("A version should be specified explicitly. Defaulting to version 1. In the future, an explicit version will be required. See BytecodeVersion#V1 for the selected behaviour.")
+@ExpectWarning({"Bytecode DSL behaviour version 1 is older than the newest version 2.%",
+                "Bytecode DSL behaviour version 1 is older than the newest version 2.%"})
+@GenerateBytecodeTestVariants({
+                @Variant(suffix = "V1", configuration = @GenerateBytecode(//
+                                version = BytecodeVersion.V1, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true)),
+                @Variant(suffix = "V1BE", configuration = @GenerateBytecode(//
+                                version = BytecodeVersion.V1, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true, enableQuickening = true, boxingEliminationTypes = long.class)),
+                @Variant(suffix = "V2", configuration = @GenerateBytecode(//
+                                version = BytecodeVersion.V2, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true)),
+                @Variant(suffix = "V2BE", configuration = @GenerateBytecode(//
+                                version = BytecodeVersion.V2, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true, enableQuickening = true, boxingEliminationTypes = long.class)),
+                @Variant(suffix = "Latest", configuration = @GenerateBytecode(//
+                                version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true, enableQuickening = true, boxingEliminationTypes = long.class))})
+abstract class LocalValueRepresentationRoot extends RootNode implements BytecodeRootNode {
+    protected LocalValueRepresentationRoot(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+
+    @Operation
+    @ConstantOperand(type = LocalAccessor.class)
+    static final class IsCleared {
+        @Specialization
+        static boolean isCleared(VirtualFrame frame, LocalAccessor local, @Bind BytecodeNode node) {
+            return local.isCleared(node, frame);
+        }
+    }
+}
+
+@ExpectWarning({"A version should be specified explicitly. Defaulting to version 1. In the future, an explicit version will be required. See BytecodeVersion#V1 for the selected behaviour.",
+                """
+                                Bytecode DSL behaviour version 1 is older than the newest version 2.
+                                Please migrate to the newest version. See the BytecodeVersion Javadoc for migration instructions.
+                                Support will be removed in release 25.8.\
+                                """})
 @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
 @OperationProxy(BytecodeVersionTest.ConstantOperation.class)
 abstract class Omitted extends RootNode implements BytecodeRootNode {
     protected Omitted(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+        super(language, frameDescriptor);
+    }
+}
+
+@ExpectWarning("""
+                Bytecode DSL behaviour version 1 is older than the newest version 2.
+                Please migrate to the newest version. See the BytecodeVersion Javadoc for migration instructions.
+                Support will be removed in release 25.8.\
+                """)
+@GenerateBytecode(version = BytecodeVersion.V1, languageClass = BytecodeDSLTestLanguage.class)
+@OperationProxy(BytecodeVersionTest.ConstantOperation.class)
+abstract class Older extends RootNode implements BytecodeRootNode {
+    protected Older(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 }

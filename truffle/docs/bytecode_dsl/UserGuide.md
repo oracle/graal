@@ -346,6 +346,11 @@ The behaviour when loading an uninitialized or cleared local is configurable:
 - Set `@GenerateBytecode(defaultLocalValue=...)` to make the load produce a default value instead of throwing.
   - Note: When a default value is used, loading a cleared local can sometimes inhibit [boxing elimination](Optimization.md#boxing-elimination).
 
+The `BytecodeNode` local introspection APIs distinguish Java `null` values from illegal frame slots.
+`getLocalValue` returns `null` for a null and `BytecodeNode.INVALID` for an illegal slot.
+`setLocalValue` accepts the same representation: `BytecodeNode.INVALID` marks the slot illegal, and `null` stores a valid null.
+Bulk access and local copying use these representations too.
+Ordinary bytecode operations and local accessors can load and store `null` directly.
 
 ### Materialized local accesses
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -145,6 +145,6 @@ public class CopyLocalsTest extends AbstractBasicInterpreterTest {
         BytecodeNode bytecode = foo.getBytecodeNode();
         Instruction instr = bytecode.getInstructionsAsList().get(run.testTracer() ? 12 : 6);
         Object[] locals = bytecode.getLocalValues(instr.getBytecodeIndex(), frame);
-        assertArrayEquals(new Object[]{42L, "abcd", run.getDefaultLocalValue()}, locals);
+        assertArrayEquals(new Object[]{42L, "abcd", run.getBytecodeNodeDefaultLocalValue()}, locals);
     }
 }

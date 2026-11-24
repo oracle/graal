@@ -67,7 +67,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public class Introduction {
 
-    @GenerateBytecode(version = BytecodeVersion.V1, languageClass = BytecodeDSLTestLanguage.class)
+    @GenerateBytecode(version = BytecodeVersion.V2, languageClass = BytecodeDSLTestLanguage.class)
     public abstract static class SampleInterpreter extends RootNode implements BytecodeRootNode {
 
         protected SampleInterpreter(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

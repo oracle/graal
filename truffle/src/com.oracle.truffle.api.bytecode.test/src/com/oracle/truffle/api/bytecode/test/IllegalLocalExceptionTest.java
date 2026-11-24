@@ -727,7 +727,7 @@ public class IllegalLocalExceptionTest extends AbstractInstructionTest {
             b.endReturn();
             b.endRoot();
         });
-        assertNull(root.getCallTarget().call());
+        assertSame(BytecodeNode.INVALID, root.getCallTarget().call());
     }
 
     @RunWith(Parameterized.class)
