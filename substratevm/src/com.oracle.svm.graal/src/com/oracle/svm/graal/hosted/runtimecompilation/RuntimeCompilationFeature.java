@@ -1274,9 +1274,10 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
 }
 
 /**
- * Same behavior as {@link SubstrateMetaAccessExtensionProvider}, but operating on
- * {@link AnalysisType} instead of {@link SharedType} since parsing of graphs for runtime
- * compilation happens in the Analysis universe.
+ * Similar to {@link SubstrateMetaAccessExtensionProvider}, but operating on {@link AnalysisType}
+ * instead of {@link SharedType} since parsing of graphs for runtime compilation happens in the
+ * Analysis universe. Constant instance offsets are not resolved here because they may use the
+ * image layout while {@link AnalysisType} resolves offsets using the builder VM layout.
  */
 class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
 
@@ -1313,6 +1314,11 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
          * com.oracle.svm.core.StaticFieldsSupport for details on the static field base during
          * analysis, compilation, and JIT compilation.
          */
+        return null;
+    }
+
+    @Override
+    public ResolvedJavaField getInstanceFieldForAccess(ResolvedJavaType receiverType, long offset, JavaKind accessKind) {
         return null;
     }
 }
