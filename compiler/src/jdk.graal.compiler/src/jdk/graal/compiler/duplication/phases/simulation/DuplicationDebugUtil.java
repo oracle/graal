@@ -46,6 +46,17 @@ class DuplicationDebugUtil {
     public static final CounterKey counterNotDuplicatedVectorizable = DebugContext.counter("SimulationBasedDuplication_NotDuplicated_Vectorizable");
 
     public static final CounterKey nodeCountBudgetReached = DebugContext.counter("SimulationBasedDuplication_MaxGraphSizeReached");
+    /**
+     * Node visits in simulated regions, accumulated across candidates and phase runs in a compilation.
+     * The same graph node can be counted in multiple candidates; this measures analysis work rather
+     * than the number of distinct graph nodes or elapsed time.
+     */
+    public static final CounterKey simulatedNodes = DebugContext.counter("SimulationBasedDuplication_SimulatedNodes");
+    /**
+     * Candidates simulated across phase runs in a compilation, including candidates that are not
+     * ultimately duplicated.
+     */
+    public static final CounterKey simulatedCandidates = DebugContext.counter("SimulationBasedDuplication_SimulatedCandidates");
 
     public static final TimerKey timerBenefitComputation = DebugContext.timer("SimulationBasedDuplication_Time_BenefitComputation");
     public static final TimerKey timerRegionComputation = DebugContext.timer("SimulationBasedDuplication_Time_RegionIteration");

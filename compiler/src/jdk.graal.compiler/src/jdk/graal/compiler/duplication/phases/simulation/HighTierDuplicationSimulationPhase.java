@@ -37,7 +37,6 @@ import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.MapCursor;
 
 import jdk.graal.compiler.duplication.phases.simulation.DuplicationPhase.VectorizationCheck;
 import jdk.graal.compiler.duplication.phases.simulation.DuplicationSimulationUtil.SimulationAdvancement;
@@ -48,6 +47,7 @@ import jdk.graal.compiler.core.common.cfg.BlockMap;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeBitMap;
@@ -170,7 +170,7 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
             blockToNodes = getBlockToNodes(cfg);
         }
         simContext = new SimulationContext(graph, cfg, blockToNodes, nodeToBlock, new CFGFrequencyInfo(cfg), context);
-        SimulationCFGTraversal.visitDominatorTreeBounded(cfg, simContext.visitor, cfg.getStartBlock(), 0, Integer.MAX_VALUE);
+        new SimulationCFGTraversal<Marks>().visitDominatorTreeBounded(simContext.visitor, cfg.getStartBlock(), 0, Integer.MAX_VALUE);
         improvements = simContext.simulatedImprovements();
     }
 
@@ -192,26 +192,63 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
     }
 
     private final class SimulationContext {
+        /**
+         * Results indexed by candidate forward end, allocated when the first candidate is simulated.
+         */
         private BlockMap<SimulationEndInfo> improvements;
-        private int simulationsPerformed;
+        /**
+         * Number of candidates simulated during this phase run, including unprofitable candidates.
+         */
+        private int simulatedCandidateCount;
+        /**
+         * Total node visits across candidate simulations; a node can contribute to several candidates.
+         */
+        private long simulatedNodeVisits;
+        /**
+         * Control flow graph shared by the entrance traversal and all candidate simulations.
+         */
         private final ControlFlowGraph cfg;
-        private final RecursiveVisitor<?> visitor;
+        /**
+         * Outer traversal visitor that collects the facts available at each candidate's entrance.
+         */
+        private final RecursiveVisitor<Marks> visitor;
+        /**
+         * Lazily allocated frame reused by synchronous, nonrecursive candidate simulations.
+         */
         private SimulationFrame simulationVisitor;
+        /**
+         * Whether a candidate must stop at control flow merges other than its starting merge.
+         */
         private final boolean stopAtCF;
+        /**
+         * Block frequencies used to prune candidates and estimate their benefit.
+         */
         private final CFGFrequencyInfo cfgFrequencyInfo;
-        private final LoopsData loopsData;
+        /**
+         * Counted-loop limit tests that simulations must not duplicate across.
+         */
+        private final NodeBitMap countedLoopExitChecks;
+        /**
+         * Traversal storage reused across candidates, separate from the active entrance traversal.
+         */
+        private final SimulationCFGTraversal<Marks> simulationTraversal = new SimulationCFGTraversal<>();
+        /**
+         * Loops whose vectorization opportunities must be preserved when estimating duplication.
+         */
         private final EconomicSet<Loop> vectorizableLoops;
 
         private SimulationContext(StructuredGraph graph, ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, CFGFrequencyInfo cfgFrequencyInfo,
                         CoreProviders context) {
             this.cfg = cfg;
-            this.visitor = new SimulationEntraceFrame(graph, blockToNodes, nodeToBlock, context);
+            this.visitor = new SimulationEntraceFrame(graph, blockToNodes, nodeToBlock, context, null);
             this.stopAtCF = config.stopSimulationAtControlFlow(graph.getOptions());
             this.cfgFrequencyInfo = cfgFrequencyInfo;
-            this.loopsData = context.getLoopsDataProvider().getLoopsData(graph);
+            LoopsData loopsData = context.getLoopsDataProvider().getLoopsData(graph);
+            countedLoopExitChecks = graph.createNodeBitMap();
             loopsData.detectCountedLoops();
             vectorizableLoops = EconomicSet.create();
             for (Loop loop : loopsData.countedLoops()) {
+                countedLoopExitChecks.mark(loop.counted().getLimitTest());
                 if (vectCheck.isVectorizable(loop, graph, context)) {
                     vectorizableLoops.add(loop);
                 }
@@ -219,26 +256,64 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
         }
 
         private class SimulationEntraceFrame implements ControlFlowGraph.RecursiveVisitor<Marks> {
+            /**
+             * Mapping from graph nodes to blocks, shared by all frames.
+             */
             final NodeMap<HIRBlock> nodeToBlock;
+            /**
+             * Stamp facts shared with the entrance frame and restored after each candidate.
+             */
             protected final NodeMap<InfoElement> map;
+            /**
+             * Node visitation order within each block, shared by all frames.
+             */
             protected final BlockMap<List<Node>> blockToNodes;
+            /**
+             * Frame-local log of stamp changes, unwound on block exit or candidate cleanup.
+             */
             protected final NodeStack undoOperations;
+            /**
+             * Graph analyzed without modification by this phase run.
+             */
             protected final StructuredGraph graph;
+            /**
+             * Debug context of the analyzed graph.
+             */
             protected final DebugContext debug;
+            /**
+             * Guarded facts shared with the entrance frame; candidates restore the inherited depth.
+             */
             protected final ArrayDeque<GuardedCondition> conditions;
+            /**
+             * Adapter exposing this frame's stamp lookup to conditional elimination.
+             */
             protected final InfoElementProvider infoElementProvider;
+            /**
+             * Compiler services used to analyze the graph.
+             */
             protected final CoreProviders providers;
+            /**
+             * Frame-local scratch state for finding stamps that are safe to use.
+             */
             protected final SafeStampInputSearch safeStampInputSearch;
+            /**
+             * Lazily allocated, frame-local cache of stamps implied by switch successors.
+             */
             protected EconomicMap<AbstractBeginNode, Stamp> successorStampCache;
 
-            SimulationEntraceFrame(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, CoreProviders providers) {
+            SimulationEntraceFrame(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, CoreProviders providers, SimulationEntraceFrame parent) {
                 this.graph = graph;
                 this.debug = graph.getDebug();
                 this.blockToNodes = blockToNodes;
                 this.nodeToBlock = nodeToBlock;
                 this.undoOperations = new NodeStack();
-                this.map = graph.createNodeMap();
-                this.conditions = new ArrayDeque<>();
+                /*
+                 * Candidate simulations run synchronously and cannot recursively start another
+                 * simulation. Share the entrance facts and restore only candidate-local changes
+                 * through the existing scope undo log, rather than copying the whole node map.
+                 */
+                this.map = parent == null ? graph.createNodeMap() : parent.map;
+                this.conditions = parent == null ? new ArrayDeque<>() : parent.conditions;
                 this.safeStampInputSearch = new SafeStampInputSearch(graph);
                 infoElementProvider = new InfoElementProvider() {
 
@@ -259,16 +334,23 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
                 SimulationEndInfo simulationEndInfo = improvements.get(forwardEnd);
                 assert simulationEndInfo == null : "MUst not haev an improvement recorded for " + forwardEnd + " already but found " + simulationEndInfo;
                 improvements.put(forwardEnd, simNode);
-                simulationsPerformed++;
+                simulatedCandidateCount++;
                 if (simulationVisitor == null) {
-                    simulationVisitor = new SimulationFrame(graph, blockToNodes, nodeToBlock, providers);
+                    simulationVisitor = new SimulationFrame(graph, blockToNodes, nodeToBlock, providers, this);
                 }
-                simulationVisitor.beforeSimulation(simNode, this.map, this.conditions);
-                simulationVisitor.pushPhiSynonyms(mergeBlock);
-                simulationVisitor.simulationStartMerge = (MergeNode) mergeBlock.getBeginNode();
-                int maxDepth = DuplicationUtil.blockDepthIgnoringEarlyExits(simulationVisitor.simulationStartMerge);
-                SimulationCFGTraversal.visitDominatorTreeBounded(cfg, simulationVisitor, mergeBlock, mergeBlock.getDominatorDepth(), maxDepth);
-                simulationVisitor.afterSimulation();
+                simulationVisitor.beforeSimulation(simNode);
+                try {
+                    simulationVisitor.pushPhiSynonyms(mergeBlock);
+                    simulationVisitor.simulationStartMerge = (MergeNode) mergeBlock.getBeginNode();
+                    int maxDepth = DuplicationUtil.blockDepthIgnoringEarlyExits(simulationVisitor.simulationStartMerge);
+                    simulationTraversal.visitDominatorTreeBounded(simulationVisitor, mergeBlock, mergeBlock.getDominatorDepth(), maxDepth);
+                    assert simulationVisitor.undoOperations.isEmpty() : Assertions.errorMessageContext("undoOperations", simulationVisitor.undoOperations, "simulationState",
+                                    simulationVisitor.simulationState);
+                    assert simulationVisitor.conditions.size() == simulationVisitor.conditionsMark : Assertions.errorMessageContext("conditions", simulationVisitor.conditions, "conditionsMark",
+                                    simulationVisitor.conditionsMark, "conditionsSize", simulationVisitor.conditions.size(), "simulationState", simulationVisitor.simulationState);
+                } finally {
+                    simulationVisitor.afterSimulation();
+                }
             }
 
             protected void simulateDuplication(HIRBlock block) {
@@ -385,15 +467,21 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
 
             @Override
             public void exit(HIRBlock b, Marks marks) {
-                int infoElementsMark = marks.getInfoElementOperations();
-                while (undoOperations.size() > infoElementsMark) {
+                restoreInfoElements(marks.getInfoElementOperations());
+                restoreConditions(marks.getConditions());
+            }
+
+            protected void restoreInfoElements(int mark) {
+                while (undoOperations.size() > mark) {
                     Node node = undoOperations.pop();
                     if (node.isAlive()) {
                         map.set(node, map.get(node).getParent());
                     }
                 }
-                int conditionsMark = marks.getConditions();
-                while (conditions.size() > conditionsMark) {
+            }
+
+            protected void restoreConditions(int mark) {
+                while (conditions.size() > mark) {
                     conditions.pop();
                 }
             }
@@ -576,51 +664,86 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
         }
 
         private class SimulationFrame extends SimulationEntraceFrame {
+            /**
+             * Merge at which the current candidate starts simulating duplication.
+             */
             protected MergeNode simulationStartMerge;
+            /**
+             * Simulated replacements from phi inputs and canonicalizations, reused across candidates.
+             */
             protected NodeMap<Node> synonyms;
+            /**
+             * Undo actions for simulated replacements, applied in reverse order during cleanup.
+             */
             protected List<Runnable> synonymUndoOperations = new ArrayList<>();
-            protected int undoPointer;
+            /**
+             * Inherited undo-list size to which candidate cleanup restores synonyms.
+             */
+            protected int synonymUndoMark;
+            /**
+             * Result being accumulated for the current candidate, or null between candidates.
+             */
             private SimulationEndInfo simulationState;
+            /**
+             * Whether simulation may continue and what optimization was found at the last node.
+             */
             private SimulationAdvancement status = SimulationAdvancement.CONTINUE;
+            /**
+             * Nodes already analyzed for region membership in the current candidate.
+             */
             private final NodeBitMap processed;
+            /**
+             * Nodes determined to belong to the current candidate's duplication region.
+             */
             private final NodeBitMap inRegion;
+            /**
+             * Scratch visitation marks cleared after each region-membership search.
+             */
             private final NodeBitMap visited;
+            /**
+             * Successor of a folded branch that simulation must skip.
+             */
             private AbstractBeginNode stopNode;
+            /**
+             * Successor of a folded branch at which simulation resumes.
+             */
             private AbstractBeginNode restartNode;
+            /**
+             * Inherited condition-stack depth restored after the current candidate.
+             */
+            private int conditionsMark;
 
-            SimulationFrame(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, CoreProviders providers) {
-                super(graph, blockToNodes, nodeToBlock, providers);
+            SimulationFrame(StructuredGraph graph, BlockMap<List<Node>> blockToNodes, NodeMap<HIRBlock> nodeToBlock, CoreProviders providers, SimulationEntraceFrame parent) {
+                super(graph, blockToNodes, nodeToBlock, providers, parent);
                 processed = graph.createNodeBitMap();
                 inRegion = graph.createNodeBitMap();
                 visited = graph.createNodeBitMap();
             }
 
-            private void beforeSimulation(SimulationEndInfo state, NodeMap<InfoElement> outerMap, ArrayDeque<GuardedCondition> outerConditions) {
-                assert simulationState == null;
+            private void beforeSimulation(SimulationEndInfo state) {
+                assert simulationState == null : Assertions.errorMessageContext("simulationState", simulationState, "nextState", state, "undoOperations", undoOperations);
+                assert undoOperations.isEmpty() : Assertions.errorMessageContext("undoOperations", undoOperations, "nextState", state);
+                conditionsMark = conditions.size();
                 this.simulationState = state;
                 if (synonyms != null) {
-                    undoPointer = synonymUndoOperations.size();
+                    synonymUndoMark = synonymUndoOperations.size();
                 }
                 status = SimulationAdvancement.CONTINUE;
-                MapCursor<Node, InfoElement> cursor = outerMap.getEntries();
-                while (cursor.advance()) {
-                    this.map.setAndGrow(cursor.getKey(), cursor.getValue());
-                }
-                conditions.addAll(outerConditions);
             }
 
             private void afterSimulation() {
                 this.simulationState = null;
                 int curSize = synonymUndoOperations.size();
-                while (curSize > undoPointer) {
+                while (curSize > synonymUndoMark) {
                     synonymUndoOperations.remove(--curSize).run();
                 }
                 stopNode = null;
                 restartNode = null;
                 processed.clearAll();
                 inRegion.clearAll();
-                map.clear();
-                conditions.clear();
+                // Also unwind if a candidate exits exceptionally before its traversal finishes.
+                restoreInfoElements(0);
+                restoreConditions(conditionsMark);
             }
 
             @Override
@@ -723,28 +846,27 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
                 }
             }
 
+            /**
+             * Callback reused for all region-membership searches in this frame.
+             */
             private final Consumer<Node> inRegionConsumer = x -> processInRegionNode(x);
 
             private void processSimulationNode(Node node) {
                 if (node instanceof FixedNode) {
                     assert !processed.isMarked(node) : "Cannot mark fixed nodes twice " + node;
                     assert !inRegion.isMarked(node) : "Cannot mark fixed nodes twice " + node;
-                    visited.clearAll();
                     DuplicationSimulationUtil.inRegion(inRegion, processed, visited, simulationStartMerge, node, true, inRegionConsumer);
                     visited.clearAll();
                 }
             }
 
             private void processInRegionNode(Node node) {
-                for (Loop loop : loopsData.countedLoops()) {
-                    // Do not process the node if it is the exit check of an inverted counted loop
-                    // as doing so can destroy inverted counted loop detection if the inverted
-                    // counted check is dominated by a merge
-                    if (loop.counted().getLimitTest() == node) {
-                        simulationState.cyclesSaved = 0;
-                        status = SimulationAdvancement.STOP;
-                        return;
-                    }
+                simulatedNodeVisits++;
+                // Protect inverted counted loop detection without scanning all loops per node.
+                if (countedLoopExitChecks.isMarked(node)) {
+                    simulationState.cyclesSaved = 0;
+                    status = SimulationAdvancement.STOP;
+                    return;
                 }
                 if (node instanceof PhiNode) {
                     /*
@@ -1112,11 +1234,13 @@ public class HighTierDuplicationSimulationPhase extends SingleRunSubphase<CorePr
         }
 
         public SimulationEndInfo[] simulatedImprovements() {
+            DuplicationDebugUtil.simulatedNodes.add(cfg.graph.getDebug(), simulatedNodeVisits);
+            DuplicationDebugUtil.simulatedCandidates.add(cfg.graph.getDebug(), simulatedCandidateCount);
             if (improvements == null) {
                 return DuplicationSimulationUtil.EMPTY_IMPROVEMENTS;
             }
             final HIRBlock[] blocks = cfg.getBlocks();
-            SimulationEndInfo[] res = new SimulationEndInfo[simulationsPerformed];
+            SimulationEndInfo[] res = new SimulationEndInfo[simulatedCandidateCount];
             int size = 0;
             for (int i = 0; i < blocks.length; i++) {
                 SimulationEndInfo sim = improvements.get(blocks[i]);

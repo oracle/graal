@@ -24,62 +24,72 @@
  */
 package jdk.graal.compiler.duplication.phases.simulation;
 
-import jdk.graal.compiler.core.common.cfg.BasicBlockSet;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import java.util.Arrays;
+
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph.RecursiveVisitor;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
-public class SimulationCFGTraversal {
+/**
+ * Reusable traversal storage for a dominator tree. Each invocation visits only its bounded subtree;
+ * it does not allocate or clear storage proportional to the size of the entire CFG.
+ */
+public final class SimulationCFGTraversal<V> {
+    private HIRBlock[] stack = new HIRBlock[16];
+    private Object[] values = new Object[16];
+    private boolean[] entered = new boolean[16];
+    private int size;
 
-    @SuppressWarnings({"unchecked"})
-    public static <V> void visitDominatorTreeBounded(ControlFlowGraph cfg, RecursiveVisitor<V> visitor, HIRBlock start, int startDepth, int maxDepth) {
-        HIRBlock[] stack = new HIRBlock[cfg.getBlocks().length];
-        int tos = 0;
-        BasicBlockSet visited = cfg.createBasicBlockSet();
-        Object[] values = null;
-        int valuesTOS = 0;
-        stack[0] = start;
+    private void push(HIRBlock block) {
+        if (size == stack.length) {
+            int capacity = stack.length * 2;
+            stack = Arrays.copyOf(stack, capacity);
+            values = Arrays.copyOf(values, capacity);
+            entered = Arrays.copyOf(entered, capacity);
+        }
+        stack[size] = block;
+        entered[size] = false;
+        size++;
+    }
 
-        while (tos >= 0) {
-            HIRBlock cur = stack[tos];
-            if (visited.get(cur)) {
-                V value = null;
-                if (values != null && valuesTOS > 0) {
-                    value = (V) values[--valuesTOS];
-                }
-                visitor.exit(cur, value);
-                --tos;
-            } else {
-                visited.set(cur);
-                V value = visitor.enter(cur);
-                if (value != null || values != null) {
-                    if (values == null) {
-                        values = new Object[Math.max(cfg.getMaxDominatorDepth() + 1, maxDepth + 1)];
-                    }
-                    values[valuesTOS++] = value;
-                }
-
-                if ((cur.getDominatorDepth() - startDepth) <= maxDepth) {
-                    HIRBlock alwaysReached = cur.getPostdominator();
-                    if (alwaysReached != null) {
-                        if (alwaysReached.getDominator() != cur) {
-                            alwaysReached = null;
+    @SuppressWarnings("unchecked")
+    public void visitDominatorTreeBounded(RecursiveVisitor<V> visitor, HIRBlock start, int startDepth, int maxDepth) {
+        assert size == 0 : "Traversal must not be reentered";
+        push(start);
+        try {
+            while (size > 0) {
+                int index = size - 1;
+                HIRBlock cur = stack[index];
+                if (entered[index]) {
+                    V value = (V) values[index];
+                    stack[index] = null;
+                    values[index] = null;
+                    size--;
+                    visitor.exit(cur, value);
+                } else {
+                    entered[index] = true;
+                    values[index] = visitor.enter(cur);
+                    if ((cur.getDominatorDepth() - startDepth) <= maxDepth) {
+                        HIRBlock alwaysReached = cur.getPostdominator();
+                        if (alwaysReached != null && alwaysReached.getDominator() == cur) {
+                            push(alwaysReached);
                         } else {
-                            stack[++tos] = alwaysReached;
+                            alwaysReached = null;
                         }
-                    }
-
-                    HIRBlock b = cur.getFirstDominated();
-                    while (b != null) {
-                        if (b != alwaysReached) {
-                            stack[++tos] = b;
+                        // Preserve the original traversal order: the postdominator is visited last.
+                        for (HIRBlock b = cur.getFirstDominated(); b != null; b = b.getDominatedSibling()) {
+                            if (b != alwaysReached) {
+                                push(b);
+                            }
                         }
-                        b = b.getDominatedSibling();
                     }
                 }
-
+            }
+        } finally {
+            // A failed visitor must not retain blocks or scope values in reusable storage.
+            while (size > 0) {
+                stack[--size] = null;
+                values[size] = null;
             }
         }
     }
-
 }
