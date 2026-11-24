@@ -598,13 +598,6 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         self.setup_relative_resources = kw_args.pop('setup_relative_resources', None)
         self.windows_manifest = join(_suite.dir, 'src', 'org.graalvm.launcher.native', 'manifest', 'launcher.manifest')
 
-        if not kw_args.get('multitarget'):
-            # We use our LLVM toolchain on Linux by default because we want to statically link the C++ standard library,
-            # and the system toolchain rarely has libstdc++.a installed (it would be an extra CI & dev dependency).
-            toolchain = 'sdk:LLVM_NINJA_TOOLCHAIN' if mx.is_linux() else 'mx:DEFAULT_NINJA_TOOLCHAIN'
-        else:
-            toolchain = None
-
         super().__init__(
             suite,
             name,
@@ -616,7 +609,6 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
             'executable',
             # deliverable=None,
             use_jdk_headers=True,
-            toolchain=toolchain,
             **kw_args
         )
         if len(self.jar_distributions) < 1:
@@ -636,18 +628,13 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         return False
 
     @property
-    def uses_llvm_toolchain(self):
-        return len(self.toolchains) == 1 and mx.dependency('LLVM_NINJA_TOOLCHAIN', fatalIfMissing=False) == self.toolchains[0].toolchain_dist
-
-    @property
     def uses_musl_swcfi_toolchain(self):
-        # once GR-67435 is fixed we can revisit if we can statically link just like in the branches guarded by uses_llvm_toolchain
         return len(self.toolchains) == 1 and mx.dependency('BOOTSTRAP_MUSL_SWCFI_NINJA_TOOLCHAIN', fatalIfMissing=False) == self.toolchains[0].toolchain_dist
 
     @property
     def cflags(self):
         _dynamic_cflags = [
-            ('/std:c++17' if mx.is_windows() else '-std=c++17'),
+            ('/std:c11' if mx.is_windows() else '-std=gnu11'),
             '-O3', # Note: no -g to save 0.2MB on Linux
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
@@ -656,10 +643,6 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         if not mx.is_windows():
             _dynamic_cflags += ['-pthread']
             _dynamic_cflags += ['-Werror=undef'] # fail on undefined macro used in preprocessor
-        if mx.is_linux() and self.uses_llvm_toolchain:
-            _dynamic_cflags += ['-stdlib=libc++'] # to link libc++ statically, see ldlibs
-        if mx.is_darwin():
-            _dynamic_cflags += ['-ObjC++']
 
         def escaped_path(path):
             if mx.is_windows():
@@ -779,17 +762,10 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
     @property
     def ldlibs(self):
         _dynamic_ldlibs = []
-        if mx.is_linux() and self.uses_llvm_toolchain:
-            # Link libc++ statically
-            _dynamic_ldlibs += [
-                '-stdlib=libc++',
-                '-static-libstdc++', # it looks weird but this does link libc++ statically
-                '-l:libc++abi.a',
-            ]
         if not mx.is_windows():
             _dynamic_ldlibs += ['-ldl']
         if mx.is_darwin():
-            _dynamic_ldlibs += ['-framework', 'Foundation']
+            _dynamic_ldlibs += ['-framework', 'CoreFoundation']
 
             default_min_version = {'amd64': '10.13', 'aarch64': '11.0'}[mx.get_arch()]
             min_version = os.getenv('MACOSX_DEPLOYMENT_TARGET', default_min_version)
