@@ -25,57 +25,92 @@
 
 package com.oracle.svm.test.junit.nativeimage;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.lang.reflect.Method;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.junit.Test;
 
+import com.oracle.svm.core.feature.JVMCIFeatureAccess;
+import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.test.api.NativeImageBuildArgs;
 
 @NativeImageBuildArgs({
                 "--features=com.oracle.svm.test.junit.nativeimage.MethodHandleStableNameTest$TestFeature"
 })
 public class MethodHandleStableNameTest {
-    private static final String METHOD_HANDLE_RENAMING_PROCESSOR = "com.oracle.svm.hosted.methodhandles.MethodHandleInvokerRenamingSubstitutionProcessor";
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static final class BoundNumber extends AtomicInteger {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public String toString() {
+            throw new AssertionError("Invoker naming called application code");
+        }
+    }
 
     public static class TestFeature implements Feature {
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
             try {
-                MethodHandles.Lookup lookup = MethodHandles.lookup();
-                MethodHandle target = lookup.findStatic(MethodHandleStableNameTest.class, "add", MethodType.methodType(int.class, int.class, int.class));
-                MethodHandle addEleven = MethodHandles.insertArguments(target, 0, 11);
-                MethodHandle addTwentyTwo = MethodHandles.insertArguments(target, 0, 22);
+                MethodHandle identity = MethodHandles.identity(Object.class);
+                String first = invokerName(access, identity.bindTo("first"));
+                String second = invokerName(access, identity.bindTo("second"));
+                assertFalse(hasDiscoveryOrderSuffix(first));
+                assertFalse(hasDiscoveryOrderSuffix(second));
+                assertNotEquals(first, second);
 
-                Class<?> processorClass = Class.forName(METHOD_HANDLE_RENAMING_PROCESSOR);
-                Method stableNameForTesting = processorClass.getMethod("stableNameForTesting", MethodHandle.class, boolean.class, boolean.class);
-                String addElevenStableName = (String) stableNameForTesting.invoke(null, addEleven, false, false);
-                String addTwentyTwoStableName = (String) stableNameForTesting.invoke(null, addTwentyTwo, false, false);
+                String high = invokerName(access, identity.bindTo(String.valueOf((char) 0xd800)));
+                String low = invokerName(access, identity.bindTo(String.valueOf((char) 0xdc00)));
+                assertNotEquals(high, low);
+                assertFalse(hasDiscoveryOrderSuffix(low));
 
-                if (addElevenStableName.equals(addTwentyTwoStableName)) {
-                    throw new AssertionError("Stable MethodHandle names must include bound values that distinguish otherwise identical LambdaForms.");
-                }
-                if (hasDiscoveryOrderSuffix(addElevenStableName) || hasDiscoveryOrderSuffix(addTwentyTwoStableName)) {
-                    throw new AssertionError("Stable MethodHandle names must not rely on discovery-order suffixes: " + addElevenStableName + ", " + addTwentyTwoStableName);
-                }
+                Object[] buffer = new Object[1];
+                buffer[0] = buffer;
+                String cyclic = invokerName(access, identity.bindTo(buffer));
+                buffer[0] = new Object();
+                String mutated = invokerName(access, identity.bindTo(buffer));
+                assertEquals(cyclic.substring(0, cyclic.length() - 1) + "_1;", mutated);
+
+                Runnable firstLambda = () -> {
+                };
+                Runnable secondLambda = () -> {
+                };
+                assertTrue(firstLambda.getClass().isHidden());
+                assertTrue(secondLambda.getClass().isHidden());
+                String firstHidden = invokerName(access, identity.bindTo(firstLambda.getClass()));
+                String secondHidden = invokerName(access, identity.bindTo(secondLambda.getClass()));
+                assertEquals(firstHidden.substring(0, firstHidden.length() - 1) + "_1;", secondHidden);
+
+                invokerName(access, identity.bindTo(new BoundNumber()));
             } catch (ReflectiveOperationException e) {
                 throw new AssertionError(e);
             }
+        }
+
+        private static String invokerName(BeforeAnalysisAccess access, MethodHandle handle) throws ReflectiveOperationException {
+            ReflectionUtil.lookupMethod(MethodHandle.class, "customize").invoke(handle);
+            Object form = ReflectionUtil.readField(MethodHandle.class, "form", handle);
+            ReflectionUtil.lookupMethod(form.getClass(), "compileToBytecode").invoke(form);
+            Object entry = ReflectionUtil.readField(form.getClass(), "vmentry", form);
+            Class<?> invoker = (Class<?>) ReflectionUtil.lookupMethod(entry.getClass(), "getDeclaringClass").invoke(entry);
+            String name = ((JVMCIFeatureAccess.BeforeAnalysisAccess) access).getMetaAccess().lookupJavaType(invoker).getName();
+            assertTrue(name, name.startsWith("Ljava/lang/invoke/LambdaForm$MH.s"));
+            return name;
         }
 
         private static boolean hasDiscoveryOrderSuffix(String stableName) {
             int suffixStart = stableName.lastIndexOf('_');
             return suffixStart >= 0 && stableName.endsWith(";") && stableName.substring(suffixStart + 1, stableName.length() - 1).chars().allMatch(Character::isDigit);
         }
-    }
-
-    static int add(int left, int right) {
-        return left + right;
     }
 
     @Test

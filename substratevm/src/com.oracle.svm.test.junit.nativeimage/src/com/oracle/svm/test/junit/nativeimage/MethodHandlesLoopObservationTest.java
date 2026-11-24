@@ -27,8 +27,6 @@ package com.oracle.svm.test.junit.nativeimage;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -36,7 +34,6 @@ import java.lang.invoke.MethodType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -69,19 +66,35 @@ public class MethodHandlesLoopObservationTest {
             assertEquals(27, (int) loop.invoke(observer, 10, 1, 15));
 
             List<InvocationRecord> records = observer.records();
-            assertFalse(records.isEmpty());
-            records.forEach(record -> {
-                assertNotNull(record);
-                assertNotNull(record.passedArguments);
-            });
-
-            List<Object[]> observedLocalVariables = observer.getRecords(3, records.size() - 1).stream()
-                            .map(record -> new Object[]{record.passedArguments[0], record.passedArguments[1], record.passedArguments[2]})
-                            .collect(Collectors.toList());
-            assertFalse(observedLocalVariables.isEmpty());
-            assertArrayEquals(new Object[]{1, 2, 15}, observedLocalVariables.get(0));
-            assertArrayEquals(new Object[]{10, 10, 7}, observedLocalVariables.get(observedLocalVariables.size() - 1));
+            int index = 0;
+            for (String initializer : List.of("init0", "init1", "init2")) {
+                assertRecord(records.get(index++), initializer, observer, 10, 1, 15);
+            }
+            int x = 1;
+            int y = 2;
+            int z = 15;
+            while (true) {
+                assertRecord(records.get(index++), "step0", x, y, z, observer, 10, 1, 15);
+                x++;
+                assertRecord(records.get(index++), "pred0", x, y, z, observer, 10, 1, 15);
+                if (x == 10) {
+                    break;
+                }
+                assertRecord(records.get(index++), "step1", x, y, z, observer, 10, 1, 15);
+                y++;
+                assertRecord(records.get(index++), "pred1", x, y, z, observer, 10, 1, 15);
+                assertRecord(records.get(index++), "step2", x, y, z, observer, 10, 1, 15);
+                z--;
+                assertRecord(records.get(index++), "pred2", x, y, z, observer, 10, 1, 15);
+            }
+            assertRecord(records.get(index++), "fini0", x, y, z, observer, 10, 1, 15);
+            assertEquals(index, records.size());
         }
+    }
+
+    private static void assertRecord(InvocationRecord record, String functionId, Object... arguments) {
+        assertEquals(functionId, record.functionId);
+        assertArrayEquals(functionId, arguments, record.passedArguments);
     }
 
     private static MethodHandle createLoop() throws ReflectiveOperationException {
@@ -180,9 +193,6 @@ public class MethodHandlesLoopObservationTest {
             return records;
         }
 
-        List<InvocationRecord> getRecords(int fromIndex, int toIndex) {
-            return records.subList(fromIndex, toIndex + 1);
-        }
     }
 
     static final class InvocationRecord {

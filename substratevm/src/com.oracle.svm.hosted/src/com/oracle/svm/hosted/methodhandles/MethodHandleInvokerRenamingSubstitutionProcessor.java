@@ -30,14 +30,12 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.HexFormat;
 import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -67,7 +65,6 @@ import org.graalvm.collections.EconomicSet;
  */
 @BasedOnJDKClass(value = MethodHandle.class)
 @BasedOnJDKClass(value = MethodType.class)
-@BasedOnJDKClass(className = "java.lang.invoke.MethodHandleStatics")
 @BasedOnJDKClass(className = "java.lang.invoke.ClassSpecializer")
 @BasedOnJDKClass(className = "java.lang.invoke.ClassSpecializer", innerClass = "SpeciesData")
 @BasedOnJDKClass(className = "java.lang.invoke.MemberName")
@@ -81,8 +78,6 @@ import org.graalvm.collections.EconomicSet;
 @BasedOnJDKClass(className = "java.lang.invoke.MethodHandleImpl", innerClass = "IntrinsicMethodHandle")
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
 public class MethodHandleInvokerRenamingSubstitutionProcessor extends SubstitutionProcessor {
-    private static final Class<?> METHOD_HANDLE_STATICS_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodHandleStatics");
-    private static final Field DEBUG_METHOD_HANDLE_NAMES_FIELD = ReflectionUtil.lookupField(METHOD_HANDLE_STATICS_CLASS, "DEBUG_METHOD_HANDLE_NAMES");
     private static final Class<?> CLASS_SPECIALIZER_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer");
     private static final Field CLASS_SPECIALIZER_META_TYPE_FIELD = ReflectionUtil.lookupField(CLASS_SPECIALIZER_CLASS, "metaType");
     private static final Class<?> SPECIES_DATA_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer$SpeciesData");
@@ -99,8 +94,12 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
     private static final Class<?> LAMBDA_FORM_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm");
     private static final Field LAMBDA_FORM_CUSTOMIZED_FIELD = ReflectionUtil.lookupField(LAMBDA_FORM_CLASS, "customized");
     private static final Field LAMBDA_FORM_NAMES_FIELD = ReflectionUtil.lookupField(LAMBDA_FORM_CLASS, "names");
+    private static final Field LAMBDA_FORM_ARITY_FIELD = ReflectionUtil.lookupField(LAMBDA_FORM_CLASS, "arity");
+    private static final Field LAMBDA_FORM_RESULT_FIELD = ReflectionUtil.lookupField(LAMBDA_FORM_CLASS, "result");
+    private static final Field LAMBDA_FORM_KIND_FIELD = ReflectionUtil.lookupField(LAMBDA_FORM_CLASS, "kind");
     private static final Class<?> BASIC_TYPE_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm$BasicType");
     private static final Class<?> NAME_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm$Name");
+    private static final Field NAME_TYPE_FIELD = ReflectionUtil.lookupField(NAME_CLASS, "type");
     private static final Field NAME_INDEX_FIELD = ReflectionUtil.lookupField(NAME_CLASS, "index");
     private static final Field NAME_CONSTRAINT_FIELD = ReflectionUtil.lookupField(NAME_CLASS, "constraint");
     private static final Field NAME_ARGUMENTS_FIELD = ReflectionUtil.lookupField(NAME_CLASS, "arguments");
@@ -108,7 +107,6 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
     private static final Class<?> NAMED_FUNCTION_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm$NamedFunction");
     private static final Field NAMED_FUNCTION_MEMBER_FIELD = ReflectionUtil.lookupField(NAMED_FUNCTION_CLASS, "member");
     private static final Field NAMED_FUNCTION_RESOLVED_HANDLE_FIELD = ReflectionUtil.lookupField(NAMED_FUNCTION_CLASS, "resolvedHandle");
-    private static final Field NAMED_FUNCTION_TYPE_FIELD = ReflectionUtil.lookupField(NAMED_FUNCTION_CLASS, "type");
     private static final Field FORM_FIELD = ReflectionUtil.lookupField(MethodHandle.class, "form");
     private static final Class<?> BOUND_METHOD_HANDLE_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.BoundMethodHandle");
     private static final Method BOUND_METHOD_HANDLE_SPECIES_DATA_METHOD = ReflectionUtil.lookupMethod(BOUND_METHOD_HANDLE_CLASS, "speciesData");
@@ -124,10 +122,13 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
     private static final String VH_CLASS_NAME_SUBSTRING = "LambdaForm$VH";
     private static final String VH_STABLE_NAME_TEMPLATE = "Ljava/lang/invoke/LambdaForm$VH.s";
 
+    /** Opaque constants can differ across image builds even when the structural key is unique. */
+    private static final AtomicInteger OPAQUE_NAME = new AtomicInteger();
+
     private final BigBang bb;
 
     private final ConcurrentMap<ResolvedJavaType, MethodHandleInvokerSubstitutionType> typeSubstitutions = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, String> stableNameStructuralKeys = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, AtomicInteger> stableNameCounts = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, AtomicInteger> structuralKeyDuplicateCounts = new ConcurrentHashMap<>();
 
     MethodHandleInvokerRenamingSubstitutionProcessor(BigBang bb) {
@@ -161,6 +162,7 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
     private MethodHandleInvokerSubstitutionType getSubstitution(ResolvedJavaType type, ResolvedJavaType original) {
         boolean isDirect = type.getName().contains(DMH_CLASS_NAME_SUBSTRING);
         boolean isVarHandle = type.getName().contains(VH_CLASS_NAME_SUBSTRING);
+        KeyState state = new KeyState();
         String structuralKey;
         try {
             Object lambdaForm;
@@ -170,13 +172,13 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
             Object classData = CLASS_GET_CLASS_DATA_METHOD.invoke(clazz);
             if (LAMBDA_FORM_CLASS.isInstance(classData)) {
                 lambdaForm = classData;
-                appendLambdaForm(key, lambdaForm, newKeyState(), !isDirect);
+                appendLambdaForm(key, lambdaForm, state, !isDirect);
             } else if (classData instanceof List<?> list) {
                 VMError.guarantee(list.size() > 1, "The classData cannot be a list with fewer than 2 elements.");
                 lambdaForm = list.get(0);
                 VMError.guarantee(LAMBDA_FORM_CLASS.isInstance(lambdaForm), "Expected classData to contain LambdaForm at the start of the list: %s", classData);
                 key.append("classDataList:").append(list.size()).append('\n');
-                appendLambdaForm(key, lambdaForm, newKeyState(), !isDirect);
+                appendLambdaForm(key, lambdaForm, state, !isDirect);
                 if (isDirect) {
                     VMError.guarantee(list.size() == 2);
                     Object customizedHandle = list.get(1);
@@ -188,34 +190,16 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
                      * aliasing issue. Avoiding it would require to disable method handle
                      * customization.
                      */
-                    appendMemberName(key, DIRECT_METHOD_HANDLE_INTERNAL_MEMBER_NAME_METHOD.invoke(customizedHandle));
+                    appendMemberName(key, DIRECT_METHOD_HANDLE_INTERNAL_MEMBER_NAME_METHOD.invoke(customizedHandle), state);
                 } else {
-                    /*
-                     * The classData array contains parts of the lambda form such as arguments,
-                     * resolved method handle targets, classes used in type casts, and the
-                     * LambdaForm itself, see callers of InvokerBytecodeGenerator.classData(Object).
-                     * We only extract the LambdaForm from the classData as it contains the other
-                     * objects, and they are included in our hash representation when we process the
-                     * LambdaForm.
-                     *
-                     * When one of the arguments of a name is an arbitrary object, it is stored in
-                     * the classData. The arguments are all checked later, and we throw if one
-                     * argument is an arbitrary object.
-                     *
-                     * All resolvedHandles from the names that are not statically invocable are
-                     * stored in the classData. We already recurse through all resolvedHandles.
-                     *
-                     * For each cast in the method handle, the class into which the object is cast
-                     * is saved in the classData. The casts all depend on the types from the
-                     * methodType and they are already included in the hash.
-                     */
+                    /* Class data holds the customized handle followed by constants used by the generated bytecode. */
                     Object customizedHandle = LAMBDA_FORM_CUSTOMIZED_FIELD.get(lambdaForm);
                     if (customizedHandle != null) {
                         VMError.guarantee(customizedHandle == list.get(1), "Expected the customization to be right after the LambdaForm: %s", list.get(1));
-                        appendMethodHandle(key, (MethodHandle) customizedHandle, newKeyState());
+                        appendMethodHandle(key, (MethodHandle) customizedHandle, state);
                     }
                     for (int i = customizedHandle == null ? 1 : 2; i < list.size(); i++) {
-                        appendStableObject(key, list.get(i), newKeyState());
+                        appendStableObject(key, list.get(i), state);
                     }
                 }
             } else {
@@ -225,27 +209,17 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
         }
-        return new MethodHandleInvokerSubstitutionType(original, findStableName(structuralKey, isDirect, isVarHandle));
+        return new MethodHandleInvokerSubstitutionType(original, findStableName(structuralKey, isDirect, isVarHandle, state.opaque));
     }
 
-    private static KeyState newKeyState() {
-        return new KeyState();
-    }
-
-    /**
-     * Before recursively adding inner method handles, the parts of the lambda form string
-     * representation that would cause an unstable name have to be replaced. The checks here are
-     * deliberately always-on: otherwise image builds without assertions could silently fall back to
-     * discovery-order-dependent names.
-     */
     private static void appendLambdaForm(StringBuilder key, Object lambdaForm, KeyState state, boolean expandNamedFunctions) throws ReflectiveOperationException {
-        if (!state.lambdaForms.add(lambdaForm)) {
-            key.append("LambdaForm:<cycle>\n");
+        if (appendReference(key, lambdaForm, expandNamedFunctions ? "expandedFormRef:" : "shallowFormRef:", expandNamedFunctions ? state.expandedForms : state.shallowForms)) {
             return;
         }
-        String lambdaFormString = lambdaForm.toString();
-        key.append("LambdaForm:{\n");
 
+        key.append("LambdaForm:{\n");
+        key.append(LAMBDA_FORM_ARITY_FIELD.getInt(lambdaForm)).append(':').append(LAMBDA_FORM_RESULT_FIELD.getInt(lambdaForm)).append(':');
+        key.append(((Enum<?>) LAMBDA_FORM_KIND_FIELD.get(lambdaForm)).name()).append('\n');
         Object names = LAMBDA_FORM_NAMES_FIELD.get(lambdaForm);
         int namesLength = Array.getLength(names);
         for (int i = 0; i < namesLength; ++i) {
@@ -256,7 +230,7 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
              */
             short nameIndex = NAME_INDEX_FIELD.getShort(name);
             VMError.guarantee(nameIndex >= 0, "The name %s from the lambda form %s has no index set, which produces unstable names.", name, lambdaForm);
-            key.append("Name:").append(nameIndex).append('\n');
+            key.append("Name:").append(nameIndex).append(':').append(((Enum<?>) NAME_TYPE_FIELD.get(name)).name()).append('\n');
 
             Object constraint = NAME_CONSTRAINT_FIELD.get(name);
             if (constraint != null) {
@@ -271,18 +245,11 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
                 for (int j = 0; j < argumentsLength; ++j) {
                     Object argument = Array.get(arguments, j);
 
-                    /*
-                     * An argument can be a BasicType[]. In this case, the toString method is used
-                     * by Name.exprString and the resulting string representation of the array
-                     * contains its identity hash code (but not its elements). This will cause
-                     * unstable name between two JVM instances. To solve this, the string
-                     * representation of the BasicType[] is replaced by a custom string
-                     * representation (see getBasicTypeArrayString).
-                     */
                     if (BASIC_TYPE_CLASS.arrayType().isInstance(argument)) {
-                        lambdaFormString = lambdaFormString.replace(String.valueOf(argument), Arrays.toString((Object[]) argument));
+                        appendString(key, "BasicType[]", Arrays.toString((Object[]) argument));
+                    } else {
+                        appendStableObject(key, argument, state);
                     }
-                    appendStableObject(key, argument, state);
                 }
                 key.append("}\n");
             }
@@ -292,80 +259,31 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
                 key.append("function:{\n");
                 Object member = NAMED_FUNCTION_MEMBER_FIELD.get(function);
                 if (member != null) {
-                    /*
-                     * The LambdaForm$NamedFunction.toString uses the simple name of the member
-                     * class. To avoid potential aliasing, the qualified member name is mixed in the
-                     * key.
-                     */
-                    appendMemberName(key, member);
+                    // The member identifies the function even before its resolved handle is cached.
+                    appendMemberName(key, member, state);
+                } else if (expandNamedFunctions) {
+                    appendMethodHandle(key, (MethodHandle) NAMED_FUNCTION_RESOLVED_HANDLE_FIELD.get(function), state);
                 }
-                if (!expandNamedFunctions) {
-                    key.append("}\n");
-                    continue;
-                }
-                /*
-                 * The method handle of the NamedFunction is used in the string representation. To
-                 * avoid potential aliasing, the descriptor string and the handle structure are mixed
-                 * in the key.
-                 */
-                MethodType methodType = (MethodType) NAMED_FUNCTION_TYPE_FIELD.get(function);
-                if (methodType != null) {
-                    appendString(key, "methodType", methodType.descriptorString());
-                }
-                Object resolvedHandle = NAMED_FUNCTION_RESOLVED_HANDLE_FIELD.get(function);
-                if (resolvedHandle == null) {
-                    key.append("}\n");
-                    continue;
-                }
-                appendString(key, "resolvedHandleType", ((MethodHandle) resolvedHandle).type().descriptorString());
-
-                if (BOUND_METHOD_HANDLE_CLASS.isInstance(resolvedHandle)) {
-                    /*
-                     * BoundMethodHandle.internalValues calls BoundMethodHandle.arg, which retrieves
-                     * the object that was bound to the corresponding argument, and return its
-                     * string representation. This method is only used if the debug method handle
-                     * names are activated. The object used may not have a stable string
-                     * representation, which would lead to an unstable name.
-                     */
-                    VMError.guarantee(!DEBUG_METHOD_HANDLE_NAMES_FIELD.getBoolean(null),
-                                    "The method handle %s with debug method handle names can contain the string representation from any object, which would cause the name to be unstable.",
-                                    resolvedHandle);
-
-                    /*
-                     * Without the debug method handle names, the MethodHandle.toString method does
-                     * not include any additional detail if the method handle is a bound method
-                     * handle. To avoid potential aliasing, the species data and bound values are
-                     * mixed with the key.
-                     */
-                    Object speciesData = BOUND_METHOD_HANDLE_SPECIES_DATA_METHOD.invoke(resolvedHandle);
-                    appendSpeciesData(key, speciesData);
-                    appendBoundMethodHandleValues(key, resolvedHandle, state);
-                }
-
-                Object innerLambdaForm = FORM_FIELD.get(resolvedHandle);
-                appendLambdaForm(key, innerLambdaForm, state, !DIRECT_METHOD_HANDLE_CLASS.isInstance(resolvedHandle));
                 key.append("}\n");
             }
         }
-        appendString(key, "lambdaFormString", lambdaFormString);
         key.append("}\n");
-        state.lambdaForms.remove(lambdaForm);
     }
 
     /**
      * The method MemberName.toString uses the Object.toString method which can produce an unstable
      * name. This method uses the qualified names of the classes instead of the simple names.
      */
-    private static void appendMemberName(StringBuilder key, Object memberName) throws ReflectiveOperationException {
+    private static void appendMemberName(StringBuilder key, Object memberName, KeyState state) throws ReflectiveOperationException {
         Class<?> declaringClass = (Class<?>) MEMBER_NAME_GET_DECLARING_CLASS_METHOD.invoke(memberName);
         String name = (String) MEMBER_NAME_GET_NAME_METHOD.invoke(memberName);
         Object type = MEMBER_NAME_GET_METHOD_OR_FIELD_TYPE_METHOD.invoke(memberName);
         byte refKind = (byte) MEMBER_NAME_GET_REFERENCE_KIND_METHOD.invoke(memberName);
         String refKindName = (String) METHOD_HANDLE_NATIVES_REF_KIND_NAME_METHOD.invoke(null, refKind);
         key.append("MemberName:{\n");
-        appendString(key, "declaringClass", declaringClass.getName());
+        appendString(key, "declaringClass", state.descriptor(declaringClass));
         appendString(key, "name", name);
-        appendString(key, "type", type instanceof MethodType methodType ? methodType.descriptorString() : ((Class<?>) type).getName());
+        appendString(key, "type", type instanceof MethodType methodType ? state.methodDescriptor(methodType) : state.descriptor((Class<?>) type));
         appendString(key, "refKind", refKindName);
         key.append("}\n");
     }
@@ -385,15 +303,14 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
     }
 
     private static void appendMethodHandle(StringBuilder key, MethodHandle methodHandle, KeyState state) throws ReflectiveOperationException {
-        if (!state.methodHandles.add(methodHandle)) {
-            key.append("MethodHandle:<cycle>\n");
+        if (appendReference(key, methodHandle, "handleRef:", state.methodHandles)) {
             return;
         }
         key.append("MethodHandle:{\n");
         appendString(key, "class", methodHandle.getClass().getName());
-        appendString(key, "type", methodHandle.type().descriptorString());
+        appendString(key, "type", state.methodDescriptor(methodHandle.type()));
         if (DIRECT_METHOD_HANDLE_CLASS.isInstance(methodHandle)) {
-            appendMemberName(key, DIRECT_METHOD_HANDLE_INTERNAL_MEMBER_NAME_METHOD.invoke(methodHandle));
+            appendMemberName(key, DIRECT_METHOD_HANDLE_INTERNAL_MEMBER_NAME_METHOD.invoke(methodHandle), state);
         } else if (BOUND_METHOD_HANDLE_CLASS.isInstance(methodHandle)) {
             appendSpeciesData(key, BOUND_METHOD_HANDLE_SPECIES_DATA_METHOD.invoke(methodHandle));
             appendBoundMethodHandleValues(key, methodHandle, state);
@@ -403,7 +320,6 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
             appendLambdaForm(key, form, state, !DIRECT_METHOD_HANDLE_CLASS.isInstance(methodHandle));
         }
         key.append("}\n");
-        state.methodHandles.remove(methodHandle);
     }
 
     private static void appendBoundMethodHandleValues(StringBuilder key, Object methodHandle, KeyState state) throws ReflectiveOperationException {
@@ -427,16 +343,21 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
     private static void appendStableObject(StringBuilder key, Object value, KeyState state) throws ReflectiveOperationException {
         if (value == null) {
             key.append("null\n");
-        } else if (value instanceof String || value instanceof Number || value instanceof Boolean || value instanceof Character) {
+        } else if (value instanceof Float number) {
+            key.append("float:").append(Float.floatToRawIntBits(number)).append('\n');
+        } else if (value instanceof Double number) {
+            key.append("double:").append(Double.doubleToRawLongBits(number)).append('\n');
+        } else if (value instanceof String || value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long || value instanceof Boolean ||
+                        value instanceof Character) {
             appendString(key, value.getClass().getName(), String.valueOf(value));
         } else if (value instanceof Class<?> clazz) {
-            appendString(key, "Class", clazz.getName());
+            appendString(key, "Class", state.descriptor(clazz));
         } else if (value instanceof MethodType methodType) {
-            appendString(key, "MethodType", methodType.descriptorString());
+            appendString(key, "MethodType", state.methodDescriptor(methodType));
         } else if (value instanceof MethodHandle methodHandle) {
             appendMethodHandle(key, methodHandle, state);
         } else if (MEMBER_NAME_CLASS.isInstance(value)) {
-            appendMemberName(key, value);
+            appendMemberName(key, value, state);
         } else if (SPECIES_DATA_CLASS.isInstance(value)) {
             appendSpeciesData(key, value);
         } else if (LAMBDA_FORM_CLASS.isInstance(value)) {
@@ -444,32 +365,20 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
         } else if (NAME_CLASS.isInstance(value)) {
             VMError.guarantee(NAME_INDEX_FIELD.getShort(value) >= 0, "The name %s has no index set, which produces unstable names.", value);
             key.append("NameRef:").append(NAME_INDEX_FIELD.getShort(value)).append('\n');
-        } else if (BASIC_TYPE_CLASS.arrayType().isInstance(value)) {
-            appendString(key, "BasicType[]", Arrays.toString((Object[]) value));
         } else if (value instanceof Enum<?> enumValue) {
-            appendString(key, "Enum", enumValue.getDeclaringClass().getName() + "." + enumValue.name());
-        } else if (value.getClass().isArray()) {
-            appendArray(key, value, state);
+            appendString(key, "Enum", state.descriptor(enumValue.getDeclaringClass()) + "." + enumValue.name());
         } else {
-            throw VMError.shouldNotReachHere("Lambda form value %s is of type %s which might produce an unstable name.", value, value.getClass());
+            // Application objects (including arrays) can change after the handle is bound.
+            state.opaque = true;
+            appendString(key, "opaque", state.descriptor(value.getClass()));
         }
-    }
-
-    private static void appendArray(StringBuilder key, Object array, KeyState state) throws ReflectiveOperationException {
-        key.append(array.getClass().getComponentType().getName()).append("[]:{\n");
-        int length = Array.getLength(array);
-        key.append("length:").append(length).append('\n');
-        for (int i = 0; i < length; i++) {
-            appendStableObject(key, Array.get(array, i), state);
-        }
-        key.append("}\n");
     }
 
     private static void appendString(StringBuilder key, String label, String value) {
         key.append(label).append(':').append(value.length()).append(':').append(value).append('\n');
     }
 
-    private String findStableName(String structuralKey, boolean isDirect, boolean isVarHandle) {
+    private String findStableName(String structuralKey, boolean isDirect, boolean isVarHandle, boolean opaque) {
         String baseName = digest(structuralKey);
         if (isDirect) {
             baseName = DMH_STABLE_NAME_TEMPLATE + baseName;
@@ -478,12 +387,7 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
         } else {
             baseName = MH_STABLE_NAME_TEMPLATE + baseName;
         }
-        AtomicInteger duplicateCount = structuralKeyDuplicateCounts.get(structuralKey);
-        if (duplicateCount == null) {
-            AtomicInteger newDuplicateCount = new AtomicInteger();
-            AtomicInteger existingDuplicateCount = structuralKeyDuplicateCounts.putIfAbsent(structuralKey, newDuplicateCount);
-            duplicateCount = existingDuplicateCount != null ? existingDuplicateCount : newDuplicateCount;
-        }
+        AtomicInteger duplicateCount = structuralKeyDuplicateCounts.computeIfAbsent(structuralKey, unused -> new AtomicInteger());
         int duplicateIndex = duplicateCount.getAndIncrement();
         /*
          * The same LambdaForm structure can be generated into multiple hidden classes. Such classes
@@ -491,57 +395,35 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
          * distinct type names for the distinct original classes.
          */
         String name = duplicateIndex == 0 ? baseName + ";" : baseName + "_" + duplicateIndex + ";";
-        String previousKey = stableNameStructuralKeys.putIfAbsent(name, structuralKey);
-        VMError.guarantee(previousKey == null || previousKey.equals(structuralKey), "Method handle stable name collision for %s", name);
+        AtomicInteger previous = stableNameCounts.putIfAbsent(name, opaque ? OPAQUE_NAME : duplicateCount);
+        VMError.guarantee(previous == null, "Method handle stable name collision for %s", name);
         return name;
-    }
-
-    public static String stableNameForTesting(MethodHandle methodHandle, boolean isDirect, boolean isVarHandle) {
-        try {
-            StringBuilder key = new StringBuilder();
-            appendMethodHandle(key, methodHandle, newKeyState());
-            String baseName = digest(key.toString());
-            if (isDirect) {
-                baseName = DMH_STABLE_NAME_TEMPLATE + baseName;
-            } else if (isVarHandle) {
-                baseName = VH_STABLE_NAME_TEMPLATE + baseName;
-            } else {
-                baseName = MH_STABLE_NAME_TEMPLATE + baseName;
-            }
-            return baseName + ";";
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
     }
 
     private static String digest(String structuralKey) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return toHex(digest.digest(structuralKey.getBytes(StandardCharsets.UTF_8)));
+            // Hash individual UTF-16 code units, including unpaired surrogates.
+            for (int i = 0; i < structuralKey.length(); i++) {
+                char unit = structuralKey.charAt(i);
+                digest.update((byte) (unit >>> 8));
+                digest.update((byte) unit);
+            }
+            return HexFormat.of().formatHex(digest.digest());
         } catch (NoSuchAlgorithmException e) {
             throw VMError.shouldNotReachHere(e);
         }
     }
 
-    private static String toHex(byte[] bytes) {
-        char[] result = new char[bytes.length * 2];
-        for (int i = 0; i < bytes.length; i++) {
-            int value = bytes[i] & 0xff;
-            result[i * 2] = Character.forDigit(value >>> 4, 16);
-            result[i * 2 + 1] = Character.forDigit(value & 0xf, 16);
-        }
-        return new String(result);
-    }
-
     /**
-     * Names derived from a structural key that only one hidden class has are stable. Hidden classes
+     * Names derived from a unique structural key with no opaque values are stable. Hidden classes
      * that share a structural key receive their suffixes in discovery order (see
      * {@link #findStableName}), so their names can be swapped between image builds.
      */
     public boolean isNameAlwaysStable(String methodHandleName) {
-        String structuralKey = stableNameStructuralKeys.get(methodHandleName);
-        VMError.guarantee(structuralKey != null, "Method handle name %s was not assigned by this processor.", methodHandleName);
-        return structuralKeyDuplicateCounts.get(structuralKey).get() == 1;
+        AtomicInteger count = stableNameCounts.get(methodHandleName);
+        VMError.guarantee(count != null, "Method handle name %s was not assigned by this processor.", methodHandleName);
+        return count.get() == 1;
     }
 
     boolean checkAllTypeNames() {
@@ -568,8 +450,38 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
         return true;
     }
 
+    private static boolean appendReference(StringBuilder key, Object object, String label, IdentityHashMap<Object, Integer> seen) {
+        Integer previous = seen.putIfAbsent(object, seen.size());
+        if (previous == null) {
+            return false;
+        }
+        key.append(label).append(previous).append('\n');
+        return true;
+    }
+
     private static final class KeyState {
-        private final Set<Object> lambdaForms = Collections.newSetFromMap(new IdentityHashMap<>());
-        private final Set<Object> methodHandles = Collections.newSetFromMap(new IdentityHashMap<>());
+        final IdentityHashMap<Object, Integer> expandedForms = new IdentityHashMap<>();
+        final IdentityHashMap<Object, Integer> shallowForms = new IdentityHashMap<>();
+        final IdentityHashMap<Object, Integer> methodHandles = new IdentityHashMap<>();
+        boolean opaque;
+
+        String descriptor(Class<?> type) {
+            if (type.isArray()) {
+                return "[" + descriptor(type.getComponentType());
+            }
+            if (type.isHidden()) {
+                opaque = true;
+                return "<hidden>";
+            }
+            return type.descriptorString();
+        }
+
+        String methodDescriptor(MethodType type) {
+            StringBuilder descriptor = new StringBuilder("(");
+            for (int i = 0; i < type.parameterCount(); i++) {
+                descriptor.append(descriptor(type.parameterType(i)));
+            }
+            return descriptor.append(')').append(descriptor(type.returnType())).toString();
+        }
     }
 }
