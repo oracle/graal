@@ -26,9 +26,7 @@ package com.oracle.svm.test.junit.nativeimage;
 
 import java.beans.Introspector;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.svm.core.hub.DynamicHub;
@@ -42,7 +40,6 @@ public class IntrospectorInitializationTest {
 
     @Test
     public void testIntrospectorInitializedAtBuildTime() {
-        Assume.assumeTrue("Test only runs in native image", ImageInfo.inImageCode());
         Assert.assertTrue("java.beans.Introspector must be initialized at build time",
                         DynamicHub.fromClass(Introspector.class).isInitialized());
     }

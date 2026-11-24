@@ -37,7 +37,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.function.Supplier;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 import org.junit.Test;
@@ -118,10 +117,6 @@ public class PreserveLambdaProxyClassesTest {
     }
 
     private static void assertJniAccess(SerializableSupplier supplier) {
-        if (!ImageInfo.inImageRuntimeCode()) {
-            return;
-        }
-
         JNIEnvironment env = JNIMethodSupport.environment();
         JNIObjectHandle lambdaClass = JNIObjectHandles.createLocal(supplier.getClass());
         JNIObjectHandle lambdaObject = JNIObjectHandles.createLocal(supplier);

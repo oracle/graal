@@ -27,9 +27,7 @@ package com.oracle.svm.test.junit.nativeimage.thread;
 import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.svm.test.api.NativeImageBuildArgs;
@@ -49,8 +47,6 @@ public class RunMainInNewThreadTest {
      */
     @Test
     public void testMainThreadIdentityAndVisibility() {
-        Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
-
         Thread mainThread = Thread.currentThread();
         assertMainThread(mainThread);
 

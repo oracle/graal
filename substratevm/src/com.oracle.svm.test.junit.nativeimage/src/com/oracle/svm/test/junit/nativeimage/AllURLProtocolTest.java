@@ -29,7 +29,6 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.junit.Assert;
@@ -60,10 +59,6 @@ public class AllURLProtocolTest {
 
     @Test
     public void jrtUsesEmbeddedModuleResourcesWithoutRuntimeModulesImage() throws Exception {
-        if (!ImageInfo.inImageRuntimeCode()) {
-            return;
-        }
-
         String previousJavaHome = System.getProperty("java.home");
         Path fakeJavaHome = Files.createTempDirectory("native-image-no-runtime-modules");
         try {

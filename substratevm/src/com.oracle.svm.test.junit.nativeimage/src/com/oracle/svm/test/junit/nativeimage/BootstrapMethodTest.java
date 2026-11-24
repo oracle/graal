@@ -52,7 +52,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.svm.core.feature.JVMCIFeatureAccess;
@@ -268,7 +267,6 @@ public class BootstrapMethodTest {
 
     @Test
     public void testIndyResolvedAtBuildTime() throws Exception {
-        Assume.assumeTrue("Test only runs in native image", ImageInfo.inImageCode());
         Assert.assertNotNull("Generated class should be defined at build time", generatedClass);
         Assert.assertTrue("Indy bootstrap should have been called at build time",
                         indyBootstrapCalledAtBuildTime);
@@ -280,7 +278,6 @@ public class BootstrapMethodTest {
 
     @Test
     public void testCondyResolvedAtBuildTime() throws Exception {
-        Assume.assumeTrue("Test only runs in native image", ImageInfo.inImageCode());
         Assert.assertNotNull("Generated class should be defined at build time", generatedClass);
         Assert.assertTrue("Condy bootstrap should have been called at build time",
                         condyBootstrapCalledAtBuildTime);
@@ -292,7 +289,6 @@ public class BootstrapMethodTest {
 
     @Test
     public void testJVMCIIndyResolvedAtBuildTime() throws Exception {
-        Assume.assumeTrue("Test only runs in native image", ImageInfo.inImageCode());
         Assert.assertNotNull("Generated class should be defined at build time", generatedClass);
         Assert.assertTrue("JVMCI-registered indy bootstrap should have been called at build time",
                         jvmciIndyBootstrapCalledAtBuildTime);
@@ -304,7 +300,6 @@ public class BootstrapMethodTest {
 
     @Test
     public void testJVMCICondyResolvedAtBuildTime() throws Exception {
-        Assume.assumeTrue("Test only runs in native image", ImageInfo.inImageCode());
         Assert.assertNotNull("Generated class should be defined at build time", generatedClass);
         Assert.assertTrue("JVMCI-registered condy bootstrap should have been called at build time",
                         jvmciCondyBootstrapCalledAtBuildTime);
@@ -316,7 +311,6 @@ public class BootstrapMethodTest {
 
     @Test
     public void testRuntimeIndyNotResolvedAtBuildTime() throws Exception {
-        Assume.assumeTrue("Test only runs in native image", ImageInfo.inImageCode());
         Assert.assertNotNull("Generated class should be defined at build time", generatedClass);
         Assert.assertFalse("Runtime indy bootstrap should NOT have been called at build time",
                         runtimeIndyBootstrapCalledAtBuildTime);
@@ -328,7 +322,6 @@ public class BootstrapMethodTest {
 
     @Test
     public void testRuntimeCondyNotResolvedAtBuildTime() throws Exception {
-        Assume.assumeTrue("Test only runs in native image", ImageInfo.inImageCode());
         Assert.assertNotNull("Generated class should be defined at build time", generatedClass);
         Assert.assertFalse("Runtime condy bootstrap should NOT have been called at build time",
                         runtimeCondyBootstrapCalledAtBuildTime);
@@ -340,7 +333,6 @@ public class BootstrapMethodTest {
 
     @Test
     public void testDirectMetafactoryLambda() {
-        Assume.assumeTrue("Test only runs in native image", ImageInfo.inImageCode());
         DIRECT_METAFACTORY_LAMBDA.run();
         Assert.assertTrue("Lambda created by a direct metafactory call should be executable", directMetafactoryLambdaCalled);
     }

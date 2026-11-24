@@ -26,8 +26,6 @@ package com.oracle.svm.test.junit.nativeimage;
 
 import static org.junit.Assert.assertEquals;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
@@ -83,8 +81,6 @@ public class UninterruptibleUtilsIntrinsicTest {
     /** Verifies the leading-zero marker replacement and its result semantics. */
     @Test
     public void testNumberOfLeadingZeros() {
-        Assume.assumeTrue("Native Image only", ImageInfo.inImageRuntimeCode());
-
         for (int value : INT_VALUES) {
             assertEquals(java.lang.Integer.numberOfLeadingZeros(value), guestNumberOfLeadingZeros(value));
         }
@@ -93,8 +89,6 @@ public class UninterruptibleUtilsIntrinsicTest {
     /** Verifies the trailing-zero marker replacement and its result semantics. */
     @Test
     public void testCountTrailingZeros() {
-        Assume.assumeTrue("Native Image only", ImageInfo.inImageRuntimeCode());
-
         for (long value : LONG_VALUES) {
             assertEquals(java.lang.Long.numberOfTrailingZeros(value), guestCountTrailingZeros(value));
         }

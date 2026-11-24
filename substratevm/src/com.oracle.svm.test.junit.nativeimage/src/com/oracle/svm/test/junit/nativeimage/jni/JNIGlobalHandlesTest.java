@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.test.junit.nativeimage.jni;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Isolates;
@@ -65,8 +64,6 @@ public class JNIGlobalHandlesTest {
 
     @Test
     public void getObjectRefTypeRejectsForeignGlobalHandle() {
-        assumeNativeImageRuntime();
-
         TestObject object = new TestObject("ref-type");
         JNIObjectHandle global = newGlobalRef(object);
         try {
@@ -82,8 +79,6 @@ public class JNIGlobalHandlesTest {
 
     @Test
     public void globalHandleOwnerTagUsesUniqueIsolateId() {
-        assumeNativeImageRuntime();
-
         TestObject object = new TestObject("owner-tag");
         JNIObjectHandle global = newGlobalRef(object);
         try {
@@ -96,8 +91,6 @@ public class JNIGlobalHandlesTest {
 
     @Test
     public void isolateIdOwnerTagDoesNotRepeatWhenIsolateAddressIsReused() {
-        assumeNativeImageRuntime();
-
         IsolateSnapshot staleIsolate = createIsolateSnapshot();
         Isolates.tearDownIsolate(staleIsolate.thread);
 
@@ -118,8 +111,6 @@ public class JNIGlobalHandlesTest {
 
     @Test
     public void staleGlobalHandleRejectedWhenIsolateAddressIsReused() {
-        assumeNativeImageRuntime();
-
         IsolateWithGlobalHandle staleIsolate = createIsolateWithGlobalHandle();
         Isolates.tearDownIsolate(staleIsolate.thread);
 
@@ -143,8 +134,6 @@ public class JNIGlobalHandlesTest {
 
     @Test
     public void newGlobalRefRejectsForeignGlobalHandle() {
-        assumeNativeImageRuntime();
-
         TestObject object = new TestObject("new-global-ref");
         JNIObjectHandle global = newGlobalRef(object);
         try {
@@ -168,8 +157,6 @@ public class JNIGlobalHandlesTest {
 
     @Test
     public void dereferenceRejectsForeignGlobalHandle() {
-        assumeNativeImageRuntime();
-
         TestObject object = new TestObject("dereference");
         JNIObjectHandle global = newGlobalRef(object);
         try {
@@ -186,10 +173,6 @@ public class JNIGlobalHandlesTest {
         } finally {
             JNIObjectHandles.deleteGlobalRef(global);
         }
-    }
-
-    private static void assumeNativeImageRuntime() {
-        Assume.assumeTrue(ImageInfo.inImageRuntimeCode());
     }
 
     private static JNIObjectHandle newGlobalRef(Object object) {

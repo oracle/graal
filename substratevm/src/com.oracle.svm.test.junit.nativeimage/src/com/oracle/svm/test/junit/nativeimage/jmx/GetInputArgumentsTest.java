@@ -28,10 +28,8 @@ package com.oracle.svm.test.junit.nativeimage.jmx;
 import java.lang.management.ManagementFactory;
 import java.util.List;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 public class GetInputArgumentsTest {
@@ -43,8 +41,6 @@ public class GetInputArgumentsTest {
 
     @Test
     public void testGetInputArguments() throws Exception {
-        Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
-
         if (PROPERTY_VALUE.equals(System.getProperty(PROPERTY_KEY))) {
             // This code will only be executed in the spawned child process (see below).
             Assert.assertEquals(List.of(MIN_HEAP_SIZE, PROPERTY_ARGUMENT, MAX_HEAP_SIZE), ManagementFactory.getRuntimeMXBean().getInputArguments());

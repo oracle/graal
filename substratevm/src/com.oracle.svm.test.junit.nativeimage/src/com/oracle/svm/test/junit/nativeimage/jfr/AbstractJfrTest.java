@@ -63,6 +63,7 @@ public abstract class AbstractJfrTest {
 
     @BeforeClass
     public static void checkForJFR() {
+        /* On HotSpot, JUnit runs this check before the sampler subclass can skip. */
         assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || HasJfrSupport.get());
     }
 
