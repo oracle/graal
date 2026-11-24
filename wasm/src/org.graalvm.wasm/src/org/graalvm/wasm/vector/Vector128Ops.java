@@ -133,6 +133,12 @@ public interface Vector128Ops<V128> {
 
     void intoArray(V128 vec, byte[] array, int offset);
 
+    /** Loads a vector from a native address whose bounds have been checked by the caller. */
+    V128 fromNativeMemory(long address);
+
+    /** Stores a vector to a native address whose bounds have been checked by the caller. */
+    void intoNativeMemory(V128 vec, long address);
+
     Vector128 toVector128(V128 vec);
 
     V128 fromVector128(Vector128 vector128);
