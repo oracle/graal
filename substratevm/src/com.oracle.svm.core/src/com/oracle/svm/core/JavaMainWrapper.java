@@ -50,6 +50,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.jfr.events.ShutdownEvent;
+import com.oracle.svm.core.jfr.events.ThreadStartEvent;
 import com.oracle.svm.core.jni.JNIJavaVMList;
 import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.guest.staging.log.Log;
@@ -187,6 +188,7 @@ public class JavaMainWrapper {
             // Ensure that native code using JNI_GetCreatedJavaVMs finds this isolate.
             JNIJavaVMList.addJavaVM(JNIFunctionTables.singleton().getGlobalJavaVM());
         }
+        ThreadStartEvent.emit(Thread.currentThread(), null);
         return RUN_APPLICATION_MAIN;
     }
 
