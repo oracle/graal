@@ -84,9 +84,11 @@ import com.oracle.svm.core.jdk.RuntimeClassLoaderValueSupport;
 import com.oracle.svm.core.jdk.RuntimeModuleSupport;
 import com.oracle.svm.core.util.HostedSubstrateUtil;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
+import com.oracle.svm.guest.staging.option.RuntimeBootModuleLayerOptions;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AnalysisAccessBase;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.NativeImageClassLoaderSupport.AddExportsAndOpensAndReadsFormatValue;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistryFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.shared.BuildPhaseProvider;
@@ -104,6 +106,7 @@ import com.oracle.svm.util.OriginalClassProvider;
 import jdk.internal.loader.BuiltinClassLoader;
 import jdk.internal.loader.ClassLoaderValue;
 import jdk.internal.loader.ClassLoaders;
+import jdk.internal.misc.VM;
 import jdk.internal.module.DefaultRoots;
 import jdk.internal.module.ModuleBootstrap;
 import jdk.internal.module.ModuleLoaderMap;
@@ -688,16 +691,21 @@ public class ModuleLayerFeature implements InternalFeature {
         unnamedModulePairs.put(moduleLayerFeatureUtils.everyoneModule, moduleLayerFeatureUtils.everyoneModule);
 
         try {
+            var builderExports = getBuilderPackageGrants(RuntimeBootModuleLayerOptions.ADD_EXPORTS_PROPERTY_PREFIX);
+            var builderOpens = getBuilderPackageGrants(RuntimeBootModuleLayerOptions.ADD_OPENS_PROPERTY_PREFIX);
             for (Map.Entry<Module, Module> e1 : namedModulePairs.entrySet()) {
                 Module hostedFrom = e1.getKey();
                 Module runtimeFrom = e1.getValue();
                 for (Map.Entry<Module, Module> e2 : namedModulePairs.entrySet()) {
-                    replicateVisibilityModification(accessImpl, applicationModules, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue());
+                    replicateVisibilityModification(accessImpl, applicationModules, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue(), builderExports, builderOpens);
                 }
                 for (Map.Entry<Module, Module> e2 : unnamedModulePairs.entrySet()) {
-                    replicateVisibilityModification(accessImpl, applicationModules, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue());
+                    replicateVisibilityModification(accessImpl, applicationModules, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue(), builderExports, builderOpens);
                 }
             }
+            // The same grant can appear in both the builder JVM and Native Image options.
+            applyImagePackageGrants(accessImpl, namedModulePairs, cl.classLoaderSupport.getImageOpens(), true);
+            applyImagePackageGrants(accessImpl, namedModulePairs, cl.classLoaderSupport.getImageExports(), false);
             for (Module runtimeFrom : namedModulePairs.values()) {
                 moduleLayerFeatureUtils.encodeFields(accessImpl, runtimeFrom);
             }
@@ -706,8 +714,66 @@ public class ModuleLayerFeature implements InternalFeature {
         }
     }
 
-    private void replicateVisibilityModification(AfterAnalysisAccessImpl accessImpl, List<Module> applicationModules, Module hostedFrom, Module hostedTo, Module runtimeFrom, Module runtimeTo)
+    private record ModulePair(Module source, Module target) {
+    }
+
+    private Map<ModulePair, Set<String>> getBuilderPackageGrants(String propertyPrefix) {
+        // ModuleBootstrap consumes these properties. The JVM keeps the startup values here.
+        Map<ModulePair, Set<String>> grants = new HashMap<>();
+        ModuleLayer builderLayer = ModuleLayer.boot();
+        for (int index = 0;; index++) {
+            String value = VM.getSavedProperty(propertyPrefix + index);
+            if (value == null) {
+                return grants;
+            }
+            int slash = value.indexOf('/');
+            int equals = value.indexOf('=');
+            Module source = builderLayer.findModule(value.substring(0, slash)).orElse(null);
+            if (source == null) {
+                continue;
+            }
+            String packageName = value.substring(slash + 1, equals);
+            for (String targetName : value.substring(equals + 1).split(",")) {
+                Module target = NativeImageClassLoaderSupport.ALL_UNNAMED.equals(targetName)
+                                ? moduleLayerFeatureUtils.allUnnamedModule
+                                : builderLayer.findModule(targetName).orElse(null);
+                if (target != null) {
+                    grants.computeIfAbsent(new ModulePair(source, target), _ -> new HashSet<>()).add(packageName);
+                }
+            }
+        }
+    }
+
+    private void applyImagePackageGrants(AfterAnalysisAccessImpl accessImpl, Map<Module, Module> namedModules, List<AddExportsAndOpensAndReadsFormatValue> grants, boolean opens)
                     throws IllegalAccessException {
+        for (var grant : grants) {
+            Module source = namedModules.get(grant.module());
+            if (source == null || !source.getPackages().contains(grant.packageName())) {
+                continue;
+            }
+            if (grant.targetModules().isEmpty()) {
+                applyImagePackageGrant(accessImpl, source, grant.packageName(), moduleLayerFeatureUtils.allUnnamedModule, opens);
+            } else {
+                for (Module hostedTarget : grant.targetModules()) {
+                    Module target = namedModules.get(hostedTarget);
+                    if (target != null && target != source) {
+                        applyImagePackageGrant(accessImpl, source, grant.packageName(), target, opens);
+                    }
+                }
+            }
+        }
+    }
+
+    private void applyImagePackageGrant(AfterAnalysisAccessImpl accessImpl, Module source, String packageName, Module target, boolean opens) throws IllegalAccessException {
+        if (opens) {
+            moduleLayerFeatureUtils.addOpens(accessImpl, source, packageName, target);
+        } else {
+            moduleLayerFeatureUtils.addExports(accessImpl, source, packageName, target);
+        }
+    }
+
+    private void replicateVisibilityModification(AfterAnalysisAccessImpl accessImpl, List<Module> applicationModules, Module hostedFrom, Module hostedTo, Module runtimeFrom, Module runtimeTo,
+                    Map<ModulePair, Set<String>> builderExports, Map<ModulePair, Set<String>> builderOpens) throws IllegalAccessException {
         if (hostedTo == hostedFrom) {
             return;
         }
@@ -723,13 +789,20 @@ public class ModuleLayerFeature implements InternalFeature {
             }
         }
 
-        // Preserve each opening/export's original target. Builder privileges must not become
-        // application privileges, including for packages opened while evaluating reflection plugins.
+        Module builderTarget = !hostedTo.isNamed() && hostedTo != moduleLayerFeatureUtils.everyoneModule ? moduleLayerFeatureUtils.allUnnamedModule : hostedTo;
+        var builderPair = new ModulePair(hostedFrom, builderTarget);
+        Set<String> jvmExports = builderExports.getOrDefault(builderPair, Set.of());
+        Set<String> jvmOpens = builderOpens.getOrDefault(builderPair, Set.of());
+
+        // Preserve the original target. An open also makes isExported report true, so
+        // filter JVM-only opens from both queries.
+        boolean synthetic = ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom);
         for (String pn : runtimeFrom.getPackages()) {
-            if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.isOpen(pn, hostedTo)) {
+            boolean jvmOpen = jvmOpens.contains(pn);
+            if (synthetic || (!jvmOpen && hostedFrom.isOpen(pn, hostedTo))) {
                 moduleLayerFeatureUtils.addOpens(accessImpl, runtimeFrom, pn, runtimeTo);
             }
-            if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.isExported(pn, hostedTo)) {
+            if (synthetic || (!jvmOpen && !jvmExports.contains(pn) && hostedFrom.isExported(pn, hostedTo))) {
                 moduleLayerFeatureUtils.addExports(accessImpl, runtimeFrom, pn, runtimeTo);
             }
         }

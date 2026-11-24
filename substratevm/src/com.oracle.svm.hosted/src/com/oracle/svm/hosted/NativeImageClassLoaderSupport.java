@@ -510,6 +510,8 @@ public final class NativeImageClassLoaderSupport {
 
     private HostedOptionParser hostedOptionParser;
     private OptionValues parsedHostedOptions;
+    private List<AddExportsAndOpensAndReadsFormatValue> imageExports = List.of();
+    private List<AddExportsAndOpensAndReadsFormatValue> imageOpens = List.of();
     private List<String> remainingArguments;
 
     public HostedOptionParser setupHostedOptionParser(List<String> arguments, Predicate<OptionDescriptors> builderOptionFilter) {
@@ -690,32 +692,26 @@ public final class NativeImageClassLoaderSupport {
             processListModulesOption(moduleLayerForImageBuild);
         }
 
-        processOption(NativeImageClassLoaderOptions.AddExports).forEach(val -> {
-            if (val.module.getPackages().contains(val.packageName)) {
-                if (val.targetModules.isEmpty()) {
-                    Modules.addExportsToAllUnnamed(val.module, val.packageName);
-                } else {
-                    for (Module targetModule : val.targetModules) {
-                        Modules.addExports(val.module, val.packageName, targetModule);
-                    }
-                }
+        imageExports = processOption(NativeImageClassLoaderOptions.AddExports).filter(NativeImageClassLoaderSupport::hasPackage).toList();
+        for (var export : imageExports) {
+            if (export.targetModules.isEmpty()) {
+                Modules.addExportsToAllUnnamed(export.module, export.packageName);
             } else {
-                warn("package " + val.packageName + " not in " + val.module.getName());
-            }
-        });
-        processOption(NativeImageClassLoaderOptions.AddOpens).forEach(val -> {
-            if (val.module.getPackages().contains(val.packageName)) {
-                if (val.targetModules.isEmpty()) {
-                    Modules.addOpensToAllUnnamed(val.module, val.packageName);
-                } else {
-                    for (Module targetModule : val.targetModules) {
-                        Modules.addOpens(val.module, val.packageName, targetModule);
-                    }
+                for (Module target : export.targetModules) {
+                    Modules.addExports(export.module, export.packageName, target);
                 }
-            } else {
-                warn("package " + val.packageName + " not in " + val.module.getName());
             }
-        });
+        }
+        imageOpens = processOption(NativeImageClassLoaderOptions.AddOpens).filter(NativeImageClassLoaderSupport::hasPackage).toList();
+        for (var open : imageOpens) {
+            if (open.targetModules.isEmpty()) {
+                Modules.addOpensToAllUnnamed(open.module, open.packageName);
+            } else {
+                for (Module target : open.targetModules) {
+                    Modules.addOpens(open.module, open.packageName, target);
+                }
+            }
+        }
         processOption(NativeImageClassLoaderOptions.AddReads).forEach(val -> {
             if (val.targetModules.isEmpty()) {
                 ReflectionUtil.invokeMethod(implAddReadsAllUnnamed, val.module);
@@ -877,7 +873,23 @@ public final class NativeImageClassLoaderSupport {
         this.layerFile = layerFile;
     }
 
-    private record AddExportsAndOpensAndReadsFormatValue(Module module, String packageName,
+    List<AddExportsAndOpensAndReadsFormatValue> getImageExports() {
+        return imageExports;
+    }
+
+    List<AddExportsAndOpensAndReadsFormatValue> getImageOpens() {
+        return imageOpens;
+    }
+
+    private static boolean hasPackage(AddExportsAndOpensAndReadsFormatValue value) {
+        if (value.module.getPackages().contains(value.packageName)) {
+            return true;
+        }
+        warn("package " + value.packageName + " not in " + value.module.getName());
+        return false;
+    }
+
+    record AddExportsAndOpensAndReadsFormatValue(Module module, String packageName,
                     List<Module> targetModules) {
     }
 
