@@ -200,6 +200,22 @@ public final class IntegerEqualsNode extends CompareNode implements Canonicaliza
                 }
             }
 
+            // (x ^ y) == ~x => y == -1, since ~x is x ^ -1
+            if ((forX instanceof XorNode && forY instanceof NotNode) ||
+                            (forX instanceof NotNode && forY instanceof XorNode)) {
+                XorNode xorNode = (forX instanceof XorNode) ? (XorNode) forX : (XorNode) forY;
+                NotNode notNode = (forX instanceof NotNode) ? (NotNode) forX : (NotNode) forY;
+                ValueNode other = null;
+                if (xorNode.getX() == notNode.getValue()) {
+                    other = xorNode.getY();
+                } else if (xorNode.getY() == notNode.getValue()) {
+                    other = xorNode.getX();
+                }
+                if (other != null) {
+                    return create(other, ConstantNode.forIntegerStamp(view.stamp(xorNode), -1), view);
+                }
+            }
+
             if (forX instanceof AddNode || forX instanceof XorNode) {
                 BinaryNode binaryNode = (BinaryNode) forX;
                 if (binaryNode.getX() == forY) {
