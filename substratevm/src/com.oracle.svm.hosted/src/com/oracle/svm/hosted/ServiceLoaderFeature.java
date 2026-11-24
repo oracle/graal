@@ -51,6 +51,7 @@ import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
@@ -241,6 +242,25 @@ public class ServiceLoaderFeature implements InternalFeature {
         if (((Inflation) accessImpl.getBigBang()).getAnnotationSubstitutionProcessor().isDeleted(providerClass)) {
             /* Disallow services with implementation classes that are marked as @Deleted */
             return;
+        }
+        if (!providerClass.isLinked()) {
+            /*
+             * Deviation from the JDK's ServiceLoader, which instantiates the provider and reports a
+             * class that cannot be linked (its verification needs a class absent from the class
+             * path) with a ServiceConfigurationError saying so: the class is left out of the image
+             * and its name kept in the service list, so the ServiceLoader reports the provider as
+             * not found, as Oracle GraalVM's image does. Registering its constructor for reflection
+             * would make a method reachable that has no bytecode, since JVMCI reports none for a
+             * class that is not linked, and the compile queue fails the build on it: this happened
+             * with Apache Tika's POI SVG renderer, which needs Batik.
+             */
+            try {
+                providerClass.link();
+            } catch (LinkageError e) {
+                LogUtils.warning("The service provider " + providerClass.toJavaName() + " is left out of the image: its class cannot be linked (" + e + ").");
+                registeredProviders.add(provider);
+                return;
+            }
         }
 
         /*
