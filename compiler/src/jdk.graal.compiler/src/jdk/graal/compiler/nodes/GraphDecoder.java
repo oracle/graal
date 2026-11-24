@@ -3592,15 +3592,33 @@ class LoopDetector implements Runnable {
      * {@link MethodScope#loopExplosionHead} is the loop header for the outer loop, and we ensured
      * that we have a {@link Loop} data object for it in {@link #irreducibleLoopHandler}.
      *
-     * Now we need to insert the state machine. We have several implementation restrictions to make
-     * that efficient: with an explicit merge key, its values must be compile-time constants of
-     * primitive type {@code int}, or {@code long} values representable as {@code int}, because
-     * the state machine uses an {@link IntegerSwitchNode} with {@code int} keys. A {@code long}
-     * key is narrowed only for the switch; its original value is preserved in the frame state.
-     * Without an explicit key, the dispatcher assigns a synthetic integer ID to each decoded
-     * entry instead of inferring a key from differing frame values. In either case, differing
-     * compatible frame values and virtual-object fields are merged separately in the dispatcher's
-     * frame state.
+     * Extend the state machine one decoded loop entry at a time. Each backedge in {@code loop.ends}
+     * currently targets {@code loop.header}. Redirect those backedges to the shared dispatcher
+     * header and add a switch case that leads back to {@code loop.header}. If execution deoptimizes
+     * using the shared header's frame state, the interpreter must recover the values for the entry
+     * selected by the incoming edge. In outline:
+     *
+     * <pre>
+     * entry = loop.header (original destination of the edges being redirected)
+     * label = explicit merge key at entry, or a synthetic ID for entry
+     * record label as the incoming value for the selector phi
+     * for each frame-state value, virtual-object entry, or materialized reference:
+     *     merge the dispatcher value with the value at entry, recording incoming values by phi
+     * for each redirected edge:
+     *     append each recorded value to its corresponding phi
+     *     redirect the edge to the dispatcher
+     * dispatch to entry when the selector equals label
+     * </pre>
+     *
+     * See {@link #mergeIrreducibleLoopState} for an example of the resulting phi inputs.
+     *
+     * An explicit merge key must have compile-time constant values of primitive type {@code int},
+     * or {@code long} values representable as {@code int}, because the state machine uses an
+     * {@link IntegerSwitchNode} with {@code int} keys. A {@code long} key is narrowed only for the
+     * switch; its original value is preserved in the frame state. Without an explicit key, the
+     * dispatcher assigns a synthetic integer ID to each decoded entry instead of inferring a key
+     * from differing frame values. In either case, differing compatible frame values and
+     * virtual-object fields are merged separately in the dispatcher's frame state.
      */
     private void handleIrreducibleLoop(Loop loop) {
         assert loop != irreducibleLoopHandler : Assertions.errorMessageContext("loop", loop, "irreducibleLoop", irreducibleLoopHandler);
@@ -3614,10 +3632,17 @@ class LoopDetector implements Runnable {
         assert loopValues.size() == explosionHeadValues.size() : Assertions.errorMessage(loopValues, explosionHeadValues);
 
         /*
-         * An explicit key also serves as the dispatcher selector. Without one, identify decoded
-         * entries independently of their frame values: several locals (for example, BCI and SP)
-         * may differ, or all differences may be inside virtual objects. ID 0 selects the original
-         * outermost entry; each additional entry gets the next unused ID.
+         * entryKey is the switch label for loop.header, the destination of every edge in loop.ends.
+         * When those edges are redirected to the dispatcher, each contributes entryKey to the
+         * selector phi. The corresponding switch case leads to loop.header.
+         *
+         * dispatchKey describes the dispatcher before adding this entry. For the first switch, it
+         * is the label for the original outermost entry and seeds the selector phi. For subsequent
+         * switches, it is the existing selector phi, which we extend.
+         *
+         * With an explicit merge key, each entry's label is the key's constant value at that entry.
+         * Otherwise, the decoder assigns labels in order: 0 for the outermost entry, then 1, 2, ...
+         * for additional entries.
          */
         ValueNode entryKey;
         ValueNode dispatchKey;
@@ -3742,15 +3767,37 @@ class LoopDetector implements Runnable {
      * introduced after loop explosion, so they do not prevent specialization of the interpreter's
      * accesses (for example, accesses indexed by a virtualized stack pointer).
      *
+     * Requiring distinct entries to have the same stack pointer would reject valid programs.
+     * Merging only the selector would instead leave incorrect values for deoptimization. For
+     * example, consider three predecessors P0, P1, and P2 and an unmarked dispatcher header H:
+     *
+     * <pre>
+     * Before:                         After:
+     * P0 ---------> A                 P0 ---+
+     * P1 ---+                         P1 ---+--> H --> switch(id) -- 0 --> A
+     * P2 ---+-----> B                 P2 ---+                |
+     *                                                        +------ 1 --> B
+     *
+     * At H, with inputs ordered by predecessor (P0, P1, P2):
+     *     id  = phi(  0,   1,   1)    // dispatch
+     *     BCI = phi(101, 202, 202)    // deoptimization
+     *     SP  = phi( 65,  66,  66)    // deoptimization
+     * </pre>
+     *
+     * P1 and P2 share one switch case because both originally targeted B, but each contributes its
+     * own input to every phi. Arriving from P1, for example, selects B during execution and
+     * restores BCI 202 and stack pointer 66 if execution deoptimizes at H.
+     *
      * Both states must reference the same outer frame state, which is therefore not merged.
      * {@link #handleIrreducibleLoop(Loop)} checks this identity before constructing the dispatcher.
      * Installing the initial explicit-key phi may replace the dispatcher frame state with a copy,
      * but that copy retains the same outer frame state.
      *
      * Copy the frame state and modified virtual-object mappings only when introducing a new phi:
-     * the original entry states must retain their specialized values. Extending existing phis does
-     * not change the state or its mappings. Every phi gets one input per redirected backedge,
-     * including phis introduced for earlier entries and the dispatch key itself.
+     * the original entry states must retain their specialized values. Extending an existing phi
+     * changes its inputs in place but does not replace any frame-state slot or object mapping, so
+     * no copy is required. Every phi gets one input per redirected backedge, including phis
+     * introduced for earlier entries and the dispatch key itself.
      *
      * @param dispatchState the current dispatcher header state; existing dispatcher phis referenced
      *            by this state or its virtual-object mappings are extended in place
@@ -3773,14 +3820,17 @@ class LoopDetector implements Runnable {
         EconomicMap<ValuePhiNode, ValueNode> inputs = EconomicMap.create(Equivalence.IDENTITY);
         inputs.put(dispatchPhi, entryKey);
         FrameState result = dispatchState;
-        for (int i = 0; i < dispatchState.values().size(); i++) {
-            ValueNode current = dispatchState.values().get(i);
-            ValueNode value = mergeIrreducibleLoopValue(current, entryState.values().get(i), inputs);
-            if (value != current) {
+        NodeInputList<ValueNode> dispatchValues = dispatchState.values();
+        NodeInputList<ValueNode> entryValues = entryState.values();
+        for (int i = 0; i < dispatchValues.size(); i++) {
+            ValueNode current = dispatchValues.get(i);
+            ValueNode incoming = entryValues.get(i);
+            ValueNode merged = mergeIrreducibleLoopValue(current, incoming, inputs);
+            if (merged != current) {
                 if (result == dispatchState) {
                     result = dispatchState.duplicate();
                 }
-                result.values().set(i, value);
+                result.values().set(i, merged);
             }
         }
         for (int i = 0; i < dispatchState.virtualObjectMappingCount(); i++) {
@@ -3832,6 +3882,20 @@ class LoopDetector implements Runnable {
         return result;
     }
 
+    /**
+     * Merges one frame-state value, virtual-object entry, or materialized reference and returns the
+     * value to use at the dispatcher. If {@code current == incoming}, reuse the value unless it is
+     * already a phi at this header. An existing dispatcher phi must have its incoming value
+     * recorded even when {@code current == incoming}. For differing compatible values, create a phi
+     * with {@code current} as its input for every existing predecessor. Bail out if the two values
+     * cannot be merged.
+     *
+     * In both phi cases, {@code inputs} records the value for the entry being added. Repeated
+     * references to the same phi must supply the same incoming node; a consistency guarantee
+     * enforces this. This helper records, but does not append, the new predecessor inputs. The
+     * caller appends each recorded value once per redirected edge after processing all locations,
+     * so multiple locations sharing a phi do not append duplicate inputs for the same edge.
+     */
     private ValueNode mergeIrreducibleLoopValue(ValueNode current, ValueNode incoming, EconomicMap<ValuePhiNode, ValueNode> inputs) {
         if (current == incoming && !irreducibleLoopHandler.header.isPhiAtMerge(current)) {
             return current;
