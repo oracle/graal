@@ -95,19 +95,19 @@ public final class PGOInstrumentationFeature implements InternalFeature {
                        "such as one registered with Threading.registerRecurringCallback.")//
         public static final HostedOptionKey<Boolean> PGOSampleStacks = new HostedOptionKey<>(true);
 
-        @Option(help = "Record branch (IfNode) frequencies in conditionalProfiles. Disable with -H:-PGOProfileBranches.")//
+        @Option(help = "Record branch (IfNode) frequencies in conditionalProfiles.")//
         public static final HostedOptionKey<Boolean> PGOProfileBranches = new HostedOptionKey<>(true);
 
-        @Option(help = "Record concrete receiver frequencies at indirect calls and emit virtualInvokeProfiles. Disable with -H:-PGOProfileReceivers.")//
+        @Option(help = "Record concrete receiver frequencies at indirect calls and emit virtualInvokeProfiles.")//
         public static final HostedOptionKey<Boolean> PGOProfileReceivers = new HostedOptionKey<>(true);
 
-        @Option(help = "Record context-sensitive method-entry counts and emit callCountProfiles. Disable with -H:-PGOProfileCallCounts.")//
+        @Option(help = "Record context-sensitive method-entry counts and emit callCountProfiles.")//
         public static final HostedOptionKey<Boolean> PGOProfileCallCounts = new HostedOptionKey<>(true);
 
-        @Option(help = "Record switch successor frequencies in conditionalProfiles. Disable with -H:-PGOProfileSwitches.")//
+        @Option(help = "Record switch successor frequencies in conditionalProfiles.")//
         public static final HostedOptionKey<Boolean> PGOProfileSwitches = new HostedOptionKey<>(true);
 
-        @Option(help = "Record exact runtime types at monitor-enter sites and emit monitorProfiles. Disable with -H:-PGOProfileMonitors.")//
+        @Option(help = "Record exact runtime types at monitor-enter sites and emit monitorProfiles.")//
         public static final HostedOptionKey<Boolean> PGOProfileMonitors = new HostedOptionKey<>(true);
         // @formatter:on
 
@@ -323,15 +323,13 @@ public final class PGOInstrumentationFeature implements InternalFeature {
                 }
             }
         }
-        // Checkstyle: stop
-        System.out.printf("[PGO] instrumentation: %d IfNodes instrumented, %d skipped; switches=%d, skipped=%d; receiver invokes=%d, skipped=%d; monitor enters=%d; call edges=%d, skipped=%d;" +
-                        " in compiled code: branch sites=%d, call-count counters=%d, receiver sites=%d%n",
+        LogUtils.prefixInfo("PGO", "instrumentation: %d IfNodes instrumented, %d skipped; switches=%d, skipped=%d; receiver invokes=%d, skipped=%d; monitor enters=%d; call edges=%d, skipped=%d;" +
+                        " in compiled code: branch sites=%d, call-count counters=%d, receiver sites=%d",
                         BranchProfileInstrumentationPhase.instrumentedBranches(), BranchProfileInstrumentationPhase.skippedBranches(),
                         BranchProfileInstrumentationPhase.instrumentedSwitches(), BranchProfileInstrumentationPhase.skippedSwitches(),
                         ReceiverProfileInstrumentationPhase.instrumentedInvokes(), ReceiverProfileInstrumentationPhase.skippedInvokes(),
                         MonitorProfileInstrumentationPhase.instrumentedMonitors(),
                         CallCountProfileInstrumentationPhase.instrumented(), CallCountProfileInstrumentationPhase.skipped(),
                         BranchProfileRecorder.numberedSiteCount(), CallCountProfileRecorder.numberedCounterCount(), TypeProfileRecorder.numberedReceiverSiteCount());
-        // Checkstyle: resume
     }
 }
