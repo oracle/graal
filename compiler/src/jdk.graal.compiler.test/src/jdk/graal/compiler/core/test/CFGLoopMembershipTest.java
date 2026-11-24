@@ -113,6 +113,8 @@ public class CFGLoopMembershipTest extends GraalCompilerTest {
         // Exercise both CFG loop-membership policies without requiring the lowering pipeline.
         if (afterFSA) {
             graph.getGraphState().setGuardsStage(GuardsStage.AFTER_FSA);
+            // Late proxy insertion can cache a pre-FSA CFG during parsing.
+            graph.clearLastCFG();
         }
         ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeLoops(true).computeDominators(true).build();
         Assert.assertEquals(expectedLoops, cfg.getLoops().size());
