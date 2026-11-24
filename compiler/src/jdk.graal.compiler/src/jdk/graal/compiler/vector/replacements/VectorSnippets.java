@@ -158,7 +158,7 @@ public class VectorSnippets implements Snippets {
     @Snippet
     public static Object vectorConsumerLoop(ConsumerParameter consumer, @ConstantParameter int supportedStepLengthsMask, @ConstantParameter int alignMode, @ConstantParameter int stepLengthPrimary,
                     @ConstantParameter int maxMissingPrimaryAlignment, @ConstantParameter boolean assertAlignment, @ConstantParameter int minPrimary, @ConstantParameter int stepLengthSecondary,
-                    @ConstantParameter int maxMissingSecondaryAlignment, @ConstantParameter int tailMode, long vectorLength,
+                    @ConstantParameter int maxMissingSecondaryAlignment, @ConstantParameter int tailMode, @ConstantParameter int binarySteps, long vectorLength,
                     @ConstantParameter Counters counters) {
         counters.vectorConsumerLoopElements.inc(vectorLength);
         counters.enteredVectorConsumer.inc();
@@ -181,6 +181,8 @@ public class VectorSnippets implements Snippets {
                     } while (injectBranchProbability(LIKELY_PROBABILITY, VectorHasNextNode.hasNext(consumerProxy, iterator, stepLengthPrimary)));
                 }
                 iterator = tailConsumer(consumerProxy, iterator, supportedStepLengthsMask, stepLengthPrimary - 1, vectorLength, tailMode, alignMode, assertAlignment, counters);
+            } else if (minPrimary > 1 && (alignMode == F_ALIGN_NONE || alignMode == F_ALIGN_VECTOR_OVERLAPPING)) {
+                iterator = createBoundedBinaryVectorConsumers(consumerProxy, iterator, supportedStepLengthsMask, minPrimary - 1, binarySteps);
             } else {
                 iterator = align(consumerProxy, iterator, supportedStepLengthsMask, alignMode, stepLengthSecondary, maxMissingSecondaryAlignment);
                 if (injectBranchProbability(LIKELY_PROBABILITY, VectorHasNextNode.hasNext(consumerProxy, iterator, stepLengthSecondary))) {
@@ -420,6 +422,51 @@ public class VectorSnippets implements Snippets {
         return iterator;
     }
 
+    /**
+     * Processes a range using a limited sequence of conditional operations in descending supported
+     * widths, then a scalar loop for the remainder. Unsupported widths are skipped.
+     *
+     * For example, a byte copy shorter than 32 bytes on a target with 256-bit vectors gets a budget
+     * of three widths:
+     *
+     * <pre>
+     * i = 0
+     * if length - i >= 16:
+     *     copy16(src + i, dst + i)
+     *     i += 16
+     * if length - i >= 8:
+     *     copy8(src + i, dst + i)
+     *     i += 8
+     * if length - i >= 4:
+     *     copy4(src + i, dst + i)
+     *     i += 4
+     *
+     * while i &lt; length:
+     *     dst[i] = src[i]
+     *     i++
+     * </pre>
+     *
+     * A length of 23 bytes is copied as 16 + 4 + three scalar iterations.
+     */
+    private static VectorConsumerIterator createBoundedBinaryVectorConsumers(Consumer consumerProxy, VectorConsumerIterator initialIterator, int supportedStepLengthsMask,
+                    int remainingUpperBound, int binarySteps) {
+        VectorConsumerIterator iterator = initialIterator;
+        int emitted = 0;
+        ExplodeLoopNode.explodeLoop();
+        for (int step = Integer.highestOneBit(remainingUpperBound); step > 1; step >>= 1) {
+            if (emitted < binarySteps && (supportedStepLengthsMask & step) != 0) {
+                if (injectBranchProbability(LIKELY_PROBABILITY, VectorHasNextNode.hasNext(consumerProxy, iterator, step))) {
+                    iterator = createVectorConsumer(consumerProxy, iterator, supportedStepLengthsMask, step, F_ALIGN_NONE, false);
+                }
+                emitted++;
+            }
+        }
+        while (injectBranchProbability(LIKELY_PROBABILITY, VectorHasNextNode.hasNext(consumerProxy, iterator, 1))) {
+            iterator = createVectorConsumer(consumerProxy, iterator, supportedStepLengthsMask, 1, F_ALIGN_NONE, false);
+        }
+        return iterator;
+    }
+
     private static VectorConsumerIterator createVectorConsumerAtEnd(Consumer consumerProxy, VectorConsumerIterator initialIterator, int supportedStepLengthsMask, int stepLength, long vectorLength) {
         VectorConsumerIterator iterator = initialIterator;
         if (injectBranchProbability(LIKELY_PROBABILITY, vectorLength >= stepLength)) {
@@ -593,6 +640,11 @@ public class VectorSnippets implements Snippets {
                         args.add("stepLengthSecondary", stepLengthSecondary);
                         args.add("maxMissingSecondaryAlignment", stepLengthSecondary <= 1 || alignmentMode == F_ALIGN_NONE ? 0 : computeMaxMissingAlignment(consumer, stepLengthSecondary));
                         args.add("tailMode", computeTailMode(consumer));
+                        if (info.equals(vectorConsumerLoop)) {
+                            /* Allow 2/3/4 binary steps for 128/256/512-bit vectors. */
+                            int maxVectorBytes = arch == null ? 1 : arch.getMaxVectorLength();
+                            args.add("binarySteps", Math.max(0, CodeUtil.log2(maxVectorBytes) - 2));
+                        }
                     } else if (info.equals(vectorConsumerUnrolled)) {
                         args.add("lowerBound", lowerBound);
                         args.add("upperBound", upperBound);
