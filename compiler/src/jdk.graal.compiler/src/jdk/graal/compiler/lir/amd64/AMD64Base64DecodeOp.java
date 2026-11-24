@@ -638,6 +638,9 @@ public final class AMD64Base64DecodeOp extends AMD64LIRInstruction {
 
             masm.bind(labelFinalBit);
             // Now have 1 to 63 bytes left to decode
+            // Leave an incomplete quantum to the Java code, which handles valid unpadded tails
+            // and rejects malformed input after accounting for the prefix decoded by this stub.
+            masm.cmplAndJcc(length, 4, ConditionFlag.Less, labelExit, false);
 
             // I was going to let Java take care of the final fragment
             // however it will repeatedly call this routine for every 4 bytes

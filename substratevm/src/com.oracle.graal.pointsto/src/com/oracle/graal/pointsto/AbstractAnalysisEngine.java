@@ -84,6 +84,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected final int maxConstantObjectsPerType;
     protected final boolean profileConstantObjects;
     protected final boolean optimizeReturnedParameter;
+    protected final boolean conditionalEliminationBeforeAnalysis;
+    protected final boolean escapeAnalysisBeforeAnalysis;
     protected final boolean useExperimentalReachabilityAnalysis;
 
     protected final OptionValues options;
@@ -130,6 +132,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         maxConstantObjectsPerType = PointstoOptions.MaxConstantObjectsPerType.getValue(options);
         profileConstantObjects = PointstoOptions.ProfileConstantObjects.getValue(options);
         optimizeReturnedParameter = PointstoOptions.OptimizeReturnedParameter.getValue(options);
+        conditionalEliminationBeforeAnalysis = PointstoOptions.ConditionalEliminationBeforeAnalysis.getValue(options);
+        escapeAnalysisBeforeAnalysis = PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(options);
         useExperimentalReachabilityAnalysis = PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(options);
 
         this.snippetReflectionProvider = snippetReflectionProvider;
@@ -271,6 +275,16 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
     public boolean optimizeReturnedParameter() {
         return optimizeReturnedParameter;
+    }
+
+    @Override
+    public boolean conditionalEliminationBeforeAnalysis() {
+        return conditionalEliminationBeforeAnalysis;
+    }
+
+    @Override
+    public boolean escapeAnalysisBeforeAnalysis() {
+        return escapeAnalysisBeforeAnalysis;
     }
 
     @Override

@@ -65,6 +65,16 @@ struct PersistedAnalysisType {
     proxyType @35 :Void;
   }
   isRecord @36 :Bool;
+  # Always present; distinguishes uninstalled hubs from missing layout metadata.
+  objectLayout @38 :ObjectLayout;
+}
+
+struct ObjectLayout {
+  # A hub installed in this or an earlier layer fixes the object's layout.
+  installed @0 :Bool;
+  layoutEncoding @1 :Int32;
+  monitorOffset @2 :Int32;
+  identityHashOffset @3 :Int32;
 }
 
 struct ClassInitializationInfo {
@@ -107,6 +117,8 @@ struct PersistedAnalysisMethod {
   strengthenedGraphLocation @26 :Text;
   hostedMethodIndex @27 :HostedMethodIndex;
   compilationBehaviorOrdinal @28 :Int8;
+  # IDs of always-closed fields written by the unspecialized graph, captured before caller-specific inlining and graph optimizations.
+  closedFieldWrites @43 :List(FieldId);
   wrappedMethod :union {
     none @29 :Void; # default
     factoryMethod :group {
@@ -215,6 +227,10 @@ struct PersistedConstant {
         fieldConstant :group {
           originFieldId @13 :FieldId;
           requiresLateLoading @14 :Bool;
+        }
+        methodTypeConstant :group {
+          returnTypeId @19 :TypeId;
+          parameterTypeIds @20 :List(TypeId);
         }
       }
     }

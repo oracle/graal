@@ -256,7 +256,7 @@ public final class BytecodeFrame {
             return null;
         }
         Frame frame = bytecode.resolveFrameImpl(frameInstance, access);
-        int bytecodeIndex = bytecode.findBytecodeIndex(frameInstance);
+        int bytecodeIndex = bytecode.resolveBytecodeIndex(frameInstance);
         assert bytecodeIndex != -1;
         return new BytecodeFrame(frame, bytecode, bytecodeIndex);
     }
@@ -289,7 +289,7 @@ public final class BytecodeFrame {
          * (either we are in the interpreter, or it is already materialized).
          */
         Frame frame = bytecode.resolveFrameImpl(frameInstance, FrameAccess.READ_WRITE);
-        int bytecodeIndex = bytecode.findBytecodeIndex(frameInstance);
+        int bytecodeIndex = bytecode.resolveBytecodeIndex(frameInstance);
         assert bytecodeIndex != -1;
         return new BytecodeFrame(frame, bytecode, bytecodeIndex);
     }

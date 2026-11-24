@@ -27,12 +27,13 @@ package com.oracle.svm.core.genscavenge;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.AlignedChunk;
 import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayouterControl;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapObjectSorter;
 import com.oracle.svm.core.image.ImageHeapPartition;
+import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.debug.Assertions;
 
@@ -45,7 +46,7 @@ final class ChunkedImageHeapPartition implements ImageHeapPartition {
     private final boolean writable;
     private final boolean unalignedChunks;
     private final int minimumObjectSize;
-    private final List<ImageHeapObject> objects = new ArrayList<>();
+    private List<ImageHeapObject> objects = new ArrayList<>();
 
     Object firstObject;
     Object lastObject;
@@ -63,11 +64,13 @@ final class ChunkedImageHeapPartition implements ImageHeapPartition {
     }
 
     void assign(ImageHeapObject obj) {
+        requireObjects();
         assert obj.getPartition() == this : obj;
         objects.add(obj);
     }
 
     void layout(ChunkedImageHeapAllocator allocator, ImageHeapObjectSorter objectSorter, ImageHeapLayouterControl control) {
+        requireObjects();
         if (objects.isEmpty()) {
             /*
              * Without objects, there is no need to start a new chunk, or to force finishing the
@@ -183,6 +186,15 @@ final class ChunkedImageHeapPartition implements ImageHeapPartition {
 
     boolean usesUnalignedChunks() {
         return unalignedChunks;
+    }
+
+    void releaseObjectReferences() {
+        requireObjects();
+        objects = null;
+    }
+
+    private void requireObjects() {
+        VMError.guarantee(objects != null, "Image heap partition objects were released.");
     }
 
     @Override

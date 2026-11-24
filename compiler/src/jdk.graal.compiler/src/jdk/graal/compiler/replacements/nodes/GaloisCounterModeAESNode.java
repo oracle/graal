@@ -172,6 +172,11 @@ public class GaloisCounterModeAESNode extends MemoryKillStubIntrinsicNode {
     }
 
     @Override
+    public boolean needsExplicitZeroExtension(Architecture arch) {
+        return !(arch instanceof AMD64);
+    }
+
+    @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         GraalError.guarantee(inputs.size() == 8, "inputs do not match");
         gen.setResult(this, gen.getLIRGeneratorTool().emitGaloisCounterModeAESCrypt(runtimeCheckedCPUFeatures,

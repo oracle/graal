@@ -27,7 +27,7 @@ package com.oracle.svm.core.jfr;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VMInspectionOptions;
@@ -182,7 +182,7 @@ public class JfrFeature implements InternalFeature {
 
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
 
-        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
         rci.initializeAtBuildTime("jdk.management.jfr.internal.FlightRecorderMXBeanProvider$SingleMBeanComponent", "Used by FlightRecorder");
         if (HOSTED_ENABLED) {
             rci.initializeAtBuildTime("jdk.management.jfr", "Allow FlightRecorder to be used at image build time");

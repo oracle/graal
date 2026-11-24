@@ -36,18 +36,19 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.CodeInfoTether;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
-import com.oracle.svm.core.code.UntetheredCodeInfo;
+import com.oracle.svm.guest.staging.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
@@ -362,7 +363,7 @@ final class RuntimeCodeReferenceWalker implements ObjectReferencesWalker {
 
     @Fold
     protected static int getByteArrayBaseOffset() {
-        return ObjectLayout.singleton().getArrayBaseOffset(JavaKind.Byte);
+        return ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.Byte);
     }
 }
 

@@ -27,14 +27,31 @@ package com.oracle.svm.test;
 import java.net.MalformedURLException;
 import java.net.URI;
 
+import org.graalvm.nativeimage.hosted.Feature;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.svm.core.hub.registry.ClassRegistries;
+
+@NativeImageBuildArgs("--features=com.oracle.svm.test.URLProtocolFailureTypeTest$HandlerClassOnlyFeature")
 public class URLProtocolFailureTypeTest {
 
     @Test
     public void unsupportedURLProtocolFailsWithMalformedURLException() {
         MalformedURLException exception = Assert.assertThrows(MalformedURLException.class, () -> URI.create("http://example.com").toURL());
         Assert.assertTrue(exception.getMessage(), exception.getMessage().contains("Accessing a URL protocol that was not enabled"));
+        Assert.assertTrue(exception.getMessage(), exception.getMessage().contains("sun.net.www.protocol.http.Handler and its no-argument constructor"));
+        Assert.assertTrue(String.valueOf(exception.getCause()), exception.getCause() instanceof NoSuchMethodException);
+    }
+
+    public static final class HandlerClassOnlyFeature implements Feature {
+        @Override
+        public void beforeAnalysis(BeforeAnalysisAccess access) {
+            /*
+             * Expose the bootstrap handler as a layer can, without reflection registration: the
+             * reflection registration APIs also make constructors discoverable.
+             */
+            ClassRegistries.addAOTClass(null, access.findClassByName("sun.net.www.protocol.http.Handler"));
+        }
     }
 }

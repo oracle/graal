@@ -63,13 +63,14 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.struct.OffsetOf;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.deopt.DeoptimizationSlotPacking;
 import com.oracle.svm.core.graal.code.InterpreterAccessStubData;
 import com.oracle.svm.core.graal.code.PreparedSignature;
-import com.oracle.svm.core.graal.meta.DynamicHubOffsets;
+import com.oracle.svm.guest.staging.core.graal.meta.DynamicHubOffsets;
 import com.oracle.svm.core.graal.meta.InterpreterExecutionOffsets;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.interpreter.InterpreterEnterStub;
 import com.oracle.svm.core.interpreter.InterpreterForeignFunctionsSupport.ForeignUpcallPlan;
@@ -265,7 +266,7 @@ public class AArch64InterpreterStubs {
             goSlowPathIfIndexOutOfBounds(masm, scratch1, vtableIndex, scratch2, ol.getArrayLengthOffset(), slowPath);
 
             Register method = scratch2;
-            masm.add(64, scratch1, scratch1, ol.getArrayBaseOffset(JavaKind.Object));
+            masm.add(64, scratch1, scratch1, ObjectLayoutCompilerSupport.getArrayBaseOffset(ol, JavaKind.Object));
             /*
              * Extract the method from the vtable. Address = vtable base + zero-extended 32-bit
              * index * referenceSize + array header.

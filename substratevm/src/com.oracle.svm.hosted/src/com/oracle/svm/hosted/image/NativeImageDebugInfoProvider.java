@@ -25,6 +25,7 @@
  */
 package com.oracle.svm.hosted.image;
 
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.hosted.RawPointerToGuestValue;
 import com.oracle.svm.hosted.CPointerToGuestValue;
 import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.ADDRESS;
@@ -552,9 +553,9 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
      */
     private void processArrayFields(HostedType type, ArrayTypeEntry arrayTypeEntry) {
         JavaKind arrayKind = type.getBaseType().getJavaKind();
-        int headerSize = getObjectLayout().getArrayBaseOffset(arrayKind);
+        int headerSize = ObjectLayoutCompilerSupport.getArrayBaseOffset(getObjectLayout(), arrayKind);
         int arrayLengthOffset = getObjectLayout().getArrayLengthOffset();
-        int arrayLengthSize = getObjectLayout().sizeInBytes(JavaKind.Int);
+        int arrayLengthSize = ObjectLayoutCompilerSupport.sizeInBytes(getObjectLayout(), JavaKind.Int);
         assert arrayLengthOffset + arrayLengthSize <= headerSize;
         arrayTypeEntry.addField(createSyntheticFieldEntry("len", arrayTypeEntry, (HostedType) metaAccess.lookupJavaType(JavaKind.Int.toJavaClass()), arrayLengthOffset, arrayLengthSize));
     }
@@ -617,7 +618,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         String fieldName = field.getName();
         HostedType valueType = field.getType();
         JavaKind storageKind = field.getType().getStorageKind();
-        int size = getObjectLayout().sizeInBytes(storageKind);
+        int size = ObjectLayoutCompilerSupport.sizeInBytes(getObjectLayout(), storageKind);
         int modifiers = field.getModifiers();
         int offset = field.getLocation();
         /*
@@ -677,7 +678,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                 TypeEntry elementTypeEntry = lookupTypeEntry(hostedType.getComponentType());
                 if (debug.isLogEnabled()) {
                     debug.log("typename %s element type %s base size %d length offset %d%n", typeName, elementTypeEntry.getTypeName(),
-                                    getObjectLayout().getArrayBaseOffset(hostedType.getComponentType().getStorageKind()), getObjectLayout().getArrayLengthOffset());
+                                    ObjectLayoutCompilerSupport.getArrayBaseOffset(getObjectLayout(), hostedType.getComponentType().getStorageKind()), getObjectLayout().getArrayLengthOffset());
                 }
                 return new ArrayTypeEntry(typeName, size, classOffset, typeSignature, compressedTypeSignature,
                                 layoutTypeSignature, elementTypeEntry, loaderEntry);
@@ -1049,7 +1050,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
             }
             case HostedArrayClass hostedArrayClass -> {
                 /* Use the size of header common to all arrays of this type. */
-                return getObjectLayout().getArrayBaseOffset(hostedArrayClass.getComponentType().getStorageKind());
+                return ObjectLayoutCompilerSupport.getArrayBaseOffset(getObjectLayout(), hostedArrayClass.getComponentType().getStorageKind());
             }
             case HostedInterface _ -> {
                 /* Use the size of the header common to all implementors. */

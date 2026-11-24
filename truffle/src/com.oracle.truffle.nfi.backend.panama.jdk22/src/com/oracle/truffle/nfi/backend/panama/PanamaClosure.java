@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,14 +56,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNode.ConstArgumentNode;
 import com.oracle.truffle.nfi.backend.panama.ClosureArgumentNode.GetArgumentNode;
 import com.oracle.truffle.nfi.backend.panama.PanamaClosureFactory.CallClosureNodeGen;
@@ -73,6 +71,47 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 @ExportLibrary(InteropLibrary.class)
 final class PanamaClosure implements TruffleObject {
+    private static final MethodHandle SET_PENDING_EXCEPTION;
+
+    static {
+        try {
+            SET_PENDING_EXCEPTION = MethodHandles.lookup().findStatic(PanamaClosure.class, "setPendingException",
+                            MethodType.methodType(void.class, PanamaNFILanguage.class, Throwable.class));
+        } catch (NoSuchMethodException | IllegalAccessException ex) {
+            throw CompilerDirectives.shouldNotReachHere(ex);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private static void setPendingException(PanamaNFILanguage language, Throwable throwable) {
+        // Keep this handler minimal: it can run while recovering from stack exhaustion.
+        NFIState state = language.getNFIState();
+        // Errors before saving or after restoring the state must preserve the earlier exception.
+        if (state.getPendingException() == null) {
+            state.setPendingException(throwable);
+        }
+    }
+
+    /**
+     * This makes a best-effort attempt at avoiding the abrupt VM termination behaviour of
+     * exceptions reaching a panama upcall (see {@link java.lang.foreign.Linker#upcallStub}). Note
+     * that there is still a small JDK-controlled window during which exceptions such as
+     * {@link StackOverflowError} or {@link OutOfMemoryError} can happen which cannot be protected.
+     */
+    static MethodHandle protectUpcall(MethodHandle target, PanamaNFILanguage language) {
+        CompilerAsserts.neverPartOfCompilation();
+        Class<?> returnType = target.type().returnType();
+        assert returnType.isPrimitive() || returnType == MemorySegment.class : returnType;
+        MethodHandle defaultReturn;
+        if (returnType == MemorySegment.class) {
+            defaultReturn = MethodHandles.constant(MemorySegment.class, MemorySegment.NULL);
+        } else {
+            defaultReturn = MethodHandles.zero(returnType);
+        }
+        MethodHandle handler = MethodHandles.foldArguments(MethodHandles.dropArguments(defaultReturn, 0, Throwable.class), SET_PENDING_EXCEPTION.bindTo(language));
+        return MethodHandles.catchException(target, Throwable.class, handler);
+    }
+
     final MemorySegment symbol;
 
     PanamaClosure(MemorySegment symbol) {
@@ -144,8 +183,6 @@ final class PanamaClosure implements TruffleObject {
 
         // Object closure(Object receiver, Object[] args)
         static final MethodType METHOD_TYPE = MethodType.methodType(Object.class, Object.class, Object[].class);
-
-        final BranchProfile exceptionProfile = BranchProfile.create();
 
         PanamaClosureRootNode(PanamaNFILanguage language) {
             super(language);
@@ -243,27 +280,37 @@ final class PanamaClosure implements TruffleObject {
             NFIState nfiState = language.getNFIState();
             ErrorContext ctx = (ErrorContext) language.errorContext.get();
             nfiState.setNFIErrno(ctx.getNativeErrno());
+            Throwable saved = nfiState.savePendingException();
             try (Arena arena = Arena.ofConfined()) {
 
                 try {
                     Object ret = callClosure.execute(frame);
-                    if (interopLibrary.isNull(ret)) {
-                        return null;
+                    if (nfiState.getPendingException() != null || interopLibrary.isNull(ret)) {
+                        return MemorySegment.NULL;
                     }
                     return toJavaRet.execute(arena, ret);
                 } catch (Throwable t) {
-                    exceptionProfile.enter();
-                    TruffleStackTrace.fillIn(t);
+                    /*
+                     * Do not profile the exception path: BranchProfile.enter() transfers to the
+                     * interpreter and invalidates compiled code on first entry. That extra runtime
+                     * work is unsafe when handling a StackOverflowError and could prevent recording
+                     * the pending exception.
+                     */
                     nfiState.setPendingException(t);
                     try {
-                        return toJavaRet.execute(arena, "");
-                    } catch (UnsupportedTypeException ex) {
-                        // toJavaRet expects a string, so this should always work
-                        throw CompilerDirectives.shouldNotReachHere();
+                        // Filling a VM error's trace can itself overflow the stack or require
+                        // allocation after resource exhaustion. Keep the original error pending.
+                        if (!(t instanceof VirtualMachineError)) {
+                            TruffleStackTrace.fillIn(t);
+                        }
+                    } catch (Throwable ignored) {
+                        // Trace filling is best effort; preserve the original pending exception.
                     }
-                } finally {
-                    ctx.setNativeErrno(nfiState.getNFIErrno());
+                    return MemorySegment.NULL;
                 }
+            } finally {
+                nfiState.restorePendingException(saved);
+                ctx.setNativeErrno(nfiState.getNFIErrno());
             }
         }
     }
@@ -297,13 +344,21 @@ final class PanamaClosure implements TruffleObject {
             NFIState nfiState = language.getNFIState();
             ErrorContext ctx = (ErrorContext) language.errorContext.get();
             nfiState.setNFIErrno(ctx.getNativeErrno());
+            Throwable saved = nfiState.savePendingException();
             try {
                 callClosure.execute(frame);
             } catch (Throwable t) {
-                exceptionProfile.enter();
-                TruffleStackTrace.fillIn(t);
                 nfiState.setPendingException(t);
+                try {
+                    // See StringRetClosureRootNode: VM errors need a minimal recovery path.
+                    if (!(t instanceof VirtualMachineError)) {
+                        TruffleStackTrace.fillIn(t);
+                    }
+                } catch (Throwable ignored) {
+                    // Trace filling is best effort; preserve the original pending exception.
+                }
             } finally {
+                nfiState.restorePendingException(saved);
                 ctx.setNativeErrno(nfiState.getNFIErrno());
             }
             return null;
@@ -316,6 +371,8 @@ final class PanamaClosure implements TruffleObject {
         @Child CallClosureNode callClosure;
         @Child ArgumentNode toJavaRet;
         @Child private InteropLibrary interopLibrary;
+
+        private final Object defaultReturn;
 
         static MonomorphicClosureInfo createInfo(PanamaNFILanguage lang, CachedSignatureInfo signature, Object receiver) {
             ClosureArgumentNode recvNode = new ConstArgumentNode(receiver);
@@ -335,6 +392,16 @@ final class PanamaClosure implements TruffleObject {
             callClosure = CallClosureNodeGen.create(signature, receiver);
             toJavaRet = signature.retType.createArgumentNode();
             interopLibrary = InteropLibrary.getFactory().createDispatched(4);
+            // Precompute the boxed carrier value so exception handling needs no interop conversion.
+            defaultReturn = switch (signature.retType.type) {
+                case SINT8, UINT8 -> (byte) 0;
+                case SINT16, UINT16 -> (short) 0;
+                case SINT32, UINT32 -> 0;
+                case SINT64, UINT64, POINTER -> 0L;
+                case FLOAT -> 0.0f;
+                case DOUBLE -> 0.0;
+                default -> throw CompilerDirectives.shouldNotReachHere("Unsupported closure return type");
+            };
         }
 
         @Override
@@ -345,23 +412,29 @@ final class PanamaClosure implements TruffleObject {
             NFIState nfiState = language.getNFIState();
             ErrorContext ctx = (ErrorContext) language.errorContext.get();
             nfiState.setNFIErrno(ctx.getNativeErrno());
+            Throwable saved = nfiState.savePendingException();
             try {
                 Object ret = callClosure.execute(frame);
+                if (nfiState.getPendingException() != null) {
+                    return defaultReturn;
+                }
                 if (interopLibrary.isNull(ret)) {
-                    return toJavaRet.execute(null, 0);
+                    return defaultReturn;
                 }
                 return toJavaRet.execute(null, ret);
             } catch (Throwable t) {
-                exceptionProfile.enter();
-                TruffleStackTrace.fillIn(t);
                 nfiState.setPendingException(t);
                 try {
-                    return toJavaRet.execute(null, 0);
-                } catch (UnsupportedTypeException e) {
-                    // we expect 0 to be convertible to every type
-                    throw CompilerDirectives.shouldNotReachHere();
+                    // See StringRetClosureRootNode: VM errors need a minimal recovery path.
+                    if (!(t instanceof VirtualMachineError)) {
+                        TruffleStackTrace.fillIn(t);
+                    }
+                } catch (Throwable ignored) {
+                    // Trace filling is best effort; preserve the original pending exception.
                 }
+                return defaultReturn;
             } finally {
+                nfiState.restorePendingException(saved);
                 ctx.setNativeErrno(nfiState.getNFIErrno());
             }
         }

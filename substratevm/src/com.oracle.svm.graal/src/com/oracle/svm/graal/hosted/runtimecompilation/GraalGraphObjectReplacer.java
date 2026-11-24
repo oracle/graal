@@ -46,6 +46,7 @@ import com.oracle.svm.core.debug.SubstrateDebugInfoInstaller;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.core.util.HostedStringDeduplication;
@@ -381,8 +382,8 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             sType = types.putIfAbsent(aType, newType);
             if (sType == null) {
                 sType = newType;
-                hub.setMetaType(sType);
-                RuntimeCompilationSupport.rescan(aUniverse, hub.getMetaType());
+                DynamicHubUtils.setMetaType(hub, sType);
+                RuntimeCompilationSupport.rescan(aUniverse, DynamicHubUtils.getMetaType(hub));
 
                 sType.setRawAllInstanceFields(createAllInstanceFields(aType));
                 RuntimeCompilationSupport.rescan(aUniverse, sType.getRawAllInstanceFields());

@@ -38,7 +38,7 @@ import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
@@ -95,7 +95,7 @@ public class CEntryPointLiteralFeature implements InternalFeature {
                 /*
                  * Only during compilation and native image writing, we do the actual replacement.
                  */
-                return hostedValuesProvider.forObject(new MethodPointer(hStub));
+                return hostedValuesProvider.forObject(MethodRefSupport.createMethodPointer(hStub));
             }
             return source;
         }

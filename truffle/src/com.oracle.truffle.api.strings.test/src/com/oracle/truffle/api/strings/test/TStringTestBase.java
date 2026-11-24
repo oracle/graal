@@ -675,6 +675,7 @@ public class TStringTestBase {
     }
 
     protected static void checkStringBuilderResult(byte[] array, TruffleString.CodeRange codeRange, boolean isValid, TruffleString.Encoding encoding, int[] codepoints, TruffleStringBuilder sb) {
+        Assert.assertEquals(array.length, sb.byteLength());
         TruffleString string = sb.toStringUncached();
         assertBytesEqual(string, encoding, array);
         assertCodePointsEqual(string, encoding, codepoints);

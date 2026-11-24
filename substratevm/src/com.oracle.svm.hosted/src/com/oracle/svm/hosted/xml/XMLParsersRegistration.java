@@ -29,10 +29,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
@@ -133,7 +131,7 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
             /*
              * To allow register new resource bundle classes during analysis phase
              */
-            ClassInitializationSupport classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+            ClassInitializationSupport classInitializationSupport = ClassInitializationSupport.singleton();
             classInitializationSupport.withUnsealedConfiguration(() -> {
                 ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xml.internal.serializer.utils.SerializerMessages");
                 ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xalan.internal.xsltc.compiler.util.ErrorMessages");
@@ -167,7 +165,7 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
             /*
              * To allow register new resource bundle classes during analysis phase
              */
-            ClassInitializationSupport classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+            ClassInitializationSupport classInitializationSupport = ClassInitializationSupport.singleton();
             classInitializationSupport.withUnsealedConfiguration(() -> {
                 ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, "com.sun.org.apache.xml.internal.security/resource/xmlsecurity");
             });

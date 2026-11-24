@@ -30,9 +30,11 @@ import static com.oracle.svm.hosted.snapshot.capnproto.CapnProtoAdapters.wrapStr
 import static com.oracle.svm.hosted.snapshot.capnproto.CapnProtoAdapters.wrapStructListWriter;
 
 import com.oracle.svm.hosted.snapshot.capnproto.dynamichub.CapnProtoClassInitializationInfoData;
+import com.oracle.svm.hosted.snapshot.capnproto.dynamichub.CapnProtoObjectLayoutData;
 import com.oracle.svm.hosted.snapshot.capnproto.generated.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType;
 import com.oracle.svm.hosted.snapshot.capnproto.generated.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType;
 import com.oracle.svm.hosted.snapshot.dynamichub.ClassInitializationInfoData;
+import com.oracle.svm.hosted.snapshot.dynamichub.ObjectLayoutData;
 import com.oracle.svm.hosted.snapshot.elements.PersistedAnalysisTypeData;
 import com.oracle.svm.hosted.snapshot.elements.PersistedAnnotationData;
 import com.oracle.svm.hosted.snapshot.util.SnapshotPrimitiveList;
@@ -50,6 +52,11 @@ public final class CapnProtoPersistedAnalysisTypeData {
 }
 
 record PersistedAnalysisTypeWriterAdapter(PersistedAnalysisType.Builder delegate) implements PersistedAnalysisTypeData.Writer {
+    @Override
+    public ObjectLayoutData.Writer initObjectLayout() {
+        return CapnProtoObjectLayoutData.writer(delegate.initObjectLayout());
+    }
+
     @Override
     public void setHubIdentityHashCode(int value) {
         delegate.setHubIdentityHashCode(value);
@@ -217,6 +224,16 @@ record PersistedAnalysisTypeWriterAdapter(PersistedAnalysisType.Builder delegate
 }
 
 record PersistedAnalysisTypeLoaderAdapter(PersistedAnalysisType.Reader delegate) implements PersistedAnalysisTypeData.Loader {
+    @Override
+    public boolean hasObjectLayout() {
+        return delegate.hasObjectLayout();
+    }
+
+    @Override
+    public ObjectLayoutData.Loader getObjectLayout() {
+        return CapnProtoObjectLayoutData.loader(delegate.getObjectLayout());
+    }
+
     @Override
     public int getHubIdentityHashCode() {
         return delegate.getHubIdentityHashCode();

@@ -35,9 +35,9 @@ import org.graalvm.word.impl.ObjectAccess;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.shared.AlwaysInline;
-import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.guest.staging.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -124,9 +124,9 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public Word encodeAsUnmanagedObjectHeader(DynamicHub hub) {
+    public Word encodeAsUnmanagedObjectHeader(Object hub) {
         // Headers in unmanaged memory don't need any GC-specific bits set
-        return encodeAsObjectHeader(hub, false, false);
+        return encodeAsObjectHeader((DynamicHub) hub, false, false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -260,8 +260,8 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Override
-    public Word encodeAsTLABObjectHeader(DynamicHub hub) {
-        return encodeAsObjectHeader(hub, false, false);
+    public Word encodeAsTLABObjectHeader(Object hub) {
+        return encodeAsObjectHeader((DynamicHub) hub, false, false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -316,10 +316,10 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Override
-    public long encodeHubPointerForImageHeap(ImageHeapObject obj, long hubOffsetFromHeapBase) {
+    public long encodeHubPointerForImageHeap(Object obj, long hubOffsetFromHeapBase) {
         long header = hubOffsetFromHeapBase << numReservedExtraHubBits;
         assert (header & reservedHubBitsMask) == 0 : "Object header bits must be zero initially";
-        ChunkedImageHeapPartition partition = (ChunkedImageHeapPartition) obj.getPartition();
+        ChunkedImageHeapPartition partition = (ChunkedImageHeapPartition) ((ImageHeapObject) obj).getPartition();
         if (partition.isWritable() && HeapImpl.usesImageHeapCardMarking()) {
             header |= REMSET_OR_MARKED1_BIT.rawValue();
         }
@@ -381,8 +381,8 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     /**
-     * Mark an object, either for {@link CompactingOldGeneration}, or also in copying collections to
-     * track pinned objects in aligned chunks.
+     * Mark an object, either for {@link CompactingOldGeneration}, or also in copying collections
+     * for objects in aligned chunks with pinned objects.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setMarked(Object o) {

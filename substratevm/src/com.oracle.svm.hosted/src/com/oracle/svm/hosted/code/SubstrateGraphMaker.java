@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,8 +54,8 @@ public class SubstrateGraphMaker extends GraphMaker {
 
     @Override
     protected StructuredGraph buildInitialGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod methodToParse, Object[] args, BitSet nonNullParameters,
-                    boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
-        StructuredGraph graph = super.buildInitialGraph(debug, bytecodeProvider, methodToParse, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, context);
+                    boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition) {
+        StructuredGraph graph = super.buildInitialGraph(debug, bytecodeProvider, methodToParse, args, nonNullParameters, trackNodeSourcePosition, replaceePosition);
         graph.getGraphState().configureExplicitExceptionsNoDeopt();
         return graph;
     }

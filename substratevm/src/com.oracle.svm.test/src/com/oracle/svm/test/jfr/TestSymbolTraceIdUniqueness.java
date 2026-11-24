@@ -35,7 +35,7 @@ import java.util.concurrent.locks.LockSupport;
 
 import org.junit.Test;
 
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.jfr.JfrEvent;
 
 import jdk.jfr.Recording;

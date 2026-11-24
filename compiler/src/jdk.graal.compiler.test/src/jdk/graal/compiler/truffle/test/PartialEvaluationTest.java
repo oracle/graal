@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,7 @@ import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Graph;
@@ -497,7 +498,8 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 if (constant instanceof JavaConstant) {
                     ResolvedJavaType type = getMetaAccess().lookupJavaType((JavaConstant) constant);
                     if (((JavaConstant) constant).getJavaKind() == JavaKind.Object && type != null && !WRAPPER_CLASSES.contains(type.toJavaName())) {
-                        node.replaceAtUsagesAndDelete(ConstantNode.forConstant(constantNode.stamp(NodeView.DEFAULT), JavaConstant.NULL_POINTER, getMetaAccess(), graph));
+                        AbstractObjectStamp stamp = (AbstractObjectStamp) constantNode.stamp(NodeView.DEFAULT);
+                        node.replaceAtUsagesAndDelete(ConstantNode.forConstant(stamp, stamp.nullConstant(), getMetaAccess(), graph));
                     }
                 }
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * This is runtime specific API. Do not use in a guest language.
@@ -56,7 +57,20 @@ final class DefaultDirectCallNode extends DirectCallNode {
 
     @Override
     public Object call(Object... arguments) {
-        return ((DefaultCallTarget) callTarget).call(this, arguments);
+        DefaultCallTarget target = (DefaultCallTarget) callTarget;
+        return target.callRoot(this, -1, target.getRootNode(), arguments);
+    }
+
+    @Override
+    public Object call(int bytecodeIndex, Object[] arguments) {
+        DefaultCallTarget target = (DefaultCallTarget) callTarget;
+        return target.callRoot(this, bytecodeIndex, target.getRootNode(), arguments);
+    }
+
+    @Override
+    public Object call(Class<? extends RootNode> rootType, int bytecodeIndex, Object[] arguments) {
+        RootNode root = rootType.cast(getCurrentRootNode());
+        return root.call(this, bytecodeIndex, arguments);
     }
 
     @Override

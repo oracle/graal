@@ -424,14 +424,29 @@ final class GuestFeatureDispatchFeature implements InternalFeature {
     }
 
     /**
-     * Handles errors raised while invoking guest features. Keep this in sync with the corresponding
-     * {@code GuestFeatureHandler#handleFeatureError(Feature, Throwable)} implementation in the guest
-     * module; this duplicate is needed because this code runs in the builder.
+     * Handles errors raised while invoking guest features. Keep the generic feature-error handling
+     * in sync with the corresponding {@code GuestFeatureHandler#handleFeatureError(Feature,
+     * Throwable)} implementation in the guest module; this duplicate is needed because this code
+     * runs in the builder.
      */
     private RuntimeException handleFeatureError(InvocationException invocationException) {
         JavaConstant exceptionObject = invocationException.getExceptionObject();
         if (exceptionObject != null && !exceptionObject.isNull() && exceptionObject.getJavaKind().isObject() &&
                         guestFeatureExceptionType.isAssignableFrom(guestAccess.getProviders().getMetaAccess().lookupJavaType(exceptionObject))) {
+            /*
+             * GuestFeatureHandler wraps every callback failure so that genuine guest exceptions
+             * retain their feature attribution. If the cause came from a builder host proxy,
+             * recover and rethrow the original builder exception instead of replacing its
+             * diagnostic with the generic guest-feature error.
+             */
+            JavaConstant cause = guestAccess.invoke(guestAccess.elements.java_lang_Throwable_getCause, exceptionObject);
+            if (cause != null && !cause.isNull()) {
+                Throwable builderException = guestAccess.unwrapHostProxyException(cause);
+                if (builderException != null) {
+                    return sneakyThrow(builderException);
+                }
+            }
+
             Throwable reportedCause = invocationException;
             Throwable polyglotGuestFeatureException = invocationException.getCause();
             if (polyglotGuestFeatureException != null && polyglotGuestFeatureException.getCause() != null) {
@@ -442,6 +457,11 @@ final class GuestFeatureDispatchFeature implements InternalFeature {
             throw UserError.abort(reportedCause, "%s", guestAccess.asHostString(message));
         }
         return invocationException;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> RuntimeException sneakyThrow(Throwable exception) throws T {
+        throw (T) exception;
     }
 
     private Map<ResolvedJavaMethod, String> createReflectiveAccessMappings() {

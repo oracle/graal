@@ -47,6 +47,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.guest.staging.hub.ClassDefinitionInfo;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
 
@@ -192,7 +193,7 @@ final class Target_jdk_internal_misc_Unsafe_Core {
     @SuppressWarnings("unused")
     private Class<?> defineClass0(String name, byte[] b, int off, int len, ClassLoader loader, ProtectionDomain protectionDomain) {
         // Note that if name is not null, it is a binary name in either / or .-form
-        return RuntimeClassLoading.defineClass(loader, name, b, off, len, new RuntimeClassLoading.ClassDefinitionInfo(protectionDomain));
+        return RuntimeClassLoading.defineClass(loader, name, b, off, len, new ClassDefinitionInfo(protectionDomain));
     }
 }
 

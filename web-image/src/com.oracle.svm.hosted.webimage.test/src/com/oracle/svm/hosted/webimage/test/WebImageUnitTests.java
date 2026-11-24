@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,13 +31,15 @@ import org.junit.runners.Suite;
 
 import com.oracle.svm.hosted.webimage.test.unit.MoveResolverTest;
 import com.oracle.svm.hosted.webimage.test.unit.WasmActiveDataTest;
+import com.oracle.svm.hosted.webimage.test.unit.WasmLMSingleThreadedAtomicsTest;
 
 import junit.framework.TestSuite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
                 MoveResolverTest.class,
-                WasmActiveDataTest.class
+                WasmActiveDataTest.class,
+                WasmLMSingleThreadedAtomicsTest.class
 })
 public class WebImageUnitTests extends TestSuite {
 

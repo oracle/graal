@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,10 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 
-abstract class AbstractOptimizedLoopNode extends LoopNode {
+/**
+ * Base class providing branch probability profiling for optimized loop nodes.
+ */
+public abstract class AbstractOptimizedLoopNode extends LoopNode {
 
     @Child protected RepeatingNode repeatingNode;
 
@@ -63,7 +66,11 @@ abstract class AbstractOptimizedLoopNode extends LoopNode {
         return repeatingNode;
     }
 
-    protected final void profileCounted(long iterations) {
+    /**
+     * Updates the branch probability counters from a loop iteration count. Counter updates are
+     * ignored outside the interpreter and when the true counter would overflow.
+     */
+    public final void profileCounted(long iterations) {
         if (CompilerDirectives.inInterpreter()) {
             long trueCountLocal = trueCount + iterations;
             if (trueCountLocal >= 0) { // don't write overflow values
@@ -89,7 +96,7 @@ abstract class AbstractOptimizedLoopNode extends LoopNode {
             // Avoid division by zero and assume default probability for AOT.
             return 0.5;
         } else {
-            return (double) trueCountLocal / (double) (trueCountLocal + falseCountLocal);
+            return trueCountLocal / ((double) trueCountLocal + falseCountLocal);
         }
     }
 }

@@ -30,6 +30,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
@@ -76,7 +77,7 @@ public interface CremaMethodAccess extends WithModifiers, MethodAccess<Interpret
     }
 
     static InterpreterResolvedJavaMethod toJVMCI(Executable executable) {
-        InterpreterResolvedObjectType holder = (InterpreterResolvedObjectType) DynamicHub.fromClass(executable.getDeclaringClass()).getInterpreterType();
+        InterpreterResolvedObjectType holder = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(executable.getDeclaringClass()));
         Symbol<Name> name;
         if (executable instanceof Constructor<?>) {
             name = ParserSymbols.ParserNames._init_;

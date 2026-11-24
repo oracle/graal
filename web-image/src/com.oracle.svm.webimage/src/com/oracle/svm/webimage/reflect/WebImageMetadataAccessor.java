@@ -32,7 +32,7 @@ import com.oracle.svm.shared.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
-import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
+import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -42,7 +42,7 @@ import com.oracle.svm.webimage.platform.WebImagePlatform;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
- * Provides access to meta data without relying on {@link com.oracle.svm.core.code.CodeInfo}.
+ * Provides access to meta data without relying on {@link com.oracle.svm.guest.staging.core.code.CodeInfo}.
  */
 @AutomaticallyRegisteredImageSingleton(RuntimeMetadataDecoder.MetadataAccessor.class)
 @Platforms(WebImagePlatform.class)

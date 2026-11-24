@@ -73,11 +73,8 @@ public abstract class IdentityHashCodeNode extends AbstractStateSplit implements
     }
 
     protected static ValueNode canonical(ValueNode object, CoreProviders providers) {
-        if (object.isJavaConstant()) {
-            Integer identityHashCode = providers.getConstantReflection().identityHashCode(object.asJavaConstant());
-            if (identityHashCode != null) {
-                return ConstantNode.forInt(identityHashCode);
-            }
+        if (object.isJavaConstant() && providers.getMetaAccessExtensionProvider().canConstantFoldIdentityHashCode()) {
+            return ConstantNode.forInt(providers.getConstantReflection().identityHashCode(object.asJavaConstant()));
         }
         return null;
     }

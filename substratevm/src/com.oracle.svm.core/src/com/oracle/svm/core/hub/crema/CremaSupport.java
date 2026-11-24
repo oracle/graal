@@ -35,12 +35,10 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.guest.staging.hub.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.invoke.ResolvedMember;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.jni.CallVariant;
-import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
@@ -115,6 +113,9 @@ public interface CremaSupport {
 
     Object execute(ResolvedJavaMethod targetMethod, Object[] args, CallKind callKind);
 
+    /** Executes the class initializer of a runtime-loaded class. */
+    void executeClassInitializer(DynamicHub hub);
+
     default Class<?> resolveOrThrow(UnresolvedJavaType unresolvedJavaType, ResolvedJavaType accessingClass) {
         ByteSequence type = ByteSequence.create(unresolvedJavaType.getName());
         Symbol<Type> symbolicType = SymbolsSupport.getTypes().getOrCreateValidType(type);
@@ -142,19 +143,6 @@ public interface CremaSupport {
     Class<?> findLoadedClass(Symbol<Type> type, ClassLoader loader);
 
     Object getStaticStorage(Class<?> cls, boolean primitives, int layerNum);
-
-    /** Gets a field declared by a runtime-loaded {@code clazz} with {@code name}, {@code signature}, and {@code isStatic}. */
-    ResolvedJavaField lookupFieldForRuntimeClass(Class<?> clazz, String name, String signature, boolean isStatic);
-
-    /** Gets the field metadata encoded by {@code fieldId} in the context of a runtime-loaded {@code clazz}. */
-    CremaResolvedJavaField getCremaField(Class<?> clazz, JNIFieldId fieldId, boolean isStatic);
-
-    /** Gets the static storage base encoded by a runtime-loaded static JNI field id. */
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    Object getCremaStaticFieldBase(JNIFieldId fieldId, boolean primitive);
-
-    /** Gets a method declared by runtime-loaded {@code clazz} with {@code name}, {@code signature}. */
-    ResolvedJavaMethod lookupMethodForRuntimeClass(Class<?> clazz, String name, String signature);
 
     ResolvedJavaMethod findMethodHandleIntrinsic(ResolvedJavaMethod signaturePolymorphicMethod, Symbol<Signature> signature);
 
@@ -199,18 +187,8 @@ public interface CremaSupport {
 
     CFunctionPointer getEnterDirectInterpreterStubEntryPoint();
 
-    /** Gets the JNI upcall wrapper entry point for {@code variant} and {@code nonVirtual}. */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    CFunctionPointer getCremaJNIUpcallWrapperEntryPoint(CallVariant variant, boolean nonVirtual);
-
     @Platforms(Platform.HOSTED_ONLY.class)
     void setEnterDirectInterpreterStubEntryPoint(CFunctionPointer stubEntryPoint);
-
-    /** Sets the JNI upcall wrapper entry points for all JNI call variants to perform a JNI upcall on a runtime-loaded method. */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    void setCremaJNIUpcallWrapperEntryPoints(CFunctionPointer varargsVirtual, CFunctionPointer arrayVirtual, CFunctionPointer vaListVirtual, CFunctionPointer varargsNonVirtual,
-                    CFunctionPointer arrayNonVirtual,
-                    CFunctionPointer vaListNonVirtual);
 
     <T extends ConstantPool & jdk.vm.ci.meta.ConstantPool> T getConstantPool(DynamicHub hub);
 

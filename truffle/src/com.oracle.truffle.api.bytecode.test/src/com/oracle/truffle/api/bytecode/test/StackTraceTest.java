@@ -70,6 +70,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeIndexMode;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
@@ -620,18 +621,20 @@ public class StackTraceTest extends AbstractInstructionTest {
 
     @GenerateBytecodeTestVariants({
                     @Variant(suffix = "CachedDefault", configuration = //
-                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBytecodeIndexInFrame = false, enableUncachedInterpreter = false, enableYield = true, boxingEliminationTypes = {
+                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE, enableUncachedInterpreter = false, enableYield = true, boxingEliminationTypes = {
                                     int.class})),
                     @Variant(suffix = "UncachedDefault", configuration = //
-                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBytecodeIndexInFrame = false, enableUncachedInterpreter = true, enableYield = true, boxingEliminationTypes = {
+                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE, enableUncachedInterpreter = true, enableYield = true, boxingEliminationTypes = {
                                     int.class})),
                     @Variant(suffix = "CachedBciInFrame", configuration = //
-                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBytecodeIndexInFrame = true, enableUncachedInterpreter = false, enableYield = true, boxingEliminationTypes = {
+                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.FRAME, enableUncachedInterpreter = false, enableYield = true, boxingEliminationTypes = {
                                     int.class})),
                     @Variant(suffix = "UncachedBciInFrame", configuration = //
-                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBytecodeIndexInFrame = true, enableUncachedInterpreter = true, enableYield = true, boxingEliminationTypes = {
+                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.FRAME, enableUncachedInterpreter = true, enableYield = true, boxingEliminationTypes = {
                                     int.class}))
     })
+    // The shared operations also serve variants without a bytecode index frame slot.
+    @SuppressWarnings("truffle-interpreted-performance")
     public abstract static class StackTraceTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected StackTraceTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -803,7 +806,15 @@ public class StackTraceTest extends AbstractInstructionTest {
                     } else {
                         assertSame(bytecode, frameInstance.getCallNode());
                     }
-                    assertEquals(getBytecodeIndexOfFirstInstruction(bytecode, chainedFrameInstruction), frameInstance.getBytecodeIndex());
+                    int expectedBytecodeIndex = getBytecodeIndexOfFirstInstruction(bytecode, chainedFrameInstruction);
+                    assertEquals(expectedBytecodeIndex, frameInstance.getBytecodeIndex());
+                    assertEquals(expectedBytecodeIndex, bytecode.getBytecodeLocation(frameInstance).getBytecodeIndex());
+                    assertEquals(expectedBytecodeIndex, BytecodeLocation.get(frameInstance).getBytecodeIndex());
+
+                    BytecodeNode otherBytecode = targets[0].getBytecodeNode();
+                    assertNull(otherBytecode.getBytecodeLocation(frameInstance));
+                    assertNull(otherBytecode.getSourceLocation(frameInstance));
+                    assertNull(otherBytecode.getSourceLocations(frameInstance));
                 }
                 index++;
                 return null;

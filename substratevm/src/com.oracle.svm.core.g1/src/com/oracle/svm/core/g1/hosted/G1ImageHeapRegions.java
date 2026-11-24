@@ -26,7 +26,7 @@ package com.oracle.svm.core.g1.hosted;
 
 import java.util.ArrayList;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.g1.G1Heap;
 import com.oracle.svm.core.g1.G1ImageHeapInfo;
 import com.oracle.svm.core.g1.G1Options;

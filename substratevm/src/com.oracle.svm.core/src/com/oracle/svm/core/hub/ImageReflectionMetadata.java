@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.hub;
 
-import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.NO_DATA;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -34,9 +34,9 @@ import java.lang.reflect.RecordComponent;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.shared.BuildPhaseProvider;
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
+import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
 
 /**
  * Instances of this class are used to represent the reflection metadata for Dynamic hubs prepared
@@ -124,7 +124,7 @@ public final class ImageReflectionMetadata implements ReflectionMetadata {
         if (fieldsEncodingIndex == NO_DATA) {
             return new Field[0];
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseFields(declaringClass, fieldsEncodingIndex, publicOnly, layerNum);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseFields(DynamicHub.toClass(declaringClass), fieldsEncodingIndex, publicOnly, layerNum);
     }
 
     @Override
@@ -132,7 +132,7 @@ public final class ImageReflectionMetadata implements ReflectionMetadata {
         if (methodsEncodingIndex == NO_DATA) {
             return new Method[0];
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseMethods(declaringClass, methodsEncodingIndex, publicOnly, layerNum);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseMethods(DynamicHub.toClass(declaringClass), methodsEncodingIndex, publicOnly, layerNum);
     }
 
     @Override
@@ -140,7 +140,7 @@ public final class ImageReflectionMetadata implements ReflectionMetadata {
         if (constructorsEncodingIndex == NO_DATA) {
             return new Constructor<?>[0];
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseConstructors(declaringClass, constructorsEncodingIndex, publicOnly, layerNum);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseConstructors(DynamicHub.toClass(declaringClass), constructorsEncodingIndex, publicOnly, layerNum);
     }
 
     @Override
@@ -149,7 +149,7 @@ public final class ImageReflectionMetadata implements ReflectionMetadata {
             /* See ReflectionDataBuilder.buildRecordComponents() for details. */
             throw DynamicHub.recordsNotAvailable(declaringClass);
         }
-        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseRecordComponents(declaringClass, recordComponentsEncodingIndex, layerNum);
+        return ImageSingletons.lookup(RuntimeMetadataDecoder.class).parseRecordComponents(DynamicHub.toClass(declaringClass), recordComponentsEncodingIndex, layerNum);
     }
 
     @Override

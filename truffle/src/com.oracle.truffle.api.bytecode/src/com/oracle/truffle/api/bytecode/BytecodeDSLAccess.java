@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,8 +44,9 @@ import com.oracle.truffle.api.frame.FrameExtensions;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 
 /**
- * Accessor class used to abstract away frame and bytecode array accesses in the generated code.
- *
+ * Accessor class used by generated code for low-level access to frames, bytecode arrays, and
+ * other bytecode classes.
+ * <p>
  * Do not use directly.
  *
  * @since 24.2
@@ -138,5 +139,129 @@ public abstract sealed class BytecodeDSLAccess permits BytecodeDSLCheckedAccess,
      * @since 24.2
      */
     public abstract <T> T uncheckedCast(Object arr, Class<T> clazz);
+
+    /**
+     * Returns a key for deduplicating serialized constants. {@link Float} and {@link Double}
+     * {@code NaN} values are replaced with wrappers that preserve NaN bit patterns.
+     *
+     * @since 25.6
+     */
+    @SuppressWarnings("static-method")
+    public final Object getSerializationKey(Object object) {
+        if (object instanceof Float f && f.isNaN()) {
+            return new FloatNaNKey(Float.floatToRawIntBits(f));
+        } else if (object instanceof Double d && d.isNaN()) {
+            return new DoubleNaNKey(Double.doubleToRawLongBits(d));
+        } else {
+            return object;
+        }
+    }
+
+    private record FloatNaNKey(int bits) {
+    }
+
+    private record DoubleNaNKey(long bits) {
+    }
+
+    /**
+     * Returns the local offset of a local accessor.
+     *
+     * @since 25.7
+     */
+    @SuppressWarnings("static-method")
+    public final int getLocalOffset(LocalAccessor accessor) {
+        return accessor.localOffset;
+    }
+
+    /**
+     * Returns the local index of a local accessor.
+     *
+     * @since 25.7
+     */
+    @SuppressWarnings("static-method")
+    public final int getLocalIndex(LocalAccessor accessor) {
+        return accessor.localIndex;
+    }
+
+    /**
+     * Returns the starting local offset of a local range accessor.
+     *
+     * @since 25.7
+     */
+    @SuppressWarnings("static-method")
+    public final int getStartOffset(LocalRangeAccessor accessor) {
+        return accessor.startOffset;
+    }
+
+    /**
+     * Returns the starting local index of a local range accessor.
+     *
+     * @since 25.7
+     */
+    @SuppressWarnings("static-method")
+    public final int getStartIndex(LocalRangeAccessor accessor) {
+        return accessor.startIndex;
+    }
+
+    /**
+     * Returns the index of the root declaring the local of a materialized local accessor.
+     *
+     * @since 25.7
+     */
+    @SuppressWarnings("static-method")
+    public final int getRootIndex(MaterializedLocalAccessor accessor) {
+        return accessor.rootIndex;
+    }
+
+    /**
+     * Returns the local offset of a materialized local accessor.
+     *
+     * @since 25.7
+     */
+    @SuppressWarnings("static-method")
+    public final int getLocalOffset(MaterializedLocalAccessor accessor) {
+        return accessor.localOffset;
+    }
+
+    /**
+     * Returns the local index of a materialized local accessor.
+     *
+     * @since 25.7
+     */
+    @SuppressWarnings("static-method")
+    public final int getLocalIndex(MaterializedLocalAccessor accessor) {
+        return accessor.localIndex;
+    }
+
+    /**
+     * Obtains a {@link LocalAccessor} from its local offset and index.
+     *
+     * @since 25.7
+     */
+    @SuppressWarnings("static-method")
+    public final LocalAccessor getLocalAccessorConstant(int offset, int index) {
+        return LocalAccessor.constantOf(offset, index);
+    }
+
+    /**
+     * Obtains a {@link LocalRangeAccessor} from its starting local offset, index, and length.
+     *
+     * @since 25.7
+     */
+    @SuppressWarnings("static-method")
+    public final LocalRangeAccessor getLocalRangeAccessorConstant(int startOffset, int startIndex, int length) {
+        return LocalRangeAccessor.constantOf(startOffset, startIndex, length);
+    }
+
+    /**
+     * Obtains a {@link MaterializedLocalAccessor} from its root index, local offset, and local
+     * index.
+     *
+     * @since 25.7
+     */
+    @SuppressWarnings("static-method")
+    public final MaterializedLocalAccessor getMaterializedLocalAccessorConstant(int rootIndex, int offset, int index) {
+        return MaterializedLocalAccessor.constantOf(rootIndex, offset, index);
+    }
 
 }

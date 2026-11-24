@@ -319,7 +319,7 @@ public final class IsolatedGraalUtils {
 
         EconomicMap<OptionKey<?>, Object> options = OptionValuesEncoder.decode(encodedOptions);
         options.replaceAll((k, v) -> OptionsParser.parseOptionValue(k.getDescriptor(), v));
-        RuntimeOptionValues.singleton().update(options);
+        RuntimeOptionValues.singleton().update(options, RuntimeOptionValues.Origin.Runtime);
     }
 
     public static int getNullableArrayLength(Object array) {

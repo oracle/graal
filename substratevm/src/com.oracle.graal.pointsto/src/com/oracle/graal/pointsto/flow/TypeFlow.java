@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -873,22 +873,21 @@ public abstract class TypeFlow<T> {
     }
 
     /**
-     * In Java, interface types are not checked by the bytecode verifier. So even when, e.g., a
-     * method parameter has the declared type Comparable, any Object can be passed in. We therefore
-     * need to filter out interface types, as well as arrays of interface types, in many places
-     * where we use the declared type.
-     *
-     * Places where interface types need to be filtered: method parameters, method return values,
-     * and field loads (including unsafe memory loads).
-     *
-     * Places where interface types need not be filtered: array element loads (because all array
-     * stores have an array store check).
-     *
-     * One exception are word types. We do not filter them here, because they are transformed to
-     * primitive values later on anyway and the knowledge that a given type is a word type is useful
-     * when distinguishing primitive and object flows.
+     * Discards an unenforced interface constraint, broadening {@code I} to {@code Object} and
+     * {@code I[]} to {@code Object[]}. Array dimensions are preserved. Other types and {@code null}
+     * are returned unchanged.
+     * <p>
+     * Interface declarations are not enforced by the bytecode verifier at method parameters,
+     * method returns, or field accesses. A declared interface therefore does not provide a reliable
+     * value bound at those locations. Flows use the returned type as their effective declared bound.
+     * A successful checked cast establishes an enforced type bound, which can recover an interface
+     * constraint previously discarded by the analysis. Array element loads retain their component
+     * bound because array stores perform a runtime type check.
+     * <p>
+     * Word types are exempt: they are later transformed into primitive values, and their type must
+     * remain available when distinguishing primitive and object flows.
      */
-    public static AnalysisType filterUncheckedInterface(AnalysisType type) {
+    public static AnalysisType dropUncheckedInterfaceBound(AnalysisType type) {
         if (type != null) {
             AnalysisType elementalType = type.getElementalType();
             if (elementalType.isInterface() && !elementalType.isWordType()) {

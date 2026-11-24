@@ -41,11 +41,14 @@ import static org.graalvm.nativeimage.impl.InternalPlatform.NATIVE_ONLY;
 import static org.graalvm.nativeimage.impl.InternalPlatform.PLATFORM_JNI;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -62,6 +65,7 @@ import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.heap.ReferenceHandler;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
@@ -95,7 +99,6 @@ import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.core.common.GraalOptions;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.phases.LowTier;
 import jdk.graal.compiler.core.phases.MidTier;
 import jdk.graal.compiler.duplication.phases.PullThroughPhiPhase;
@@ -783,6 +786,36 @@ public class SubstrateOptions {
     @Option(help = "List of comma separated URL protocols to enable.")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
+    @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error)//
+    @Option(help = "URL protocol and URI scheme for embedded resources. Select an unused scheme to avoid collisions with application filesystem providers.", type = OptionType.Expert)//
+    public static final HostedOptionKey<String> ResourceProtocol = new HostedOptionKey<>("resource", SubstrateOptions::validateResourceProtocol) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            super.onValueUpdate(values, oldValue, newValue);
+            // Leave non-ASCII input for validation, since Unicode case folding can produce ASCII.
+            if (newValue.chars().allMatch(c -> c <= 0x7f)) {
+                values.put(this, newValue.toLowerCase(Locale.ROOT));
+            }
+        }
+    };
+
+    private static void validateResourceProtocol(HostedOptionKey<String> optionKey) {
+        String scheme = optionKey.getValue();
+        // URL.of forbids overriding file and jrt handlers; URL parsing treats url: as a special prefix.
+        if (scheme.equals("file") || scheme.equals("jrt") || scheme.equals("url")) {
+            throw UserError.invalidOptionValue(optionKey, scheme, "The URI scheme is reserved by the JDK and cannot be used for embedded resources");
+        }
+        try {
+            if (scheme.equals(new URI(scheme, "/", null).getScheme())) {
+                return;
+            }
+        } catch (URISyntaxException e) {
+            // Report the invalid option below.
+        }
+        throw UserError.invalidOptionValue(optionKey, optionKey.getValue(),
+                        "Expected a non-empty URI scheme starting with an ASCII letter and containing only ASCII letters, digits, '+', '-', or '.'");
+    }
 
     private static final String DEPRECATION_MESSAGE_DISABLE_URL_PROTOCOLS = "Non-default URL protocols are disabled unless registered in reachability metadata. " +
                     "This option has no reachability-metadata replacement for default protocols such as file and resource.";
@@ -1526,6 +1559,17 @@ public class SubstrateOptions {
             }
         });
 
+        /** Use {@link SubstrateOptions#usePextInterfaceHashing()} instead. */
+        @Option(help = "Use PEXT to compute interface hash-table indices. Selected automatically for open type world interface hashing on AMD64 targets with BMI2. Can be disabled on CPUs with slow PEXT.", type = OptionType.Debug) //
+        @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error) //
+        public static final HostedOptionKey<Boolean> UsePextInterfaceHashing = new HostedOptionKey<>(null, key -> {
+            if (Boolean.TRUE.equals(key.getValue())) {
+                UserError.guarantee(useInterfaceHashing() && !useClosedTypeWorldHubLayout(), "UsePextInterfaceHashing requires open type world interface hashing.");
+                UserError.guarantee(SubstrateTarget.getArchitecture() instanceof AMD64 arch && arch.getFeatures().contains(AMD64.CPUFeature.BMI2),
+                                "UsePextInterfaceHashing requires BMI2 in the target CPU baseline (for example, -march=x86-64-v3).");
+            }
+        });
+
         /** Use {@link SubstrateOptions#isSignalHandlingAllowed()} instead. */
         @Option(help = "Enables signal handling", stability = OptionStability.EXPERIMENTAL, type = Expert)//
         public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<>(null, RegisterForIsolateArgumentParser) {
@@ -1769,6 +1813,7 @@ public class SubstrateOptions {
     @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     public static final HostedOptionKey<Boolean> UseOldMethodHandleIntrinsics = new HostedOptionKey<>(false);
 
+    @BundleMember(role = BundleMember.Role.InputReference, valuePrefix = "path=", delimiter = ",")//
     @Option(help = "file:doc-files/PreserveHelp.txt")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> Preserve = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
@@ -1829,18 +1874,30 @@ public class SubstrateOptions {
     @Option(help = "Use the closed type world dynamic hub representation. This is only allowed when the option ClosedTypeWorld is also set to true.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ClosedTypeWorldHubLayout = new HostedOptionKey<>(true);
 
-    @Option(help = "Defines a threshold for interfaceIDs which can be covered by hashing if UseInterfaceHashing is enabled. Must be <= 65535 (ushort max). Larger interfaceIDs are handled by the slow path.", type = OptionType.Debug) //
-    public static final HostedOptionKey<Integer> InterfaceHashingMaxId = new HostedOptionKey<>(0xffff, key -> {
+    @Option(help = "Maximum interface ID eligible for hashing with UseInterfaceHashing. Must be between 0 and 65535, the current hash construction limit. Larger IDs remain supported through iterative lookup.", type = OptionType.Debug) //
+    public static final HostedOptionKey<Integer> InterfaceHashingMaxId = new HostedOptionKey<>(DynamicHubUtils.MAX_HASHED_INTERFACE_ID, key -> {
         if (key.hasBeenSet()) {
             UserError.guarantee(useInterfaceHashing(), "Interface hashing needs to be enabled for the InterfaceHashingMaxId to be used. " +
                             "Enable interface hashing with %s",
                             SubstrateOptionsParser.commandArgument(ConcealedOptions.UseInterfaceHashing, "+"));
         }
         int value = key.getValue();
-        if (!NumUtil.isUShort(value)) {
-            UserError.invalidOptionValue(key, value, "The specified value must be <= 65535 (ushort max)");
+        if (value < 0 || value > DynamicHubUtils.MAX_HASHED_INTERFACE_ID) {
+            UserError.invalidOptionValue(key, value, "The specified value must be between 0 and " + DynamicHubUtils.MAX_HASHED_INTERFACE_ID + " (the current hash construction limit)");
         }
     });
+
+    /**
+     * Returns whether open type world interface hash tables use PEXT to compute table indices.
+     * The choice is fixed during image building based on the target CPU features and applies to
+     * all image layers and runtime-loaded classes, keeping table construction and lookup consistent.
+     */
+    @Fold
+    public static boolean usePextInterfaceHashing() {
+        return !Boolean.FALSE.equals(ConcealedOptions.UsePextInterfaceHashing.getValue()) && useInterfaceHashing() && !useClosedTypeWorldHubLayout() &&
+                        SubstrateTarget.getArchitecture() instanceof AMD64 arch &&
+                        arch.getFeatures().contains(AMD64.CPUFeature.BMI2);
+    }
 
     @Fold
     public static boolean useClosedTypeWorldHubLayout() {

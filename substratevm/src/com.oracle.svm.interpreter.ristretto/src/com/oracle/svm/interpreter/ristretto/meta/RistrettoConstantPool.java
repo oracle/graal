@@ -28,6 +28,7 @@ import java.lang.invoke.MethodHandle;
 import java.util.List;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.interpreter.CallSiteLink;
@@ -138,7 +139,7 @@ public final class RistrettoConstantPool implements ConstantPool {
                 String name = interpreterConstantPool.invokeDynamicName(indyCpi).toString();
                 Signature signature = new RistrettoUnresolvedSignature(CremaMethodAccess.toJVMCI(interpreterConstantPool.invokeDynamicSignature(indyCpi),
                                 SymbolsSupport.getTypes()));
-                JavaType holder = RistrettoType.getOrCreate((InterpreterResolvedJavaType) DynamicHub.fromClass(MethodHandle.class).getInterpreterType());
+                JavaType holder = RistrettoType.getOrCreate((InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(MethodHandle.class)));
                 return new UnresolvedJavaMethod(name, signature, holder);
             }
             return res;

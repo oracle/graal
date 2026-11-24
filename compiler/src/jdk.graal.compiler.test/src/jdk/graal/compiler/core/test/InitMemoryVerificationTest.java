@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,9 +31,18 @@ import org.junit.Test;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.BeginNode;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.EndNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.MergeNode;
+import jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData;
+import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
@@ -128,5 +137,67 @@ public class InitMemoryVerificationTest extends GraalCompilerTest {
         } catch (AssertionError e) {
             Assert.assertTrue(e.getMessage().contains("writes to init memory not guarded by an init barrier"));
         }
+    }
+
+    private StructuredGraph graphWithUnprotectedWritesAndDiamonds(int diamonds, boolean protectTrueBranch) {
+        StructuredGraph graph = getMidTierGraph("allocate", createSuites(getInitialOptions()));
+        for (MembarNode membar : graph.getNodes().filter(MembarNode.class)) {
+            GraphUtil.removeFixedWithUnusedInputs(membar);
+        }
+        ReturnNode returnNode = graph.getNodes(ReturnNode.TYPE).first();
+        FixedWithNextNode tail = (FixedWithNextNode) returnNode.predecessor();
+        tail.setNext(null);
+        for (int i = 0; i < diamonds; i++) {
+            BeginNode trueBegin = graph.add(new BeginNode());
+            BeginNode falseBegin = graph.add(new BeginNode());
+            EndNode trueEnd = graph.add(new EndNode());
+            EndNode falseEnd = graph.add(new EndNode());
+            if (protectTrueBranch) {
+                MembarNode membar = graph.add(MembarNode.forInitialization());
+                trueBegin.setNext(membar);
+                membar.setNext(trueEnd);
+            } else {
+                trueBegin.setNext(trueEnd);
+            }
+            falseBegin.setNext(falseEnd);
+            MergeNode merge = graph.add(new MergeNode());
+            merge.addForwardEnd(trueEnd);
+            merge.addForwardEnd(falseEnd);
+            IntegerEqualsNode condition = graph.unique(new IntegerEqualsNode(graph.getParameter(0), ConstantNode.forInt(i, graph)));
+            tail.setNext(graph.add(new IfNode(condition, trueBegin, falseBegin, BranchProbabilityData.unknown())));
+            tail = merge;
+        }
+        tail.setNext(returnNode);
+        return graph;
+    }
+
+    private void assertUnprotectedWrites(StructuredGraph graph) {
+        try (DebugContext.Scope _ = getDebugContext().disable()) {
+            AssertionError error = Assert.assertThrows(AssertionError.class, () -> new InitMemoryVerificationPhase().apply(graph, getDefaultLowTierContext()));
+            Assert.assertTrue(error.getMessage(), error.getMessage().contains("writes to init memory not guarded by an init barrier"));
+        }
+    }
+
+    @Test
+    public void testVerificationFailsAfter31Merges() {
+        assertUnprotectedWrites(graphWithUnprotectedWritesAndDiamonds(31, false));
+    }
+
+    @Test
+    public void testVerificationFailsAfter32Merges() {
+        assertUnprotectedWrites(graphWithUnprotectedWritesAndDiamonds(32, false));
+    }
+
+    @Test
+    public void testVerificationFailsWithBarrierOnOnlyOneBranch() {
+        assertUnprotectedWrites(graphWithUnprotectedWritesAndDiamonds(32, true));
+    }
+
+    @Test
+    public void testVerificationPassesWithBarrierAfterManyMerges() {
+        StructuredGraph graph = graphWithUnprotectedWritesAndDiamonds(32, false);
+        ReturnNode returnNode = graph.getNodes(ReturnNode.TYPE).first();
+        graph.addBeforeFixed(returnNode, graph.add(MembarNode.forInitialization()));
+        new InitMemoryVerificationPhase().apply(graph, getDefaultLowTierContext());
     }
 }

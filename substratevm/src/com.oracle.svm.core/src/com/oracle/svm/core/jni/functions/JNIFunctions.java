@@ -60,26 +60,24 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.configure.ClassNameSupport;
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.MissingRegistrationUtils;
-import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.handles.PrimitiveArrayView;
-import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.guest.staging.hub.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
-import com.oracle.svm.core.hub.crema.CremaJNIFieldIds;
-import com.oracle.svm.core.hub.crema.CremaJNIMethodIds;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaField;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
 import com.oracle.svm.core.hub.crema.CremaResolvedJavaType;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
+import com.oracle.svm.core.interpreter.InterpreterJNIFieldIds;
+import com.oracle.svm.core.interpreter.InterpreterJNIMethodIds;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jdk.StackTraceUtils;
@@ -121,11 +119,11 @@ import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.log.CoreLogSupport;
 import com.oracle.svm.core.metadata.MetadataTracer;
-import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Target_java_lang_BaseVirtualThread;
@@ -138,7 +136,12 @@ import com.oracle.svm.guest.staging.c.function.CEntryPointActions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions.ReturnNullPointer;
+import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.shared.util.Utf8;
 import com.oracle.svm.shared.util.VMError;
 
@@ -432,7 +435,7 @@ public final class JNIFunctions {
         if (RuntimeClassLoading.isSupported()) {
             DynamicHub hub = DynamicHub.fromClass(clazz);
             if (hub.isRuntimeLoaded()) {
-                ResolvedJavaType interpreterType = hub.getInterpreterType();
+                ResolvedJavaType interpreterType = DynamicHubUtils.getInterpreterType(hub);
                 assert interpreterType instanceof CremaResolvedJavaType : "expected Crema type";
                 CremaResolvedJavaType type = (CremaResolvedJavaType) interpreterType;
                 for (CremaResolvedJavaMethod cremaMethod : type.getDeclaredCremaMethods()) {
@@ -971,13 +974,18 @@ public final class JNIFunctions {
         if (obj != null) {
             Class<?> clazz = obj.getDeclaringClass();
             boolean isStatic = Modifier.isStatic(obj.getModifiers());
-            if (RuntimeClassLoading.isSupported() && CremaSupport.singleton().toJVMCI(obj) instanceof CremaResolvedJavaField cremaField) {
-                fieldId = cremaField.getOrCreateJNIFieldId();
+            DynamicHub hub = DynamicHub.fromClass(clazz);
+            ResolvedJavaField resolvedField = null;
+            boolean resolvedFieldCanUseInterpreterFallback = false;
+            if ((RuntimeClassLoading.isSupported() && hub.isRuntimeLoaded()) || RuntimeClassLoading.isJNIRegistrationFallbackSupported()) {
+                resolvedField = CremaSupport.singleton().toJVMCI(obj);
+                resolvedFieldCanUseInterpreterFallback = InterpreterSupport.singleton().canCreateJNIFieldId(resolvedField);
             }
-            if (fieldId.isNull()) {
-                fieldId = JNIReflectionDictionary.getDeclaredFieldID(clazz, obj.getName(), isStatic);
+            fieldId = JNIReflectionDictionary.getDeclaredFieldID(clazz, obj.getName(), isStatic, !resolvedFieldCanUseInterpreterFallback);
+            if (fieldId.isNull() && resolvedFieldCanUseInterpreterFallback) {
+                fieldId = InterpreterSupport.singleton().getOrCreateJNIFieldId(resolvedField);
             }
-            assert fieldId.isNull() || DynamicHub.fromClass(clazz).isJNIAccessible() : clazz.getName();
+            assert fieldId.isNull() || Support.isJNIClassAccessible(hub) : clazz.getName();
         }
         return fieldId;
     }
@@ -991,12 +999,20 @@ public final class JNIFunctions {
         Field field = null;
         Class<?> clazz = JNIObjectHandles.getObject(classHandle);
         if (clazz != null) {
-            if (RuntimeClassLoading.isSupported() && CremaJNIFieldIds.isCremaFieldId(fieldId)) {
-                CremaResolvedJavaField cremaField = CremaSupport.singleton().getCremaField(clazz, fieldId, isStatic);
-                if (cremaField != null) {
+            if (InterpreterSupport.isEnabled() && InterpreterJNIFieldIds.isInterpreterFieldId(fieldId)) {
+                ResolvedJavaField resolvedField = InterpreterSupport.singleton().getJNIField(clazz, fieldId, isStatic);
+                if (resolvedField instanceof CremaResolvedJavaField cremaField) {
                     DynamicHub hub = DynamicHub.fromClass(InterpreterSupport.singleton().toClass(cremaField.getDeclaringClass()));
-                    assert hub.isJNIAccessible() : hub.getName();
+                    assert Support.isJNIClassAccessible(hub) : hub.getName();
                     field = RuntimeReflectionMetadata.fromResolvedField(hub, cremaField);
+                } else if (resolvedField != null) {
+                    Class<?> declaringClass = InterpreterSupport.singleton().toClass(resolvedField.getDeclaringClass());
+                    assert Support.isJNIClassAccessible(DynamicHub.fromClass(declaringClass)) : declaringClass.getName();
+                    try {
+                        field = declaringClass.getDeclaredField(resolvedField.getName());
+                    } catch (NoSuchFieldException ignored) {
+                        // proceed and return null
+                    }
                 }
             } else {
                 String name = JNIReflectionDictionary.getFieldNameByID(clazz, fieldId);
@@ -1025,13 +1041,18 @@ public final class JNIFunctions {
             Class<?> clazz = method.getDeclaringClass();
             boolean isStatic = Modifier.isStatic(method.getModifiers());
             JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
-            if (RuntimeClassLoading.isSupported() && CremaSupport.singleton().toJVMCI(method) instanceof CremaResolvedJavaMethod cremaMethod) {
-                methodId = cremaMethod.getOrCreateJNIMethodId();
+            DynamicHub hub = DynamicHub.fromClass(clazz);
+            ResolvedJavaMethod resolvedMethod = null;
+            boolean resolvedMethodCanUseInterpreterFallback = false;
+            if ((RuntimeClassLoading.isSupported() && hub.isRuntimeLoaded()) || RuntimeClassLoading.isJNIRegistrationFallbackSupported()) {
+                resolvedMethod = CremaSupport.singleton().toJVMCI(method);
+                resolvedMethodCanUseInterpreterFallback = InterpreterSupport.singleton().canCreateJNIMethodId(resolvedMethod);
             }
-            if (methodId.isNull()) {
-                methodId = JNIReflectionDictionary.getDeclaredMethodID(clazz, descriptor, isStatic);
+            methodId = JNIReflectionDictionary.getDeclaredMethodID(clazz, descriptor, isStatic);
+            if (methodId.isNull() && resolvedMethodCanUseInterpreterFallback) {
+                methodId = InterpreterSupport.singleton().getOrCreateJNIMethodId(resolvedMethod);
             }
-            assert methodId.isNull() || DynamicHub.fromClass(clazz).isJNIAccessible() : clazz.getName();
+            assert methodId.isNull() || Support.isJNIClassAccessible(hub) : clazz.getName();
         }
         return methodId;
     }
@@ -1042,10 +1063,12 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static JNIObjectHandle ToReflectedMethod(JNIEnvironment env, JNIObjectHandle classHandle, JNIMethodId methodId, boolean isStatic) {
-        if (RuntimeClassLoading.isSupported() && CremaJNIMethodIds.isCremaMethodId(methodId)) {
-            Executable result = RuntimeReflectionMetadata.fromResolvedMethod(CremaJNIMethodIds.getMethod(methodId));
-            Class<?> clazz = result.getDeclaringClass();
-            assert DynamicHub.fromClass(clazz).isJNIAccessible() : clazz.getName();
+        if (InterpreterSupport.isEnabled() && InterpreterJNIMethodIds.isInterpreterMethodId(methodId)) {
+            Executable result = InterpreterSupport.singleton().getJNIMethodExecutable(methodId);
+            if (result != null) {
+                Class<?> clazz = result.getDeclaringClass();
+                assert Support.isJNIClassAccessible(DynamicHub.fromClass(clazz)) : clazz.getName();
+            }
             return JNIObjectHandles.createLocal(result);
         }
 
@@ -1748,7 +1771,7 @@ public final class JNIFunctions {
             }
         }
 
-        static class JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue implements CEntryPointOptions.Prologue {
+        static class JNIDetachThreadOrDestroyVMPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
             static int enter(JNIJavaVM vm) {
                 /*
@@ -1756,6 +1779,11 @@ public final class JNIFunctions {
                  * JNI_ERR on HotSpot. So, we need to do the same.
                  */
                 int code = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), true);
+                if (code == CEntryPointErrors.NO_ERROR && JavaFrameAnchors.getFrameAnchor().isNonNull()) {
+                    /* There are remaining Java frames on the stack. */
+                    CEntryPointActions.leave();
+                    return JNIErrors.JNI_ERR();
+                }
                 return convertCEntryPointErrorToJNIError(code, false);
             }
         }
@@ -1902,20 +1930,20 @@ public final class JNIFunctions {
         }
 
         private static JNIMethodId getMethodID(Class<?> origClazz, CharSequence name, CharSequence signature, boolean isStatic) {
-
+            DynamicHub hub = DynamicHub.fromClass(origClazz);
             JNIMethodId methodID = Word.nullPointer();
             ResolvedJavaMethod resolvedJavaMethod = null;
+            boolean resolvedMethodCanUseInterpreterFallback = false;
             boolean methodFoundWithOppositeStaticKind = false;
-            boolean runtimeLoaded = RuntimeClassLoading.isSupported() && DynamicHub.fromClass(origClazz).isRuntimeLoaded();
-            if (runtimeLoaded) {
-                resolvedJavaMethod = CremaSupport.singleton().lookupMethodForRuntimeClass(origClazz, name.toString(), signature.toString());
-                if (resolvedJavaMethod instanceof CremaResolvedJavaMethod cremaResolvedJavaMethod) {
-                    if (resolvedJavaMethod.isStatic() == isStatic) {
-                        methodID = cremaResolvedJavaMethod.getOrCreateJNIMethodId();
-                        assert CremaJNIMethodIds.isCremaMethodId(methodID);
-                    } else {
-                        methodFoundWithOppositeStaticKind = true;
-                    }
+            boolean runtimeLoaded = RuntimeClassLoading.isSupported() && hub.isRuntimeLoaded();
+            boolean registrationFallback = RuntimeClassLoading.isJNIRegistrationFallbackSupported();
+            boolean interpreterFallback = runtimeLoaded || registrationFallback;
+
+            if (interpreterFallback) {
+                resolvedJavaMethod = InterpreterSupport.singleton().lookupMethodForJNI(origClazz, name.toString(), signature.toString());
+                if (resolvedJavaMethod != null) {
+                    resolvedMethodCanUseInterpreterFallback = (resolvedJavaMethod instanceof CremaResolvedJavaMethod || registrationFallback) &&
+                                    InterpreterSupport.singleton().canCreateJNIMethodId(resolvedJavaMethod);
                 }
             }
 
@@ -1925,15 +1953,27 @@ public final class JNIFunctions {
              * build. If no method was found for a runtime-loaded class, a dictionary lookup cannot
              * find it because the class was not known during the image build.
              */
-            boolean lookupInDictionary = !runtimeLoaded ||
-                            (resolvedJavaMethod != null && !(resolvedJavaMethod instanceof CremaResolvedJavaMethod));
+            boolean lookupInDictionary = !runtimeLoaded || (resolvedJavaMethod != null && !(resolvedJavaMethod instanceof CremaResolvedJavaMethod));
             if (lookupInDictionary) {
-                assert methodID.isNull();
-                methodID = JNIReflectionDictionary.getMethodID(origClazz, name, signature, isStatic);
-                assert methodID.isNull() || !CremaJNIMethodIds.isCremaMethodId(methodID);
-                if (methodID.isNull()) {
-                    methodFoundWithOppositeStaticKind = JNIReflectionDictionary.getMethodID(origClazz, name, signature, !isStatic).isNonNull();
+                boolean reportMissingRegistrationErrors = !interpreterFallback || (resolvedJavaMethod != null && !resolvedMethodCanUseInterpreterFallback);
+                methodID = JNIReflectionDictionary.getMethodID(origClazz, name, signature, isStatic, reportMissingRegistrationErrors,
+                                !resolvedMethodCanUseInterpreterFallback || resolvedJavaMethod.isStatic() != isStatic);
+            }
+
+            if (InterpreterSupport.isEnabled() && methodID.isNull() && resolvedMethodCanUseInterpreterFallback) {
+                if (resolvedJavaMethod.isStatic() == isStatic) {
+                    methodID = InterpreterSupport.singleton().getOrCreateJNIMethodId(resolvedJavaMethod);
+                    if (MetadataTracer.enabled()) {
+                        Class<?> declaringClass = InterpreterSupport.singleton().toClass(resolvedJavaMethod.getDeclaringClass());
+                        MetadataTracer.singleton().traceJNIMethodAccess(declaringClass, name.toString(), signature.toString());
+                    }
+                } else {
+                    methodFoundWithOppositeStaticKind = true;
                 }
+            }
+
+            if (methodID.isNull() && !interpreterFallback) {
+                methodFoundWithOppositeStaticKind = JNIReflectionDictionary.getMethodID(origClazz, name, signature, !isStatic, false, true).isNonNull();
             }
 
             if (methodID.isNull()) {
@@ -1960,37 +2000,44 @@ public final class JNIFunctions {
                 throw new NoSuchFieldError("Field name is either null or invalid UTF-8 string");
             }
 
-            /*
-             * Resolve the complete hierarchy through interpreter metadata first. Consulting the
-             * reflection dictionary for a runtime-loaded class could report a missing registration
-             * before a matching Crema field is found.
-             */
-            if (RuntimeClassLoading.isSupported() && hub.isRuntimeLoaded()) {
-                CharSequence signature = Utf8.wrapUtf8CString(csig);
-                if (signature == null) {
-                    throw new NoSuchFieldError("Field signature is either null or invalid UTF-8 string");
-                }
-                ResolvedJavaField resolvedField = CremaSupport.singleton().lookupFieldForRuntimeClass(clazz, name.toString(), signature.toString(), isStatic);
-                if (resolvedField instanceof CremaResolvedJavaField cremaField) {
-                    JNIFieldId fieldID = cremaField.getOrCreateJNIFieldId();
-                    assert CremaJNIFieldIds.isCremaFieldId(fieldID);
-                    return fieldID;
-                } else if (resolvedField == null) {
-                    throw new NoSuchFieldError(clazz.getName() + '.' + name);
+            CharSequence signature = Utf8.wrapUtf8CString(csig);
+            if (signature == null) {
+                throw new NoSuchFieldError("Field signature is either null or invalid UTF-8 string");
+            }
+
+            boolean runtimeLoaded = RuntimeClassLoading.isSupported() && hub.isRuntimeLoaded();
+            boolean registrationFallback = RuntimeClassLoading.isJNIRegistrationFallbackSupported();
+            boolean interpreterFallback = runtimeLoaded || registrationFallback;
+            ResolvedJavaField resolvedField = null;
+            boolean resolvedFieldCanUseInterpreterFallback = false;
+            JNIFieldId fieldID = Word.nullPointer();
+            if (interpreterFallback) {
+                resolvedField = InterpreterSupport.singleton().lookupFieldForJNI(clazz, name.toString(), signature.toString(), isStatic);
+                if (resolvedField != null) {
+                    resolvedFieldCanUseInterpreterFallback = (resolvedField instanceof CremaResolvedJavaField || registrationFallback) &&
+                                    InterpreterSupport.singleton().canCreateJNIFieldId(resolvedField);
                 }
             }
 
-            /*
-             * Image-built classes, and image-built fields inherited by runtime-loaded classes, use
-             * dictionary field IDs and retain the usual JNI registration checks.
-             */
-            JNIFieldId fieldID = JNIReflectionDictionary.getFieldID(clazz, name, isStatic);
+            boolean lookupInDictionary = !runtimeLoaded || (resolvedField != null && !(resolvedField instanceof CremaResolvedJavaField));
+            if (lookupInDictionary) {
+                boolean reportMissingRegistrationErrors = !interpreterFallback || (resolvedField != null && !resolvedFieldCanUseInterpreterFallback);
+                fieldID = JNIReflectionDictionary.getFieldID(clazz, name, isStatic, reportMissingRegistrationErrors, !resolvedFieldCanUseInterpreterFallback);
+            }
+
+            if (InterpreterSupport.isEnabled() && fieldID.isNull() && resolvedFieldCanUseInterpreterFallback) {
+                fieldID = InterpreterSupport.singleton().getOrCreateJNIFieldId(resolvedField);
+                if (MetadataTracer.enabled()) {
+                    Class<?> declaringClass = InterpreterSupport.singleton().toClass(resolvedField.getDeclaringClass());
+                    MetadataTracer.singleton().traceJNIFieldAccess(declaringClass, name.toString());
+                }
+            }
             if (fieldID.isNull()) {
                 throw new NoSuchFieldError(clazz.getName() + '.' + name);
             }
-            assert !CremaJNIFieldIds.isCremaFieldId(fieldID);
+            assert !InterpreterJNIFieldIds.isInterpreterFieldId(fieldID) || isJNIClassAccessible(hub);
 
-            // TODO: check field signature also in non-crema case
+            // TODO: check the field signature in reflection dictionary lookup
             return fieldID;
         }
 
@@ -2032,7 +2079,7 @@ public final class JNIFunctions {
              * Expected negative queries suppress missing-registration reporting only. Missing classes
              * and resolved classes without JNI accessibility must still behave as not found.
              */
-            boolean hubInaccessible = clazz != null && !DynamicHub.fromClass(clazz).isJNIAccessible();
+            boolean hubInaccessible = clazz != null && !isJNIClassAccessible(DynamicHub.fromClass(clazz));
 
             if (MissingRegistrationUtils.throwMissingRegistrationErrors() &&
                             (hubInaccessible || (clazz == null && !JNIReflectionDictionary.isNegativeClassLookup(name)))) {
@@ -2092,26 +2139,30 @@ public final class JNIFunctions {
             return ClassRegistries.respectClassLoader();
         }
 
+        static boolean isJNIClassAccessible(DynamicHub hub) {
+            return hub.isJNIAccessible() || RuntimeClassLoading.isJNIRegistrationFallbackSupported();
+        }
+
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public static long getInstanceFieldOffset(JNIFieldId fieldId) {
-            if (RuntimeClassLoading.isSupported() && CremaJNIFieldIds.isCremaFieldId(fieldId)) {
-                return CremaJNIFieldIds.getInstanceFieldOffset(fieldId);
+            if (RuntimeClassLoading.isSupported() && InterpreterJNIFieldIds.isInterpreterFieldId(fieldId)) {
+                return InterpreterJNIFieldIds.getInstanceFieldOffset(fieldId);
             }
             return JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         static long getStaticFieldOffset(JNIFieldId fieldId) {
-            if (RuntimeClassLoading.isSupported() && CremaJNIFieldIds.isCremaFieldId(fieldId)) {
-                return CremaJNIFieldIds.getStaticFieldOffset(fieldId);
+            if (RuntimeClassLoading.isSupported() && InterpreterJNIFieldIds.isInterpreterFieldId(fieldId)) {
+                return InterpreterJNIFieldIds.getStaticFieldOffset(fieldId);
             }
             return JNIAccessibleField.getOffsetFromId(fieldId).rawValue();
         }
 
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         static Object getStaticFieldBase(JNIFieldId fieldId, boolean primitive) {
-            if (RuntimeClassLoading.isSupported() && CremaJNIFieldIds.isCremaFieldId(fieldId)) {
-                return CremaSupport.singleton().getCremaStaticFieldBase(fieldId, primitive);
+            if (InterpreterSupport.isEnabled() && InterpreterJNIFieldIds.isInterpreterFieldId(fieldId)) {
+                return InterpreterSupport.singleton().getJNIStaticFieldBase(fieldId, primitive);
             }
             return primitive ? JNIAccessibleField.getStaticPrimitiveFieldsAtRuntime(fieldId) : JNIAccessibleField.getStaticObjectFieldsAtRuntime(fieldId);
         }
@@ -2213,8 +2264,8 @@ public final class JNIFunctions {
                 throw new ArrayIndexOutOfBoundsException();
             }
             if (count > 0) {
-                long offset = ObjectLayout.singleton().getArrayElementOffset(elementKind, start);
-                int elementSize = ObjectLayout.singleton().sizeInBytes(elementKind);
+                long offset = ObjectLayoutCompilerSupport.getArrayElementOffset(ObjectLayout.singleton(), elementKind, start);
+                int elementSize = ObjectLayoutCompilerSupport.sizeInBytes(ObjectLayout.singleton(), elementKind);
                 UnsignedWord bytes = Word.unsigned(count).multiply(elementSize);
                 JavaMemoryUtil.copyOnHeap(obj, Word.unsigned(offset), null, Word.unsigned(buffer.rawValue()), bytes);
             }
@@ -2226,8 +2277,8 @@ public final class JNIFunctions {
                 throw new ArrayIndexOutOfBoundsException();
             }
             if (count > 0) {
-                long offset = ObjectLayout.singleton().getArrayElementOffset(elementKind, start);
-                int elementSize = ObjectLayout.singleton().sizeInBytes(elementKind);
+                long offset = ObjectLayoutCompilerSupport.getArrayElementOffset(ObjectLayout.singleton(), elementKind, start);
+                int elementSize = ObjectLayoutCompilerSupport.sizeInBytes(ObjectLayout.singleton(), elementKind);
                 UnsignedWord bytes = Word.unsigned(count).multiply(elementSize);
                 JavaMemoryUtil.copyOnHeap(null, Word.unsigned(buffer.rawValue()), obj, Word.unsigned(offset), bytes);
             }
@@ -2249,7 +2300,7 @@ public final class JNIFunctions {
             if (RuntimeClassLoading.isSupported()) {
                 if (clazz.isRuntimeLoaded()) {
                     assert JNIReflectionDictionary.getLinkage(clazz, name, signature) == null : "Runtime loaded classes should have no global linkage";
-                    ResolvedJavaType interpreterType = clazz.getInterpreterType();
+                    ResolvedJavaType interpreterType = DynamicHubUtils.getInterpreterType(clazz);
                     assert interpreterType instanceof CremaResolvedJavaType : "expected Crema type";
                     CremaResolvedJavaType type = (CremaResolvedJavaType) interpreterType;
                     CremaResolvedJavaMethod cremaMethod = type.lookupDeclaredMethod(name.toString(), signature.toString());

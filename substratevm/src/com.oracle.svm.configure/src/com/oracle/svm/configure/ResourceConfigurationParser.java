@@ -71,7 +71,7 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
     protected void parseBundle(Object bundle, boolean inResourcesSection) {
         EconomicMap<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
         String bundleNameAttribute = inResourcesSection ? BUNDLE_KEY : NAME_KEY;
-        checkAttributes(resource, "bundle descriptor object", Collections.singletonList(bundleNameAttribute), Arrays.asList(MODULE_KEY, "locales", "classNames", "condition"));
+        checkAttributes(resource, "bundle descriptor object", Collections.singletonList(bundleNameAttribute), Arrays.asList(MODULE_KEY, "locales", "classNames", CONDITIONAL_KEY, REASON_KEY));
         String basename = asString(resource.get(bundleNameAttribute));
         TypeResult<C> resolvedAccessCondition = conditionResolver.resolveCondition(parseCondition(resource));
         if (!resolvedAccessCondition.isPresent()) {
@@ -126,7 +126,7 @@ public abstract class ResourceConfigurationParser<C> extends ConditionalConfigur
     protected void parseGlobEntry(Object data, GlobPatternConsumer<C> resourceRegistry) {
         EconomicMap<String, Object> globObject = asMap(data, "Elements of 'globs' list must be a glob descriptor objects");
         checkAttributes(globObject, "glob resource descriptor object", Collections.singletonList(GLOB_KEY),
-                        List.of(CONDITIONAL_KEY, MODULE_KEY));
+                        List.of(CONDITIONAL_KEY, MODULE_KEY, REASON_KEY));
         TypeResult<C> resolvedAccessCondition = conditionResolver.resolveCondition(parseCondition(globObject));
         if (!resolvedAccessCondition.isPresent()) {
             return;

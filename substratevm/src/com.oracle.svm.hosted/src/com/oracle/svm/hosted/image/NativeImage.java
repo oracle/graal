@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.image;
 
-import com.oracle.svm.hosted.CHeaderGuestValue;
 import static com.oracle.svm.shared.util.SubstrateUtil.mangleName;
 import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 
@@ -48,6 +47,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -81,27 +81,29 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.c.function.GraalIsolateHeader;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.graal.code.CGlobalDataDirectReference;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.TLABObjectHeaderConstant;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.pltgot.PLTGOTConfiguration;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.util.ByteFormattingUtil;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.c.CGlobalDataImpl;
+import com.oracle.svm.hosted.CHeaderGuestValue;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -537,7 +539,7 @@ public abstract class NativeImage extends AbstractImage {
             // Define symbols for the sections.
             if (codeCache.definesTextSectionBoundarySymbols()) {
                 objectFile.createDefinedSymbol(textSection.getName(), textSection, 0, 0, false, false, false);
-                if (ImageLayerBuildingSupport.buildingImageLayer() || SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                if (ImageLayerBuildingSupport.buildingImageLayer() || SubstrateOptions.DeleteLocalSymbols.getValue() || DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
                     /* add a dummy function symbol at the start of the code section */
                     objectFile.createDefinedSymbol(getTextSectionStartSymbol(), textSection, 0, 0, true, true, true);
                 }
@@ -735,7 +737,7 @@ public abstract class NativeImage extends AbstractImage {
             validateNoDirectRelocationsInTextSection(info);
         }
 
-        ResolvedJavaMethod method = ((MethodRef) targetObject).getMethod();
+        ResolvedJavaMethod method = MethodRefSupport.getMethod((MethodRef) targetObject);
         HostedMethod hMethod = (method instanceof HostedMethod) ? (HostedMethod) method : heap.hUniverse.lookup(method);
         boolean injectedNotCompiled = isInjectedNotCompiled(hMethod);
         HostedMethod target = getMethodRefTargetMethod(metaAccess, hMethod);
@@ -765,7 +767,7 @@ public abstract class NativeImage extends AbstractImage {
         return !target.isCompiled() && !target.isCompiledInPriorLayer();
     }
 
-    static HostedMethod getMethodRefTargetMethod(HostedMetaAccess metaAccess, HostedMethod method) {
+    public static HostedMethod getMethodRefTargetMethod(HostedMetaAccess metaAccess, HostedMethod method) {
         if (isInjectedNotCompiled(method)) {
             return metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
         }
@@ -975,6 +977,15 @@ public abstract class NativeImage extends AbstractImage {
         return objectFile;
     }
 
+    /**
+     * Returns whether code-emission state must remain available while the object file is written.
+     * Debug-info generation consumes compilation data during object-file writing. Windows unwind
+     * metadata uses its own snapshot captured before code emission.
+     */
+    public static boolean isCodeEmissionStateRequiredForImageWrite() {
+        return SubstrateOptions.useDebugInfoGeneration();
+    }
+
     public abstract static class NativeTextSectionImpl extends BasicProgbitsSectionImpl {
         DeadlockWatchdog watchdog = DeadlockWatchdog.singleton();
 
@@ -1008,22 +1019,11 @@ public abstract class NativeImage extends AbstractImage {
         protected void writeTextSection(DebugContext debug, final Section textSection, final List<HostedMethod> entryPoints) {
             try (Indent _ = debug.logAndIndent("TextImpl.writeTextSection")) {
                 /*
-                 * Write the text content. For slightly complicated reasons, we now call
-                 * patchMethods in two places -- but it only happens once for any given image build.
-                 *
-                 * - If we're generating relocatable code, we do it now, and generate relocation
-                 * records from the RelocationMap data that we get out. These relocation records
-                 * stay in the output file.
-                 *
-                 * - If we are generating a shared library, we don't need these relocation records,
-                 * because once we have fixed vaddrs, we can use rip-relative addressing and we
-                 * won't need to do load-time relocation for these references. In this case, we
-                 * instead call patchMethods *during* write-out, to fix up these cross-section
-                 * PC-relative references.
-                 *
-                 * This late fix-up of text references is the only reason why we need a custom
-                 * implementation for the text section. We can save a lot of load-time relocation by
-                 * exploiting PC-relative addressing in this way.
+                 * Define method symbols before patching and writing code into the text buffer.
+                 * Patching records the relocations needed by object-file writing. Once a
+                 * compilation has been written, its code-emission state can be released unless
+                 * native debug-info generation still needs it. Platform unwind inputs have already
+                 * been captured before this step.
                  */
 
                 /*
@@ -1088,14 +1088,8 @@ public abstract class NativeImage extends AbstractImage {
 
                 // the map starts out empty...
                 assert !textBuffer.hasRelocations();
-                codeCache.patchMethods(debug, textBuffer, objectFile);
+                codeCache.patchAndWriteCode(debug, textBuffer, objectFile, !isCodeEmissionStateRequiredForImageWrite());
                 // but now may be populated
-
-                /*
-                 * Blat the text-reference-patched (but rodata-reference-unpatched) code cache into
-                 * our byte array.
-                 */
-                codeCache.writeCode(textBuffer);
                 if (PLTGOTConfiguration.isEnabled()) {
                     PLTSupport pltSupport = HostedPLTGOTConfiguration.singleton().getPLTSupport();
                     pltSupport.writeToTextSection(textBuffer, objectFile, textSection);

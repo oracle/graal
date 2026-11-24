@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,19 +27,18 @@ package com.oracle.svm.core.jdk.runtimeinit;
 
 import java.nio.file.FileSystem;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
-import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.KeepOriginal;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.FileSystemProvidersInitializedAtRunTime;
 import com.oracle.svm.core.jdk.buildtimeinit.FileSystemProviderBuildTimeInitSupport;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
@@ -55,26 +54,25 @@ import com.oracle.svm.shared.util.ReflectionUtil;
 public final class FileSystemProviderRunTimeInitSupport {
 }
 
-@AutomaticallyRegisteredFeature
-final class FileSystemProviderRunTimeInitFeature implements InternalFeature {
+@TargetClass(value = FileSystemProvider.class, onlyWith = FileSystemProvidersInitializedAtRunTime.class)
+final class Target_java_nio_file_spi_FileSystemProvider_RunTime {
+    @Alias
+    @KeepOriginal
+    @TargetElement(name = "loadInstalledProviders")
+    private static native List<FileSystemProvider> loadInstalledProvidersOriginal();
 
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime() && ImageLayerBuildingSupport.firstImageBuild();
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime()) {
-            /*
-             * Explicitly register NativeImageResourceFileSystemProvider for reflective
-             * instantiation. Normally, the ServiceLoaderFeature does this as well, but in case it
-             * is turned off (-H:-UseServiceLoaderFeature), we should still at least register our
-             * own provider.
-             */
-            RuntimeReflection.register(NativeImageResourceFileSystemProvider.class);
-            RuntimeReflection.registerForReflectiveInstantiation(NativeImageResourceFileSystemProvider.class);
-        }
+    /// Preserve JDK discovery for application providers, then reserve this image's configured
+    /// resource scheme for the embedded-resource provider.
+    @Substitute
+    private static List<FileSystemProvider> loadInstalledProviders() {
+        List<FileSystemProvider> providers = loadInstalledProvidersOriginal();
+        NativeImageResourceFileSystemProvider resourceProvider = new NativeImageResourceFileSystemProvider();
+        String resourceScheme = resourceProvider.getScheme();
+        // Collision handling must match build-time initialization: the embedded-resource provider
+        // takes precedence for its configured scheme.
+        providers.removeIf(provider -> provider.getScheme().equalsIgnoreCase(resourceScheme));
+        providers.add(resourceProvider);
+        return providers;
     }
 }
 

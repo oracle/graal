@@ -24,16 +24,15 @@
  */
 package com.oracle.svm.core.hub;
 
-import com.oracle.svm.jvmci.shared.meta.SharedType;
+import com.oracle.svm.core.graal.meta.TypeCheckInfoProvider.TypeCheckInfo;
 
 /**
- * Provides access to the {@link DynamicHub} associated with a shared type.
+ * Provides access to the {@link DynamicHub} associated with type metadata.
  */
 public interface DynamicHubProvider {
 
     DynamicHub getHub();
 
-    static DynamicHub getHub(SharedType type) {
-        return ((DynamicHubProvider) type).getHub();
-    }
+    /** The physical type-check constants associated with this type. */
+    TypeCheckInfo getTypeCheckInfo();
 }

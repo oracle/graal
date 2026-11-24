@@ -43,6 +43,7 @@ import jdk.graal.compiler.nodes.ControlSinkNode;
 import jdk.graal.compiler.nodes.DeadEndNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.EndNode;
+import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
 import jdk.graal.compiler.nodes.FrameState;
@@ -53,15 +54,20 @@ import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.MergeNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PhiNode;
+import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ProfileData;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
+import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.phases.common.priorityinline.InliningProvider;
+import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public class DevirtualizationUtil {
@@ -154,6 +160,15 @@ public class DevirtualizationUtil {
         // Setup merge and Phi nodes for results and exceptions.
         StructuredGraph graph = invoke.asNode().graph();
         Graph.Mark newNodesMark = graph.getMark();
+        FixedGuardNode receiverCheck = findInterfaceReceiverCheck(invoke, devirtualizations);
+        ValueNode checkedReceiver = null;
+        if (receiverCheck != null) {
+            checkedReceiver = invoke.callTarget().arguments().get(0);
+            // Exact dispatch cases must not depend on the membership check that moves to the miss.
+            invoke.callTarget().arguments().set(0, ((InstanceOfNode) receiverCheck.getCondition()).getValue());
+            receiverCheck.setNext(null);
+            receiverCheck.replaceAtPredecessor(invoke.asFixedNode());
+        }
         FixedNode continuation = invoke.next();
         MergeNode returnMerge = graph.add(new MergeNode());
         returnMerge.setStateAfter((FrameState) invoke.stateAfter().copyWithInputs());
@@ -207,6 +222,12 @@ public class DevirtualizationUtil {
                             devirtualization);
         }
 
+        if (receiverCheck != null) {
+            // Preserve the original check and its state before the unmatched invoke or deopt.
+            graph.addBeforeFixed(invoke.asFixedNode(), receiverCheck);
+            invoke.callTarget().arguments().set(0, checkedReceiver);
+        }
+
         if (useDeoptAsFallback) {
             // We need no fallback => remove original invoke and replace with a deopt or dead end.
             ControlSinkNode sink;
@@ -224,8 +245,75 @@ public class DevirtualizationUtil {
         if (trackCanonicalizable != null) {
             EconomicSet<Node> newNodes = EconomicSet.create();
             newNodes.addAll(graph.getNewNodes(newNodesMark));
+            if (receiverCheck != null) {
+                newNodes.add(receiverCheck);
+                if (checkedReceiver.isAlive()) {
+                    newNodes.add(checkedReceiver);
+                }
+            }
             trackCanonicalizable.accept(newNodes);
         }
+    }
+
+    /// Finds an adjacent membership check that every exact receiver dispatch case proves. The
+    /// symbolic interface `I` may inherit the invoked method from a parent interface; implementing
+    /// that parent alone does not satisfy the check against `I`.
+    ///
+    /// The recognized control-flow pattern contains a guard immediately before the interface invoke:
+    ///
+    /// ```
+    /// guard = FixedGuard(receiver instanceof I, ClassCastException, None)
+    /// checkedReceiver = Pi(receiver, nonNull(I), guard)
+    /// invokeinterface I.m(checkedReceiver)
+    /// ```
+    ///
+    /// The `Pi` is optional when the guard has no users:
+    ///
+    /// ```
+    /// FixedGuard(receiver instanceof I, ClassCastException, None)
+    /// invokeinterface I.m(receiver)
+    /// ```
+    ///
+    /// When present, the `Pi` must be the guard's only user, and its only use must be the invoke's
+    /// receiver argument. This allows exact dispatch cases to use the original receiver without
+    /// depending on the guard that moves to the unmatched path. No intervening control-flow node
+    /// may separate the guard and invoke, so moving the guard cannot cross argument evaluation or
+    /// other effects.
+    ///
+    /// Every dispatch case must test an exact receiver class that implements `I`. A successful
+    /// case supplies an exact, non-null `Pi` for its direct invoke. The caller moves the membership
+    /// guard and its original `Pi`, if present, to the unmatched path before the fallback.
+    ///
+    /// The fallback is the original interface invoke or a deoptimization before any target body
+    /// executes. Dispatch based only on a resolved method is insufficient: a receiver outside `I`
+    /// can inherit the same implementation as a valid receiver. Such dispatches, and checks with
+    /// other dependents, remain unchanged.
+    private static FixedGuardNode findInterfaceReceiverCheck(Invoke invoke, List<Devirtualization> devirtualizations) {
+        if (!invoke.callTarget().invokeKind().isInterface() || !(invoke.asNode().predecessor() instanceof FixedGuardNode guard) ||
+                        !(guard.predecessor() instanceof FixedWithNextNode) || guard.isNegated() || guard.getReason() != DeoptimizationReason.ClassCastException ||
+                        guard.getAction() != DeoptimizationAction.None || !(guard.getCondition() instanceof InstanceOfNode instanceOf)) {
+            return null;
+        }
+        ResolvedJavaType symbolicType = invoke.callTarget().referencedType();
+        if (symbolicType == null || !symbolicType.isInterface() || !symbolicType.equals(instanceOf.getCheckedStamp().type()) ||
+                        instanceOf.getCheckedStamp().isExactType() || !instanceOf.getCheckedStamp().nonNull()) {
+            return null;
+        }
+        ValueNode receiver = invoke.callTarget().arguments().get(0);
+        if (receiver instanceof PiNode pi && pi.getGuard() == guard) {
+            if (pi.object() != instanceOf.getValue() || !pi.hasExactlyOneUsage() || pi.usages().first() != invoke.callTarget() ||
+                            !guard.hasExactlyOneUsage() || guard.usages().first() != pi) {
+                return null;
+            }
+        } else if (receiver != instanceOf.getValue() || !guard.hasNoUsages()) {
+            return null;
+        }
+        for (Devirtualization devirtualization : devirtualizations) {
+            if (!(devirtualization instanceof ReceiverBasedDevirtualization receiverDispatch) || !symbolicType.isAssignableFrom(receiverDispatch.dispatchedType())) {
+                return null;
+            }
+        }
+        return guard;
     }
 
     @SuppressWarnings("try")

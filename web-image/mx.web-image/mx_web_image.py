@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -533,6 +533,8 @@ class WebImageSpecTestConfig(mx_unittest.MxUnittestConfig):
         main_class_args += [
             "-JUnitOpenPackages",
             "jdk.internal.vm.ci/jdk.vm.ci.meta.annotation=jdk.graal.compiler.vmaccess",
+            "-JUnitOpenPackages",
+            "java.base/jdk.internal.module=jdk.graal.compiler.vmaccess",
         ]
 
         return vm_args, main_class, main_class_args

@@ -50,22 +50,22 @@ import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.metaspace.MetaspaceImpl;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
-import com.oracle.svm.core.heap.GC;
-import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.GC;
+import com.oracle.svm.guest.staging.core.heap.GCCause;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
-import com.oracle.svm.core.heap.ObjectHeader;
-import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
+import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.ReferenceInternals;
-import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
+import com.oracle.svm.guest.staging.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SystemGCEvent;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.thread.PlatformThreads;
@@ -88,6 +88,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.shared.util.VMError;
@@ -170,14 +171,16 @@ public final class HeapImpl extends Heap {
             ChunkBasedCommittedMemoryProvider.get().uncommitUnusedMemory();
         }
 
-        if (mode == Mode.CONSERVATIVE) {
-            getChunkProvider().cleanUnusedAlignedChunks();
-        } else if (mode == Mode.BALANCED || mode == Mode.SIZE) {
-            boolean cleanFillerObjectMemory = mode == Mode.SIZE;
+        if (mode == Mode.CONSERVATIVE || mode == Mode.BALANCED || mode == Mode.SIZE) {
+            boolean cleanFillerObjectMemory = mode == Mode.CONSERVATIVE || mode == Mode.SIZE;
             getHeapImpl().makeParseable();
             getYoungGeneration().clean(true, cleanFillerObjectMemory);
             getOldGeneration().clean(true, cleanFillerObjectMemory);
             getChunkProvider().cleanUnusedAlignedChunks();
+        }
+
+        if (mode != Mode.LATENCY) {
+            gcImpl.cleanUnusedNativeMemory();
         }
     }
 
@@ -287,10 +290,16 @@ public final class HeapImpl extends Heap {
     }
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */
-    static void exitIfAllocationDisallowed(String callSite, String typeName) {
+    @AlwaysInline("Keep the allocation validity check inline in allocation slow paths.")
+    static void exitIfAllocationDisallowed(String callSite, DynamicHub hub) {
         if (HeapImpl.getHeapImpl().isAllocationDisallowed()) {
-            throw NoAllocationVerifier.exit(callSite, typeName);
+            throw reportAllocationDisallowed(callSite, hub);
         }
+    }
+
+    @NeverInline("Keep allocation failure diagnostics out of allocation slow paths.")
+    private static RuntimeException reportAllocationDisallowed(String callSite, DynamicHub hub) {
+        return NoAllocationVerifier.exit(callSite, hub.getName());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -401,7 +410,7 @@ public final class HeapImpl extends Heap {
      * dynamic hubs were collected, this visitor throws a {@link FoundAllHubsException}.
      */
     private static class ClassListBuilderVisitor implements MemoryWalker.ImageHeapRegionVisitor, ObjectVisitor {
-        private static final FoundAllHubsException FOUND_ALL_HUBS_EXCEPTION = new FoundAllHubsException();
+        private static final FoundAllHubsException FOUND_ALL_HUBS_EXCEPTION = PreallocatedExceptions.prepare(new FoundAllHubsException());
 
         private final int dynamicHubCount;
         private final List<Class<?>> list;
@@ -742,7 +751,7 @@ public final class HeapImpl extends Heap {
 
         if (objectHeaderImpl.isEncodedObjectHeader((Word) value)) {
             log.string("is the encoded object header for an object of type ");
-            DynamicHub hub = objectHeaderImpl.dynamicHubFromObjectHeader((Word) value);
+            DynamicHub hub = (DynamicHub) objectHeaderImpl.dynamicHubFromObjectHeader((Word) value);
             log.string(hub.getName());
             return true;
         }
@@ -891,7 +900,10 @@ public final class HeapImpl extends Heap {
 
         if (allowJavaHeapAccess) {
             // Accessing chunks is safe if we prevent a GC.
-            if (YoungGeneration.getHeapAllocation().printLocationInfo(log, ptr)) {
+            if (YoungGeneration.getEdenAllocation().printLocationInfo(log, ptr)) {
+                return true;
+            }
+            if (YoungGeneration.getPinnedAllocation().printLocationInfo(log, ptr)) {
                 return true;
             }
         }
@@ -1031,7 +1043,7 @@ public final class HeapImpl extends Heap {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            log.string("Heap chunks: E=eden, S=survivor, O=old, F=free; A=aligned chunk, U=unaligned chunk; T=to space").indent(true);
+            log.string("Heap chunks: E=eden, S=survivor, O=old, F=free; A=aligned chunk, U=unaligned chunk; T=to space; *=all-pinned").indent(true);
             boolean allowUnsafe = invocationCount == 1 && SubstrateDiagnostics.DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel);
             HeapImpl.getHeapImpl().logChunks(log, allowUnsafe);
             log.indent(false);
@@ -1069,7 +1081,10 @@ public final class HeapImpl extends Heap {
 final class Target_java_lang_Runtime {
     @Substitute
     private long freeMemory() {
-        return maxMemory() - HeapImpl.getAccounting().getUsedBytes().rawValue();
+        /* Heap usage may exceed the configured maximum. Report zero free memory in that case. */
+        UnsignedWord maximum = Word.unsigned(maxMemory());
+        UnsignedWord used = HeapImpl.getAccounting().getUsedBytes();
+        return maximum.aboveThan(used) ? maximum.subtract(used).rawValue() : 0;
     }
 
     @Substitute

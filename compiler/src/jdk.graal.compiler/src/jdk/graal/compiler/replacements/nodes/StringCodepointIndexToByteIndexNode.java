@@ -134,6 +134,11 @@ public final class StringCodepointIndexToByteIndexNode extends PureFunctionStubI
     }
 
     @Override
+    public boolean needsExplicitZeroExtension(Architecture arch) {
+        return false;
+    }
+
+    @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitCodepointIndexToByteIndex(inputEncoding, getRuntimeCheckedCPUFeatures(), gen.operand(array), gen.operand(offset), gen.operand(length),
                         gen.operand(index)));

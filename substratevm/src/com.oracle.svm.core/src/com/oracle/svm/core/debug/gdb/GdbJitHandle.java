@@ -28,7 +28,7 @@ package com.oracle.svm.core.debug.gdb;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 
-import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 
 /**

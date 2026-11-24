@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,6 +65,10 @@ public interface BigBang extends ReachabilityAnalysis {
 
     boolean isPointsToAnalysis();
 
+    boolean conditionalEliminationBeforeAnalysis();
+
+    boolean escapeAnalysisBeforeAnalysis();
+
     /**
      * Checks if all user defined limitations such as the number of types are satisfied.
      */
@@ -113,10 +117,6 @@ public interface BigBang extends ReachabilityAnalysis {
      */
     @SuppressWarnings("unused")
     default void onFieldAccessed(AnalysisField field) {
-    }
-
-    @SuppressWarnings("unused")
-    default void injectFieldTypes(AnalysisField aField, List<AnalysisType> customTypes, boolean canBeNull) {
     }
 
     @SuppressWarnings("unused")

@@ -72,7 +72,7 @@ import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.util.ByteFormattingUtil;

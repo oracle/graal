@@ -218,8 +218,6 @@ public abstract class AbstractBinarySuite {
 
         private byte[] generateCodeSection() {
             ByteArrayList b = new ByteArrayList();
-            b.add(getByte("0A"));
-            b.add((byte) 0); // length is patched at the end
             final int functionCount = types.size();
             b.addUnsignedInt32(functionCount);
             for (int i = 0; i < functionCount; i++) {
@@ -227,8 +225,12 @@ public abstract class AbstractBinarySuite {
                 b.addUnsignedInt32(body.length);
                 b.addRange(body, 0, body.length);
             }
-            b.set(1, (byte) (b.size() - 2));
-            return b.toArray();
+            byte[] payload = b.toArray();
+            ByteArrayList section = new ByteArrayList();
+            section.add(getByte("0A"));
+            section.addUnsignedInt32(payload.length);
+            section.addRange(payload, 0, payload.length);
+            return section.toArray();
         }
 
         private static byte[] generateFunctionBody(int[] locals, byte[] code) {

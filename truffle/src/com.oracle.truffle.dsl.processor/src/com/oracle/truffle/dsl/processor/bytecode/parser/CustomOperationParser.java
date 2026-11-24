@@ -159,6 +159,13 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         TypeElement typeElement = (TypeElement) element;
+        /*
+         * NodeParser processes proxyable nodes first. If it rejected the execute metadata, there is
+         * no valid signature to parse as an operation and a second model would lose those errors.
+         */
+        if (NodeParser.hasInvalidExecutionMetadata(typeElement)) {
+            return null;
+        }
         if (annotationMirrors.size() != 1) {
             throw new IllegalArgumentException(String.format("Expected element %s to have one %s annotation, but %d found.", typeElement.getSimpleName(), annotationType, annotationMirrors.size()));
         }
@@ -348,23 +355,53 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     }
 
     private void parseStoreBytecodeIndex(AnnotationMirror mirror, OperationModel operation) {
-        if (!parent.storeBciInFrame) {
-            return;
-        }
-
         CustomOperationModel custom = operation.customModel;
         if (custom == null) {
             return;
         }
 
+        if (!parent.needsBciSlot()) {
+            if (forProxyValidation || operation.getNodeData() == null) {
+                return;
+            }
+            AnnotationMirror proxyableMirror = resolveProxyableAnnotationMirror(mirror);
+            Boolean explicitStore = proxyableMirror == null ? null : ElementUtils.getAnnotationValue(Boolean.class, proxyableMirror, "storeBytecodeIndex", false);
+            AnnotationValue proxyValue = resolveProxyableAnnotationValue(mirror);
+            boolean proxy = proxyValue != null;
+            String message = "Explicit bytecode index storage has no effect because this interpreter does not allocate a bytecode index frame slot.";
+            boolean annotatedSpecialization = false;
+            for (SpecializationData s : operation.getNodeData().getReachableSpecializations()) {
+                if (s.getMethod() == null) {
+                    continue;
+                }
+                AnnotationMirror store = ElementUtils.findAnnotationMirror(s.getMethod(), types.StoreBytecodeIndex);
+                if (store != null) {
+                    annotatedSpecialization = true;
+                    if (!proxy) {
+                        s.addSuppressableWarning(TruffleSuppressedWarnings.INTERPRETED_PERFORMANCE, store, null, message);
+                    }
+                }
+            }
+            if (proxy && (Boolean.TRUE.equals(explicitStore) || annotatedSpecialization)) {
+                parent.addSuppressableWarning(TruffleSuppressedWarnings.INTERPRETED_PERFORMANCE, mirror, proxyValue, message);
+            } else if (!proxy && Boolean.TRUE.equals(explicitStore)) {
+                custom.addSuppressableWarning(TruffleSuppressedWarnings.INTERPRETED_PERFORMANCE, message);
+            }
+            return;
+        }
+
         if (ElementUtils.typeEquals(mirror.getAnnotationType(), types.Yield)) {
-            // Since the frame escapes, yields always store the bytecode index.
-            custom.setStoreBytecodeIndex(true);
+            // Escaping frames require automatic storage, but MANUAL only stores on request.
+            custom.setStoreBytecodeIndex(parent.bytecodeIndexMode != BytecodeDSLModel.BytecodeIndexMode.MANUAL);
             return;
         }
 
         AnnotationMirror proxyableMirror = resolveProxyableAnnotationMirror(mirror);
-        custom.setStoreBytecodeIndex(ElementUtils.getAnnotationValue(Boolean.class, proxyableMirror, "storeBytecodeIndex", false));
+        Boolean storeBytecodeIndexValue = ElementUtils.getAnnotationValue(Boolean.class, proxyableMirror, "storeBytecodeIndex", false);
+        if (storeBytecodeIndexValue == null && parent.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.MANUAL) {
+            storeBytecodeIndexValue = false;
+        }
+        custom.setStoreBytecodeIndex(storeBytecodeIndexValue);
 
         if (operation.getNodeData() == null) {
             return;
@@ -372,17 +409,18 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         if (forProxyValidation && !custom.isStoreBytecodeIndexSet()) {
             /*
-             * We do not know whether storeBytecodeIndexInFrame is set when we validate nodes
-             * for @OperationProxy.Proxyable. Hence we emit a warning for @OperationProxy if its not
-             * yet set but needed. We then only continue validation if
-             * OperationProxy.Proxyable(storeBytecodeIndex=true|false) is explictly set. This avoids
-             * emitting warnings for all nodes even if they are not used for a root node without
-             * storeBytecodeIndexInFrame.
+             * We do not know the bytecode index mode when we validate nodes for
+             * @OperationProxy.Proxyable. Hence we emit a warning for @OperationProxy if it is not yet
+             * set but needed. We then only continue validation if
+             * OperationProxy.Proxyable(storeBytecodeIndex=true|false) is explicitly set. This
+             * avoids emitting warnings for all nodes even if they are not used by an interpreter
+             * that automatically stores bytecode indices.
              */
             return;
         }
 
-        if (custom.inferStoreBytecodeIndex() && !custom.isStoreBytecodeIndexSet()) {
+        boolean reportOptimizationWarnings = parent.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.FRAME;
+        if (reportOptimizationWarnings && custom.inferStoreBytecodeIndex() && !custom.isStoreBytecodeIndexSet()) {
             MessageContainer targetMessageContainer;
             AnnotationMirror proxyMirror;
             AnnotationValue proxyValue;
@@ -419,7 +457,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             return;
         }
 
-        if (custom.isStoreBytecodeIndexSet() && custom.isStoreBytecodeIndex() && !custom.inferStoreBytecodeIndex()) {
+        if (reportOptimizationWarnings && custom.isStoreBytecodeIndexSet() && custom.isStoreBytecodeIndex() && !custom.inferStoreBytecodeIndex()) {
             custom.addSuppressableWarning(
                             TruffleSuppressedWarnings.INTERPRETED_PERFORMANCE,
                             "The attribute @%s(storeBytecodeIndex=true) is set, but the DSL infers that this operation does need an updated bytecode index. Please suppress this warning if the DSL is wrong and the operation does need it.",
@@ -1139,11 +1177,24 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
      * Parses each specialization to a signature. Returns the list of signatures, or null if any of
      * them had errors.
      */
-    public static List<Signature> parseSpecializationSignatures(List<ExecutableElement> specializations, MessageContainer customOperation, ConstantOperandsModel constantOperands) {
+    public static List<Signature> parseSpecializationSignatures(List<ExecutableElement> specializations, NodeData node, ConstantOperandsModel constantOperands) {
+        return parseSpecializationSignatures(specializations, node, constantOperands, node.isBindFrame());
+    }
+
+    public static List<Signature> parseSpecializationSignatures(List<ExecutableElement> specializations, CustomOperationModel customOperation, ConstantOperandsModel constantOperands) {
+        boolean bindFrame = true;
+        AnnotationMirror annotation = ElementUtils.findAnnotationMirror(customOperation.getTemplateType(), types().OperationProxy_Proxyable);
+        if (annotation != null) {
+            bindFrame = ElementUtils.getAnnotationValue(Boolean.class, annotation, "bindFrame");
+        }
+        return parseSpecializationSignatures(specializations, customOperation, constantOperands, bindFrame);
+    }
+
+    private static List<Signature> parseSpecializationSignatures(List<ExecutableElement> specializations, MessageContainer customOperation, ConstantOperandsModel constantOperands, boolean bindFrame) {
         List<Signature> signatures = new ArrayList<>(specializations.size());
         SpecializationSignatureParser parser = new SpecializationSignatureParser(ProcessorContext.getInstance());
         for (ExecutableElement specialization : specializations) {
-            signatures.add(parser.parse(specialization, customOperation, constantOperands));
+            signatures.add(parser.parse(specialization, customOperation, constantOperands, bindFrame));
         }
         return signatures;
     }

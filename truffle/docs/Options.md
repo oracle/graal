@@ -136,12 +136,13 @@ These are internal options for debugging language implementations and tools.
 - `--engine.TriggerUncaughtExceptionHandlerForCancel` : Propagates cancel execution exception into UncaughtExceptionHandler. For testing purposes only.
 - `--engine.UseConservativeContextReferences` : Enables conservative context references. This allows invalid sharing between contexts. For testing purposes only.
 - `--engine.UsePreInitializedContext=true|false` : Use pre-initialized context when it's available (default: true).
-- `--engine.DebugCacheCompile=none|compiled|hot|aot|executed` : Policy to use to force compilation for executed call targets before persisting the engine. Possible values are:
-  - 'none':     No compilations will be persisted and existing compilations will be invalidated.
-  - 'compiled': No compilations will be forced but finished compilations will be persisted.
-  - 'hot':      (default) All started compilations will be completed and then persisted.
-  - 'aot':      All started and AOT compilable roots will be forced to compile and persisted.
-  - 'executed': All executed and all AOT compilable roots will be forced to compile.
+- `--engine.DebugCacheCompile=none|compiled|hot|aot|executed` : Compilation policy to apply before persisting the engine. Possible values are:
+  - 'none':     Invalidate existing compilations and persist no compiled code.
+  - 'compiled': Persist existing compiled code without forcing new compilations. Cancel unfinished compilations and wait for them to terminate.
+  - 'hot':      (default) Wait for pending compilations, then compile roots that meet the runtime compilation thresholds. Also compile the parent roots of valid on-stack replacement (OSR) compilations.
+  - 'aot':      Like 'hot', plus uninitialized roots that support AOT preparation.
+  - 'executed': Like 'aot', but compile initialized roots regardless of compilation thresholds.
+OSR roots themselves are not forced to compile.
 - `--engine.DebugCacheLoad` : Prepares the engine to take the stored engine from the static field instead of reading it from disk.
 - `--engine.DebugCachePreinitializeContext=true|false` : Preinitialize a new context with all languages that support it and that were used during the run (default: true).
 - `--engine.DebugCacheStore` : Prepares the engine for caching and stores it a static field instead of writing it to disk.

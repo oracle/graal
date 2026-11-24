@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package jdk.graal.compiler.replacements;
 import java.util.BitSet;
 
 import jdk.graal.compiler.api.replacements.Snippet.NonNullParameter;
+import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
@@ -54,9 +55,9 @@ public class NonNullParameterPlugin implements ParameterPlugin {
         }
         Stamp trusted = stamp.getTrustedStamp();
         assert trusted != null;
+        GraalError.guarantee(trusted instanceof ObjectStamp, "Non-Object parameter annotated with @NonNullParameter?");
         Stamp improvedTrusted = trusted.tryImproveWith(StampFactory.objectNonNull());
-        if (improvedTrusted == trusted || improvedTrusted == null) {
-            GraalError.guarantee(improvedTrusted != null, "Non-Object parameter annotated with @NonNullParameter?");
+        if (improvedTrusted == null) {
             return null;
         }
         Stamp uncheckedStamp = stamp.getUncheckedStamp();

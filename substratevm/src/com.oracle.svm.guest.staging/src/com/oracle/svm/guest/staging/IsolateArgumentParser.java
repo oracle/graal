@@ -51,6 +51,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues.Origin;
 import com.oracle.svm.guest.staging.c.CGlobalData;
 import com.oracle.svm.guest.staging.c.CGlobalDataFactory;
 import com.oracle.svm.guest.staging.c.function.CEntryPointCreateIsolateParameters;
@@ -385,19 +386,19 @@ public final class IsolateArgumentParser {
         int index = getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize);
         long addressSpaceSize = getLongOptionValue(index);
         if (getDefaultValues().get().read(index) != addressSpaceSize) {
-            SubstrateGCOptions.ReservedAddressSpaceSize.update(addressSpaceSize);
+            SubstrateGCOptions.ReservedAddressSpaceSize.update(addressSpaceSize, Origin.CommandLine);
         }
 
         index = getOptionIndex(SubstrateGuestOptions.AuxiliaryImagePathIsolateArgument);
         CCharPointer auxPath = getCCharPointerOptionValue(index);
         if (IsolateArgumentParser.getDefaultValues().get().read(index) != auxPath.rawValue()) {
-            SubstrateGuestOptions.AuxiliaryImagePathIsolateArgument.update(CTypeConversion.toJavaString(auxPath));
+            SubstrateGuestOptions.AuxiliaryImagePathIsolateArgument.update(CTypeConversion.toJavaString(auxPath), Origin.CommandLine);
         }
 
         index = getOptionIndex(SubstrateGuestOptions.AuxiliaryImageBytesIsolateArgument);
         long auxBytes = getLongOptionValue(index);
         if (IsolateArgumentParser.getDefaultValues().get().read(index) != auxBytes) {
-            SubstrateGuestOptions.AuxiliaryImageBytesIsolateArgument.update(auxBytes);
+            SubstrateGuestOptions.AuxiliaryImageBytesIsolateArgument.update(auxBytes, Origin.CommandLine);
         }
     }
 

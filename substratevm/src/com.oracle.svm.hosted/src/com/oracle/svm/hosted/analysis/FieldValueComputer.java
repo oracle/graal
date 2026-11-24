@@ -41,10 +41,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * Describes a hosted field whose value is unavailable until {@link #isAvailable()} returns
  * {@code true}. While an object value is unavailable, {@link #types()} and {@link #canBeNull()}
- * describe the field state that must be injected into the static analysis. An unavailable primitive
- * field uses its declared primitive state. Once the value becomes available, the field is handled
- * through {@link FieldValueInterceptionSupport} ({@code readFieldValue}) rather than a replacement
- * computation.
+ * supply value bounds and nullability for a conservative analysis summary. Open bounds must also
+ * cover unknown extension types; later hosted availability does not narrow that summary. Tracked
+ * primitive fields receive unconstrained values. Available values are read through
+ * {@link FieldValueInterceptionSupport} ({@code readFieldValue}).
  * <p>
  * Availability is polled rather than notified. Becoming available does not enqueue field
  * processing; a later scan, explicit {@link ImageHeapScanner#rescanRoot static-root rescan},

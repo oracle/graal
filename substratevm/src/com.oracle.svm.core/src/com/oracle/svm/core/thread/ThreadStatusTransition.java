@@ -41,7 +41,6 @@ import com.oracle.svm.shared.Uninterruptible;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.extended.ForeignCallNode;
-import jdk.graal.compiler.replacements.ReplacementsUtil;
 
 /**
  * This class contains the logic for all relevant thread status transitions.
@@ -61,7 +60,7 @@ public class ThreadStatusTransition {
      * only be called from snippets.
      */
     public static void fromJavaToNative() {
-        ReplacementsUtil.dynamicAssert(StatusSupport.isStatusJava(), "Thread status must be 'Java'.");
+        StatusSupport.assertStatusJava();
         VMThreads.StatusSupport.setStatusNative();
     }
 

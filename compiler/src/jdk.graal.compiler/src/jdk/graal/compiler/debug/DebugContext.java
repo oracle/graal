@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2343,7 +2343,8 @@ public final class DebugContext implements AutoCloseable {
             }
         }
 
-        String title = String.format("%s [id:%s compilation:%d compilation_id:%s]", compilableName, identity, compilationNr, compilationId);
+        // Some compiler threads prohibit class loading needed by numeric locale formatting.
+        String title = String.format("%s [id:%s compilation:%s compilation_id:%s]", compilableName, identity, compilationNr, compilationId);
         out.println(new String(new char[title.length()]).replace('\0', '#'));
         out.printf("%s%n", title);
         out.println(new String(new char[title.length()]).replace('\0', '~'));

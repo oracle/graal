@@ -45,17 +45,19 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.guest.staging.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.guest.staging.util.HostedByteBufferPointer;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.code.CEntryPointLiteralFeature;
@@ -138,6 +140,7 @@ public final class NativeImageHeapWriter {
             writeStaticFields(buffer, watchdog);
 
             heap.getLayouter().writeMetadata(buffer.getByteBuffer(), 0);
+            heap.clearWriteHeapState();
         }
         return sectionOffsetOfARelocatablePointer;
     }
@@ -213,7 +216,7 @@ public final class NativeImageHeapWriter {
         if (pltgotConfig != null) {
             GOTEntryAllocator gotAllocator = pltgotConfig.getGOTEntryAllocator();
             if (gotAllocator.queryGOTEntry(target) != GOTEntryAllocator.GOT_NO_ENTRY) {
-                return pltgotConfig.getPLTSupport().getMethodPLTStubCodeAddressOffset(target);
+                return pltgotConfig.getPLTSupport().getMethodPLTStubEntryOffset(target);
             }
         }
         return target.getCodeAddressOffset();
@@ -229,8 +232,7 @@ public final class NativeImageHeapWriter {
             ObjectInfo targetInfo = heap.getConstantInfo(target);
             verifyTargetDidNotChange(target, reason, targetInfo);
             if (usesHeapBase) {
-                int shift = compressEncoding.getShift();
-                writeReferenceValue(buffer, index, targetInfo.getOffset() >>> shift);
+                writeHeapRelativeReference(buffer, index, targetInfo.getOffset(), compressEncoding);
             } else {
                 addDirectRelocationWithoutAddend(buffer, index, referenceSize(), target);
             }
@@ -270,7 +272,7 @@ public final class NativeImageHeapWriter {
         HostedMetaAccess metaAccess = heap.hMetaAccess;
         if (constant instanceof PatchedWordConstant pwc) {
             if (pwc.getWord() instanceof MethodOffset methodOffset) {
-                ResolvedJavaMethod method = methodOffset.getMethod();
+                ResolvedJavaMethod method = MethodRefSupport.getMethod(methodOffset);
                 HostedMethod hMethod = (method instanceof HostedMethod hm) ? hm : metaAccess.getUniverse().lookup(method);
                 if (imageLayer && NativeImage.isInjectedNotCompiled(hMethod)) {
                     // Will be patched in a future layer (even if it ends up not compiled at all)
@@ -378,8 +380,13 @@ public final class NativeImageHeapWriter {
         }
     }
 
-    private void writeReferenceValue(RelocatableBuffer buffer, int index, long value) {
-        writeValue(buffer, index, value, referenceSize());
+    public static void writeHeapRelativeReference(RelocatableBuffer buffer, int index, long heapOffset, CompressEncoding compressEncoding) {
+        int shift = compressEncoding.getShift();
+        long encodedReference = heapOffset >>> shift;
+        if ((encodedReference << shift) != heapOffset) {
+            throw shouldNotReachHere("Reference compression shift discards non-zero bits: " + Long.toHexString(heapOffset));
+        }
+        writeValue(buffer, index, encodedReference, ObjectLayout.singleton().getReferenceSize());
     }
 
     private static void writeValue(RelocatableBuffer buffer, int index, long value, int size) {
@@ -512,7 +519,7 @@ public final class NativeImageHeapWriter {
                 writePrimitiveArray(info, buffer, objectLayout, kind, imageHeapArray.getArray(), length);
             } else {
                 constantReflection.forEachArrayElement(constant, (element, index) -> {
-                    long elementOffset = objectLayout.getArrayElementOffset(kind, index);
+                    long elementOffset = ObjectLayoutCompilerSupport.getArrayElementOffset(objectLayout, kind, index);
                     final int elementIndex = getIndexInBuffer(info, elementOffset);
                     writeConstant(buffer, elementIndex, kind, element, info, info);
                 });
@@ -523,7 +530,7 @@ public final class NativeImageHeapWriter {
     }
 
     private HostedByteBufferPointer getHashCodePtr(ObjectInfo info, ByteBuffer bufferBytes, ObjectLayout objectLayout, JavaKind kind, int length) {
-        return new HostedByteBufferPointer(bufferBytes, getIndexInBuffer(info, objectLayout.getArrayIdentityHashOffset(kind, length)));
+        return new HostedByteBufferPointer(bufferBytes, getIndexInBuffer(info, ObjectLayoutCompilerSupport.getArrayIdentityHashOffset(objectLayout, kind, length)));
     }
 
     private int getIndexInBuffer(ObjectInfo objInfo, long offset) {
@@ -540,7 +547,7 @@ public final class NativeImageHeapWriter {
      * Writes primitive-array payload bytes into the image heap buffer.
      */
     private void writePrimitiveArray(ObjectInfo info, RelocatableBuffer buffer, ObjectLayout objectLayout, JavaKind kind, JavaConstant array, int length) {
-        int elementIndex = getIndexInBuffer(info, objectLayout.getArrayElementOffset(kind, 0));
+        int elementIndex = getIndexInBuffer(info, ObjectLayoutCompilerSupport.getArrayElementOffset(objectLayout, kind, 0));
         GuestAccess.get().copyMemory(array, 0, length * kind.getByteCount(), buffer.getBackingArray(), elementIndex);
     }
 

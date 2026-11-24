@@ -48,17 +48,15 @@ import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
-/**
- * Manages VM-level lifecycle hooks for an isolate. These hooks are internal runtime callbacks and
- * are distinct from Java-level shutdown hooks registered with {@link Runtime#addShutdownHook}.
- * <p>
- * The VM-level hooks are executed in the following order:
- * <ol>
- * <li>Initialization hooks (always executed)</li>
- * <li>Startup hooks (only executed if {@link #initialize} is called)</li>
- * <li>Teardown hooks (always executed on isolate teardown, except for abnormal termination)</li>
- * </ol>
- */
+/// Manages VM-level lifecycle hooks for an isolate. These hooks are internal runtime callbacks and
+/// are distinct from Java-level shutdown hooks registered with [Runtime#addShutdownHook].
+///
+/// The VM-level hooks are executed in the following order:
+///
+/// 1. Initialization hooks (after parsing arguments supplied at isolate creation and initializing
+///    native libraries)
+/// 2. Startup hooks (only executed if [#initialize] is called)
+/// 3. Teardown hooks (always executed on isolate teardown, except for abnormal termination)
 @SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public final class RuntimeSupport implements VMRuntimeSupport, RuntimeStateSupport {
 
@@ -106,6 +104,10 @@ public final class RuntimeSupport implements VMRuntimeSupport, RuntimeStateSuppo
             IsolateArgumentParser.singleton().verifyOptionValues();
             HeapSizeVerifier.verifyHeapOptions();
 
+            if (SubstrateGuestOptions.PrintFlagsFinal.getValue()) {
+                RuntimeOptionParser.singleton().printFinalFlags();
+            }
+
             executeHooks(startupHooks);
             VMError.guarantee(initializationState.compareAndSet(InitializationState.InProgress, InitializationState.Done), "Only one thread can call the initialization");
         } else if (initializationState.get() != InitializationState.Done) {
@@ -113,13 +115,11 @@ public final class RuntimeSupport implements VMRuntimeSupport, RuntimeStateSuppo
         }
     }
 
-    /**
-     * Adds a VM-level initialization hook. Initialization hooks are executed during isolate
-     * initialization, before runtime options are parsed. The executed code should therefore not
-     * try to access any runtime options. If it is necessary to access a runtime option, then its
-     * value must be parsed early and accessed via
-     * {@code com.oracle.svm.guest.staging.IsolateArgumentParser}.
-     */
+    /// Adds a VM-level initialization hook. Initialization hooks run during isolate initialization,
+    /// after parsing arguments supplied at isolate creation and initializing native libraries.
+    /// Runtime options supplied later by an embedder, such as libgraal, may not yet be available.
+    /// Code that depends on those options should run in a VM-level startup hook.
+    /// Initialization hooks run before startup hooks and do not depend on [SubstrateGuestOptions#InitializeVM].
     public void addInitializationHook(Hook initHook) {
         addHook(initializationHooks, initHook);
     }

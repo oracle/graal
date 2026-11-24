@@ -30,6 +30,7 @@ import java.lang.invoke.MethodType;
 import org.graalvm.nativeimage.impl.ClassLoading;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.espresso.classfile.JavaVersion;
@@ -122,7 +123,7 @@ public final class CremaRuntimeAccess implements RuntimeAccess<InterpreterResolv
         try (var _ = ClassLoading.allowArbitraryClassLoading()) {
             Class<?> result = CremaSupport.singleton().resolveOrThrow(type, accessingClass);
             assert !result.isPrimitive();
-            return (InterpreterResolvedObjectType) DynamicHub.fromClass(result).getInterpreterType();
+            return (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(result));
         }
     }
 
@@ -176,7 +177,7 @@ public final class CremaRuntimeAccess implements RuntimeAccess<InterpreterResolv
     private static final class CremaKnownTypes implements KnownTypes<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> {
 
         static InterpreterResolvedJavaType fromJavaClass(Class<?> clazz) {
-            return (InterpreterResolvedJavaType) DynamicHub.fromClass(clazz).getInterpreterType();
+            return (InterpreterResolvedJavaType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz));
         }
 
         @Override

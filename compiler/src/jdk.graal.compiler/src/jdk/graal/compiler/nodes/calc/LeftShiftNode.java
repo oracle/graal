@@ -40,10 +40,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
-import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.PrimitiveConstant;
 
 @NodeInfo(shortName = "<<")
 public final class LeftShiftNode extends ShiftNode<Shl> {
@@ -106,28 +103,17 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
      * @see #tryReplaceWithMulNode()
      */
     public MulNode getEquivalentMulNode() {
-        if (this.getY().isConstant() && stamp(NodeView.DEFAULT) instanceof IntegerStamp selfStamp) {
-            Constant c = getY().asConstant();
-            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
-                IntegerStamp xStamp = (IntegerStamp) getX().stamp(NodeView.DEFAULT);
-                if (xStamp.getBits() == selfStamp.getBits()) {
-                    long shiftAmount = ((PrimitiveConstant) c).asLong();
-                    /*
-                     * The shift below is done in long arithmetic, but if the underlying values are
-                     * ints (or smaller), we must shift according to int semantics. So mask
-                     * accordingly.
-                     */
-                    if (selfStamp.getBits() <= Integer.SIZE) {
-                        shiftAmount &= CodeUtil.mask(CodeUtil.log2(Integer.SIZE));
-                    }
-                    /*
-                     * If shiftAmount == 63, this will give Long.MIN_VALUE, which is negative but
-                     * still correct as the multiplier. We have to do a shift here, computing this
-                     * as (long) Math.pow(2, 63) would round to the wrong value.
-                     */
-                    long multiplier = 1L << shiftAmount;
-                    return new MulNode(getX(), ConstantNode.forIntegerStamp(xStamp, multiplier));
-                }
+        if (getY().isJavaConstant() && stamp(NodeView.DEFAULT) instanceof IntegerStamp selfStamp) {
+            IntegerStamp xStamp = (IntegerStamp) getX().stamp(NodeView.DEFAULT);
+            if (xStamp.getBits() == selfStamp.getBits()) {
+                int shiftAmount = getConstantShiftAmount();
+                /*
+                 * If shiftAmount == 63, this will give Long.MIN_VALUE, which is negative but
+                 * still correct as the multiplier. We have to do a shift here, computing this
+                 * as (long) Math.pow(2, 63) would round to the wrong value.
+                 */
+                long multiplier = 1L << shiftAmount;
+                return new MulNode(getX(), ConstantNode.forIntegerStamp(xStamp, multiplier));
             }
         }
         return null;
@@ -150,7 +136,7 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
             if (forX instanceof ShiftNode) {
                 ShiftNode<?> other = (ShiftNode<?>) forX;
                 if (other.getY().isConstant()) {
-                    int otherAmount = other.getY().asJavaConstant().asInt() & mask;
+                    int otherAmount = other.getConstantShiftAmount();
                     if (other instanceof LeftShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {

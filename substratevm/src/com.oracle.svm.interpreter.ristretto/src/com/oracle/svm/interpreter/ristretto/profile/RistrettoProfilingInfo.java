@@ -46,7 +46,7 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
 
     @Override
     public int getCodeSize() {
-        return 0;
+        return methodProfile.getMethod().getCodeSize();
     }
 
     @Override
@@ -109,7 +109,7 @@ public class RistrettoProfilingInfo implements ProfilingInfo {
             return null;
         }
 
-        return null;
+        return methodProfile.getSwitchProbabilities(bci);
     }
 
     @Override

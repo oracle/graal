@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;

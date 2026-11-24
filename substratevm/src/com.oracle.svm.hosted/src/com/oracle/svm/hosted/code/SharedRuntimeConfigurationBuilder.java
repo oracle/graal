@@ -113,15 +113,16 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
         LoopsDataProvider loopsDataProvider = GraalConfiguration.runtimeInstance().createLoopsDataProvider();
 
-        Providers p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider,
+        Providers providers = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, snippetReflection, platformConfig,
+                        metaAccessExtensionProvider,
                         wordTypes, loopsDataProvider);
 
         /*
          * Use the snippet reflection provider during image building replacement. It will be
          * replaced by the GraalGraphObjectReplacer for run time compilation.
          */
-        Replacements replacements = createReplacements(p);
-        p = (Providers) replacements.getProviders();
+        Replacements replacements = createReplacements(providers);
+        providers = (Providers) replacements.getProviders();
 
         EnumMap<ConfigKind, SubstrateBackend> backends = new EnumMap<>(ConfigKind.class);
         for (ConfigKind config : ConfigKind.values()) {
@@ -141,7 +142,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
             }
         }
 
-        return new RuntimeConfiguration(p, backends, handlers);
+        return new RuntimeConfiguration(providers, backends, handlers);
     }
 
     protected abstract Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
@@ -163,7 +164,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
     protected abstract LoweringProvider createLoweringProvider(ForeignCallsProvider foreignCalls, MetaAccessExtensionProvider metaAccessExtensionProvider);
 
-    protected abstract Replacements createReplacements(Providers p);
+    protected abstract Replacements createReplacements(Providers providers);
 
     protected abstract CodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig);
 }

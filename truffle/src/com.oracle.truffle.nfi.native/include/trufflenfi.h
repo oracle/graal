@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -161,7 +161,10 @@ struct __TruffleNativeAPI {
     TruffleObject (*getClosureObject)(TruffleEnv *env, void *closure);
 
     /**
-     * Returns whether there is a pending exception from the last upcall.
+     * Returns whether there is a pending exception from an upcall. An earlier pending exception
+     * is temporarily cleared while a subsequent upcall runs and restored when it finishes,
+     * even if that subsequent upcall succeeds. Nested native calls made by the subsequent
+     * upcall see only exceptions from that upcall, not the earlier pending exception.
      */
     bool (*exceptionCheck)(TruffleEnv *env);
 };

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;

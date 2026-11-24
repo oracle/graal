@@ -105,7 +105,7 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public void addPredicated(PointsToAnalysis bb, TypeFlow<?> predicatedFlow) {
-        if (isAssignable && isSaturated() && bb.isClosed(filterType)) {
+        if (isAssignable && isSaturated() && bb.getExtensionPolicy().isTypeClosed(filterType)) {
             filterType.getTypeFlow(bb, includeNull).addPredicated(bb, predicatedFlow);
             return;
         }
@@ -114,7 +114,7 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
-        if (bb.isClosed(filterType)) {
+        if (bb.getExtensionPolicy().isTypeClosed(filterType)) {
             if (isAssignable) {
                 /*
                  * If the filter type is closed stop saturation propagation to dependent flows and
@@ -144,7 +144,7 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     protected void notifyUseOfSaturation(PointsToAnalysis bb, TypeFlow<?> use) {
-        if (bb.isClosed(filterType)) {
+        if (bb.getExtensionPolicy().isTypeClosed(filterType)) {
             if (isAssignable) {
                 swapAtUse(bb, filterType.getTypeFlow(bb, includeNull), use);
             } else {
@@ -157,7 +157,7 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     protected void notifyObserverOfSaturation(PointsToAnalysis bb, TypeFlow<?> observer) {
-        if (bb.isClosed(filterType)) {
+        if (bb.getExtensionPolicy().isTypeClosed(filterType)) {
             if (isAssignable) {
                 swapAtObserver(bb, filterType.getTypeFlow(bb, includeNull), observer);
             } else {

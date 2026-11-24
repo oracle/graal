@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -400,7 +400,7 @@ public class Loop {
                      * of the current split. this is generally not part of the branch, but after the
                      * branch.
                      */
-                    if (cfgLoop.getBlocks().contains(d) && firstSuccBlock.getPostdominator() != d) {
+                    if (cfgLoop.containsBlock(d) && firstSuccBlock.getPostdominator() != d) {
                         if (!visited.isMarked(d.getBeginNode())) {
                             visited.mark(d.getBeginNode());
                             work.add(d);
@@ -761,7 +761,8 @@ public class Loop {
         if (op instanceof LeftShiftNode) {
             LeftShiftNode shift = (LeftShiftNode) op;
             if (shift.getX() == base && shift.getY().isConstant()) {
-                return ConstantNode.forIntegerStamp(base.stamp(NodeView.DEFAULT), 1L << shift.getY().asJavaConstant().asInt(), base.graph());
+                int shiftAmount = shift.getConstantShiftAmount();
+                return ConstantNode.forIntegerStamp(base.stamp(NodeView.DEFAULT), 1L << shiftAmount, base.graph());
             }
         }
         return null;

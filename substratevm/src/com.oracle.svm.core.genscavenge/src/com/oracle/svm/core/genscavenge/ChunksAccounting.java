@@ -39,6 +39,7 @@ import org.graalvm.word.impl.Word;
 final class ChunksAccounting {
     private final ChunksAccounting parent;
     private long alignedCount;
+    private UnsignedWord alignedChunkBytes;
     private long unalignedCount;
     private UnsignedWord unalignedChunkBytes;
 
@@ -56,6 +57,7 @@ final class ChunksAccounting {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void reset() {
         alignedCount = 0L;
+        alignedChunkBytes = Word.zero();
         unalignedCount = 0L;
         unalignedChunkBytes = Word.zero();
     }
@@ -71,7 +73,7 @@ final class ChunksAccounting {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getAlignedChunkBytes() {
-        return Word.unsigned(alignedCount).multiply(HeapParameters.getAlignedHeapChunkSize());
+        return alignedChunkBytes;
     }
 
     public long getUnalignedChunkCount() {
@@ -84,32 +86,52 @@ final class ChunksAccounting {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void noteAlignedHeapChunk() {
+    void noteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk) {
+        noteAlignedHeapChunkWithCommittedSize(AlignedHeapChunk.getCommittedSize(chunk));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private void noteAlignedHeapChunkWithCommittedSize(UnsignedWord size) {
         alignedCount++;
+        alignedChunkBytes = alignedChunkBytes.add(size);
         if (parent != null) {
-            parent.noteAlignedHeapChunk();
+            parent.noteAlignedHeapChunkWithCommittedSize(size);
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void unnoteAlignedHeapChunk() {
+    void unnoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk) {
+        unnoteAlignedHeapChunkWithCommittedSize(AlignedHeapChunk.getCommittedSize(chunk));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private void unnoteAlignedHeapChunkWithCommittedSize(UnsignedWord size) {
         alignedCount--;
+        alignedChunkBytes = alignedChunkBytes.subtract(size);
         if (parent != null) {
-            parent.unnoteAlignedHeapChunk();
+            parent.unnoteAlignedHeapChunkWithCommittedSize(size);
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    void unnoteAlignedHeapChunkUncommittedBytes(UnsignedWord size) {
+        alignedChunkBytes = alignedChunkBytes.subtract(size);
+        if (parent != null) {
+            parent.unnoteAlignedHeapChunkUncommittedBytes(size);
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void noteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk) {
-        noteUnaligned(HeapChunk.getSize(chunk));
+        noteUnalignedHeapChunkWithSize(HeapChunk.getSize(chunk));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void noteUnaligned(UnsignedWord size) {
+    private void noteUnalignedHeapChunkWithSize(UnsignedWord size) {
         unalignedCount++;
         unalignedChunkBytes = unalignedChunkBytes.add(size);
         if (parent != null) {
-            parent.noteUnaligned(size);
+            parent.noteUnalignedHeapChunkWithSize(size);
         }
     }
 

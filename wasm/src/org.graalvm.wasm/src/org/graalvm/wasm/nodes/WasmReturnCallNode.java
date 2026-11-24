@@ -43,7 +43,6 @@ package org.graalvm.wasm.nodes;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmLanguage;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
@@ -51,6 +50,7 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnadoptableNode;
 
 @GenerateInline(false)
@@ -60,28 +60,29 @@ public abstract class WasmReturnCallNode extends Node {
     protected WasmReturnCallNode() {
     }
 
-    protected abstract Object execute(CallTarget target, Object[] args);
+    protected abstract Object execute(RootNode target, int bytecodeIndex, Object[] args);
 
     @Specialization(guards = "target == cachedTarget", limit = "INLINE_CACHE_LIMIT")
-    final Object doCached(@SuppressWarnings("unused") CallTarget target, Object[] args,
-                    @Cached("target") CallTarget cachedTarget) {
-        return cachedTarget.call(this, args);
+    final Object doCached(@SuppressWarnings("unused") RootNode target, int bytecodeIndex, Object[] args,
+                    @Cached(value = "target", adopt = false) RootNode cachedTarget) {
+        return cachedTarget.call(this, bytecodeIndex, args);
     }
 
     @Specialization(replaces = "doCached")
-    final Object doIndirect(CallTarget target, Object[] args) {
-        return target.call(this, args);
+    final Object doIndirect(RootNode target, int bytecodeIndex, Object[] args) {
+        return target.call(this, bytecodeIndex, args);
     }
 
-    public final Object call() {
+    public final Object call(int bytecodeIndex) {
         Object result;
         final WasmLanguage.ReturnCallData data = WasmLanguage.get(this).returnCallData();
         try {
             do {
-                result = execute(data.target, data.args);
+                // Tail callers are eliminated; retain the surviving ordinary caller's BCI.
+                result = execute(data.rootNode, bytecodeIndex, data.args);
             } while (result == WasmConstant.RETURN_CALL_VALUE);
         } finally {
-            data.target = null;
+            data.rootNode = null;
             data.args = null;
         }
         return result;
@@ -106,8 +107,8 @@ public abstract class WasmReturnCallNode extends Node {
         }
 
         @Override
-        public Object execute(CallTarget arg0Value, Object[] arg1Value) {
-            return doIndirect(arg0Value, arg1Value);
+        public Object execute(RootNode target, int bytecodeIndex, Object[] args) {
+            return doIndirect(target, bytecodeIndex, args);
         }
     }
 
@@ -117,10 +118,10 @@ public abstract class WasmReturnCallNode extends Node {
             final WasmLanguage.ReturnCallData data = WasmLanguage.get(null).returnCallData();
             try {
                 do {
-                    result = data.target.call(data.args);
+                    result = data.rootNode.call(null, -1, data.args);
                 } while (result == WasmConstant.RETURN_CALL_VALUE);
             } finally {
-                data.target = null;
+                data.rootNode = null;
                 data.args = null;
             }
         }

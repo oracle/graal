@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -157,7 +157,8 @@ public interface FrameInstance {
      * @return a node representing the callsite of the next new target on the stack. Returns
      *         <code>null</code> in case there is no upper target or location. The set of possible
      *         call nodes is restricted to any node that was passed to
-     *         {@link CallTarget#call(Node, Object...)} or the node set using
+     *         {@link CallTarget#call(Node, Object...)} or
+     *         {@link CallTarget#call(Node, int, Object[])} or the node set using
      *         {@link EncapsulatingNodeReference} when invoking {@link CallTarget#call(Object...)}.
      *         If a cached variant of {@link DirectCallNode} or {@link IndirectCallNode} was used
      *         then the call node will be the {@link DirectCallNode} or {@link IndirectCallNode}
@@ -199,11 +200,18 @@ public interface FrameInstance {
     CallTarget getCallTarget();
 
     /**
-     * Returns the resolved bytecode index for this frame instance if the root node returns one.
-     * This method returns a negative integer for invalid or an unavailable bytecode index. The
-     * meaning of negative bytecode indices is not specified and should not be relied upon across
-     * guest language implementations.
+     * Returns the bytecode index of this frame's call site.
+     * <p>
+     * If this frame called the next target on the stack using
+     * {@link CallTarget#call(Node, int, Object[])}, and the supplied bytecode index
+     * was not {@code -1}, returns that explicit index. Otherwise, returns the result
+     * of {@link RootNode#findBytecodeIndex(Node, Frame)} on the root node associated
+     * with this frame's {@link #getCallTarget()}.
+     * <p>
+     * Negative values indicate invalid or unavailable indices; their meaning is
+     * language-specific.
      *
+     * @return the BCI, or a negative value if invalid or unavailable
      * @see RootNode#findBytecodeIndex
      * @since 24.1
      */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -91,10 +91,27 @@ public class BC_l2f {
         }
     }
 
+    private static void testRounding(long value) {
+        System.out.println(Float.floatToRawIntBits(test(value)));
+    }
+
     public static void main(String[] args) {
         s0();
         s1();
         s2();
         s3();
+        for (long value : new long[]{18014399583223809L, -18014399583223809L, 0L, 1L, -1L, Long.MAX_VALUE, Long.MIN_VALUE}) {
+            testRounding(value);
+        }
+        for (int exponent = 24; exponent <= 62; exponent++) {
+            for (int mantissa = 0; mantissa < 2; mantissa++) {
+                // Exercise both tie-to-even directions and either side of each midpoint.
+                long midpoint = (1L << exponent) + ((2L * mantissa + 1) << (exponent - 24));
+                for (int delta = -1; delta <= 1; delta++) {
+                    testRounding(midpoint + delta);
+                    testRounding(-midpoint - delta);
+                }
+            }
+        }
     }
 }

@@ -314,7 +314,7 @@ The new bundle should be larger than the original.
 The reason, as can be guessed, is that now the bundle contains the _default.iprof_ file.
 Using a tool to compare directories, you can inspect the differences in detail.
 
-As you can see that _application-pgo-optimized.nib_ contains _default.iprof_ in the directory _input/auxiliary_, and there are also changes in other files. 
+The bundle _application-pgo-optimized.nib_ contains _default.iprof_ beneath a numbered directory in _input/auxiliary_, and there are also changes in other files.
 The contents of _META-INF/nibundle.properties_, _input/stage/path_substitutions.json_ and _input/stage/path_canonicalizations.json_ will be explained [later](#bundle-file-format). 
 Creating _application-pgo-optimized.nib_ on Linux AMD64 adds the following argument group to _build.json_:
 ```json
@@ -334,7 +334,7 @@ native-image --bundle-apply=application-pgo-optimized.nib
 
 As described later in [Bundle File Format](#bundle-file-format), a bundle file is a JAR file with a contained launcher for launching the bundled application.
 This means you can use a native image bundle with any JDK and execute it as a JAR file with `<jdk>/bin/java -jar [bundle-file.nib]`.
-The launcher uses the command line arguments stored in _run.json_ and adds all JAR files and directories in _input/classes/cp/_ and _input/classes/p/_ to the class path and module path, respectively.
+The launcher uses the command line arguments stored in _run.json_ and adds the captured entries recorded in _path_substitutions.json_ under _input/classes/cp/_ and _input/classes/p/_ to the class path and module path, respectively.
 
 The launcher also comes with a separate command-line interface described in its help text:
 ```
@@ -381,7 +381,7 @@ All remaining arguments are then also passed on to the bundled application.
 A bundle file is a JAR file with a well-defined internal layout.
 Inside a bundle you can find the following inner structure:
 
-```
+```text
 [bundle-file.nib]
 ├── META-INF
 │   ├── MANIFEST.MF
@@ -393,9 +393,19 @@ Inside a bundle you can find the following inner structure:
 ├── input <- All information required to rebuild the image
 │   ├── auxiliary <- Contains auxiliary files passed to native-image via arguments
 │   │                (for example, external `config-*.json` files or PGO `*.iprof`-files)
+│   │   └── 0
+│   │       └── config.json
 │   ├── classes   <- Contains all class-path and module-path entries passed to the builder
 │   │   ├── cp
+│   │   │   ├── 0
+│   │   │   │   └── application.jar
+│   │   │   └── 1
+│   │   │       └── classes <- Captured class directory
+│   │   │           └── example
+│   │   │               └── Main.class
 │   │   └── p
+│   │       └── 0
+│   │           └── module.jar
 │   └── stage
 │       ├── build.json          <- Full native-image command line (minus --bundle options)
 │       ├── container.json            <- Containerization tool, tool version and container
@@ -414,14 +424,16 @@ Inside a bundle you can find the following inner structure:
     │   ├── myimage.debug
     |   └── sources
     └── other      <- Other output created by the builder (not relative to image location)
+        └── build-output.json
 ```
 ### META-INF
 
 The bundle format version covers both the directory layout and the JSON representation of paths and build arguments.
 Two properties in _META-INF/nibundle.properties_ declare the format version of a bundle.
-Starting with GraalVM 25.5, Native Image writes the following bundle format version:
+Native Image writes the following bundle format version:
+
 ```properties
-BundleFileVersionMajor=2
+BundleFileVersionMajor=3
 BundleFileVersionMinor=0
 ```
 
@@ -434,7 +446,8 @@ The following table lists format changes and the GraalVM versions that introduce
 
 | Bundle Format | Introduced In | Changes |
 | --- | --- | --- |
-| 2.0 | GraalVM 25.5 | Added explicit path root kinds, source-platform groups for build arguments, and unavailable-input markers. |
+| 3.0 | GraalVM 25.6 (internal version 25.6.5) | Added numbered directories for captured inputs and Windows filename materialization. Output destinations are allocated independently of input substitutions. |
+| 2.0 | GraalVM 25.5 (internal version 25.5.5) | Added explicit path root kinds, source-platform groups for build arguments, and unavailable-input markers. |
 | 1.0 | [GraalVM 25.1.3](https://www.graalvm.org/release-notes/25.1/); also backported to [Oracle GraalVM 25.0.4](https://docs.oracle.com/en/graalvm/jdk/25/docs/release-notes/) | Added portable path maps with path style information for replay across platforms. |
 | 0.9 | [GraalVM for JDK 17](https://www.graalvm.org/release-notes/JDK_17/) and [GraalVM for JDK 20](https://www.graalvm.org/release-notes/JDK_20/), internal version 23.0.0 | Initial bundle format. |
 
@@ -443,6 +456,7 @@ The following table lists format changes and the GraalVM versions that introduce
 Newer Native Image versions can read and use bundles created with older bundle formats.
 Native Image reads both the untyped path maps used before format 1.0 and the portable path objects without `kind` used in format 1.0.
 It also reads the flat build argument arrays used before format 2.0, interpreting their paths using the bundle's recorded platform.
+Flat input layouts from formats through 2.0 remain supported when you apply or derive a bundle.
 
 Native Image rejects a bundle whose major format version is newer than the version it supports.
 A higher minor version within the same major version produces a warning, after which Native Image attempts to read the bundle.
@@ -459,7 +473,7 @@ It does not retain the original bundle's format version.
 
 This directory contains all input data that gets passed to the `native-image` builder. 
 The file _input/stage/build.json_ holds the original command line that was passed to `native-image` when the bundle was created.
-In format 2.0, this file contains an ordered array of argument groups.
+Starting with format 2.0, this file contains an ordered array of argument groups.
 Each group has a `platform` string and an `args` array of argument strings.
 When you create a new bundle from an existing one, additional arguments form a new group with the platform on which you added them.
 The group order preserves the command line order, and each platform determines how paths and path list separators in that group are interpreted.
@@ -473,9 +487,9 @@ These include:
 
 The state of environment variables that are relevant for the build are captured in _input/stage/environment.json_.
 For every `-E` argument that was seen when the bundle was created, a snapshot of its key-value pair is recorded in the file.
-The remaining files _path_canonicalizations.json_ and _path_substitutions.json_ contain a record of the file-path transformations that were performed by the `native-image` tool based on the input file paths as specified by the original command line arguments.
+The remaining files _path_canonicalizations.json_ and _path_substitutions.json_ record source-path canonicalizations and substitutions for captured or unavailable inputs, respectively.
 Each file contains an array of mappings with `src` and `dst` paths.
-In format 2.0, available paths have a `style`, a `kind`, and a `text` field.
+Starting with format 2.0, available paths have a `style`, a `kind`, and a `text` field.
 The `style` identifies Unix, Windows, or bundle-relative path syntax.
 The `kind` identifies the root semantics, including absolute and relative paths, Windows drive paths, and Windows network share paths.
 The `text` holds the path payload.
@@ -484,7 +498,7 @@ For example, a captured JAR can have the following substitution:
 [
   {
     "src": {"style": "Unix", "kind": "Absolute", "text": "work/application.jar"},
-    "dst": {"style": "BundleRelative", "kind": "Relative", "text": "input/classes/cp/application.jar"}
+    "dst": {"style": "BundleRelative", "kind": "Relative", "text": "input/classes/cp/0/application.jar"}
   }
 ]
 ```
@@ -502,6 +516,31 @@ If a native executable is built as part of building the bundle (for example, the
 It contains the executable that was built along with any other files that were generated as part of building.
 Most output files are located in the directory _output/default_ (the executable, its debug info, and debug sources).
 Builder output files, that would have been written to arbitrary absolute paths if the executable had not been built in the bundle mode, can be found in _output/other_.
+Auxiliary outputs are placed directly beneath _output/other_.
+They retain their basenames when those names are available; otherwise, a numeric suffix is added before the extension, such as _report_1.json_.
+When you apply a bundle, output locations are allocated again from the saved output options.
+
+### Numbered Entries
+
+Bundle format 3.0 stores each captured class-path, module-path, or auxiliary input in a separate numbered directory, preserving its original basename.
+When replaying on Windows, literal backslashes within filenames become U+FFFD replacement characters (`�`).
+Each category has an independent sequence:
+
+| Category | Bundle Path |
+| --- | --- |
+| Class path | `input/classes/cp/<number>/<basename>` |
+| Module path | `input/classes/p/<number>/<basename>` |
+| Auxiliary input | `input/auxiliary/<number>/<basename>` |
+
+Different inputs with the same basename receive different numbers.
+A captured directory occupies one numbered entry, with its contents preserved beneath it.
+Repeated `-cp` or `-p` options continue the corresponding sequence, and dependencies discovered through JAR manifest `Class-Path` attributes use the class-path sequence.
+The default image output directory remains _output/default_.
+
+The saved path substitutions retain each path's assigned location across replay and derivation.
+New inputs receive unused numbers, including when a previously assigned directory is empty.
+Derived bundles can contain both flat entries retained from older bundles and new numbered entries.
+The launcher supports both layouts.
 
 ### Related Documentation
 

@@ -308,8 +308,9 @@ public abstract class AMD64VectorArithmeticLIRGenerator extends AMD64ArithmeticL
 
     @Override
     public Variable emitLoad(LIRKind lirKind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder, MemoryExtendKind extendKind) {
-        assert extendKind.isNotExtended() : "Must not be extended " + extendKind;
         AMD64Kind kind = (AMD64Kind) lirKind.getPlatformKind();
+        GraalError.guarantee(extendKind.isNotExtended() || kind.isInteger(),
+                        "Only scalar integer loads support extensions: %s, %s", kind, extendKind);
         if (kind.getVectorLength() > 1) {
             assert !MemoryOrderMode.ordersMemoryAccesses(memoryOrder) : memoryOrder + " " + address + " " + state;
             return emitVectorLoad(lirKind, address, state);

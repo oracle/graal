@@ -28,8 +28,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.gc.shared.NativeGCOptions;
-import com.oracle.svm.core.heap.GC;
-import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.guest.staging.core.heap.GC;
+import com.oracle.svm.guest.staging.core.heap.GCCause;
 import com.oracle.svm.core.g1.nativelib.G1Library;
 
 public class G1GC implements GC {

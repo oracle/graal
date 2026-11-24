@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.deopt;
 
-import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.shared.Uninterruptible;

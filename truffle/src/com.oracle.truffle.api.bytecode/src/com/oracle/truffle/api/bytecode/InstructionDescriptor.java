@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,6 +88,21 @@ public abstract class InstructionDescriptor {
      * @since 25.1
      */
     public abstract int getOperationCode();
+
+    /**
+     * Returns the class defining the custom operation that produced this instruction. Quickened
+     * instructions return the same class as their unquickened instruction. For an
+     * {@link OperationProxy}, this is the proxied class, not a generated node class.
+     * <p>
+     * Returns {@code null} if the operation class is unavailable, including for built-in
+     * instructions and {@link ShortCircuitOperation short-circuit instructions}.
+     *
+     * @return the operation class, or {@code null} if unavailable
+     * @since 25.7
+     */
+    public Class<?> getOperationClass() {
+        return null;
+    }
 
     /**
      * Returns an immutable list describing the immediate arguments of this instruction. The list

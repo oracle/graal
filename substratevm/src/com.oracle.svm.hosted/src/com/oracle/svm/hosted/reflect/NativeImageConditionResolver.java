@@ -32,6 +32,7 @@ import com.oracle.svm.configure.UnresolvedAccessCondition;
 import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.TypeResult;
 
 public class NativeImageConditionResolver implements AccessConditionResolver<AccessCondition> {
@@ -52,7 +53,7 @@ public class NativeImageConditionResolver implements AccessConditionResolver<Acc
              * We don't want to track always reached types: we convert them into build-time
              * reachability checks.
              */
-            var runtimeChecked = !classInitializationSupport.isAlwaysReached(type) && unresolvedCondition.isRuntimeChecked();
+            var runtimeChecked = !classInitializationSupport.isAlwaysReached(GuestAccess.get().lookupType(type)) && unresolvedCondition.isRuntimeChecked();
             /* This condition might be typeReachable */
             return TypeReachabilityCondition.create(type, runtimeChecked);
         });

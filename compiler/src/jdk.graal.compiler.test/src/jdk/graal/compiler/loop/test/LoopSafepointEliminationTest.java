@@ -30,7 +30,15 @@ import org.junit.Test;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
+import jdk.graal.compiler.nodes.LoopEndNode;
+import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
+import jdk.graal.compiler.nodes.loop.Loop;
+import jdk.graal.compiler.nodes.loop.LoopsData;
+import jdk.graal.compiler.loop.phases.LoopSafepointEliminationPhase;
+import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
 import jdk.graal.compiler.nodes.SafepointNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
@@ -77,4 +85,66 @@ public class LoopSafepointEliminationTest extends GraalCompilerTest {
         test(options, "descendingLoopBeyondIntRangeSnippet", false);
         reset();
     }
+
+    public static void widenedCounterSnippet(int[] state, long limit) {
+        for (int i = 0; (long) i < limit; i++) {
+            state[i & 1] = i;
+        }
+    }
+
+    @BytecodeParserNeverInline
+    private static int bodyCall(int value) {
+        return value;
+    }
+
+    public static void widenedCounterWithCallSnippet(int[] state, long limit) {
+        for (int i = 0; (long) i < limit; i++) {
+            state[i & 1] = bodyCall(i);
+        }
+    }
+
+    @Test
+    public void testWrappingRootRetainsSafepoint() {
+        checkWidenedCounter("widenedCounterSnippet", (long) Integer.MAX_VALUE + 1, false, false);
+    }
+
+    @Test
+    public void testFiniteWideningDisablesSafepoint() {
+        checkWidenedCounter("widenedCounterSnippet", 1024, true, false);
+    }
+
+    @Test
+    public void testBodyCallStillDisablesSafepoint() {
+        checkWidenedCounter("widenedCounterWithCallSnippet", (long) Integer.MAX_VALUE + 1, false, true);
+    }
+
+    private void checkWidenedCounter(String snippet, long limit, boolean rootSafe, boolean bodySafepoint) {
+        OptionValues options = new OptionValues(getInitialOptions(), VectorIntrinsics.Options.Vectorization, false,
+                        GraalOptions.FullUnroll, false, GraalOptions.PartialUnroll, false, GraalOptions.LoopPeeling, false);
+        StructuredGraph graph = parseEager(snippet, StructuredGraph.AllowAssumptions.NO, options);
+        // Bind limit after parsing to retain the widened test (long) i < limit. The root is int i: limit =
+        // 1024 stops it before overflow, whereas 2147483648L does not. Safepoint elimination must see this
+        // distinction before deciding whether the loop needs its own poll.
+        graph.getParameter(1).replaceAndDelete(ConstantNode.forLong(limit, graph));
+        LoopsData loops = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
+        Assert.assertEquals(1, loops.loops().size());
+        Loop loop = loops.loops().get(0);
+        Assert.assertTrue(loop.detectCounted());
+        CountedLoopInfo counted = loop.counted();
+        Assert.assertNotSame(counted.getLimitCheckedIV(), counted.getLimitCheckedIV().getRootIV());
+        Assert.assertTrue(counted.counterNeverOverflows());
+        Assert.assertNull(counted.getOverFlowGuard());
+        Assert.assertEquals(rootSafe, counted.ivCanNeverOverflow(counted.getLimitCheckedIV().getRootIV()));
+        Assert.assertTrue(LoopSafepointEliminationPhase.iterationRangeIsIn32Bit(loop));
+        boolean hasBodySafepoint = false;
+        for (FixedNode node : loop.whole().nodes().filter(FixedNode.class)) {
+            hasBodySafepoint |= LoopSafepointEliminationPhase.canDisableSafepoint(node, getDefaultMidTierContext());
+        }
+        Assert.assertEquals(bodySafepoint, hasBodySafepoint);
+        new LoopSafepointEliminationPhase.SafepointOptimizer(graph, getDefaultMidTierContext()).optimizeSafepoints(loops).apply();
+        for (LoopEndNode end : loop.loopBegin().loopEnds()) {
+            Assert.assertEquals("A wrapping root needs a poll unless the body already safepoints", !rootSafe && !bodySafepoint, end.getSafepointState().canSafepoint());
+        }
+    }
+
 }

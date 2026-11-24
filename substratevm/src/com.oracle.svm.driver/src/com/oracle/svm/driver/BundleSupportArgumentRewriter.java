@@ -24,33 +24,26 @@
  */
 package com.oracle.svm.driver;
 
-import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiFunction;
 
 import com.oracle.svm.driver.BundlePathMap.PathStyle;
 import com.oracle.svm.driver.BundlePathMap.PortablePath;
+import com.oracle.svm.shared.option.BundleMember.Role;
 
 final class BundleSupportArgumentRewriter {
     private static final String OUTPUT_OPTION = "-o";
 
+    private final BundleSupport bundleSupport;
     private final APIOptionHandler apiOptionHandler;
     private final PathStyle sourcePathStyle;
-    private final Map<PortablePath, PortablePath> pathCanonicalizations;
-    private final Map<PortablePath, PortablePath> pathSubstitutions;
-    private final BiFunction<PortablePath, PortablePath, Path> lowerToNativePath;
 
-    BundleSupportArgumentRewriter(APIOptionHandler apiOptionHandler, PathStyle sourcePathStyle, Map<PortablePath, PortablePath> pathCanonicalizations,
-                    Map<PortablePath, PortablePath> pathSubstitutions, BiFunction<PortablePath, PortablePath, Path> lowerToNativePath) {
+    BundleSupportArgumentRewriter(BundleSupport bundleSupport, APIOptionHandler apiOptionHandler, PathStyle sourcePathStyle) {
+        this.bundleSupport = Objects.requireNonNull(bundleSupport);
         this.apiOptionHandler = Objects.requireNonNull(apiOptionHandler);
         this.sourcePathStyle = sourcePathStyle;
-        this.pathCanonicalizations = pathCanonicalizations;
-        this.pathSubstitutions = pathSubstitutions;
-        this.lowerToNativePath = lowerToNativePath;
     }
 
     /**
@@ -63,7 +56,8 @@ final class BundleSupportArgumentRewriter {
         while (!queue.isEmpty()) {
             DriverPathOptions.Match pathOption = DriverPathOptions.matchAny(queue);
             if (pathOption != null) {
-                rewritten.addAll(pathOption.render(pathOption.rewriteValue(sourcePathStyle, this::rewriteSinglePath)));
+                // All DriverPathOptions are input options -> rewrite with Role.Input
+                rewritten.addAll(pathOption.render(pathOption.rewriteValue(sourcePathStyle, path -> rewriteSinglePath(path, Role.Input))));
                 continue;
             }
 
@@ -97,21 +91,23 @@ final class BundleSupportArgumentRewriter {
         if (imageName == null) {
             throw NativeImage.showError("Invalid image output argument '" + OUTPUT_OPTION + " " + rawImageName + "': path must contain a filename.");
         }
-        // Preserve native filename syntax, including literal Unix backslashes.
-        return sourcePathStyle == PathStyle.currentSourceStyle() ? imageName.sourcePathText() : imageName.platformRelativePathText();
+        return imageName.platformRelativePathText();
     }
 
     /**
      * Rewrites a single source-platform path using portable lookup keys and the recorded bundle
      * canonicalization/substitution maps.
      */
-    private String rewriteSinglePath(String rawPath) {
+    private String rewriteSinglePath(String rawPath, Role role) {
         if (rawPath.isEmpty()) {
             return rawPath;
         }
         PortablePath portablePath = PortablePath.parseSource(sourcePathStyle, rawPath);
-        PortablePath canonicalPath = pathCanonicalizations.getOrDefault(portablePath, portablePath);
-        PortablePath substitutedPath = pathSubstitutions.get(canonicalPath);
-        return lowerToNativePath.apply(canonicalPath, substitutedPath).toString();
+        PortablePath canonicalPath = bundleSupport.pathCanonicalizations.getOrDefault(portablePath, portablePath);
+        if (role == Role.Output) {
+            return bundleSupport.substituteOutputPath(canonicalPath).toString();
+        }
+        PortablePath substitutedPath = bundleSupport.pathSubstitutions.get(canonicalPath);
+        return bundleSupport.lowerToNativePath(canonicalPath, substitutedPath).toString();
     }
 }

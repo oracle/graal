@@ -247,6 +247,7 @@ suite = {
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.common",
+                    "jdk.vm.ci.meta",
                 ],
             },
             "javaCompliance": "21+",

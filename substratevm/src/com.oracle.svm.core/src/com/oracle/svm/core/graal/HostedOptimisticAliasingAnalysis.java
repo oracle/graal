@@ -31,6 +31,8 @@ import jdk.graal.compiler.guards.optimistic.memory.OptimisticAliasingAnalysisPha
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -49,6 +51,12 @@ public class HostedOptimisticAliasingAnalysis extends OptimisticAliasingAnalysis
     @Override
     protected OptimisticFixedGuardNode createOptimisticFixedGuard(LogicNode isAliasing, Speculation speculation) {
         return new HostedOptimisticFixedGuardNode(isAliasing, DeoptimizationReason.Aliasing, DeoptimizationAction.InvalidateRecompile, speculation, true, null);
+    }
+
+    /// Keeps hosted compilation non-deoptimizing when raw address endpoint arithmetic can overflow.
+    @Override
+    protected GuardingNode createRawAddressOverflowGuard(CountedLoopInfo countedLoop, LogicNode overflowCondition) {
+        return null;
     }
 
     /**

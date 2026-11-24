@@ -43,7 +43,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.core.graal.isolated.IsolatedCompileContext;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.graal.MemoryBarriers;
@@ -53,7 +53,7 @@ import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.core.memory.UntrackedNullableNativeMemory;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
 import com.oracle.svm.shared.util.UnsignedUtils;
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
@@ -134,6 +134,8 @@ public abstract class VMThreads {
     public static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadIdTL");
     public static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord("VMThreads.OSThreadHandleTL");
     public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord("VMThreads.IsolateTL");
+    /** Cached for native entry paths that have not restored the code base register yet. */
+    public static final FastThreadLocalWord<Pointer> CodeBaseTL = FastThreadLocalFactory.createWord("VMThreads.CodeBaseTL");
     /** The highest stack address. 0 if not available on this platform. */
     public static final FastThreadLocalWord<UnsignedWord> StackBase = FastThreadLocalFactory.createWord("VMThreads.StackBase");
     /**
@@ -207,8 +209,8 @@ public abstract class VMThreads {
     private static final FastThreadLocalWord<Pointer> unalignedIsolateThreadMemoryTL = FastThreadLocalFactory.createWord("VMThreads.unalignedIsolateThreadMemoryTL");
 
     /**
-     * Allocate native memory for a {@link IsolateThread}. The returned memory must be initialized
-     * to 0.
+     * Allocate zeroed native memory for a {@link IsolateThread} and initialize its metadata. The
+     * current isolate's base registers must already be initialized.
      */
     @Uninterruptible(reason = "Thread state not set up.")
     public IsolateThread allocateIsolateThread() {
@@ -229,6 +231,9 @@ public abstract class VMThreads {
 
         IsolateThread isolateThread = (IsolateThread) UnsignedUtils.roundUp(memory, alignment);
         unalignedIsolateThreadMemoryTL.set(isolateThread, memory);
+        if (SubstrateOptions.useRelativeCodePointers()) {
+            CodeBaseTL.set(isolateThread, KnownIntrinsics.codeBase());
+        }
 
         /* Initialize the data structures for thread-local handshakes. */
         if (!ThreadLocalHandshake.initializeThreadLocalData(isolateThread)) {
@@ -417,6 +422,9 @@ public abstract class VMThreads {
         try {
             removeFromThreadList(thread);
             PlatformThreads.detach(thread);
+
+            /* Record the thread's allocated bytes before heap detachment releases its allocation buffers. */
+            PlatformThreads.recordAllocatedBytesOfDetachedThread(thread);
             Heap.getHeap().detachThread(thread);
 
             /*

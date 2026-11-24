@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,7 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         directCallNode.call(secondArgs);
         Assert.assertTrue("Target needs split but not split", directCallNode.isCallTargetCloned());
 
-        // Test new dirrectCallNode will split
+        // A new call node to a marked target also splits.
         final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
         newCallNode.call(firstArgs);
         Assert.assertTrue("new call node to \"needs split\" target is not split", newCallNode.isCallTargetCloned());
@@ -80,7 +80,7 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         directCallNode.call(secondArgs);
         Assert.assertFalse("Target does not need split but is split", directCallNode.isCallTargetCloned());
 
-        // Test new dirrectCallNode will split
+        // A new call node to an unmarked target does not split.
         final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
         newCallNode.call(firstArgs);
         Assert.assertFalse("new call node to non \"needs split\" target is split", newCallNode.isCallTargetCloned());
@@ -99,7 +99,7 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         directCallNode.call(secondArgs);
         Assert.assertFalse("Target shouldn't be split but is split", directCallNode.isCallTargetCloned());
 
-        // Test new dirrectCallNode will split
+        // A new call node cannot bypass the splitting limits.
         final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
         newCallNode.call(firstArgs);
         Assert.assertFalse("new call node to non \"needs split\" target is split", newCallNode.isCallTargetCloned());

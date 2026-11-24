@@ -85,6 +85,7 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
@@ -172,7 +173,8 @@ public final class BytecodeRootNodeElement extends AbstractElement {
     // The builder class invoked by the language parser to generate the bytecode.
     final BuilderElement builder;
     final TypeMirror bytecodeBuilderType;
-    final TypeMirror parserType;
+    final DeclaredType parserType;
+    final SerializationEncodingElement serializationEncodingElement;
 
     // Singleton fields for accessing arrays and the frame.
     private final CodeVariableElement fastAccess;
@@ -362,6 +364,12 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         builder.lazyInit();
         this.add(builder);
 
+        if (model.enableSerialization) {
+            this.serializationEncodingElement = this.add(new SerializationEncodingElement(this));
+        } else {
+            this.serializationEncodingElement = null;
+        }
+
         if (model.enableInstructionTracing) {
             this.add(instructionTracerAccessImplElement);
             instructionTracerAccessImplElement.lazyInit();
@@ -440,8 +448,9 @@ public final class BytecodeRootNodeElement extends AbstractElement {
 
         }
 
-        // Define the generated node's constructor.
-        this.add(createConstructor(initialBytecodeNode, tailCallInitialBytecodeNode));
+        // Define the generated node's constructor(s).
+        this.addAll(createConstructors());
+        this.add(createSetInitialBytecodeNode(initialBytecodeNode, tailCallInitialBytecodeNode));
 
         // Define the execute method.
         this.add(createExecute());
@@ -458,6 +467,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         this.add(createPrepareForCall());
         this.addOptional(createPrepareForInstrumentation());
         this.addOptional(createPrepareForCompilation());
+        this.add(createVisitCloneableNodes());
 
         if (model.enableTagInstrumentation) {
             this.add(createFindInstrumentableCallNode());
@@ -476,7 +486,11 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         // Define serialization methods and helper fields.
         if (model.enableSerialization) {
             this.add(createSerialize());
+            this.add(createSerializeBuilderBytecode());
+            this.add(createSerializeExecutionBytecode());
             this.add(createDeserialize());
+            this.add(createDeserializeBuilderBytecode());
+            this.add(createDeserializeExecutionBytecode());
         }
 
         // Our serialized representation encodes Tags as shorts.
@@ -584,20 +598,21 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         return validateVariadicStackLimit;
     }
 
-    private CodeExecutableElement createConstructor(CodeTypeElement initialBytecodeNode, CodeTypeElement tailCallInitialBytecodeNode) {
+    /**
+     * Generates a constructor that initializes the bytecode node and, when serialization is
+     * enabled, a base constructor without bytecode initialization.
+     */
+    private List<CodeExecutableElement> createConstructors() {
         CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, this.getSimpleName().toString());
         ctor.addParameter(new CodeVariableElement(model.languageClass, "language"));
         ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
         ctor.addParameter(new CodeVariableElement(bytecodeRootNodesImpl.asType(), "nodes"));
         ctor.addParameter(new CodeVariableElement(type(int.class), "stackBase"));
+        ctor.addParameter(new CodeVariableElement(type(int.class), "frameSlotCount"));
         if (model.usesBoxingElimination()) {
             ctor.addParameter(new CodeVariableElement(type(int.class), "numLocals"));
         }
         ctor.addParameter(new CodeVariableElement(type(int.class), "buildIndex"));
-
-        for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
-            ctor.addParameter(new CodeVariableElement(var.asType(), var.getSimpleName().toString()));
-        }
 
         CodeTreeBuilder b = ctor.getBuilder();
 
@@ -616,12 +631,58 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         b.startThrow().startNew(type(IllegalStateException.class)).doubleQuote("The frame descriptor default value must not be changed by the bytecode root node constructor.").end().end();
         b.end();
 
+        b.startIf().string("getFrameDescriptor().getNumberOfSlots() != frameSlotCount").end().startBlock();
+        b.startThrow().startNew(type(IllegalStateException.class)).doubleQuote("The number of frame slots must not be changed by the bytecode root node constructor.").end(2);
+        b.end();
+
         b.statement("this.nodes = nodes");
         b.statement("this.stackBase = stackBase");
         if (model.usesBoxingElimination()) {
             b.statement("this.numLocals = numLocals");
         }
         b.statement("this.buildIndex = buildIndex");
+
+        List<CodeExecutableElement> constructors = new ArrayList<>(2);
+        if (model.enableSerialization) {
+            /*
+             * Serialization needs a "root constructor" that does not initialize bytecode. The
+             * current generated code suits this purpose. Create a new constructor that delegates
+             * to the root constructor and then performs bytecode initialization.
+             */
+            addJavadoc(ctor, "Constructs a root before its bytecode node is available.");
+            constructors.add(ctor);
+            CodeExecutableElement rootConstructor = ctor;
+            ctor = CodeExecutableElement.cloneNoAnnotations(rootConstructor);
+            b = ctor.createBuilder();
+            b.startStatement().startCall("this");
+            for (VariableElement parameter : rootConstructor.getParameters()) {
+                b.variable(parameter);
+            }
+            b.end(2);
+        }
+        for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
+            ctor.addParameter(new CodeVariableElement(var.asType(), var.getSimpleName().toString()));
+        }
+
+        b.startStatement().startCall("setInitialBytecodeNode");
+        for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
+            b.string(var.getSimpleName().toString());
+        }
+        b.end(2);
+
+        addJavadoc(ctor, "Constructs a root and initializes its bytecode node.");
+        constructors.addFirst(ctor);
+        return constructors;
+    }
+
+    private CodeExecutableElement createSetInitialBytecodeNode(CodeTypeElement initialBytecodeNode, CodeTypeElement tailCallInitialBytecodeNode) {
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "setInitialBytecodeNode");
+        for (VariableElement var : ElementFilter.fieldsIn(abstractBytecodeNode.getEnclosedElements())) {
+            method.addParameter(new CodeVariableElement(var.asType(), var.getSimpleName().toString()));
+        }
+
+        CodeTreeBuilder b = method.createBuilder();
+        b.startAssert().string("this.bytecode == null").end();
         if (tailCallInitialBytecodeNode != null) {
             b.startIf().staticReference(types.TruffleOptions, "AOT").end().startBlock();
             b.startStatement().string("this.bytecode = ").startCall("insert").startStaticCall(tailCallInitialBytecodeNode.asType(), "create");
@@ -644,7 +705,18 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             b.end().end().end();
         }
 
-        return ctor;
+        return method;
+    }
+
+    void emitInitializeFrameDescriptorBuilder(CodeTreeBuilder b, String variableName, CodeTree slotCount) {
+        b.startDeclaration(types.FrameDescriptor_Builder, variableName).startStaticCall(types.FrameDescriptor, "newBuilder").tree(slotCount).end(2);
+        if (model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
+            b.startStatement().startCall(variableName, "defaultValue").staticReference(this.asType(), "DEFAULT_LOCAL_VALUE").end(2);
+        } else {
+            b.startStatement().startCall(variableName, "defaultValueIllegal").end(2);
+        }
+        b.startStatement().startCall(variableName, "useSlotKinds").string("false").end(2);
+        b.startStatement().startCall(variableName, "addSlots").tree(slotCount).end(2);
     }
 
     private CodeExecutableElement createExecute() {
@@ -675,7 +747,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, nodeConsts, plugs);
 
         boolean forceFrame = false;
-        if (isStoreBciEnabled(model, InterpreterTier.CACHED)) {
+        if (isStoreBciEnabled(model, InterpreterTier.CACHED) || model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.MANUAL) {
             for (SpecializationData s : instr.nodeData.getReachableSpecializations()) {
                 if (isStoreBciBeforeSpecialization(model, InterpreterTier.CACHED, instr, s)) {
                     forceFrame = true;
@@ -935,15 +1007,18 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         if (model.captureFramesForTrace) {
             b.lineComment("GenerateBytecode#captureFramesForTrace is true.");
             b.statement("return true");
-        } else if (model.storeBciInFrame) {
-            b.lineComment("GenerateBytecode#storeBytecodeIndexInFrame is true, so the frame is needed for location computations.");
+        } else if (model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.FRAME) {
+            b.lineComment("BytecodeIndexMode.FRAME needs the frame for location computations.");
             b.statement("return true");
-        } else if (model.enableUncachedInterpreter) {
+        } else if (model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.MANUAL) {
+            b.lineComment("BytecodeIndexMode.MANUAL needs the frame for manual location computations.");
+            b.statement("return true");
+        } else if (model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.CACHED_NODE && model.enableUncachedInterpreter) {
             b.lineComment("The uncached interpreter (which is never compiled) needs the frame for location computations.");
             b.lineComment("This may capture the frame in more situations than strictly necessary, but doing so in the interpreter is inexpensive.");
             b.statement("return !compiled");
         } else {
-            b.lineComment("GenerateBytecode#captureFramesForTrace is not true, and the interpreter does not need the frame for location lookups.");
+            b.lineComment("Frame capture is not needed for bytecode index lookup or stack traces.");
             b.statement("return false");
         }
         return ex;
@@ -954,23 +1029,25 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         mergeSuppressWarnings(ex, "hiding");
         CodeTreeBuilder b = ex.createBuilder();
         b.startAssert().string("!(node instanceof ").type(types.BytecodeRootNode).string("): ").doubleQuote("A BytecodeRootNode should not be used as a call location.").end();
-        if (model.storeBciInFrame) {
-            b.startIf().string("node == null").end().startBlock();
-            b.statement("return -1");
-            b.end();
-            /*- TODO: GR-62198
-            b.startAssert();
-            b.startStaticCall(types.BytecodeNode, "get").string("node").end().instanceOf(abstractBytecodeNode.asType()).string(" : ").doubleQuote("invalid bytecode node passed");
-            b.end();
-             */
-            b.startIf().string("frame.getTag(BCI_INDEX) == ").staticReference(types.FrameSlotKind, "Illegal").string(".tag").end().startBlock();
-            b.lineComment("The bci index might be illegal if it was never set due to optimizations.");
+        if (model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.FRAME || model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.MANUAL) {
+            if (model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.FRAME) {
+                b.startIf().string("node == null").end().startBlock();
+                b.statement("return -1");
+                b.end();
+                /*- TODO: GR-62198
+                b.startAssert();
+                b.startStaticCall(types.BytecodeNode, "get").string("node").end().instanceOf(abstractBytecodeNode.asType()).string(" : ").doubleQuote("invalid bytecode node passed");
+                b.end();
+                 */
+            }
+            b.startIf().string("frame == null || frame.getTag(BCI_INDEX) == ").staticReference(types.FrameSlotKind, "Illegal").string(".tag").end().startBlock();
+            b.lineComment("The bci index might be illegal if it was never set due to optimizations or manual updates.");
             b.statement("return -1");
             b.end();
             b.startReturn();
             emitReadBytecodeIndexFromFrame(b, "frame", true);
             b.end();
-        } else {
+        } else if (model.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.CACHED_NODE) {
             b.declaration(abstractBytecodeNode.asType(), "bytecode", "null");
             b.declaration(types.Node, "prev", "node");
             b.declaration(types.Node, "current", "node");
@@ -986,6 +1063,8 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             b.statement("return -1");
             b.end();
             b.statement("return bytecode.findBytecodeIndex(frame, prev)");
+        } else {
+            b.statement("return -1");
         }
         return ex;
     }
@@ -1313,6 +1392,13 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         }
 
         CodeTreeBuilder b = ex.createBuilder();
+        b.startIf().string("!this.nodes.isParsed()").end().startBlock();
+        b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+        b.startThrow().startNew(type(IllegalStateException.class));
+        // computeSize gets invoked while instantiating a call target.
+        b.doubleQuote("A call target cannot be created until bytecode parsing completes. Request a call target after the parse is complete instead.");
+        b.end(2);
+        b.end();
         b.startReturn();
         b.string("bytecode.bytecodes.length / ", Integer.toString(median), " /* median instruction length */");
         b.end();
@@ -1389,27 +1475,56 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         method.addParameter(new CodeVariableElement(types.BytecodeSerializer, "callback"));
         method.addParameter(new CodeVariableElement(parserType, "parser"));
         method.addThrownType(type(IOException.class));
+        CodeAnnotationMirror deprecated = new CodeAnnotationMirror(declaredType(Deprecated.class));
+        deprecated.setElementValue("since", new CodeAnnotationValue("25.7"));
+        method.getAnnotationMirrors().add(deprecated);
 
         addJavadoc(method, """
-                        Serializes the bytecode nodes parsed by the {@code parser}.
-                        All metadata (e.g., source info) is serialized (even if it has not yet been parsed).
-                        <p>
-                        Unlike the {@link BytecodeRootNodes#serialize} instance method, which replays builder
-                        calls that were already validated during the original bytecode parse, this method
-                        does <strong>not</strong> validate the builder calls performed by the {@code parser}.
-                        Validation will happen (as usual) when the bytes are deserialized.
-                        <p>
-                        Additionally, this method cannot serialize field values that get set outside of the
-                        parser, unlike the {@link BytecodeRootNodes#serialize} instance method, which has
-                        access to the instances being serialized.
+                        Serializes builder bytecode for the nodes parsed by {@code parser}.
 
-                        @param buffer the buffer to write the byte output to.
-                        @param callback the language-specific serializer for constants in the bytecode.
-                        @param parser the parser.
+                        @deprecated Use {@link #serializeBuilderBytecode}.
                         """);
 
         CodeTreeBuilder b = method.createBuilder();
-        b.statement("BYTECODE.serialize(buffer, callback, parser)");
+        b.statement("serializeBuilderBytecode(buffer, callback, parser)");
+        return method;
+    }
+
+    private CodeExecutableElement createSerializeBuilderBytecode() {
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC), type(void.class), "serializeBuilderBytecode");
+        method.addParameter(new CodeVariableElement(type(DataOutput.class), "buffer"));
+        method.addParameter(new CodeVariableElement(types.BytecodeSerializer, "callback"));
+        method.addParameter(new CodeVariableElement(parserType, "parser"));
+        method.addThrownType(type(IOException.class));
+
+        addJavadoc(method, """
+                        Serializes the bytecode nodes parsed by the {@code parser} as a sequence of builder calls.
+
+                        @see BytecodeDescriptor#serializeBuilderBytecode
+                        """);
+
+        CodeTreeBuilder b = method.createBuilder();
+        b.statement("BYTECODE.serializeBuilderBytecode(buffer, callback, parser)");
+        return method;
+    }
+
+    private CodeExecutableElement createSerializeExecutionBytecode() {
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC), type(void.class), "serializeExecutionBytecode");
+        method.addParameter(new CodeVariableElement(model.languageClass, "language"));
+        method.addParameter(new CodeVariableElement(type(DataOutput.class), "buffer"));
+        method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
+        method.addParameter(new CodeVariableElement(types.BytecodeSerializer, "callback"));
+        method.addParameter(new CodeVariableElement(parserType, "parser"));
+        method.addThrownType(type(IOException.class));
+
+        addJavadoc(method, """
+                        Serializes execution bytecode and its metadata for the requested {@code config}.
+
+                        @see BytecodeDescriptor#serializeExecutionBytecode
+                        """);
+
+        CodeTreeBuilder b = method.createBuilder();
+        b.statement("BYTECODE.serializeExecutionBytecode(language, buffer, config, callback, parser)");
         return method;
     }
 
@@ -1418,21 +1533,60 @@ public final class BytecodeRootNodeElement extends AbstractElement {
                         generic(types.BytecodeRootNodes, model.getTemplateType().asType()), "deserialize");
         method.addParameter(new CodeVariableElement(model.languageClass, "language"));
         method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
-        method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "input"));
+        method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "builderBytecodeInput"));
         method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
         method.addThrownType(type(IOException.class));
-        addJavadoc(method,
-                        """
-                                        Deserializes a byte sequence to bytecode nodes. The bytes must have been produced by a previous call to {@link #serialize}.
+        CodeAnnotationMirror deprecated = new CodeAnnotationMirror(declaredType(Deprecated.class));
+        deprecated.setElementValue("since", new CodeAnnotationValue("25.7"));
+        method.getAnnotationMirrors().add(deprecated);
 
-                                        @param language the language instance.
-                                        @param config indicates whether to deserialize metadata (e.g., source information).
-                                        @param input A function that supplies the bytes to deserialize. This supplier must produce a new {@link DataInput} each time, since the bytes may be processed multiple times for reparsing.
-                                        @param callback The language-specific deserializer for constants in the bytecode. This callback must perform the inverse of the callback that was used to {@link #serialize} the nodes to bytes.
-                                        """);
+        addJavadoc(method, """
+                        Deserializes bytecode nodes by replaying serialized builder calls.
+
+                        @deprecated Use {@link #deserializeBuilderBytecode}.
+                        """);
 
         CodeTreeBuilder b = method.createBuilder();
-        b.statement("return BYTECODE.deserialize(language, config, input, callback)");
+        b.statement("return deserializeBuilderBytecode(language, config, builderBytecodeInput, callback)");
+        return method;
+    }
+
+    private CodeExecutableElement createDeserializeBuilderBytecode() {
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC),
+                        generic(types.BytecodeRootNodes, model.getTemplateType().asType()), "deserializeBuilderBytecode");
+        method.addParameter(new CodeVariableElement(model.languageClass, "language"));
+        method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
+        method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "builderBytecodeInput"));
+        method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
+        method.addThrownType(type(IOException.class));
+        addJavadoc(method, """
+                        Deserializes bytecode nodes by replaying serialized builder calls.
+
+                        @see BytecodeDescriptor#deserializeBuilderBytecode
+                        """);
+
+        CodeTreeBuilder b = method.createBuilder();
+        b.statement("return BYTECODE.deserializeBuilderBytecode(language, config, builderBytecodeInput, callback)");
+        return method;
+    }
+
+    private CodeExecutableElement createDeserializeExecutionBytecode() {
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC),
+                        generic(types.BytecodeRootNodes, model.getTemplateType().asType()), "deserializeExecutionBytecode");
+        method.addParameter(new CodeVariableElement(model.languageClass, "language"));
+        method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
+        method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "builderBytecodeInput"));
+        method.addParameter(new CodeVariableElement(generic(type(Function.class), types.BytecodeConfig, type(DataInput.class)), "executionBytecodeInput"));
+        method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
+        method.addThrownType(type(IOException.class));
+        addJavadoc(method, """
+                        Deserializes bytecode nodes from a builder payload and an optional execution bytecode payload.
+
+                        @see BytecodeDescriptor#deserializeExecutionBytecode
+                        """);
+
+        CodeTreeBuilder b = method.createBuilder();
+        b.statement("return BYTECODE.deserializeExecutionBytecode(language, config, builderBytecodeInput, executionBytecodeInput, callback)");
         return method;
     }
 
@@ -1532,13 +1686,20 @@ public final class BytecodeRootNodeElement extends AbstractElement {
         b.end().end(); // call, call
         b.end(); // statement
 
-        b.startIf().string("bytecodes_ != null").end().startBlock();
-        b.lineComment("Ensure old bytecodes are published before the new bytecode node.");
-        b.statement("oldBytecode.publishOldBytecodes()");
-        b.end().startElseBlock();
-        b.lineComment("When bytecode doesn't change, nodes are reused and should be re-adopted.");
-        b.statement("newBytecode.adoptNodesAfterUpdate()");
-        b.end();
+        if (model.isBytecodeUpdatable()) {
+            b.startIf().string("bytecodes_ != null").end().startBlock();
+            b.lineComment("Ensure old bytecodes are published before the new bytecode node.");
+            b.statement("oldBytecode.publishOldBytecodes()");
+            b.end().startElseBlock();
+            b.lineComment("When bytecode doesn't change, nodes are reused and should be re-adopted.");
+            b.statement("newBytecode.adoptNodesAfterUpdate()");
+            b.end();
+        } else {
+            b.startIf().string("bytecodes_ == null").end().startBlock();
+            b.lineComment("When bytecode doesn't change, nodes are reused and should be re-adopted.");
+            b.statement("newBytecode.adoptNodesAfterUpdate()");
+            b.end();
+        }
         emitFence(b);
         b.end().startDoWhile().startCall("!BYTECODE_UPDATER", "compareAndSet").string("this").string("oldBytecode").string("newBytecode").end().end();
         b.newLine();
@@ -1754,6 +1915,24 @@ public final class BytecodeRootNodeElement extends AbstractElement {
             // Delegate to the parent impl.
             b.string(" && ").startCall("super.prepareForCompilation").variables(ex.getParameters()).end();
         }
+        b.end();
+        return ex;
+    }
+
+    private CodeExecutableElement createVisitCloneableNodes() {
+        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "visitCloneableNodes", new String[]{"visitor"});
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.statement("super.visitCloneableNodes(visitor)");
+        b.lineComment("Visit the captured bytecode version without locking or retrying concurrent updates.");
+        b.declaration(arrayOf(types.Node), "cachedNodes", "this.bytecode.getCachedNodes()");
+        b.startIf().string("cachedNodes != null").end().startBlock();
+        b.startFor().string("int i = 0; i < cachedNodes.length; i++").end().startBlock();
+        b.declaration(types.Node, "cachedNode", "cachedNodes[i]");
+        b.startIf().string("cachedNode != null").end().startBlock();
+        b.statement("cachedNode.accept(visitor)");
+        b.end();
+        b.end();
         b.end();
         return ex;
     }
@@ -2850,6 +3029,13 @@ public final class BytecodeRootNodeElement extends AbstractElement {
                     }
                     b.startCall("findLocation").tree(castBytecodeIndexToInt(bci)).end();
                 }
+                case BYTECODE_INDEX -> {
+                    if (bci == null) {
+                        b.string("-1");
+                    } else {
+                        b.tree(castBytecodeIndexToInt(bci));
+                    }
+                }
                 case LOCAL_VARIABLE -> {
                     b.startNew("LocalVariableImpl");
                     b.tree(localBytecodeNode);
@@ -2870,14 +3056,18 @@ public final class BytecodeRootNodeElement extends AbstractElement {
      * specializations require it or some other condition requires it.
      */
     public static boolean isStoreBciBeforeExecute(BytecodeDSLModel model, InterpreterTier tier, InstructionModel instr) {
-        if (!isStoreBciEnabled(model, tier)) {
+        // Store before execution only when automatic storage is enabled for this tier,
+        // or in manual mode for tag callbacks and custom operations that request storage.
+        boolean automatic = isStoreBciEnabled(model, tier);
+        if (!automatic && model.bytecodeIndexMode != BytecodeDSLModel.BytecodeIndexMode.MANUAL) {
             return false;
         }
         return switch (instr.kind) {
-            case RETURN, YIELD, TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, TAG_YIELD_NULL -> true;
+            case RETURN, YIELD -> automatic;
+            case TAG_ENTER, TAG_LEAVE, TAG_LEAVE_VOID, TAG_RESUME, TAG_YIELD, TAG_YIELD_NULL -> true;
             case CUSTOM -> {
-                if (instr.operation.kind == OperationKind.CUSTOM_YIELD || instr.operation.kind == OperationKind.CUSTOM_RETURN) {
-                    // custom yield/return always need to set the bci
+                if (automatic && (instr.operation.kind == OperationKind.CUSTOM_YIELD || instr.operation.kind == OperationKind.CUSTOM_RETURN)) {
+                    // custom yield/return always need to set the bci in automatic modes
                     yield true;
                 }
                 CustomOperationModel custom = instr.operation.customModel;
@@ -2909,7 +3099,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
      * Returns <code>true</code> if we should set the bytecode index just before the specialization.
      */
     public static boolean isStoreBciBeforeSpecialization(BytecodeDSLModel model, InterpreterTier tier, InstructionModel instr, SpecializationData specialization) {
-        if (!isStoreBciEnabled(model, tier)) {
+        if (!isStoreBciEnabled(model, tier) && model.bytecodeIndexMode != BytecodeDSLModel.BytecodeIndexMode.MANUAL) {
             return false;
         }
         switch (instr.kind) {
@@ -2936,7 +3126,7 @@ public final class BytecodeRootNodeElement extends AbstractElement {
      * <code>false</code>.
      */
     public static boolean isStoreBciEnabled(BytecodeDSLModel model, InterpreterTier tier) {
-        return model.storeBciInFrame || tier == InterpreterTier.UNCACHED;
+        return model.storesBytecodeIndex(tier.isUncached());
     }
 
     /**

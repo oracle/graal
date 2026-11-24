@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,6 @@
 package com.oracle.svm.core.os;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
-
-import java.io.File;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
@@ -80,21 +78,12 @@ public interface RawFileOperationSupport {
 
     /**
      * Creates a file with the specified {@link FileCreationMode creation} and {@link FileAccessMode
-     * access modes}.
+     * access modes}. The filename is passed to the operating system without Java path normalization.
      *
      * @return If the operation is successful, it returns the file descriptor. Otherwise, it returns
      *         a value where {@link #isValid} will return false.
      */
     RawFileDescriptor create(String filename, FileCreationMode creationMode, FileAccessMode accessMode);
-
-    /**
-     * Creates a file with the specified {@link FileCreationMode creation} and {@link FileAccessMode
-     * access modes}.
-     *
-     * @return If the operation is successful, it returns the file descriptor. Otherwise, it returns
-     *         a value where {@link #isValid} will return false.
-     */
-    RawFileDescriptor create(File file, FileCreationMode creationMode, FileAccessMode accessMode);
 
     /**
      * Creates a file with the specified {@link FileCreationMode creation} and {@link FileAccessMode
@@ -110,20 +99,13 @@ public interface RawFileOperationSupport {
     String getTempDirectory();
 
     /**
-     * Opens a file with the specified {@link FileAccessMode access mode}.
+     * Opens a file with the specified {@link FileAccessMode access mode}. The filename is passed to
+     * the operating system without Java path normalization.
      *
      * @return If the operation is successful, it returns the file descriptor. Otherwise, it returns
      *         a value where {@link #isValid} will return false.
      */
     RawFileDescriptor open(String filename, FileAccessMode accessMode);
-
-    /**
-     * Opens a file with the specified {@link FileAccessMode access mode}.
-     *
-     * @return If the operation is successful, it returns the file descriptor. Otherwise, it returns
-     *         a value where {@link #isValid} will return false.
-     */
-    RawFileDescriptor open(File file, FileAccessMode accessMode);
 
     /**
      * Opens a file with the specified {@link FileAccessMode access mode}.

@@ -475,7 +475,10 @@ public class AggressivePartialUnrollPhase extends LoopPhase<LoopPolicies> {
                         }
                     }
                     LoopUtility.preserveCounterStampsForDivAfterUnroll(loop);
-                    final boolean neverOverflows = loop.counted().counterNeverOverflows();
+                    // Canonicalization can select the root IV as a new loop's counter.
+                    // Its updates must not wrap either.
+                    final boolean neverOverflows = loop.counted().counterNeverOverflows() &&
+                                    loop.counted().ivCanNeverOverflow(loop.counted().getLimitCheckedIV().getRootIV());
                     PreMainPostResult result = LoopTransformations.insertPrePostLoops(loop);
                     if (neverOverflows) {
                         if (!result.getPreLoop().canNeverOverflow()) {

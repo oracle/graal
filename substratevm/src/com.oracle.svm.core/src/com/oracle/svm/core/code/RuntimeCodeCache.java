@@ -42,7 +42,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -57,6 +57,8 @@ import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
+import com.oracle.svm.guest.staging.core.code.UntetheredCodeInfo;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;

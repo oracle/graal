@@ -38,9 +38,11 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.shared.Uninterruptible;
@@ -89,12 +91,9 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
     @Uninterruptible(reason = "Ensure that object pin counts and PinnedObjects are consistent.", callerMustBe = true)
     protected abstract void unpinObject(Object object);
 
-    /**
-     * Removes all closed pinned objects. Returns the first open {@link PinnedObject} or null if
-     * there are no more open pinned objects. Note that this method may only be called by the GC.
-     */
+    /** Removes all closed pinned objects. This method may only be called by GC. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public PinnedObjectImpl removeClosedObjectsAndGetFirstOpenObject() {
+    public void removeClosedObjects() {
         VMOperation.guaranteeGCInProgress("would cause various race conditions otherwise");
         PinnedObjectImpl cur = pinnedObjects.get();
         PinnedObjectImpl lastOpen = null;
@@ -122,9 +121,17 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
         }
 
         pinnedObjects.set(newHead);
-        return newHead;
     }
 
+    /**
+     * Returns whether the given object is currently tracked as pinned, indicating an intent that it
+     * must not move. Objects that are implicitly non-moving are not tracked and therefore return
+     * {@code false}. These include image heap objects (including auxiliary images), metaspace
+     * objects, and, with Epsilon GC, all objects.
+     *
+     * Consequently, {@code false} does not imply that the object can move or that no code relies on
+     * its address remaining stable.
+     */
     public boolean isPinnedSlow(Object object) {
         PinnedObjectImpl pin = pinnedObjects.get();
         while (pin != null) {
@@ -164,11 +171,6 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
             return referent;
         }
 
-        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        public PinnedObjectImpl getNext() {
-            return next;
-        }
-
         @Override
         @Uninterruptible(reason = "Ensure that object pin counts and PinnedObjects are consistent.")
         public void close() {
@@ -195,7 +197,7 @@ public abstract class AbstractPinnedObjectSupport implements PinnedObjectSupport
             if (referent == null) {
                 throw new NullPointerException("PinnedObject is missing a referent");
             }
-            DynamicHub hub = ObjectHeader.readDynamicHubFromObject(referent);
+            DynamicHub hub = (DynamicHub) ObjectHeader.readDynamicHubFromObject(referent);
             UnsignedWord offsetOfArrayElement = LayoutEncoding.getArrayElementOffset(hub.getLayoutEncoding(), index);
             return (T) addressOfObject().add(offsetOfArrayElement);
         }

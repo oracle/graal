@@ -189,7 +189,7 @@ public final class LoopConditionProfile extends ConditionProfile {
             /* Avoid division by zero if profile was never used. */
             return 0.0;
         } else {
-            return (double) trueCountLocal / (double) (trueCountLocal + falseCountLocal);
+            return trueCountLocal / ((double) trueCountLocal + falseCountLocal);
         }
     }
 

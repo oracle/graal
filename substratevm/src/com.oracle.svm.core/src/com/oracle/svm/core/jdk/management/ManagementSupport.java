@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,20 +56,20 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.GCRelatedMXBeans;
-import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.core.thread.ThreadListener;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
+import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
-import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior;
-import com.oracle.svm.sdk.staging.layeredimage.LayeredCompilationBehavior.Behavior;
 import com.oracle.svm.util.HostModuleUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.sun.jmx.mbeanserver.MXBeanLookup;
@@ -209,21 +209,25 @@ public final class ManagementSupport implements ThreadListener {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public boolean isAllowedPlatformManagedObject(PlatformManagedObject object) {
-        if (mxBeans.contains(object) || GCRelatedMXBeans.mxBeans().contains(object)) {
+    private boolean isRegisteredPlatformManagedObject(PlatformManagedObject object) {
+        return mxBeans.contains(object) || GCRelatedMXBeans.mxBeans().contains(object);
+    }
+
+    /** Identifies management beans provided by the hosting VM. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static boolean isHostedPlatformManagedObject(PlatformManagedObject object, boolean extensionLayer) {
+        if (!extensionLayer && getSingleton().isRegisteredPlatformManagedObject(object)) {
             /* Object is provided by our registry. */
-            return true;
+            return false;
         }
 
         for (Class<? extends PlatformManagedObject> clazz : ManagementFactory.getPlatformManagementInterfaces()) {
-            if (clazz.isInstance(object)) {
-                if (ManagementFactory.getPlatformMXBeans(clazz).contains(object)) {
-                    /*
-                     * Object is provided by the hosting HotSpot VM. It must not be reachable in the
-                     * image heap, because it is for the wrong VM.
-                     */
-                    return false;
-                }
+            if (clazz.isInstance(object) && ManagementFactory.getPlatformMXBeans(clazz).contains(object)) {
+                /*
+                 * Object is provided by the hosting HotSpot VM. It must not be reachable in the
+                 * image heap, because it is for the wrong VM.
+                 */
+                return true;
             }
         }
 
@@ -231,7 +235,7 @@ public final class ManagementSupport implements ThreadListener {
          * Object provided neither by our registry nor by the hosting HotSpot VM, i.e., it is
          * provided by the application. This is allowed.
          */
-        return true;
+        return false;
     }
 
     public synchronized MBeanServer getPlatformMBeanServer() {
@@ -275,11 +279,20 @@ public final class ManagementSupport implements ThreadListener {
         }
     }
 
+    @SuppressWarnings("restricted")
     private synchronized OperatingSystemMXBean getOsMXBean() {
         if (osMXBean == null) {
-            Object osMXBeanImpl = Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)
-                            ? new Target_com_sun_management_internal_OperatingSystemImpl(null)
-                            : new Target_sun_management_BaseOperatingSystemImpl(null);
+            Object osMXBeanImpl;
+            if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
+                /*
+                 * The substituted management code paths bypass
+                 * PlatformMBeanProviderImpl.<clinit>, which normally loads this library.
+                 */
+                System.loadLibrary("management_ext");
+                osMXBeanImpl = new Target_com_sun_management_internal_OperatingSystemImpl(null);
+            } else {
+                osMXBeanImpl = new Target_sun_management_BaseOperatingSystemImpl(null);
+            }
             osMXBean = SubstrateUtil.cast(osMXBeanImpl, OperatingSystemMXBean.class);
         }
         return osMXBean;
@@ -345,7 +358,7 @@ public final class ManagementSupport implements ThreadListener {
      * instead of an actual {@link PlatformManagedObject} implementation, code will be executed at
      * run-time when someone tries to access the {@link PlatformManagedObject}.
      */
-    public interface PlatformManagedObjectSupplier extends Supplier<PlatformManagedObject>, PlatformManagedObject {
+    public interface PlatformManagedObjectSupplier extends Supplier<PlatformManagedObject>, VMManagementBean {
         @Override
         default ObjectName getObjectName() {
             throw VMError.shouldNotReachHereOverrideInChild(); // ExcludeFromJacocoGeneratedReport
@@ -384,6 +397,7 @@ public final class ManagementSupport implements ThreadListener {
         @Platforms(Platform.HOSTED_ONLY.class)
         @SuppressWarnings("unchecked")
         public void addSingleton(Class<? extends PlatformManagedObject> clazz, PlatformManagedObject object) {
+            UserError.guarantee(object instanceof VMManagementBean, "VM management bean registrations must implement %s.", VMManagementBean.class.getName());
             if (!clazz.isInterface()) {
                 throw UserError.abort("Key for registration of a PlatformManagedObject must be an interface");
             }
@@ -409,6 +423,9 @@ public final class ManagementSupport implements ThreadListener {
         @Platforms(Platform.HOSTED_ONLY.class)
         @SuppressWarnings("unchecked")
         public void addList(Class<? extends PlatformManagedObject> clazz, List<? extends PlatformManagedObject> beans) {
+            for (PlatformManagedObject bean : beans) {
+                UserError.guarantee(bean instanceof VMManagementBean, "VM management bean registrations must implement %s.", VMManagementBean.class.getName());
+            }
             if (!clazz.isInterface()) {
                 throw UserError.abort("Key for registration of a PlatformManagedObject must be an interface");
             }

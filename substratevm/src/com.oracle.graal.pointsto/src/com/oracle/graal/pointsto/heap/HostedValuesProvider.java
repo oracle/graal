@@ -84,8 +84,8 @@ public class HostedValuesProvider {
         return value;
     }
 
-    /** Hook to canonicalize an ordinary object-replacer result for this hosted provider. */
-    public JavaConstant canonicalizeReplacedConstant(JavaConstant value) {
+    /** Hook to canonicalize a constant for this hosted provider. */
+    public JavaConstant canonicalizeConstant(JavaConstant value) {
         return value;
     }
 

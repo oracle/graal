@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;

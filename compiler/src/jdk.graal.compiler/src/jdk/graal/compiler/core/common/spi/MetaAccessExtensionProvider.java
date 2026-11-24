@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.core.common.spi;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -50,6 +51,24 @@ public interface MetaAccessExtensionProvider {
      * exception at run time and therefore canonicalization would miss that exception.
      */
     boolean canConstantFoldDynamicAllocation(ResolvedJavaType type);
+
+    /**
+     * Returns whether this compilation may embed identity hash codes obtained from
+     * {@link ConstantReflectionProvider#identityHashCode(JavaConstant)}. Return {@code false} if
+     * compilation-time hashes may differ from those of the runtime objects; canonicalization must
+     * then retain the operation without querying constant reflection.
+     *
+     * This compilation-wide policy must apply from source graph construction through analysis and
+     * compilation: disabling it later cannot undo earlier folds. Compiler folding must go through
+     * {@code IdentityHashCodeNode} canonicalization; raw constant-reflection queries for metadata or
+     * heap construction are unaffected.
+     *
+     * @return {@code true} if compilation-time identity hash codes may be used at run time
+     * @implSpec The default implementation returns {@code true}.
+     */
+    default boolean canConstantFoldIdentityHashCode() {
+        return true;
+    }
 
     /**
      * Checks if the invocation of the provided method is guaranteed to include a safepoint.

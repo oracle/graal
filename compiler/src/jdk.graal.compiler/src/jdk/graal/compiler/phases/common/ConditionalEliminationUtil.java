@@ -551,9 +551,13 @@ public class ConditionalEliminationUtil {
      * Determines whether this guard may be used as an anchor for general guards or Pi nodes.
      * Optimistic guards that cannot deoptimize are meant to be reverted before lowering, so they
      * must not have usages that would keep them alive as a deopt.
+     * Even optimistic guards that can deoptimize may be used to fold control flow without creating
+     * a guard usage. This is safe only if the guard has usages that will remain after cleanup,
+     * causing the guard to be lowered to a runtime check. Other optimizations may remove those
+     * usages, so these guards must also be excluded.
      */
     static boolean mayRewriteToGuard(GuardingNode guard) {
-        return !(guard instanceof OptimisticFixedGuardNode optimisticGuard && !optimisticGuard.canDeoptimize());
+        return !(guard instanceof OptimisticFixedGuardNode);
     }
 
     @FunctionalInterface

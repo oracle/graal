@@ -27,7 +27,7 @@ package com.oracle.svm.guest.staging.option;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import com.oracle.svm.guest.staging.GuestStagingDependencyBridge;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.shared.util.SubstrateUtil;
 
 /**
@@ -47,7 +47,7 @@ public class NotifyGCRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
     protected void afterValueUpdate() {
         super.afterValueUpdate();
         if (!SubstrateUtil.HOSTED) {
-            GuestStagingDependencyBridge.singleton().heapOptionValueChanged(this);
+            Heap.getHeap().optionValueChanged(this);
         }
     }
 }

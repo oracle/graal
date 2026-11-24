@@ -264,7 +264,51 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         });
     }
 
-    public void injectDeclaredType() {
+    /**
+     * Supplies conservative field summaries for roots, conservative unsafe writes, and hosted
+     * values unavailable during analysis.
+     * <p>
+     * In points-to analysis, uses the effective field bound after dropping unchecked interface
+     * constraints and permits null. Closed bounds supply all instantiated assignable types,
+     * including types instantiated later during analysis. Open bounds require saturation, which may
+     * lose bound and nullability precision. Finite reference coverage requires every possible value
+     * type to be registered as instantiated; injection does not perform that registration. Tracked
+     * primitive fields receive unconstrained values.
+     * <p>
+     * Also summarizes reference-array elements along the bound's declared dimensions, permitting
+     * null independently of the array reference, including immediate array contents under an
+     * effective Object bound. When array flow aliasing is disabled, concrete arrays admitted by generic
+     * or covariant bounds require separate coverage (GR-80697). Injection does not change write permissions.
+     * <p>
+     * Reference values enter the initial flow. Propagation to an instance field's sink requires a
+     * receiver-specific field flow created and connected by analyzing a field load or store, or by
+     * heap scanning. A retained load creates these connections only when its receiver flow contains
+     * an analyzed object. Once connected, both existing and future initial-flow values reach the
+     * sink. Static reference fields share their initial and sink flows.
+     */
+    public void injectConservativeFieldValues() {
+        /* By default, nothing to do. */
+    }
+
+    /**
+     * Summarizes unavailable reference values using bounds and nullability guaranteed by the
+     * producer. The bounds must cover all summarized non-null values and be assignable to the effective
+     * field bound. They may supply stricter guarantees, including interface constraints that the
+     * field declaration does not enforce.
+     * <p>
+     * Saturation, type registration, array element summaries, and propagation follow
+     * {@link #injectConservativeFieldValues()}. {@code canBeNull} applies to field references;
+     * reference-array elements remain nullable. An empty list contributes null when
+     * {@code canBeNull} is true, and no values otherwise.
+     */
+    public abstract void injectConservativeFieldValues(List<AnalysisType> customBounds, boolean canBeNull);
+
+    /**
+     * Injects field values without summarizing array contents. Uses the effective bound, nullability,
+     * and propagation rules of {@link #injectConservativeFieldValues()}. Use when array contents are
+     * already covered by analyzed stores, heap scanning, or another summary.
+     */
+    public void injectFieldValueBound() {
         /* By default, nothing to do. */
     }
 
@@ -310,14 +354,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
             registerAsWritten(reason);
 
-            if (getUniverse().analysisPolicy().useConservativeUnsafeAccess()) {
-                /*
-                 * With conservative unsafe access we don't need to track unsafe accessed fields.
-                 * Instead, fields marked as unsafe-accessed are injected all instantiated subtypes
-                 * of their declared type. Moreover, all unsafe loads are pre-saturated.
-                 */
-                injectDeclaredType();
-            } else {
+            if (!getUniverse().analysisPolicy().useConservativeUnsafeAccess()) {
                 if (isStatic()) {
                     /* Register the static field as unsafe accessed with the analysis universe. */
                     getUniverse().registerUnsafeAccessedStaticField(this);

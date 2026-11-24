@@ -260,10 +260,11 @@ final class EspressoExternalHostProxies {
             mh = MethodHandles.filterReturnValue(valueAsDoubleMethodHandle, mh.asType(MethodType.methodType(JavaConstant.class, double.class)));
             valueAsDoubleConstantMethodHandle = mh;
 
-            // (EspressoExternalVMAccess, Value) -> EspressoExternalObjectConstant
-            mh = lookup.findConstructor(EspressoExternalObjectConstant.class, MethodType.methodType(void.class, EspressoExternalVMAccess.class, Value.class));
-            // (Value) -> EspressoExternalObjectConstant
-            mh = mh.bindTo(access);
+            // (Value, EspressoExternalVMAccess) -> JavaConstant
+            mh = lookup.findStatic(EspressoExternalConstantReflectionProvider.class, "asObjectConstant",
+                            MethodType.methodType(JavaConstant.class, Value.class, EspressoExternalVMAccess.class));
+            // (Value) -> JavaConstant
+            mh = MethodHandles.insertArguments(mh, 1, access);
             // (Value) -> JavaConstant
             valueAsObjectConstantMethodHandle = mh.asType(MethodType.methodType(JavaConstant.class, Value.class));
 

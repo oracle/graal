@@ -33,10 +33,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -48,7 +49,7 @@ import com.oracle.svm.shared.util.SubstrateUtil;
  */
 @DuplicatedInNativeCode
 final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisitor {
-    private static final UnreachableObjectsException UNREACHABLE_OBJECTS_EXCEPTION = new UnreachableObjectsException();
+    private static final UnreachableObjectsException UNREACHABLE_OBJECTS_EXCEPTION = PreallocatedExceptions.prepare(new UnreachableObjectsException());
 
     @Platforms(Platform.HOSTED_ONLY.class)
     RuntimeCodeCacheReachabilityAnalyzer() {
@@ -96,7 +97,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
             return true;
         }
         if (ObjectHeaderImpl.isMarkedHeader(header)) {
-            // Note that marking is also used in copying collections for pinned objects.
+            // Note that marking is also used in copying collections in chunks with pinned objects.
             return true;
         }
         Space space = HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(ptrToObj, header));
@@ -106,7 +107,7 @@ final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisit
         if (space.isCompactingOldSpace() && !GCImpl.getGCImpl().isCompleteCollection()) {
             return true;
         }
-        Class<?> clazz = DynamicHub.toClass(ohi.dynamicHubFromObjectHeader(header));
+        Class<?> clazz = DynamicHub.toClass((DynamicHub) ohi.dynamicHubFromObjectHeader(header));
         return isAssumedReachable(clazz);
     }
 

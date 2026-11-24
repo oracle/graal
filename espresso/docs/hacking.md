@@ -8,23 +8,45 @@ The simplest way to build espresso is to use a pre-built GraalVM.
 
 Download and unpack the latest GraalVM [release](https://www.graalvm.org/downloads/) or [ea build](https://github.com/graalvm/oracle-graalvm-ea-builds/releases).
 
-Set the `JAVA_HOME` environment variable to the extracted result. This will be used during the build and as a host JDK.
+Set the `JAVA_HOME` environment variable to the extracted result.
+This will be used during the build and as a host JDK.
 
-Espresso is only a JVM and it needs a JDK to use as a guest. Set the `ESPRESSO_JAVA_HOME` to a JDK to be used for the guest.
+Espresso is only a JVM and it needs a JDK to use as a guest.
+Set the `ESPRESSO_JAVA_HOME` to a JDK to be used for the guest.
 
 ### Building from the graal repository
 
 It is also possible to build Espresso directly from the current Graal repository.
 
-First you need a (JVMCI-enabled) JDK. If you don't already have one you can use e.g. `mx fetch-jdk` to download one.
+First you need a (JVMCI-enabled) JDK.
+If you don't already have one you can use e.g. `mx fetch-jdk` to download one.
 
 Secondly, set your `JAVA_HOME` to the (JVMCI-enabled) JDK e.g. via `mx --java-home /path/to/java/home ...` or `export JAVA_HOME=/path/to/java/home`. 
 
-Lastly, set the `ESPRESSO_JAVA_HOME` to a JDK to be used for the guest. By default, `JAVA_HOME` will be used.
+Lastly, set the `ESPRESSO_JAVA_HOME` to a JDK to be used for the guest.
+By default, `JAVA_HOME` will be used.
+
+### Guest JDK I/O Overlays
+
+Espresso uses guest-version-specific I/O overlays in `espresso-io.jar` when EspressoLibs is enabled, including in `no-native` mode.
+`ESPRESSO_JAVA_HOME` selects the guest JDK but does not register it as a compiler with mx.
+If your host JDK differs from the compiler required by the guest's overlay, register the additional compiler through `EXTRA_JAVA_HOMES` or `--extra-java-homes`.
+For example, to build for a JDK 21 guest with a JDK 25 host, run from the Espresso suite directory:
+
+```bash
+export ESPRESSO_JAVA_HOME=/path/to/jdk21
+export EXTRA_JAVA_HOMES="$ESPRESSO_JAVA_HOME"
+mx --env jvm build --targets=ESPRESSO_JVM_STANDALONE
+```
+
+The build rejects configurations where the required overlay project is absent from `ESPRESSO_IO` after mx resolves compiler availability.
+At startup, EspressoLibs also warns if the required overlay is absent or inactive in the packaged jar.
+Register the required compiler and rebuild Espresso to correct either diagnostic.
 
 ## Building and Running Espresso
 
-Espresso can be built in several configurations (Native, JVM, or Embedded). (You can find all configurations in `graal/espresso/mx.espresso`)
+Espresso can be built in several configurations (Native, JVM, or Embedded).
+(You can find all configurations in `graal/espresso/mx.espresso`)
 For a quick start you can find a short list below:
 
 ```bash
@@ -34,13 +56,15 @@ $ mx --env native-ce build # GraalVM CE + Espresso native (JIT)
 ```
 `mx build`-ing Espresso creates "espresso standalones" which are JDK-like directories.
 
-Now you can use the `mx espresso` command, which mimics the `java` command. Under the hood it runs Espresso from a jvm or native standalone and prefers native if available.
+Now you can use the `mx espresso` command, which mimics the `java` command.
+Under the hood it runs Espresso from a jvm or native standalone and prefers native if available.
 
 ```bash
 $ mx --env jvm-ce build # Always build first
 $ mx --env jvm-ce espresso -cp my.jar HelloWorld # Always use the same --env argument
 ```
-Note this would run espresso as a jvm standalone as the native-standalone was not built! Use `native-ce` when building and running Espresso for using the native standalone.
+Note this would run espresso as a jvm standalone as the native-standalone was not built!
+Use `native-ce` when building and running Espresso for using the native standalone.
 
 ### Tips
 
@@ -71,7 +95,8 @@ $ time $ESPRESSO -cp my.jar HelloWorld
 ```
 #### Inspecting mx
 
-Use the `-v` (verbose) flag with any mx command to see exactly what is happening under the hood. This is the best way to extract the raw underlying commands (like the final java or native-image call) for manual debugging.
+Use the `-v` (verbose) flag with any mx command to see exactly what is happening under the hood.
+This is the best way to extract the raw underlying commands (like the final java or native-image call) for manual debugging.
 
 ### Other ways to launch Espresso
 
@@ -99,9 +124,11 @@ $ mx --env jvm-ce espresso-launcher -cp my.jar HelloWorld # Always use the same 
 
 #### Embedded on a vanilla JDK
 
-`mx espresso-embedded` allows you to run Espresso on a vanilla JDK (not within a standalone and not part of GraalVM). The launcher adds all jars and properties required to run Espresso on any vanilla JDK.
+`mx espresso-embedded` allows you to run Espresso on a vanilla JDK (not within a standalone and not part of GraalVM).
+The launcher adds all jars and properties required to run Espresso on any vanilla JDK.
 
-Please note some truffle-level tooling such as the cpu-sampler is not easily available. To use it launch espresso as a standalone or add the required dependencies manually.
+Please note some truffle-level tooling such as the cpu-sampler is not easily available.
+To use it launch espresso as a standalone or add the required dependencies manually.
 
 ```bash
 $ mx --env jvm-ce build # Always build first
@@ -165,7 +192,8 @@ $ mx --env jvm-ce espresso --vm.Djdk.graal.Dump=Truffle:2 --vm.Dpolyglot.engine.
 
 ## Running Espresso cross-versions
 
-By default, Espresso runs within a GraalVM and it reuses the jars and native libraries shipped with GraalVM. But it's possible to specify a different Java home, even with a different version; Espresso will automatically switch versions regardless of the host JVM.
+By default, Espresso runs within a GraalVM and it reuses the jars and native libraries shipped with GraalVM.
+But it's possible to specify a different Java home, even with a different version; Espresso will automatically switch versions regardless of the host JVM.
 ```bash
 $ mx build
 $ mx espresso -version
@@ -185,13 +213,16 @@ or on the context builder:
 builder.allowExperimentalOptions(true).option("java.NativeBackend", "no-native") 
 ```
 
-Disabling native access enhances security guarantees and sandboxing capabilities. In this mode, substitutions are used for Java's standard libraries, and virtualized memory is provided. However, some functionality might be limited (e.g. you will have no access to LibAWT).
+Disabling native access enhances security guarantees and sandboxing capabilities.
+In this mode, substitutions are used for Java's standard libraries, and virtualized memory is provided.
+However, some functionality might be limited (e.g. you will have no access to LibAWT).
 
 ## Limitations
 
 ### Linux
 
-Espresso relies on glibc's [dlmopen](https://man7.org/linux/man-pages/man3/dlopen.3.html) to run on HotSpot, but this approach has limitations that lead to crashes e.g. `libnio.so: undefined symbol: fstatat64` . Some of these limitations can be by avoided by defining `LD_DEBUG=unused` e.g.
+Espresso relies on glibc's [dlmopen](https://man7.org/linux/man-pages/man3/dlopen.3.html) to run on HotSpot, but this approach has limitations that lead to crashes e.g. `libnio.so: undefined symbol: fstatat64` .
+Some of these limitations can be by avoided by defining `LD_DEBUG=unused` e.g.
 
 ```bash
 $ LD_DEBUG=unused mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar com.oracle.truffle.espresso.playground.Tetris
@@ -199,19 +230,23 @@ $ LD_DEBUG=unused mx espresso -cp mxbuild/dists/jdk1.8/espresso-playground.jar c
 
 ### macOS
 
-Nothing like `dlmopen` is available on macOS. Instead we default to `nfi-staticlib` for the JVM mode, which statically links in (most) of the OpenJDK libraries into `libjvm.dylib`.
+Nothing like `dlmopen` is available on macOS.
+Instead we default to `nfi-staticlib` for the JVM mode, which statically links in (most) of the OpenJDK libraries into `libjvm.dylib`.
 A notable exception is `libawt.dylib` and its related libraries, which only work via dynamic loading.
 This means in practice only the host _or_ the guest can use AWT, but not both at the same time.
 
 
-Currently `nfi-staticlib` only works for one Espresso context. Using `nfi-staticlib` with more than one context will likely result in a SIGSEGV in `libtrufflenfi.dylib`.
+Currently `nfi-staticlib` only works for one Espresso context.
+Using `nfi-staticlib` with more than one context will likely result in a SIGSEGV in `libtrufflenfi.dylib`.
 We are exploring how to implement support for multiple contexts (GR-71082).
 
 ## _Espressoⁿ_ Java-ception
 
-Espresso can run itself. **Self-hosting requires a Linux distribution with an up-to-date glibc.**
+Espresso can run itself.
+**Self-hosting requires a Linux distribution with an up-to-date glibc.**
 
-Use `mx espresso-meta` to run programs on Espresso². Ensure to prepend `LD_DEBUG=unused` to overcome a known **glibc** bug.
+Use `mx espresso-meta` to run programs on Espresso².
+Ensure to prepend `LD_DEBUG=unused` to overcome a known **glibc** bug.
 
 To run HelloWorld on Espresso² execute the following:
 
@@ -227,4 +262,5 @@ program).
 $ mx espresso-meta [base VM flags] -- [inner VM flags and program args]
 ```
 
-It takes some time for both (nested) VMs to boot, only the base layer is blessed with JIT compilation. Enjoy!
+It takes some time for both (nested) VMs to boot, only the base layer is blessed with JIT compilation.
+Enjoy!

@@ -37,7 +37,7 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubProvider;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
@@ -117,7 +117,7 @@ public class BFDNameProvider implements UniqueShortNameProvider {
             return getClassLoader(type.getElementalType());
         }
         if (type instanceof SharedType sharedType) {
-            DynamicHub hub = DynamicHubProvider.getHub(sharedType);
+            DynamicHub hub = DynamicHubUtils.getHub(sharedType);
             if (hub.isLoaded()) {
                 return hub.getClassLoader();
             }

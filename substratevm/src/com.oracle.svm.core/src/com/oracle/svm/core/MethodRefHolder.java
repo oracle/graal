@@ -29,12 +29,12 @@ import java.util.Objects;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.MethodRef;
-import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefUtils;
+import com.oracle.svm.core.meta.MethodRefSupport;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -55,15 +55,10 @@ public final class MethodRefHolder {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public ResolvedJavaMethod getMethod() {
-        return methodRef.getMethod();
+        return MethodRefSupport.getMethod(methodRef);
     }
 
-    @SuppressWarnings("unchecked")
     public <T extends CFunctionPointer> T getFunctionPointer() {
-        Pointer pointer = (Pointer) methodRef;
-        if (SubstrateOptions.useRelativeCodePointers() && pointer.notEqual(0)) {
-            pointer = pointer.add(KnownIntrinsics.codeBase());
-        }
-        return (T) pointer;
+        return MethodRefUtils.asCodePointer(methodRef);
     }
 }

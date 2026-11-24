@@ -49,6 +49,13 @@ package com.oracle.truffle.api.strings;
 public final class TruffleStringBuilderUTF32 extends TruffleStringBuilder {
 
     TruffleStringBuilderUTF32(int initialSize) {
-        super(TruffleString.Encoding.UTF_32, initialSize, TSCodeRange.get7Bit());
+        super(TruffleString.Encoding.UTF_32, checkInitialSize(initialSize), TSCodeRange.get7Bit());
+    }
+
+    private static int checkInitialSize(int initialSize) {
+        if (initialSize > TStringConstants.MAX_ARRAY_SIZE_S2) {
+            throw InternalErrors.outOfMemory();
+        }
+        return initialSize;
     }
 }

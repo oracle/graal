@@ -51,8 +51,8 @@ import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.c.NonmovableArray;
-import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -68,12 +68,12 @@ import com.oracle.svm.core.deopt.VirtualFrame;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.FillerObject;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.guest.staging.core.heap.ReferenceMapIndex;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata.ClassInfo;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata.ClassInfoAccess;
@@ -87,7 +87,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.ReplaceDotWithSlash;
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.BufferedFileOperationSupport;
 import com.oracle.svm.core.os.BufferedFileOperationSupport.BufferedFile;
@@ -101,6 +101,7 @@ import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.VMError;
@@ -1523,7 +1524,7 @@ public class HeapDumpWriter {
 
     static final class HeapDumpException extends RuntimeException {
         @Serial private static final long serialVersionUID = 1;
-        private static final HeapDumpException SINGLETON = new HeapDumpException();
+        private static final HeapDumpException SINGLETON = PreallocatedExceptions.prepare(new HeapDumpException());
 
         private HeapDumpError error;
 

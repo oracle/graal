@@ -580,19 +580,8 @@ public class WebImageJSNodeLowerer extends NodeLowerer {
                 lowerValue(node.getValue());
                 break;
             case L2D:
-                // generate the to number call
-                Long64Lowerer.genUnaryArithmeticOperation(node, node.getValue(), codeGenTool);
-                break;
             case L2F:
-                /*
-                 * This is basically L2D followed by D2F l.toNumber() already produces a double
-                 * precision float approximation of the Long64, fround then gives us the nearest
-                 * single precision 32-bit float
-                 */
-                codeGenTool.getCodeBuffer().emitText("Math.fround(");
-                // generate the to number call
                 Long64Lowerer.genUnaryArithmeticOperation(node, node.getValue(), codeGenTool);
-                codeGenTool.getCodeBuffer().emitText(")");
                 break;
             case F2D:
                 // a increase in precision does not require any operation to be applied

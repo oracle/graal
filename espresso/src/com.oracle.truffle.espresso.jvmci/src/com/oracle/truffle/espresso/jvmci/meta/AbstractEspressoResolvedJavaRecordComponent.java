@@ -27,6 +27,8 @@ import static com.oracle.truffle.espresso.jvmci.meta.EspressoResolvedInstanceTyp
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaType;
 import jdk.vm.ci.meta.annotation.AbstractAnnotated;
 import jdk.vm.ci.meta.annotation.AnnotationsInfo;
 
@@ -34,7 +36,7 @@ public abstract class AbstractEspressoResolvedJavaRecordComponent extends Abstra
     private final AbstractEspressoResolvedInstanceType declaringRecord;
     private final int index;
     private final String name;
-    private final JavaType type;
+    private JavaType type;
 
     /** Initializes a record component from its declaring record's constant-pool metadata. */
     protected AbstractEspressoResolvedJavaRecordComponent(AbstractEspressoResolvedInstanceType declaringRecord, int recordIndex, int nameIndex, JavaType type) {
@@ -56,6 +58,15 @@ public abstract class AbstractEspressoResolvedJavaRecordComponent extends Abstra
 
     @Override
     public JavaType getType() {
+        // Pull type into a local variable to prevent a race causing a ClassCastException below.
+        JavaType currentType = type;
+        if (currentType instanceof UnresolvedJavaType unresolvedType) {
+            // Don't allow unresolved types to hang around forever.
+            ResolvedJavaType resolved = declaringRecord.lookupType(unresolvedType, false);
+            if (resolved != null) {
+                type = resolved;
+            }
+        }
         return type;
     }
 

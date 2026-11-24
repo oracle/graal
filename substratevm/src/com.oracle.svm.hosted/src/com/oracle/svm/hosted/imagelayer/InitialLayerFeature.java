@@ -43,6 +43,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.bootstrap.BootstrapMethodInfo;
 import com.oracle.svm.core.c.enums.CEnumArrayLookup;
 import com.oracle.svm.core.c.enums.CEnumMapLookup;
+import com.oracle.svm.core.c.enums.CEnumNoLookup;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
@@ -52,18 +53,22 @@ import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
-import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.guest.staging.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.SmallestPossibleObject;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.jdk.localization.bundles.DelayedBundle;
+import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jni.JNITestingBackdoor;
 import com.oracle.svm.core.jni.headers.JNIFunctionPointerTypes;
 import com.oracle.svm.core.jvmstat.PerfUnit;
 import com.oracle.svm.core.jvmstat.PerfVariability;
 import com.oracle.svm.core.log.DebugLog;
 import com.oracle.svm.core.os.RawFileOperationSupport;
+import com.oracle.svm.core.stringformat.StringFormat;
+import com.oracle.svm.core.stringformat.StringFormatPhase;
 import com.oracle.svm.core.thread.SafepointCheckCounter;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
@@ -73,6 +78,7 @@ import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.guest.staging.core.thread.OSThreadHandle;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValues;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.sdk.staging.hosted.layeredimage.LayeredCompilationSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.util.ReflectionUtil;
@@ -161,13 +167,31 @@ public class InitialLayerFeature implements InternalFeature {
         metaAccess.lookupJavaType(RuntimeCodeInfoMemory.SizeCounters.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(CEnumArrayLookup.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(CEnumMapLookup.class).registerAsInstantiated("Core type");
+        metaAccess.lookupJavaType(CEnumNoLookup.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(PerfVariability.class).registerAsInstantiated("Core type");
         metaAccess.lookupJavaType(PerfUnit.class).registerAsInstantiated("Core type");
+        if (LocalizationFeature.Options.LocalizationSubstituteLoadLookup.getValue()) {
+            metaAccess.lookupJavaType(ExtractedBundle.class).registerAsInstantiated("Core type");
+            metaAccess.lookupJavaType(DelayedBundle.class).registerAsInstantiated("Core type");
+        }
 
         registerAllTypes(metaAccess.lookupJavaType(JNIFunctionPointerTypes.class), t -> t.registerAsReachable("Core type"));
         registerAllTypes(metaAccess.lookupJavaType(CEntryPointOptions.class), t -> t.registerAsReachable("Core type"));
 
         pinDeclaredMethodsToInitialLayer(metaAccess.lookupJavaType(CEntryPointSetup.class));
+        if (StringFormatPhase.Options.IntrinsifyStringFormat.getValue()) {
+            /*
+             * Compile the four methods called by StringFormatPhase in the initial layer.
+             * Register them as analysis roots so their parameter analysis uses the declared
+             * types instead of only the inputs supplied by initial-layer callers. Later
+             * layers reuse these methods and can introduce calls with different inputs.
+             */
+            for (AnalysisMethod method : metaAccess.lookupJavaType(StringFormat.class).getDeclaredMethods(false)) {
+                if (!method.isPrivate() && (method.getName().equals("format") || method.getName().equals("formatWithFormatterFallback"))) {
+                    method.setPinnedToInitialLayer();
+                }
+            }
+        }
     }
 
     private static ResolvedJavaType getProxyClass(ResolvedJavaType uninterruptibleType) {

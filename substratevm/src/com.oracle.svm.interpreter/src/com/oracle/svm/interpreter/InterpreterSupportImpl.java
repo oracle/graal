@@ -27,6 +27,8 @@ package com.oracle.svm.interpreter;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Executable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -51,20 +53,33 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.PreparedSignature;
-import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
-import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
+import com.oracle.svm.core.hub.RuntimeReflectionMetadata;
+import com.oracle.svm.core.hub.crema.CremaResolvedJavaMethod;
+import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
+import com.oracle.svm.core.interpreter.InterpreterJNIFieldIds;
+import com.oracle.svm.core.interpreter.InterpreterJNIMethodIds;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.svm.espresso.classfile.descriptors.Name;
+import com.oracle.svm.espresso.classfile.descriptors.ParserSymbols;
 import com.oracle.svm.espresso.classfile.descriptors.Symbol;
+import com.oracle.svm.espresso.classfile.descriptors.Type;
+import com.oracle.svm.espresso.shared.lookup.LookupSuccessInvocationFailure;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.hosted.SubstrateBytecodeHandlerStub;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
@@ -80,6 +95,7 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -129,6 +145,128 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     }
 
     @Override
+    public Executable getJNIMethodExecutable(JNIMethodId methodId) {
+        assert InterpreterJNIMethodIds.isInterpreterMethodId(methodId);
+        ResolvedJavaMethod method = InterpreterJNIMethodIds.getMethod(methodId);
+        if (method instanceof CremaResolvedJavaMethod cremaMethod) {
+            return RuntimeReflectionMetadata.fromResolvedMethod(cremaMethod);
+        } else if (method instanceof InterpreterResolvedJavaMethod interpreterMethod) {
+            Class<?> declaringClass = interpreterMethod.getDeclaringClass().getJavaClass();
+            Class<?>[] parameterTypes = MethodType.fromMethodDescriptorString(interpreterMethod.getSignature().toMethodDescriptor(), declaringClass.getClassLoader()).parameterArray();
+            try {
+                return interpreterMethod.isConstructor() ? declaringClass.getDeclaredConstructor(parameterTypes) : declaringClass.getDeclaredMethod(interpreterMethod.getName(), parameterTypes);
+            } catch (NoSuchMethodException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public boolean canCreateJNIMethodId(ResolvedJavaMethod method) {
+        return method instanceof InterpreterResolvedJavaMethod interpreterMethod && InterpreterToVM.canInvoke(interpreterMethod);
+    }
+
+    @Override
+    public JNIMethodId getOrCreateJNIMethodId(ResolvedJavaMethod method) {
+        assert canCreateJNIMethodId(method);
+        return ((InterpreterResolvedJavaMethod) method).getOrCreateJNIMethodId();
+    }
+
+    @Override
+    public ResolvedJavaMethod lookupMethodForJNI(Class<?> clazz, String name, String signature) {
+        if (clazz.isPrimitive()) {
+            return null;
+        }
+        Symbol<Name> symbolicName = SymbolsSupport.getNames().lookup(name);
+        if (symbolicName == null) {
+            return null;
+        }
+        var symbolicDescriptor = SymbolsSupport.getSignatures().lookupValidSignature(signature);
+        if (symbolicDescriptor == null) {
+            return null;
+        }
+        InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz));
+        if (symbolicName == ParserSymbols.ParserNames._init_ || symbolicName == ParserSymbols.ParserNames._clinit_) {
+            return type.lookupDeclaredMethod(symbolicName, symbolicDescriptor);
+        }
+        try {
+            return type.lookupMethod(symbolicName, symbolicDescriptor);
+        } catch (LookupSuccessInvocationFailure e) {
+            return e.getResult();
+        }
+    }
+
+    @Override
+    public boolean canCreateJNIFieldId(ResolvedJavaField field) {
+        return field instanceof InterpreterResolvedJavaField interpreterField && interpreterField.canCreateJNIFieldId();
+    }
+
+    @Override
+    public JNIFieldId getOrCreateJNIFieldId(ResolvedJavaField field) {
+        assert canCreateJNIFieldId(field);
+        return ((InterpreterResolvedJavaField) field).getOrCreateJNIFieldId();
+    }
+
+    @Override
+    public ResolvedJavaField lookupFieldForJNI(Class<?> clazz, String name, String signature, boolean isStatic) {
+        if (clazz.isPrimitive() || clazz.isArray()) {
+            return null;
+        }
+        InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz));
+        Symbol<Name> fieldName = SymbolsSupport.getNames().lookup(ByteSequence.create(name));
+        Symbol<Type> fieldType = SymbolsSupport.getTypes().lookupValidType(ByteSequence.create(signature));
+        if (fieldName == null || fieldType == null) {
+            return null;
+        }
+        return lookupInterpreterField(type, fieldName, fieldType, isStatic);
+    }
+
+    private static InterpreterResolvedJavaField lookupInterpreterField(InterpreterResolvedObjectType holder, Symbol<Name> name, Symbol<Type> type, boolean isStatic) {
+        for (InterpreterResolvedJavaField field : holder.getDeclaredFields()) {
+            if (name.equals(field.getSymbolicName()) && type.equals(field.getSymbolicType()) && field.isStatic() == isStatic) {
+                return field;
+            }
+        }
+        if (isStatic) {
+            for (InterpreterResolvedObjectType superInterface : holder.getInterfaces()) {
+                InterpreterResolvedJavaField field = lookupInterpreterField(superInterface, name, type, true);
+                if (field != null) {
+                    return field;
+                }
+            }
+        }
+        InterpreterResolvedObjectType superclass = holder.getSuperclass();
+        return superclass == null ? null : lookupInterpreterField(superclass, name, type, isStatic);
+    }
+
+    @Override
+    public ResolvedJavaField getJNIField(Class<?> clazz, JNIFieldId fieldId, boolean isStatic) {
+        if (clazz.isPrimitive() || !InterpreterJNIFieldIds.isInterpreterFieldId(fieldId)) {
+            return null;
+        }
+
+        ResolvedJavaField resolvedField = null;
+        if (isStatic) {
+            InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(InterpreterJNIFieldIds.getStaticFieldHolder(fieldId));
+            resolvedField = type.findStaticFieldWithOffset(InterpreterJNIFieldIds.getStaticFieldOffset(fieldId), null);
+        } else {
+            Object interpreterType = DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(clazz));
+            if (interpreterType instanceof InterpreterResolvedObjectType type) {
+                resolvedField = type.findInstanceFieldWithOffset(InterpreterJNIFieldIds.getInstanceFieldOffset(fieldId), null);
+            }
+        }
+        return resolvedField;
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public Object getJNIStaticFieldBase(JNIFieldId fieldId, boolean primitive) {
+        InterpreterResolvedObjectType type = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(InterpreterJNIFieldIds.getStaticFieldHolder(fieldId));
+        return type.getStaticStorage(primitive, InterpreterJNIFieldIds.getStaticFieldLayerNum(fieldId));
+    }
+
+    @Override
     public PreparedSignature prepareSignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass) {
         int count = signature.getParameterCount(false);
 
@@ -174,7 +312,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     @Override
     public PreparedSignature prepareJNIDowncallSignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass) {
         InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
-        ResolvedJavaType wordType = DynamicHub.fromClass(stubSection.target.wordJavaKind.toJavaClass()).getInterpreterType();
+        ResolvedJavaType wordType = DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(stubSection.target.wordJavaKind.toJavaClass()));
 
         int parameterCount = signature.getParameterCount(false);
         JavaType[] parameterTypes = new JavaType[parameterCount + 2];
@@ -235,7 +373,7 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
     public PreparedSignature prepareJNIUpcallVarargsSignature(Signature signature, ResolvedJavaType accessingClass, boolean nonVirtual) {
         InterpreterStubSection stubSection = ImageSingletons.lookup(InterpreterStubSection.class);
 
-        ResolvedJavaType wordType = DynamicHub.fromClass(stubSection.target.wordJavaKind.toJavaClass()).getInterpreterType();
+        ResolvedJavaType wordType = DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(stubSection.target.wordJavaKind.toJavaClass()));
 
         int parameterCount = signature.getParameterCount(false);
         int startIndex = (nonVirtual ? 4 : 3);
@@ -287,10 +425,10 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
             return wordType;
         } else if (kind == JavaKind.Boolean || kind == JavaKind.Byte || kind == JavaKind.Short || kind == JavaKind.Char) {
             // C varargs promote sub-words to int (C99, 6.5.2.2-6)
-            return DynamicHub.fromClass(int.class).getInterpreterType();
+            return DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(int.class));
         } else if (kind == JavaKind.Float) {
             // C varargs promote float to double (C99, 6.5.2.2-6)
-            return DynamicHub.fromClass(double.class).getInterpreterType();
+            return DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(double.class));
         }
         return signature.getParameterType(index, accessingClass);
     }
@@ -671,6 +809,15 @@ public final class InterpreterSupportImpl extends InterpreterSupport {
         } else {
             throw VMError.shouldNotReachHereAtRuntime();
         }
+    }
+
+    @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used for crash log")
+    public boolean logRistrettoFrame(Log log, FrameInfoQueryResult frameInfo) {
+        if (!SubstrateOptions.useRistretto()) {
+            return false;
+        }
+        return RistrettoInterpreterSupport.singleton().logRistrettoFrame(log, frameInfo);
     }
 
     private void logInterpreterBytecodeFrame(Log log, FrameInfoQueryResult frameInfo, Pointer sp, int threadedHandlerBCI) {

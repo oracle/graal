@@ -35,12 +35,13 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -155,7 +156,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
                  * runtime class loader hierarchy.
                  */
                 PredefinedClassesSupport.registerClass(clazz);
-                RuntimeClassInitialization.initializeAtRunTime(clazz);
+                JVMCIRuntimeClassInitializationSupport.singleton().initializeAtRunTime(GuestAccess.get().lookupType(clazz));
             }
 
             /*

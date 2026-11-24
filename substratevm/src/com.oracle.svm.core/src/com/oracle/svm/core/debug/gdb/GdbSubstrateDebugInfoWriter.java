@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.objectfile.BasicNobitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
-import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.code.InstalledCodeObserverSupport;

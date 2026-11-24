@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
@@ -88,14 +89,19 @@ public final class ReferenceHandlerThread implements Runnable {
         return singleton().stopped;
     }
 
+    /// Waits for a started reference-handler thread to detach. Initialization failure can leave
+    /// the handler unstarted, in which case there is no thread to wait for.
     @Uninterruptible(reason = "Executed during teardown after VMThreads#threadExit")
     public static void waitInNativeUntilDetached() {
         if (!isSupported()) {
             return;
         }
 
-        VMThreads.waitInNativeUntilDetached(singleton().isolateThread);
-        singleton().isolateThread = Word.nullPointer();
+        IsolateThread isolateThread = singleton().isolateThread;
+        if (isolateThread.isNonNull()) {
+            VMThreads.waitInNativeUntilDetached(isolateThread);
+            singleton().isolateThread = Word.nullPointer();
+        }
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -135,7 +141,7 @@ public final class ReferenceHandlerThread implements Runnable {
 
     @Fold
     static boolean isSupported() {
-        return SubstrateOptions.AllowVMInternalThreads.getValue();
+        return SubstrateOptions.AllowVMInternalThreads.getValue() && !SubstrateOptions.useEpsilonGC();
     }
 }
 

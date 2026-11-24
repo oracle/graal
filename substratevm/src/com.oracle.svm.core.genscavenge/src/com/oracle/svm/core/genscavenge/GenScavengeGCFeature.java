@@ -53,7 +53,7 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.AllocationFeature;
 import com.oracle.svm.core.heap.BarrierSetProvider;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
@@ -63,7 +63,7 @@ import com.oracle.svm.core.jvmstat.PerfDataFeature;
 import com.oracle.svm.core.jvmstat.PerfDataHolder;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.metaspace.AbstractMetaspace;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
@@ -92,9 +92,11 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(RememberedSet.class, rememberedSet);
         ImageSingletons.add(BarrierSetProvider.class, rememberedSet);
 
-        GenScavengeMemoryPoolMXBeans memoryPoolMXBeans = new GenScavengeMemoryPoolMXBeans();
-        ImageSingletons.add(GenScavengeMemoryPoolMXBeans.class, memoryPoolMXBeans);
-        ImageSingletons.add(GCRelatedMXBeans.class, new GenScavengeRelatedMXBeans(memoryPoolMXBeans));
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            GenScavengeMemoryPoolMXBeans memoryPoolMXBeans = new GenScavengeMemoryPoolMXBeans();
+            ImageSingletons.add(GenScavengeMemoryPoolMXBeans.class, memoryPoolMXBeans);
+            ImageSingletons.add(GCRelatedMXBeans.class, new GenScavengeRelatedMXBeans(memoryPoolMXBeans));
+        }
 
         if (RuntimeClassLoading.isSupported() && ImageLayerBuildingSupport.firstImageBuild()) {
             ImageSingletons.add(Metaspace.class, new MetaspaceImpl());

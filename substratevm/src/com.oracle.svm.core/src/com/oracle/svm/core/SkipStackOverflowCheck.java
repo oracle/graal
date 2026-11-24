@@ -29,7 +29,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 
 /**
  * Annotated method will skip the stack overflow check in its prologue.

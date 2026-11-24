@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -61,9 +62,8 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.core.meta.MethodRefUtils;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
 import com.oracle.svm.core.reflect.ReflectionIntrospectorImpl;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
@@ -139,7 +139,6 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     private ImageClassLoader loader;
     private AnalysisUniverse aUniverse;
     private UniverseMetaAccess metaAccess;
-    private Boolean relativeCodePointers;
 
     private record AccessorKey(ResolvedJavaMethod member, ResolvedJavaType targetClass) {
     }
@@ -307,11 +306,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     private MethodRef asMethodRef(ResolvedJavaMethod method) {
         AnalysisMethod aMethod = (method instanceof AnalysisMethod) ? (AnalysisMethod) method : analysisAccess.getUniverse().lookup(method);
-        if (relativeCodePointers) {
-            return new MethodOffset(aMethod);
-        } else {
-            return new MethodPointer(aMethod);
-        }
+        return MethodRefUtils.create(aMethod);
     }
 
     @Override
@@ -373,15 +368,17 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         loader = access.getImageClassLoader();
         annotationSubstitutions = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
 
-        assert relativeCodePointers == null;
-        relativeCodePointers = SubstrateOptions.useRelativeCodePointers();
-
         /* Primitive classes cannot be accessed through Class.forName() */
         for (Class<?> primitiveClass : PRIMITIVE_CLASSES) {
             reflectionData.registerClassLookup(AccessCondition.unconditional(), false, primitiveClass.getName());
         }
 
-        access.registerObjectReachableCallback(SubstrateAccessor.class, ReflectionFeature::onAccessorReachable);
+        HostedValuesProvider hostedValuesProvider = access.getUniverse().getHostedValuesProvider();
+        access.registerObjectReachableCallback((callbackAccess, object, reason) -> {
+            // JVMCI migration blocked by GR-72585: Migrate com.oracle.svm.core.reflect for terminus
+            SubstrateAccessor accessor = hostedValuesProvider.asObject(SubstrateAccessor.class, object);
+            onAccessorReachable(callbackAccess, accessor, reason);
+        }, GuestAccess.get().lookupType(SubstrateAccessor.class));
     }
 
     private static void onAccessorReachable(DuringAnalysisAccess a, SubstrateAccessor accessor, ObjectScanner.ScanReason reason) {

@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.RandomAccess;
 import java.util.stream.Stream;
 
@@ -481,7 +482,9 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         @SuppressWarnings("unchecked")
         @Override
         public R next() {
-            assert expectedModCount == list.modCount : Assertions.errorMessageContext("expectedModCount", expectedModCount, "list.modCount", list.modCount);
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
             return (R) list.nodes[index++];
         }
 

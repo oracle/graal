@@ -38,7 +38,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.RuntimeMetadataEncoding;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
@@ -168,12 +169,12 @@ public class HeapBreakdownProvider {
         }
         /* Extract byte[] for code info. */
         List<Integer> codeInfoByteArrayLengths = CodeInfoTable.getCurrentLayerImageCodeCache().getTotalByteArrayLengths();
-        long codeInfoSize = codeInfoByteArrayLengths.stream().map(l -> objectLayout.getArraySize(JavaKind.Byte, l, true)).reduce(0L, Long::sum);
+        long codeInfoSize = codeInfoByteArrayLengths.stream().map(l -> ObjectLayoutCompilerSupport.getArraySize(objectLayout, JavaKind.Byte, l, true)).reduce(0L, Long::sum);
         addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX, "code metadata", "#glossary-code-metadata"), codeInfoSize, codeInfoByteArrayLengths.size());
         /* Extract byte[] for metadata. */
         int metadataByteLength = RuntimeMetadataEncoding.currentLayer().getEncoding().length;
         if (metadataByteLength > 0) {
-            long metadataSize = objectLayout.getArraySize(JavaKind.Byte, metadataByteLength, true);
+            long metadataSize = ObjectLayoutCompilerSupport.getArraySize(objectLayout, JavaKind.Byte, metadataByteLength, true);
             addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX, "reflection metadata", "#glossary-reflection-metadata"), metadataSize, 1);
         }
         ProgressReporter reporter = ProgressReporter.singleton();
@@ -188,7 +189,7 @@ public class HeapBreakdownProvider {
             for (ConditionalRuntimeValue<ResourceStorageEntryBase> resourceList : Resources.currentLayer().resources().getValues()) {
                 if (resourceList.getValueUnconditionally().hasData()) {
                     for (byte[] resource : resourceList.getValueUnconditionally().getData()) {
-                        long resourceByteArraySize = objectLayout.getArraySize(JavaKind.Byte, resource.length, true);
+                        long resourceByteArraySize = ObjectLayoutCompilerSupport.getArraySize(objectLayout, JavaKind.Byte, resource.length, true);
                         resourcesByteArraySize += resourceByteArraySize;
                         resourceByteArrays.add(resource);
                     }
@@ -202,7 +203,7 @@ public class HeapBreakdownProvider {
         reporter.recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteArraySize);
         /* Extract byte[] for graph encodings. */
         if (graphEncodingByteLength >= 0) {
-            long graphEncodingSize = objectLayout.getArraySize(JavaKind.Byte, graphEncodingByteLength, true);
+            long graphEncodingSize = ObjectLayoutCompilerSupport.getArraySize(objectLayout, JavaKind.Byte, graphEncodingByteLength, true);
             reporter.recordJsonMetric(ImageDetailKey.GRAPH_ENCODING_SIZE, graphEncodingSize);
             addEntry(entries, byteArrayEntry, HeapBreakdownEntry.of(BYTE_ARRAY_PREFIX, "graph encodings", "#glossary-graph-encodings"), graphEncodingSize, 1);
         }

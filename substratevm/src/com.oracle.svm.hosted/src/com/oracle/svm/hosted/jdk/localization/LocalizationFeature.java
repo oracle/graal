@@ -25,13 +25,16 @@
 package com.oracle.svm.hosted.jdk.localization;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.StandardCharsets;
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.ListResourceBundle;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
@@ -49,29 +52,43 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
+import com.oracle.svm.core.jdk.localization.DefaultCharsetSingleton;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.meta.MethodRefUtils;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.imagelayer.SVMImageSingletonWriter;
+import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.shared.option.HostedOptionKey;
+import com.oracle.svm.shared.option.LayerVerifiedOption;
+import com.oracle.svm.shared.option.LayerVerifiedOption.Kind;
+import com.oracle.svm.shared.option.LayerVerifiedOption.Severity;
+import com.oracle.svm.shared.singletons.ImageSingletonLoader;
+import com.oracle.svm.shared.singletons.ImageSingletonWriter;
+import com.oracle.svm.shared.singletons.LayeredPersistFlags;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
+import com.oracle.svm.shared.singletons.traits.LayeredCallbacksSingletonTrait;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredCallbacksSupplier;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.LocaleUtil;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
@@ -109,7 +126,7 @@ import sun.util.resources.ParallelListResourceBundle;
  * @see BundleContentSubstitutedLocalizationSupport
  */
 @AutomaticallyRegisteredFeature
-@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class, other = PartiallyLayerAware.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = LocalizationFeature.LayeredCallbacks.class)
 public class LocalizationFeature implements InternalFeature {
 
     /**
@@ -132,6 +149,10 @@ public class LocalizationFeature implements InternalFeature {
     protected LocalizationSupport support;
 
     private Function<String, Class<?>> findClassByName;
+
+    private BeforeAnalysisAccessImpl analysisAccess;
+
+    private Set<Integer> priorRegisteredBundleTypeIds = Set.of();
 
     @Platforms(Platform.HOSTED_ONLY.class) private ImageClassLoader imageClassLoader;
 
@@ -161,6 +182,7 @@ public class LocalizationFeature implements InternalFeature {
                         deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available.")//
         public static final HostedOptionKey<Boolean> LocalizationOptimizedMode = new HostedOptionKey<>(false);
 
+        @LayerVerifiedOption(kind = Kind.Changed, severity = Severity.Error, positional = false, message = "Changing LocalizationSubstituteLoadLookup between image layers is not supported (GR-80901).")//
         @Option(help = "Store the resource bundle content more efficiently in the fallback mode.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> LocalizationSubstituteLoadLookup = new HostedOptionKey<>(true);
 
@@ -246,8 +268,17 @@ public class LocalizationFeature implements InternalFeature {
         } catch (IllegalCharsetNameException | UnsupportedCharsetException ex) {
             throw UserError.abort(ex, "Invalid default charset %s", defaultCharsetOptionValue);
         }
-        support = selectLocalizationSupport();
-        ImageSingletons.add(LocalizationSupport.class, support);
+        if (ImageLayerBuildingSupport.lastImageBuild()) {
+            ImageSingletons.add(DefaultCharsetSingleton.class, new DefaultCharsetSingleton(defaultCharset));
+        }
+        if (substituteLoadLookup) {
+            BundleContentSubstitutedLocalizationSupport bundleContentSubstitutedLocalizationSupport = new BundleContentSubstitutedLocalizationSupport(allLocales, compressionPool);
+            support = bundleContentSubstitutedLocalizationSupport;
+            ImageSingletons.add(BundleContentSubstitutedLocalizationSupport.class, bundleContentSubstitutedLocalizationSupport);
+        } else {
+            support = new LocalizationSupport(allLocales);
+            ImageSingletons.add(LocalizationSupport.class, support);
+        }
 
         addCharsets();
         this.imageClassLoader = ((AfterRegistrationAccessImpl) access).getImageClassLoader();
@@ -257,15 +288,7 @@ public class LocalizationFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         String reason = "All ResourceBundleControlProvider that are registered as services end up as objects in the image heap, and are therefore registered to be initialized at image build time";
         ServiceLoader.load(ResourceBundleControlProvider.class).stream()
-                        .forEach(provider -> ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(provider.type(), reason));
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private LocalizationSupport selectLocalizationSupport() {
-        if (substituteLoadLookup) {
-            return new BundleContentSubstitutedLocalizationSupport(allLocales, defaultCharset, compressionPool);
-        }
-        return new LocalizationSupport(allLocales, defaultCharset);
+                        .forEach(provider -> JVMCIRuntimeClassInitializationSupport.singleton().initializeAtBuildTime(GuestAccess.get().lookupType(provider.type()), reason));
     }
 
     private static final List<String> PROVIDER_ADAPTERS = Arrays.asList(
@@ -325,8 +348,29 @@ public class LocalizationFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
+        var access = (BeforeAnalysisAccessImpl) a;
+        analysisAccess = access;
         addResourceBundles();
-        var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+        if (substituteLoadLookup) {
+            /* Directly constructed bundles need no explicit resource bundle registration. */
+            a.registerSubtypeReachabilityHandler((callbackAccess, bundleClass) -> {
+                if (!Modifier.isAbstract(bundleClass.getModifiers())) {
+                    var bundleType = ((DuringAnalysisAccessImpl) callbackAccess).getMetaAccess().lookupJavaType(bundleClass);
+                    if (priorRegisteredBundleTypeIds.contains(bundleType.getId())) {
+                        /* Prepared contents or an unprepared getter from a prior layer already serve this class. */
+                        return;
+                    }
+                    // A prepared subclass can make its uninstantiated superclass reachable.
+                    bundleType.registerInstantiatedCallback(_ -> {
+                        try {
+                            ((BundleContentSubstitutedLocalizationSupport) support).prepareUnpreparedBundle(bundleClass, this::createBundleGetter);
+                        } catch (ReflectiveOperationException e) {
+                            throw VMError.shouldNotReachHere(e);
+                        }
+                    });
+                }
+            }, ListResourceBundle.class);
+        }
         /*
          * Static @Stable fields initialized in static initializers of build-time initialized
          * classes.
@@ -340,6 +384,25 @@ public class LocalizationFeature implements InternalFeature {
                 registerNegativeLocaleServiceProviderQueries(((FeatureImpl.DuringAnalysisAccessImpl) callbackAccess).getApplicationClassLoader());
             }, LocaleProviderAdapter.class);
         }
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        analysisAccess = null;
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        if (substituteLoadLookup) {
+            MethodRef[] getters = ((BundleContentSubstitutedLocalizationSupport) support).finishBundleGetters();
+            access.registerAsImmutable(getters);
+        }
+    }
+
+    private MethodRef createBundleGetter(Method method) {
+        var getter = analysisAccess.getMetaAccess().lookupJavaMethod(method);
+        analysisAccess.registerAsRoot(getter, true, "Invoked non-virtually for an unprepared resource bundle");
+        return MethodRefUtils.create(getter);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -391,7 +454,7 @@ public class LocalizationFeature implements InternalFeature {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void addCharset(Charset charset) {
-        Map<String, Charset> charsets = ImageSingletons.lookup(LocalizationSupport.class).charsets;
+        Map<String, Charset> charsets = ImageSingletons.lookup(LocalizationFeature.class).support.charsets;
         charsets.put(charset.name().toLowerCase(Locale.ROOT), charset);
         for (String name : charset.aliases()) {
             charsets.put(name.toLowerCase(Locale.ROOT), charset);
@@ -632,6 +695,35 @@ public class LocalizationFeature implements InternalFeature {
     protected void trace(String msg) {
         if (trace) {
             System.out.println(msg);
+        }
+    }
+
+    static class LayeredCallbacks extends SingletonLayeredCallbacksSupplier {
+        @Override
+        public LayeredCallbacksSingletonTrait getLayeredCallbacksTrait() {
+            return new LayeredCallbacksSingletonTrait(new SingletonLayeredCallbacks<LocalizationFeature>() {
+                @Override
+                public LayeredPersistFlags doPersist(ImageSingletonWriter writer, LocalizationFeature singleton) {
+                    /* Retain classes with contents or getters from every prior layer, including intermediate layers. */
+                    Set<Integer> registeredTypeIds = new HashSet<>(singleton.priorRegisteredBundleTypeIds);
+                    if (singleton.substituteLoadLookup) {
+                        var bundleSupport = (BundleContentSubstitutedLocalizationSupport) singleton.support;
+                        var universe = ((SVMImageSingletonWriter) writer).getHostedUniverse();
+                        for (var type : universe.getTypes()) {
+                            if (type.getWrapped().isBackedByHostType() && (bundleSupport.isPreparedBundle(type.getJavaClass()) || bundleSupport.hasUnpreparedBundleGetter(type.getJavaClass()))) {
+                                registeredTypeIds.add(type.getWrapped().getId());
+                            }
+                        }
+                    }
+                    writer.writeIntList("registeredBundleTypeIds", registeredTypeIds.stream().sorted().toList());
+                    return LayeredPersistFlags.CALLBACK_ON_REGISTRATION;
+                }
+
+                @Override
+                public void onSingletonRegistration(ImageSingletonLoader loader, LocalizationFeature singleton) {
+                    singleton.priorRegisteredBundleTypeIds = Set.copyOf(loader.readIntList("registeredBundleTypeIds"));
+                }
+            });
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,9 +37,11 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.sun.management.GcInfo;
 
+import com.oracle.svm.core.jdk.management.VMManagementBean;
+
 import sun.management.Util;
 
-public final class EpsilonGarbageCollectorMXBean implements com.sun.management.GarbageCollectorMXBean, NotificationEmitter {
+public final class EpsilonGarbageCollectorMXBean implements com.sun.management.GarbageCollectorMXBean, NotificationEmitter, VMManagementBean {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public EpsilonGarbageCollectorMXBean() {

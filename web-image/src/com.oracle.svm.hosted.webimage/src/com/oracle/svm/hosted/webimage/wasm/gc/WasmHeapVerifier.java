@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.webimage.wasm.gc;
 
 import java.lang.ref.Reference;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -36,10 +36,10 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.genscavenge.ImageHeapWalker;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectHeader;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.guest.staging.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
+import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;

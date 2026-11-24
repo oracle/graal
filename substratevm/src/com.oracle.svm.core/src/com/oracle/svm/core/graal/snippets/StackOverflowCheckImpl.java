@@ -43,7 +43,8 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.SubstrateGuestOptions;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
@@ -52,7 +53,7 @@ import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMThreads;
@@ -296,9 +297,14 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     }
 
     @Override
-    public void updateStackOverflowBoundary() {
+    public void updateMainThreadStackOverflowBoundary() {
         long threadSize = PlatformThreads.getRequestedJavaStackSize(Thread.currentThread());
-        if (threadSize != 0) {
+        /*
+         * Do not apply an invalidly small -Xss limit to the main thread.
+         * Keep its OS-provided stack boundary so startup can reach option validation.
+         */
+        long minimumStackSize = PlatformThreads.addStackOverflowGuardZones(SubstrateGuestOptions.USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE);
+        if (threadSize >= minimumStackSize) {
             updateStackOverflowBoundary(Word.unsigned(threadSize));
         }
     }

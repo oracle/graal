@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.FloatingGuardPhase;
@@ -118,7 +119,11 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> implements Floa
 
     @Override
     public boolean shouldApply(StructuredGraph graph) {
-        return graph.hasNode(GuardNode.TYPE) || graph.hasNode(FixedGuardNode.TYPE);
+        // A graph with no guards can still contain for (int i = 0; (long) i < limit; i++). The root IV i is
+        // updated as an int; the checked IV is its long conversion. run may add a guard on limit to exclude
+        // overflow of i, then lower that guard in this pass. Do not skip the phase before it has that
+        // opportunity.
+        return graph.hasLoops() || graph.hasNode(GuardNode.TYPE) || graph.hasNode(FixedGuardNode.TYPE);
     }
 
     @Override
@@ -145,6 +150,11 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> implements Floa
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
+        // For for (int i = 0; (long) i < limit; i++), preparation may add a floating guard on limit to
+        // exclude overflow of the int root i, then replace the loop comparison with a guarded limit. This
+        // changes the graph. Do it before enumerating guards so any new guard is lowered in this same pass,
+        // before floating-guard insertion becomes illegal.
+        CountedLoopInfo.prepareRootOverflowGuards(graph, context);
         if (graph.hasNode(GuardNode.TYPE)) {
             lowerFloatingGuards(graph);
         }

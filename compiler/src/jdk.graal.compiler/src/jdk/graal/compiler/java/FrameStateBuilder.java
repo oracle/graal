@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -357,7 +357,6 @@ public final class FrameStateBuilder implements SideEffectsState {
             return parser.intrinsicContext.createFrameState(parser.getGraph(), this, forStateSplit, sourcePosition);
         }
 
-        // Skip intrinsic frames
         return create(bci, parser != null ? parser.getNonIntrinsicAncestor() : null, false, null, null);
     }
 
@@ -458,7 +457,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
             throw shouldNotReachHereUnexpectedValue(bci); // ExcludeFromJacocoGeneratedReport
         }
-        if (parser.intrinsicContext != null && (parent == null || parent.intrinsicContext != parser.intrinsicContext)) {
+        if (parser.intrinsicContext != null && parent == null) {
             // When parsing an intrinsic put in a substitution marker showing the original method as
             // the caller. This keeps the relationship between the method and the method
             // substitution clear in resulting NodeSourcePosition.
@@ -1116,7 +1115,11 @@ public final class FrameStateBuilder implements SideEffectsState {
         return result;
     }
 
-    private static boolean equals(ValueNode[] a, ValueNode[] b, int length) {
+    private static boolean equals(ValueNode[] a, ValueNode[] b) {
+        return a.length == b.length && prefixEquals(a, b, a.length);
+    }
+
+    private static boolean prefixEquals(ValueNode[] a, ValueNode[] b, int length) {
         for (int i = 0; i < length; ++i) {
             if (a[i] != b[i]) {
                 return false;
@@ -1147,11 +1150,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             if (other.graph != graph) {
                 return false;
             }
-            if (other.locals.length != locals.length) {
-                return false;
-            }
-            return equals(other.locals, locals, locals.length) && equals(other.stack, stack, stackSize) && equals(other.lockedObjects, lockedObjects, lockedObjects.length) &&
-                            equals(other.monitorIds, monitorIds, monitorIds.length);
+            return equals(other.locals, locals) && prefixEquals(other.stack, stack, stackSize) && equals(other.lockedObjects, lockedObjects) && equals(other.monitorIds, monitorIds);
         }
         return false;
     }
@@ -1176,50 +1175,20 @@ public final class FrameStateBuilder implements SideEffectsState {
         sideEffects.add(sideEffect);
     }
 
-    public void replaceValue(ValueNode oldValue, ValueNode newValue) {
-        for (int i = 0; i < locals.length; ++i) {
-            if (locals[i] == oldValue) {
-                locals[i] = newValue;
-            }
-        }
-        for (int i = 0; i < stack.length; ++i) {
-            if (stack[i] == oldValue) {
-                stack[i] = newValue;
-            }
-        }
-    }
-
-    public FrameState createInitialIntrinsicFrameState(ResolvedJavaMethod original) {
-        FrameState stateAfterStart;
-
-        ValueNode[] newLocals;
-        if (original.getMaxLocals() == localsSize() || original.isNative()) {
-            newLocals = new ValueNode[original.getMaxLocals()];
-            for (int i = 0; i < newLocals.length; i++) {
-                ValueNode node = locals[i];
-                if (node == FrameState.TWO_SLOT_MARKER) {
-                    node = null;
-                }
-                newLocals[i] = node;
-            }
-        } else {
-            newLocals = new ValueNode[original.getMaxLocals()];
-            int parameterCount = original.getSignature().getParameterCount(!original.isStatic());
-            for (int i = 0; i < parameterCount; i++) {
-                ValueNode param = locals[i];
-                if (param == FrameState.TWO_SLOT_MARKER) {
-                    param = null;
-                }
-                newLocals[i] = param;
-                assert param == null || param instanceof ParameterNode || param.isConstant();
+    /**
+     * Creates the entry frame state for this method, with two-slot markers represented as null.
+     */
+    public FrameState createInitialIntrinsicFrameState() {
+        ValueNode[] newLocals = locals.clone();
+        for (int i = 0; i < newLocals.length; i++) {
+            if (newLocals[i] == FrameState.TWO_SLOT_MARKER) {
+                newLocals[i] = null;
             }
         }
         assert stackSize == 0 : stackSize;
         ValueNode[] newStack = ValueNode.EMPTY_ARRAY;
         ValueNode[] locks = ValueNode.EMPTY_ARRAY;
         assert monitorIds.length == 0 : monitorIds;
-        stateAfterStart = graph.add(
-                        new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, newLocals, newStack, stackSize, null, null, locks, Collections.emptyList(), FrameState.StackState.BeforePop));
-        return stateAfterStart;
+        return graph.add(new FrameState(null, code, 0, newLocals, newStack, stackSize, null, null, locks, Collections.emptyList(), FrameState.StackState.BeforePop));
     }
 }

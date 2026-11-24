@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -160,7 +160,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
     public static class UnsafeLoadTypeFlow extends OffsetLoadTypeFlow {
 
         UnsafeLoadTypeFlow(BytecodePosition loadLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow) {
-            super(loadLocation, objectType, filterUncheckedInterface(componentType), objectFlow);
+            super(loadLocation, objectType, dropUncheckedInterfaceBound(componentType), objectFlow);
         }
 
         UnsafeLoadTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, UnsafeLoadTypeFlow original) {

@@ -19,9 +19,27 @@ Run-time class loading cannot reload a class that was already partially included
 This will result in errors if run-time-loaded classes try to use such removed methods or static fields.
 A typical way to address this is to use `-H:Preserve=package=...` at build time to ensure all methods and fields of a package are included in the native image.
 
-To enable just-in-time (JIT) compilation of run-time-loaded bytecode, use `-H:+GraalJITCompileAtRuntime`.
+### Preservation Option Argument Files
+
+You can keep preservation selections in an [argument file with option-value continuations](../../docs/reference-manual/native-image/BuildOptions.md#argument-files):
+
+```text
+# native-image: value-continuations
+
+# Library scope
+-H:Preserve=...
+    package=my.library.*
+    module=java.logging
+```
+
+Pass this file as `native-image @preserve.args ...`.
+The driver expands the section into `-H:Preserve=package=my.library.*,module=java.logging`.
+`Preserve` remains an application build choice and cannot be embedded in a library's _native-image.properties_.
 
 ### Runtime Compilation Mode Options
+
+Use `-H:+GraalJITCompileAtRuntime` at build time to include Ristretto in the image for just-in-time (JIT) compilation of run-time-loaded bytecode.
+This also makes the additional run-time options described below available in the resulting image.
 
 Ristretto-enabled images recognize the HotSpot-style run-time options `-Xint`, `-Xmixed`, and
 `-Xcomp`. `-Xint` disables run-time compilation and uses the interpreter; `-Xmixed` enables
@@ -29,8 +47,34 @@ threshold-based mixed execution; and `-Xcomp` compiles before first invocation. 
 of these mode options is present, they are processed in command-line order and the last one wins.
 
 `-Xbatch` is independent of the selected mode. It makes callers wait for scheduled compilation,
-including on-stack replacement compilation. If run-time compilation is disabled or a compilation
-fails, Ristretto continues execution in the interpreter.
+including on-stack replacement compilation.
+If run-time compilation is disabled, execution remains in the interpreter.
+Compiler bailouts normally fall back to the interpreter.
+Unexpected compiler exceptions and bailouts configured as failures through `CompilationBailoutAsFailure` follow the configured compilation-failure policy.
+
+### Compilation Failure Options
+
+In images that include the Graal runtime compiler, `-XX:+AbortVMOnCompilationFailure` sets the compiler's `CompilationFailureAction` option to `ExitVM`, overriding any earlier setting.
+`-XX:-AbortVMOnCompilationFailure` sets it to `Silent` only if the most recent `AbortVMOnCompilationFailure` flag on the same command line was positive and no explicit `CompilationFailureAction` setting followed that flag.
+Otherwise, the negative flag has no effect.
+Explicit settings of `CompilationFailureAction` through
+`-Djdk.graal.CompilationFailureAction=`, `-Dgraal.CompilationFailureAction=`, or
+`-XX:CompilationFailureAction=` take effect in command-line order.
+For example, `-XX:+AbortVMOnCompilationFailure -Dgraal.CompilationFailureAction=Diagnose -XX:-AbortVMOnCompilationFailure` leaves the action as `Diagnose`, while `-Dgraal.CompilationFailureAction=Print -XX:+AbortVMOnCompilationFailure` selects `ExitVM`.
+Images that do not include the Graal runtime compiler handle these flags according to their normal unrecognized-option policy.
+When runtime compilation is present, these options use the existing Graal compiler failure handling, including Ristretto and Truffle compilation.
+
+### Runtime VM Options
+
+`-XX:+IgnoreUnrecognizedVMOptions` discards unknown VM options, including options that precede it.
+For JNI VM creation, an incoming `JavaVMInitArgs.ignoreUnrecognized=true` also enables this policy,
+and `-XX:-IgnoreUnrecognizedVMOptions` does not disable it. Otherwise, the final `+` or `-` setting
+determines the policy. Malformed values of options parsed by Native Image still fail.
+For Java main entry points with strict runtime option handling enabled
+(`-H:+StrictRuntimeJavaOptions`), arguments after the first `--` remain application arguments.
+
+`-XX:±UnlockDiagnosticVMOptions` is supported for HotSpot command-line compatibility. Native Image
+does not currently have diagnostic warnings to unlock.
 
 ## Resource URLs
 The semantics of the internal `resource:` URL depends on `ClassForNameRespectsClassLoader`:

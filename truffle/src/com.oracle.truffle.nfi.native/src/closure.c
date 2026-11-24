@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -183,33 +183,39 @@ static void invoke_closure_buffer_ret(ffi_cif *cif, void *ret, void **args, void
 
     if (retPatches) {
         int patchCount = (*env)->GetIntField(env, retPatches, ctx->RetPatches_count);
-        jintArray patches = (jintArray) (*env)->GetObjectField(env, retPatches, ctx->RetPatches_patches);
-        jint *encoded = (*env)->GetIntArrayElements(env, patches, NULL);
+        if (patchCount < 0) {
+            // The Java closure had a pending exception, so its return value is ignored. Zero the
+            // full native return area, including values wider than ffi_arg.
+            memset(ret, 0, cif->rtype->size);
+        } else {
+            jintArray patches = (jintArray) (*env)->GetObjectField(env, retPatches, ctx->RetPatches_patches);
+            jint *encoded = (*env)->GetIntArrayElements(env, patches, NULL);
 
-        jobjectArray objects = (jobjectArray) (*env)->GetObjectField(env, retPatches, ctx->RetPatches_objects);
+            jobjectArray objects = (jobjectArray) (*env)->GetObjectField(env, retPatches, ctx->RetPatches_objects);
 
-        int i;
-        for (i = 0; i < patchCount; i++) {
-            jobject retObj = (*env)->GetObjectArrayElement(env, objects, i);
-            enum TypeTag tag = DECODE_TAG(encoded[i]);
-            void *retPtr = ((char *) ret) + DECODE_OFFSET(encoded[i]);
+            int i;
+            for (i = 0; i < patchCount; i++) {
+                jobject retObj = (*env)->GetObjectArrayElement(env, objects, i);
+                enum TypeTag tag = DECODE_TAG(encoded[i]);
+                void *retPtr = ((char *) ret) + DECODE_OFFSET(encoded[i]);
 
-            switch (tag) {
-                case OBJECT:
-                    *((jobject *) retPtr) = (*env)->NewGlobalRef(env, retObj);
-                    break;
-                case STRING:
-                    serialize_ret_string(ctx, env, retObj, retPtr);
-                    break;
-                default:
-                    // nothing to do
-                    break;
+                switch (tag) {
+                    case OBJECT:
+                        *((jobject *) retPtr) = (*env)->NewGlobalRef(env, retObj);
+                        break;
+                    case STRING:
+                        serialize_ret_string(ctx, env, retObj, retPtr);
+                        break;
+                    default:
+                        // nothing to do
+                        break;
+                }
+
+                (*env)->DeleteLocalRef(env, retObj);
             }
 
-            (*env)->DeleteLocalRef(env, retObj);
+            (*env)->ReleaseIntArrayElements(env, patches, encoded, JNI_ABORT);
         }
-
-        (*env)->ReleaseIntArrayElements(env, patches, encoded, JNI_ABORT);
     }
 
     (*env)->PopLocalFrame(env, NULL);

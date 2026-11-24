@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,6 +70,7 @@ import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.ValueProxyNode;
 import jdk.graal.compiler.nodes.VirtualState;
 import jdk.graal.compiler.nodes.WithExceptionNode;
+import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.java.MonitorEnterNode;
@@ -344,12 +345,14 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      */
     private boolean processNodeWithScalarReplacedInputs(ValueNode node, FixedNode insertBefore, BlockT state, GraphEffectList effects) {
         ValueNode canonicalizedValue = node;
+        boolean haveAliasedInputs = false;
         if (node instanceof Canonicalizable.Unary<?>) {
             @SuppressWarnings("unchecked")
             Canonicalizable.Unary<ValueNode> canonicalizable = (Canonicalizable.Unary<ValueNode>) node;
             ObjectState valueObj = getObjectState(state, canonicalizable.getValue());
             ValueNode valueAlias = valueObj != null ? valueObj.getMaterializedValue() : getScalarAlias(canonicalizable.getValue());
             if (valueAlias != canonicalizable.getValue()) {
+                haveAliasedInputs = true;
                 canonicalizedValue = (ValueNode) canonicalizable.canonical(tool, valueAlias);
             }
         } else if (node instanceof Canonicalizable.Binary<?>) {
@@ -360,10 +363,40 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             ObjectState yObj = getObjectState(state, canonicalizable.getY());
             ValueNode yAlias = yObj != null ? yObj.getMaterializedValue() : getScalarAlias(canonicalizable.getY());
             if (xAlias != canonicalizable.getX() || yAlias != canonicalizable.getY()) {
+                haveAliasedInputs = true;
                 canonicalizedValue = (ValueNode) canonicalizable.canonical(tool, xAlias, yAlias);
             }
         } else {
             return false;
+        }
+        /*
+         * The canonical() call above may have returned a new node that is not part of the graph.
+         * In this case, prepareCanonicalNode below will set the new node's inputs to their aliases.
+         * After prepareCanonicalNode succeeds, we record the new node as the original node's alias
+         * and queue effects to modify the graph after analysis converges.
+         *
+         * Even if canonicalization returned the original node, aliased inputs may enable further
+         * canonicalization of its usages. In this case, we copy the original floating node so that
+         * prepareCanonicalNode and addScalarAlias below propagate those aliases through the copy.
+         *
+         * For example, consider what happens without this copy in a complex pattern like
+         * (U1 ^ true) == U2. Let U1 and U2 be unboxes of the same virtual box containing a primitive
+         * boolean parameter P. Processing the unboxes records alias(U1) = P and alias(U2) = P.
+         * While processing the XOR node, the canonical() call above is canonical(tool, P, true),
+         * which returns the original XOR node. Later, this method is invoked for the equality node.
+         * The equality's canonical(tool, U1 ^ true, P) cannot fold the comparison.
+         *
+         * With the copy of (U1 ^ true), prepareCanonicalNode sets the first operand to its alias P,
+         * giving (P ^ true). After preparation succeeds, addScalarAlias records this version as the
+         * original XOR node's alias. Later, when this method is invoked for the equality node, the
+         * equality's canonical(tool, P ^ true, P) folds the comparison to false in the first PEA
+         * iteration.
+         *
+         * This copying propagates input aliases to usages. Without it, we might only discover all
+         * aliases on a later PEA iteration, breaking monotonicity.
+         */
+        if (canonicalizedValue == node && haveAliasedInputs && node instanceof FloatingNode) {
+            canonicalizedValue = (ValueNode) node.copyWithInputs(false);
         }
         if (canonicalizedValue != node && canonicalizedValue != null) {
             if (canonicalizedValue.isAlive()) {
@@ -376,7 +409,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     addScalarAlias(node, alias);
                 }
             } else {
-                if (!prepareCanonicalNode(canonicalizedValue, state, effects)) {
+                if (!prepareCanonicalNode(canonicalizedValue, state, effects, EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE))) {
                     VirtualUtil.trace(node.getOptions(), debug, "replacement via canonicalization too complex: %s -> %s", node, canonicalizedValue);
                     return false;
                 }
@@ -397,8 +430,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     /**
      * Nodes created during canonicalizations need to be scanned for values that were replaced.
      */
-    private boolean prepareCanonicalNode(ValueNode node, BlockT state, GraphEffectList effects) {
+    private boolean prepareCanonicalNode(ValueNode node, BlockT state, GraphEffectList effects, EconomicSet<ValueNode> visited) {
         assert !node.isAlive();
+        if (!visited.add(node)) {
+            return true;
+        }
         for (Position pos : node.inputPositions()) {
             Node input = pos.get(node);
             if (input instanceof ValueNode) {
@@ -416,7 +452,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         }
                     }
                 } else {
-                    if (!prepareCanonicalNode((ValueNode) input, state, effects)) {
+                    if (!prepareCanonicalNode((ValueNode) input, state, effects, visited)) {
                         return false;
                     }
                 }

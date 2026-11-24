@@ -53,9 +53,9 @@ import org.graalvm.polyglot.SandboxPolicy;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
@@ -87,7 +87,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public RootCallTarget newCallTarget(CallTarget sourceCallTarget, RootNode rootNode) {
+        public RuntimeCallTarget newCallTarget(CallTarget sourceCallTarget, RootNode rootNode) {
             return new DefaultCallTarget(rootNode);
         }
 
@@ -108,6 +108,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public boolean isLoaded(CallTarget callTarget) {
             return ((DefaultCallTarget) callTarget).isLoaded();
+        }
+
+        @Override
+        public int getBytecodeIndex(FrameInstance frameInstance, Frame frame) {
+            return ((DefaultTruffleRuntime.DefaultFrameInstance) frameInstance).getBytecodeIndex(frame);
         }
 
         @Override
@@ -175,7 +180,8 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public boolean isGuestCallStackFrame(StackTraceElement e) {
             String methodName = e.getMethodName();
-            return (methodName.equals(DefaultCallTarget.CALL_BOUNDARY_METHOD)) && e.getClassName().equals(DefaultCallTarget.class.getName());
+            String className = e.getClassName();
+            return className.equals(DefaultCallTarget.class.getName()) && methodName.equals(DefaultCallTarget.CALL_BOUNDARY_METHOD);
         }
 
         @Override

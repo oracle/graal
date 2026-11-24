@@ -52,6 +52,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
@@ -527,7 +528,7 @@ final class PolyglotFastThreadLocals {
 
         @Override
         public Object get(Node node) {
-            assert assertValidGet(index, LANGUAGE_CONTEXT_OFFSET, findContextClass(node, index), languageClass);
+            assert !TruffleOptions.DetailedAssertions || assertValidGet(index, LANGUAGE_CONTEXT_OFFSET, findContextClass(node, index), languageClass);
             return getLanguageContext(node, index);
         }
 
@@ -550,7 +551,7 @@ final class PolyglotFastThreadLocals {
 
         @Override
         public TruffleLanguage<Object> get(Node node) {
-            assert assertValidGet(index, LANGUAGE_SPI_OFFSET, languageClass, languageClass);
+            assert !TruffleOptions.DetailedAssertions || assertValidGet(index, LANGUAGE_SPI_OFFSET, languageClass, languageClass);
             return getLanguage(node, index, languageClass);
         }
 

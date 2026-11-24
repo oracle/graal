@@ -1918,7 +1918,7 @@ public final class TruffleFile extends TruffleFileLegacy {
         public <T> T get(AttributeDescriptor<T> descriptor) {
             Object value = delegate.get(descriptor.name);
             if (value != null) {
-                return descriptor.clazz.cast(value);
+                return castAttributeValue(descriptor.clazz, value);
             } else if (queriedAttributes.contains(descriptor)) {
                 return null;
             } else {
@@ -2275,7 +2275,21 @@ public final class TruffleFile extends TruffleFileLegacy {
 
     private <T> T getAttributeImpl(Path forPath, String attribute, Class<T> type, LinkOption... options) throws IOException {
         final Object value = getAttributeImpl(forPath, attribute, options);
-        return value == null ? null : type.cast(value);
+        return value == null ? null : castAttributeValue(type, value);
+    }
+
+    /**
+     * Casts an attribute value provided by a {@link FileSystem} to the expected type. Custom file
+     * systems, such as in-memory file systems, may represent attributes declared as {@link Long},
+     * for example the {@code unix:ino} attribute, as an {@link Integer}. Such values are converted to
+     * {@link Long}.
+     */
+    @SuppressWarnings("unchecked")
+    private static <T> T castAttributeValue(Class<T> type, Object value) {
+        if (type == Long.class && value instanceof Integer intValue) {
+            return (T) Long.valueOf(intValue.longValue());
+        }
+        return type.cast(value);
     }
 
     private Object getAttributeImpl(final Path forPath, final String attribute, final LinkOption... options) throws IOException {

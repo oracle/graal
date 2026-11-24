@@ -29,6 +29,7 @@ import static jdk.graal.compiler.graph.NodeSourcePosition.Marker.Placeholder;
 import static jdk.graal.compiler.graph.NodeSourcePosition.Marker.Substitution;
 
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import jdk.graal.compiler.bytecode.BytecodeDisassembler;
@@ -98,6 +99,9 @@ public class NodeSourcePosition extends BytecodePosition implements Iterable<Nod
 
             @Override
             public NodeSourcePosition next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
                 NodeSourcePosition current = currentPosition;
                 currentPosition = currentPosition.getCaller();
                 return current;

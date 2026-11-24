@@ -25,12 +25,13 @@
 package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.genscavenge.AdaptiveCollectionPolicy2Tunables.NUM_OF_GC_SAMPLE;
+import static com.oracle.svm.core.genscavenge.GenScavengeGCCause.OnAllocation;
 
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.guest.staging.core.heap.GCCause;
 import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.core.util.Timer;
 import com.oracle.svm.shared.util.UnsignedUtils;
@@ -137,7 +138,9 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
          */
         UnsignedWord averagePromoted = UnsignedUtils.fromDouble(avgPromoted.getPaddedAverage());
         UnsignedWord promotionEstimate = UnsignedUtils.min(averagePromoted, youngUsed);
-        UnsignedWord freeInOldGenWithExpansion = sizes.getMaxOldSize().subtract(oldUsed);
+        /* Full compaction can leave old-gen usage above its maximum size. */
+        UnsignedWord maxOldSize = sizes.getMaxOldSize();
+        UnsignedWord freeInOldGenWithExpansion = oldUsed.belowThan(maxOldSize) ? maxOldSize.subtract(oldUsed) : Word.zero();
         /*
          * Note that ParallelScavengeHeap also considers if the OS has enough free memory ready to
          * commit and expand old gen for promotions, and if not, does a full GC. This is to avoid
@@ -195,7 +198,13 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
 
             tenuringThreshold = computeTenuringThreshold(survivorOverflow, tenuringThreshold);
 
-            resizeAfterYoungGC(survivorOverflow, oldLive, survived);
+            /*
+             * This guard is not in the original HotSpot policy. Native Image explicitly requests
+             * young collections, e.g. during runtime-state trimming. Growing Eden cannot reduce
+             * their frequency.
+             */
+            boolean allowEdenGrowth = cause == OnAllocation;
+            resizeAfterYoungGC(survivorOverflow, oldLive, survived, allowEdenGrowth);
 
             decaySupplementalGrowth(minorCount);
         }
@@ -274,16 +283,21 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
         sizes.setOldSize(newOldSize);
     }
 
-    private void resizeAfterYoungGC(boolean isSurvivorOverflowing, UnsignedWord oldLive, UnsignedWord survived) { // ParallelScavengeHeap::resize_after_young_gc
-        doResizeAfterYoungGC(isSurvivorOverflowing, survived);
+    private void resizeAfterYoungGC(boolean isSurvivorOverflowing, UnsignedWord oldLive, UnsignedWord survived, boolean allowEdenGrowth) { // ParallelScavengeHeap::resize_after_young_gc
+        doResizeAfterYoungGC(isSurvivorOverflowing, survived, allowEdenGrowth);
 
-        // Consider if should shrink old-gen
-        if (!isSurvivorOverflowing) {
+        /*
+         * Do not shrink old gen after survivor overflow, to avoid reducing its headroom when survivor
+         * space has proved insufficient. Normal tenuring can also push old-gen usage beyond its capacity
+         * target. In that case, leave resizing to the following full collection.
+         */
+        UnsignedWord oldCapacity = sizes.getOldSize();
+        boolean tryShrinkOldGen = !isSurvivorOverflowing && !oldSizeExceededInPreviousCollection;
+        if (tryShrinkOldGen) {
             // Upper bound for a single step shrink
             UnsignedWord maxShrinkBytes = minSpaceSize();
-            UnsignedWord oldCapacity = sizes.getOldSize();
             UnsignedWord oldGenFreeInBytes = oldCapacity.subtract(oldLive);
-            UnsignedWord shrinkBytes = computeOldGenShrinkBytes(oldGenFreeInBytes, maxShrinkBytes);
+            UnsignedWord shrinkBytes = alignDown(computeOldGenShrinkBytes(oldGenFreeInBytes, maxShrinkBytes));
             if (shrinkBytes.notEqual(0)) {
                 int minHeapFreeRatio = MIN_HEAP_FREE_RATIO; // (avoids ecj warnings)
                 if (minHeapFreeRatio != 0) {
@@ -296,21 +310,24 @@ class AdaptiveCollectionPolicy2 extends AdaptiveCollectionPolicy2Base {
                 }
 
                 // from PSOldGen::shrink
-                UnsignedWord newOldSize = minSpaceSize(alignDown(oldCapacity.subtract(shrinkBytes)));
+                UnsignedWord newOldSize = minSpaceSize(oldCapacity.subtract(shrinkBytes));
                 sizes.setOldSize(newOldSize);
             }
         }
     }
 
-    private void doResizeAfterYoungGC(boolean isSurvivorOverflowing, UnsignedWord survived) { // PSYoungGen::resize_after_young_gc
-        computeYoungDesiredSizesAndResize(isSurvivorOverflowing, survived);
+    private void doResizeAfterYoungGC(boolean isSurvivorOverflowing, UnsignedWord survived, boolean allowEdenGrowth) { // PSYoungGen::resize_after_young_gc
+        computeYoungDesiredSizesAndResize(isSurvivorOverflowing, survived, allowEdenGrowth);
     }
 
-    private void computeYoungDesiredSizesAndResize(boolean isSurvivorOverflowing, UnsignedWord survived) { // PSYoungGen::compute_desired_sizes
+    private void computeYoungDesiredSizesAndResize(boolean isSurvivorOverflowing, UnsignedWord survived, boolean allowEdenGrowth) { // PSYoungGen::compute_desired_sizes
         UnsignedWord currentEdenSize = sizes.getEdenSize();
         UnsignedWord currentSurvivorSize = sizes.getSurvivorSize();
 
         UnsignedWord edenSize = computeDesiredEdenSize(isSurvivorOverflowing, currentEdenSize);
+        if (!allowEdenGrowth) {
+            edenSize = UnsignedUtils.min(edenSize, currentEdenSize);
+        }
         edenSize = minSpaceSize(alignUp(edenSize));
 
         UnsignedWord survivorSize = computeDesiredSurvivorSize(currentSurvivorSize);

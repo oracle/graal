@@ -31,6 +31,7 @@ import java.lang.invoke.MethodType;
 import java.util.Arrays;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives;
 import com.oracle.svm.espresso.classfile.attributes.BootstrapMethodsAttribute;
@@ -58,6 +59,11 @@ public final class ResolvedInvokeDynamicConstant {
         this.bootstrapMethod = bootstrapMethod;
         this.parsedInvokeSignature = parsedInvokeSignature;
         this.nameSymbol = name;
+    }
+
+    /// Returns the class-file bootstrap recipe without executing its bootstrap method.
+    public BootstrapMethodsAttribute.Entry getBootstrapMethod() {
+        return bootstrapMethod;
     }
 
     /**
@@ -93,6 +99,14 @@ public final class ResolvedInvokeDynamicConstant {
         // However insertion should be done under a lock
         // see JVMS sect. 5.4.3.6 & ConstantPoolCache::set_dynamic_call
         CallSiteLink newLink = createCallSiteLink(pool, accessingKlass, method, bci);
+        return cacheCallSiteLink(method, bci, newLink);
+    }
+
+    /// Publishes a previously constructed link for this exact call site, retaining any racing link.
+    public int cacheCallSiteLink(InterpreterResolvedJavaMethod method, int bci, CallSiteLink newLink) {
+        if (!newLink.matchesCallSite(method, bci)) {
+            throw new IllegalArgumentException("Call-site link belongs to another bytecode location");
+        }
         synchronized (this) {
             CallSiteLink[] existingLinks = callSiteLinks;
             if (existingLinks == null) {
@@ -177,10 +191,15 @@ public final class ResolvedInvokeDynamicConstant {
         return link;
     }
 
-    private CallSiteLink createCallSiteLink(RuntimeInterpreterConstantPool pool, Class<?> accessingKlass, InterpreterResolvedJavaMethod method, int bci) {
+    /**
+     * Runs the bootstrap without publishing its result, returning linkage errors as failed links.
+     * Replay callers must validate the bootstrap before calling this method and validate the returned
+     * link before caching it.
+     */
+    public CallSiteLink createCallSiteLink(RuntimeInterpreterConstantPool pool, Class<?> accessingKlass, InterpreterResolvedJavaMethod method, int bci) {
         // Per-callsite linking
         try {
-            InterpreterResolvedObjectType accessingType = (InterpreterResolvedObjectType) DynamicHub.fromClass(accessingKlass).getInterpreterType();
+            InterpreterResolvedObjectType accessingType = (InterpreterResolvedObjectType) DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(accessingKlass));
             MethodHandle bootstrapmethodMethodHandle = pool.resolvedMethodHandleAt(bootstrapMethod.getBootstrapMethodRef(), accessingType);
             Object[] args = pool.getStaticArguments(bootstrapMethod, accessingType);
 

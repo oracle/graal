@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.guest.staging.hub.DynamicHubSupport;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;

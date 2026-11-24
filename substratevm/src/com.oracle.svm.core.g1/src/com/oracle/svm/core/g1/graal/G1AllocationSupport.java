@@ -102,6 +102,12 @@ public class G1AllocationSupport extends NativeGCAllocationSupport {
     }
 
     @Override
+    public long[] allocateMetaspaceLongArray(int length) {
+        DynamicHub hub = DynamicHub.fromClass(long[].class);
+        return (long[]) allocateMetaspaceArrayLikeObject(hub, length, MetaspaceAllocationKind.LONG_ARRAY);
+    }
+
+    @Override
     public Object allocateMetaspaceInstance(DynamicHub hub) {
         return allocateMetaspaceInstance0(hub);
     }
@@ -123,5 +129,6 @@ public class G1AllocationSupport extends NativeGCAllocationSupport {
         int DYNAMIC_HUB = 0;
         int BYTE_ARRAY = 1;
         int INT_ARRAY = 2;
+        int LONG_ARRAY = 3;
     }
 }

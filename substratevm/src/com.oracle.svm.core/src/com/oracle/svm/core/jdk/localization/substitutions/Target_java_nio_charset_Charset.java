@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,16 +27,14 @@ package com.oracle.svm.core.jdk.localization.substitutions;
 import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.Locale;
-import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
-
-import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.localization.DefaultCharsetSingleton;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 
 @TargetClass(java.nio.charset.Charset.class)
@@ -52,14 +50,13 @@ public final class Target_java_nio_charset_Charset {
 
     @Substitute
     private static Charset defaultCharset() {
-        return ImageSingletons.lookup(LocalizationSupport.class).defaultCharset;
+        return DefaultCharsetSingleton.singleton().getDefaultCharset();
     }
 
     @Substitute
     private static SortedMap<String, Charset> availableCharsets() {
         TreeMap<String, Charset> result = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-        Map<String, Charset> charsets = ImageSingletons.lookup(LocalizationSupport.class).charsets;
-        for (Charset charset : charsets.values()) {
+        for (Charset charset : LocalizationSupport.getAllCharsets()) {
             result.put(charset.name(), charset);
         }
         return Collections.unmodifiableSortedMap(result);
@@ -77,8 +74,7 @@ public final class Target_java_nio_charset_Charset {
             return (Charset) a[1];
         }
 
-        Map<String, Charset> charsets = ImageSingletons.lookup(LocalizationSupport.class).charsets;
-        Charset cs = charsets.get(charsetName.toLowerCase(Locale.ROOT));
+        Charset cs = LocalizationSupport.getCharset(charsetName.toLowerCase(Locale.ROOT));
         if (cs != null) {
             cache(charsetName, cs);
             return cs;

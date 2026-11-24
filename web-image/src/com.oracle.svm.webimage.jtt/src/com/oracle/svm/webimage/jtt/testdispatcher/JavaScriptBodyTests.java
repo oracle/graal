@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import com.oracle.svm.webimage.jtt.javascriptbody.ByteReturnTest;
 import com.oracle.svm.webimage.jtt.javascriptbody.CallFromCallbackTest;
 import com.oracle.svm.webimage.jtt.javascriptbody.CallbackStaticTest;
 import com.oracle.svm.webimage.jtt.javascriptbody.CallbackTest;
+import com.oracle.svm.webimage.jtt.javascriptbody.CharReturnTest;
 import com.oracle.svm.webimage.jtt.javascriptbody.CovariantCallbackTest;
 import com.oracle.svm.webimage.jtt.javascriptbody.DoubleReturnTest;
 import com.oracle.svm.webimage.jtt.javascriptbody.DynamicCallTest;
@@ -70,6 +71,8 @@ public class JavaScriptBodyTests extends JTTTestDispatcher {
             BoolArgTest.main(remainingArgs);
         } else if (checkClass(ByteReturnTest.class, className)) {
             ByteReturnTest.main(remainingArgs);
+        } else if (checkClass(CharReturnTest.class, className)) {
+            CharReturnTest.main(remainingArgs);
         } else if (checkClass(LongReturnTest.class, className)) {
             LongReturnTest.main(remainingArgs);
         } else if (checkClass(LongArgTest.class, className)) {

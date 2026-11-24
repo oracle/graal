@@ -479,7 +479,11 @@ public final class CompilationResultFrameTree {
                     debug.log(DebugContext.VERBOSE_LEVEL, "Building FrameTree for %s", compilationResult);
                 }
                 List<Infopoint> infopoints = compilationResult.getInfopoints();
-                List<SourceMapping> sourceMappings = compilationResult.getSourceMappings();
+                /*
+                 * Source mappings may have been released after compilation when this builder uses
+                 * only infopoints. Do not access them unless they are selected as an input.
+                 */
+                List<SourceMapping> sourceMappings = useSourceMappings ? compilationResult.getSourceMappings() : List.of();
                 List<SourcePositionSupplier> sourcePosData = new ArrayList<>(infopoints.size() + sourceMappings.size());
                 InfopointSourceWrapper infopointForRoot = null;
                 for (Infopoint infopoint : infopoints) {

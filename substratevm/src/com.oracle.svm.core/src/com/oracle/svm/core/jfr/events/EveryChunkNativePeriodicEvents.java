@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;

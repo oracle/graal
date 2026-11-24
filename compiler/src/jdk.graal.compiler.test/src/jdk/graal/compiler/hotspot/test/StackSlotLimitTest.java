@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.nodes.AllocaNode;
+import jdk.graal.compiler.lir.stackslotalloc.GraphColoringStackSlotAllocator;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
@@ -99,7 +100,9 @@ public class StackSlotLimitTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void test1() {
-        test("testSnippet1");
+        // The large-offset case needs the linear scan placement of the stack slot after the
+        // alloca buffer. Graph coloring can reuse a low-offset slot instead.
+        test(new OptionValues(getInitialOptions(), GraphColoringStackSlotAllocator.Options.LIROptGraphColoringStackSlotAllocator, false), "testSnippet1");
     }
 
     @Override

@@ -29,7 +29,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateControlFlowIntegrityFeature;
@@ -100,7 +100,7 @@ public class ContinuationsFeature implements InternalFeature {
              * become reachable via the Preserve option or reflection. Ensure that calls at runtime
              * fail in the Continuation initializer.
              */
-            RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+            JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
             rci.initializeAtRunTime("jdk.internal.vm.Continuation", "Host continuations are not supported");
         }
 

@@ -46,13 +46,13 @@ import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapLayouter;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.heap.AbstractPinnedObjectSupport;
-import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.guest.staging.core.heap.GCCause;
+import com.oracle.svm.guest.staging.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.StoredContinuation;
@@ -67,6 +67,7 @@ import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapLayouter.ImageHeapLayoutCancelledException;
 import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.thread.JavaVMOperation;
@@ -447,10 +448,14 @@ final class AuxiliaryImagePersistence {
                 throw new UnsupportedOperationException(msg);
             });
             if (AbstractPinnedObjectSupport.singleton().isPinnedSlow(obj)) {
+                // This is a best-effort check, e.g., Epsilon GC does not track pinning intent.
                 throw new UnsupportedOperationException("Object is pinned, but persisting and loading would move it: " + obj);
             }
             if (MonitorSupport.singleton().isLockedByAnyThread(obj)) {
                 throw new UnsupportedOperationException("Object is locked, so some state might be unsafe to persist: " + obj);
+            }
+            if (Metaspace.singleton().isInAddressSpace(obj)) {
+                throw new UnsupportedOperationException("Object belongs to metaspace, so it cannot be persisted: " + obj);
             }
             // Note: locked AbstractOwnableSynchronizers reference live threads and fail
         }

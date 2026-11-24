@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,7 +55,6 @@ public class PropagateDeoptimizeProbabilityPhase extends BasePhase<CoreProviders
     }
 
     @Override
-    @SuppressWarnings("try")
     protected void run(final StructuredGraph graph, CoreProviders context) {
         if (graph.hasNode(AbstractDeoptimizeNode.TYPE)) {
 
@@ -69,29 +68,26 @@ public class PropagateDeoptimizeProbabilityPhase extends BasePhase<CoreProviders
                     AbstractBeginNode beginNode = (AbstractBeginNode) stack.pop();
                     FixedNode fixedNode = (FixedNode) beginNode.predecessor();
 
-                    if (fixedNode == null) {
-                        // Can happen for start node.
-                    } else if (fixedNode instanceof AbstractMergeNode) {
-                        AbstractMergeNode mergeNode = (AbstractMergeNode) fixedNode;
+                    if (beginNode instanceof AbstractMergeNode mergeNode) {
                         for (AbstractEndNode end : mergeNode.forwardEnds()) {
                             AbstractBeginNode newBeginNode = AbstractBeginNode.prevBegin(end);
                             stack.push(newBeginNode);
                         }
-                    } else if (fixedNode instanceof ControlSplitNode) {
-                        ControlSplitNode controlSplitNode = (ControlSplitNode) fixedNode;
+                    } else if (fixedNode == null) {
+                        // Can happen for start node.
+                    } else if (fixedNode instanceof ControlSplitNode controlSplitNode) {
                         EconomicSet<AbstractBeginNode> reachableSuccessors = reachableSplits.get(controlSplitNode);
                         if (reachableSuccessors == null) {
                             reachableSuccessors = EconomicSet.create();
                             reachableSplits.put(controlSplitNode, reachableSuccessors);
                         }
 
-                        if (controlSplitNode.getSuccessorCount() == reachableSuccessors.size() - 1) {
+                        reachableSuccessors.add(beginNode);
+                        if (controlSplitNode.getSuccessorCount() == reachableSuccessors.size()) {
                             // All successors of this split lead to deopt, propagate reachability
                             // further upwards.
                             reachableSplits.removeKey(controlSplitNode);
                             stack.push(AbstractBeginNode.prevBegin((FixedNode) controlSplitNode.predecessor()));
-                        } else {
-                            reachableSuccessors.add(beginNode);
                         }
                     } else {
                         stack.push(AbstractBeginNode.prevBegin(fixedNode));

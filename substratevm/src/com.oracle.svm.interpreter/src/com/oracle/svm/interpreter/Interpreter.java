@@ -269,6 +269,7 @@ import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.methodhandles.MethodHandleInterpreterUtils;
@@ -660,11 +661,19 @@ public final class Interpreter {
                     InterpreterResolvedJavaMethod resolutionSeed = InterpreterResolvedJavaMethod.fromMemberName(memberName);
                     InterpreterUnresolvedSignature signature = resolutionSeed.getSignature();
                     boolean hasReceiver = intrinsic != SignaturePolymorphicIntrinsic.LinkToStatic;
-                    Object[] basicArgs = unbasic(arguments, signature, hasReceiver);
+                    /*
+                     * Frame arguments are boxed according to the linkTo call-site signature, which
+                     * can contain sub-word types and need not match the target signature. Convert
+                     * through basic kinds to adapt between them: an int call-site parameter can
+                     * correspond to a byte target parameter, or vice versa. For matching sub-word
+                     * kinds, the conversions cancel each other out.
+                     */
+                    Object[] basicArgs = rebasic(arguments, method.getSignature(), !method.isStatic());
+                    Object[] calleeArgs = unbasic(basicArgs, signature, hasReceiver);
                     // This should integrate with the debugger GR-70801
                     traceLinkTo(resolutionSeed, intrinsic, indent);
                     try {
-                        Object result = InterpreterToVM.dispatchInvocation(resolutionSeed, basicArgs, intrinsic.getCallKind(), forceStayInInterpreter, false);
+                        Object result = InterpreterToVM.dispatchInvocation(resolutionSeed, calleeArgs, intrinsic.getCallKind(), forceStayInInterpreter, false);
                         yield rebasic(result, signature.getReturnKind());
                     } catch (SemanticJavaException e) {
                         throw uncheckedThrow(e.getCause());
@@ -3208,6 +3217,10 @@ public final class Interpreter {
             } else {
                 targetBCI = TableSwitch.uncheckedDefaultTarget(frame.code, curBCI);
             }
+            if (virtualStack.getState() == STATE_PROFILING) {
+                int caseIndex = low <= index && index <= high ? index - low : high - low + 1;
+                profileSwitch(frame.methodProfile, curBCI, caseIndex);
+            }
             virtualStack.pop1(frame, false);
             return finishJump(curBCI, targetBCI, frame, virtualStack);
         }
@@ -3226,12 +3239,18 @@ public final class Interpreter {
                 } else if (midVal > key) {
                     high = mid - 1;
                 } else {
+                    if (virtualStack.getState() == STATE_PROFILING) {
+                        profileSwitch(frame.methodProfile, curBCI, mid);
+                    }
                     virtualStack.pop1(frame, false);
                     return finishJump(curBCI, curBCI + LookupSwitch.uncheckedOffsetAt(frame.code, curBCI, mid), frame, virtualStack);
                 }
             }
 
             virtualStack.pop1(frame, false);
+            if (virtualStack.getState() == STATE_PROFILING) {
+                profileSwitch(frame.methodProfile, curBCI, LookupSwitch.uncheckedNumberOfCases(frame.code, curBCI));
+            }
             return finishJump(curBCI, LookupSwitch.uncheckedDefaultTarget(frame.code, curBCI), frame, virtualStack);
         }
 
@@ -3325,22 +3344,34 @@ public final class Interpreter {
                  */
                 virtualStack.popArguments(callerFrame, linkedInvoke.argumentKinds, calleeArgs, linkedInvoke.getAppendix(opcode));
             }
+            byte receiverCheckKind = linkedInvoke.getReceiverCheckKind(opcode);
             if (linkedInvoke.hasReceiver(opcode)) {
                 Object receiver = profileAndCheckReceiver(callerFrame, curBCI, calleeArgs, virtualStack.getState());
-                if (linkedInvoke.requiresSymbolicTypeCheck(opcode)) {
+                if (receiverCheckKind == LinkedInvoke.SYMBOLIC_TYPE_CHECK) {
                     DynamicHub instanceHub = DynamicHubIntrinsics.readHub(receiver);
                     if (linkedInvoke.symbolicHolder != null) {
-                        DynamicHub typeHub = linkedInvoke.symbolicHolder.getHub();
+                        // JVMS 4.9.2, Structural Constraints (the non-constructor invokespecial
+                        // target-reference paragraph), requires compatibility with the calling type.
+                        // https://docs.oracle.com/javase/specs/jvms/se25/html/jvms-4.html#jvms-4.9.2
+                        DynamicHub typeHub = opcode == INVOKESPECIAL ? callerFrame.method.getDeclaringClass().getHub() : linkedInvoke.symbolicHolder.getHub();
                         boolean assignable = InterpreterToVM.isAssignableFrom(typeHub, instanceHub, opcode != INVOKEINTERFACE);
                         if (GraalDirectives.injectBranchProbability(GraalDirectives.SLOWPATH_PROBABILITY, !assignable)) {
-                            throw incompatibleInvokeReceiver(instanceHub.getInterpreterType(), linkedInvoke.symbolicHolder);
+                            throw incompatibleInvokeReceiver(
+                                            DynamicHubUtils.getInterpreterType(instanceHub),
+                                            DynamicHubUtils.getInterpreterType(typeHub),
+                                            opcode);
                         }
                     }
                 }
             }
 
             boolean stayInInterpreter = callerFrame.forceStayInInterpreter() | preferStayInInterpreter;
-            Object retObj = InterpreterToVM.dispatchInvocation(linkedInvoke.seedMethod, calleeArgs, linkedInvoke.callKind, stayInInterpreter, false);
+            Object retObj;
+            if (opcode == INVOKEINTERFACE && receiverCheckKind == LinkedInvoke.COMBINED_INTERFACE_LOOKUP) {
+                retObj = InterpreterToVM.dispatchCheckedInterfaceInvocation(linkedInvoke.seedMethod, calleeArgs, stayInInterpreter);
+            } else {
+                retObj = InterpreterToVM.dispatchInvocation(linkedInvoke.seedMethod, calleeArgs, linkedInvoke.callKind, stayInInterpreter, false);
+            }
             virtualStack.pushBasicType(callerFrame, retObj, linkedInvoke.returnKind);
         }
 
@@ -3715,6 +3746,13 @@ public final class Interpreter {
         methodProfile.profileReceiver((int) bci, o);
     }
 
+    @AlwaysInline("Keep switch profiling in the profiling handler variants.")
+    private static void profileSwitch(MethodProfile methodProfile, long curBCI, int caseIndex) {
+        assert SubstrateOptions.useRistretto();
+        assert methodProfile != null;
+        methodProfile.profileSwitch((int) curBCI, caseIndex);
+    }
+
     @AlwaysInline("Keep branch profiling in the profiling handler variants.")
     private static void profileBranch(MethodProfile methodProfile, long curBCI, boolean branchTaken1) {
         assert SubstrateOptions.useRistretto();
@@ -3909,8 +3947,13 @@ public final class Interpreter {
         throw SemanticJavaException.raiseInlined(new NoSuchMethodError(message));
     }
 
+    /// Reports an invalid interface receiver with the exception required by `opcode`.
     @NeverInline("Keep incompatible-receiver exception construction out of bytecode-handler stubs")
-    private static SemanticJavaException incompatibleInvokeReceiver(ResolvedJavaType receiverType, InterpreterResolvedJavaType symbolicHolder) {
+    static SemanticJavaException incompatibleInvokeReceiver(ResolvedJavaType receiverType, ResolvedJavaType symbolicHolder, int opcode) {
+        if (opcode == INVOKESPECIAL) {
+            throw SemanticJavaException.raiseInlined(new IllegalAccessError(MetadataUtil.fmt("Receiver class %s must be the current class or a subtype of interface %s",
+                            receiverType.toJavaName(), symbolicHolder.toJavaName())));
+        }
         String message = MetadataUtil.fmt("Class %s does not implement the requested interface %s",
                         receiverType.toJavaName(),
                         symbolicHolder.toJavaName());
@@ -4089,11 +4132,22 @@ public final class Interpreter {
         InterpreterResolvedJavaMethod seedMethod;
         CallKind callKind;
 
-        // Ensure receivers of an interface method call actually implement the declared
-        // interface. This is not checked by the verifier, so we need to dynamically
-        // check that property. Note: this condition covers both INVOKEINTERFACE, and
-        // INVOKESPECIAL of an interface method.
-        boolean requiresSymbolicTypeCheck = frame.constantPoolTagAt(cpi) == ConstantPool.Tag.INTERFACE_METHOD_REF;
+        /*
+         * JVMS 6.5, invokeinterface, Run-time Exceptions (the resolved-interface implementation
+         * check), requires the receiver to implement the symbolic interface:
+         * https://docs.oracle.com/javase/specs/jvms/se25/html/jvms-6.html#jvms-6.5.invokeinterface
+         *
+         * The verifier does not check interface assignability, so this property is checked
+         * dynamically. The INTERFACE_METHOD_REF condition covers both INVOKEINTERFACE and
+         * INVOKESPECIAL of an interface method. A non-constructor INVOKESPECIAL from an interface
+         * can also target an Object method through a METHOD_REF entry.
+         *
+         * For INVOKESPECIAL, JVMS 4.9.2, Structural Constraints (the non-constructor invokespecial
+         * target-reference paragraph), requires compatibility with the calling type:
+         * https://docs.oracle.com/javase/specs/jvms/se25/html/jvms-4.html#jvms-4.9.2
+         */
+        boolean requiresSymbolicTypeCheck = frame.constantPoolTagAt(cpi) == ConstantPool.Tag.INTERFACE_METHOD_REF ||
+                        (opcode == INVOKESPECIAL && method.getDeclaringClass().isInterface() && !symbolicResolution.isConstructor());
 
         try {
             ResolvedCall<InterpreterResolvedJavaType, InterpreterResolvedJavaMethod, InterpreterResolvedJavaField> resolvedCall = CremaLinkResolver.resolveCallSiteOrThrow(
@@ -4120,7 +4174,7 @@ public final class Interpreter {
             traceInterpreter().string("  ").string(callKind.toString()).string(": ").string(seedMethod.toString()).newline();
         }
 
-        LinkedInvoke linkedInvoke = new LinkedInvoke(symbolicHolder, seedMethod, callKind, appendix, requiresSymbolicTypeCheck);
+        LinkedInvoke linkedInvoke = new LinkedInvoke(symbolicHolder, seedMethod, callKind, appendix, requiresSymbolicTypeCheck, opcode);
         linkedInvoke = frame.constantPoolCacheLinkedInvoke(cpi, opcode, linkedInvoke);
         return linkedInvoke;
     }

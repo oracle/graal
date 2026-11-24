@@ -26,10 +26,12 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
 
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
+import com.oracle.svm.guest.staging.core.code.UntetheredCodeInfo;
 import com.oracle.svm.shared.Uninterruptible;
-import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.c.NonmovableObjectArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.util.NonmovableByteArrayTypeReader;
 
 import jdk.graal.compiler.graph.NodeSourcePosition;

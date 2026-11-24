@@ -57,7 +57,7 @@ import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
 import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
@@ -639,7 +639,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, I
 
     @Override
     public Constant getEncoding() {
-        return new SubstrateMethodPointerConstant(new MethodPointer(this));
+        return new SubstrateMethodPointerConstant(MethodRefSupport.createMethodPointer(this));
     }
 
     @Override

@@ -46,7 +46,6 @@ import org.graalvm.collections.Pair;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.bytecode.Bytecode;
-import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
 import jdk.graal.compiler.core.common.CancellationBailoutException;
 import jdk.graal.compiler.core.common.PermanentBailoutException;
@@ -967,7 +966,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     @SuppressWarnings("try")
     public void decode(ResolvedJavaMethod method) {
         try (DebugContext.Scope scope = debug.scope("PEGraphDecode", graph)) {
-            EncodedGraph encodedGraph = lookupEncodedGraph(method, null);
+            EncodedGraph encodedGraph = lookupEncodedGraph(method);
             recordGraphElements(encodedGraph);
             PEMethodScope methodScope = createMethodScope(graph, null, encodedGraph, method, null, 0, null);
             LoopScope initialLoopScope = createInitialLoopScope(methodScope, null);
@@ -1320,7 +1319,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             return null;
         }
         ResolvedJavaMethod inlineMethod = inlineInfo.getMethodToInline();
-        EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod, inlineInfo.getIntrinsicBytecodeProvider());
+        EncodedGraph graphToInline = lookupEncodedGraph(inlineMethod);
         if (graphToInline == null) {
             return null;
         }
@@ -1689,7 +1688,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
     }
 
-    protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider);
+    protected abstract EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method);
 
     @SuppressWarnings("try")
     @Override

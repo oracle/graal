@@ -26,14 +26,13 @@ package com.oracle.svm.hosted.jdk;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
+import com.oracle.graal.pointsto.meta.JVMCIObjectReachableCallback;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.shared.util.ReflectionUtil;
 
@@ -52,9 +51,15 @@ class AtomicFieldUpdaterFeature implements InternalFeature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         FeatureImpl.DuringSetupAccessImpl config = (FeatureImpl.DuringSetupAccessImpl) access;
-        config.registerObjectReachableCallback(AtomicReferenceFieldUpdater.class, this::processFieldUpdater);
-        config.registerObjectReachableCallback(AtomicIntegerFieldUpdater.class, this::processFieldUpdater);
-        config.registerObjectReachableCallback(AtomicLongFieldUpdater.class, this::processFieldUpdater);
+        HostedValuesProvider hostedValuesProvider = config.getUniverse().getHostedValuesProvider();
+        JVMCIObjectReachableCallback callback = (analysisAccess, object, reason) -> {
+            // JVMCI migration blocked by GR-80374: Migrate AtomicFieldUpdaterFeature to Terminus
+            Object updater = hostedValuesProvider.asObject(Object.class, object);
+            processFieldUpdater(analysisAccess, updater, reason);
+        };
+        config.registerObjectReachableCallback(callback, GuestAccess.elements().java_util_concurrent_atomic_AtomicReferenceFieldUpdater);
+        config.registerObjectReachableCallback(callback, GuestAccess.elements().java_util_concurrent_atomic_AtomicIntegerFieldUpdater);
+        config.registerObjectReachableCallback(callback, GuestAccess.elements().java_util_concurrent_atomic_AtomicLongFieldUpdater);
     }
 
     @Override

@@ -44,7 +44,7 @@ import com.oracle.svm.core.container.ContainerLibrary;
 import com.oracle.svm.core.g1.nativelib.G1Library;
 import com.oracle.svm.core.g1.nativelib.G1Structs.G1HeapOptions;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.nmt.NmtCategory;

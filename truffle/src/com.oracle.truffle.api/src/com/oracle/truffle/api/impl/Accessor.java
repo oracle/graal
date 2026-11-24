@@ -47,6 +47,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.net.URI;
@@ -119,6 +120,7 @@ import com.oracle.truffle.api.TruffleSafepoint.InterruptibleFunction;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameExtensions;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -134,6 +136,7 @@ import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.provider.InternalResourceProvider;
 import com.oracle.truffle.api.provider.TruffleLanguageProvider;
@@ -220,6 +223,8 @@ public abstract class Accessor {
 
         public abstract CallTarget getCallTargetWithoutInitialization(RootNode root);
 
+        public abstract RootCallTarget initializeTarget(RootNode root, ExecutionSignature signature);
+
         public abstract EncapsulatingNodeReference createEncapsulatingNodeReference(Thread thread);
 
         public abstract boolean isSameFrame(RootNode root, Frame frame1, Frame frame2);
@@ -229,6 +234,8 @@ public abstract class Accessor {
         public abstract boolean isCaptureFramesForTrace(RootNode rootNode, boolean compiled);
 
         public abstract boolean prepareForCompilation(RootNode rootNode, boolean rootCompilation, int compilationTier, boolean lastTier);
+
+        public abstract void visitCloneableNodes(RootNode rootNode, NodeVisitor visitor);
 
         public abstract Node findInstrumentableCallNode(RootNode root, Node callNode, Frame frame, int bytecodeIndex);
     }
@@ -343,6 +350,7 @@ public abstract class Accessor {
         public abstract Class<?> getRawTypeFromGenericType(Type genericType, Class<?> defaultRawType);
 
         public abstract Type findActualTypeArgument(Type typeOrTypeVar, Type genericTargetType);
+
     }
 
     public abstract static class StringsSupport extends Support {
@@ -939,6 +947,8 @@ public abstract class Accessor {
 
         public abstract void addStackFrameInfo(Node callNode, RootCallTarget root, Throwable e, Frame frame);
 
+        public abstract void addStackFrameInfo(Node callNode, RootCallTarget root, Throwable e, Frame frame, int bytecodeIndex);
+
         public abstract boolean isThreadAccessAllowed(Env env, Thread current, boolean singleThread);
 
         public abstract void initializeThread(Env env, Thread current);
@@ -1192,6 +1202,8 @@ public abstract class Accessor {
 
         public abstract int getStackTraceElementLimit(Object receiver);
 
+        public abstract int getBytecodeIndex(Object receiver);
+
         public abstract Node getLocation(Object receiver);
 
         public abstract boolean assertGuestObject(Object guestObject);
@@ -1221,11 +1233,27 @@ public abstract class Accessor {
             }
         }
 
-        public abstract RootCallTarget newCallTarget(CallTarget source, RootNode rootNode);
+        public boolean supportsExactGeneratedProxyCall(@SuppressWarnings("unused") Method method) {
+            return false;
+        }
+
+        public void setExactGeneratedProxyEntries(Method[] entries) {
+            if (entries.length != 0) {
+                throw CompilerDirectives.shouldNotReachHere("Exact generated proxy entries are not supported by this runtime");
+            }
+        }
+
+        public abstract RuntimeCallTarget newCallTarget(CallTarget source, RootNode rootNode);
+
+        public RuntimeCallTarget newCallTarget(CallTarget source, RootNode rootNode, @SuppressWarnings("unused") ExecutionSignature signature) {
+            return newCallTarget(source, rootNode);
+        }
 
         public abstract long getCallTargetId(CallTarget target);
 
         public abstract boolean isLoaded(CallTarget callTarget);
+
+        public abstract int getBytecodeIndex(FrameInstance frameInstance, Frame frame);
 
         public abstract void notifyOnLoad(CallTarget callTarget);
 

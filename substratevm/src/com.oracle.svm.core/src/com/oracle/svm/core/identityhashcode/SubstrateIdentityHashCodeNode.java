@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.identityhashcode;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.replacements.Fold;

@@ -473,6 +473,13 @@ public class ContextSharingTest {
             AbstractPolyglotTest.assertFails(() -> {
                 c1.asValue(c0ValueProxy);
             }, PolyglotException.class, ContextSharingTest::assertMigrationError);
+
+            Value identity = c1.asValue(new IdentityExecutable(c1));
+            assertEquals(42, identity.execute(c1.asValue(42)).asInt());
+            assertEquals(43L, identity.execute(c1.asValue(43L)).asLong());
+            for (Value argument : new Value[]{c0ValueInt, c0.asValue(43L), Value.asValue(42)}) {
+                AbstractPolyglotTest.assertFails(() -> identity.execute(argument), PolyglotException.class, ContextSharingTest::assertMigrationError);
+            }
         }
     }
 

@@ -74,7 +74,11 @@ public final class Target_java_lang_foreign_SymbolLookup {
     @CallerSensitive
     @NeverInline("Starting a stack walk in the caller frame")
     static SymbolLookup libraryLookup(String name, Arena arena) {
-        Util_java_lang_foreign_SymbolLookup.ensureNativeAccess(StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer()), SymbolLookup.class, "libraryLookup");
+        /*
+         * The --illegal-native-access check must use the direct caller's module. The stack walk
+         * starts in that caller's frame, even if the caller was inlined, so do not skip it.
+         */
+        Util_java_lang_foreign_SymbolLookup.ensureNativeAccess(StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), false), SymbolLookup.class, "libraryLookup");
         if (Utils.containsNullChars(name)) {
             throw new IllegalArgumentException("Cannot open library: " + name);
         }
@@ -85,7 +89,11 @@ public final class Target_java_lang_foreign_SymbolLookup {
     @CallerSensitive
     @NeverInline("Starting a stack walk in the caller frame")
     static SymbolLookup libraryLookup(Path path, Arena arena) {
-        Util_java_lang_foreign_SymbolLookup.ensureNativeAccess(StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer()), SymbolLookup.class, "libraryLookup");
+        /*
+         * The --illegal-native-access check must use the direct caller's module. The stack walk
+         * starts in that caller's frame, even if the caller was inlined, so do not skip it.
+         */
+        Util_java_lang_foreign_SymbolLookup.ensureNativeAccess(StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), false), SymbolLookup.class, "libraryLookup");
         if (path.getFileSystem() != FileSystems.getDefault()) {
             throw new IllegalArgumentException("Path not in default file system: " + path);
         }

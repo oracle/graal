@@ -39,7 +39,8 @@ import java.util.stream.Collectors;
 
 import org.graalvm.webimage.api.JSObject;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.hub.DynamicHubUtils;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.graal.meta.SubstrateField;
@@ -107,7 +108,7 @@ public class ClassMetadataLowerer {
             return -1;
         }
 
-        SharedType metaType = f.getDeclaringClass().getHub().getMetaType();
+        SharedType metaType = DynamicHubUtils.getMetaType(f.getDeclaringClass().getHub());
 
         // if this type has a meta type, that has the same field attached on a different
         // location we must use the different location (-> e.g. for truffle nodes)

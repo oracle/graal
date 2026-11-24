@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.hub;
 
-import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.NO_DATA;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -37,8 +37,8 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.code.RuntimeMetadataEncoding;
-import com.oracle.svm.core.configure.RuntimeDynamicAccessMetadata;
-import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
+import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
+import com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.util.VMError;
@@ -172,17 +172,17 @@ final class ImageReflectionMetadataEncoding {
 
     public static Field[] getDeclaredFields(int encodedReflectionMetadata, DynamicHub declaringClass, boolean publicOnly, int layerNum) {
         int index = getValue(encodedReflectionMetadata, FIELDS, NO_DATA);
-        return index == NO_DATA ? EMPTY_FIELDS : RuntimeMetadataDecoder.singleton().parseFields(declaringClass, index, publicOnly, layerNum);
+        return index == NO_DATA ? EMPTY_FIELDS : RuntimeMetadataDecoder.singleton().parseFields(DynamicHub.toClass(declaringClass), index, publicOnly, layerNum);
     }
 
     public static Method[] getDeclaredMethods(int encodedReflectionMetadata, DynamicHub declaringClass, boolean publicOnly, int layerNum) {
         int index = getValue(encodedReflectionMetadata, METHODS, NO_DATA);
-        return index == NO_DATA ? EMPTY_METHODS : RuntimeMetadataDecoder.singleton().parseMethods(declaringClass, index, publicOnly, layerNum);
+        return index == NO_DATA ? EMPTY_METHODS : RuntimeMetadataDecoder.singleton().parseMethods(DynamicHub.toClass(declaringClass), index, publicOnly, layerNum);
     }
 
     public static Constructor<?>[] getDeclaredConstructors(int encodedReflectionMetadata, DynamicHub declaringClass, boolean publicOnly, int layerNum) {
         int index = getValue(encodedReflectionMetadata, CONSTRUCTORS, NO_DATA);
-        return index == NO_DATA ? EMPTY_CONSTRUCTORS : RuntimeMetadataDecoder.singleton().parseConstructors(declaringClass, index, publicOnly, layerNum);
+        return index == NO_DATA ? EMPTY_CONSTRUCTORS : RuntimeMetadataDecoder.singleton().parseConstructors(DynamicHub.toClass(declaringClass), index, publicOnly, layerNum);
     }
 
     public static RecordComponent[] getRecordComponents(int encodedReflectionMetadata, DynamicHub declaringClass, int layerNum) {
@@ -190,7 +190,7 @@ final class ImageReflectionMetadataEncoding {
         if (index == NO_DATA) {
             throw DynamicHub.recordsNotAvailable(declaringClass);
         }
-        return RuntimeMetadataDecoder.singleton().parseRecordComponents(declaringClass, index, layerNum);
+        return RuntimeMetadataDecoder.singleton().parseRecordComponents(DynamicHub.toClass(declaringClass), index, layerNum);
     }
 
     private static int getValue(int encodedReflectionMetadata, int bit, int defaultValue) {

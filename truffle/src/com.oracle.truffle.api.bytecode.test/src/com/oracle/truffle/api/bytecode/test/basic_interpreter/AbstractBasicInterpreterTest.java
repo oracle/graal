@@ -59,6 +59,8 @@ import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.junit.Assert;
@@ -343,7 +345,7 @@ public abstract class AbstractBasicInterpreterTest {
 
         BytecodeRootNodes<BasicInterpreter> result = run.bytecode.create(language, config, builder);
         if (run.testSerialize) {
-            assertBytecodeNodesEqual(result, doRoundTrip(run, language, config, result));
+            result = testRoundTrip(run, language, config, result);
         }
 
         if (run.testTracer) {
@@ -593,27 +595,70 @@ public abstract class AbstractBasicInterpreterTest {
         }
     }
 
-    public static BytecodeRootNodes<BasicInterpreter> doRoundTrip(
+    public static BytecodeRootNodes<BasicInterpreter> testRoundTrip(
                     TestRun run,
                     BytecodeDSLTestLanguage language, BytecodeConfig config,
                     BytecodeRootNodes<BasicInterpreter> nodes) {
-        // Perform a serialize-deserialize round trip.
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        BytecodeRootNodes<BasicInterpreter> builderNodes = doRoundTrip(run, language, config, nodes, false);
+        assertBytecodeNodesEqual(nodes, builderNodes);
+
+        BytecodeRootNodes<BasicInterpreter> executionBytecodeNodes = doRoundTrip(run, language, config, nodes, true);
+        assertBytecodeNodesEqual(nodes, executionBytecodeNodes);
+        return executionBytecodeNodes;
+    }
+
+    public static BytecodeRootNodes<BasicInterpreter> doRoundTrip(
+                    TestRun run,
+                    BytecodeDSLTestLanguage language, BytecodeConfig config,
+                    BytecodeRootNodes<BasicInterpreter> nodes, boolean useExecutionBytecode) {
         try {
-            nodes.serialize(new DataOutputStream(output), SERIALIZER);
-        } catch (IOException ex) {
-            throw new AssertionError(ex);
-        }
-        Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
-        try {
-            return run.bytecode().deserialize(language, config, input, DESERIALIZER);
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            nodes.serializeBuilderBytecode(new DataOutputStream(output), SERIALIZER);
+            Supplier<DataInput> builderBytecodeInput = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
+
+            if (useExecutionBytecode) {
+                ByteArrayOutputStream executionBytecodeOutput = new ByteArrayOutputStream();
+                nodes.serializeExecutionBytecode(new DataOutputStream(executionBytecodeOutput), config, SERIALIZER);
+                OneShotExecutionBytecodeInput executionBytecodeInput = new OneShotExecutionBytecodeInput(config,
+                                SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(executionBytecodeOutput.toByteArray())));
+                BytecodeRootNodes<BasicInterpreter> result = run.bytecode().deserializeExecutionBytecode(language, config, builderBytecodeInput, executionBytecodeInput, DESERIALIZER);
+                assertTrue("Execution bytecode input function was not used.", executionBytecodeInput.used());
+                return result;
+            } else {
+                return run.bytecode().deserializeBuilderBytecode(language, config, builderBytecodeInput, DESERIALIZER);
+            }
         } catch (IOException e) {
             throw new AssertionError(e);
         }
     }
 
+    private static final class OneShotExecutionBytecodeInput implements Function<BytecodeConfig, DataInput> {
+
+        private final BytecodeConfig config;
+        private DataInput value;
+        private boolean used;
+
+        OneShotExecutionBytecodeInput(BytecodeConfig config, DataInput value) {
+            this.config = config;
+            this.value = Objects.requireNonNull(value);
+        }
+
+        @Override
+        public DataInput apply(BytecodeConfig requestedConfig) {
+            assertFalse("Function was used more than once.", used);
+            used = true;
+            DataInput result = requestedConfig.matches(config) ? value : null;
+            value = null;
+            return result;
+        }
+
+        public boolean used() {
+            return used;
+        }
+    }
+
     public BytecodeRootNodes<BasicInterpreter> doRoundTrip(BytecodeRootNodes<BasicInterpreter> nodes) {
-        return AbstractBasicInterpreterTest.doRoundTrip(run, LANGUAGE, BytecodeConfig.DEFAULT, nodes);
+        return AbstractBasicInterpreterTest.doRoundTrip(run, LANGUAGE, BytecodeConfig.DEFAULT, nodes, true);
     }
 
     public static RootCallTarget parse(

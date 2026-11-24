@@ -36,6 +36,7 @@ import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
@@ -54,6 +55,59 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 @SuppressWarnings("all")
 public class CountedStripMiningRegressionTest extends GraalCompilerTest {
 
+    /** Exercises strip mining of an inverted loop with a guarded exact-arithmetic stride. */
+    public static int guardedTailCountedSnippet(int i, int n) {
+        if (i > n) {
+            do {
+                if (i == 77) {
+                    break;
+                }
+                i = Math.subtractExact(i, 2);
+            } while (i > n);
+        }
+        return i;
+    }
+
+    public static int guardedBreakBeforeOverflow(int i) {
+        if (i > Integer.MIN_VALUE) {
+            do {
+                if (i == Integer.MIN_VALUE + 1) {
+                    break;
+                }
+                i = Math.subtractExact(i, 2);
+            } while (i > Integer.MIN_VALUE);
+        }
+        return i;
+    }
+
+    @Test
+    public void testGuardedTailCountedLoop() {
+        OptionValues options = new OptionValues(getInitialOptions(),
+                        GraalOptions.PartialUnroll, false,
+                        GraalOptions.LoopPeeling, false,
+                        GraalOptions.FullUnroll, false,
+                        GraalOptions.LoopUnswitch, false,
+                        VectorIntrinsics.Options.Vectorization, false,
+                        jdk.graal.compiler.nodes.loop.Loop.Options.DetectInvertedLoopsAsCounted, true,
+                        jdk.graal.compiler.core.phases.MidTier.Options.StripMineCountedLoops, true,
+                        CountedStripMiningPhase.Options.CountedStripMiningMinFrequency, 0,
+                        CountedStripMiningPhase.Options.StripMineALot, true,
+                        DebugOptions.Counters, "");
+        StructuredGraph graph = parseEager("guardedTailCountedSnippet", AllowAssumptions.YES, options);
+        Suites suites = createSuites(options);
+        suites.getHighTier().apply(graph, getDefaultHighTierContext());
+        long before = CountedStripMiningPhase.FailedShouldStripMineGuardingIV.getCurrentValue(graph.getDebug());
+        suites.getMidTier().apply(graph, getDefaultMidTierContext());
+        Assert.assertTrue("Guarded IV must be rejected by strip mining",
+                        CountedStripMiningPhase.FailedShouldStripMineGuardingIV.getCurrentValue(graph.getDebug()) > before);
+        test(options, "guardedTailCountedSnippet", 1000001, 0);
+        test(options, "guardedTailCountedSnippet", 1001, 70);
+        test(options, "guardedTailCountedSnippet", 1000, 70);
+        test(options, "guardedTailCountedSnippet", Integer.MIN_VALUE + 1, Integer.MIN_VALUE);
+        test(options, "guardedBreakBeforeOverflow", Integer.MIN_VALUE + 1);
+        test(options, "guardedBreakBeforeOverflow", Integer.MIN_VALUE + 3);
+    }
+
     public static int method2() {
         int var0 = -1038903517;
         int[] var12 = new int[3];
@@ -61,6 +115,34 @@ public class CountedStripMiningRegressionTest extends GraalCompilerTest {
             var0 = var0 + -44872;
         }
         return var0;
+    }
+
+    /// Sums array elements while a countdown also contributes to the return value.
+    public static long countdownArrayLoop(int start, int[] array) {
+        long sum = 1;
+        int i = start & 15;
+        do {
+            sum += array[99 - i];
+            i--;
+        } while (i >= 0);
+        return i + sum;
+    }
+
+    /// Verifies that an increasing unsigned array index does not collapse its decreasing base IV.
+    @Test(timeout = 30_000)
+    public void testCountdownArrayLoop() {
+        int[] array = new int[100];
+        OptionValues options = new OptionValues(getInitialOptions(), CountedStripMiningPhase.Options.StripMineALot, true);
+        test(options, "countdownArrayLoop", 2, array);
+        for (int i = 0; i < array.length; i++) {
+            array[i] = i - 50;
+        }
+        // Small strips also exercise updates of the original counter across outer backedges.
+        OptionValues smallStrips = new OptionValues(options, CountedStripMiningPhase.Options.CountedStripMiningInnerLoopTrips, 2);
+        for (int start = 0; start < 16; start++) {
+            test(options, "countdownArrayLoop", start, array);
+            test(smallStrips, "countdownArrayLoop", start, array);
+        }
     }
 
     public static int longIntLoop(int limit) {

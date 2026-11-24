@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.jfr.JfrCheckpointType;
 import com.oracle.svm.core.jfr.JfrChunkFileWriter;
@@ -86,13 +87,17 @@ public class JfrFileParser {
         addParser(JfrType.Thread, new ThreadConstantPoolParser(this));
         addParser(JfrType.ThreadGroup, new ThreadGroupConstantPoolParser(this));
 
+        /* GR-26848: Require these constant pools with G1 once it supports JFR GC events. */
+        if (SubstrateOptions.useSerialGC()) {
+            addParser(JfrType.GCName, new GCNameConstantPoolParser(this));
+            addParser(JfrType.GCCause, new GCCauseConstantPoolParser(this));
+            addParser(JfrType.GCWhen, new GCWhenConstantPoolParser(this));
+        }
+
         addParser(JfrType.FrameType, new FrameTypeConstantPoolParser(this));
         addParser(JfrType.ThreadState, new ThreadStateConstantPoolParser(this));
-        addParser(JfrType.GCName, new GCNameConstantPoolParser(this));
-        addParser(JfrType.GCCause, new GCCauseConstantPoolParser(this));
         addParser(JfrType.VMOperation, new VMOperationConstantPoolParser(this));
         addParser(JfrType.MonitorInflationCause, new MonitorInflationCauseConstantPoolParser(this));
-        addParser(JfrType.GCWhen, new GCWhenConstantPoolParser(this));
         addParser(JfrType.OldObject, new OldObjectConstantPoolParser(this));
 
         if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {

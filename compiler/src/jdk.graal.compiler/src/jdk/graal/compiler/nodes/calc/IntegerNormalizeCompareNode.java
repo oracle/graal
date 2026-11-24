@@ -62,7 +62,7 @@ public final class IntegerNormalizeCompareNode extends AbstractNormalizeCompareN
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
         NodeView view = NodeView.from(tool);
-        ValueNode result = tryConstantFold(x, y, false, unsigned, stamp(view).getStackKind(), tool.getConstantReflection());
+        ValueNode result = tryConstantFold(forX, forY, false, unsigned, stamp(view).getStackKind(), tool.getConstantReflection());
         if (result != null) {
             return result;
         }

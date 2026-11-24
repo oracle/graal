@@ -40,6 +40,7 @@ import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.shared.util.BasedOnJDKClass;
 import com.oracle.svm.shared.util.TimeUtils;
 

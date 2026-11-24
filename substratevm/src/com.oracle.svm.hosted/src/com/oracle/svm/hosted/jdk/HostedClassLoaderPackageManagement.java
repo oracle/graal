@@ -79,8 +79,9 @@ import jdk.internal.loader.ClassLoaders;
  * </ol>
  *
  * For layered images, we record the packages stored in earlier layers so that references in
- * subsequent layers can be appropriately relinked. Currently in extension layers we expect only the
- * system class loader to have new packages registered.
+ * subsequent layers can be appropriately relinked. The system, platform, and boot class loaders can
+ * have new packages registered in each layer. Their package maps are assembled in the application
+ * layer, while the individual packages remain shared with the layers that first registered them.
  */
 @AutomaticallyRegisteredImageSingleton
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = HostedClassLoaderPackageManagement.LayeredCallbacks.class)
@@ -150,13 +151,13 @@ public class HostedClassLoaderPackageManagement {
     private boolean isPackageRegistered(ClassLoader classLoader, String packageName, Package packageValue) {
         if (inExtensionLayer) {
             if (classLoader == bootClassLoader) {
-                var result = priorBootPackageNames.contains(packageName);
-                VMError.guarantee(result, "Newly seen boot package %s", packageValue);
-                return true;
+                if (priorBootPackageNames.contains(packageName)) {
+                    return true;
+                }
             } else if (classLoader == platformClassLoader) {
-                var result = priorPlatformPackageNames.contains(packageName);
-                VMError.guarantee(result, "Newly seen platform package %s", packageValue);
-                return true;
+                if (priorPlatformPackageNames.contains(packageName)) {
+                    return true;
+                }
             } else if (classLoader == appClassLoader) {
                 if (priorAppPackageNames.contains(packageName)) {
                     return true;
@@ -203,9 +204,6 @@ public class HostedClassLoaderPackageManagement {
          * Note that we either need to eagerly initialize that field (the approach chosen) or
          * force-reset it to null for all packages, otherwise there can be transient problems when
          * the lazy initialization happens in the image builder after the static analysis.
-         *
-         * Note in extension layers we know the class loader is only allowed to be the app class
-         * loader.
          */
         try {
             packageGetPackageInfo.invoke(packageValue);
@@ -218,13 +216,13 @@ public class HostedClassLoaderPackageManagement {
         if (previous == null) {
             /* Scan the class loader packages if the new package was missing. */
             objectScanner.accept(loaderPackages);
-            if (inSharedLayer && runtimeClassLoader == appClassLoader) {
+            if (inSharedLayer && (runtimeClassLoader == appClassLoader || runtimeClassLoader == platformClassLoader || runtimeClassLoader == bootClassLoader)) {
                 VMError.guarantee(packageValue.getName().equals(packageName), "Package name is different from package value's name: %s %s", packageName, packageValue);
 
                 /*
                  * We must register this package so that it can be relinked in subsequent layers.
                  */
-                registry.registerHeapConstant(generateKeyName(packageValue.getName()), packageValue);
+                registry.registerHeapConstant(generateKeyName(runtimeClassLoader, packageName), packageValue);
             }
         }
     }
@@ -235,10 +233,8 @@ public class HostedClassLoaderPackageManagement {
              * Determine the package's ClassLoader
              */
             Module module = ReflectionUtil.invokeMethod(moduleLookup, hostedPackage);
-            ClassLoader classLoader = ClassLoaderFeature.getRuntimeClassLoader(module.getClassLoader());
-            VMError.guarantee(classLoader == appClassLoader, "Currently unhandled class loader seen in extension layer: %s", classLoader);
-
-            var keyName = generateKeyName(hostedPackage.getName());
+            ClassLoader classLoader = module.getClassLoader() == null ? bootClassLoader : ClassLoaderFeature.getRuntimeClassLoader(module.getClassLoader());
+            var keyName = generateKeyName(classLoader, hostedPackage.getName());
             if (registry.constantExists(keyName)) {
                 return (ImageHeapConstant) registry.getConstant(keyName);
             }
@@ -247,8 +243,18 @@ public class HostedClassLoaderPackageManagement {
         return null;
     }
 
-    private static String generateKeyName(String packageName) {
-        return String.format("AppClassLoaderPackage#%s", packageName);
+    private String generateKeyName(ClassLoader classLoader, String packageName) {
+        String loaderName;
+        if (classLoader == appClassLoader) {
+            loaderName = "App";
+        } else if (classLoader == platformClassLoader) {
+            loaderName = "Platform";
+        } else if (classLoader == bootClassLoader) {
+            loaderName = "Boot";
+        } else {
+            throw VMError.shouldNotReachHere("Currently unhandled class loader seen in extension layer: %s", classLoader);
+        }
+        return String.format("%sClassLoaderPackage#%s", loaderName, packageName);
     }
 
     public ConcurrentHashMap<String, Package> getRegisteredPackages(ClassLoader classLoader) {
@@ -263,33 +269,57 @@ public class HostedClassLoaderPackageManagement {
      * installed in this layer.
      */
     public ConcurrentHashMap<String, Object> getAppClassLoaderPackages() {
-        VMError.guarantee(BuildPhaseProvider.isAnalysisFinished(), "Packages are stable only after analysis.");
-        VMError.guarantee(ImageLayerBuildingSupport.lastImageBuild(), "AppClassLoader's Packages are only fully available in the application layer");
+        return getLayeredPackages(appClassLoader, priorAppPackageNames);
+    }
 
-        var finalAppMap = getPriorAppClassLoaderPackages();
-        var currentPackages = registeredPackages.get(appClassLoader);
+    public ConcurrentHashMap<String, Object> getPlatformClassLoaderPackages() {
+        return getLayeredPackages(platformClassLoader, priorPlatformPackageNames);
+    }
+
+    public ConcurrentHashMap<String, Object> getBootClassLoaderPackages() {
+        return getLayeredPackages(bootClassLoader, priorBootPackageNames);
+    }
+
+    private ConcurrentHashMap<String, Object> getLayeredPackages(ClassLoader classLoader, Set<String> priorPackageNames) {
+        VMError.guarantee(BuildPhaseProvider.isAnalysisFinished(), "Packages are stable only after analysis.");
+        VMError.guarantee(ImageLayerBuildingSupport.lastImageBuild(), "Packages for class loader '%s' are only fully available in the application layer", classLoader.getName());
+
+        var finalMap = getPriorLayerPackages(classLoader, priorPackageNames);
+        var currentPackages = registeredPackages.get(classLoader);
         if (currentPackages != null) {
             for (var entry : currentPackages.entrySet()) {
-                var previous = finalAppMap.put(entry.getKey(), entry.getValue());
+                var previous = finalMap.put(entry.getKey(), entry.getValue());
                 assert previous == null : Assertions.errorMessage(entry.getKey(), previous);
             }
         }
 
-        return finalAppMap;
+        return finalMap;
     }
 
     /**
      * Returns a concurrent hashmap containing the package map produced via the prior layer. Note at
-     * runtime this map's keys will all be of type {@link Package}. We use a
+     * runtime this map's values will all be of type {@link Package}. We use a
      * {@link PriorLayerMarker} to perform this transformation.
      */
     public ConcurrentHashMap<String, Object> getPriorAppClassLoaderPackages() {
-        ConcurrentHashMap<String, Object> finalAppMap = new ConcurrentHashMap<>();
-        for (String name : priorAppPackageNames) {
-            var previous = finalAppMap.put(name, new PriorLayerPackageReference(generateKeyName(name)));
+        return getPriorLayerPackages(appClassLoader, priorAppPackageNames);
+    }
+
+    public ConcurrentHashMap<String, Object> getPriorPlatformClassLoaderPackages() {
+        return getPriorLayerPackages(platformClassLoader, priorPlatformPackageNames);
+    }
+
+    public ConcurrentHashMap<String, Object> getPriorBootClassLoaderPackages() {
+        return getPriorLayerPackages(bootClassLoader, priorBootPackageNames);
+    }
+
+    private ConcurrentHashMap<String, Object> getPriorLayerPackages(ClassLoader classLoader, Set<String> priorPackageNames) {
+        ConcurrentHashMap<String, Object> finalMap = new ConcurrentHashMap<>();
+        for (String name : priorPackageNames) {
+            var previous = finalMap.put(name, new PriorLayerPackageReference(generateKeyName(classLoader, name)));
             assert previous == null : Assertions.errorMessage(name, previous);
         }
-        return finalAppMap;
+        return finalMap;
     }
 
     private record PriorLayerPackageReference(String key) implements PriorLayerMarker {

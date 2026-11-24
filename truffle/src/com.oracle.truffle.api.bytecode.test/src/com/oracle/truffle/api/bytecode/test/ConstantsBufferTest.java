@@ -144,6 +144,44 @@ public class ConstantsBufferTest {
     }
 
     @Test
+    public void floatingPointComparesRawBits() {
+        for (int prefill : new int[]{0, 16}) {
+            ConstantsBuffer b = new ConstantsBuffer();
+            for (int i = 0; i < prefill; i++) {
+                b.add("pad" + i);
+            }
+            double nan1 = Double.longBitsToDouble(0x7ff8000000000001L);
+            double nan2 = Double.longBitsToDouble(0x7ff8000000000002L);
+            int positiveZero = b.add(0.0d);
+            int negativeZero = b.add(-0.0d);
+            int firstNan = b.add(nan1);
+            int secondNan = b.add(nan2);
+            assertNotEquals(positiveZero, negativeZero);
+            assertNotEquals(firstNan, secondNan);
+            assertEquals(firstNan, b.add(Double.longBitsToDouble(0x7ff8000000000001L)));
+            assertEquals(positiveZero, b.add(0.0d));
+            assertEquals(b.add(1.5d), b.add(Double.valueOf(1.5d)));
+
+            float fnan1 = Float.intBitsToFloat(0x7fc00001);
+            float fnan2 = Float.intBitsToFloat(0x7fc00002);
+            int positiveFloatZero = b.add(0.0f);
+            int negativeFloatZero = b.add(-0.0f);
+            int firstFloatNan = b.add(fnan1);
+            int secondFloatNan = b.add(fnan2);
+            assertNotEquals(positiveFloatZero, negativeFloatZero);
+            assertNotEquals(firstFloatNan, secondFloatNan);
+            assertEquals(firstFloatNan, b.add(Float.intBitsToFloat(0x7fc00001)));
+            assertEquals(b.add(1.5f), b.add(Float.valueOf(1.5f)));
+
+            Object[] constants = b.materialize();
+            assertEquals(prefill + 10, constants.length);
+            assertEquals(0x7ff8000000000001L, Double.doubleToRawLongBits((Double) constants[firstNan]));
+            assertEquals(0x7ff8000000000002L, Double.doubleToRawLongBits((Double) constants[secondNan]));
+            b.clear();
+        }
+    }
+
+    @Test
     public void addRejectsNull() {
         ConstantsBuffer b = new ConstantsBuffer();
         assertThrows(NullPointerException.class, () -> b.add(null));

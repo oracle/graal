@@ -35,10 +35,10 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.g1.nativelib.G1Library;
 import com.oracle.svm.core.gc.shared.NativeGCStructs.MetaspaceStatistics;
 import com.oracle.svm.core.gc.shared.graal.NativeGCAllocationSupport;
-import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.metaspace.AbstractMetaspace;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.guest.staging.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
@@ -90,6 +90,11 @@ public final class G1Metaspace extends AbstractMetaspace {
     }
 
     @Override
+    protected long[] allocateLongArray0(int length) {
+        return NativeGCAllocationSupport.singleton().allocateMetaspaceLongArray(length);
+    }
+
+    @Override
     protected Object allocateObject0(DynamicHub hub) {
         return NativeGCAllocationSupport.singleton().allocateMetaspaceInstance(hub);
     }
@@ -113,9 +118,10 @@ public final class G1Metaspace extends AbstractMetaspace {
         printAllocationStatistics(log, "DynamicHub", statistics.dynamicHubCount(), statistics.dynamicHubSize());
         printAllocationStatistics(log, "byte[]", statistics.byteArrayCount(), statistics.byteArraySize());
         printAllocationStatistics(log, "int[]", statistics.intArrayCount(), statistics.intArraySize());
+        printAllocationStatistics(log, "long[]", statistics.longArrayCount(), statistics.longArraySize());
         printAllocationStatistics(log, "Object", statistics.objectCount(), statistics.objectSize());
-        UnsignedWord totalCount = statistics.dynamicHubCount().add(statistics.byteArrayCount()).add(statistics.intArrayCount()).add(statistics.objectCount());
-        UnsignedWord totalSize = statistics.dynamicHubSize().add(statistics.byteArraySize()).add(statistics.intArraySize()).add(statistics.objectSize());
+        UnsignedWord totalCount = statistics.dynamicHubCount().add(statistics.byteArrayCount()).add(statistics.intArrayCount()).add(statistics.longArrayCount()).add(statistics.objectCount());
+        UnsignedWord totalSize = statistics.dynamicHubSize().add(statistics.byteArraySize()).add(statistics.intArraySize()).add(statistics.longArraySize()).add(statistics.objectSize());
         printAllocationStatistics(log, "Total", totalCount, totalSize);
         log.indent(false);
     }

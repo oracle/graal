@@ -31,7 +31,7 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.g1.nativelib.G1Library;
 import com.oracle.svm.core.g1.nativelib.G1Structs.G1RegionBoundaries;
-import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
@@ -39,9 +39,10 @@ import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess.Access;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 
 public class G1HeapWalker {
-    private static final OutOfMemoryError OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Ran out of native memory while preparing the heap walk.");
+    private static final OutOfMemoryError OUT_OF_MEMORY_ERROR = PreallocatedExceptions.createOutOfMemoryError("Ran out of native memory while preparing the heap walk.");
 
     public static void walkCollectedHeap(ObjectVisitor visitor) {
         RecurringCallbackSupport.suspendCallbackTimer("Recurring callbacks could allocate.");

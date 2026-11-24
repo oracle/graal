@@ -31,8 +31,8 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
-import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
@@ -79,7 +79,7 @@ final class AuxiliaryImageHeapModel implements ImageHeap {
         boolean relocatable = false; // never: all references are relative to a known base
         boolean containsRefs;
         if (hub.isInstanceClass()) {
-            containsRefs = hub.getMonitorOffset() != 0 || !DynamicHubSupport.hasEmptyReferenceMap(hub);
+            containsRefs = hub.getMonitorOffset() != 0 || !DynamicHubUtils.hasEmptyReferenceMap(hub);
         } else {
             int enc = hub.getLayoutEncoding();
             containsRefs = LayoutEncoding.isObjectArray(enc) || LayoutEncoding.isHybrid(enc);

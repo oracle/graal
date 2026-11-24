@@ -26,8 +26,6 @@ package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHub;
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.loadHubOrNull;
-import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_INTERFACE_MASK;
-import static com.oracle.svm.core.hub.DynamicHubUtils.HASHING_SHIFT_OFFSET;
 import static jdk.graal.compiler.core.common.GraalOptions.TypeCheckMaxHints;
 import static jdk.graal.compiler.core.common.GraalOptions.TypeCheckMinProfileHitProbability;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
@@ -36,16 +34,19 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUE
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.unknownProbability;
 
+import java.nio.ByteOrder;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.impl.ObjectAccess;
+import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.SubstrateTarget;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubProvider;
 import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -55,8 +56,8 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
-import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
@@ -224,7 +225,7 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
         }
         int[] checkedTypeIds = checkedHub.getOpenTypeWorldTypeCheckSlots();
         // int checkedClassId = checkedTypeIds[typeIDDepth];
-        int offset = (int) ImageSingletons.lookup(ObjectLayout.class).getArrayElementOffset(JavaKind.Int, typeIDDepth);
+        int offset = (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, typeIDDepth);
         // GR-51603 can make a floating read
         int checkedClassId = ObjectAccess.readInt(checkedTypeIds, offset, NamedLocationIdentity.FINAL_LOCATION);
         if (checkedClassId == typeID) {
@@ -273,7 +274,7 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
         int[] checkedTypeIds = checkedHub.getOpenTypeWorldTypeCheckSlots();
         for (int i = 0; i < numInterfaceTypes * 2; i += 2) {
             // int checkedInterfaceId = checkedTypeIds[numClassTypes + i];
-            int offset = (int) ImageSingletons.lookup(ObjectLayout.class).getArrayElementOffset(JavaKind.Int, numClassTypes + i);
+            int offset = (int) ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Int, numClassTypes + i);
             // GR-51603 can make a floating read
             int checkedInterfaceId = ObjectAccess.readInt(checkedTypeIds, offset, NamedLocationIdentity.FINAL_LOCATION);
             if (checkedInterfaceId == interfaceID) {
@@ -294,8 +295,8 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
      * starting offsets are stored in a hash table (see TypeCheckBuilder for a general
      * documentation). This snippet does a hash table lookup and returns true if the provided
      * interfaceID matches the interfaceID in the hash table, false otherwise. See
-     * {@link DynamicHubUtils#hashParam(int[])} for details on the hashing function and hashing
-     * parameter.
+     * {@link DynamicHubUtils#hash(int, int)} for the image-wide choice between shift-and-mask and
+     * PEXT hashing.
      */
     @DuplicatedInNativeCode
     protected static SubstrateIntrinsics.Any hashedInterfaceTypeCheck(
@@ -303,27 +304,27 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
                     DynamicHub checkedHub,
                     SubstrateIntrinsics.Any trueValue,
                     SubstrateIntrinsics.Any falseValue) {
-        ReplacementsUtil.dynamicAssert(NumUtil.isUShort(interfaceID), "InterfaceIDs must fit in a short to be used for hashing.");
+        ReplacementsUtil.dynamicAssert(interfaceID > 0 && interfaceID <= DynamicHubUtils.MAX_HASHED_INTERFACE_ID, "Interface ID must be in the supported hashing range.");
 
-        // The upper byte of the hashParam holds the shift value, the lower three bytes hold p
-        // which is used for bitwise "and": hashParam = shift << HASHING_SHIFT_OFFSET | p.
         int hashParam = checkedHub.getOpenTypeWorldInterfaceHashParam();
-        int shift = hashParam >>> HASHING_SHIFT_OFFSET;
-        int[] hashTable = checkedHub.getOpenTypeWorldInterfaceHashTable();
+        long[] hashTable = checkedHub.getOpenTypeWorldInterfaceHashTable();
 
-        // No need to mask hashParam to get "p". interfaceID fits in a short -> the two upper
-        // bytes are 0.
-        int hash = (interfaceID >>> shift) & hashParam;
-        int offset = (int) ImageSingletons.lookup(ObjectLayout.class).getArrayElementOffset(JavaKind.Int, hash);
-        int hashTableEntry = ObjectAccess.readInt(hashTable, offset, NamedLocationIdentity.FINAL_LOCATION);
+        int hash = DynamicHubUtils.hash(interfaceID, hashParam);
+        long offset = ObjectLayoutCompilerSupport.getArrayElementOffset(ImageSingletons.lookup(ObjectLayout.class), JavaKind.Long, hash) + interfaceIdWordOffset();
+        // Keep the long-entry stride, but read only the low 32-bit ID used by this check.
+        int storedInterfaceID = ObjectAccess.readInt(hashTable, Word.signed(offset), NamedLocationIdentity.FINAL_LOCATION);
 
-        // Hashtable entries contain integers which hold the iTableOffset and the interfaceID:
-        // hashTableEntry = iTableOffset << HASHING_ITABLE_SHIFT | interfaceID
-        if ((hashTableEntry & HASHING_INTERFACE_MASK) == interfaceID) {
+        if (storedInterfaceID == interfaceID) {
             return trueValue;
         } else {
             return falseValue;
         }
+    }
+
+    /** Byte offset of the low 32-bit interface ID within a long hash-table entry. */
+    @Fold
+    static int interfaceIdWordOffset() {
+        return SubstrateTarget.getArchitecture().getByteOrder() == ByteOrder.LITTLE_ENDIAN ? 0 : Integer.BYTES;
     }
 
     public void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, Providers providers) {
@@ -366,7 +367,7 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
             InstanceOfNode node = (InstanceOfNode) replacer.instanceOf;
             TypeReference typeReference = node.type();
             SharedType type = (SharedType) typeReference.getType();
-            DynamicHub hub = DynamicHubProvider.getHub(type);
+            DynamicHub hub = DynamicHubUtils.getHub(type);
 
             SnippetTemplate.Arguments args;
             if (typeReference.isExact()) {
@@ -377,13 +378,14 @@ public class OpenTypeWorldSnippets extends SubstrateTemplates implements Snippet
                 args.add("allowsNull", node.allowsNull());
                 args.add("exactType", hub);
             } else {
-                args = makeArgumentsForInexactType(replacer, tool, node, type, hub);
+                args = makeArgumentsForInexactType(replacer, tool, node, hub);
             }
             return args;
         }
 
-        protected SnippetTemplate.Arguments makeArgumentsForInexactType(InstanceOfUsageReplacer replacer, LoweringTool tool, InstanceOfNode node, SharedType type, DynamicHub hub) {
-            assert !type.isInterface() || type.getSingleImplementor() == null : "Canonicalization of InstanceOfNode produces exact type for single implementor";
+        /// Builds a general type check. A sole runtime implementor does not imply an exact type when
+        /// hierarchy assumptions are unavailable.
+        protected SnippetTemplate.Arguments makeArgumentsForInexactType(InstanceOfUsageReplacer replacer, LoweringTool tool, InstanceOfNode node, DynamicHub hub) {
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(instanceOf, node.graph(), tool.getLoweringStage());
             TypeSnippets.Hints hints = createHints(node);
             args.addVarargs("hints", DynamicHub.class, StampFactory.forKind(JavaKind.Object), hints.hubs());

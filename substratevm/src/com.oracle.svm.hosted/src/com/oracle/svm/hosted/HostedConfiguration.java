@@ -43,17 +43,20 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.config.ObjectLayout.IdentityHashMode;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout.IdentityHashMode;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
@@ -70,15 +73,18 @@ import com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.util.GuestAnnotationAccess;
 
+import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.debug.DebugContext;
@@ -206,7 +212,7 @@ public class HostedConfiguration {
         int identityHashNumBits = Integer.SIZE;
         int identityHashShift = 0;
 
-        return new ObjectLayout(target, referenceSize, objectAlignment, hubSize, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset,
+        return new ObjectLayout(referenceSize, objectAlignment, hubSize, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset,
                         headerIdentityHashOffset, identityHashMode, identityHashNumBits, identityHashShift);
     }
 
@@ -220,7 +226,7 @@ public class HostedConfiguration {
         ObjectLayout layout = ObjectLayout.singleton();
         var vtableField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "vtable"));
         JavaKind vTableSlotStorageKind = vtableField.getType().getComponentType().getStorageKind();
-        int vTableSlotSize = layout.sizeInBytes(vTableSlotStorageKind);
+        int vTableSlotSize = ObjectLayoutCompilerSupport.sizeInBytes(layout, vTableSlotStorageKind);
 
         var closedTypeWorldTypeCheckSlotsField = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "closedTypeWorldTypeCheckSlots"));
         int closedTypeWorldTypeCheckSlotsOffset;
@@ -228,8 +234,8 @@ public class HostedConfiguration {
 
         Set<HostedField> ignoredFields;
         if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-            closedTypeWorldTypeCheckSlotsOffset = layout.getArrayLengthOffset() + layout.sizeInBytes(JavaKind.Int);
-            closedTypeWorldTypeCheckSlotSize = layout.sizeInBytes(closedTypeWorldTypeCheckSlotsField.getType().getComponentType().getStorageKind());
+            closedTypeWorldTypeCheckSlotsOffset = layout.getArrayLengthOffset() + ObjectLayoutCompilerSupport.sizeInBytes(layout, JavaKind.Int);
+            closedTypeWorldTypeCheckSlotSize = ObjectLayoutCompilerSupport.sizeInBytes(layout, closedTypeWorldTypeCheckSlotsField.getType().getComponentType().getStorageKind());
 
             ignoredFields = Set.of(
                             closedTypeWorldTypeCheckSlotsField,
@@ -280,11 +286,87 @@ public class HostedConfiguration {
     }
 
     /**
+     * Handles source mappings after a successful normal compile task, including fallback results.
+     * Preserves derived data and releases the originals unless a later phase needs them. Not called
+     * for caller-owned {@link CompileQueue#compileAdditionalMethod} results.
+     */
+    public final void handleSourceMappingsAfterCompilation(HostedMethod method, CompilationResult result) {
+        if (!requiresSourceMappingsAfterCompilation()) {
+            preserveSourceMappingData(method, result);
+            result.clearSourceMappings();
+        }
+    }
+
+    /**
+     * Describes readers of the original mappings after compilation. New late readers must extend
+     * this policy before using the mappings; the build report alone only needs a compact snapshot.
+     * The policy must remain stable while compilation workers are active.
+     */
+    protected boolean requiresSourceMappingsAfterCompilation() {
+        /* Default native debug info uses infopoints, not source mappings. */
+        return SubstrateOptions.useDebugInfoGeneration() && SubstrateOptions.DebugCodeInfoUseSourceMappings.getValue(HostedOptionValues.singleton().get());
+    }
+
+    /**
+     * Preserves derived data without retaining the mappings or their source positions. Invoked only
+     * when no late reader needs the originals, avoiding duplicate storage for retaining builds.
+     * Concurrent calls operate on distinct compilation results, but implementations must protect
+     * shared aggregation state and leave the result's mappings intact on error.
+     */
+    protected void preserveSourceMappingData(@SuppressWarnings("unused") HostedMethod method, @SuppressWarnings("unused") CompilationResult result) {
+    }
+
+    /**
      * Invoked in a separate active executor pass after the normal compile queue and before later
      * image-building phases consume compilation results. Implementations may compile additional
      * methods.
      */
     public void afterCompileQueue(@SuppressWarnings("unused") DebugContext debug, @SuppressWarnings("unused") CompileQueue compileQueue) {
+    }
+
+    /**
+     * Selects providers for post-analysis hosted graph preparation and compilation of a method variant.
+     * Implementations must be thread-safe, leave the supplied providers unchanged, and preserve
+     * backend compatibility.
+     *
+     * Selected providers must be compatible with previously prepared graphs and snippets, including
+     * template-cache sharing. This hook cannot undo earlier folding or specialization.
+     *
+     * Hosted inlining requires identical selected provider services and graph-builder plugins for
+     * caller and selected inlinee. Copies sharing those services remain compatible. Importing an
+     * incompatible graph fails, including for forced inlining. Each backend may retain its original
+     * calling-convention code cache.
+     *
+     * @return the supplied providers, or a compatible bundle with selected services replaced
+     */
+    public HostedProviders selectCompilationProviders(@SuppressWarnings("unused") HostedMethod method, HostedProviders providers) {
+        return providers;
+    }
+
+    /**
+     * Requests hosted preparation of this analyzed method variant for separate compilation or
+     * inlining, without making it a root of normal image compilation. Clients must create and
+     * analyze all required variants before hosted parsing; this hook does not add analysis roots.
+     * Register every possible inlinee variant, including ones selected only after earlier inlining
+     * exposes a new caller/callee pair.
+     */
+    public boolean isAdditionalParseRoot(@SuppressWarnings("unused") HostedMethod method) {
+        return false;
+    }
+
+    /**
+     * Selects the method variant whose graph may be inlined into {@code caller}. The selection does
+     * not change the destination of a call that remains uninlined. Return the callee itself by
+     * default, or another variant of the same Java method with compatible analysis and providers.
+     *
+     * Clients must create and analyze every possible variant, and request its hosted preparation
+     * through {@link #isAdditionalParseRoot} unless it is already a normal parse root. Selection can
+     * occur for calls exposed by earlier inlining; this hook neither prepares graphs nor repairs
+     * earlier specialization.
+     * Implementations must be thread-safe and return a consistent selection for each caller/callee.
+     */
+    public HostedMethod selectInlineeMethod(@SuppressWarnings("unused") HostedMethod caller, HostedMethod callee) {
+        return callee;
     }
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
@@ -333,8 +415,33 @@ public class HostedConfiguration {
             setMonitorField(hUniverse, type);
         }
 
-        /* Then decide what other types may need it. */
-        processedSynchronizedTypes(bb, hUniverse, immutableTypes);
+        boolean sharedLayer = ImageLayerBuildingSupport.buildingSharedLayer();
+        if (!sharedLayer) {
+            /*
+             * Single-image builds and final application layers consider all instantiated types
+             * for monitor slots. PGO can narrow this selection using recorded monitor-enter counts.
+             */
+            processedSynchronizedTypes(bb, hUniverse, immutableTypes);
+        }
+
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            /*
+             * In shared layers, reserve monitor slots for reachable, non-abstract classes because
+             * later layers may instantiate them or synchronize on their instances. Arrays omit slots to keep their
+             * headers small. Interfaces and primitives have no instances. Known immutable types
+             * must not gain mutable slots. @ValueBased classes omit slots to save space because
+             * synchronization on them is discouraged.
+             *
+             * In the final application layer, apply the same reservation only to imported
+             * classes so their layouts still match the shared layer.
+             */
+            for (HostedType hostedType : hUniverse.getTypes()) {
+                AnalysisType type = hostedType.getWrapped();
+                if (type.isReachable() && (sharedLayer || type.isInSharedLayer())) {
+                    maybeSetMonitorField(hUniverse, immutableTypes, type);
+                }
+            }
+        }
     }
 
     private static EconomicSet<AnalysisType> getForceMonitorSlotTypes(BigBang bb) {
@@ -360,6 +467,9 @@ public class HostedConfiguration {
     }
 
     /**
+     * Only concrete instance classes receive optional monitor fields. Abstract classes cannot be
+     * instantiated, and their synthetic monitor fields are not inherited by subclasses.
+     *
      * Monitor fields on arrays would enlarge the array header too much.
      *
      * Also, never burden @ValueBased classes with a monitor field, which in particular reduces
@@ -369,7 +479,7 @@ public class HostedConfiguration {
      * Types that must be immutable cannot have a monitor field.
      */
     protected static void maybeSetMonitorField(HostedUniverse hUniverse, EconomicSet<AnalysisType> immutableTypes, AnalysisType type) {
-        if (!type.isArray() && !immutableTypes.contains(type) && !GuestAnnotationAccess.isAnnotationPresent(type, ValueBased.class)) {
+        if (type.isInstanceClass() && !type.isAbstract() && !immutableTypes.contains(type) && !GuestAnnotationAccess.isAnnotationPresent(type, ValueBased.class)) {
             setMonitorField(hUniverse, type);
         }
     }

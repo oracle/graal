@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -560,6 +560,15 @@ public class InvocationPlugins {
     }
 
     public void flushDeferrables() {
+        runDeferredRegistrations();
+    }
+
+    /**
+     * Executes pending registrations with the same synchronization and failure handling in every
+     * runtime. Kept separate so Native Image can check whether the plugin set was allocated during
+     * image generation before allowing runtime registration.
+     */
+    private void runDeferredRegistrations() {
         if (deferredRegistrations != null) {
             synchronized (this) {
                 if (deferredRegistrations != null) {
@@ -1119,9 +1128,6 @@ public class InvocationPlugins {
                 return true;
             }
             int parametersCount = plugin.getParametersCount();
-            assert parametersCount < SIGS.length : format("need to extend %s to support method with %d parameters: %s", InvocationPlugin.class.getSimpleName(), parametersCount,
-                            plugin.getMethodNameWithArgumentsDescriptor());
-
             Class<?> klass = plugin.getClass();
             while (klass != InvocationPlugin.class) {
                 for (Method m : klass.getDeclaredMethods()) {
@@ -1130,7 +1136,7 @@ public class InvocationPlugins {
                     }
                     if (m.getName().equals("apply")) {
                         Class<?>[] parameterTypes = m.getParameterTypes();
-                        if (Arrays.equals(SIGS[parametersCount], parameterTypes)) {
+                        if (parametersCount < SIGS.length && Arrays.equals(SIGS[parametersCount], parameterTypes)) {
                             return true;
                         }
                     }

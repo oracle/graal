@@ -33,7 +33,7 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.guest.staging.core.handles.ThreadLocalHandles;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;

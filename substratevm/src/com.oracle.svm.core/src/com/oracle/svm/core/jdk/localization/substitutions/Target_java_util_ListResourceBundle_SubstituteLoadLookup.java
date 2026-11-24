@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
+import java.util.Map;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
@@ -31,17 +33,14 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLookup;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import java.util.Map;
 
 @TargetClass(value = java.util.ListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
 @SuppressWarnings({"static-method"})
-final class Target_java_util_ListResourceBundle_SubstituteLoadLookup {
+public final class Target_java_util_ListResourceBundle_SubstituteLoadLookup {
 
-    @Alias private volatile Map<String, Object> lookup;
+    @Alias public volatile Map<String, Object> lookup;
 
     @Alias
     @KeepOriginal
@@ -62,6 +61,10 @@ final class Target_java_util_ListResourceBundle_SubstituteLoadLookup {
             loadLookupOriginal();
             return;
         }
-        lookup = ImageSingletons.lookup(LocalizationSupport.class).getBundleContentOf(this);
+        /*
+         * Prepared bundles share extracted contents without locking. Unprepared bundles initialize
+         * under the original JDK lock, once per runtime instance, using a method resolved at build time.
+         */
+        lookup = BundleContentSubstitutedLocalizationSupport.getBundleContentOf(this);
     }
 }

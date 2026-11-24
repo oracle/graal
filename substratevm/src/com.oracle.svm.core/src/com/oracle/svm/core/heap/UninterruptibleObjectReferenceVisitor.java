@@ -29,6 +29,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 
 public interface UninterruptibleObjectReferenceVisitor extends ObjectReferenceVisitor {
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -168,7 +168,6 @@ public final class GraphBuilderConfiguration {
     private final boolean trackNodeSourcePosition;
     private final boolean retainLocalVariables;
     private final Plugins plugins;
-    private final boolean replaceLocalsWithConstants;
     private final boolean usePreciseUnresolvedDeopts;
     private final ExplicitOOMEExceptionEdges oomeExceptionEdges;
     private final boolean alwaysSafeConstructors;
@@ -219,7 +218,6 @@ public final class GraphBuilderConfiguration {
                     boolean insertFullInfopoints,
                     boolean trackNodeSourcePosition,
                     boolean retainLocalVariables,
-                    boolean replaceLocalsWithConstants,
                     boolean usePreciseUnresolvedDeopts,
                     ExplicitOOMEExceptionEdges oomeExceptionEdges,
                     boolean alwaysSafeConstructors,
@@ -232,7 +230,6 @@ public final class GraphBuilderConfiguration {
         this.insertFullInfopoints = insertFullInfopoints;
         this.trackNodeSourcePosition = trackNodeSourcePosition;
         this.retainLocalVariables = retainLocalVariables;
-        this.replaceLocalsWithConstants = replaceLocalsWithConstants;
         this.usePreciseUnresolvedDeopts = usePreciseUnresolvedDeopts;
         this.oomeExceptionEdges = oomeExceptionEdges;
         this.alwaysSafeConstructors = alwaysSafeConstructors;
@@ -254,7 +251,6 @@ public final class GraphBuilderConfiguration {
                         insertFullInfopoints,
                         trackNodeSourcePosition,
                         retainLocalVariables,
-                        replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
                         oomeExceptionEdges,
                         alwaysSafeConstructors,
@@ -278,7 +274,6 @@ public final class GraphBuilderConfiguration {
                         insertFullInfopoints,
                         trackNodeSourcePosition,
                         retainLocalVariables,
-                        replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
                         oomeExceptionEdges,
                         alwaysSafeConstructors,
@@ -295,7 +290,6 @@ public final class GraphBuilderConfiguration {
                         insertFullInfopoints,
                         trackNodeSourcePosition,
                         retainLocalVariables,
-                        replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
                         oomeExceptionEdges,
                         alwaysSafeConstructors,
@@ -312,7 +306,6 @@ public final class GraphBuilderConfiguration {
                         insertFullInfopoints,
                         trackNodeSourcePosition,
                         retainLocalVariables,
-                        replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
                         oomeExceptionEdges,
                         alwaysSafeConstructors,
@@ -328,7 +321,6 @@ public final class GraphBuilderConfiguration {
                         insertFullInfopoints,
                         trackNodeSourcePosition,
                         retainLocalVariables,
-                        replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
                         oomeExceptionEdges,
                         alwaysSafeConstructors,
@@ -345,7 +337,6 @@ public final class GraphBuilderConfiguration {
                         insertFullInfopoints,
                         trackNodeSourcePosition,
                         retainLocalVariables,
-                        replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
                         oomeExceptionEdges,
                         alwaysSafeConstructors,
@@ -362,7 +353,6 @@ public final class GraphBuilderConfiguration {
                         newInsertFullInfopoints,
                         trackNodeSourcePosition,
                         retainLocalVariables,
-                        replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
                         oomeExceptionEdges,
                         alwaysSafeConstructors,
@@ -379,7 +369,6 @@ public final class GraphBuilderConfiguration {
                         insertFullInfopoints,
                         newTrackNodeSourcePosition,
                         retainLocalVariables,
-                        replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
                         oomeExceptionEdges,
                         alwaysSafeConstructors,
@@ -396,7 +385,6 @@ public final class GraphBuilderConfiguration {
                         insertFullInfopoints,
                         trackNodeSourcePosition,
                         newRetainLocalVariables,
-                        replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
                         oomeExceptionEdges,
                         alwaysSafeConstructors,
@@ -413,7 +401,6 @@ public final class GraphBuilderConfiguration {
                         insertFullInfopoints,
                         trackNodeSourcePosition,
                         retainLocalVariables,
-                        replaceLocalsWithConstants,
                         newUsePreciseUnresolvedDeopts,
                         oomeExceptionEdges,
                         alwaysSafeConstructors,
@@ -430,7 +417,6 @@ public final class GraphBuilderConfiguration {
                         insertFullInfopoints,
                         trackNodeSourcePosition,
                         retainLocalVariables,
-                        replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
                         newOomeExceptionEdges,
                         alwaysSafeConstructors,
@@ -447,7 +433,6 @@ public final class GraphBuilderConfiguration {
                         insertFullInfopoints,
                         trackNodeSourcePosition,
                         retainLocalVariables,
-                        replaceLocalsWithConstants,
                         usePreciseUnresolvedDeopts,
                         oomeExceptionEdges,
                         true,
@@ -483,10 +468,6 @@ public final class GraphBuilderConfiguration {
         return insertFullInfopoints;
     }
 
-    public boolean replaceLocalsWithConstants() {
-        return this.replaceLocalsWithConstants;
-    }
-
     public ExplicitOOMEExceptionEdges oomeExceptionEdges() {
         return this.oomeExceptionEdges;
     }
@@ -512,7 +493,6 @@ public final class GraphBuilderConfiguration {
                         /* insertFullInfopoints: */ false,
                         /* trackNodeSourcePosition: */ false,
                         /* retainLocalVariables */ false,
-                        /* replaceLocalsWithConstants */ false,
                         /* usePreciseUnresolvedDeopts */ false,
                         /* withoutOOMEExceptionEdges */ ExplicitOOMEExceptionEdges.Default,
                         /* alwaysSafeConstructors */ false,
@@ -529,7 +509,6 @@ public final class GraphBuilderConfiguration {
                         /* insertFullInfopoints: */ false,
                         /* trackNodeSourcePosition: */ false,
                         /* retainLocalVariables */ false,
-                        /* replaceLocalsWithConstants */ false,
                         /* usePreciseUnresolvedDeopts */ false,
                         /* withoutOOMEExceptionEdges */ ExplicitOOMEExceptionEdges.DisableOOMEExceptionEdges,
                         /* alwaysSafeConstructors */ false,

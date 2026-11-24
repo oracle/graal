@@ -48,12 +48,12 @@ import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalIsolate;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalScope;
 
 import jdk.graal.compiler.api.test.ModuleSupport;
+import jdk.graal.compiler.core.ProfileReplaySupport;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.hotspot.CompilationTask;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import jdk.graal.compiler.hotspot.ProfileReplaySupport;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;

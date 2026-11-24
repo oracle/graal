@@ -52,7 +52,7 @@ import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.log.CoreLogSupport;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;

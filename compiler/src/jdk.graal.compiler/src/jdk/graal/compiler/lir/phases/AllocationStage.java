@@ -26,6 +26,7 @@ package jdk.graal.compiler.lir.phases;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.alloc.AllocationStageVerifier;
+import jdk.graal.compiler.lir.stackslotalloc.GraphColoringStackSlotAllocator;
 import jdk.graal.compiler.lir.stackslotalloc.LSStackSlotAllocator;
 import jdk.graal.compiler.lir.stackslotalloc.SimpleStackSlotAllocator;
 import jdk.graal.compiler.lir.alloc.lsra.LinearScanPhase;
@@ -40,7 +41,9 @@ public class AllocationStage extends LIRPhaseSuite<AllocationPhase.AllocationCon
         appendPhase(new LinearScanPhase());
 
         // build frame map
-        if (LSStackSlotAllocator.Options.LIROptLSStackSlotAllocator.getValue(options)) {
+        if (GraphColoringStackSlotAllocator.Options.LIROptGraphColoringStackSlotAllocator.getValue(options)) {
+            appendPhase(new GraphColoringStackSlotAllocator());
+        } else if (LSStackSlotAllocator.Options.LIROptLSStackSlotAllocator.getValue(options)) {
             appendPhase(new LSStackSlotAllocator());
         } else {
             appendPhase(new SimpleStackSlotAllocator());

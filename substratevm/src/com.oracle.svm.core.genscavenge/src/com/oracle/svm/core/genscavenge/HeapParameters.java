@@ -31,8 +31,9 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues.Origin;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.shared.Uninterruptible;
@@ -100,15 +101,15 @@ public final class HeapParameters {
      * the maximum heap size at runtime is not recommended.
      */
     public static void setMaximumHeapSize(UnsignedWord value) {
-        SubstrateGCOptions.MaxHeapSize.update(value.rawValue());
+        SubstrateGCOptions.MaxHeapSize.update(value.rawValue(), Origin.Runtime);
     }
 
     public static void setMinimumHeapSize(UnsignedWord value) {
-        SubstrateGCOptions.MinHeapSize.update(value.rawValue());
+        SubstrateGCOptions.MinHeapSize.update(value.rawValue(), Origin.Runtime);
     }
 
     public static void setMaximumHeapFree(UnsignedWord bytes) {
-        SerialGCOptions.MaxHeapFree.update(bytes.rawValue());
+        SerialGCOptions.MaxHeapFree.update(bytes.rawValue(), Origin.Runtime);
     }
 
     public static UnsignedWord getMaximumHeapFree() {

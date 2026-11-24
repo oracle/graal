@@ -32,16 +32,23 @@ import org.junit.Test;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.cfg.CFGLoop;
+import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
+import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.GuardNode;
+import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
+import jdk.graal.compiler.nodes.loop.Loop;
+import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.GuardLoweringPhase;
+import jdk.graal.compiler.phases.common.HighTierLoweringPhase;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -107,6 +114,87 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
         verifyGuardMovement = true;
         verifyGuardMovementDeoptReason = reason;
         return getCode(getResolvedJavaMethod(methodName), null, true, false, guardMovementOptions());
+    }
+
+    // Graph input for moving a guard on an independent IV. The root IV is int root, the exit tests (long)
+    // root, and index has its own increment. A limit above MAX_VALUE lets root overflow while the exit
+    // condition remains true, invalidating a finite bound for index. The tests inspect where the index guard
+    // is anchored; they do not execute this snippet.
+    public static int independentIndexGuard(int start, long limit, int bound) {
+        int index = 0;
+        int sum = 0;
+        for (int root = start; (long) root < limit; root++, index++) {
+            if (index >= bound) {
+                GraalDirectives.deoptimizeAndInvalidate();
+                return -1;
+            }
+            sum += index;
+        }
+        return sum;
+    }
+
+    @Test
+    public void testIndependentIndexWithWrappingRoot() {
+        checkIndependentIndexGuard((long) Integer.MAX_VALUE + 1, false);
+    }
+
+    @Test
+    public void testIndependentIndexWithProvedRoot() {
+        checkIndependentIndexGuard(Integer.MAX_VALUE - 1000L, true);
+    }
+
+    /**
+     * Checks whether a guard on an independent index may move before this loop:
+     *
+     * <pre>
+     * int index = 0;
+     * for (int root = start; (long) root &lt; limit; root++, index++) {
+     *     if (index &gt;= bound) {
+     *         deoptimize();
+     *     }
+     * }
+     * </pre>
+     *
+     * The exit tests the derived IV {@code (long) root}; {@code root} is its int root, while {@code index} is
+     * independent. Binding {@code start} to {@code Integer.MAX_VALUE - 1023} and {@code limit} to
+     * {@code Integer.MAX_VALUE - 1000L} gives 23 iterations without int overflow, so movement may check the
+     * index range before entry. Leaving both parameters unknown permits a limit above every int and also
+     * keeps the loop ineligible for preparation, which requires a constant start. Then a finite-looking
+     * count does not bound {@code index}, and its guard must stay inside.
+     *
+     * <p>Convert the deoptimization to a floating guard and assert the expected loop/IV shape first. Disable
+     * frequency and speculation-log eligibility filters so they cannot reject the candidate before the
+     * arithmetic check is exercised. Finally inspect the guard's anchor: loop depth zero for the safe case,
+     * one otherwise. The unsafe graph is never executed.
+     */
+    private void checkIndependentIndexGuard(long limit, boolean rootSafe) {
+        StructuredGraph graph = parseEager("independentIndexGuard", AllowAssumptions.YES, guardMovementOptions());
+        if (rootSafe) {
+            graph.getParameter(0).replaceAndDelete(ConstantNode.forInt(Integer.MAX_VALUE - 1023, graph));
+            graph.getParameter(1).replaceAndDelete(ConstantNode.forLong(limit, graph));
+        }
+        new ConvertDeoptimizeToGuardPhase(createCanonicalizerPhase()).apply(graph, getDefaultHighTierContext());
+        new HighTierLoweringPhase(createCanonicalizerPhase()).apply(graph, getDefaultHighTierContext());
+        Assert.assertFalse("The endpoint consumer requires a floating guard", graph.getNodes(GuardNode.TYPE).isEmpty());
+        LoopsData loops = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
+        Assert.assertEquals(1, loops.loops().size());
+        Loop loop = loops.loops().get(0);
+        Assert.assertTrue("Counted loop expected; conditions: " + graph.getNodes().filter(IfNode.class).stream().map(n -> n.condition() + " " + n.condition().inputs().snapshot()).toList(),
+                        loop.detectCounted());
+        if (!rootSafe) {
+            Assert.assertNotSame(loop.counted().getLimitCheckedIV(), loop.counted().getLimitCheckedIV().getRootIV());
+            Assert.assertFalse("An unknown start must keep preparation ineligible", loop.counted().getLimitCheckedIV().getRootIV().isConstantInit());
+        }
+        Assert.assertTrue(loop.counted().counterNeverOverflows());
+        Assert.assertEquals(rootSafe, loop.counted().loopAndRootCanNeverOverflow());
+        new SpeculativeGuardMovementPhase(createCanonicalizerPhase(), true, false).apply(graph, getDefaultMidTierContext());
+        ControlFlowGraph cfg = ControlFlowGraph.computeForSchedule(graph);
+        List<GuardNode> guards = graph.getNodes(GuardNode.TYPE).stream().filter(g -> g.getReason() == DeoptimizationReason.TransferToInterpreter).toList();
+        Assert.assertFalse("The independent index comparison must remain observable", guards.isEmpty());
+        for (GuardNode guard : guards) {
+            int depth = cfg.blockFor(guard.getAnchor().asNode()).getLoopDepth();
+            Assert.assertEquals("Hoisted endpoints require a valid controlling root", rootSafe ? 0 : 1, depth);
+        }
     }
 
     public static void snippet01(int init, int limit, int offset) {

@@ -24,12 +24,15 @@
  */
 package com.oracle.svm.guest.staging;
 
+import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RegisterForIsolateArgumentParser;
 
 import com.oracle.svm.shared.meta.GuestFold;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.option.LayerVerifiedOption;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
@@ -37,11 +40,57 @@ import jdk.graal.compiler.options.OptionType;
 
 public final class SubstrateGuestOptions {
 
+    /// Using a small stack size, such as 64 KiB, on a machine that has a large page size, such as
+    /// 64 KiB, and address space randomization enabled may result in transient isolate
+    /// initialization failures. A `StackOverflowError` can be thrown early on because there is
+    /// hardly any usable stack space available. Therefore, SVM uses 128 KiB as the minimum usable
+    /// stack size for explicitly requested Java stack sizes, including `-Xss`, for now.
+    public static final long USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE = 128L * 1024L;
+
     @Option(help = "Initialize the VM and run startup hooks.")//
     public static final HostedOptionKey<Boolean> InitializeVM = new HostedOptionKey<>(true);
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
+    public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L, null, SubstrateGuestOptions::validateStackSize);
+
+    private static void validateStackSize(RuntimeOptionKey<Long> option) {
+        if (SubstrateUtil.HOSTED) {
+            return;
+        }
+
+        long stackSize = option.getValue();
+        if (stackSize == 0) {
+            return;
+        }
+
+        long minimumStackSize = USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE;
+        if (stackSize < minimumStackSize) {
+            throw RuntimeOptionValidation.invalidOptionValue(option, stackSize, "Java thread stack size is too small; specify at least " + minimumStackSize + " bytes");
+        }
+    }
+
+    // @formatter:off
+
+    /// Controls whether unknown VM options are discarded during startup.
+    @Option(help = """
+            Ignore unrecognized VM options.
+
+            The last setting of this option determines its policy for the complete command line.
+            An incoming JNI `JavaVMInitArgs.ignoreUnrecognized=true` setting remains effective
+            when this option is disabled.""")
+    public static final RuntimeOptionKey<Boolean> IgnoreUnrecognizedVMOptions = new RuntimeOptionKey<>(false, Immutable);
+
+    /// Records the HotSpot unlock setting. Native Image runtime options do not
+    /// have the concept of being diagnostic. This option exists purely for
+    /// HotSpot command line compatibility.
+    @Option(help = "Accept the HotSpot diagnostic option unlock setting for compatibility; " +
+                   "Native Image runtime options do not require unlocking.")
+    public static final RuntimeOptionKey<Boolean> UnlockDiagnosticVMOptions = new RuntimeOptionKey<>(false, Immutable);
+
+    // @formatter:on
+
+    @Option(help = "Print final runtime option values and continue application startup.")//
+    public static final RuntimeOptionKey<Boolean> PrintFlagsFinal = new RuntimeOptionKey<>(false, Immutable);
 
     @Option(help = "Internal, instead use 'auxiliary_image_reserved_space_size' in 'graal_create_isolate_params_t', or option ReservedAuxiliaryImageBytes.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Long> AuxiliaryImageBytesIsolateArgument = new RuntimeOptionKey<>(0L, RegisterForIsolateArgumentParser);

@@ -49,8 +49,9 @@ public class BytecodeBitEncoding {
 
     public static final int LABEL_U8_VALUE_TYPE_MASK = 0b1100_0000;
     public static final int LABEL_U8_VALUE_TYPE_NONE = 0b0000_0000;
-    public static final int LABEL_U8_VALUE_TYPE_NUM = 0b1000_0000;
-    public static final int LABEL_U8_VALUE_TYPE_OBJ = 0b1100_0000;
+    public static final int LABEL_U8_VALUE_TYPE_NUM = 0b0100_0000;
+    public static final int LABEL_U8_VALUE_TYPE_OBJ = 0b1000_0000;
+    public static final int LABEL_U8_VALUE_TYPE_SHIFT = 6;
     public static final int LABEL_U8_STACK_SIZE = 0b0011_1111;
 
     public static final int LABEL_U16_VALUE_TYPE_MASK = 0b1100_0000;
@@ -179,4 +180,8 @@ public class BytecodeBitEncoding {
     // Exception handlers
 
     public static final int INVALID_EXCEPTION_TABLE_OFFSET = -1;
+
+    public static final int BR_TABLE_U8_HEADER_SIZE = 4;
+    public static final int BR_TABLE_I32_HEADER_SIZE = 7;
+    public static final int BR_TABLE_ITEM_SIZE = 6;
 }

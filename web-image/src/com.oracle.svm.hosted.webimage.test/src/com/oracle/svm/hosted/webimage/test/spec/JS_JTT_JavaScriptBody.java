@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import com.oracle.svm.webimage.jtt.javascriptbody.ByteReturnTest;
 import com.oracle.svm.webimage.jtt.javascriptbody.CallFromCallbackTest;
 import com.oracle.svm.webimage.jtt.javascriptbody.CallbackStaticTest;
 import com.oracle.svm.webimage.jtt.javascriptbody.CallbackTest;
+import com.oracle.svm.webimage.jtt.javascriptbody.CharReturnTest;
 import com.oracle.svm.webimage.jtt.javascriptbody.CovariantCallbackTest;
 import com.oracle.svm.webimage.jtt.javascriptbody.DoubleReturnTest;
 import com.oracle.svm.webimage.jtt.javascriptbody.DynamicCallTest;
@@ -116,6 +117,23 @@ public class JS_JTT_JavaScriptBody extends JTTTestSuite {
         for (int i = 0; i < numbers.length; i++) {
             args[i + 1] = String.valueOf(numbers[i]);
             expected[i] = String.valueOf((byte) numbers[i]);
+        }
+
+        testFileAgainstNoBuild(expected, args);
+    }
+
+    @Test
+    public void charReturnTest() {
+        int[] numbers = {0, 32767, 32768, 65535, -1, 65536};
+
+        String[] args = new String[1 + numbers.length]; // first argument is class name
+        String[] expected = new String[2 * numbers.length];
+
+        args[0] = CharReturnTest.class.getName();
+        for (int i = 0; i < numbers.length; i++) {
+            args[i + 1] = String.valueOf(numbers[i]);
+            expected[2 * i] = String.valueOf((int) (char) numbers[i]);
+            expected[2 * i + 1] = expected[2 * i];
         }
 
         testFileAgainstNoBuild(expected, args);

@@ -38,18 +38,19 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.shared.BuildPhaseProvider;
-import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameSourceInfo;
-import com.oracle.svm.core.code.UntetheredCodeInfo;
+import com.oracle.svm.guest.staging.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptState;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.RelockObjectData;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.core.log.Debug;
 import com.oracle.svm.guest.staging.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.interpreter.InterpreterFrameSourceInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -399,8 +400,14 @@ public class RistrettoDeoptimizationSupport {
         }
         VMError.guarantee(frameInfo.getDeoptMethod() instanceof RistrettoMethod, "Interpreter AfterPop frame requires a Ristretto method");
         RistrettoMethod method = (RistrettoMethod) frameInfo.getDeoptMethod();
-        InvokeLayout layout = method.lookupDeoptInvokeLayout(frameInfo.getBci());
-        VMError.guarantee(layout != null, "Interpreter AfterPop frame requires an invoke layout");
+        int bci = frameInfo.getBci();
+        InvokeLayout layout = method.lookupDeoptInvokeLayout(bci);
+        if (layout == null) {
+            // This path is uninterruptible, so report details through the allocation-free debug log.
+            Debug.stderr().string("Missing invoke layout for Ristretto method ").object(method).string(" at BCI ").signed(bci)
+                            .string(" (AfterPop=").bool(frameInfo.isAfterPop()).string(")").newline();
+            VMError.guarantee(false, "Interpreter AfterPop frame requires an invoke layout");
+        }
         // JavaKind.getStackKind() is not uninterruptible; normalize narrow results without a call.
         JavaKind kind = layout.getReturnKind();
         return kind == JavaKind.Boolean || kind == JavaKind.Byte || kind == JavaKind.Short || kind == JavaKind.Char ? JavaKind.Int : kind;

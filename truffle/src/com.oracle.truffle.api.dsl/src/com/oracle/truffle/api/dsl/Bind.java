@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,10 +86,13 @@ import java.lang.annotation.Target;
  * }
  * </pre>
  *
- * The special variable {@code $node} can be used to bind the current node. Bytecode DSL
- * interpreters can also bind the special variables {@code $rootNode}, {@code $bytecodeNode}, and
- * {@code $bytecodeIndex}.
- *
+ * The special variable {@code $node} can be used to bind the current node, and {@code $frame}
+ * binds the execution frame. Bytecode DSL interpreters can also bind the special variables
+ * {@code $rootNode}, {@code $bytecodeNode}, and {@code $bytecodeIndex}.
+ * Proxyable nodes can enable explicit bytecode node and index execute parameters through
+ * {@code OperationProxy.Proxyable.bindBytecodeNode} and
+ * {@code OperationProxy.Proxyable.bindBytecodeIndex}. During ordinary AST execution, these bindings
+ * then use the supplied values rather than operation interpreter state.
  *
  * @see Cached
  * @see Specialization

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -37,13 +37,15 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.jdk.management.VMManagementBean;
 import com.oracle.svm.core.heap.AbstractMXBean;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.shared.Uninterruptible;
 
 import org.graalvm.word.impl.Word;
 import sun.management.Util;
 
-public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements MemoryPoolMXBean {
+public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements MemoryPoolMXBean, VMManagementBean {
 
     protected static final UnsignedWord UNDEFINED = Word.unsigned(UNDEFINED_MEMORY_USAGE);
 
@@ -67,6 +69,9 @@ public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements
     }
 
     abstract UnsignedWord computeInitialValue();
+
+    @Uninterruptible(reason = "Prevent a GC from changing the queried heap accounting data.")
+    abstract UnsignedWord getCurrentUsage();
 
     abstract void beforeCollection();
 
@@ -156,8 +161,9 @@ public abstract class AbstractMemoryPoolMXBean extends AbstractMXBean implements
     }
 
     @Override
+    @Uninterruptible(reason = "Prevent a GC from updating the peak between reading current usage and resetting the peak.")
     public void resetPeakUsage() {
-        peakUsage.set(Word.zero());
+        peakUsage.set(getCurrentUsage());
     }
 
     void updatePeakUsage(UnsignedWord value) {

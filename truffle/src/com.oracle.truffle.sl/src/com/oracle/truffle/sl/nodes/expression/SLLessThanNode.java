@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,19 +91,20 @@ public abstract class SLLessThanNode extends SLBinaryNode {
     @HostCompilerDirectives.InliningCutoff
     public static boolean doFallback(Object left, Object right,
                     @Cached SlowPathNode fallback,
-                    @Bind Node node) {
-        return fallback.execute(node, left, right);
+                    @Bind Node node,
+                    @Bind("$bytecodeIndex") int bytecodeIndex) {
+        return fallback.execute(node, bytecodeIndex, left, right);
     }
 
     @GenerateInline(false)
     @GenerateUncached
     public abstract static class SlowPathNode extends Node {
 
-        abstract boolean execute(Node node, Object left, Object right);
+        abstract boolean execute(Node node, int bytecodeIndex, Object left, Object right);
 
         @Specialization(guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
         @SuppressWarnings("unused")
-        static boolean doInteropBigInteger(Node node, Object left, Object right,
+        static boolean doInteropBigInteger(Node node, int bytecodeIndex, Object left, Object right,
                         @CachedLibrary("left") InteropLibrary leftLibrary,
                         @CachedLibrary("right") InteropLibrary rightLibrary) {
             try {
@@ -116,8 +117,8 @@ public abstract class SLLessThanNode extends SLBinaryNode {
         }
 
         @Fallback
-        static boolean typeError(Node node, Object left, Object right) {
-            throw SLException.typeError(node, "<", left, right);
+        static boolean typeError(Node node, int bytecodeIndex, Object left, Object right) {
+            throw SLException.typeError(node, bytecodeIndex, "<", left, right);
         }
     }
 

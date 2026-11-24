@@ -46,6 +46,7 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationPrinter;
 import jdk.graal.compiler.core.CompilationWatchDog;
 import jdk.graal.compiler.core.CompilationWrapper;
+import jdk.graal.compiler.core.ProfileReplaySupport;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;

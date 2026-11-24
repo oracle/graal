@@ -28,6 +28,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -46,7 +47,7 @@ public final class CremaSerializationConstructorAccessor extends AbstractCremaCo
     private final Class<?> serializationTargetClass;
 
     private static boolean isAbstract(Class<?> serializationTargetClass) {
-        return Modifier.isAbstract(DynamicHub.fromClass(serializationTargetClass).getInterpreterType().getModifiers());
+        return Modifier.isAbstract(DynamicHubUtils.getInterpreterType(DynamicHub.fromClass(serializationTargetClass)).getModifiers());
     }
 
     public CremaSerializationConstructorAccessor(Class<?> serializationTargetClass, Constructor<?> constructorToCall) {

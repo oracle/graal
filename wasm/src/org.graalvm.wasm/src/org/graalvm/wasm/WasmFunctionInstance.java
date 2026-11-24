@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -56,6 +57,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 @ExportLibrary(InteropLibrary.class)
 public final class WasmFunctionInstance extends WasmTypedHeapObject implements TruffleObject, EmbedderDataHolder {
@@ -63,7 +65,7 @@ public final class WasmFunctionInstance extends WasmTypedHeapObject implements T
     private final WasmContext context;
     private final WasmInstance moduleInstance;
     private final WasmFunction function;
-    private final CallTarget target;
+    private final RootNode rootNode;
     /**
      * Stores the imported function object for {@link org.graalvm.wasm.api.ExecuteHostFunctionNode}.
      * Initialized during linking.
@@ -84,8 +86,8 @@ public final class WasmFunctionInstance extends WasmTypedHeapObject implements T
         this.context = Objects.requireNonNull(context, "context must be non-null");
         this.moduleInstance = Objects.requireNonNull(moduleInstance, "module instance must be non-null");
         this.function = Objects.requireNonNull(function, "function must be non-null");
-        this.target = Objects.requireNonNull(target, "Call target must be non-null");
-        assert ((RootCallTarget) target).getRootNode().getLanguage(WasmLanguage.class) == context.language();
+        this.rootNode = ((RootCallTarget) Objects.requireNonNull(target, "Call target must be non-null")).getRootNode();
+        assert rootNode.getLanguage(WasmLanguage.class) == context.language();
     }
 
     @Override
@@ -112,7 +114,7 @@ public final class WasmFunctionInstance extends WasmTypedHeapObject implements T
     @TruffleBoundary
     public String name() {
         if (function == null) {
-            return target.toString();
+            return target().toString();
         }
         return function.name();
     }
@@ -122,7 +124,12 @@ public final class WasmFunctionInstance extends WasmTypedHeapObject implements T
     }
 
     public CallTarget target() {
-        return target;
+        return rootNode.getCallTarget();
+    }
+
+    @Idempotent
+    public RootNode rootNode() {
+        return rootNode;
     }
 
     public void setImportedFunction(Object importedFunction) {

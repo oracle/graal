@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,8 +55,8 @@ import jdk.vm.ci.code.stack.InspectedFrame;
 final class OptimizedOSRFrameInstance extends OptimizedFrameInstance {
     private final InspectedFrame osrFrame;
 
-    OptimizedOSRFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame, InspectedFrame osrFrame) {
-        super(callTargetFrame, callNodeFrame);
+    OptimizedOSRFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame, int bytecodeIndex, InspectedFrame osrFrame) {
+        super(callTargetFrame, callNodeFrame, bytecodeIndex);
         this.osrFrame = osrFrame;
     }
 

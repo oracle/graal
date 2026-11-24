@@ -49,7 +49,8 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
     @Override
     public void set(String optionName, Object value) {
         assert !(SubstrateUtil.HOSTED && GuestImageLayerBuildingSupport.buildingImageLayer());
-        if (XOptions.setOption(optionName)) {
+        RuntimeOptionValues.Origin origin = SubstrateUtil.HOSTED ? RuntimeOptionValues.Origin.BuildTime : RuntimeOptionValues.Origin.Runtime;
+        if (XOptions.setOption(optionName, origin)) {
             return;
         }
         if (!RuntimeOptionValues.singleton().getAllOptionNames().contains(optionName)) {
@@ -60,7 +61,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
             OptionDescriptor desc = descriptor.get();
             Class<?> valueType = value.getClass();
             if (desc.getOptionValueType().isAssignableFrom(valueType)) {
-                RuntimeOptionValues.singleton().update(desc.getOptionKey(), value);
+                RuntimeOptionValues.singleton().update(desc.getOptionKey(), value, origin);
             } else {
                 throw new RuntimeException("Invalid type of option '" + optionName + "': required " + ClassUtil.getUnqualifiedName(desc.getOptionValueType()) + ", provided " + valueType);
             }

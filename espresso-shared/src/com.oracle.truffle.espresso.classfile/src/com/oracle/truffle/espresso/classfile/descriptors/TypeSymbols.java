@@ -141,15 +141,19 @@ public final class TypeSymbols {
         return "L" + className.replace('.', '/') + ";";
     }
 
+    /// Gets an internal hidden class name with a hexadecimal suffix matching the JDK convention.
     public static ByteSequence hiddenClassName(Symbol<Type> type, long id) {
         ByteSequence name = typeToName(type);
-        int idSize = ByteSequence.positiveLongStringSize(id);
-        int length = type.length() - 2 + 1 + idSize;
+        int idSize = ByteSequence.hexadecimalLongStringSize(id);
+        int length = name.length() + "+0x".length() + idSize;
         byte[] newBytes = new byte[length];
         name.writeTo(newBytes, 0);
         int sepIndex = name.length();
         newBytes[sepIndex] = '+';
-        ByteSequence.writePositiveLongString(id, newBytes, sepIndex + 1, idSize);
+        // '+' is the internal separator; Class.getName exposes it as '/'.
+        newBytes[sepIndex + 1] = '0';
+        newBytes[sepIndex + 2] = 'x';
+        ByteSequence.writeHexadecimalLongString(id, newBytes, sepIndex + 3, idSize);
         ByteSequence result = wrap(newBytes, 0, length);
         assert Validation.validModifiedUTF8(result) : String.format("Not valid anymore: %s + %d -> %s", type.toHexString(), id, result.toHexString());
         return result;

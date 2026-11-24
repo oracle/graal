@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, 2023, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -34,16 +34,17 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
+import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class GenScavengeMemoryPoolMXBeans {
     static final String YOUNG_GEN_SCAVENGER = "young generation scavenger";
     static final String COMPLETE_SCAVENGER = "complete scavenger";
@@ -72,7 +73,7 @@ public class GenScavengeMemoryPoolMXBeans {
         }
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static GenScavengeMemoryPoolMXBeans singleton() {
         return ImageSingletons.lookup(GenScavengeMemoryPoolMXBeans.class);
     }
@@ -131,7 +132,9 @@ public class GenScavengeMemoryPoolMXBeans {
             return memoryUsage(Word.zero());
         }
 
-        private static UnsignedWord getCurrentUsage() {
+        @Override
+        @Uninterruptible(reason = "Prevent a GC from changing the queried heap accounting data.")
+        UnsignedWord getCurrentUsage() {
             return HeapImpl.getAccounting().getEdenUsedBytes();
         }
     }
@@ -170,7 +173,13 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Override
         public MemoryUsage getCollectionUsage() {
-            return memoryUsage(HeapImpl.getAccounting().getSurvivorUsedBytes());
+            return memoryUsage(getCurrentUsage());
+        }
+
+        @Override
+        @Uninterruptible(reason = "Prevent a GC from changing the queried heap accounting data.")
+        UnsignedWord getCurrentUsage() {
+            return HeapImpl.getAccounting().getSurvivorUsedBytes();
         }
     }
 
@@ -208,7 +217,13 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Override
         public MemoryUsage getCollectionUsage() {
-            return memoryUsage(HeapImpl.getAccounting().getOldUsedBytes());
+            return memoryUsage(getCurrentUsage());
+        }
+
+        @Override
+        @Uninterruptible(reason = "Prevent a GC from changing the queried heap accounting data.")
+        UnsignedWord getCurrentUsage() {
+            return HeapImpl.getAccounting().getOldUsedBytes();
         }
     }
 
@@ -248,6 +263,12 @@ public class GenScavengeMemoryPoolMXBeans {
         @Override
         public MemoryUsage getCollectionUsage() {
             return memoryUsage(Word.zero());
+        }
+
+        @Override
+        @Uninterruptible(reason = "Prevent a GC from changing the queried heap accounting data.")
+        UnsignedWord getCurrentUsage() {
+            return HeapImpl.getAccounting().getUsedBytes();
         }
     }
 }

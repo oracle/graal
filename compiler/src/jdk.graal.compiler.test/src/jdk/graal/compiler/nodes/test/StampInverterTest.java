@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,28 @@ import jdk.vm.ci.code.CodeUtil;
  * {@code 1} bits in the extension of a {@code SignExtend}.
  */
 public class StampInverterTest extends GraalTest {
+
+    @Test
+    public void invertIdentityExtensions() {
+        for (IntegerConvertOp<?> op : new IntegerConvertOp<?>[]{IntegerStamp.OPS.getSignExtend(), IntegerStamp.OPS.getZeroExtend()}) {
+            for (int bits : new int[]{8, 16, 32, 64}) {
+                long min = CodeUtil.minValue(bits);
+                long max = CodeUtil.maxValue(bits);
+                for (IntegerStamp stamp : new IntegerStamp[]{
+                                IntegerStamp.create(bits, min, max).empty(),
+                                IntegerStamp.create(bits, min, max),
+                                IntegerStamp.create(bits, min, min),
+                                IntegerStamp.create(bits, max, max),
+                                IntegerStamp.create(bits, 0, 0),
+                                IntegerStamp.create(bits, 42, 42),
+                                IntegerStamp.create(bits, -42, -42),
+                                IntegerStamp.create(bits, -42, 42),
+                                IntegerStamp.stampForMask(bits, 2, CodeUtil.mask(bits) ^ 1)}) {
+                    assertEquals(stamp, op.invertStamp(bits, bits, stamp));
+                }
+            }
+        }
+    }
 
     private static Stamp invertSignExtend(Stamp toInvert) {
         IntegerConvertOp<SignExtend> signExtend = ArithmeticOpTable.forStamp(toInvert).getSignExtend();
@@ -236,4 +258,18 @@ public class StampInverterTest extends GraalTest {
         Stamp expected = IntegerStamp.create(8, -128, 126, 0, CodeUtil.mask(8) ^ 1);
         assertEquals(expected, invertZeroExtend(stamp));
     }
+
+    @Test
+    public void invertZeroExtendOutOfRangeBounds() {
+        for (int resultBits : new int[]{16, 32, 64}) {
+            for (long upperBound : new long[]{256, 300}) {
+                IntegerStamp output = IntegerStamp.create(resultBits, 0, upperBound);
+                Stamp inverted = IntegerStamp.OPS.getZeroExtend().invertStamp(8, resultBits, output);
+                assertEquals(IntegerStamp.create(8, -128, 127), inverted);
+            }
+        }
+        IntegerStamp output = IntegerStamp.create(64, 0, 1L << 32);
+        assertEquals(IntegerStamp.create(32, Integer.MIN_VALUE, Integer.MAX_VALUE), IntegerStamp.OPS.getZeroExtend().invertStamp(32, 64, output));
+    }
+
 }

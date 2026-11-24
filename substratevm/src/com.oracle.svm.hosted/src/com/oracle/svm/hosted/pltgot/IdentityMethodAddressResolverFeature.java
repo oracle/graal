@@ -35,7 +35,7 @@ import com.oracle.objectfile.SectionName;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.IdentityMethodAddressResolver;
 import com.oracle.svm.core.pltgot.MethodAddressResolver;
@@ -96,7 +96,7 @@ public class IdentityMethodAddressResolverFeature implements InternalFeature {
 
             ObjectFile.RelocationKind relocationKind = ObjectFile.RelocationKind.getDirect(wordSize);
             for (int gotEntryNo = 0; gotEntryNo < got.length; ++gotEntryNo) {
-                offsetsSectionBuffer.addRelocationWithoutAddend(gotEntryNo * wordSize, relocationKind, new MethodPointer(got[gotEntryNo], false));
+                offsetsSectionBuffer.addRelocationWithoutAddend(gotEntryNo * wordSize, relocationKind, MethodRefSupport.createMethodPointer(got[gotEntryNo], false));
             }
 
             imageObjectFile.createDefinedSymbol(offsetsSection.getName(), offsetsSection, 0, 0, false, false, false);

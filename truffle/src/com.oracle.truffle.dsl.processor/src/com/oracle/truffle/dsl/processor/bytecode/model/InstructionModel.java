@@ -925,13 +925,11 @@ public final class InstructionModel implements PrettyPrintable {
             }
 
             /*
-             * When storeBciInFrame is disabled, $node may be used to identify the bytecode
-             * location, so if $node is bound we cannot use a node singleton. We can still use a
-             * node singleton when storeBciInFrame is true: we just bind the bytecode node to $node
-             * instead of the singleton. The bytecode node and the bytecode index is enough to
-             * identify the stack trace.
+             * Only CACHED_NODE mode needs $node to identify the current operation for implicit
+             * bytecode index lookup. Other modes use a frame-stored or explicitly passed index,
+             * so binding the bytecode node does not prevent using a singleton.
              */
-            if (!operation.parent.storeBciInFrame && specialization.isNodeReceiverBoundInAnyExpression()) {
+            if (operation.parent.bytecodeIndexMode == BytecodeDSLModel.BytecodeIndexMode.CACHED_NODE && specialization.isNodeReceiverBoundInAnyExpression()) {
                 return false;
             }
         }

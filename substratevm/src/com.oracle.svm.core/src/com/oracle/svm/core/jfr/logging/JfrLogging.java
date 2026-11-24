@@ -34,6 +34,7 @@ import java.util.Set;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.log.Log;
@@ -43,8 +44,8 @@ import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 
 public class JfrLogging {
-    private static final IllegalArgumentException verifyLogLevelException = new IllegalArgumentException("LogLevel passed is outside valid range");
-    private static final IllegalArgumentException verifyLogTagSetIdException = new IllegalArgumentException("LogTagSet id is outside valid range");
+    private static final IllegalArgumentException verifyLogLevelException = PreallocatedExceptions.createIllegalArgumentException("LogLevel passed is outside valid range");
+    private static final IllegalArgumentException verifyLogTagSetIdException = PreallocatedExceptions.createIllegalArgumentException("LogTagSet id is outside valid range");
 
     private final String[] logLevels;
     private final String[] logTagSets;

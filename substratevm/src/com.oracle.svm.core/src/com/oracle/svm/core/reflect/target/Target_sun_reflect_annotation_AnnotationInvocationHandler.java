@@ -76,6 +76,9 @@ final class Target_sun_reflect_annotation_AnnotationInvocationHandler {
                 return toSourceString((long) value);
             } else if (type == Byte.class) {
                 return toSourceString((byte) value);
+            } else if (value instanceof Enum<?> enumValue) {
+                // An overridden toString does not change the enum constant's source name.
+                return enumValue.name();
             } else {
                 return value.toString();
             }
@@ -194,7 +197,7 @@ class Util_sun_reflect_annotation_AnnotationInvocationHandler {
     static List<String> convert(Object[] values) {
         List<String> list = new ArrayList<>(values.length);
         for (Object obj : values) {
-            list.add(Objects.toString(obj));
+            list.add(obj instanceof Enum<?> enumValue ? enumValue.name() : Objects.toString(obj));
         }
         return list;
     }

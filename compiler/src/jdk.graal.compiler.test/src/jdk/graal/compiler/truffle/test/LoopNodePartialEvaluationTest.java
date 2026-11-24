@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.ProfileData.ProfileSource;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.truffle.test.LoopNodePartialEvaluationTestFactory.TestProfileNodeGen;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
@@ -39,11 +40,17 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.InlinedLoopConditionProfile;
+import com.oracle.truffle.api.profiles.LoopConditionProfile;
+import com.oracle.truffle.runtime.AbstractOptimizedLoopNode;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class LoopNodePartialEvaluationTest extends PartialEvaluationTest {
@@ -110,6 +117,82 @@ public class LoopNodePartialEvaluationTest extends PartialEvaluationTest {
         ControlFlowGraph cfg = ControlFlowGraph.newBuilder(graph).connectBlocks(true).computeFrequency(true).build();
         for (LoopBeginNode loopBegin : loopBegins) {
             Assert.assertEquals("Expected loop frequency", 10.0, cfg.localLoopFrequency(loopBegin), 0.01);
+        }
+    }
+
+    @Test
+    public void testRuntimeLoopProfileOverflow() {
+        setupProfileOverflowContext();
+        TestLoopRootNode root = new TestLoopRootNode(new RepeatNTimesNode(9));
+        // Seed the real runtime profile without executing Long.MAX_VALUE iterations.
+        ((AbstractOptimizedLoopNode) root.loop).profileCounted(Long.MAX_VALUE);
+        assertOverflowLoopProbability(partialEval(root));
+    }
+
+    @Test
+    public void testLoopConditionProfileOverflow() {
+        setupProfileOverflowContext();
+        assertOverflowLoopProbability(partialEval(new TestProfileRootNode(false), 9));
+    }
+
+    @Test
+    public void testInlinedLoopConditionProfileOverflow() {
+        setupProfileOverflowContext();
+        assertOverflowLoopProbability(partialEval(new TestProfileRootNode(true), 9));
+    }
+
+    private void setupProfileOverflowContext() {
+        setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").build());
+    }
+
+    private static void assertOverflowLoopProbability(StructuredGraph graph) {
+        List<IfNode> profiledIfs = graph.getNodes(IfNode.TYPE).stream().filter(ifNode -> ifNode.getProfileData().getProfileSource() == ProfileSource.INJECTED).toList();
+        Assert.assertEquals("Expected one condition with an injected profile", 1, profiledIfs.size());
+        Assert.assertEquals("Long.MAX_VALUE true observations and one false observation round the probability to one", 1.0, profiledIfs.get(0).getTrueSuccessorProbability(), 0.0);
+    }
+
+    private static final class TestProfileRootNode extends RootNode {
+        @Child private TestProfileNode profile;
+
+        TestProfileRootNode(boolean inlined) {
+            super(null);
+            profile = TestProfileNodeGen.create(inlined);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            int limit = (int) frame.getArguments()[0];
+            int i = 0;
+            while (profile.execute(i < limit)) {
+                i++;
+            }
+            return i;
+        }
+    }
+
+    @GenerateInline(false)
+    abstract static class TestProfileNode extends Node {
+        final boolean inlined;
+
+        TestProfileNode(boolean inlined) {
+            this.inlined = inlined;
+        }
+
+        abstract boolean execute(boolean condition);
+
+        @Specialization
+        boolean profile(boolean condition, @Cached(inline = false) LoopConditionProfile profile, @Cached InlinedLoopConditionProfile inlinedProfile) {
+            if (inlined) {
+                if (CompilerDirectives.inInterpreter()) {
+                    inlinedProfile.profileCounted(this, Long.MAX_VALUE);
+                }
+                return inlinedProfile.inject(this, condition);
+            } else {
+                if (CompilerDirectives.inInterpreter()) {
+                    profile.profileCounted(Long.MAX_VALUE);
+                }
+                return profile.inject(condition);
+            }
         }
     }
 

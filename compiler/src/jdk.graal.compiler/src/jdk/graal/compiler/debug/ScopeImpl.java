@@ -26,6 +26,7 @@ package jdk.graal.compiler.debug;
 
 import java.io.PrintStream;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.DebugContext.DisabledScope;
@@ -374,7 +375,7 @@ public final class ScopeImpl implements DebugContext.Scope {
                         if (currentScope != null) {
                             return currentScope.context[objectIndex++];
                         }
-                        throw new IllegalStateException("May only be called if there is a next element.");
+                        throw new NoSuchElementException();
                     }
 
                     @Override

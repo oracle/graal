@@ -295,11 +295,6 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     }
 
     @Override
-    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
-        return true;
-    }
-
-    @Override
     protected void initializeMultipleContexts() {
         isMultiContext = true;
     }
@@ -391,7 +386,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     }
 
     public static final class ReturnCallData {
-        public CallTarget target = null;
+        public RootNode rootNode = null;
         public Object[] args = null;
     }
 }

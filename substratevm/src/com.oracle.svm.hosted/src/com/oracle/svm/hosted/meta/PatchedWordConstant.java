@@ -29,8 +29,9 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.TypedConstant;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -126,9 +127,9 @@ public class PatchedWordConstant implements JavaConstant, TypedConstant {
     @Override
     public String toValueString() {
         if (word instanceof MethodPointer mp) {
-            return "relocatable method pointer: " + mp.getMethod().format("%H.%n(%p)") + ", permitsRewriteToPLT: " + mp.permitsRewriteToPLT();
+            return "relocatable method pointer: " + MethodRefSupport.getMethod(mp).format("%H.%n(%p)") + ", permitsRewriteToPLT: " + mp.permitsRewriteToPLT();
         } else if (word instanceof MethodOffset mo) {
-            return "method offset: " + mo.getMethod().format("%H.%n(%p)");
+            return "method offset: " + MethodRefSupport.getMethod(mo).format("%H.%n(%p)");
         }
         return "patched word constant";
     }

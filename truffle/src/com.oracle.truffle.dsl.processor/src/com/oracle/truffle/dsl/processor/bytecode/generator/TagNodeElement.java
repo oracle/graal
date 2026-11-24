@@ -58,6 +58,7 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
@@ -94,6 +95,7 @@ final class TagNodeElement extends AbstractElement {
         this.add(createFindProbe());
         this.add(createIsInstrumentable());
         this.add(createHasTag());
+        this.add(createGetNodeObject());
         this.add(createCopy());
         this.add(createGetSourceSection());
         this.add(createGetSourceSections());
@@ -143,6 +145,16 @@ final class TagNodeElement extends AbstractElement {
         ex.getModifiers().add(Modifier.FINAL);
         CodeTreeBuilder b = ex.createBuilder();
         b.statement("return this.returnBci");
+        return ex;
+    }
+
+    private CodeExecutableElement createGetNodeObject() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.InstrumentableNode, "getNodeObject");
+        ex.getModifiers().remove(Modifier.ABSTRACT);
+        ex.getModifiers().add(Modifier.FINAL);
+        CodeTreeBuilder b = ex.createBuilder();
+        CodeTree receiver = b.create().startParentheses().cast(types.BytecodeRootNode).string("getRootNode()").end().build();
+        b.startReturn().startCall(receiver, "getInstrumentationNodeObject").string("this").end(2);
         return ex;
     }
 

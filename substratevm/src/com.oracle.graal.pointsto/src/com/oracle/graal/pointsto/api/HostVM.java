@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.GraphMetadata;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.Stage;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -244,7 +245,7 @@ public abstract class HostVM {
      * {@link com.oracle.graal.pointsto.flow.AnalysisParsedGraph.Stage#isRequiredStage(Stage, AnalysisMethod)}
      * is true for the given method and stage {@link Stage#BYTECODE_PARSED}. If the hook is invoked,
      * it is guaranteed to be invoked before
-     * {@link #methodAfterParsingHook(BigBang, AnalysisMethod, StructuredGraph)} .
+     * {@link #methodAfterParsingHook}.
      *
      * @param bb the analysis engine
      * @param method the newly parsed method
@@ -258,14 +259,15 @@ public abstract class HostVM {
     }
 
     /**
-     * Can be overwritten to run code after a method is parsed and all pre-analysis optimizations
-     * are finished. This hook will be invoked before the graph is made available to the analysis.
+     * Processes a freshly parsed method graph before encoding and publication to the analysis.
+     * Implementations may apply pre-analysis optimizations and collect metadata for this parse.
      *
      * @param bb the analysis engine
      * @param method the newly parsed method
      * @param graph the method graph
+     * @param metadata collects metadata to retain with this graph's encoding
      */
-    public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
+    public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph, GraphMetadata.Builder metadata) {
         for (BiConsumer<AnalysisMethod, StructuredGraph> listener : methodAfterParsingListeners) {
             listener.accept(method, graph);
         }
@@ -633,5 +635,16 @@ public abstract class HostVM {
          * support it within deoptimization targets and runtime-compiled methods.
          */
         return method.isOriginalMethod();
+    }
+
+    /**
+     * Whether compilation of this method may specialize its graph using the current analysis
+     * results. A separate method variant can opt out when its callers or heap belong to another
+     * execution universe. This also controls build-state folding of field reads during analysis
+     * decoding and static-final field folding. Local canonicalization remains enabled; callers
+     * must select compatible providers separately.
+     */
+    public boolean allowAnalysisSpecialization(@SuppressWarnings("unused") AnalysisMethod method) {
+        return true;
     }
 }

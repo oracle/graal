@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,6 @@ package com.oracle.svm.core.jdk.localization.substitutions;
 
 import java.util.Map;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
@@ -35,7 +33,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLookup;
 
 @TargetClass(value = sun.util.resources.OpenListResourceBundle.class, onlyWith = SubstituteLoadLookup.class)
@@ -66,8 +64,7 @@ final class Target_sun_util_resources_OpenListResourceBundle_SubstituteLoadLooku
             loadLookupOriginal();
             return;
         }
-        LocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class);
-        Map<String, Object> content = support.getBundleContentOf(this);
+        Map<String, Object> content = BundleContentSubstitutedLocalizationSupport.getBundleContentOf(this);
         synchronized (this) {
             if (lookup == null) {
                 lookup = content;

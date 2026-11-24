@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,7 @@ public class WasmLMSingleThreadedAtomicsPhase extends SingleThreadedAtomicsPhase
 
         ForeignCallDescriptor target = switch (cas.getExpectedValue().getStackKind()) {
             case Int -> {
-                var stamp = (IntegerStamp) cas.stamp(NodeView.DEFAULT);
+                var stamp = (IntegerStamp) cas.getAccessStamp(NodeView.DEFAULT);
                 if (stamp.getBits() == 8) {
                     yield isLogic ? SingleThreadedAtomics.LOGIC_COMPARE_AND_SWAP_BYTE : SingleThreadedAtomics.VALUE_COMPARE_AND_SWAP_BYTE;
                 } else if (stamp.getBits() == 16) {

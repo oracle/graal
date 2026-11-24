@@ -29,6 +29,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.NoMetaspace;
 
 /**
  * A {@link Metaspace} is only needed if {@link RuntimeClassLoading} is supported (which is not the

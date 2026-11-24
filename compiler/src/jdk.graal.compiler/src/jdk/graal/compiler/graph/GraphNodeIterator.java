@@ -25,6 +25,7 @@
 package jdk.graal.compiler.graph;
 
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 /**
  * Iterates over the nodes in a given graph.
@@ -66,11 +67,12 @@ class GraphNodeIterator implements Iterator<Node> {
 
     @Override
     public Node next() {
-        try {
-            return graph.nodes[index];
-        } finally {
-            forward();
+        if (!hasNext()) {
+            throw new NoSuchElementException();
         }
+        Node result = graph.nodes[index];
+        forward();
+        return result;
     }
 
     @Override

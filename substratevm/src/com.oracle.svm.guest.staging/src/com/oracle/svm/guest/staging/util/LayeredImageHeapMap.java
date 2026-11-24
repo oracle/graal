@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -69,10 +70,9 @@ public class LayeredImageHeapMap<K, V> implements EconomicMap<K, V> {
     @Override
     public V put(K key, V value) {
         /* The returned value needs to be the first value to be found. */
-        List<LayeredImageHeapMapStore> singletons = Arrays.stream(LayeredImageHeapMapStore.layeredSingletons()).toList();
+        List<EconomicMap<K, V>> maps = getRuntimeMaps();
         boolean first = true;
-        for (var singleton : fromBaseToApp ? singletons : singletons.reversed()) {
-            EconomicMap<K, V> singletonMap = getRuntimeMap(singleton);
+        for (var singletonMap : fromBaseToApp ? maps : maps.reversed()) {
             if (first) {
                 boolean containsKey = singletonMap.containsKey(key);
                 V oldValue = singletonMap.put(key, value);
@@ -90,7 +90,10 @@ public class LayeredImageHeapMap<K, V> implements EconomicMap<K, V> {
     @Override
     public void clear() {
         for (var singleton : LayeredImageHeapMapStore.layeredSingletons()) {
-            getRuntimeMap(singleton).clear();
+            EconomicMap<K, V> map = getRuntimeMap(singleton);
+            if (map != null) {
+                map.clear();
+            }
         }
     }
 
@@ -100,11 +103,10 @@ public class LayeredImageHeapMap<K, V> implements EconomicMap<K, V> {
          * The returned value needs to be the first value to be found. However, all the other values
          * still need to be removed as we would still find an older value otherwise.
          */
-        List<LayeredImageHeapMapStore> singletons = Arrays.stream(LayeredImageHeapMapStore.layeredSingletons()).toList();
+        List<EconomicMap<K, V>> maps = getRuntimeMaps();
         V previousValue = null;
         boolean returnOldValue = true;
-        for (var singleton : fromBaseToApp ? singletons : singletons.reversed()) {
-            EconomicMap<K, V> singletonMap = getRuntimeMap(singleton);
+        for (var singletonMap : fromBaseToApp ? maps : maps.reversed()) {
             if (returnOldValue && singletonMap.containsKey(key)) {
                 previousValue = singletonMap.get(key);
                 returnOldValue = false;
@@ -121,9 +123,8 @@ public class LayeredImageHeapMap<K, V> implements EconomicMap<K, V> {
 
     @Override
     public V get(K key, V defaultValue) {
-        List<LayeredImageHeapMapStore> singletons = Arrays.stream(LayeredImageHeapMapStore.layeredSingletons()).toList();
-        for (var singleton : fromBaseToApp ? singletons : singletons.reversed()) {
-            EconomicMap<K, V> singletonMap = getRuntimeMap(singleton);
+        List<EconomicMap<K, V>> maps = getRuntimeMaps();
+        for (var singletonMap : fromBaseToApp ? maps : maps.reversed()) {
             if (singletonMap.containsKey(key)) {
                 return singletonMap.get(key);
             }
@@ -134,7 +135,8 @@ public class LayeredImageHeapMap<K, V> implements EconomicMap<K, V> {
     @Override
     public boolean containsKey(K key) {
         for (var singleton : LayeredImageHeapMapStore.layeredSingletons()) {
-            if (getRuntimeMap(singleton).containsKey(key)) {
+            EconomicMap<K, V> map = getRuntimeMap(singleton);
+            if (map != null && map.containsKey(key)) {
                 return true;
             }
         }
@@ -146,7 +148,10 @@ public class LayeredImageHeapMap<K, V> implements EconomicMap<K, V> {
     public int size() {
         int size = 0;
         for (var singleton : LayeredImageHeapMapStore.layeredSingletons()) {
-            size += getRuntimeMap(singleton).size();
+            EconomicMap<K, V> map = getRuntimeMap(singleton);
+            if (map != null) {
+                size += map.size();
+            }
         }
         return size;
     }
@@ -154,7 +159,8 @@ public class LayeredImageHeapMap<K, V> implements EconomicMap<K, V> {
     @Override
     public boolean isEmpty() {
         for (var singleton : LayeredImageHeapMapStore.layeredSingletons()) {
-            if (!getRuntimeMap(singleton).isEmpty()) {
+            EconomicMap<K, V> map = getRuntimeMap(singleton);
+            if (map != null && !map.isEmpty()) {
                 return false;
             }
         }
@@ -186,9 +192,9 @@ public class LayeredImageHeapMap<K, V> implements EconomicMap<K, V> {
          * In case of duplicate keys, the first key found need to have priority over the other keys.
          * The keys need to be stored to ensure each of them is processed once.
          */
-        List<LayeredImageHeapMapStore> singletons = Arrays.stream(LayeredImageHeapMapStore.layeredSingletons()).toList();
-        singletons = fromBaseToApp ? singletons : singletons.reversed();
-        Iterator<MapCursor<K, V>> cursors = singletons.stream().map(singleton -> getRuntimeMap(singleton).getEntries()).iterator();
+        List<EconomicMap<K, V>> maps = getRuntimeMaps();
+        maps = fromBaseToApp ? maps : maps.reversed();
+        Iterator<MapCursor<K, V>> cursors = maps.stream().map(EconomicMap::getEntries).iterator();
         return new MapCursor<>() {
             private MapCursor<K, V> current = cursors.next();
             private final EconomicSet<K> keys = EconomicSet.create(strategy);
@@ -234,13 +240,21 @@ public class LayeredImageHeapMap<K, V> implements EconomicMap<K, V> {
     @Override
     public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
         for (var singleton : LayeredImageHeapMapStore.layeredSingletons()) {
-            getRuntimeMap(singleton).replaceAll(function);
+            EconomicMap<K, V> map = getRuntimeMap(singleton);
+            if (map != null) {
+                map.replaceAll(function);
+            }
         }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public String getMapKey() {
         return mapKey;
+    }
+
+    private List<EconomicMap<K, V>> getRuntimeMaps() {
+        /* A map first created in an extension layer has no entry in earlier layers' stores. */
+        return Arrays.stream(LayeredImageHeapMapStore.layeredSingletons()).map(this::getRuntimeMap).filter(Objects::nonNull).toList();
     }
 
     @SuppressWarnings("unchecked")

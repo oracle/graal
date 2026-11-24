@@ -258,9 +258,6 @@
                 "name" : "fill",
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
-                "name" : "copyFrom",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
                 "name" : "duplicate",
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
@@ -271,6 +268,20 @@
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
                 "name" : "copyToBuffer",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }
+        ]
+    }, {
+        "name" : "org.graalvm.wasm.memory.UnsafeWasmMemory$CopyFrom",
+        "methods" : [
+            {
+                "name" : "doByteArray",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "doUnsafe",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "doNative",
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }
         ]
@@ -536,9 +547,6 @@
                 "name" : "fill",
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
-                "name" : "copyFrom",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
                 "name" : "free",
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
@@ -549,6 +557,20 @@
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
                 "name" : "copyToBuffer",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }
+        ]
+    }, {
+        "name" : "org.graalvm.wasm.memory.NativeWasmMemory$CopyFrom",
+        "methods" : [
+            {
+                "name" : "doByteArray",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "doUnsafe",
+                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
+            }, {
+                "name" : "doNative",
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }
         ]

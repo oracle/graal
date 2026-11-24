@@ -36,10 +36,10 @@ public interface HostedPatcher {
      * Create relocation for the binary file.
      *
      * @param ref value instruction sequence should refer to
-     * @param relocs buffer of added relocation site information
+     * @param codeBuffer code buffer to which relocation site information is added
      * @param compStart codecache-relative starting position this method's machine code
      */
-    void relocate(Reference ref, RelocatableBuffer relocs, int compStart);
+    void relocate(Reference ref, RelocatableBuffer codeBuffer, int compStart);
 
     /**
      * Patch the code buffer.

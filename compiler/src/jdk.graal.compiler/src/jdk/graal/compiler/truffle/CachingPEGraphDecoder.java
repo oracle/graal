@@ -29,11 +29,9 @@ import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 
-import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.graph.SourceLanguagePositionProvider;
 import jdk.graal.compiler.java.GraphBuilderPhase;
@@ -195,16 +193,7 @@ public final class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
-    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
-        if (intrinsicBytecodeProvider != null) {
-            /*
-             * intrinsicBytecodeProvider is read from
-             * InlineInvokePlugin.InlineInfo#getIntrinsicBytecodeProvider which is always null
-             * because the only source is PartialEvaluator#asInlineInfo
-             */
-            throw GraalError.shouldNotReachHere("dead path"); // ExcludeFromJacocoGeneratedReport
-        }
-
+    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method) {
         EncodedGraph result = localGraphCache.get(method);
         if (result != null) {
             return result;

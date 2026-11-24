@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.dynamicaccess;
 
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,6 +34,7 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import com.oracle.svm.hosted.ReflectiveAccessImpl;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestInvoked;
+import com.oracle.svm.util.GuestType;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
@@ -92,7 +95,7 @@ public final class JVMCIReflectiveAccessImpl implements JVMCIReflectiveAccess {
      * @param classes a {@link JavaConstant} representing the guest {@code Class<?>[]} to register
      */
     @GuestInvoked
-    public void registerClasses(JavaConstant condition, JavaConstant classes) {
+    public void registerClasses(@GuestType(AccessCondition.class) JavaConstant condition, @GuestType(Class[].class) JavaConstant classes) {
         register(JVMCIAccessCondition.guestAccessCondition(condition), GuestAccess.get().asResolvedJavaTypes(classes));
     }
 
@@ -104,7 +107,7 @@ public final class JVMCIReflectiveAccessImpl implements JVMCIReflectiveAccess {
      * @param executables a {@link JavaConstant} representing the guest {@code Executable[]} to register
      */
     @GuestInvoked
-    public void registerExecutables(JavaConstant condition, JavaConstant executables) {
+    public void registerExecutables(@GuestType(AccessCondition.class) JavaConstant condition, @GuestType(Executable[].class) JavaConstant executables) {
         register(JVMCIAccessCondition.guestAccessCondition(condition), GuestAccess.get().asResolvedJavaMethods(executables));
     }
 
@@ -116,7 +119,7 @@ public final class JVMCIReflectiveAccessImpl implements JVMCIReflectiveAccess {
      * @param fields a {@link JavaConstant} representing the guest {@code Field[]} to register
      */
     @GuestInvoked
-    public void registerFields(JavaConstant condition, JavaConstant fields) {
+    public void registerFields(@GuestType(AccessCondition.class) JavaConstant condition, @GuestType(Field[].class) JavaConstant fields) {
         register(JVMCIAccessCondition.guestAccessCondition(condition), GuestAccess.get().asResolvedJavaFields(fields));
     }
 
@@ -137,7 +140,7 @@ public final class JVMCIReflectiveAccessImpl implements JVMCIReflectiveAccess {
      * @param classes a {@link JavaConstant} representing the guest {@code Class<?>[]} to register
      */
     @GuestInvoked
-    public void registerForSerializationClasses(JavaConstant condition, JavaConstant classes) {
+    public void registerForSerializationClasses(@GuestType(AccessCondition.class) JavaConstant condition, @GuestType(Class[].class) JavaConstant classes) {
         registerForSerialization(condition, GuestAccess.get().asResolvedJavaTypes(classes));
     }
 
@@ -161,7 +164,7 @@ public final class JVMCIReflectiveAccessImpl implements JVMCIReflectiveAccess {
      * @return a JVMCI type representing the guest proxy class
      */
     @GuestInvoked
-    public ResolvedJavaType registerProxyInterfaces(JavaConstant condition, JavaConstant interfaces) {
+    public ResolvedJavaType registerProxyInterfaces(@GuestType(AccessCondition.class) JavaConstant condition, @GuestType(Class[].class) JavaConstant interfaces) {
         return registerProxy(condition, GuestAccess.get().asResolvedJavaTypes(interfaces));
     }
 
@@ -181,7 +184,7 @@ public final class JVMCIReflectiveAccessImpl implements JVMCIReflectiveAccess {
      * @param classes a {@link JavaConstant} representing the guest {@code Class<?>[]} to register
      */
     @GuestInvoked
-    public void registerForUnsafeAllocationClasses(JavaConstant condition, JavaConstant classes) {
+    public void registerForUnsafeAllocationClasses(@GuestType(AccessCondition.class) JavaConstant condition, @GuestType(Class[].class) JavaConstant classes) {
         registerForUnsafeAllocation(condition, GuestAccess.get().asResolvedJavaTypes(classes));
     }
 }

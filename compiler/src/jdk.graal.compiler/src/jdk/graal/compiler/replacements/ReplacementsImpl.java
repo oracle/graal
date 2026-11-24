@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,8 +28,7 @@ import static jdk.graal.compiler.core.common.GraalOptions.UseSnippetGraphCache;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 import static jdk.graal.compiler.debug.DebugOptions.DebugStubsAndSnippets;
 import static jdk.graal.compiler.debug.DebugOptions.DumpOnError;
-import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
-import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
+import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 import static jdk.graal.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
 import java.util.BitSet;
@@ -80,7 +79,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.spi.SnippetParameterInfo;
@@ -210,7 +208,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
             assert b.getDepth() < MAX_GRAPH_INLINING_DEPTH : "inlining limit exceeded";
 
             // Force inlining when parsing replacements
-            return createIntrinsicInlineInfo(method, defaultBytecodeProvider);
+            return createStandardInlineInfo(method);
         } else {
             assert inRuntimeCode() || AnnotationValueSupport.getAnnotationValue(method, NodeIntrinsic.class) == null : String.format("@%s method %s must only be called from within a replacement%n%s",
                             NodeIntrinsic.class.getSimpleName(),
@@ -293,7 +291,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
         if (graph == null || (trackNodeSourcePosition && !graph.trackNodeSourcePosition())) {
             try (DebugContext debug = openSnippetDebugContext("Snippet_", method, options);
                             DebugCloseable a = SnippetPreparationTime.start(debug)) {
-                StructuredGraph newGraph = makeGraph(debug, defaultBytecodeProvider, method, args, nonNullParameters, recursiveEntry, trackNodeSourcePosition, replaceePosition, INLINE_AFTER_PARSING);
+                StructuredGraph newGraph = makeGraph(debug, defaultBytecodeProvider, method, args, nonNullParameters, recursiveEntry, trackNodeSourcePosition, replaceePosition);
                 DebugContext.counter("SnippetNodeCount[%#s]", method).add(newGraph.getDebug(), newGraph.getNodeCount());
                 if (!UseSnippetGraphCache.getValue(options) || args != null) {
                     return newGraph;
@@ -343,35 +341,18 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     }
 
     /**
-     * Creates a preprocessed graph for a snippet or method substitution.
+     * Creates a preprocessed snippet graph.
      *
      * @param bytecodeProvider how to access the bytecode of {@code method}
-     * @param method the snippet or method substitution for which a graph will be created
+     * @param method the snippet for which a graph will be created
      * @param args
      * @param nonNullParameters
-     * @param original XXX always null?
-     * @param trackNodeSourcePosition record source information
-     * @param context {@link CompilationContext compilation context} for the graph
-     */
-    public StructuredGraph makeGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod method, Object[] args, BitSet nonNullParameters, ResolvedJavaMethod original,
-                    boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, CompilationContext context) {
-        return createGraphMaker(method, original).makeGraph(debug, bytecodeProvider, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, context);
-    }
-
-    /**
-     * Creates a preprocessed graph for a snippet or method substitution with a context of .
-     * {@link CompilationContext#INLINE_AFTER_PARSING} .
-     *
-     * @param bytecodeProvider how to access the bytecode of {@code method}
-     * @param method the snippet or method substitution for which a graph will be created
-     * @param args
-     * @param nonNullParameters
-     * @param original XXX always null?
+     * @param original the method used for partial intrinsic exits, or null
      * @param trackNodeSourcePosition record source information
      */
     public final StructuredGraph makeGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod method, Object[] args, BitSet nonNullParameters, ResolvedJavaMethod original,
                     boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition) {
-        return makeGraph(debug, bytecodeProvider, method, args, nonNullParameters, original, trackNodeSourcePosition, replaceePosition, INLINE_AFTER_PARSING);
+        return createGraphMaker(method, original).makeGraph(debug, bytecodeProvider, args, nonNullParameters, trackNodeSourcePosition, replaceePosition);
     }
 
     /**
@@ -409,10 +390,10 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
 
         @SuppressWarnings("try")
         public StructuredGraph makeGraph(DebugContext debug, BytecodeProvider bytecodeProvider, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
-                        NodeSourcePosition replaceePosition, CompilationContext context) {
+                        NodeSourcePosition replaceePosition) {
             try (DebugContext.Scope s = debug.scope("BuildSnippetGraph", method)) {
                 assert method.hasBytecodes() : method;
-                StructuredGraph graph = buildInitialGraph(debug, bytecodeProvider, method, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, context);
+                StructuredGraph graph = buildInitialGraph(debug, bytecodeProvider, method, args, nonNullParameters, trackNodeSourcePosition, replaceePosition);
 
                 finalizeGraph(graph);
 
@@ -474,9 +455,9 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
         }
 
         static class EncodedIntrinsicContext extends IntrinsicContext {
-            EncodedIntrinsicContext(ResolvedJavaMethod method, ResolvedJavaMethod intrinsic, BytecodeProvider bytecodeProvider, CompilationContext compilationContext,
+            EncodedIntrinsicContext(ResolvedJavaMethod method, ResolvedJavaMethod intrinsic, BytecodeProvider bytecodeProvider,
                             boolean allowPartialIntrinsicArgumentMismatch) {
-                super(method, intrinsic, bytecodeProvider, compilationContext, allowPartialIntrinsicArgumentMismatch);
+                super(method, intrinsic, bytecodeProvider, allowPartialIntrinsicArgumentMismatch);
             }
 
             @Override
@@ -510,7 +491,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
          */
         @SuppressWarnings("try")
         protected StructuredGraph buildInitialGraph(DebugContext debug, BytecodeProvider bytecodeProvider, final ResolvedJavaMethod methodToParse, Object[] args, BitSet nonNullParameters,
-                        boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, CompilationContext context) {
+                        boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition) {
             // @formatter:off
             // Replacements cannot have optimistic assumptions since they have
             // to be valid for the entire run of the VM.
@@ -542,11 +523,11 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
                 AnnotationValue snippetAnnotation = AnnotationValueSupport.getAnnotationValue(method, Snippet.class);
                 if (snippetAnnotation == null) {
                     // Post-parse inlined intrinsic
-                    initialIntrinsicContext = new EncodedIntrinsicContext(substitutedMethod, method, bytecodeProvider, context, false);
+                    initialIntrinsicContext = new EncodedIntrinsicContext(substitutedMethod, method, bytecodeProvider, false);
                 } else {
                     // Snippet
                     ResolvedJavaMethod original = substitutedMethod != null ? substitutedMethod : method;
-                    initialIntrinsicContext = new EncodedIntrinsicContext(original, method, bytecodeProvider, context,
+                    initialIntrinsicContext = new EncodedIntrinsicContext(original, method, bytecodeProvider,
                                     snippetAnnotation.getBoolean("allowPartialIntrinsicArgumentMismatch"));
                 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,8 @@ public class VerifyLoopInfo extends VerifyPhase<CoreProviders> {
     static {
         allowedCallers = EconomicSet.create();
         allowedCallers.add("getBodyIVStart");
+        // Check the constant initialization of the body IV without creating its start node.
+        allowedCallers.add("isConstantMaxTripCount");
         allowedCallers.add("limitCheckedPreviousOrRootEntryValue");
         allowedCallers.add("getBodyIVEqualsLimitCheckedIV");
         allowedCallers.add("getBodyIVExitValue");

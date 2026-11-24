@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.guest.staging.core.heap.GCCause;
 import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.shared.Uninterruptible;
@@ -54,9 +54,13 @@ public interface CollectionPolicy {
     void updateSizeParameters();
 
     /**
-     * During a slow-path allocation, determines whether to trigger a collection. Returning
-     * {@code true} will initiate a safepoint during which {@link #shouldCollectCompletely} will be
-     * called followed by the collection.
+     * Determines whether a slow-path allocation requires a collection. The result is rechecked
+     * before initiating a safepoint and before executing the collection because another GC in the
+     * meanwhile may have made the request unnecessary. Collecting policies must not allocate,
+     * block, or modify policy state here. They must support calls both before and during a safepoint.
+     * <p>
+     * A policy that never collects checks the heap limit and throws an {@link OutOfMemoryError}
+     * if it is exceeded. Otherwise, it returns {@code false}.
      */
     boolean shouldCollectOnAllocation();
 
@@ -117,6 +121,9 @@ public interface CollectionPolicy {
     UnsignedWord getInitialSurvivorSize();
 
     UnsignedWord getMaximumSurvivorSize();
+
+    /** The current capacity target for eden. */
+    UnsignedWord getEdenCapacity();
 
     /**
      * The total capacity of all survivor-from spaces of all ages, equal to the size of all

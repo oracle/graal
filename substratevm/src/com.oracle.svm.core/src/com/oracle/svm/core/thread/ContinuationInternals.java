@@ -34,7 +34,7 @@ import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.util.VMError;

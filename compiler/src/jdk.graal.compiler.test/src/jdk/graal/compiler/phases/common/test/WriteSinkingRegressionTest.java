@@ -25,10 +25,12 @@
 
 package jdk.graal.compiler.phases.common.test;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.phases.LowTier;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.loop.phases.LoopInversionPhase;
 import jdk.graal.compiler.loop.phases.NonCountedStripMiningPhase;
@@ -177,6 +179,64 @@ public class WriteSinkingRegressionTest extends GraalCompilerTest {
 
     static class X {
         int x;
+    }
+
+    public static void nestedLoopWrite(X x, int[] counts, int limit) {
+        for (int j = 0; j < limit; j++) {
+            for (int i = 0; i < counts[j]; i++) {
+                x.x = i;
+            }
+        }
+    }
+
+    @Test
+    public void testGR81079NestedLoopZeroTrip() {
+        OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.GenLoopSafepoints, false, LowTier.Options.OptWriteSinking, true);
+        var method = getResolvedJavaMethod("nestedLoopWrite");
+        int[][] counts = {{}, {0, 0, 0}, {0, 2, 0}, {2, 0, 0}, {0, 0, 2}, {0, 0, 0, 0}, {0, 2, 0, 0}};
+        int[] expectedValues = {7, 7, 1, 1, 1, 7, 1};
+        for (int caseIndex = 0; caseIndex < counts.length; caseIndex++) {
+            X expected = new X();
+            expected.x = 7;
+            X actual = new X();
+            actual.x = 7;
+            Result expectedResult = executeExpected(method, null, expected, counts[caseIndex], counts[caseIndex].length);
+            Result actualResult = executeActual(options, method, null, actual, counts[caseIndex], counts[caseIndex].length);
+            assertEquals(expectedResult, actualResult);
+            Assert.assertEquals(expectedValues[caseIndex], expected.x);
+            Assert.assertEquals(expected.x, actual.x);
+        }
+    }
+
+    public static void adjacentInnerLoopWrites(X x, int[] first, int[] second, int limit) {
+        for (int j = 0; j < limit; j++) {
+            for (int i = 0; i < first[j]; i++) {
+                x.x = i;
+            }
+            for (int i = 0; i < second[j]; i++) {
+                x.x = i + 10;
+            }
+        }
+    }
+
+    @Test
+    public void testGR81079AdjacentInnerLoops() {
+        OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.GenLoopSafepoints, false, LowTier.Options.OptWriteSinking, true);
+        var method = getResolvedJavaMethod("adjacentInnerLoopWrites");
+        int[][] first = {{0, 0, 0}, {0, 1, 0}, {0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 0, 0}, {0, 0, 1}};
+        int[][] second = {{0, 0, 0}, {0, 0, 0}, {0, 1, 0}, {0, 0, 0}, {0, 1, 0}, {0, 1, 0}, {1, 0, 0}};
+        int[] expectedValues = {7, 0, 10, 0, 10, 10, 0};
+        for (int caseIndex = 0; caseIndex < first.length; caseIndex++) {
+            X expected = new X();
+            expected.x = 7;
+            X actual = new X();
+            actual.x = 7;
+            Result expectedResult = executeExpected(method, null, expected, first[caseIndex], second[caseIndex], 3);
+            Result actualResult = executeActual(options, method, null, actual, first[caseIndex], second[caseIndex], 3);
+            assertEquals(expectedResult, actualResult);
+            Assert.assertEquals(expectedValues[caseIndex], expected.x);
+            Assert.assertEquals(expected.x, actual.x);
+        }
     }
 
     private static HashMapFromScala init(Object[] objects, boolean assign) {

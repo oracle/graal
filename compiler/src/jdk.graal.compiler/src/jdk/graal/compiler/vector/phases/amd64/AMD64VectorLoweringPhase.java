@@ -549,7 +549,7 @@ public class AMD64VectorLoweringPhase extends BasePhase<LowTierContext> {
                  * vector simplifications and canonicalization turned into (x << 1). Legalize it. We
                  * must use repeated addition because multiply on bytes isn't supported either.
                  */
-                int remainingShift = node.getY().asJavaConstant().asInt();
+                int remainingShift = node.getConstantShiftAmount();
                 ValueNode replacement = node.getX();
                 while (remainingShift-- > 0) {
                     replacement = graph.unique(new AddNode(replacement, replacement));

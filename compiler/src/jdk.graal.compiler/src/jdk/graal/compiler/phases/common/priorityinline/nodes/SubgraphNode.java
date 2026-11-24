@@ -198,6 +198,10 @@ public class SubgraphNode extends ParentNode {
             StructuredGraph mutableSubgraph = subgraph.uniqueRef(null, this::updateChildrenInvokePointersAfterCopy);
 
             for (ParameterNode formalParameter : mutableSubgraph.getNodes(ParameterNode.TYPE).snapshot()) {
+                // Canonicalizing an earlier parameter can delete later entries in the snapshot.
+                if (!formalParameter.isAlive()) {
+                    continue;
+                }
                 int index = formalParameter.index();
                 ValueNode actualParameter = invoke.callTarget().arguments().get(index);
                 assert actualParameter != null : "Found null argument: " + invoke + ", " + invoke.callTarget().arguments();

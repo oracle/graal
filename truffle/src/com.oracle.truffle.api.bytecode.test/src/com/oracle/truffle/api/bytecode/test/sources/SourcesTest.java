@@ -56,6 +56,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -85,6 +86,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -1123,6 +1125,89 @@ public class SourcesTest {
     }
 
     @Test
+    public void testExplicitBytecodeIndexFrameInstance() {
+        Source source = Source.newBuilder("test", "return", "testExplicitBytecodeIndexFrameInstance").build();
+        SourcesInterpreter root = parseNodeWithSource("root", b -> {
+            b.beginRoot();
+            b.beginSource(source);
+            beginSourceSection(b, 0, source.getLength());
+            b.beginReturn();
+            b.emitLoadNull();
+            b.endReturn();
+            endSourceSection(b, 0, source.getLength());
+            b.endSource();
+            b.endRoot();
+        });
+        root.getRootNodes().ensureSourceInformation();
+        BytecodeNode bytecode = root.getBytecodeNode();
+        int explicitBytecodeIndex = -1;
+        for (Instruction instruction : bytecode.getInstructions()) {
+            int bci = instruction.getBytecodeIndex();
+            if (bytecode.getSourceLocation(bci) != null) {
+                explicitBytecodeIndex = bci;
+                break;
+            }
+        }
+        if (explicitBytecodeIndex == -1) {
+            throw new AssertionError("No instruction with a source location found.");
+        }
+        FrameInstance matching = createFrameInstance(root, bytecode, explicitBytecodeIndex);
+
+        assertSourceSection(bytecode.getSourceLocation(matching), source, 0, source.getLength());
+        SourceSection[] locations = bytecode.getSourceLocations(matching);
+        assertNotNull(locations);
+        assertEquals(1, locations.length);
+        assertSourceSection(locations[0], source, 0, source.getLength());
+
+        SourcesInterpreter otherRoot = parseNodeWithSource("other", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitLoadNull();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertNull(otherRoot.getBytecodeNode().getSourceLocation(matching));
+        assertNull(otherRoot.getBytecodeNode().getSourceLocations(matching));
+
+        FrameInstance missingLocation = createFrameInstance(root, null, explicitBytecodeIndex);
+        assertNull(bytecode.getSourceLocation(missingLocation));
+        assertNull(bytecode.getSourceLocations(missingLocation));
+
+        FrameInstance invalidBytecodeIndex = createFrameInstance(root, bytecode, -2);
+        assertNull(bytecode.getSourceLocation(invalidBytecodeIndex));
+        assertNull(bytecode.getSourceLocations(invalidBytecodeIndex));
+    }
+
+    private static FrameInstance createFrameInstance(SourcesInterpreter root, Node location, int bytecodeIndex) {
+        return new FrameInstance() {
+            @Override
+            public Frame getFrame(FrameAccess access) {
+                return null;
+            }
+
+            @Override
+            public boolean isVirtualFrame() {
+                return false;
+            }
+
+            @Override
+            public Node getCallNode() {
+                return location;
+            }
+
+            @Override
+            public CallTarget getCallTarget() {
+                return root.getCallTarget();
+            }
+
+            @Override
+            public int getBytecodeIndex() {
+                return bytecodeIndex;
+            }
+        };
+    }
+
+    @Test
     public void testGetSourcePositionFrameInstance() {
         Source fooSource = Source.newBuilder("test", "return arg0()", "testGetSourcePositionFrameInstance#foo").build();
         SourcesInterpreter foo = parseNodeWithSource("foo", b -> {
@@ -1697,6 +1782,8 @@ public class SourcesTest {
                                 enableCompressedSources = false)),
                 @Variant(suffix = "CompressedSourcesWithTracing", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, additionalAssertions = true, enableInstructionTracing = true))})
 @ShortCircuitOperation(booleanConverter = SourcesInterpreter.ToBoolean.class, name = "ScAnd", operator = ShortCircuitOperation.Operator.AND_RETURN_VALUE)
+// The shared operations also serve variants without a bytecode index frame slot.
+@SuppressWarnings("truffle-interpreted-performance")
 abstract class SourcesInterpreter extends DebugBytecodeRootNode implements BytecodeRootNode {
 
     protected SourcesInterpreter(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

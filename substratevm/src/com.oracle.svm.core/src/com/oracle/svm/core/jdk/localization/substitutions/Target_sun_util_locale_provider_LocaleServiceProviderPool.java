@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,6 @@ package com.oracle.svm.core.jdk.localization.substitutions;
 
 import java.util.Locale;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
@@ -38,11 +36,11 @@ import com.oracle.svm.core.jdk.localization.substitutions.modes.ResourceBundlesA
 final class Target_sun_util_locale_provider_LocaleServiceProviderPool {
     @Substitute
     private static Locale[] getAllAvailableLocales() {
-        return ImageSingletons.lookup(LocalizationSupport.class).allLocales;
+        return LocalizationSupport.getAllLocales();
     }
 
     @Substitute
     private Locale[] getAvailableLocales() {
-        return ImageSingletons.lookup(LocalizationSupport.class).allLocales;
+        return LocalizationSupport.getAllLocales();
     }
 }

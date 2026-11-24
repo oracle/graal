@@ -853,7 +853,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * This method is currently not able to replace
              * ExceptionSynthesizer.throwException(GraphBuilderContext, Method, String) because
              * there are places where GraphBuilderContext.getMetaAccess() does not contain a
-             * UniverseMetaAccess (e.g. in case of ParsingReason.EarlyClassInitializerAnalysis). If
+             * UniverseMetaAccess (e.g. in case of ParsingReason.AutomaticUnsafeTransformation). If
              * we can access the ParsingReason in here we will be able to get rid of throwException.
              */
             var errorCtor = ReflectionUtil.lookupConstructor(throwableClass, String.class);
@@ -996,11 +996,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         protected void emitCheckForInvokeSuperSpecial(ValueNode[] args) {
             /* Not implemented in SVM (GR-4854) */
-        }
-
-        @Override
-        protected boolean canInlinePartialIntrinsicExit() {
-            return false;
         }
 
         @Override

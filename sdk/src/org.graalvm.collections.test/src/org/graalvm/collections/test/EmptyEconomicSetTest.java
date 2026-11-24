@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,6 +91,15 @@ public class EmptyEconomicSetTest {
     @Test(expected = UnsupportedOperationException.class)
     public void testContainsNull() {
         Assert.assertFalse(EconomicSet.emptySet().contains(null));
+    }
+
+    @Test
+    public void testRemoveAllSelf() {
+        EconomicSet<Object> set = EconomicSet.emptySet();
+        set.removeAll(set);
+        set.removeAll((Iterable<Object>) set);
+        set.removeAll(set.iterator());
+        Assert.assertTrue(set.isEmpty());
     }
 
     @Test

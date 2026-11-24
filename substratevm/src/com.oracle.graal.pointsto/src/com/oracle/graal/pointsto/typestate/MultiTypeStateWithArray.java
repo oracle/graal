@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.typestate;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -95,6 +96,9 @@ public final class MultiTypeStateWithArray extends MultiTypeState {
 
             @Override
             public AnalysisType next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
                 return bb.getUniverse().getType(typeIds[pos++]);
             }
         };
@@ -112,6 +116,9 @@ public final class MultiTypeStateWithArray extends MultiTypeState {
 
             @Override
             public Integer next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
                 return typeIds[pos++];
             }
         };
@@ -144,6 +151,9 @@ public final class MultiTypeStateWithArray extends MultiTypeState {
 
             @Override
             public AnalysisObject next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
                 return bb.getUniverse().getType(typeIds[pos++]).getContextInsensitiveAnalysisObject();
             }
         };

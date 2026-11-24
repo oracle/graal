@@ -68,6 +68,9 @@ public final class SerialGCOptions {
     @Option(help = "Determines if a full GC collects the young generation separately or together with the old generation. Serial GC only.", type = OptionType.Expert) //
     public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(null, null, SERIAL_GC_ONLY);
 
+    @Option(help = "Pin objects in survivor spaces during young collections. Serial GC only.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> PinSurvivorSpaceObjectsDuringYoungGC = new HostedOptionKey<>(false, SerialGCOptions::validateSerialHostedOption);
+
     @Option(help = "Enables card marking for image heap objects, which arranges them in chunks. Automatically enabled when supported. Serial GC only.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> ImageHeapCardMarking = new HostedOptionKey<>(null, SerialGCOptions::validateSerialHostedOption);
 

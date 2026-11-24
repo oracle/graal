@@ -183,13 +183,9 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
                     return CodeTreeBuilder.singleString("$bytecode");
                 } else if (instruction.canUseNodeSingleton()) {
                     /*
-                     * When node singletons are used we must never bind the singleton node.
-                     *
-                     * It is safe to do so because the instruction does not bind any node if
-                     * canUseNodeSingleton() is true, or the bytecode index is already stored in the
-                     * frame. The bytecode index is always stored in the frame for uncached or when
-                     * GenerateBytecode.storeBytecodeIndexInFrame() is enabled in the cached
-                     * interpreter.
+                     * Never bind a singleton operation node. Outside CACHED_NODE mode, a
+                     * frame-stored or explicitly passed index identifies the location without
+                     * an operation node. Real caches may still need their operation receiver.
                      */
                     return CodeTreeBuilder.singleString("$bytecode");
                 } else {
@@ -400,6 +396,15 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             return null;
         }
         return NodeGeneratorPlugs.super.createStateField(factory, bitSet);
+    }
+
+    @Override
+    public CodeTree createPolymorphismReportingNode(FlatNodeGenFactory factory, FrameState frameState) {
+        if (instruction.canUseNodeSingleton()) {
+            // Singleton operation nodes are not adopted and cannot find the owning root.
+            return CodeTreeBuilder.singleString("$bytecode");
+        }
+        return NodeGeneratorPlugs.super.createPolymorphismReportingNode(factory, frameState);
     }
 
     public CodeTree createStateLoad(FlatNodeGenFactory factory, FrameState frameState, BitSet bitSet) {

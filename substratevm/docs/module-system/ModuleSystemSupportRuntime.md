@@ -25,6 +25,12 @@ Some data structures also need to be substituted/reset as to not pull in hosted 
 
 Synthesizes the runtime boot module layer and all reachable module layers initialized at image-build time. It also replicates build-time module relations at runtime (i.e., reads, opens and exports).
 
+With runtime class loading enabled, exports and opens from core modules to the image builder are not copied to application modules.
+Code loaded at run time can join an existing application module; copying builder-only visibility would let that code access core methods and fields that analysis treats as closed to external calls or writes.
+Explicit exports and opens to application modules are preserved, as is visibility transfer from non-core modules.
+When runtime class loading is disabled, builder visibility continues to be copied to application modules.
+This restriction prevents implicit access through builder-only grants; it does not enforce analysis closure against explicitly granted core access.
+
 Why don't we reuse build-time modules/layers?
 - Module graphs are not the same – even if they were, we would like to optimize and not include modules that we do not need (as long as it does not break compatibility)
 - Hosted module instances capture state (e.g., class loader), and patching them and all relevant data structures is harder than synthesizing new instances

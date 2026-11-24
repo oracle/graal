@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -476,6 +476,34 @@ def _espresso_input_jdk():
         else:
             _espresso_input_jdk_value = mx_sdk_vm.base_jdk()
     return _espresso_input_jdk_value
+
+
+class EspressoIODistribution(mx_jardistribution.JARDistribution):
+    def __init__(self, suite, name, deps, excludedLibs, platformDependent, theLicense, **kwargs):
+        sub_dir = kwargs.pop('subDir', None)
+        path = kwargs.pop('path', None)
+        kwargs.pop('layout', None)
+        super().__init__(suite, name, sub_dir, path, None, deps, None, excludedLibs, [], None,
+                         platformDependent, theLicense, **kwargs)
+
+    def getBuildTask(self, args):
+        # mx prunes projects without a matching compiler before constructing build tasks.
+        # Consult the original declarations so a pruned required overlay cannot go unnoticed.
+        guest_version = _espresso_input_jdk().javaCompliance.value
+        overlays = [
+            (int(project['multiReleaseJarVersion']), name)
+            for name, project in self.suite.suiteDict['projects'].items()
+            if project.get('overlayTarget') == 'com.oracle.truffle.espresso.io'
+            and int(project['multiReleaseJarVersion']) == guest_version
+        ]
+        if overlays:
+            version, required_overlay = max(overlays)
+            if not any(dep.name == required_overlay for dep in self.deps):
+                mx.abort(f'JDK {guest_version} guest requires the JDK {version} Espresso I/O overlay '
+                         f'({required_overlay}), but it is missing from {self.name}. '
+                         f'Register a JDK {version} compiler through EXTRA_JAVA_HOMES or --extra-java-homes '
+                         'and rebuild. ESPRESSO_JAVA_HOME selects the guest JDK, not the compiler.', context=self)
+        return super().getBuildTask(args)
 
 
 def get_java_home_dep():

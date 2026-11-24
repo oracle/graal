@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,22 +42,28 @@ package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeIndexMode;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 
 public class NodeOptimizationTest extends AbstractInstructionTest {
 
@@ -159,6 +165,83 @@ public class NodeOptimizationTest extends AbstractInstructionTest {
 
         assertSingletonNode(nodeArgument);
         assertTrue(nodeArgument.getSpecializationInfo().get(0).isActive());
+    }
+
+    @Test
+    public void testBoundNodeBytecodeIndexModes() {
+        testBoundNodeBytecodeIndexModes(false);
+    }
+
+    @Test
+    public void testBoundNodeWithCacheBytecodeIndexModes() {
+        testBoundNodeBytecodeIndexModes(true);
+    }
+
+    private static void testBoundNodeBytecodeIndexModes(boolean withCache) {
+        for (var variant : BoundNodeRootNodeBuilder.variants()) {
+            boolean cachedNodeMode = variant == BoundNodeRootNodeCachedNode.BYTECODE;
+            BoundNodeRootNode root = variant.create(null, BytecodeConfig.DEFAULT, b -> {
+                b.beginRoot();
+                b.beginReturn();
+                if (withCache) {
+                    b.emitBoundNodeWithCache();
+                } else {
+                    b.emitBoundNode();
+                }
+                b.endReturn();
+                b.endRoot();
+            }).getNode(0);
+
+            assertSame(root.getBytecodeNode(), root.getCallTarget().call());
+            root.getBytecodeNode().setUncachedThreshold(0);
+            Object boundNode = root.getCallTarget().call();
+            Instruction instruction = root.getBytecodeNode().getInstructionsAsList().get(0);
+            Instruction.Argument nodeArgument = findNodeArgument(instruction);
+            assertNotNull(nodeArgument);
+            assertEquals(withCache || cachedNodeMode ? 4 : 0, nodeArgument.getDescriptor().getLength());
+            if (withCache || cachedNodeMode) {
+                assertInstanceNode(nodeArgument);
+            } else {
+                assertSingletonNode(nodeArgument);
+            }
+            assertSame(withCache || cachedNodeMode ? nodeArgument.asCachedNode() : root.getBytecodeNode(), boundNode);
+            assertSame(boundNode, root.getCallTarget().call());
+        }
+    }
+
+    @GenerateBytecodeTestVariants({
+                    @Variant(suffix = "CachedNode", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE)),
+                    @Variant(suffix = "Frame", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)),
+                    @Variant(suffix = "Manual", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.MANUAL)),
+                    @Variant(suffix = "None", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.NONE))
+    })
+    public abstract static class BoundNodeRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected BoundNodeRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Operation(storeBytecodeIndex = false)
+        static final class BoundNode {
+            @Specialization
+            @SuppressWarnings("truffle-unused") // Verify both implicit and explicit node bindings.
+            public static Node doDefault(@Bind Node node, @Bind("$node") Node explicitNode) {
+                assertSame(node, explicitNode);
+                return node;
+            }
+        }
+
+        @Operation(storeBytecodeIndex = false)
+        static final class BoundNodeWithCache {
+            @Specialization
+            @SuppressWarnings("truffle-unused") // Verify both implicit and explicit node bindings.
+            public static Node doDefault(@Bind Node node, @Bind("$node") Node explicitNode,
+                            @Cached InlinedConditionProfile profile) {
+                assertTrue(profile.profile(node, true));
+                assertSame(node, explicitNode);
+                return node;
+            }
+        }
     }
 
     private static NodeOptimizationTestNode parse(BytecodeParser<NodeOptimizationTestNodeGen.Builder> builder) {

@@ -114,4 +114,10 @@ public class WasmGCHeapLayouter implements ImageHeapLayouter {
     public void writeMetadata(ByteBuffer imageHeapBytes, long imageHeapOffsetInBuffer) {
         throw VMError.shouldNotReachHere("This method does not make sense in this backend");
     }
+
+    @Override
+    public void releaseObjectReferences() {
+        singlePartition.releaseObjectReferences();
+        pseudoPartition.releaseObjectReferences();
+    }
 }

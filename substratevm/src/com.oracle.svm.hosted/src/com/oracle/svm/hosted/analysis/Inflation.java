@@ -28,6 +28,9 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.nodes.StructuredGraph;
+
 /**
  * Extension of StaticAnalysisEngine providing access to more svm specific methods.
  */
@@ -37,4 +40,10 @@ public interface Inflation extends BigBang {
     SVMHost getHostVM();
 
     AnnotationSubstitutionProcessor getAnnotationSubstitutionProcessor();
+
+    /**
+     * Processes the graph of a {@link Snippet snippet} according to the Native Image analysis
+     * represented by this instance.
+     */
+    void processSnippetGraph(StructuredGraph graph);
 }

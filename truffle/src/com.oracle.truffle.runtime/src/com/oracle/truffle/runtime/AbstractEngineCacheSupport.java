@@ -50,9 +50,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
@@ -62,13 +64,16 @@ import java.util.function.Function;
 public abstract class AbstractEngineCacheSupport implements EngineCacheSupport {
 
     protected static final String COMPILE_HELP = ""//
-                    + "Policy to use to force compilation for executed call targets before persisting the engine. "//
+                    + "Compilation policy to apply before persisting the engine. "//
                     + "Possible values are:%n"//
-                    + "  - 'none':     No compilations will be persisted and existing compilations will be invalidated.%n"//
-                    + "  - 'compiled': No compilations will be forced but finished compilations will be persisted.%n"//
-                    + "  - 'hot':      (default) All started compilations will be completed and then persisted.%n"//
-                    + "  - 'aot':      All started and AOT compilable roots will be forced to compile and persisted.%n"//
-                    + "  - 'executed': All executed and all AOT compilable roots will be forced to compile.";
+                    + "  - 'none':     Invalidate existing compilations and persist no compiled code.%n"//
+                    + "  - 'compiled': Persist existing compiled code without forcing new compilations. "//
+                    + "Cancel unfinished compilations and wait for them to terminate.%n"//
+                    + "  - 'hot':      (default) Wait for pending compilations, then compile roots that meet the runtime compilation thresholds. "//
+                    + "Also compile the parent roots of valid on-stack replacement (OSR) compilations.%n"//
+                    + "  - 'aot':      Like 'hot', plus uninitialized roots that support AOT preparation.%n"//
+                    + "  - 'executed': Like 'aot', but compile initialized roots regardless of compilation thresholds.%n"//
+                    + "OSR roots themselves are not forced to compile.";
 
     protected static final String COMPILE_USAGE_SYNTAX = "none|compiled|hot|aot|executed";
 
@@ -191,21 +196,13 @@ public abstract class AbstractEngineCacheSupport implements EngineCacheSupport {
                 compileQueue = null;
                 break;
             case hot:
-                waitForCompilations(callTargets, cancelledPredicate);
-                compileQueue = initializeCompileQueue(callTargets);
-                compileQueue.removeIf(c -> !c.isInitialized() || !c.shouldCompile());
-                break;
             case aot:
-                waitForCompilations(callTargets, cancelledPredicate);
-                compileQueue = initializeCompileQueue(callTargets);
-                // keep all uninitialized calls in the queue for prepareForAOT
-                compileQueue.removeIf(c -> c.isInitialized() && !c.shouldCompile());
-                prepareForAOT(e, compileQueue, true, cancelledPredicate);
-                break;
             case executed:
                 waitForCompilations(callTargets, cancelledPredicate);
-                compileQueue = initializeCompileQueue(callTargets);
-                prepareForAOT(e, compileQueue, false, cancelledPredicate);
+                compileQueue = initializeCompileQueue(callTargets, mode, cancelledPredicate);
+                if (mode != CompilePolicy.hot) {
+                    prepareForAOT(e, compileQueue, cancelledPredicate);
+                }
                 break;
             default:
                 throw new AssertionError("Invalid compile mode.");
@@ -226,12 +223,34 @@ public abstract class AbstractEngineCacheSupport implements EngineCacheSupport {
         }
     }
 
-    private static List<OptimizedCallTarget> initializeCompileQueue(Collection<OptimizedCallTarget> callTargets) {
+    private static List<OptimizedCallTarget> initializeCompileQueue(Collection<OptimizedCallTarget> callTargets, CompilePolicy mode, BooleanSupplier cancelledPredicate) {
         resetSplitting(callTargets);
-        return sortCallTargetsByHotness(callTargets);
+        Set<OptimizedCallTarget> compileTargets = new LinkedHashSet<>();
+        for (OptimizedCallTarget target : callTargets) {
+            checkCancellation(cancelledPredicate);
+            // OSR compilation requires entry-specific preparation; never enqueue OSR roots.
+            if (target.getRootNode() instanceof BaseOSRRootNode osrRoot) {
+                if (target.isValid()) {
+                    OptimizedCallTarget parent = (OptimizedCallTarget) osrRoot.getOriginalRootNode().getCallTarget();
+                    // Like AOT preparation, cache preparation need not have an entered context.
+                    parent.initialize(false);
+                    compileTargets.add(parent);
+                }
+                continue;
+            }
+            if (mode == CompilePolicy.hot && !target.isInitialized()) {
+                continue;
+            }
+            // AOT preparation needs uninitialized targets; executed also keeps cold targets.
+            if (mode != CompilePolicy.executed && target.isInitialized() && !target.shouldCompile()) {
+                continue;
+            }
+            compileTargets.add(target);
+        }
+        return sortCallTargetsByHotness(compileTargets);
     }
 
-    private static void prepareForAOT(EngineData e, List<OptimizedCallTarget> triggerCompile, boolean filterForAOT, BooleanSupplier cancelledPredicate) {
+    private static void prepareForAOT(EngineData e, List<OptimizedCallTarget> triggerCompile, BooleanSupplier cancelledPredicate) {
         TruffleLanguage<?> currentLanguage = null;
         Object prev = null;
         try {
@@ -239,7 +258,7 @@ public abstract class AbstractEngineCacheSupport implements EngineCacheSupport {
             while (iterator.hasNext()) {
                 checkCancellation(cancelledPredicate);
                 OptimizedCallTarget target = iterator.next();
-                if (!target.wasExecuted()) {
+                if (!target.isInitialized()) {
                     TruffleLanguage<?> language = e.getLanguage(target);
                     if (language != currentLanguage) {
                         // we need to enter and leave the engine for AOT preparation.
@@ -261,8 +280,6 @@ public abstract class AbstractEngineCacheSupport implements EngineCacheSupport {
                          */
                         iterator.remove();
                     }
-                } else if (filterForAOT) {
-                    iterator.remove();
                 }
             }
         } finally {
@@ -277,14 +294,15 @@ public abstract class AbstractEngineCacheSupport implements EngineCacheSupport {
     private void cancelCompilations(EngineData e, Collection<OptimizedCallTarget> callTargets) {
         int cancelled = 0;
         for (OptimizedCallTarget target : callTargets) {
-            if (target.cancelCompilation("Engine cache compile mode none cancels all compiles if they are not yet completed.")) {
+            if (target.cancelCompilation("Engine cache compilation policy cancels unfinished compilations.")) {
                 cancelled++;
             }
         }
         if (cancelled > 0) {
             trace(e, "Cancelled %s compilations.", cancelled);
-            waitForCompilations(callTargets, null);
         }
+        // Drain even previously cancelled tasks before engine state can be snapshotted.
+        waitForCompilations(callTargets, null);
     }
 
     private void invalidateCompilations(EngineData e, Collection<OptimizedCallTarget> callTargets, BooleanSupplier cancelledPredicate) {

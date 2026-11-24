@@ -32,12 +32,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.ObjectScanner.EmbeddedRootScan;
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadStaticFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph.GraphKind;
@@ -49,22 +47,17 @@ import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreInstanceFieldTypeF
 import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreStaticFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowGraphBuilder;
-import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisField;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
-import com.oracle.graal.pointsto.results.StrengthenGraphs;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
@@ -85,7 +78,6 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
-import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.Invoke;
@@ -114,11 +106,8 @@ import jdk.graal.compiler.nodes.calc.IntegerTestNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
 import jdk.graal.compiler.nodes.calc.ObjectEqualsNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
-import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
-import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import jdk.graal.compiler.nodes.extended.ClassIsArrayNode;
 import jdk.graal.compiler.nodes.extended.FieldOffsetProvider;
-import jdk.graal.compiler.nodes.extended.ForeignCall;
 import jdk.graal.compiler.nodes.extended.GetClassNode;
 import jdk.graal.compiler.nodes.extended.ObjectIsArrayNode;
 import jdk.graal.compiler.nodes.extended.RawLoadNode;
@@ -159,17 +148,14 @@ import jdk.graal.compiler.phases.common.IterativeConditionalEliminationPhase;
 import jdk.graal.compiler.phases.graph.MergeableState;
 import jdk.graal.compiler.phases.graph.PostOrderNodeIterator;
 import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
-import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.replacements.nodes.MacroInvokable;
 import jdk.graal.compiler.replacements.nodes.ObjectClone;
-import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.virtual.phases.ea.PartialEscapePhase;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
 
 /**
@@ -249,8 +235,8 @@ public class MethodTypeFlowBuilder {
                 return false;
             }
 
-            // Do it again after canonicalization changed type checks and field accesses.
-            registerUsedElements(graph, bb.usePredicates());
+            // Register used elements after graph optimization, which may change type checks and field accesses.
+            bb.registerUsedElements(graph);
 
             return true;
         } catch (Throwable ex) {
@@ -261,7 +247,7 @@ public class MethodTypeFlowBuilder {
     public static void optimizeGraphBeforeAnalysis(AbstractAnalysisEngine bb, AnalysisMethod method, StructuredGraph graph) {
         CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
         canonicalizerPhase.apply(graph, bb.getProviders(method));
-        if (PointstoOptions.ConditionalEliminationBeforeAnalysis.getValue(bb.getOptions())) {
+        if (bb.conditionalEliminationBeforeAnalysis()) {
             /*
              * Removing unnecessary conditions before the static analysis runs reduces the size of
              * the type flow graph. For example, this removes redundant null checks: the bytecode
@@ -270,7 +256,7 @@ public class MethodTypeFlowBuilder {
              */
             new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders(method));
         }
-        if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions())) {
+        if (bb.escapeAnalysisBeforeAnalysis()) {
             if (method.isOriginalMethod()) {
                 /*
                  * Deoptimization Targets cannot have virtual objects in frame states.
@@ -282,250 +268,6 @@ public class MethodTypeFlowBuilder {
                 new PartialEscapePhase(false, canonicalizerPhase, bb.getOptions()).apply(graph, bb.getProviders(method));
             }
         }
-    }
-
-    /**
-     * Seeds the analysis state with facts extracted directly from the graph.
-     */
-    public static void registerUsedElements(AbstractAnalysisEngine bb, StructuredGraph graph, boolean usePredicates) {
-        registerUsedElementsInternal(bb, graph, usePredicates);
-    }
-
-    /**
-     * Seeds the analysis state with facts extracted directly from the graph.
-     */
-    protected void registerUsedElements(StructuredGraph parsedGraph, boolean usePredicates) {
-        registerUsedElementsInternal(bb, parsedGraph, usePredicates);
-    }
-
-    private static void registerUsedElementsInternal(AbstractAnalysisEngine bb, StructuredGraph graph, boolean usePredicates) {
-        var method = (AnalysisMethod) graph.method();
-        HostedProviders providers = bb.getProviders(method);
-        for (Node n : graph.getNodes()) {
-            if (n instanceof InstanceOfNode) {
-                InstanceOfNode node = (InstanceOfNode) n;
-                AnalysisType type = (AnalysisType) node.type().getType();
-                if (!ignoreInstanceOfType(bb, type)) {
-                    type.registerAsReachable(AbstractAnalysisEngine.sourcePosition(node));
-                }
-
-            } else if (n instanceof NewInstanceNode) {
-                NewInstanceNode node = (NewInstanceNode) n;
-                AnalysisType type = (AnalysisType) node.instanceClass();
-                if (!usePredicates) {
-                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-                    for (var f : type.getInstanceFields(true)) {
-                        var field = (PointsToAnalysisField) f;
-                        PointsToAnalysis pta = (PointsToAnalysis) bb;
-                        field.getInitialFlow().addState(pta, TypeState.defaultValueForKind(pta, field.getStorageKind()));
-                    }
-                }
-
-            } else if (n instanceof NewInstanceWithExceptionNode) {
-                NewInstanceWithExceptionNode node = (NewInstanceWithExceptionNode) n;
-                AnalysisType type = (AnalysisType) node.instanceClass();
-                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof VirtualObjectNode) {
-                VirtualObjectNode node = (VirtualObjectNode) n;
-                AnalysisType type = (AnalysisType) node.type();
-                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof NewArrayNode) {
-                NewArrayNode node = (NewArrayNode) n;
-                AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
-                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof NewArrayWithExceptionNode) {
-                NewArrayWithExceptionNode node = (NewArrayWithExceptionNode) n;
-                AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
-                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof NewMultiArrayNode) {
-                NewMultiArrayNode node = (NewMultiArrayNode) n;
-                AnalysisType type = ((AnalysisType) node.type());
-                for (int i = 0; i < node.dimensionCount(); i++) {
-                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-                    type = type.getComponentType();
-                }
-
-            } else if (n instanceof NewMultiArrayWithExceptionNode) {
-                NewMultiArrayWithExceptionNode node = (NewMultiArrayWithExceptionNode) n;
-                AnalysisType type = ((AnalysisType) node.type());
-                for (int i = 0; i < node.dimensionCount(); i++) {
-                    type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-                    type = type.getComponentType();
-                }
-
-            } else if (n instanceof BoxNode) {
-                BoxNode node = (BoxNode) n;
-                AnalysisType type = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
-                type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof LoadFieldNode) {
-                LoadFieldNode node = (LoadFieldNode) n;
-                AnalysisField field = (AnalysisField) node.field();
-                field.registerAsRead(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof StoreFieldNode) {
-                StoreFieldNode node = (StoreFieldNode) n;
-                AnalysisField field = (AnalysisField) node.field();
-                field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof ConstantNode cn) {
-                /* GR-58472: We should try to delay marking constants as instantiated */
-                JavaConstant root = cn.asJavaConstant();
-                if (cn.hasUsages() && cn.isJavaConstant() && root.getJavaKind() == JavaKind.Object && root.isNonNull()) {
-                    assert StampTool.isExactType(cn) : cn;
-                    if (!ignoreConstant(bb, cn)) {
-                        AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn, bb.getMetaAccess());
-                        BytecodePosition position = AbstractAnalysisEngine.sourcePosition(cn);
-                        registerObjectConstantRoot(bb, root, type, position);
-                    }
-                }
-
-            } else if (n instanceof FieldOffsetProvider node) {
-                if (needsUnsafeRegistration(node)) {
-                    ((AnalysisField) node.getField()).registerAsUnsafeAccessed(AbstractAnalysisEngine.sourcePosition(node.asNode()));
-                }
-
-            } else if (n instanceof FrameState) {
-                FrameState node = (FrameState) n;
-                AnalysisMethod frameStateMethod = (AnalysisMethod) node.getMethod();
-                if (frameStateMethod != null) {
-                    /*
-                     * All types referenced in (possibly inlined) frame states must be reachable,
-                     * because these classes will be reachable from stack walking metadata. This
-                     * metadata is only constructed after AOT compilation, so the image heap
-                     * scanning during static analysis does not see these classes.
-                     */
-                    frameStateMethod.getDeclaringClass().registerAsReachable(AbstractAnalysisEngine.syntheticSourcePosition(node, method));
-                }
-
-            } else if (n instanceof ForeignCall) {
-                ForeignCall node = (ForeignCall) n;
-                registerForeignCall(bb, providers.getForeignCalls(), node.getDescriptor(), graph.method());
-            } else if (n instanceof UnaryMathIntrinsicNode) {
-                UnaryMathIntrinsicNode node = (UnaryMathIntrinsicNode) n;
-                registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature), graph.method());
-            } else if (n instanceof BinaryMathIntrinsicNode) {
-                BinaryMathIntrinsicNode node = (BinaryMathIntrinsicNode) n;
-                registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature), graph.method());
-            }
-        }
-    }
-
-    /**
-     * This method filters constants, i.e., these constants are not seen as reachable on its own.
-     * This avoids making things reachable just because of that constant usage. For all cases where
-     * this method returns true, {@link StrengthenGraphs} must have a corresponding re-write of the
-     * constant in case nothing else in the application made that constant reachable.
-     *
-     * {@link Class#isAssignableFrom} is often used with a constant receiver class. In that case, we
-     * do not want to make the receiver class reachable, because as long as the receiver class is
-     * not reachable for any other "real" reason we know that isAssignableFrom will always return
-     * false. So in {@link StrengthenGraphs} we can then constant-fold the
-     * {@link ClassIsAssignableFromNode} to false. We only apply this optimization for
-     * {@link ClassIsAssignableFromNode} if it's a closed type world, for open world we cannot fold
-     * the type check since the type may be used later.
-     *
-     * Similarly, a class should not be marked as reachable only so that we can add the class name
-     * to the error message of a {@link ClassCastException}. In {@link StrengthenGraphs} we can
-     * re-write the Class constant to a String constant, i.e., only embed the class name and not the
-     * full java.lang.Class object in the image. We can apply this optimization optimistically for
-     * both closed and open type world.
-     *
-     * {@link FrameState} are only used for debugging. We do not want to have larger images just so
-     * that users can see a constant value in the debugger.
-     */
-    protected static boolean ignoreConstant(AbstractAnalysisEngine bb, ConstantNode node) {
-        for (var u : node.usages()) {
-            if (u instanceof ClassIsAssignableFromNode usage) {
-                if (!bb.getHostVM().isClosedTypeWorld() || usage.getOtherClass() == node || usage.getThisClass() != node) {
-                    return false;
-                }
-            } else if (u instanceof BytecodeExceptionNode usage) {
-                /* The checked type is the second argument for a CLASS_CAST. */
-                if (usage.getExceptionKind() != BytecodeExceptionKind.CLASS_CAST || usage.getArguments().size() != 2 || usage.getArguments().get(0) == node || usage.getArguments().get(1) != node) {
-                    return false;
-                }
-            } else if (u instanceof FrameState) {
-                /* FrameState usages are only for debugging and not necessary for correctness. */
-            } else {
-                return false;
-            }
-        }
-        /* Success, the ConstantNode does not need to be seen as reachable. */
-        return true;
-    }
-
-    /**
-     * Unsafe access nodes whose offset is a {@link FieldOffsetProvider} are modeled directly as
-     * field access type flows and therefore do not need unsafe registration.
-     *
-     * We do not want that a field is registered as unsafe accessed just so that we have the field
-     * offset during debugging, so we also ignore {@link FrameState}. {@link StrengthenGraphs}
-     * removes the node from the {@link FrameState} if it is not registered for unsafe access for
-     * any other reason.
-     */
-    protected static boolean needsUnsafeRegistration(FieldOffsetProvider node) {
-        for (var usage : node.asNode().usages()) {
-            if (usage instanceof RawLoadNode || usage instanceof RawStoreNode ||
-                            usage instanceof UnsafeCompareAndSwapNode || usage instanceof UnsafeCompareAndExchangeNode ||
-                            usage instanceof AtomicReadAndWriteNode || usage instanceof AtomicReadAndAddNode) {
-                /* Unsafe usages are modeled as field type flows. */
-            } else if (usage instanceof FrameState) {
-                /* FrameState usages are only for debugging and not necessary for correctness. */
-            } else {
-                return true;
-            }
-        }
-        /* Success, the field does not need to be registered for unsafe access. */
-        return false;
-    }
-
-    /**
-     * In closed type world, just using a type in an instanceof type check doesn't mark the type as
-     * reachable. Assuming the type is not otherwise made reachable, this allows the graph
-     * strengthening to eliminate the type check completely by replacing a stamp with an unreachable
-     * type with an empty stamp (see StrengthenSimplifier#strengthenStamp).
-     * <p>
-     * However, in open world we cannot make assumptions about types that may become reachable
-     * later. Therefore, we must mark the instanceof checked type as reachable. Moreover, stamp
-     * strengthening based on reachability status of types must be disabled.
-     */
-    protected static boolean ignoreInstanceOfType(AbstractAnalysisEngine bb, AnalysisType type) {
-        if (bb.getHostVM().ignoreInstanceOfTypeDisallowed()) {
-            return false;
-        }
-        if (!bb.getHostVM().isClosedTypeWorld()) {
-            return false;
-        }
-        if (type == null) {
-            return false;
-        }
-        if (type.isArray()) {
-            /*
-             * There is no real overhead when making array types reachable (which automatically also
-             * makes them instantiated), and it avoids manual reflection configuration because
-             * casting to an array type then automatically marks the array type as instantiated.
-             */
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Registers an object constant with the default precise semantics used by core analysis.
-     */
-    private static void registerObjectConstantRoot(AbstractAnalysisEngine bb, JavaConstant constantValue, AnalysisType stampedType, BytecodePosition position) {
-        stampedType.registerAsInstantiated(new EmbeddedRootScan(position, constantValue));
-        bb.getUniverse().registerEmbeddedRoot(constantValue, position);
-    }
-
-    private static void registerForeignCall(AbstractAnalysisEngine bb, ForeignCallsProvider foreignCallsProvider, ForeignCallDescriptor foreignCallDescriptor, ResolvedJavaMethod from) {
-        Optional<AnalysisMethod> targetMethod = bb.getHostVM().handleForeignCall(foreignCallDescriptor, foreignCallsProvider);
-        targetMethod.ifPresent(analysisMethod -> bb.addRootMethod(analysisMethod, true, from));
     }
 
     private boolean handleNodeIntrinsic() {
@@ -561,7 +303,7 @@ public class MethodTypeFlowBuilder {
     private void handleOpaqueReturn() {
         AnalysisError.guarantee(flowsGraph.getReturnFlow() == null, "Expected null return flow");
 
-        AnalysisType returnType = TypeFlow.filterUncheckedInterface(method.getSignature().getReturnType());
+        AnalysisType returnType = TypeFlow.dropUncheckedInterfaceBound(method.getSignature().getReturnType());
 
         BytecodePosition position = AbstractAnalysisEngine.syntheticSourcePosition(null, method);
         var returnFlow = new FormalReturnTypeFlow(position, returnType);
@@ -2109,7 +1851,7 @@ public class MethodTypeFlowBuilder {
                 loadFieldBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, LoadInstanceFieldTypeFlow.class, () -> {
                     LoadInstanceFieldTypeFlow loadFieldFlow = new LoadInstanceFieldTypeFlow(AbstractAnalysisEngine.sourcePosition(node), field, objectBuilder.get());
                     processOpenWorldField(field);
-                    if (!bb.isClosed(loadFieldFlow.field().getDeclaringClass())) {
+                    if (!bb.getExtensionPolicy().isTypeClosed(loadFieldFlow.field().getDeclaringClass())) {
                         /*
                          * If the field declaring type is open then the receiver object state of a
                          * load may be empty/incomplete. Saturate the load, assuming there are
@@ -2129,23 +1871,23 @@ public class MethodTypeFlowBuilder {
     }
 
     private void processOpenWorldField(PointsToAnalysisField field) {
-        if (!bb.isClosed(field)) {
+        if (!bb.getExtensionPolicy().isFieldClosed(field)) {
             /*
-             * Open fields can be written from the open world and may contain state not seen by the
-             * analysis. This is equivalent with assuming any of their input is saturated.
+             * External writes may supply arrays whose elements are not covered by analyzed stores
+             * or heap scanning. Summarize these contents as well as the field references.
              */
-            field.getInitialFlow().onInputSaturated(bb, null);
+            field.injectConservativeFieldValues();
         }
     }
 
     protected void processStoreField(ValueNode node, PointsToAnalysisField field, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
         field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
 
-        if (!bb.isClosed(field)) {
+        if (!bb.getExtensionPolicy().isFieldClosed(field)) {
             /*
-             * Open fields can be written from the open world and may contain state not seen by the
-             * analysis. We don't track their writes, instead we eagerly saturate their loads (See
-             * processLoadField).
+             * Open fields use conservative summaries for external writes. Instead of tracking
+             * individual field stores, processLoadField installs these summaries when the field is
+             * read.
              */
             return;
         }
@@ -2254,8 +1996,9 @@ public class MethodTypeFlowBuilder {
     protected void processUnsafeStore(ValueNode node, ValueNode object, ValueNode newValue, JavaKind newValueKind, TypeFlowsOfNodes state) {
         if (bb.analysisPolicy().useConservativeUnsafeAccess()) {
             /*
-             * When unsafe writes are modeled conservatively all unsafe accessed fields contain all
-             * instantiated subtypes of their declared type, so no need to model the unsafe store.
+             * Conservative unsafe registration accounts for any value under the field's declared
+             * bound, including extension values when that bound is open. The store needs no value
+             * flow; ordinary field reads receive the state or saturation from the registered field.
              */
             return;
         }

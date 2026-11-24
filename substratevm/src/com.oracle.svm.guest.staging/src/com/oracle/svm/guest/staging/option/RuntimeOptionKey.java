@@ -149,8 +149,9 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
         return cachedValue != OPTION_NOT_SET;
     }
 
-    public void update(T newValue) {
-        RuntimeOptionValues.singleton().update(this, newValue);
+    /// Updates the option value while recording its explicit origin.
+    public void update(T newValue, RuntimeOptionValues.Origin origin) {
+        RuntimeOptionValues.singleton().update(this, newValue, origin);
     }
 
     void afterValueUpdateFromRuntimeValues() {

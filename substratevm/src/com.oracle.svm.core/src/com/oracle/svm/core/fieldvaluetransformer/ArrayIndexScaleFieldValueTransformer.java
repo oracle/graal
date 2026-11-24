@@ -25,7 +25,8 @@
 package com.oracle.svm.core.fieldvaluetransformer;
 
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -39,6 +40,6 @@ public record ArrayIndexScaleFieldValueTransformer(ResolvedJavaType targetClass,
 
     @Override
     public JavaConstant transform(JavaConstant receiver, JavaConstant originalValue) {
-        return FieldOffsetFieldValueTransformer.constant(returnKind, ObjectLayout.singleton().getArrayIndexScale(targetClass.getComponentType().getJavaKind()));
+        return FieldOffsetFieldValueTransformer.constant(returnKind, ObjectLayoutCompilerSupport.getArrayIndexScale(ObjectLayout.singleton(), targetClass.getComponentType().getJavaKind()));
     }
 }

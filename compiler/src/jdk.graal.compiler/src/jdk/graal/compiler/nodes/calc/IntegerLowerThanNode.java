@@ -46,7 +46,6 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.TriState;
 
 /**
@@ -427,17 +426,16 @@ public abstract class IntegerLowerThanNode extends CompareNode {
             if (forX instanceof LeftShiftNode && forY instanceof LeftShiftNode) {
                 LeftShiftNode leftShiftX = (LeftShiftNode) forX;
                 LeftShiftNode leftShiftY = (LeftShiftNode) forY;
-                if (leftShiftX.getY() == leftShiftY.getY() &&
-                                leftShiftX.getY().isConstant() && leftShiftX.getY().asConstant() instanceof PrimitiveConstant) {
-                    PrimitiveConstant constant = (PrimitiveConstant) leftShiftX.getY().asConstant();
-                    if (constant.getJavaKind().isNumericInteger()) {
-                        ValueNode v1 = leftShiftX.getX();
-                        ValueNode v2 = leftShiftY.getX();
-                        IntegerStamp stamp1 = (IntegerStamp) v1.stamp(view);
-                        IntegerStamp stamp2 = (IntegerStamp) v2.stamp(view);
-                        if (!leftShiftCanOverflow(stamp1, constant.asLong()) && !leftShiftCanOverflow(stamp2, constant.asLong())) {
-                            return create(v1, v2, view);
-                        }
+                if (leftShiftX.getY() == leftShiftY.getY() && leftShiftX.getY().isJavaConstant()) {
+                    ValueNode v1 = leftShiftX.getX();
+                    ValueNode v2 = leftShiftY.getX();
+                    IntegerStamp stamp1 = (IntegerStamp) v1.stamp(view);
+                    IntegerStamp stamp2 = (IntegerStamp) v2.stamp(view);
+                    // Removing the same left shift from both sides of the comparison preserves the
+                    // result only if neither shift overflows for the masked distance.
+                    int shiftAmount = leftShiftX.getConstantShiftAmount();
+                    if (!leftShiftCanOverflow(stamp1, shiftAmount) && !leftShiftCanOverflow(stamp2, shiftAmount)) {
+                        return create(v1, v2, view);
                     }
                 }
             }

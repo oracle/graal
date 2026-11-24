@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.webimage.wasm.ast.id;
 
 import java.util.List;
 
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.hosted.webimage.wasm.ast.Export;
 import com.oracle.svm.hosted.webimage.wasm.ast.TypeUse;
 import com.oracle.svm.hosted.webimage.wasm.codegen.WasmCodeGenTool;

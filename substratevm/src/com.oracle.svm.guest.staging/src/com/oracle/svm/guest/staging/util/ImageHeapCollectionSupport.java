@@ -1,0 +1,158 @@
+/*
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.svm.guest.staging.util;
+
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.guest.staging.GuestImageLayerBuildingSupport;
+import com.oracle.svm.guest.staging.util.ImageHeapList.HostedImageHeapList;
+import com.oracle.svm.guest.staging.util.ImageHeapMap.HostedImageHeapMap;
+import com.oracle.svm.shared.BuildPhaseProvider;
+import com.oracle.svm.shared.BuilderInvoked;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
+import com.oracle.svm.shared.singletons.traits.SingletonTraits;
+import com.oracle.svm.shared.util.VMError;
+
+/**
+ * Build-time state holder for hosted image-heap collections that need to be rewritten to their
+ * runtime counterparts and tracked for later rescans. The feature installs this support object as
+ * the owner of the object replacer so all collection state captured during setup, analysis, and
+ * image writing stays in one place.
+ */
+@Platforms(Platform.HOSTED_ONLY.class)
+@SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
+public final class ImageHeapCollectionSupport {
+    private final Set<HostedImageHeapMap<?, ?>> allMaps = ConcurrentHashMap.newKeySet();
+    private final Set<HostedImageHeapList<?>> allLists = ConcurrentHashMap.newKeySet();
+
+    public static ImageHeapCollectionSupport singleton() {
+        return ImageSingletons.lookup(ImageHeapCollectionSupport.class);
+    }
+
+    /**
+     * Rewrites hosted image-heap collections to their runtime storage objects and records the
+     * hosted collections that need later update propagation. During analysis, first reachability of
+     * a collection registers it for subsequent update/rescan handling; after analysis, encountering
+     * a collection that was never captured is treated as an invariant violation.
+     */
+    @BuilderInvoked
+    public Object replaceHostedWithRuntime(Object obj) {
+        if (obj instanceof HostedImageHeapMap) {
+            HostedImageHeapMap<?, ?> hostedImageHeapMap = (HostedImageHeapMap<?, ?>) obj;
+            if (BuildPhaseProvider.isAnalysisFinished()) {
+                VMError.guarantee(allMaps.contains(hostedImageHeapMap), "ImageHeapMap reachable after analysis that was not seen during analysis");
+            } else {
+                allMaps.add(hostedImageHeapMap);
+                if (hostedImageHeapMap.getRuntimeMap() instanceof LayeredImageHeapMap<Object, Object> layeredImageHeapMap) {
+                    LayeredHostedImageHeapMapCollector.singleton().registerReachableHostedImageHeapMap(layeredImageHeapMap);
+                }
+            }
+            return hostedImageHeapMap.getRuntimeMap();
+        } else if (obj instanceof HostedImageHeapList<?> hostedImageHeapList) {
+            if (BuildPhaseProvider.isAnalysisFinished()) {
+                VMError.guarantee(allLists.contains(hostedImageHeapList), "ImageHeapList reachable after analysis that was not seen during analysis");
+            } else {
+                allLists.add(hostedImageHeapList);
+            }
+            return hostedImageHeapList.getRuntimeList();
+        }
+        return obj;
+    }
+
+    /**
+     * Makes sure that the content of all modified
+     * {@link com.oracle.svm.guest.staging.util.ImageHeapMap.HostedImageHeapMap}s and
+     * {@link com.oracle.svm.guest.staging.util.ImageHeapList.HostedImageHeapList}s is properly propagated to
+     * their runtime counterparts. As both the number of these collections and their individual
+     * sizes are theoretically unbounded, this method uses <i>parallel streams</i> to divide the
+     * load across all cores.
+     * <p>
+     * The process is split into two stages. First, the content of each modified collection is
+     * propagated from the hosted to the runtime version. Then, the modified runtime collections are
+     * rescanned. The split prevents concurrent modifications of the hosted collections during the
+     * execution of this method, as they may be updated indirectly during the heap scanning.
+     */
+    @BuilderInvoked
+    public void updateAndRescanCollections(Consumer<Object> rescanObject, Runnable triggerAnalysisIteration) {
+        if (GuestImageLayerBuildingSupport.buildingExtensionLayer()) {
+            allMaps.addAll(LayeredHostedImageHeapMapCollector.singleton().getPreviousLayerReachableMaps());
+        }
+        Set<Object> objectsToRescan = ConcurrentHashMap.newKeySet();
+        allMaps.parallelStream().forEach(hostedImageHeapMap -> {
+            if (hostedImageHeapMap.needsUpdate()) {
+                hostedImageHeapMap.update();
+                objectsToRescan.add(hostedImageHeapMap.getCurrentLayerMap());
+            }
+        });
+        allLists.parallelStream().forEach(hostedImageHeapList -> {
+            if (hostedImageHeapList.needsUpdate()) {
+                hostedImageHeapList.update();
+                objectsToRescan.add(hostedImageHeapList.getRuntimeList());
+            }
+        });
+        if (!objectsToRescan.isEmpty()) {
+            objectsToRescan.parallelStream().forEach(rescanObject);
+            triggerAnalysisIteration.run();
+        }
+    }
+
+    @BuilderInvoked
+    public boolean needsUpdate() {
+        for (var hostedImageHeapMap : allMaps) {
+            if (hostedImageHeapMap.needsUpdate()) {
+                return true;
+            }
+        }
+        for (var hostedImageHeapList : allLists) {
+            if (hostedImageHeapList.needsUpdate()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @BuilderInvoked
+    public void verifyCollectionsAreStableAfterAnalysis() {
+        for (var hostedImageHeapMap : allMaps) {
+            if (hostedImageHeapMap.needsUpdate()) {
+                throw VMError.shouldNotReachHere("ImageHeapMap modified after static analysis:%n%s%n%s",
+                                hostedImageHeapMap, hostedImageHeapMap.getCurrentLayerMap());
+            }
+        }
+        for (var hostedImageHeapList : allLists) {
+            if (hostedImageHeapList.needsUpdate()) {
+                throw VMError.shouldNotReachHere("ImageHeapList modified after static analysis:%n%s%n%s",
+                                hostedImageHeapList, hostedImageHeapList.getRuntimeList());
+            }
+        }
+    }
+}

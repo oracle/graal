@@ -78,7 +78,10 @@ public final class UnsignedRightShiftNode extends ShiftNode<UShr> {
             return ret;
         }
 
-        return canonical(this, this.getArithmeticOp(), this.stamp(view), forX, forY, view);
+        ShiftOp<UShr> op = getOp(forX);
+        // A constant result inferred from the original operands may not hold for supplied operands.
+        Stamp resultStamp = forX == getX() && forY == getY() ? stamp(view) : op.foldStamp(forX.stamp(view), forY.stamp(view));
+        return canonical(this, op, resultStamp, forX, forY, view);
     }
 
     @SuppressWarnings("unused")
@@ -125,7 +128,7 @@ public final class UnsignedRightShiftNode extends ShiftNode<UShr> {
             if (bits >= Integer.SIZE && forX instanceof ShiftNode) {
                 ShiftNode<?> other = (ShiftNode<?>) forX;
                 if (other.getY().isConstant()) {
-                    int otherAmount = other.getY().asJavaConstant().asInt() & mask;
+                    int otherAmount = other.getConstantShiftAmount();
                     if (other instanceof UnsignedRightShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {

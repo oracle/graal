@@ -529,11 +529,15 @@ public class CountedStripMiningPhase extends BasePhase<MidTierContext> {
      *
      * This method processes the loops in {@code stripMiningCandidates} to select those for which
      * the aggregated {@linkplain #estimateCodeSizeIncrease estimated} node size increase of strip
-     * mining does not exceed the budget specified by {@link Options#CountedStripMiningBudget}.
+     * mining does not exceed the budget specified by {@link Options#CountedStripMiningBudget}. The
+     * first candidate is always retained, even if its estimated cost exceeds the budget.
      *
-     * @return the selected loops for strip mining that stay within budget
+     * @return the selected loops, including the first candidate even if its cost exceeds the budget
      */
     public static EconomicSet<LoopBeginNode> pruneStripMiningCandidates(EconomicSet<LoopBeginNode> stripMiningCandidates, ControlFlowGraph cfg, double codeSizeIncreaseFactor) {
+        if (stripMiningCandidates.size() <= 1) {
+            return stripMiningCandidates;
+        }
         int graphsize = NodeCostUtil.computeGraphSize(cfg.graph);
         EconomicSet<LoopBeginNode> prunedCandidates = stripMiningCandidates;
         if (graphsize > Options.CountedStripMiningNodeSizeSmallGraphs.getValue(cfg.graph.getOptions())) {
@@ -545,11 +549,14 @@ public class CountedStripMiningPhase extends BasePhase<MidTierContext> {
             for (LoopBeginNode cur : loops) {
                 int codeSizeIncrease = estimateCodeSizeIncrease(cur);
                 OptimizationEffect effect = budget.potentialOpt(1, codeSizeIncrease);
-                // always perform a single strip mining, if the budget is full after that is fine
-                prunedCandidates.add(cur);
                 if (effect.budgetExceeded()) {
+                    // Always retain the first candidate, even when it exceeds the budget.
+                    if (prunedCandidates.isEmpty()) {
+                        prunedCandidates.add(cur);
+                    }
                     break;
                 }
+                prunedCandidates.add(cur);
                 budget.applyLastOp();
             }
         }
@@ -1904,6 +1911,11 @@ public class CountedStripMiningPhase extends BasePhase<MidTierContext> {
     public static final CounterKey FailedShouldStripMineIVShape = DebugContext.counter("CountedStripMining_FailedShouldStripMine_GuardinGIVShapeWrong");
     public static final CounterKey FailedShouldStripMineNoBenefit = DebugContext.counter("CountedStripMining_FailedShouldStripMine_NoBenefit");
 
+    /** Returns whether an IV operation has a floating guard anchored away from the loop body. */
+    private static boolean hasNonBodyAnchoredGuard(BinaryArithmeticNode<?> op, CountedLoopInfo countedLoop) {
+        return op instanceof GuardedNode guarded && guarded.getGuard() instanceof GuardNode guard && guard.getAnchor() != countedLoop.getBody();
+    }
+
     /**
      * Determine if, based on the shape of the loop, the given loop can structurally be stripped
      * mined with the algorithms implemented in this phase.
@@ -1943,15 +1955,9 @@ public class CountedStripMiningPhase extends BasePhase<MidTierContext> {
         InductionVariable limitCheckedIv = countedLoop.getLimitCheckedIV();
         if (limitCheckedIv instanceof BasicInductionVariable) {
             BasicInductionVariable biv = (BasicInductionVariable) limitCheckedIv;
-            BinaryArithmeticNode<?> ban = biv.getOp();
-            if (ban instanceof GuardedNode) {   // mostly IntegerExactArithmeticNode is of interest
-                GuardingNode guard = ((GuardedNode) ban).getGuard();
-                if (guard instanceof GuardNode) {
-                    if (((GuardNode) guard).getAnchor() != countedLoop.getBody()) {
-                        FailedShouldStripMineGuardingIV.increment(debug);
-                        return false;
-                    }
-                }
+            if (hasNonBodyAnchoredGuard(biv.getOp(), countedLoop)) {
+                FailedShouldStripMineGuardingIV.increment(debug);
+                return false;
             }
             if (countedLoop.isInverted()) {
                 // only head counted loops with base IVs are supported
@@ -1979,6 +1985,10 @@ public class CountedStripMiningPhase extends BasePhase<MidTierContext> {
                 diV = ((DerivedInductionVariable) diV).getBase();
             }
             assert diV instanceof BasicInductionVariable : diV;
+            if (hasNonBodyAnchoredGuard(((BasicInductionVariable) diV).getOp(), countedLoop)) {
+                FailedShouldStripMineGuardingIV.increment(debug);
+                return false;
+            }
             ValuePhiNode limitCheckedPhi = (ValuePhiNode) diV.valueNode();
             // we know by the preprocess method a loop only has a single loop end
             assert loop.loopBegin().getLoopEndCount() == 1 : "Strip mining's preprocess step must create a single loop end per loop " + loop.loopBegin();

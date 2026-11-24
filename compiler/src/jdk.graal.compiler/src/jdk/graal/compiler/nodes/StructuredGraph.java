@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -884,11 +885,12 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
                     @Override
                     public Invoke next() {
-                        try {
-                            return next;
-                        } finally {
-                            next = null;
+                        if (!hasNext()) {
+                            throw new NoSuchElementException();
                         }
+                        Invoke result = next;
+                        next = null;
+                        return result;
                     }
 
                     @Override

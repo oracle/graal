@@ -2239,7 +2239,7 @@ public class StandardGraphBuilderPlugins {
         r.register(new RequiredInlineOnlyInvocationPlugin("guardingNonNull", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.addPush(value.getStackKind(), b.nullCheckedValue(value));
+                b.addPush(value.getStackKind(), b.addNonNullCast(value, InvalidateReprofile));
                 return true;
             }
         });

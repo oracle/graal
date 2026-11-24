@@ -39,7 +39,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;

@@ -34,17 +34,19 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -56,7 +58,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 public abstract class AbstractMetaspace implements Metaspace {
     private static final String OUT_OF_METASPACE_MSG = "Could not allocate a metaspace chunk because the metaspace is exhausted.\nMaximum metaspace size can be adjusted at build-time with " +
                     "'" + SubstrateOptionsParser.commandArgument(SubstrateGCOptions.ConcealedOptions.MaxMetaspaceSize, "<size in MB>m") + "'.";
-    private static final OutOfMemoryError OUT_OF_METASPACE = new OutOfMemoryError(OUT_OF_METASPACE_MSG);
+    private static final OutOfMemoryError OUT_OF_METASPACE = PreallocatedExceptions.createOutOfMemoryError(OUT_OF_METASPACE_MSG);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected AbstractMetaspace() {
@@ -135,6 +137,18 @@ public abstract class AbstractMetaspace implements Metaspace {
     }
 
     @Override
+    public final long[] allocateLongArray(int length) {
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            long[] result = allocateLongArray0(length);
+            checkOutOfMemory(result);
+            return result;
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
+    }
+
+    @Override
     public final <T> T allocateObject(Class<T> clazz) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
@@ -157,6 +171,9 @@ public abstract class AbstractMetaspace implements Metaspace {
 
     /** Returns {@code null} if the allocation failed. */
     protected abstract int[] allocateIntArray0(int length);
+
+    /** Returns {@code null} if the allocation failed. */
+    protected abstract long[] allocateLongArray0(int length);
 
     /** Returns {@code null} if the allocation failed. */
     protected abstract Object allocateObject0(DynamicHub hub);

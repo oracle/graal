@@ -57,6 +57,7 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.FloatConvertNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.SignExtendNode;
+import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.BoxNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.java.NewInstanceNode;
@@ -312,7 +313,7 @@ public class JSBodyStubMethod extends CustomSubstitutionMethod {
                 // For non-int, non-long integer types, we additionally need to add narrowing
                 if (primitiveKind.isNumericInteger() && numBits < 32) {
                     implicitlyConvertedValue = kit.append(new NarrowNode(implicitlyConvertedValue, numBits));
-                    implicitlyConvertedValue = kit.append(new SignExtendNode(implicitlyConvertedValue, 32));
+                    implicitlyConvertedValue = kit.append(primitiveKind.isUnsigned() ? new ZeroExtendNode(implicitlyConvertedValue, 32) : new SignExtendNode(implicitlyConvertedValue, 32));
                 }
             } else {
                 implicitlyConvertedValue = unboxedValue;

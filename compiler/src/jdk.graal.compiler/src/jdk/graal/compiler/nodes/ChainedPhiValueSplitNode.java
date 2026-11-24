@@ -31,27 +31,31 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.calc.UnaryNode;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
-public final class ChainedPhiValueSplitNode extends FloatingNode implements LIRLowerable {
+public final class ChainedPhiValueSplitNode extends UnaryNode implements LIRLowerable {
 
     public static final NodeClass<ChainedPhiValueSplitNode> TYPE = NodeClass.create(ChainedPhiValueSplitNode.class);
-    @Input ValueNode valueNode;
     private Variable newValue;
 
     public ChainedPhiValueSplitNode(ValueNode valueNode) {
-        super(TYPE, valueNode.stamp(NodeView.DEFAULT));
-        this.valueNode = valueNode;
+        super(TYPE, valueNode.stamp(NodeView.DEFAULT), valueNode);
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        return this;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool generator) {
-        Value origValue = generator.operand(valueNode);
+        Value origValue = generator.operand(getValue());
         LIRGeneratorTool generatorTool = generator.getLIRGeneratorTool();
         newValue = generatorTool.newVariable(origValue.getValueKind());
         generatorTool.emitMove(newValue, origValue);

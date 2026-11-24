@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@ public abstract class AccessFieldTypeFlow extends TypeFlow<BytecodePosition> {
 
     protected AccessFieldTypeFlow(BytecodePosition accessLocation, PointsToAnalysisField field) {
         /* The declared type of a field access node is the field declared type. */
-        super(accessLocation, filterUncheckedInterface(field.getType()));
+        super(accessLocation, dropUncheckedInterfaceBound(field.getType()));
         this.field = field;
     }
 

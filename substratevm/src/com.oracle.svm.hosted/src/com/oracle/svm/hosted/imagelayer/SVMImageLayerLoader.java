@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -56,6 +57,7 @@ import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.api.ImageLayerLoader;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.GraphMetadata;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
@@ -74,7 +76,8 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -87,6 +90,8 @@ import com.oracle.svm.hosted.imagelayer.BaseLayerMethodResolver.BaseLayerProvide
 import com.oracle.svm.hosted.imagelayer.BaseLayerMethodResolver.PersistedMethod;
 import com.oracle.svm.hosted.jni.JNIAccessFeature;
 import com.oracle.svm.hosted.lambda.LambdaParser;
+import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.serialize.SerializationFeature;
@@ -94,6 +99,7 @@ import com.oracle.svm.hosted.sboutlining.OutlinedSBMethodSupport;
 import com.oracle.svm.hosted.snapshot.c.CGlobalDataInfoData;
 import com.oracle.svm.hosted.snapshot.constant.ConstantReferenceData;
 import com.oracle.svm.hosted.snapshot.dynamichub.DynamicHubInfoData;
+import com.oracle.svm.hosted.snapshot.dynamichub.ObjectLayoutData;
 import com.oracle.svm.hosted.snapshot.elements.PersistedAnalysisFieldData;
 import com.oracle.svm.hosted.snapshot.elements.PersistedAnalysisMethodData;
 import com.oracle.svm.hosted.snapshot.elements.PersistedAnalysisMethodData.WrappedMethod;
@@ -966,6 +972,57 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
         return result;
     }
 
+    /** Returns the layout fixed by a previous layer's installed hub, if any. */
+    private ObjectLayoutData.Loader getPersistedObjectLayout(AnalysisType type) {
+        if (!type.isInSharedLayer()) {
+            return null;
+        }
+        var typeData = findType(getBaseLayerTypeId(type));
+        guarantee(typeData.hasObjectLayout(), "Missing object layout metadata for %s. Rebuild the shared layer with this version of Native Image.", type);
+        var layout = typeData.getObjectLayout();
+        return layout.getInstalled() ? layout : null;
+    }
+
+    public void verifyObjectLayoutCompatibility(HostedType type) {
+        if (type.getWrapped().getWrapped() instanceof BaseLayerType) {
+            /*
+             * BaseLayerType represents a shared-layer type that could not be resolved in the
+             * application-layer builder. Its recomputed layout can omit fields that were not
+             * loaded during application analysis, so it may differ from the actual shared-layer layout.
+             */
+            return;
+        }
+
+        var layout = getPersistedObjectLayout(type.getWrapped());
+        if (layout == null) {
+            /* No hub was installed in a shared layer, so there is no layout to preserve. */
+            return;
+        }
+
+        DynamicHub hub = type.getHub();
+        verifyLayoutProperty(type, "layoutEncoding", layout.getLayoutEncoding(), hub.getLayoutEncoding());
+        verifyLayoutProperty(type, "monitorOffset", layout.getMonitorOffset(), hub.getMonitorOffset());
+        verifyLayoutProperty(type, "identityHashOffset", layout.getIdentityHashOffset(), hub.getIdentityHashOffsetOrZero());
+
+        for (HostedField field : type.getInstanceFields(true)) {
+            if (field.hasLocation()) {
+                var fieldData = getFieldData(field.getWrapped());
+                guarantee(fieldData != null, "Instance field %s is missing from the shared layer layout of %s.", field, type);
+                if (fieldData.getLocation() != field.getLocation()) {
+                    verifyLayoutProperty(type, field.format("%H.%n"), fieldData.getLocation(), field.getLocation());
+                }
+            }
+        }
+    }
+
+    private static void verifyLayoutProperty(HostedType type, String property, int baseValue, int currentValue) {
+        if (baseValue != currentValue) {
+            String message = String.format("Object layout differs across image layers for %s: %s is %d in the shared layer but %d in the current layer.",
+                            type.toJavaName(), property, baseValue, currentValue);
+            throw AnalysisError.shouldNotReachHere(message);
+        }
+    }
+
     public SnapshotStructList.Loader<PersistedHostedMethodData.Loader> getHostedMethods() {
         return snapshot.getHostedMethods();
     }
@@ -997,9 +1054,13 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
     @Override
     public AnalysisParsedGraph getAnalysisParsedGraph(AnalysisMethod analysisMethod) {
         PersistedAnalysisMethodData.Loader methodData = getMethodData(analysisMethod);
+        /* Reused graphs bypass the after-parsing hook, even when only inlined in the prior layer. */
+        List<AnalysisField> closedFieldWrites = StreamSupport.stream(methodData.getClosedFieldWrites().spliterator(), false)
+                        .map(this::getAnalysisFieldForBaseLayerId).toList();
+        ((SVMHost) universe.hostVM()).checkClosedFieldWrites(analysisMethod, closedFieldWrites);
         boolean intrinsic = methodData.getAnalysisGraphIsIntrinsic();
         EncodedGraph analyzedGraph = getEncodedGraph(analysisMethod, methodData.getAnalysisGraphLocation());
-        return new AnalysisParsedGraph(analyzedGraph, intrinsic);
+        return new AnalysisParsedGraph(analyzedGraph, intrinsic, new GraphMetadata(closedFieldWrites));
     }
 
     public boolean hasStrengthenedGraph(AnalysisMethod analysisMethod) {
@@ -1169,12 +1230,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
             analysisField.getDeclaringClass().getInstanceFields(true);
         }
         postTask(isAccessed, _ -> {
-            analysisField.injectDeclaredType();
+            analysisField.injectConservativeFieldValues();
             analysisField.registerAsAccessed(PERSISTED);
         });
         postTask(isRead, _ -> analysisField.registerAsRead(PERSISTED));
         postTask(fieldData.getIsWritten(), _ -> {
-            analysisField.injectDeclaredType();
+            analysisField.injectConservativeFieldValues();
             analysisField.registerAsWritten(PERSISTED);
         });
         postTask(fieldData.getIsFolded(), _ -> analysisField.registerAsFolded(PERSISTED));
@@ -1241,6 +1302,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
 
     public ImageHeapConstant getOrCreateConstant(int id) {
         return constantLoader.getOrCreateConstant(id);
+    }
+
+    /** Visits the relinked hosted objects for all persisted base-layer MethodTypes. */
+    public void forEachPersistedMethodType(Consumer<MethodType> consumer) {
+        constantLoader.forEachPersistedMethodType(consumer);
     }
 
     /* Retrieves the given constant iff it has already been relinked. */
@@ -1369,7 +1435,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
         } else {
             assert initInfo.getIsLinked() : "Invalid state";
             int classInitializerId = initInfo.getInitializerMethodId();
-            MethodPointer classInitializer = (classInitializerId == 0) ? null : new MethodPointer(getAnalysisMethodForBaseLayerId(classInitializerId));
+            MethodPointer classInitializer = (classInitializerId == 0) ? null : MethodRefSupport.createMethodPointer(getAnalysisMethodForBaseLayerId(classInitializerId));
             return ClassInitializationInfo.forRuntimeTimeInitializedClass(classInitializer, initInfo.getIsTracked());
         }
     }

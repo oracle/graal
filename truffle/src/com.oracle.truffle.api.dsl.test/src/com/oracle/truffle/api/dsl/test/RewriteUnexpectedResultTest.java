@@ -68,6 +68,7 @@ import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.Rewrit
 import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.RewriteUnexpectedNoReexecuteFactory;
 import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.SharedCacheNodeGen;
 import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.SimpleBoxingOverloadNodeGen;
+import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.TransitiveBoxingOverloadNodeGen;
 import com.oracle.truffle.api.dsl.test.RewriteUnexpectedResultTestFactory.WeakCacheBoxingOverloadNodeGen;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -349,6 +350,120 @@ public class RewriteUnexpectedResultTest {
             return cachedArg;
         }
 
+    }
+
+    @Test
+    public void testTransitiveBoxingOverloadUnexpectedResult() throws UnexpectedResultException {
+        TransitiveBoxingOverloadNode node = TransitiveBoxingOverloadNodeGen.create();
+
+        assertEquals(42, node.executeGeneric(42));
+        assertEquals("result", node.executeGeneric("result"));
+        assertEquals(42, node.executeInt(42));
+        assertEquals(1, node.intCalls);
+        assertEquals(2, node.cachedCalls);
+
+        UnexpectedResultException e = assertThrows(UnexpectedResultException.class, () -> node.executeInt("result"));
+        assertEquals("result", e.getResult());
+        assertEquals(2, node.intCalls);
+        assertEquals(2, node.cachedCalls);
+        assertEquals(0, node.fallbackCalls);
+        assertEquals(2, node.cacheInitializations);
+
+        assertEquals("result", node.executeGeneric("result"));
+        assertEquals(42, node.executeInt(42));
+        assertEquals(3, node.intCalls);
+        assertEquals(3, node.cachedCalls);
+        assertEquals(0, node.fallbackCalls);
+
+        // Overflow replaces the cached object specialization and its primitive boxing overload.
+        assertEquals(43, node.executeGeneric(43));
+        assertEquals(42, node.executeInt(42));
+        assertEquals("result", node.executeGeneric("result"));
+        assertEquals(3, node.intCalls);
+        assertEquals(3, node.cachedCalls);
+        assertEquals(3, node.fallbackCalls);
+    }
+
+    @Test
+    public void testTransitiveBoxingOverloadTypedOverflow() throws UnexpectedResultException {
+        TransitiveBoxingOverloadNode node = TransitiveBoxingOverloadNodeGen.create();
+
+        assertEquals(41, node.executeGeneric(41));
+        assertEquals(42, node.executeGeneric(42));
+        assertEquals(41, node.executeInt(41));
+
+        assertEquals(43, node.executeInt(43));
+        assertEquals(41, node.executeInt(41));
+        assertEquals(42, node.executeGeneric(42));
+        assertEquals(1, node.intCalls);
+        assertEquals(2, node.cachedCalls);
+        assertEquals(3, node.fallbackCalls);
+    }
+
+    @GenerateInline(false)
+    @SuppressWarnings("unused")
+    abstract static class TransitiveBoxingOverloadNode extends BaseNode {
+
+        int intCalls;
+        int cachedCalls;
+        int fallbackCalls;
+        int cacheInitializations;
+
+        @Specialization(guards = "arg == cachedArg", limit = "2", rewriteOn = UnexpectedResultException.class)
+        int doInt(Object arg, @Cached("cache(arg)") Object cachedArg) throws UnexpectedResultException {
+            intCalls++;
+            if (cachedArg instanceof Integer i) {
+                return i;
+            }
+            throw new UnexpectedResultException(cachedArg);
+        }
+
+        @Specialization(guards = "arg == cachedArg", limit = "2", replaces = "doInt")
+        Object doCached(Object arg, @Cached("cache(arg)") Object cachedArg) {
+            cachedCalls++;
+            return cachedArg;
+        }
+
+        // The int/object cache group has limit 2; this broader cache has limit 3 and is not its boxing partner.
+        @Specialization(guards = "arg == cachedArg", limit = "3", replaces = "doCached")
+        Object doFallback(Object arg, @Cached("arg") Object cachedArg) {
+            fallbackCalls++;
+            return cachedArg;
+        }
+
+        @NeverDefault
+        Object cache(Object arg) {
+            cacheInitializations++;
+            return arg;
+        }
+    }
+
+    @GenerateInline(false)
+    @SuppressWarnings("unused")
+    abstract static class WarnBoxingOverloadWithoutIntermediateNode extends BaseNode {
+
+        @ExpectError("This specialization throws an UnexpectedResultException and is replaced by the 'doFallback(Object, Object)' specialization but their signature, " +
+                        "guards or cached state are not compatible with each other so it cannot be used for boxing elimination. It is recommended to align the specializations to resolve this.")
+        @Specialization(guards = "arg == cachedArg", limit = "2", rewriteOn = UnexpectedResultException.class)
+        static int doInt(Object arg, @Cached("arg") Object cachedArg) throws UnexpectedResultException {
+            if (cachedArg instanceof Integer i) {
+                return i;
+            }
+            throw new UnexpectedResultException(cachedArg);
+        }
+
+        @Specialization(guards = "arg == cachedArg", limit = "2", replaces = "doInt")
+        static Object doCached(Object arg, @Cached("arg") Object cachedArg) {
+            return cachedArg;
+        }
+
+        // A compatible sibling is insufficient: this specialization must also replace doCached.
+        @ExpectError("The specialization 'doInt(Object, Object)' throws an UnexpectedResultException and is replaced by this specialization but their signature, " +
+                        "guards or cached state are not compatible with each other so it cannot be used for boxing elimination. It is recommended to align the specializations to resolve this.")
+        @Specialization(guards = "arg == cachedArg", limit = "3", replaces = "doInt")
+        static Object doFallback(Object arg, @Cached("arg") Object cachedArg) {
+            return cachedArg;
+        }
     }
 
     @Test

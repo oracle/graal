@@ -35,13 +35,13 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.hosted.cai.PrefixTree;
+import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -70,8 +70,6 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.phases.PhaseSuite;
 import jdk.graal.compiler.phases.common.BoxNodeIdentityPhase;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.priorityinline.CallTree;
@@ -167,33 +165,28 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
 
     private final PGOProfilesLookup pgoProfiles;
     private final RuntimeConfiguration runtimeConfig;
-    private final OptimisticOptimizations optimisticOpts;
     private final HostedUniverse universe;
-    private final PhaseSuite<HighTierContext> highTier;
     private final boolean layeredBuild;
 
     @SharedGlobalPhaseState private static volatile boolean IPEAShutDownHookAdded;
     static final InterProceduralPartialEscapeAnalysisStatistics IPEAStatistics = new InterProceduralPartialEscapeAnalysisStatistics();
 
-    private SubstratePriorityInliningPhase(CanonicalizerPhase canonicalizer, OptionValues options, RuntimeConfiguration runtimeConfig, OptimisticOptimizations optimisticOpts,
-                    HostedUniverse universe, PhaseSuite<HighTierContext> highTier, SubstrateInliningProvider inliningProvider, PGOProfilesLookup pgoProfiles) {
+    private SubstratePriorityInliningPhase(CanonicalizerPhase canonicalizer, OptionValues options, RuntimeConfiguration runtimeConfig,
+                    HostedUniverse universe, SubstrateInliningProvider inliningProvider, PGOProfilesLookup pgoProfiles) {
         super(canonicalizer, options, inliningProvider);
         this.runtimeConfig = runtimeConfig;
-        this.optimisticOpts = optimisticOpts;
         this.universe = universe;
-        this.highTier = highTier;
         this.pgoProfiles = pgoProfiles;
         this.layeredBuild = ImageLayerBuildingSupport.buildingExtensionLayer();
     }
 
     public SubstratePriorityInliningPhase(SubstratePriorityInliningPhase oldPhase, SubstrateInliningProvider substrateInliningProvider, PGOProfilesLookup pgoProfiles) {
-        this(oldPhase.canonicalizer, HostedOptionValues.singleton().get(), oldPhase.runtimeConfig, oldPhase.optimisticOpts, oldPhase.universe, oldPhase.highTier, substrateInliningProvider,
-                        pgoProfiles);
+        this(oldPhase.canonicalizer, HostedOptionValues.singleton().get(), oldPhase.runtimeConfig, oldPhase.universe, substrateInliningProvider, pgoProfiles);
     }
 
-    public SubstratePriorityInliningPhase(CanonicalizerPhase canonicalizer, OptionValues options, RuntimeConfiguration runtimeConfig, OptimisticOptimizations optimisticOpts,
-                    HostedUniverse universe, PhaseSuite<HighTierContext> highTier, PGOProfilesLookup pgoProfiles) {
-        this(canonicalizer, options, runtimeConfig, optimisticOpts, universe, highTier, new SubstrateInliningProvider(universe, _ -> null), pgoProfiles);
+    public SubstratePriorityInliningPhase(CanonicalizerPhase canonicalizer, OptionValues options, RuntimeConfiguration runtimeConfig,
+                    HostedUniverse universe, PGOProfilesLookup pgoProfiles) {
+        this(canonicalizer, options, runtimeConfig, universe, new SubstrateInliningProvider(universe, _ -> null), pgoProfiles);
     }
 
     private static void registerIPEAStatisticsShutdownHook(TrackIPEAMode trackIPEAMode) {
@@ -245,7 +238,9 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
      */
     private boolean inliningForbidden(Invoke invoke) {
         Predicate<HostedMethod> unavailableMethod = method -> {
-            boolean unavailable = method.compilationInfo.getCompilationGraph() == null;
+            HostedMethod caller = (HostedMethod) invoke.asNode().graph().method();
+            HostedMethod inlinee = CompileQueue.selectInlineeMethod(caller, method);
+            boolean unavailable = inlinee.compilationInfo.getCompilationGraph() == null;
             if (unavailable && layeredBuild) {
                 /*
                  * We have compiled this method in a prior layer, but don't have the graph available
@@ -303,21 +298,22 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
         public GraphCache.Ref<ResolvedJavaMethod, StructuredGraph> createGraph(ResolvedJavaMethod targetMethod, Invoke invoke, boolean withNodeSourcePosition,
                         NodeSourcePosition replaceePosition, boolean inOOMEProtectedInlineContext) {
             assert targetMethod instanceof HostedMethod;
+            HostedMethod caller = (HostedMethod) invoke.asNode().graph().method();
+            HostedMethod inlinee = CompileQueue.selectInlineeMethod(caller, (HostedMethod) targetMethod);
+            CompileQueue.verifyInliningProviders((HostedMethod) root.getReadonlySubgraph().method(), inlinee, runtimeConfig);
 
             GraphCache<ResolvedJavaMethod, StructuredGraph> selectedGraphCache = getGraphCache(inOOMEProtectedInlineContext);
-            GraphCache.Ref<ResolvedJavaMethod, StructuredGraph> ref = UseGraphCache.getValue(getOptions()) ? selectedGraphCache.getRef(targetMethod) : null;
+            GraphCache.Ref<ResolvedJavaMethod, StructuredGraph> ref = UseGraphCache.getValue(getOptions()) ? selectedGraphCache.getRef(inlinee) : null;
             if (ref == null) {
                 DecodeContext decodeContext = inOOMEProtectedInlineContext ? DecodeContext.OOME_EXCEPTION_EDGES : DecodeContext.DEFAULT;
-                StructuredGraph graphCopy = ((HostedMethod) targetMethod).compilationInfo.createGraph(getDebug(), getOptions(), CompilationIdentifier.INVALID_COMPILATION_ID, true, decodeContext);
+                StructuredGraph graphCopy = inlinee.compilationInfo.createGraph(getDebug(), getOptions(), CompilationIdentifier.INVALID_COMPILATION_ID, true, decodeContext);
                 /* Ensure box nodes in the graph are processed before using the graph. */
                 new BoxNodeIdentityPhase().apply(graphCopy, getContext());
                 CallTree.mergeUnwinds(graphCopy);
 
-                HostedProviders providers = (HostedProviders) runtimeConfig.lookupBackend(targetMethod).getProviders();
-                HighTierContext highTierContext = new HighTierContext(providers, highTier, optimisticOpts);
-                applyPGOProfiles(graphCopy, highTierContext, replaceePosition);
+                applyPGOProfiles(graphCopy, getContext(), replaceePosition);
 
-                ref = UseGraphCache.getValue(getOptions()) ? selectedGraphCache.createRef(targetMethod, graphCopy) : selectedGraphCache.createNonCounted(graphCopy);
+                ref = UseGraphCache.getValue(getOptions()) ? selectedGraphCache.createRef(inlinee, graphCopy) : selectedGraphCache.createNonCounted(graphCopy);
             }
             totalNodes += ref.readonly().getNodeCount();
             assert !withNodeSourcePosition || ref.readonly().trackNodeSourcePosition();

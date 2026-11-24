@@ -31,9 +31,9 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.guest.staging.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;

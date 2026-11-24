@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -298,6 +298,23 @@ public class Base64SubstitutionsTest extends GraalOSRTestBase {
                 assertByteArraysEqual(suffix, actualSuffix);
             }
         }
+    }
+
+    @Test
+    public void testDecodeIncompleteQuantumDoesNotOverwriteOutput() {
+        byte[] srcBytes = new byte[65];
+        Arrays.fill(srcBytes, 0, 64, (byte) 'A');
+        srcBytes[64] = '=';
+
+        byte[] initialOutput = new byte[128];
+        Arrays.fill(initialOutput, (byte) 0x7f);
+        ByteArraySupplier bas = new ByteArraySupplier(0, initialOutput);
+        ResolvedJavaMethod m = getResolvedJavaMethod(Decoder.class, "decode", byte[].class, byte[].class);
+        test(m, Base64.getDecoder(), srcBytes, bas);
+
+        Assert.assertTrue(lastResults.actual.exception instanceof IllegalArgumentException);
+        Assert.assertEquals(2, bas.supplied.size());
+        assertByteArraysEqual(bas.supplied.get(0), bas.supplied.get(1));
     }
 
     public static byte[] decodeByteBufferSnippet(Decoder decoder, ByteBuffer srcBuf) {

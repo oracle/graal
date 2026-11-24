@@ -1,5 +1,16 @@
 Non-standard options help:
 
+    Argument files can use a '# native-image:' directive on the first line. The
+    'value-continuations' setting enables option-value continuations: an option ending
+    in '=...' joins subsequent values with commas until a blank line, another option
+    ending in '=...', or end of file. Comment-only lines do not end a continuation.
+    The 'recursive-argument-files' setting expands nested @file references at their
+    position in the file. Included files control their own settings. Separate settings
+    with one or more spaces; whitespace around the settings is optional. Unknown or
+    duplicate settings are errors. Native Image allows up to 64 nested files, including
+    the top-level file. A top-level file that enables recursion has a cumulative budget
+    of 16,777,216 input characters, counting every inclusion.
+
     --exclude-config      exclude configuration for a space-separated pair of classpath/modulepath
                           pattern and resource pattern. For example:
                           '--exclude-config foo.jar META-INF\/native-image\/.*.properties'

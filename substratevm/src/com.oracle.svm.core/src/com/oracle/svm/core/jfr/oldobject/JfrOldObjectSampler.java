@@ -32,7 +32,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.collections.UninterruptibleLinkedList;
 import com.oracle.svm.core.collections.UninterruptiblePriorityQueue;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrThreadRepository;
 import com.oracle.svm.core.jfr.JfrTicks;

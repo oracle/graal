@@ -24,8 +24,6 @@
  */
 package com.oracle.graal.pointsto.typestate;
 
-import java.util.Objects;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 
 /**
@@ -92,7 +90,7 @@ public final class PrimitiveConstantTypeState extends PrimitiveTypeState {
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), value);
+        return Long.hashCode(value);
     }
 
     @Override

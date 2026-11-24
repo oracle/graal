@@ -465,6 +465,9 @@ public class Linker {
         final String importedModuleName = importDescriptor.moduleName();
         final String importedMemoryName = importDescriptor.memberName();
         final Runnable resolveAction = () -> {
+            // GR-81022: to allow sharing memories across contexts for parallel execution, we will
+            // need to extend this to admit WasmMemories wrapped in OtherContextGuestObject,
+            // checking that the memory is shared
             WasmMemory importedMemory = lookupImportObject(instance, importDescriptor, imports, WasmMemory.class);
             if (importedMemory != null) {
                 assert memoryIndex == importDescriptor.targetIndex();

@@ -34,7 +34,6 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,9 +46,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -71,7 +71,7 @@ import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
@@ -86,10 +86,10 @@ import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.graal.nodes.TLABObjectHeaderConstant;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.meta.CompressedNullConstant;
-import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.sampler.CallStackFrameMethodInfo;
 import com.oracle.svm.core.util.Counter;
@@ -121,6 +121,7 @@ import jdk.graal.compiler.code.DataSection;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.util.EconomicHashMap;
 import jdk.vm.ci.code.BytecodeFrame;
@@ -139,7 +140,7 @@ import jdk.vm.ci.meta.VMConstant;
 
 public abstract class NativeImageCodeCache {
 
-    private final Map<Constant, Object> embeddedConstants = new EconomicHashMap<>();
+    private Map<Constant, Object> embeddedConstants = new EconomicHashMap<>();
 
     public static class Options {
         @Option(help = "Verify that all possible deoptimization entry points have been properly compiled and registered in the metadata")//
@@ -169,19 +170,24 @@ public abstract class NativeImageCodeCache {
 
     protected final Platform targetPlatform;
 
-    private final DataSection dataSection;
+    protected DataSection dataSection;
 
-    private final Map<Constant, Object> constantReasons = new HashMap<>();
+    private Map<Constant, Object> constantReasons = new HashMap<>();
 
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilationResultMap, NativeImageHeap imageHeap) {
         this(compilationResultMap, imageHeap, ImageSingletons.lookup(Platform.class));
     }
 
     public void purge() {
-        assert compilationsMap != null && orderedCompilations != null && deterministicCompilationUnitOrderForConstantLayout != null : "Code cache already purged";
+        VMError.guarantee(compilationsMap != null && orderedCompilations != null, "Code cache already purged.");
+        /* addConstantsToHeap() releases this construction-only ordering before purge(). */
+        assert deterministicCompilationUnitOrderForConstantLayout == null : "Constant layout state must be cleared after adding constants to the image heap";
+        assert (embeddedConstants == null || requiresEmbeddedConstantsAfterHeapConstruction()) && constantReasons == null : "Embedded constant state must be cleared after its final consumer";
+        embeddedConstants = null;
         compilationsMap = null;
         orderedCompilations = null;
-        deterministicCompilationUnitOrderForConstantLayout = null;
+        /* Constants and their relocations are already in the object-file sections. */
+        dataSection = null;
     }
 
     @SuppressWarnings("this-escape")//
@@ -299,42 +305,66 @@ public abstract class NativeImageCodeCache {
     public abstract void layoutMethods(DebugContext debug, BigBang bb);
 
     public void layoutConstants() {
-        ImageHeapReasonSupport reasonSupport = imageHeap.reasonSupport;
+        collectConstants(deterministicCompilationUnitOrderForConstantLayout, (_, compilation) -> dataSection.addAll(compilation.getDataSection()));
+        closeDataSection(dataSection);
+    }
+
+    protected final void collectConstants(List<Pair<HostedMethod, CompilationResult>> compilations, BiConsumer<HostedMethod, CompilationResult> collectData) {
         DeadlockWatchdog watchdog = ImageSingletons.lookup(DeadlockWatchdog.class);
-        for (Pair<HostedMethod, CompilationResult> pair : deterministicCompilationUnitOrderForConstantLayout) {
+        for (Pair<HostedMethod, CompilationResult> pair : compilations) {
             CompilationResult compilation = pair.getRight();
-            for (DataSection.Data data : compilation.getDataSection()) {
-                if (data instanceof SubstrateDataBuilder.ObjectData) {
-                    JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
-                    constantReasons.put(constant, reasonSupport.compilation(compilation));
-                }
-            }
-
-            dataSection.addAll(compilation.getDataSection());
-
-            for (DataPatch patch : compilation.getDataPatches()) {
-                if (patch.reference instanceof ConstantReference) {
-                    VMConstant constant = ((ConstantReference) patch.reference).getConstant();
-                    constantReasons.put(constant, reasonSupport.compilation(compilation));
-                }
-            }
+            recordConstantsForCompilation(compilation);
+            collectData.accept(pair.getLeft(), compilation);
             watchdog.recordActivity();
         }
-        dataSection.close(HostedOptionValues.singleton().get(), 1);
+    }
+
+    /** Request compilation reasons only for object data or constant-reference patches. */
+    private void recordConstantsForCompilation(CompilationResult compilation) {
+        ImageHeapReasonSupport reasonSupport = imageHeap.reasonSupport;
+
+        for (DataSection.Data data : compilation.getDataSection()) {
+            if (data instanceof SubstrateDataBuilder.ObjectData objectData) {
+                constantReasons.put(objectData.getConstant(), reasonSupport.compilation(compilation));
+            }
+        }
+
+        for (DataPatch patch : compilation.getDataPatches()) {
+            if (patch.reference instanceof ConstantReference) {
+                VMConstant constant = ((ConstantReference) patch.reference).getConstant();
+                constantReasons.put(constant, reasonSupport.compilation(compilation));
+            }
+        }
+    }
+
+    protected static void closeDataSection(DataSection section) {
+        section.close(HostedOptionValues.singleton().get(), 1);
+    }
+
+    protected final List<Pair<HostedMethod, CompilationResult>> getDeterministicCompilationUnitOrderForConstantLayout() {
+        return deterministicCompilationUnitOrderForConstantLayout;
     }
 
     /** Get constants embedded in the data section and compilation results. */
     public Map<Constant, Object> initAndGetEmbeddedConstants() {
         VMError.guarantee(BuildPhaseProvider.isCompilationFinished(), "Code cache embedded constants are available only after compilation.");
-        VMError.guarantee(embeddedConstants.isEmpty(), "Embedded constants are already computed.");
-        ImageHeapReasonSupport reasonSupport = imageHeap.reasonSupport;
+        VMError.guarantee(embeddedConstants != null && embeddedConstants.isEmpty(), "Embedded constants are already computed or were released.");
+        collectEmbeddedConstants(dataSection, deterministicCompilationUnitOrderForConstantLayout);
+        return embeddedConstants;
+    }
 
-        for (DataSection.Data data : dataSection) {
+    protected static void collectDataSectionConstants(DataSection section, Map<Constant, Object> constants, Object reason) {
+        for (DataSection.Data data : section) {
             if (data instanceof SubstrateDataBuilder.ObjectData objectData) {
-                embeddedConstants.put(objectData.getConstant(), reasonSupport.dataSection());
+                constants.putIfAbsent(objectData.getConstant(), reason);
             }
         }
-        for (Pair<HostedMethod, CompilationResult> pair : deterministicCompilationUnitOrderForConstantLayout) {
+    }
+
+    private void collectEmbeddedConstants(DataSection section, List<Pair<HostedMethod, CompilationResult>> compilations) {
+        collectDataSectionConstants(section, embeddedConstants, imageHeap.reasonSupport.dataSection());
+
+        for (Pair<HostedMethod, CompilationResult> pair : compilations) {
             BytecodePosition position = AbstractAnalysisEngine.syntheticSourcePosition(pair.getLeft().getWrapped());
             CompilationResult compilationResult = pair.getRight();
             for (DataPatch patch : compilationResult.getDataPatches()) {
@@ -358,11 +388,10 @@ public abstract class NativeImageCodeCache {
                 }
             }
         }
-        return embeddedConstants;
     }
 
     public Map<Constant, Object> getEmbeddedConstants() {
-        VMError.guarantee(!embeddedConstants.isEmpty(), "Embedded constants should already be computed.");
+        VMError.guarantee(embeddedConstants != null && !embeddedConstants.isEmpty(), "Embedded constants should already be computed and not yet released.");
         return Collections.unmodifiableMap(embeddedConstants);
     }
 
@@ -374,6 +403,25 @@ public abstract class NativeImageCodeCache {
                             : reason;
             addConstantToHeap(constant, addReason);
         });
+        /*
+         * Once all embedded constants have been added to the image heap, constantReasons and the
+         * deterministic traversal order are no longer queried. Native code emission resolves
+         * constants through NativeImageHeap, but some backends retain the embeddedConstants map,
+         * including its reason values. The separate constantReasons map is always released.
+         */
+        if (!requiresEmbeddedConstantsAfterHeapConstruction()) {
+            embeddedConstants = null;
+        }
+        constantReasons = null;
+        deterministicCompilationUnitOrderForConstantLayout = null;
+    }
+
+    /**
+     * Whether the backend still needs to distinguish embedded roots from other heap objects during
+     * code generation. Overrides must retain the map until their last consumer has finished.
+     */
+    protected boolean requiresEmbeddedConstantsAfterHeapConstruction() {
+        return false;
     }
 
     private void addConstantToHeap(Constant constant, Object reason) {
@@ -393,16 +441,12 @@ public abstract class NativeImageCodeCache {
         imageHeap.addConstant((JavaConstant) constant, false, reason != null ? reason : constantReasons.get(constant));
     }
 
-    protected int getConstantsSize() {
-        return dataSection.getSectionSize();
-    }
-
     public int getAlignedConstantsSize() {
-        return ObjectLayout.singleton().alignUp(getConstantsSize());
+        return ObjectLayout.singleton().alignUp(dataSection.getSectionSize());
     }
 
     public void buildRuntimeMetadata(DebugContext debug, SnippetReflectionProvider snippetReflectionProvider) {
-        buildRuntimeMetadata(debug, snippetReflectionProvider, new MethodPointer(getFirstCompilation().getLeft(), false), Word.signed(getCodeAreaSize()));
+        buildRuntimeMetadata(debug, snippetReflectionProvider, MethodRefSupport.createMethodPointer(getFirstCompilation().getLeft(), false), Word.signed(getCodeAreaSize()));
     }
 
     static class HostedConstantAccess extends ConstantAccess {
@@ -651,6 +695,30 @@ public abstract class NativeImageCodeCache {
         assert verifyMethods(debug, hUniverse, codeInfoEncoder, imageCodeInfo, hostedConstantAccess);
     }
 
+    /**
+     * Releases debug payload after all {@code afterCompilation} feature callbacks have consumed
+     * it. Runtime code info has already been encoded by this point. Reconstructing standard
+     * infopoints adds some allocation work, and this cleanup makes {@code afterCompilation} the
+     * final supported consumer boundary unless native debug-info generation or compiler dumps need
+     * the payload later.
+     */
+    public void clearCompilationDebugInfo() {
+        if (SubstrateOptions.useDebugInfoGeneration()) {
+            return;
+        }
+        /*
+         * The post-patching dump can disassemble code and read infopoint debug annotations. Retain
+         * them whenever dumping is configured: the filter may only enable a later scope, and CFG
+         * dumps can be requested without PrintBackendCFG through CodeGen/CodeInstall filters.
+         */
+        if (DebugOptions.Dump.getValue(HostedOptionValues.singleton().get()) != null) {
+            return;
+        }
+        for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+            pair.getRight().clearInfopointDebugInfo();
+        }
+    }
+
     protected HostedImageCodeInfo installCodeInfo(SnippetReflectionProvider snippetReflection, CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder,
                     RuntimeMetadataEncoder runtimeMetadataEncoder, DeadlockWatchdog watchdog) {
         HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getCurrentLayerImageCodeCache().getHostedImageCodeInfo();
@@ -813,19 +881,27 @@ public abstract class NativeImageCodeCache {
         return true;
     }
 
-    /*
-     * Constants and code objects are all assigned offsets in the heap. Reference constants can
-     * refer to other heap objects. TODO: is it true that all code-->data references go via a
-     * Constant? It appears so, but I'm not sure. -srk
+    /**
+     * Patches and writes code, optionally releasing code-emission state. Callers may request release
+     * only when no later consumers such as debug-info generation or platform unwind metadata remain.
+     * Backends may release each compilation immediately after writing it, while relocations are
+     * accumulating, or retain their own patching and writing phases internally.
      */
+    public abstract void patchAndWriteCode(DebugContext debug, RelocatableBuffer buffer, ObjectFile objectFile, boolean releaseCodeEmissionState);
 
-    public abstract void patchMethods(DebugContext debug, RelocatableBuffer relocs, ObjectFile objectFile);
-
-    public abstract void writeCode(RelocatableBuffer buffer);
+    /**
+     * Clears per-compilation state after all target code bytes and relocation records have been
+     * emitted. Callers must first exclude later consumers such as debug-info generation and
+     * platform unwind metadata.
+     */
+    protected static void clearCodeEmissionState(List<Pair<HostedMethod, CompilationResult>> compilations) {
+        for (Pair<HostedMethod, CompilationResult> pair : compilations) {
+            pair.getRight().clearCodeEmissionState();
+        }
+    }
 
     public void writeConstants(NativeImageHeapWriter writer, RelocatableBuffer buffer) {
-        ByteBuffer bb = buffer.getByteBuffer();
-        dataSection.buildDataSection(bb, (position, constant) -> {
+        dataSection.buildDataSection(buffer.getByteBuffer(), (position, constant) -> {
             if (constant instanceof TLABObjectHeaderConstant objectHeaderConstant) {
                 writeTLABObjectHeader(buffer, position, objectHeaderConstant);
             } else {
@@ -834,7 +910,7 @@ public abstract class NativeImageCodeCache {
         });
     }
 
-    private void writeTLABObjectHeader(RelocatableBuffer buffer, int position, TLABObjectHeaderConstant constant) {
+    protected final void writeTLABObjectHeader(RelocatableBuffer buffer, int position, TLABObjectHeaderConstant constant) {
         JavaConstant hub = constant.hub();
         long hubOffsetFromHeapBase = imageHeap.getConstantInfo(hub).getOffset();
         VMError.guarantee(hubOffsetFromHeapBase != 0, "hub must be non-null: %s", hub);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,10 @@
  */
 
 package org.graalvm.wasm.vector;
+
+import java.lang.reflect.Field;
+
+import sun.misc.Unsafe;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ExactMath;
@@ -1480,6 +1484,33 @@ public final class Vector128OpsFallback implements Vector128Ops<byte[]> {
     @Override
     public void intoArray(byte[] vec, byte[] array, int offset) {
         System.arraycopy(vec, 0, array, offset, BYTES);
+    }
+
+    @Override
+    public byte[] fromNativeMemory(long address) {
+        byte[] bytes = new byte[BYTES];
+        NativeMemoryAccess.unsafe.copyMemory(null, address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, BYTES);
+        return bytes;
+    }
+
+    @Override
+    public void intoNativeMemory(byte[] vec, long address) {
+        NativeMemoryAccess.unsafe.copyMemory(vec, Unsafe.ARRAY_BYTE_BASE_OFFSET, null, address, BYTES);
+    }
+
+    // Byte-array-only execution does not need to initialize Unsafe.
+    private static final class NativeMemoryAccess {
+        private static final Unsafe unsafe = initUnsafe();
+
+        private static Unsafe initUnsafe() {
+            try {
+                Field field = Unsafe.class.getDeclaredField("theUnsafe");
+                field.setAccessible(true);
+                return (Unsafe) field.get(null);
+            } catch (ReflectiveOperationException e) {
+                throw new ExceptionInInitializerError(e);
+            }
+        }
     }
 
     @Override

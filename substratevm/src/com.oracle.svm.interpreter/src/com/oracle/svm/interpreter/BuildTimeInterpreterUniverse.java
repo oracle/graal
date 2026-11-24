@@ -862,7 +862,7 @@ public final class BuildTimeInterpreterUniverse {
         for (InterpreterResolvedJavaType type : types.values()) {
             if (type instanceof InterpreterResolvedObjectType referenceType && (!onlyTypesWithRetainedMethodBodies || hasRetainedMethodBody(referenceType))) {
                 // TODO(peterssen): GR-68564 Obtain proper major/minor version for this type.
-                BuildTimeConstantPool buildTimeConstantPool = BuildTimeConstantPool.create(referenceType, ClassFile.MAJOR_VERSION, ClassFile.MINOR_VERSION);
+                BuildTimeConstantPool buildTimeConstantPool = BuildTimeConstantPool.create(referenceType, ClassFile.MAJOR_VERSION, ClassFile.MINOR_VERSION, hUniverse);
                 referenceType.setConstantPool(buildTimeConstantPool.snapshot());
             }
         }

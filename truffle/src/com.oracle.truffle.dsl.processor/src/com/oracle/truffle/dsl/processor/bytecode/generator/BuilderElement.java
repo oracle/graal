@@ -78,7 +78,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.function.IntBinaryOperator;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import javax.lang.model.element.ElementKind;
@@ -94,7 +93,6 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeRootNodeElement.SourceInfoTable;
 import com.oracle.truffle.dsl.processor.bytecode.generator.InstructionRewriterElement.StepMethod;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
-import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.ConstantOperandModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.DFABuilder.DFAModel;
@@ -377,7 +375,7 @@ final class BuilderElement extends AbstractElement {
     }
 
     private boolean needsStableBciRemappings() {
-        return model.enableInstructionRewriting || model.enableTagInstrumentation;
+        return model.needsStableBciRemappings();
     }
 
     private boolean omitBuilderMethods(OperationModel operation) {
@@ -639,7 +637,7 @@ final class BuilderElement extends AbstractElement {
         method.addThrownType(type(IOException.class));
         CodeTreeBuilder b = method.createBuilder();
 
-        b.statement("this.serialization = new SerializationState(buffer, callback)");
+        b.startAssign("this", serialization).startNew(serializationElements.asType()).string("buffer").string("callback").end(2);
 
         b.startTryBlock();
 
@@ -684,7 +682,7 @@ final class BuilderElement extends AbstractElement {
         }
 
         b.end().startFinallyBlock();
-        b.statement("this.serialization = null");
+        b.startAssign("this", serialization).string("null").end();
         b.end();
 
         return method;
@@ -755,7 +753,7 @@ final class BuilderElement extends AbstractElement {
                         type(void.class), "deserialize");
         mergeSuppressWarnings(method, "hiding");
 
-        method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "bufferSupplier"));
+        method.addParameter(new CodeVariableElement(type(DataInput.class), "buffer"));
         method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
         method.addParameter(new CodeVariableElement(deserializationElement.asType(), "outerContext"));
 
@@ -766,8 +764,6 @@ final class BuilderElement extends AbstractElement {
         b.startDeclaration(deserializationElement.asType(), "context");
         b.startNew(deserializationElement.asType()).string("outerContext").end();
         b.end();
-
-        b.declaration(type(DataInput.class), "buffer", "bufferSupplier.get()");
 
         b.startWhile().string("true").end().startBlock();
 
@@ -815,15 +811,21 @@ final class BuilderElement extends AbstractElement {
         b.statement("break");
         b.end(); // create object
 
+        b.startCase().staticReference(serializationElements.codeCreateOuterObject).end().startBlock();
+        b.startDeclaration(deserializationElement.asType(), "objectContext").string("context.getContext(buffer.readShort())").end();
+        b.statement("context.consts.add(objectContext.consts.get(buffer.readInt()))");
+        b.statement("break");
+        b.end(); // create outer object
+
         b.startCase().staticReference(serializationElements.codeCreateFinallyGenerator).end().startBlock();
         b.statement("byte[] finallyGeneratorBytes = new byte[buffer.readInt()]");
         b.statement("buffer.readFully(finallyGeneratorBytes)");
 
         b.startStatement().startCall("context.finallyGenerators.add");
         b.startGroup().string("() -> ").startCall("deserialize");
-        b.startGroup().string("() -> ").startStaticCall(types.SerializationUtils, "createByteBufferDataInput");
+        b.startStaticCall(types.SerializationUtils, "createByteBufferDataInput");
         b.startStaticCall(declaredType(ByteBuffer.class), "wrap").string("finallyGeneratorBytes").end();
-        b.end(2);
+        b.end();
         b.string("callback");
         b.string("context");
         b.end(2); // lambda
@@ -845,8 +847,9 @@ final class BuilderElement extends AbstractElement {
                 b.startStatement();
                 b.string("node.").string(var.getSimpleName().toString());
                 b.string(" = ");
-                if (ElementUtils.needsCastTo(type(Object.class), var.asType())) {
-                    b.cast(var.asType());
+                TypeMirror fieldType = var.asType();
+                if (ElementUtils.needsCastTo(type(Object.class), fieldType)) {
+                    emitCastWithSuppression(method, b, fieldType);
                 }
                 b.string("context.consts.get(buffer.readInt())");
                 b.end();
@@ -905,7 +908,7 @@ final class BuilderElement extends AbstractElement {
 
                 if (operation.kind == OperationKind.ROOT) {
                     b.startStatement();
-                    b.type(parent.asType()).string(" node = ").cast(parent.asType()).string("end" + operation.builderName + "()");
+                    b.type(model.getTemplateType().asType()).string(" node = ").string("end" + operation.builderName + "()");
                     b.end();
 
                     b.declaration(type(int.class), "serializedContextDepth", "buffer.readInt()");
@@ -958,6 +961,14 @@ final class BuilderElement extends AbstractElement {
 
         return method;
 
+    }
+
+    static void emitCastWithSuppression(CodeExecutableElement ex, CodeTreeBuilder b, TypeMirror type) {
+        TypeElement element = ElementUtils.castTypeElement(type);
+        if (element != null && !element.getTypeParameters().isEmpty()) {
+            GeneratorUtils.mergeSuppressWarnings(ex, "unchecked");
+        }
+        b.cast(type);
     }
 
     private void buildSerializeOperationArgument(CodeTreeBuilder before, CodeTreeBuilder after, OperationArgument argument) {
@@ -1120,16 +1131,19 @@ final class BuilderElement extends AbstractElement {
 
     private CodeExecutableElement createFinish() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "finish");
+        ex.addParameter(new CodeVariableElement(type(boolean.class), "registerNodes"));
         CodeTreeBuilder b = ex.createBuilder();
 
         b.startIf().string("state.operationSp != 0").end().startBlock();
         b.startThrow().startCall("state.failState").doubleQuote("Unexpected parser end - there are still operations on the stack. Did you forget to end them?").end().end();
         b.end();
 
-        b.startIf().string("reparseReason == null").end().startBlock();
+        b.startAssert() //
+                        .string("!").staticReference(types.TruffleOptions, "DetailedAssertions").string(" || ") //
+                        .startStaticCall(parent.bytecodeRootNodesImpl.asType(), "validate").string("builtNodes").end(2);
+        b.startIf().string("registerNodes && !nodes.isParsed()").end().startBlock();
         b.startStatement().string("nodes.setNodes(builtNodes.toArray(new ").type(parent.asType()).string("[0]))").end();
         b.end();
-        b.statement("assert nodes.validate()");
 
         b.startStatement().startStaticCall(rootStackElement.asType(), "release").string("state").end().end();
         b.lineComment("make sure its no longer used");
@@ -2391,6 +2405,10 @@ final class BuilderElement extends AbstractElement {
 
                 b.startIf().string("cleanupCount > 0").end().startBlock();
                 b.startIf().string(operationStack.read(operation, operationFields.producedValue)).end().startBlock();
+                if (model.usesBoxingElimination()) {
+                    // store.stackvalue expects object. prevent return-type BE of the producing instruction.
+                    b.tree(operationStack.write(operation, operationFields.childBci, UNINIT));
+                }
                 buildEmitInstruction(b, null, model.storeStackValueInstruction, BytecodeRootNodeElement.safeCastShort("cleanupCount"));
                 b.statement("cleanupCount--");
                 b.end();
@@ -3025,13 +3043,15 @@ final class BuilderElement extends AbstractElement {
         b.startIf().string("reparseReason != null").end().startBlock(); // {
         b.statement("result = builtNodes.get(", operationStack.read(model.rootOperation, operationFields.index), ")");
 
+        CodeTree frameSizeTree = frameSize();
+
         b.startIf().string("parseBytecodes").end().startBlock();
         b.declaration(parent.abstractBytecodeNode.asType(), "oldBytecodeNode", "result.bytecode");
         b.statement("assert result.stackBase == " + stackBase());
         b.statement("assert result.nodes == this.nodes");
         b.startAssert();
         b.string("result.getFrameDescriptor().getNumberOfSlots() == ");
-        buildFrameSize(b);
+        b.tree(frameSizeTree);
         b.end();
 
         if (model.hasYieldOperation()) {
@@ -3097,26 +3117,14 @@ final class BuilderElement extends AbstractElement {
 
         b.end().startElseBlock(); // } {
 
-        b.startDeclaration(types.FrameDescriptor_Builder, "frameDescriptorBuilder").startStaticCall(types.FrameDescriptor, "newBuilder").end().end();
-
-        if (model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
-            b.statement("frameDescriptorBuilder.defaultValue(DEFAULT_LOCAL_VALUE)");
-        } else {
-            b.statement("frameDescriptorBuilder.defaultValueIllegal()");
-        }
-        b.statement("frameDescriptorBuilder.useSlotKinds(false)");
-
-        b.startStatement().startCall("frameDescriptorBuilder.addSlots");
-        b.startGroup();
-        buildFrameSize(b);
-        b.end();
-        b.end().end(); // call, statement
+        parent.emitInitializeFrameDescriptorBuilder(b, "frameDescriptorBuilder", frameSizeTree);
 
         b.startAssign("result").startNew(parent.asType());
         b.string("language");
         b.string("frameDescriptorBuilder");
         b.string("nodes"); // BytecodeRootNodesImpl
         b.string(stackBase());
+        b.tree(frameSizeTree);
         if (model.usesBoxingElimination()) {
             b.string("state.numLocals");
         }
@@ -3174,8 +3182,8 @@ final class BuilderElement extends AbstractElement {
         return ex;
     }
 
-    private void buildFrameSize(CodeTreeBuilder b) {
-        b.string("state.maxStackHeight + ").string(stackBase());
+    private CodeTree frameSize() {
+        return CodeTreeBuilder.createBuilder().string("state.maxStackHeight + ").string(stackBase()).build();
     }
 
     private String stackBase() {
@@ -8500,10 +8508,6 @@ final class BuilderElement extends AbstractElement {
             return write(operation, "operation", field, CodeTreeBuilder.singleString(value), false);
         }
 
-        CodeTree write(Collection<OperationModel> operation, OperationField field, String value) {
-            return write(operation, "operation", field, CodeTreeBuilder.singleString(value), false);
-        }
-
         CodeTree write(OperationModel operation, String local, OperationField field, String value) {
             return write(operation, local, field, CodeTreeBuilder.singleString(value), false);
         }
@@ -8590,11 +8594,7 @@ final class BuilderElement extends AbstractElement {
 
             b.startReturn();
             if (f.dynamicType) {
-                TypeElement element = ElementUtils.castTypeElement(f.type);
-                if (element != null && !element.getTypeParameters().isEmpty()) {
-                    GeneratorUtils.mergeSuppressWarnings(ex, "unchecked");
-                }
-                b.cast(f.type);
+                emitCastWithSuppression(ex, b, f.type);
             }
             b.string(var.getName());
             b.end();
@@ -9307,6 +9307,8 @@ final class BuilderElement extends AbstractElement {
         private final CodeVariableElement codeCreateFinallyGenerator = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_FINALLY_GENERATOR", "-6");
         private final CodeVariableElement codeEndFinallyGenerator = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END_FINALLY_GENERATOR", "-7");
         private final CodeVariableElement codeEndSerialize = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END", "-8");
+        private final CodeVariableElement codeCreateOuterObject = addField(this, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_OUTER_OBJECT", "-9");
+        private static final int MAX_OBJECT_BYTES = 65536;
 
         private final CodeVariableElement buffer = addField(this, Set.of(PRIVATE, FINAL), DataOutput.class, "buffer");
         private final CodeVariableElement callback = addField(this, Set.of(PRIVATE, FINAL), types.BytecodeSerializer, "callback");
@@ -9317,6 +9319,14 @@ final class BuilderElement extends AbstractElement {
         private final CodeVariableElement builtNodes = addField(this, Set.of(PRIVATE, FINAL), generic(ArrayList.class, model.getTemplateType().asType()), "builtNodes");
         private final CodeVariableElement rootStack = addField(this, Set.of(PRIVATE, FINAL), generic(ArrayDeque.class, serializationRootNode.asType()), "rootStack");
         private final CodeVariableElement labelCount = addField(this, Set.of(PRIVATE), int.class, "labelCount");
+        private final CodeVariableElement referencedDepth = addField(this, Set.of(PRIVATE), int.class, "referencedDepth");
+        /**
+         * Reused scratch buffer for object payloads that may be hoisted to an outer context.
+         * Discarded once an object exceeds {@link #MAX_OBJECT_BYTES}, so one large constant does
+         * not pin the array.
+         */
+        private final CodeVariableElement objectBytes = addField(this, Set.of(PRIVATE), declaredType(ByteArrayOutputStream.class), "objectBytes");
+        private final CodeVariableElement maxObjectBytes = addField(this, Set.of(PRIVATE, STATIC, FINAL), int.class, "MAX_OBJECT_BYTES", String.valueOf(MAX_OBJECT_BYTES));
 
         private final CodeVariableElement[] codeBegin;
         private final CodeVariableElement[] codeEnd;
@@ -9354,6 +9364,7 @@ final class BuilderElement extends AbstractElement {
             this.add(createPushConstructor());
 
             this.add(createSerializeObject());
+            this.add(createSerializeOuterObject());
             this.add(createWriteBytecodeNode());
         }
 
@@ -9396,39 +9407,94 @@ final class BuilderElement extends AbstractElement {
             b.end();
             b.statement("buffer.writeInt(serializationRoot.contextDepth)");
             b.statement("buffer.writeInt(serializationRoot.rootIndex)");
+            b.startAssign("this", referencedDepth).startStaticCall(type(Math.class), "max").field("this", referencedDepth).string("serializationRoot.contextDepth").end(2);
 
             return ex;
         }
 
+        /**
+         * Each serialization context (the root parse and each finally generator) has its own object
+         * table, but an object is created only once: in the outermost context whose root nodes it
+         * references. Inner contexts refer to that table entry with
+         * {@code CODE_$CREATE_OUTER_OBJECT}.
+         */
         private CodeExecutableElement createSerializeObject() {
             CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "serializeObject");
             method.addParameter(new CodeVariableElement(type(Object.class), "object"));
             method.addThrownType(type(IOException.class));
             CodeTreeBuilder b = method.createBuilder();
 
-            String argumentName = "object";
-            String index = "index";
+            b.startDeclaration(type(Object.class), "key").startCall("ACCESS.getSerializationKey").string("object").end(2);
+            b.startDeclaration(declaredType(Integer.class), "index").startCall(objects, "get").string("key").end(2);
+            b.startIf().string("index != null").end().startBlock();
+            b.startReturn().string("index").end();
+            b.end();
 
-            b.startDeclaration(declaredType(Integer.class), index).startCall("objects.get").string(argumentName).end(2);
-            b.startIf().string(index + " == null").end().startBlock();
-            b.startAssign(index).string("objects.size()").end();
-            b.startStatement().startCall("objects.put").string(argumentName).string(index).end(2);
+            b.startFor().type(this.asType()).string(" s = ").variable(outer).string("; s != null; s = ").field("s", outer).end().startBlock();
+            b.startDeclaration(declaredType(Integer.class), "outerIndex").startCall("s." + objects.getName(), "get").string("key").end(2);
+            b.startIf().string("outerIndex != null").end().startBlock();
+            b.startReturn().startCall("serializeOuterObject").string("key").string("s").string("outerIndex").end(2);
+            b.end();
+            b.end();
 
             b.startIf().string("object == null").end().startBlock();
-            b.startStatement();
-            b.string(buffer.getName(), ".").startCall("writeShort").string(codeCreateNull.getName()).end();
+            b.startAssign("index").startCall(objects, "size").end(2);
+            b.startStatement().startCall(objects, "put").string("null").string("index").end(2);
+            b.startStatement().startCall(buffer, "writeShort").staticReference(codeCreateNull).end(2);
+            b.startReturn().string("index").end();
             b.end();
+
+            b.startIf().variable(outer).string(" == null").end().startBlock();
+            b.startAssign("index").startCall(objects, "size").end(2);
+            b.startStatement().startCall(objects, "put").string("key").string("index").end(2);
+            b.startStatement().startCall(buffer, "writeShort").staticReference(codeCreateObject).end(2);
+            b.startStatement().startCall(callback, "serialize").string("this").variable(buffer).string("object").end(2);
+            b.startReturn().string("index").end();
+            b.end();
+
+            b.lineComment("Serialize to a reusable buffer, then write bytes to the outermost context that can create the object.");
+            b.startIf().variable(objectBytes).string(" == null || ").startCall(objectBytes, "size").end().string(" > ").staticReference(maxObjectBytes).end().startBlock();
+            b.startAssign(objectBytes).startNew(declaredType(ByteArrayOutputStream.class)).end(2);
             b.end().startElseBlock();
-
-            b.startStatement();
-            b.string(buffer.getName(), ".").startCall("writeShort").string(codeCreateObject.getName()).end();
+            b.startStatement().startCall(objectBytes, "reset").end(2);
             b.end();
-            b.statement("callback.serialize(this, buffer, object)");
+            b.startAssign("this", referencedDepth).string("0").end();
+            b.startStatement().startCall(callback, "serialize").string("this");
+            b.startNew(declaredType(DataOutputStream.class)).variable(objectBytes).end();
+            b.string("object");
+            b.end(2);
+            b.declaration(this.asType(), "target", "this");
+            b.startWhile().field("target", depth).string(" > ").field("this", referencedDepth).end().startBlock();
+            b.startAssign("target").field("target", outer).end();
             b.end();
-
+            b.startDeclaration(type(int.class), "targetIndex").startCall("target." + objects.getName(), "size").end(2);
+            b.startStatement().startCall("target." + objects.getName(), "put").string("key").string("targetIndex").end(2);
+            b.startStatement().startCall("target." + buffer.getName(), "writeShort").staticReference(codeCreateObject).end(2);
+            b.startStatement().startCall("target." + buffer.getName(), "write").startCall(objectBytes, "toByteArray").end(3);
+            b.startIf().startCall(objectBytes, "size").end().string(" > ").staticReference(maxObjectBytes).end().startBlock();
+            b.startAssign(objectBytes).string("null").end();
             b.end();
+            b.startIf().string("target == this").end().startBlock();
+            b.startReturn().string("targetIndex").end();
+            b.end();
+            b.startReturn().startCall("serializeOuterObject").string("key").string("target").string("targetIndex").end(2);
+            return method;
+        }
 
-            b.statement("return ", index);
+        private CodeExecutableElement createSerializeOuterObject() {
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "serializeOuterObject");
+            method.addParameter(new CodeVariableElement(type(Object.class), "key"));
+            method.addParameter(new CodeVariableElement(this.asType(), "target"));
+            method.addParameter(new CodeVariableElement(type(int.class), "targetIndex"));
+            method.addThrownType(type(IOException.class));
+            CodeTreeBuilder b = method.createBuilder();
+
+            b.startDeclaration(type(int.class), "index").startCall(objects, "size").end(2);
+            b.startStatement().startCall(objects, "put").string("key").string("index").end(2);
+            b.startStatement().startCall(buffer, "writeShort").staticReference(codeCreateOuterObject).end(2);
+            b.startStatement().startCall(buffer, "writeShort").string(BytecodeRootNodeElement.safeCastShort("target." + depth.getName())).end(2);
+            b.startStatement().startCall(buffer, "writeInt").string("targetIndex").end(2);
+            b.startReturn().string("index").end();
             return method;
         }
 
@@ -9506,7 +9572,7 @@ final class BuilderElement extends AbstractElement {
             this.depth = this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), type(int.class), "depth"));
             this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, Object.class), "consts")).//
                             createInitBuilder().startNew("ArrayList<>").end();
-            this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, parent.asType()), "builtNodes")).//
+            this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, model.getTemplateType().asType()), "builtNodes")).//
                             createInitBuilder().startNew("ArrayList<>").end();
             this.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), types.BytecodeLabel), "labels")).//
                             createInitBuilder().startNew("ArrayList<>").end();

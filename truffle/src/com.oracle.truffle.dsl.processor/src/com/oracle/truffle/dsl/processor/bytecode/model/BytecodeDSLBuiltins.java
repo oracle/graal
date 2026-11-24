@@ -274,7 +274,7 @@ public class BytecodeDSLBuiltins {
                                             LoadLocalMaterialized reads {@code local} from the materialized frame produced by {@code frame}.
                                             This operation can be used to read a local defined by the current root or an enclosing root.
                                             The local must belong to the materialized frame. It should also be in scope, otherwise the operation may produce unexpected values.
-                                            The interpreter will validate the scope if the interpreter is configured to {@link %s#storeBytecodeIndexInFrame store the bytecode index in the frame}.
+                                            The interpreter will validate the scope if {@link %s#bytecodeIndexMode the bytecode index mode} is {@code FRAME}.
                                             """, GENERATE_BYTECODE)) //
                             .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to load")) //
                             .setDynamicOperands(child("frame")) //
@@ -287,7 +287,7 @@ public class BytecodeDSLBuiltins {
                                             StoreLocalMaterialized writes the value produced by {@code value} into {@code local} in the materialized frame produced by {@code frame}.
                                             This operation can be used to store locals defined by the current root or an enclosing root.
                                             The local must belong to the materialized frame. It should also be in scope, otherwise the operation may produce unexpected values.
-                                            The interpreter will validate the scope if the interpreter is configured to {@link %s#storeBytecodeIndexInFrame store the bytecode index in the frame}.
+                                            The interpreter will validate the scope if {@link %s#bytecodeIndexMode the bytecode index mode} is {@code FRAME}.
                                             """, GENERATE_BYTECODE)) //
                             .setVoid(true) //
                             .setOperationBeginArguments(new OperationArgument(types.BytecodeLocal, Encoding.LOCAL, "local", "the local to store to")) //

@@ -67,7 +67,7 @@ import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
@@ -79,7 +79,7 @@ import com.oracle.svm.guest.staging.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.stack.StackFrameVisitor;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.guest.staging.c.CGlobalData;
@@ -114,13 +114,6 @@ import jdk.internal.misc.Unsafe;
  */
 @InternalVMMethod
 public abstract class PlatformThreads {
-    /// Using a small stack size, such as 64 KiB, on a machine that has a large page size, such as
-    /// 64 KiB, and address space randomization enabled may result in transient isolate
-    /// initialization failures. A `StackOverflowError` can be thrown early on because there is
-    /// hardly any usable stack space available. Therefore, SVM uses 128 KiB as the minimum usable
-    /// stack size for explicit Java thread stack sizes for now.
-    private static final long USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE = 128L * 1024L;
-
     @Fold
     public static PlatformThreads singleton() {
         return ImageSingletons.lookup(PlatformThreads.class);
@@ -140,6 +133,12 @@ public abstract class PlatformThreads {
      * attached. We use this counter to avoid missing threads during tear-down.
      */
     private final UninterruptibleUtils.AtomicInteger unattachedStartedThreads = new UninterruptibleUtils.AtomicInteger(0);
+
+    /** Maximum reported total of allocated bytes, retained so reported totals never decrease. */
+    private static final UninterruptibleUtils.AtomicLong maxReportedTotalAllocatedBytes = new UninterruptibleUtils.AtomicLong(0);
+
+    /** Bytes allocated by detached threads. Protected by {@link ThreadsLock}. */
+    private static long allocatedBytesOfDetachedThreads;
 
     /** The default group for new Threads that are attached without an explicit group. */
     final ThreadGroup mainGroup;
@@ -241,6 +240,55 @@ public abstract class PlatformThreads {
         }
     }
 
+    /**
+     * Returns an approximation of the heap bytes allocated by live and detached threads.
+     * <p>
+     * TLAB allocations can temporarily be counted twice if a reader sees the updated cumulative
+     * count before the retired TLAB descriptor is cleared. A later sample can therefore be smaller.
+     * To keep results from decreasing, this method retains the maximum reported total even after
+     * the allocating thread exits. This can preserve an overestimate until further allocations make
+     * up the difference.
+     * <p>
+     * If the computed total wraps to a negative value, the maximum reported total is returned.
+     * The counters continue wrapping. A later positive total can replace the maximum reported total
+     * if it is larger. The counters do not saturate at {@link Long#MAX_VALUE}.
+     */
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25.0.5.1+0/src/hotspot/share/services/management.cpp#L2093-L2126")
+    public static long getTotalThreadAllocatedBytes() {
+        long totalAllocatedBytes = computeTotalThreadAllocatedBytes();
+
+        /* Unlike HotSpot's MonitoringSupport_lock, an atomic update protects the maximum reported total. */
+        long previousMaxReportedTotalAllocatedBytes;
+        do {
+            previousMaxReportedTotalAllocatedBytes = maxReportedTotalAllocatedBytes.get();
+            if (totalAllocatedBytes <= previousMaxReportedTotalAllocatedBytes) {
+                return previousMaxReportedTotalAllocatedBytes;
+            }
+        } while (!maxReportedTotalAllocatedBytes.compareAndSet(previousMaxReportedTotalAllocatedBytes, totalAllocatedBytes));
+
+        return totalAllocatedBytes;
+    }
+
+    private static long computeTotalThreadAllocatedBytes() {
+        /*
+         * Unlike HotSpot's thread-list handle, our threads lock protects both list removal and
+         * allocation accounting in VMThreads.detachThread. A reader cannot miss a thread between its
+         * removal from the list and the update to the detached-thread allocation total.
+         */
+        ThreadsLock.lockRead();
+        try {
+            long totalAllocatedBytes = allocatedBytesOfDetachedThreads;
+            for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
+                long allocatedBytes = Heap.getHeap().getThreadAllocatedMemory(thread);
+                totalAllocatedBytes += allocatedBytes;
+            }
+
+            return totalAllocatedBytes;
+        } finally {
+            ThreadsLock.unlockRead();
+        }
+    }
+
     public static void getThreadAllocatedBytes(long[] javaThreadIds, long[] result) {
         ThreadsLock.lockRead();
         try {
@@ -251,7 +299,6 @@ public abstract class PlatformThreads {
                     for (int i = 0; i < javaThreadIds.length; i++) {
                         if (JavaThreads.getThreadId(javaThread) == javaThreadIds[i]) {
                             result[i] = Heap.getHeap().getThreadAllocatedMemory(isolateThread);
-                            break;
                         }
                     }
                 }
@@ -364,6 +411,13 @@ public abstract class PlatformThreads {
         /* If the user set a thread stack size on the command line, then use that. */
         stackSize = SubstrateGuestOptions.StackSize.getValue();
         if (stackSize != 0) {
+            if (isolateStartedThread) {
+                long minimumStackSize = getJavaThreadMinimumStackSize();
+                /* Compare before adding guard zones, which can overflow for a large stack size. */
+                if (stackSize < minimumStackSize - StackOverflowCheck.singleton().yellowAndRedZoneSize()) {
+                    return minimumStackSize;
+                }
+            }
             return addStackOverflowGuardZones(stackSize);
         }
         /*
@@ -392,8 +446,7 @@ public abstract class PlatformThreads {
         return stackSize + StackOverflowCheck.singleton().yellowAndRedZoneSize();
     }
 
-    /// Returns the minimum stack size for Java threads created with an explicit `Thread`
-    /// constructor stack size.
+    /// Returns the minimum stack size for isolate-started Java threads with an explicit stack size.
     ///
     /// HotSpot keeps `_java_thread_min_stack_allowed` separate from the default Java thread stack
     /// size. It starts with an os/cpu value for the stack needed to create a Java thread and enter
@@ -403,7 +456,7 @@ public abstract class PlatformThreads {
     /// and thread start path are specific to SVM. The SVM yellow and red zones are then added so
     /// the result can be compared with [#addStackOverflowGuardZones].
     public static long getJavaThreadMinimumStackSize() {
-        long minimumStackSizeWithGuards = addStackOverflowGuardZones(USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE);
+        long minimumStackSizeWithGuards = addStackOverflowGuardZones(SubstrateGuestOptions.USABLE_JAVA_THREAD_MINIMUM_STACK_SIZE);
         long pageSize = VirtualMemoryProvider.get().getGranularity().rawValue();
         return NumUtil.roundUp(minimumStackSizeWithGuards, pageSize);
     }
@@ -588,6 +641,12 @@ public abstract class PlatformThreads {
     }
 
     @Uninterruptible(reason = "Thread is detaching and holds the ThreadsLock with exclusive write access.")
+    static void recordAllocatedBytesOfDetachedThread(IsolateThread vmThread) {
+        assert ThreadsLock.hasExclusiveWriteAccess();
+        allocatedBytesOfDetachedThreads += Heap.getHeap().getThreadAllocatedMemory(vmThread);
+    }
+
+    @Uninterruptible(reason = "Thread is detaching or the isolate is being torn down.")
     public static void detach(IsolateThread vmThread) {
         Thread thread = currentThread.get(vmThread);
         if (thread != null) {
@@ -1367,13 +1426,13 @@ public abstract class PlatformThreads {
             if (JavaThreads.isInterrupted(threadObj)) {
                 log.string(", interrupted");
             }
-        }
 
-        log.indent(true);
-        for (StackTraceElement e : threadObj.getStackTrace()) {
-            log.string(e.toString()).newline();
+            log.indent(true);
+            for (StackTraceElement e : threadObj.getStackTrace()) {
+                log.string(e.toString()).newline();
+            }
+            log.redent(false);
         }
-        log.redent(false);
     }
 
     protected static class ThreadStartRoutinePrologue implements CEntryPointOptions.Prologue {

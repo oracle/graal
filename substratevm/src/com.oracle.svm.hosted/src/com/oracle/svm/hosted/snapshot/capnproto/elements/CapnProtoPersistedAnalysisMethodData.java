@@ -197,6 +197,11 @@ record PersistedAnalysisMethodWriterAdapter(PersistedAnalysisMethod.Builder dele
     }
 
     @Override
+    public SnapshotPrimitiveList.Int.Writer initClosedFieldWrites(int size) {
+        return wrapIntListWriter(delegate.initClosedFieldWrites(size));
+    }
+
+    @Override
     public void setHostedMethodIndex(int value) {
         delegate.setHostedMethodIndex(value);
     }
@@ -376,6 +381,16 @@ record PersistedAnalysisMethodLoaderAdapter(PersistedAnalysisMethod.Reader deleg
     @Override
     public PersistedAnalysisMethodData.WrappedMethod.Loader getWrappedMethod() {
         return new WrappedMethodLoaderAdapter(delegate.getWrappedMethod());
+    }
+
+    @Override
+    public boolean hasClosedFieldWrites() {
+        return delegate.hasClosedFieldWrites();
+    }
+
+    @Override
+    public SnapshotPrimitiveList.Int.Loader getClosedFieldWrites() {
+        return wrapIntListLoader(delegate.getClosedFieldWrites());
     }
 
     @Override

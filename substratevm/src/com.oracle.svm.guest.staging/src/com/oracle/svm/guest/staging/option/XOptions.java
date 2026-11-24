@@ -59,17 +59,15 @@ public final class XOptions {
         return false;
     }
 
-    /**
-     * Sets an XOption from a name and a value (e.g., from "mx2g"). Returns true if
-     * {@code keyAndValue} denotes an existing XOption, false otherwise.
-     *
-     * @throws IllegalArgumentException if the option was recognized, but the value was not a number
-     */
-    public static boolean setOption(String keyAndValue) {
+    /// Sets an XOption from `keyAndValue` (for example, "mx2g") with `origin`.
+    /// Returns true if `keyAndValue` denotes an existing XOption, false otherwise.
+    ///
+    /// @throws IllegalArgumentException if the option was recognized, but the value was not a number
+    public static boolean setOption(String keyAndValue, RuntimeOptionValues.Origin origin) {
         XFlag xFlag = findXFlag(keyAndValue);
         if (xFlag != null) {
             long value = parse(xFlag, keyAndValue);
-            xFlag.optionKey.update(value);
+            xFlag.optionKey.update(value, origin);
             return true;
         }
         return false;

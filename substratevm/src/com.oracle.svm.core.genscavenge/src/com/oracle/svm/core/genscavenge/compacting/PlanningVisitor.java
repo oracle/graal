@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge.compacting;
 import static com.oracle.svm.core.genscavenge.HeapChunk.CHUNK_HEADER_TOP_IDENTITY;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -40,8 +40,8 @@ import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.guest.staging.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.shared.Uninterruptible;
 
@@ -52,23 +52,25 @@ import com.oracle.svm.shared.Uninterruptible;
  * or overwrite dead objects.
  */
 public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
+    private final Space space;
     private AlignedHeapChunk.AlignedHeader allocChunk;
     private Pointer allocPointer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public PlanningVisitor() {
+    public PlanningVisitor(Space compactingSpace) {
+        this.space = compactingSpace;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void init(Space space) {
-        allocChunk = space.getFirstAlignedHeapChunk();
-        allocPointer = AlignedHeapChunk.getObjectsStart(allocChunk);
+    public void init() {
+        this.allocChunk = space.getFirstAlignedHeapChunk();
+        this.allocPointer = AlignedHeapChunk.getObjectsStart(allocChunk);
     }
 
     @Override
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void visitChunk(AlignedHeapChunk.AlignedHeader chunk) {
-        boolean sweeping = chunk.getSweep();
+        boolean sweeping = GCImpl.getGCImpl().mustSweep(chunk, space);
         Pointer initialTop = HeapChunk.getTopPointer(chunk); // top doesn't move until we are done
 
         Pointer objSeq = AlignedHeapChunk.getObjectsStart(chunk);
@@ -168,26 +170,35 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private Pointer allocate(UnsignedWord size, AlignedHeapChunk.AlignedHeader currentChunk) {
         assert size.belowOrEqual(AlignedHeapChunk.getUsableSizeForObjects());
-        Pointer p = allocPointer;
-        allocPointer = p.add(size);
-        while (allocPointer.aboveThan(AlignedHeapChunk.getObjectsEnd(allocChunk))) {
-            assert !allocChunk.equal(currentChunk) : "must not advance past currently processed chunk";
-            allocChunk = HeapChunk.getNext(allocChunk);
-            assert allocChunk.isNonNull();
-            if (allocChunk.getSweep()) {
+        Pointer p;
+        if (!allocChunk.getAllPinned()) { // using this chunk would pin arbitrary objects
+            p = allocPointer;
+            allocPointer = p.add(size);
+            if (allocPointer.belowOrEqual(AlignedHeapChunk.getObjectsEnd(allocChunk))) {
+                return p;
+            }
+        }
+        do {
+            do {
+                assert !allocChunk.equal(currentChunk) : "must not advance past currently processed chunk";
+                allocChunk = HeapChunk.getNext(allocChunk);
+                assert allocChunk.isNonNull();
+            } while (allocChunk.getAllPinned());
+
+            if (GCImpl.getGCImpl().mustSweep(allocChunk, space)) {
                 p = getSweptChunkAllocationPointer(allocChunk);
             } else {
                 p = AlignedHeapChunk.getObjectsStart(allocChunk);
             }
             allocPointer = p.add(size);
-        }
+        } while (allocPointer.aboveThan(AlignedHeapChunk.getObjectsEnd(allocChunk)));
         return p;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static Pointer getSweptChunkAllocationPointer(AlignedHeapChunk.AlignedHeader chunk) {
-        assert chunk.getSweep();
-        if (GCImpl.getGCImpl().isOutOfMemoryCollection()) {
+    private Pointer getSweptChunkAllocationPointer(AlignedHeapChunk.AlignedHeader chunk) {
+        assert GCImpl.getGCImpl().mustSweep(chunk, space);
+        if (GCImpl.getGCImpl().isOutOfMemoryCollection() && !chunk.getAllPinned()) {
             return HeapChunk.getTopPointer(chunk);
         }
         /*

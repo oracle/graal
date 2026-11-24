@@ -127,7 +127,7 @@ final class IndexOfStringSetAhoCorasick extends IndexOfStringSet.SearchPlan {
             }
             // Once we have scanned maxPatternLength - 1 symbols past bestMatchStart, any future match must
             // start later and therefore cannot beat the current best match.
-            if (bestMatchStart >= 0 && i >= bestMatchStart + maxPatternLength - 1) {
+            if (bestMatchStart >= 0 && i - bestMatchStart >= maxPatternLength - 1) {
                 break;
             }
             TStringConstants.truffleSafePointPoll(location, i + 1);

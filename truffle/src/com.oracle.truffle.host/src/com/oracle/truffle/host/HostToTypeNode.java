@@ -121,11 +121,12 @@ abstract class HostToTypeNode extends Node {
 
     static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
-    public abstract Object execute(Node node, HostContext context, Object value, Class<?> targetType, Type genericType, boolean useTargetMapping);
+    // Keep the context untyped so primitive conversions can eliminate the caller's context lookup.
+    public abstract Object execute(Node node, Object context, Object value, Class<?> targetType, Type genericType, boolean useTargetMapping);
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"targetType == cachedTargetType"}, limit = "LIMIT")
-    protected static Object doCached(Node node, HostContext context,
+    protected static Object doCached(Node node, Object context,
                     Object operand,
                     Class<?> targetType,
                     Type genericType,
@@ -133,29 +134,36 @@ abstract class HostToTypeNode extends Node {
                     @CachedLibrary("operand") InteropLibrary interop,
                     @Cached("targetType") Class<?> cachedTargetType,
                     @Cached("isPrimitiveOrBigIntegerTarget(context, cachedTargetType)") boolean primitiveOrBigIntegerTarget,
-                    @Cached("allowsImplementation(context, targetType)") boolean allowsImplementation,
+                    @Cached("allowsImplementation(context, cachedTargetType)") boolean allowsImplementation,
+                    @Cached("hasTargetMappings(context, cachedTargetType)") boolean hasTargetMappings,
                     @Cached HostTargetMappingNode targetMapping,
                     @Cached InlinedBranchProfile error) {
-        return convertImpl(node, operand, cachedTargetType, genericType, allowsImplementation, primitiveOrBigIntegerTarget, context, interop, useCustomTargetTypes, targetMapping, error);
+        return convertImpl(node, operand, cachedTargetType, genericType, allowsImplementation, primitiveOrBigIntegerTarget, context, interop,
+                        useCustomTargetTypes && hasTargetMappings, targetMapping, error);
     }
 
     @TruffleBoundary
-    static boolean allowsImplementation(HostContext hostContext, Class<?> type) {
+    static boolean allowsImplementation(Object hostContext, Class<?> type) {
         if (hostContext == null) {
             return false;
         }
         if (!HostInteropReflect.isAbstractType(type)) {
             return false;
         }
-        HostClassDesc classDesc = hostContext.getHostClassCache().forClass(type);
+        HostClassDesc classDesc = ((HostContext) hostContext).getHostClassCache().forClass(type);
         return classDesc.isAllowsImplementation() && classDesc.isAllowedTargetType();
+    }
+
+    @TruffleBoundary
+    static boolean hasTargetMappings(Object context, Class<?> targetType) {
+        return HostTargetMappingNode.getMappings((HostContext) context, targetType).length != 0;
     }
 
     @Specialization(replaces = "doCached")
     @TruffleBoundary
     protected static Object doGeneric(
                     Node node,
-                    HostContext context,
+                    Object context,
                     Object operand,
                     Class<?> targetType, Type genericType,
                     boolean useTargetMapping) {
@@ -173,9 +181,9 @@ abstract class HostToTypeNode extends Node {
     }
 
     private static Object convertImpl(Node node, Object value, Class<?> targetType, Type genericType, boolean allowsImplementation, boolean primitiveOrBigIntegerTargetType,
-                    HostContext context, InteropLibrary interop, boolean useCustomTargetTypes, HostTargetMappingNode targetMapping, InlinedBranchProfile error) {
+                    Object hostContext, InteropLibrary interop, boolean useCustomTargetTypes, HostTargetMappingNode targetMapping, InlinedBranchProfile error) {
         if (useCustomTargetTypes) {
-            Object result = targetMapping.execute(node, value, targetType, context, interop, false, HIGHEST, STRICT);
+            Object result = targetMapping.execute(node, value, targetType, (HostContext) hostContext, interop, false, HIGHEST, STRICT);
             if (result != HostTargetMappingNode.NO_RESULT) {
                 return result;
             }
@@ -188,6 +196,8 @@ abstract class HostToTypeNode extends Node {
             }
         }
 
+        // Primitive conversion does not need a host context when there are no target mappings.
+        HostContext context = (HostContext) hostContext;
         Object hostValue;
         if ((hostValue = toJavaInstance(value, targetType, interop)) != null) {
             return hostValue;
@@ -369,8 +379,8 @@ abstract class HostToTypeNode extends Node {
                         CharSequence.class.isAssignableFrom(clazz);
     }
 
-    static boolean isPrimitiveOrBigIntegerTarget(HostContext context, Class<?> clazz) {
-        return isPrimitiveTarget(clazz) || (isBigIntegerNumberAccess(context) && clazz == BigInteger.class);
+    static boolean isPrimitiveOrBigIntegerTarget(Object context, Class<?> clazz) {
+        return isPrimitiveTarget(clazz) || (isBigIntegerNumberAccess((HostContext) context) && clazz == BigInteger.class);
     }
 
     static boolean isBigIntegerNumberAccess(HostContext context) {

@@ -41,6 +41,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.jdk.management.ManagementFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 import com.oracle.svm.util.JVMCIReflectionUtil;
+import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
 
@@ -64,7 +65,7 @@ public class JmxCommonFeature implements InternalFeature {
      */
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport rci = ImageSingletons.lookup(org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport.class);
+        JVMCIRuntimeClassInitializationSupport rci = JVMCIRuntimeClassInitializationSupport.singleton();
 
         rci.initializeAtBuildTime("jdk.management.jfr.SettingDescriptorInfo", "JMX support");
         rci.initializeAtBuildTime("sun.rmi.runtime.Log$LogStreamLog", "JMX support");

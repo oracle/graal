@@ -31,6 +31,7 @@ import java.lang.reflect.Field;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.function.Function;
 
 import jdk.graal.compiler.core.common.Fields;
@@ -331,8 +332,8 @@ public abstract class Edges extends Fields {
 
         @Override
         public Position next() {
-            if (needsForward) {
-                forward();
+            if (!hasNext()) {
+                throw new NoSuchElementException();
             }
             needsForward = true;
             if (index < directCount) {

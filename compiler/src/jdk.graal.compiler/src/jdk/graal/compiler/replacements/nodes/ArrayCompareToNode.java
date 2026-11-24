@@ -47,6 +47,8 @@ import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import org.graalvm.word.Pointer;
 
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 // JaCoCo Exclude
@@ -103,7 +105,7 @@ public class ArrayCompareToNode extends PureFunctionStubIntrinsicNode implements
         }
         ValueNode a1 = GraphUtil.unproxify(arrayA);
         ValueNode a2 = GraphUtil.unproxify(arrayB);
-        if (a1 == a2) {
+        if (a1 == a2 && strideA == strideB && GraphUtil.unproxify(lengthA) == GraphUtil.unproxify(lengthB)) {
             return ConstantNode.forInt(0);
         }
         return this;
@@ -113,8 +115,8 @@ public class ArrayCompareToNode extends PureFunctionStubIntrinsicNode implements
     public void virtualize(VirtualizerTool tool) {
         ValueNode alias1 = tool.getAlias(arrayA);
         ValueNode alias2 = tool.getAlias(arrayB);
-        if (alias1 == alias2) {
-            // the same virtual objects will always have the same contents
+        if (alias1 == alias2 && strideA == strideB && tool.getAlias(lengthA) == tool.getAlias(lengthB)) {
+            // Identical contents compare equal only with matching lengths and strides.
             tool.replaceWithValue(ConstantNode.forInt(0, graph()));
         }
     }
@@ -167,6 +169,11 @@ public class ArrayCompareToNode extends PureFunctionStubIntrinsicNode implements
     @Override
     public ValueNode[] getForeignCallArguments() {
         return new ValueNode[]{arrayA, lengthA, arrayB, lengthB};
+    }
+
+    @Override
+    public boolean needsExplicitZeroExtension(Architecture arch) {
+        return !(arch instanceof AMD64);
     }
 
     @Override

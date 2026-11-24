@@ -27,6 +27,7 @@ package jdk.graal.compiler.nodes.calc;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler;
+import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
@@ -49,6 +50,7 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.PrimitiveConstant;
 
 /**
  * A {@code FloatConvert} converts between integers and floating point numbers according to Java
@@ -119,6 +121,38 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
             default:
                 return false;
         }
+    }
+
+    @Override
+    public boolean preservesOrder(CanonicalCondition condition) {
+        if (getFloatConvert() == FloatConvert.UI2D) {
+            return condition == CanonicalCondition.EQ || condition.isUnsigned();
+        }
+        return isLossless();
+    }
+
+    @Override
+    public boolean preservesOrder(CanonicalCondition condition, Constant constant, ConstantReflectionProvider constantReflection) {
+        if (isUnsignedToFloatConversion() && condition != CanonicalCondition.EQ && preservesOrder(condition)) {
+            if (!(getValue().stamp(NodeView.DEFAULT) instanceof IntegerStamp inputStamp)) {
+                return false;
+            }
+            Constant reverseConverted = reverse(constant, constantReflection);
+            if (!(reverseConverted instanceof PrimitiveConstant primitiveConstant)) {
+                return false;
+            }
+            // A reverse-converted constant outside the input stamp can have the wrong signed order.
+            long signedValue = inputStamp.getBits() == Integer.SIZE ? primitiveConstant.asInt() : primitiveConstant.asLong();
+            return inputStamp.lowerBound() <= signedValue && signedValue <= inputStamp.upperBound();
+        }
+        return preservesOrder(condition);
+    }
+
+    private boolean isUnsignedToFloatConversion() {
+        return switch (getFloatConvert()) {
+            case UI2F, UL2F, UI2D, UL2D -> true;
+            default -> false;
+        };
     }
 
     public boolean inputCanBeNaN() {

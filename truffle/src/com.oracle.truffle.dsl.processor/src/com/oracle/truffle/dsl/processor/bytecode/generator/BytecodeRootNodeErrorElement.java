@@ -52,6 +52,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import javax.lang.model.element.ElementKind;
@@ -105,8 +106,12 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
         this.add(createConstructor());
         this.add(createCreate());
         if (model.enableSerialization) {
-            this.add(createSerialize());
-            this.add(createDeserialize());
+            this.add(createSerialize("serialize", false));
+            this.add(createSerialize("serializeBuilderBytecode", false));
+            this.add(createSerialize("serializeExecutionBytecode", true));
+            this.add(createDeserialize("deserialize", false));
+            this.add(createDeserialize("deserializeBuilderBytecode", false));
+            this.add(createDeserialize("deserializeExecutionBytecode", true));
         }
         this.add(createGetSourceSection());
         this.add(createIsInstrumentable());
@@ -149,9 +154,15 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
         return method;
     }
 
-    private CodeExecutableElement createSerialize() {
-        CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC), type(void.class), "serialize");
+    private CodeExecutableElement createSerialize(String name, boolean executionBytecode) {
+        CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC), type(void.class), name);
+        if (executionBytecode) {
+            method.addParameter(new CodeVariableElement(languageClass, "language"));
+        }
         method.addParameter(new CodeVariableElement(type(DataOutput.class), "buffer"));
+        if (executionBytecode) {
+            method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
+        }
         method.addParameter(new CodeVariableElement(types.BytecodeSerializer, "callback"));
         method.addParameter(new CodeVariableElement(parserType, "parser"));
         method.addThrownType(type(IOException.class));
@@ -160,12 +171,15 @@ final class BytecodeRootNodeErrorElement extends CodeTypeElement {
         return method;
     }
 
-    private CodeExecutableElement createDeserialize() {
+    private CodeExecutableElement createDeserialize(String name, boolean executionBytecode) {
         CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC),
-                        generic(types.BytecodeRootNodes, model.getTemplateType().asType()), "deserialize");
+                        generic(types.BytecodeRootNodes, model.getTemplateType().asType()), name);
         method.addParameter(new CodeVariableElement(languageClass, "language"));
         method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
-        method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "input"));
+        method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "builderBytecodeInput"));
+        if (executionBytecode) {
+            method.addParameter(new CodeVariableElement(generic(type(Function.class), types.BytecodeConfig, type(DataInput.class)), "executionBytecodeInput"));
+        }
         method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
         method.addThrownType(type(IOException.class));
         CodeTreeBuilder b = method.createBuilder();

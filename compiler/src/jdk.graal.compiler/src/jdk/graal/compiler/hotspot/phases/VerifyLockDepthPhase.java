@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -129,7 +129,7 @@ public class VerifyLockDepthPhase extends Phase {
             public boolean merge(AbstractMergeNode merge, List<LockingState> withStates) {
                 for (LockingState other : withStates) {
                     if (!locks.equals(other.locks)) {
-                        throw new LockStructureError("%s: lock depth mismatch %d != %d", merge, locks, other.locks);
+                        throw new LockStructureError("%s: lock stack mismatch %s != %s", merge, locks, other.locks);
                     }
                 }
                 return true;
@@ -164,7 +164,7 @@ public class VerifyLockDepthPhase extends Phase {
                         MonitorIdNode frameId = locks.get(depth + i);
                         MonitorIdNode stackId = current.monitorIdAt(i);
                         if (frameId != stackId) {
-                            throw new LockStructureError("%s: mismatched lock at depth % in %s: %s != %s", forNode, i, current, frameId, stackId);
+                            throw new LockStructureError("%s: mismatched lock at depth %d in %s: %s != %s", forNode, i, current, frameId, stackId);
                         }
                     }
                     current = current.outerFrameState();

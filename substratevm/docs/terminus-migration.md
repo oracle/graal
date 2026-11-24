@@ -122,6 +122,36 @@ Code must stop depending on builder-only helpers and compiler-only annotations u
 | Static builder helper such as `ImageLayerBuildingSupport` | Guest helper such as `GuestImageLayerBuildingSupport` | Use the guest helper from moved code so the moved code does not depend on builder-only packages. |
 | Builder read of a guest-owned static `RuntimeOptionKey` field | `GuestOptionKey.forField(...)` | Every `getValue()` reads in the guest context, avoiding a stale builder-side copy. |
 
+### Document Extracted Support Classes And Bridges
+
+When you extract functionality into a support class or bridge during migration, document its architectural role in the class Javadoc:
+
+- Explain who calls the class, what it provides or adapts, and which dependency constraint requires the separation.
+- Use the established [context and lifecycle terminology](terminus-terminology.md).
+  Describe builder-side or guest-side roles rather than inventing architectural labels such as "core-side" from package names.
+- Record the verified origin of extracted functionality and why it remains separate from the migrated code.
+  Preserve relevant rationale so future changes can reassess the boundary without reconstructing its history.
+- Describe known conditions for reconsidering the split without promising removal.
+  Call the class temporary only when that lifecycle is established; otherwise explain that it may remain a builder/guest bridge.
+
+### Document Guest-to-Builder Proxy Contracts
+
+[`@GuestInvoked`](../src/com.oracle.svm.util/src/com/oracle/svm/util/GuestInvoked.java) marks a builder-side method called by the guest through a host proxy.
+Use [`@GuestType`](../src/com.oracle.svm.util/src/com/oracle/svm/util/GuestType.java) on guest values represented by builder-side parameters or return values when the expected type is useful.
+`@GuestType` is informational and also applies outside proxy callbacks.
+
+If a class literal becomes inaccessible, use `typeName` rather than adding a dependency just for the hint, for example `@GuestType(typeName = "com.example.guest.Node[]")`.
+Use `Class.getTypeName()` format: dots for packages, `$` for nested classes, and `[]` for arrays.
+
+### Document Temporary Declaration Types
+
+Use [`@ShouldBe`](../src/com.oracle.svm.shared/src/com/oracle/svm/shared/ShouldBe.java) when a declaration temporarily uses a less precise Java type because its intended type is not visible from the migrated module.
+Specify `typeName` using `Class.getTypeName()` format, for example `@ShouldBe(typeName = "com.example.runtime.Node") Object node`, and keep the migration condition and tracking issue nearby.
+Unlike `@GuestType`, which describes the guest type represented by a builder-side value, `@ShouldBe` describes the future source type of the annotated declaration.
+
+Use `@ShouldBe` only when the current value is still an instance of the intended type.
+Do not use it when a temporary API changes the value representation, such as replacing an object with an offset, or combines multiple eventual types or overloads; preserve a precise migration comment instead.
+
 ### Preserve Guest Module Encapsulation
 
 Never add an `opens` edge from `SVM_GUEST` or `SVM_GUEST_STAGING` to `org.graalvm.nativeimage.builder`.

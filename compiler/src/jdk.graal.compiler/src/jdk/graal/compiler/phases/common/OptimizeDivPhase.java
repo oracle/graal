@@ -175,6 +175,8 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
             // not found, create a new one (will be optimized away later)
             ValueNode div = rem.graph().addOrUniqueWithInputs(createDiv(rem));
             if (div instanceof FixedNode) {
+                // Preserve the deoptimization state when running after frame state assignment.
+                ((IntegerDivRemNode) div).setStateBefore(rem.stateBefore());
                 rem.graph().addAfterFixed(rem, (FixedNode) div);
             }
             return div;

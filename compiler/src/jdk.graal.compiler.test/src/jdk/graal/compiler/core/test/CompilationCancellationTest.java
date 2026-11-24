@@ -39,7 +39,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Test;
 
-import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.common.CancellationBailoutException;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
@@ -216,7 +215,7 @@ public class CompilationCancellationTest extends GraalCompilerTest {
         PEGraphDecoder decoder = new PEGraphDecoder(getTarget().arch, graph, getProviders(), null, new InvocationPlugins(), new InlineInvokePlugin[0], null,
                         new NodePlugin[0], null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), false, false) {
             @Override
-            protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
+            protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method) {
                 return encoded;
             }
 

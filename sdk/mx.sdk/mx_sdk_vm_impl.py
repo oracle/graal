@@ -1283,8 +1283,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 build_args += ['-ea', '-O0',] + svm_experimental_options(['-H:+PreserveFramePointer', '-H:-DeleteLocalSymbols'])
             if _get_svm_support().generate_debug_info(image_config):
                 build_args += _get_svm_support().get_debug_flags(image_config)
-            if getattr(image_config, 'link_at_build_time', True):
-                build_args += ['--link-at-build-time']
+            link_at_build_time_index = len(build_args)
 
             location_classpath = self._get_location_classpath()
             graalvm_home = _get_graalvm_archive_path("", self._graalvm_dist)
@@ -1381,6 +1380,10 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if build_with_module_path:
                 export_deps_to_exclude = [str(dep) for dep in mx.classpath_entries(NativePropertiesBuildTask.implicit_excludes)] + list(_known_missing_jars)
                 build_args += image_config.get_add_exports(set(export_deps_to_exclude))
+
+            if getattr(image_config, 'link_at_build_time', True) and not any(
+                            arg == '--link-at-build-time' or arg.startswith('--link-at-build-time=') for arg in build_args):
+                build_args.insert(link_at_build_time_index, '--link-at-build-time')
 
             requires = [arg[2:] for arg in build_args if arg.startswith('--language:') or arg.startswith('--tool:') or arg.startswith('--macro:')]
             build_args = [arg for arg in build_args if not (arg.startswith('--language:') or arg.startswith('--tool:') or arg.startswith('--macro:'))]

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -82,6 +82,48 @@ public class CountedLoopOverflowTest extends GraalCompilerTest {
             }
             break;
         }
+    }
+
+    public static int snippetUnsignedNegativeBound(int step) {
+        int i = 0;
+        int sum = 0;
+        int count = 0;
+        while (Integer.compareUnsigned(i, -100) < 0 && count < 1000) {
+            sum += i;
+            i += step;
+            count++;
+        }
+        return sum;
+    }
+
+    public static int snippetUnsignedNegativeBoundDown(int step) {
+        int i = 0;
+        int sum = 0;
+        int count = 999;
+        while (Integer.compareUnsigned(i, -100) < 0 && count >= 0) {
+            sum += i;
+            i += step;
+            count--;
+        }
+        return sum;
+    }
+
+    @Test
+    public void testUnsignedNegativeBound() {
+        // Mature the unsigned exit profile so the parser replaces its untaken branch with a deopt.
+        for (int i = 0; i < 5000; i++) {
+            snippetUnsignedNegativeBound(5);
+            snippetUnsignedNegativeBoundDown(5);
+        }
+        test("snippetUnsignedNegativeBound", 5);
+        test("snippetUnsignedNegativeBoundDown", 5);
+
+        // The unsigned check first fails on the final header visit: 1000 * step wraps to -96.
+        int step = 219043332;
+        ResolvedJavaMethod method = getResolvedJavaMethod("snippetUnsignedNegativeBound");
+        int deoptsBefore = method.getProfilingInfo().getDeoptimizationCount(DeoptimizationReason.UnreachedCode);
+        assertEquals(new Result((int) (step * 999L * 1000 / 2), null), executeActual(method, null, step));
+        assertTrue(method.getProfilingInfo().getDeoptimizationCount(DeoptimizationReason.UnreachedCode) > deoptsBefore);
     }
 
     @Override

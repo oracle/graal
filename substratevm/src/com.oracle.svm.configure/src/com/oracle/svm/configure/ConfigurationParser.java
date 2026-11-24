@@ -83,6 +83,7 @@ public abstract class ConfigurationParser {
     public static final String MODULE_KEY = "module";
     public static final String GLOB_KEY = "glob";
     public static final String BUNDLE_KEY = "bundle";
+    public static final String REASON_KEY = "reason";
     private final EconomicMap<String, EconomicSet<String>> seenUnknownAttributesByType = EconomicMap.create();
     private final EnumSet<ConfigurationParserOption> parserOptions;
     /* Build-time reporting state; the parser itself can also be used from image runtime code. */
@@ -153,7 +154,7 @@ public abstract class ConfigurationParser {
 
     public Object getFromGlobalFile(Object json, String key) {
         EconomicMap<String, Object> map = asMap(json, "top level of reachability metadata file must be an object");
-        checkAttributes(map, "reachability metadata", Collections.emptyList(), List.of(REFLECTION_KEY, JNI_KEY, SERIALIZATION_KEY, RESOURCES_KEY, BUNDLES_KEY, FOREIGN_KEY, "reason", "comment"));
+        checkAttributes(map, "reachability metadata", Collections.emptyList(), List.of(REFLECTION_KEY, JNI_KEY, SERIALIZATION_KEY, RESOURCES_KEY, BUNDLES_KEY, FOREIGN_KEY, REASON_KEY, "comment"));
         return map.get(key);
     }
 
@@ -355,13 +356,10 @@ public abstract class ConfigurationParser {
     }
 
     protected ConfigurationMethodDescriptor parseMethod(EconomicMap<String, Object> methodJson) {
-        checkAttributes(methodJson, "method descriptor", List.of(NAME_KEY), List.of(PARAMETER_TYPES_KEY));
+        checkAttributes(methodJson, "method descriptor", List.of(NAME_KEY, PARAMETER_TYPES_KEY));
         String name = asString(methodJson.get(NAME_KEY));
-        List<NamedConfigurationTypeDescriptor> parameterTypes = null;
-        if (methodJson.containsKey(PARAMETER_TYPES_KEY)) {
-            List<?> parameterTypesStrings = asList(methodJson.get(PARAMETER_TYPES_KEY), "parameter types list");
-            parameterTypes = parameterTypesStrings.stream().map(s -> NamedConfigurationTypeDescriptor.fromJSONName(asString(s))).toList();
-        }
+        List<?> parameterTypesStrings = asList(methodJson.get(PARAMETER_TYPES_KEY), "parameter types list");
+        List<NamedConfigurationTypeDescriptor> parameterTypes = parameterTypesStrings.stream().map(s -> NamedConfigurationTypeDescriptor.fromJSONName(asString(s))).toList();
         return new ConfigurationMethodDescriptor(name, parameterTypes);
     }
 }

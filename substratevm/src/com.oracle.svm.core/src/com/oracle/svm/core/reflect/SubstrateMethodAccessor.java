@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.nodes.LoadMethodByIndexNode;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointerForCallerSensitiveAdapter;
 import com.oracle.svm.shared.util.VMError;

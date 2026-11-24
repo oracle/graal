@@ -130,6 +130,23 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
         return getArithmeticOp().getShiftAmountMask(stamp(NodeView.DEFAULT));
     }
 
+    /// Gets the constant shift distance with the implicit mask of this operation applied, as specified
+    /// in [JLS 15.19 (Shift Operators)](https://docs.oracle.com/javase/specs/jls/se25/html/jls-15.html#jls-15.19).
+    ///
+    /// A graph need not be fully canonicalized, so `getY()` can contain a negative or
+    /// oversized constant. Code that interprets that constant must use this method rather than
+    /// read its raw value. For example, an int shift by -1 has distance 31, and an int shift by
+    /// 33 has distance 1 even when the caller performs its calculation in long arithmetic.
+    /// For SIMD shifts by a scalar constant, this method masks the distance according to the width
+    /// of each vector element.
+    ///
+    /// @return the masked distance
+    /// @throws AssertionError if `getY()` is not a Java constant
+    public final int getConstantShiftAmount() {
+        assert getY().isJavaConstant() : getY();
+        return getY().asJavaConstant().asInt() & getShiftAmountMask();
+    }
+
     @Override
     public boolean isNarrowable(int resultBits) {
         assert CodeUtil.isPowerOf2(resultBits);

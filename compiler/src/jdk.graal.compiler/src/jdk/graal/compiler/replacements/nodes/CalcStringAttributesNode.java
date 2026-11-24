@@ -346,6 +346,11 @@ public final class CalcStringAttributesNode extends PureFunctionStubIntrinsicNod
     }
 
     @Override
+    public boolean needsExplicitZeroExtension(Architecture arch) {
+        return false;
+    }
+
+    @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
         gen.setResult(this, gen.getLIRGeneratorTool().emitCalcStringAttributes(encoding, getRuntimeCheckedCPUFeatures(), gen.operand(array), gen.operand(offset), gen.operand(length), assumeValid));
     }

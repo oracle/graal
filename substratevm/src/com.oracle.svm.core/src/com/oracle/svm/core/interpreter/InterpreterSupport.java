@@ -26,6 +26,8 @@ package com.oracle.svm.core.interpreter;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import java.lang.reflect.Executable;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -43,7 +45,10 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.PreparedSignature;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.jni.CallVariant;
+import com.oracle.svm.core.jni.headers.JNIFieldId;
+import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.guest.staging.log.Log;
@@ -54,6 +59,7 @@ import com.oracle.svm.shared.util.VMError;
 import jdk.graal.compiler.api.directives.BytecodeInterpreterDirectives.BytecodeInterpreterHandler;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -72,6 +78,18 @@ public abstract class InterpreterSupport {
     private CFunctionPointer nativeDowncallStubPointer;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterCompilation.class) //
     private int nativeDowncallStubLength;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
+    private CFunctionPointer interpreterJNIUpcallVarargsVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
+    private CFunctionPointer interpreterJNIUpcallArrayVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
+    private CFunctionPointer interpreterJNIUpcallVaListVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
+    private CFunctionPointer interpreterJNIUpcallVarargsNonVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
+    private CFunctionPointer interpreterJNIUpcallArrayNonVirtualWrapperEntryPoint;
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
+    private CFunctionPointer interpreterJNIUpcallVaListNonVirtualWrapperEntryPoint;
 
     @Fold
     public static boolean isEnabled() {
@@ -81,6 +99,35 @@ public abstract class InterpreterSupport {
     @Fold
     public static InterpreterSupport singleton() {
         return ImageSingletons.lookup(InterpreterSupport.class);
+    }
+
+    /** Gets the JNI upcall wrapper entry point for the requested call variant. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public final CFunctionPointer getInterpreterJNIUpcallWrapperEntryPoint(CallVariant variant, boolean nonVirtual) {
+        CFunctionPointer result;
+        if (variant == CallVariant.VARARGS) {
+            result = nonVirtual ? interpreterJNIUpcallVarargsNonVirtualWrapperEntryPoint : interpreterJNIUpcallVarargsVirtualWrapperEntryPoint;
+        } else if (variant == CallVariant.ARRAY) {
+            result = nonVirtual ? interpreterJNIUpcallArrayNonVirtualWrapperEntryPoint : interpreterJNIUpcallArrayVirtualWrapperEntryPoint;
+        } else if (variant == CallVariant.VA_LIST) {
+            result = nonVirtual ? interpreterJNIUpcallVaListNonVirtualWrapperEntryPoint : interpreterJNIUpcallVaListVirtualWrapperEntryPoint;
+        } else {
+            throw VMError.shouldNotReachHereUnexpectedInput(variant);
+        }
+        VMError.guarantee(result.isNonNull(), "entry point for interpreter JNI upcall wrapper was not set up at build time");
+        return result;
+    }
+
+    /** Sets the JNI upcall wrapper entry points for all JNI call variants that invoke interpreted methods. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public final void setInterpreterJNIUpcallWrapperEntryPoints(CFunctionPointer varargsVirtual, CFunctionPointer arrayVirtual, CFunctionPointer vaListVirtual,
+                    CFunctionPointer varargsNonVirtual, CFunctionPointer arrayNonVirtual, CFunctionPointer vaListNonVirtual) {
+        interpreterJNIUpcallVarargsVirtualWrapperEntryPoint = varargsVirtual;
+        interpreterJNIUpcallArrayVirtualWrapperEntryPoint = arrayVirtual;
+        interpreterJNIUpcallVaListVirtualWrapperEntryPoint = vaListVirtual;
+        interpreterJNIUpcallVarargsNonVirtualWrapperEntryPoint = varargsNonVirtual;
+        interpreterJNIUpcallArrayNonVirtualWrapperEntryPoint = arrayNonVirtual;
+        interpreterJNIUpcallVaListNonVirtualWrapperEntryPoint = vaListNonVirtual;
     }
 
     /**
@@ -443,6 +490,17 @@ public abstract class InterpreterSupport {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used for crash log")
     public abstract void logInterpreterFrame(Log log, FrameInfoQueryResult frameInfo, Pointer sp, int threadedHandlerBCI);
 
+    /// Prints source information for a Ristretto frame whose encoded source fields are missing.
+    /// Like [#getSyntheticMethodFrameInfo(FrameInfoQueryResult)], this recovers the real source location
+    /// from the retained interpreter method. It writes directly to `log` instead of allocating a
+    /// synthetic [FrameSourceInfo] wrapper.
+    ///
+    /// @param log the diagnostic log
+    /// @param frameInfo metadata for the frame being printed
+    /// @return `true` if source information was printed
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used for crash log")
+    public abstract boolean logRistrettoFrame(Log log, FrameInfoQueryResult frameInfo);
+
     /**
      * Constructs an interpreter-target deoptimized frame for {@code installedCode}.
      */
@@ -481,6 +539,40 @@ public abstract class InterpreterSupport {
     }
 
     public abstract Class<?> toClass(ResolvedJavaType resolvedJavaType);
+
+    /** Gets the executable encoded by an interpreter JNI method ID. */
+    public abstract Executable getJNIMethodExecutable(JNIMethodId methodId);
+
+    /** Returns whether a usable interpreter JNI method ID can be created for {@code method}. */
+    public abstract boolean canCreateJNIMethodId(ResolvedJavaMethod method);
+
+    /**
+     * Gets or creates a JNI method ID for an interpreter-backed {@code method} for which
+     * {@link #canCreateJNIMethodId(ResolvedJavaMethod)} is {@code true}.
+     */
+    public abstract JNIMethodId getOrCreateJNIMethodId(ResolvedJavaMethod method);
+
+    /** Gets an interpreter method in {@code clazz} with {@code name} and {@code signature}. */
+    public abstract ResolvedJavaMethod lookupMethodForJNI(Class<?> clazz, String name, String signature);
+
+    /** Returns whether a usable interpreter JNI field ID can be created for {@code field}. */
+    public abstract boolean canCreateJNIFieldId(ResolvedJavaField field);
+
+    /**
+     * Gets or creates a JNI field ID for an interpreter-backed {@code field} for which
+     * {@link #canCreateJNIFieldId(ResolvedJavaField)} is {@code true}.
+     */
+    public abstract JNIFieldId getOrCreateJNIFieldId(ResolvedJavaField field);
+
+    /** Gets an interpreter field in {@code clazz} with {@code name}, {@code signature}, and {@code isStatic}. */
+    public abstract ResolvedJavaField lookupFieldForJNI(Class<?> clazz, String name, String signature, boolean isStatic);
+
+    /** Gets the interpreter field metadata encoded by {@code fieldId} in the context of {@code clazz}. */
+    public abstract ResolvedJavaField getJNIField(Class<?> clazz, JNIFieldId fieldId, boolean isStatic);
+
+    /** Gets the static storage base encoded by an interpreter JNI field ID. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public abstract Object getJNIStaticFieldBase(JNIFieldId fieldId, boolean primitive);
 
     public abstract PreparedSignature prepareSignature(Signature signature, boolean hasReceiver, ResolvedJavaType accessingClass);
 

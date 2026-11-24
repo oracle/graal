@@ -52,6 +52,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -95,6 +96,31 @@ public class WasmPolyglotTestSuite {
             Value mainFunction = context.eval(source).newInstance().getMember("exports").getMember("main");
             Value result = mainFunction.execute();
             Assert.assertEquals("Should be equal: ", 42, result.asInt());
+        }
+    }
+
+    @Test
+    public void concurrentContextAccessDenied() throws IOException, InterruptedException {
+        Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryReturnConst), "main").build();
+        try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
+            context.eval(source);
+            AtomicReference<RuntimeException> failure = new AtomicReference<>();
+            context.enter();
+            try {
+                Thread thread = new Thread(() -> {
+                    try {
+                        context.enter();
+                        context.leave();
+                    } catch (RuntimeException e) {
+                        failure.set(e);
+                    }
+                });
+                thread.start();
+                thread.join();
+            } finally {
+                context.leave();
+            }
+            Assert.assertTrue("Concurrent access should be rejected.", failure.get() instanceof IllegalStateException);
         }
     }
 

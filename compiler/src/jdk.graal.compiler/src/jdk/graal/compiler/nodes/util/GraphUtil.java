@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -1120,11 +1121,12 @@ public class GraphUtil {
 
                     @Override
                     public FixedNode next() {
-                        try {
-                            return current;
-                        } finally {
-                            current = (FixedNode) current.predecessor();
+                        if (!hasNext()) {
+                            throw new NoSuchElementException();
                         }
+                        FixedNode result = current;
+                        current = (FixedNode) current.predecessor();
+                        return result;
                     }
                 };
             }

@@ -28,7 +28,9 @@ package jdk.graal.compiler.loop.test;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
+import jdk.graal.compiler.options.OptionValues;
 
 public class AggressivePartialUnrollRegression2Test extends GraalCompilerTest {
 
@@ -89,5 +91,30 @@ public class AggressivePartialUnrollRegression2Test extends GraalCompilerTest {
     @Test
     public void runTest() {
         test("snippet");
+    }
+
+    /** Exercises cleanup of a deleted stride marker retained during partial unrolling. */
+    public static long deletedUnrolledStrideSnippet(long p0) {
+        long h = 0;
+        int v1 = Integer.MAX_VALUE;
+        long v3 = 0L;
+        int i1 = -467296;
+        while (Integer.compareUnsigned(i1, ((int) p0 & 0xFFFF) << 16) <= 0) {
+            int limit = i1 + ((int) p0 & 7);
+            int i2 = i1;
+            for (; i2 < limit; i2 += 2) {
+                long t2 = v1 + v3;
+                v1 = (int) v3;
+                v3 = t2;
+            }
+            i1 += 1073741824;
+        }
+        return h;
+    }
+
+    @Test
+    public void testDeletedUnrolledStride() {
+        OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.PartialUnroll, true);
+        test(options, "deletedUnrolledStrideSnippet", 5L);
     }
 }

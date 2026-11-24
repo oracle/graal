@@ -100,6 +100,7 @@ public final class WasmTable implements TruffleObject, EmbedderDataHolder {
         assert Integer.compareUnsigned(maxAllowedSize, MAX_TABLE_INSTANCE_SIZE) <= 0;
         assert !indexType64 || compareUnsigned(declaredMaxSize, MAX_TABLE_64_DECLARATION_SIZE) <= 0;
         assert indexType64 || Integer.compareUnsigned((int) declaredMaxSize, MAX_TABLE_DECLARATION_SIZE) <= 0;
+        assert initialValue == WasmConstant.NULL || elemType.matchesValue(initialValue);
 
         this.declaredMinSize = declaredMinSize;
         this.declaredMaxSize = declaredMaxSize;
@@ -257,6 +258,7 @@ public final class WasmTable implements TruffleObject, EmbedderDataHolder {
      */
     @TruffleBoundary
     public long grow(long delta, Object value) {
+        assert elemType.matchesValue(value);
         final int size = size();
         if (compareUnsigned(delta, Integer.toUnsignedLong(maxAllowedSize - size)) <= 0) {
             final int targetSize = size + (int) delta;

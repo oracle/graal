@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,11 +34,11 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.code.CodeCacheManagerMXBean;
 import com.oracle.svm.core.code.CodeCachePoolMXBean;
+import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.BuiltinTraits.PartiallyLayerAware;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -47,8 +47,10 @@ import jdk.graal.compiler.api.replacements.Fold;
  * Keeps track of all GC-related MX beans. The actual implementation of this class is GC-specific.
  * Note that multiple instances of this class may be in the same image if the image contains more
  * than one garbage collector.
+ * In layered images, all layers share the registry created in the initial layer so that management
+ * lookups and GC notifications refer to the same bean instances.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class, other = PartiallyLayerAware.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
 public class GCRelatedMXBeans {
     protected final ManagementSupport.MXBeans beans = new ManagementSupport.MXBeans();
 
@@ -58,7 +60,7 @@ public class GCRelatedMXBeans {
         beans.addList(MemoryPoolMXBean.class, List.of(new CodeCachePoolMXBean.CodeAndDataPool(), new CodeCachePoolMXBean.NativeMetadataPool()));
     }
 
-    @Fold
+    @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static ManagementSupport.MXBeans mxBeans() {
         return ImageSingletons.lookup(GCRelatedMXBeans.class).beans;
     }

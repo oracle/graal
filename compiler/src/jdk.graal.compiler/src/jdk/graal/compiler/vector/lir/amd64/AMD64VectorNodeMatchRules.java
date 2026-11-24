@@ -80,7 +80,6 @@ import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.memory.AddressableMemoryAccess;
 import jdk.graal.compiler.nodes.memory.LIRLowerableAccess;
-import jdk.graal.compiler.nodes.memory.WriteNode;
 import jdk.graal.compiler.vector.lir.VectorLIRGeneratorTool;
 import jdk.graal.compiler.vector.nodes.simd.SimdStamp;
 import jdk.vm.ci.amd64.AMD64;
@@ -297,17 +296,10 @@ public class AMD64VectorNodeMatchRules extends AMD64NodeMatchRules {
         }
     }
 
-    @Override
-    public ComplexMatchResult writeNarrow(WriteNode root, NarrowNode narrow) {
-        Stamp stamp = narrow.stamp(NodeView.DEFAULT);
-        if (stamp instanceof SimdStamp) {
-            return null;
-        } else {
-            return super.writeNarrow(root, narrow);
-        }
-    }
-
     private ComplexMatchResult emitConvertMemory(PlatformKind kind, VexRMOp op, AVXSize size, LIRLowerableAccess access) {
+        if (hasFoldedExtension(access)) {
+            return null;
+        }
         return builder -> {
             Variable result = getLIRGeneratorTool().newVariable(LIRKind.value(kind));
             AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
@@ -317,6 +309,9 @@ public class AMD64VectorNodeMatchRules extends AMD64NodeMatchRules {
     }
 
     private ComplexMatchResult emitConvertMemory(PlatformKind kind, VexRVMOp op, LIRLowerableAccess access) {
+        if (hasFoldedExtension(access)) {
+            return null;
+        }
         return builder -> {
             Variable result = getLIRGeneratorTool().newVariable(LIRKind.value(kind));
             AMD64AddressValue address = (AMD64AddressValue) operand(access.getAddress());
@@ -469,12 +464,12 @@ public class AMD64VectorNodeMatchRules extends AMD64NodeMatchRules {
     @Override
     public ComplexMatchResult rotateLeftConstant(LeftShiftNode lshift, UnsignedRightShiftNode rshift) {
         if (lshift.stamp(NodeView.DEFAULT) instanceof SimdStamp simdStamp) {
-            JavaConstant lshiftConst = lshift.getY().asJavaConstant();
-            JavaConstant rshiftConst = rshift.getY().asJavaConstant();
-            if (supportsVectorRotate() && isRotateElementSizeSupported(simdStamp) && (lshift.getShiftAmountMask() & (lshiftConst.asInt() + rshiftConst.asInt())) == 0) {
+            int lshiftAmount = lshift.getConstantShiftAmount();
+            int rshiftAmount = rshift.getConstantShiftAmount();
+            if (supportsVectorRotate() && isRotateElementSizeSupported(simdStamp) && (lshift.getShiftAmountMask() & (lshiftAmount + rshiftAmount)) == 0) {
                 return builder -> {
                     Value input = operand(lshift.getX());
-                    Value rotateCount = new ConstantValue(LIRKind.value(AMD64Kind.DWORD), lshiftConst);
+                    Value rotateCount = new ConstantValue(LIRKind.value(AMD64Kind.DWORD), JavaConstant.forInt(lshiftAmount));
                     return getArithmeticLIRGenerator().emitRol(input, rotateCount);
                 };
             }

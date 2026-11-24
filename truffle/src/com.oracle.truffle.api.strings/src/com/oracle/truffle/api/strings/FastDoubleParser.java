@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -437,6 +437,7 @@ final class FastDoubleParser {
         // Parse exponent number
         // ---------------------
         long expNumber = 0;
+        boolean exponentTruncated = false;
         final boolean hasExponent = (ch == 'e') || (ch == 'E');
         if (hasExponent) {
             ch = ++index < endIndex ? readValue(arrayA, offsetA, lengthA, strideA, index) : 0;
@@ -451,6 +452,8 @@ final class FastDoubleParser {
                 // Guard against overflow of exp_number
                 if (expNumber < MINIMAL_EIGHT_DIGIT_INTEGER) {
                     expNumber = 10 * expNumber + ch - '0';
+                } else {
+                    exponentTruncated = true;
                 }
                 ch = ++index < endIndex ? readValue(arrayA, offsetA, lengthA, strideA, index) : 0;
             } while (isDigit(ch));
@@ -491,7 +494,8 @@ final class FastDoubleParser {
         }
 
         double result = FastDoubleMath.decFloatLiteralToDouble(index, isNegative, digits, exponent, virtualIndexOfPoint, expNumber, isDigitsTruncated, skipCountInTruncatedDigits);
-        return Double.isNaN(result) ? parseViaJavaString(location, arrayA, offsetA, strideA, startIndex, len) : result;
+        // A long significand can cancel a truncated exponent and yield an incorrect finite result.
+        return (Double.isNaN(result) || exponentTruncated) ? parseViaJavaString(location, arrayA, offsetA, strideA, startIndex, len) : result;
     }
 
     /**
@@ -587,6 +591,7 @@ final class FastDoubleParser {
         // Parse exponent number
         // ---------------------
         long expNumber = 0;
+        boolean exponentTruncated = false;
         final boolean hasExponent = (ch == 'p') || (ch == 'P');
         if (hasExponent) {
             ch = ++index < endIndex ? readValue(arrayA, offsetA, lengthA, strideA, index) : 0;
@@ -601,6 +606,8 @@ final class FastDoubleParser {
                 // Guard against overflow of exp_number
                 if (expNumber < MINIMAL_EIGHT_DIGIT_INTEGER) {
                     expNumber = 10 * expNumber + ch - '0';
+                } else {
+                    exponentTruncated = true;
                 }
                 ch = ++index < endIndex ? readValue(arrayA, offsetA, lengthA, strideA, index) : 0;
             } while (isDigit(ch));
@@ -613,7 +620,7 @@ final class FastDoubleParser {
         // Skip trailing whitespace
         // ------------------------
         index = skipWhitespace(arrayA, offsetA, lengthA, strideA, index, endIndex);
-        if (index < endIndex || digitCount == 0 && readValue(arrayA, offsetA, lengthA, strideA, virtualIndexOfPoint) != '.' || !hasExponent) {
+        if (index < endIndex || digitCount == 0 || !hasExponent) {
             throw numberFormatException(a, startIndex, len, Reason.EMPTY);
         }
 
@@ -643,7 +650,8 @@ final class FastDoubleParser {
         }
 
         double d = FastDoubleMath.hexFloatLiteralToDouble(index, isNegative, digits, exponent, virtualIndexOfPoint, expNumber, isDigitsTruncated, skipCountInTruncatedDigits);
-        return Double.isNaN(d) ? parseViaJavaString(location, arrayA, offsetA, strideA, startIndex, len) : d;
+        // A long significand can cancel a truncated exponent and yield an incorrect finite result.
+        return (Double.isNaN(d) || exponentTruncated) ? parseViaJavaString(location, arrayA, offsetA, strideA, startIndex, len) : d;
     }
 
     private static int skipWhitespace(byte[] arrayA, long offsetA, int lengthA, int strideA, int startIndex, int endIndex) {

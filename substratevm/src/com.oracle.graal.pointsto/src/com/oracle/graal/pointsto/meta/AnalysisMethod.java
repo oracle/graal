@@ -395,10 +395,19 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     public void setPinnedToInitialLayer() {
         BigBang bigbang = getUniverse().getBigbang();
         AnalysisError.guarantee(bigbang.getHostVM().buildingInitialLayer(), "Methods can only be pinned to the initial layer: %s", this);
-        boolean nonAbstractInstanceClass = !declaringClass.isArray() && declaringClass.isInstanceClass() && !declaringClass.isAbstract();
-        AnalysisError.guarantee(nonAbstractInstanceClass, "Only methods from non abstract instance class can be pinned: %s", this);
-        bigbang.forcedAddRootMethod(this, true, "pinned to initial layer");
-        if (!isStatic()) {
+        AnalysisError.guarantee(declaringClass.isInstanceClass() && isConcrete(), "Only concrete methods declared in instance classes can be pinned to the initial layer: %s", this);
+        if (!isStatic() && declaringClass.isAbstract()) {
+            /*
+             * Wait for concrete receiver types before analyzing the body. Forcing analysis without
+             * receivers would leave the formal input states empty, even though this method must be
+             * usable by callers in later layers. The hosted compilation support checks that a
+             * receiver was registered before analysis finishes.
+             */
+            bigbang.addRootMethod(this, true, "pinned to initial layer");
+        } else {
+            bigbang.forcedAddRootMethod(this, true, "pinned to initial layer");
+        }
+        if (!isStatic() && !declaringClass.isAbstract()) {
             declaringClass.registerAsInstantiated("declared method " + this.format("%H.%n(%p)") + " is pinned to initial layer");
         }
         setNewCompilationBehavior(LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER);

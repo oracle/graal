@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,6 +53,7 @@ import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodePosition;
@@ -86,7 +87,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
         dynamicHubInitializer = new DynamicHubInitializer(this);
-        customTypeFieldHandler = new CustomTypeFieldHandler(this, metaAccess);
+        customTypeFieldHandler = new CustomTypeFieldHandler(metaAccess);
         callChecker = new CallChecker();
     }
 
@@ -98,6 +99,11 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     @Override
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod methodFlow, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
         return HostedConfiguration.instance().createMethodTypeFlowBuilder(bb, methodFlow, flowsGraph, graphKind);
+    }
+
+    @Override
+    public void processSnippetGraph(StructuredGraph graph) {
+        registerUsedElements(graph, true);
     }
 
     @Override

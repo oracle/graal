@@ -87,7 +87,6 @@ import javax.security.auth.login.Configuration;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
@@ -96,10 +95,10 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.jdk.SecurityProvidersSupport;
+import com.oracle.svm.core.jdk.LayeredSecurityProvidersSupport;
+import com.oracle.svm.core.jdk.RuntimeSecurityProvidersSupport;
 import com.oracle.svm.core.jdk.SecuritySubstitutions;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -107,6 +106,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
@@ -119,6 +119,7 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
+import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
 import com.oracle.svm.util.TypeResult;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
@@ -126,7 +127,9 @@ import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeJNIAccess;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.options.Option;
 import jdk.internal.access.SharedSecrets;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.security.jca.ProviderList;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
@@ -193,6 +196,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static final String SIGNATURE_SERVICE = "Signature";
     private static final String CIPHER_SERVICE = "Cipher";
     private static final String KEY_AGREEMENT_SERVICE = "KeyAgreement";
+    private static final String KEM_SERVICE = "KEM";
     private static final String KEY_STORE = "KeyStore";
     private static final String CERTIFICATE_FACTORY = "CertificateFactory";
     private static final String JKS = "JKS";
@@ -263,13 +267,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
-        if (FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
-            ImageSingletons.add(SecurityProvidersSupport.class, new SecurityProvidersSupport(Options.AdditionalSecurityProviders.getValue().values()));
-        }
-
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), true, "java.base", "sun.security.ssl");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
+        JVMCIRuntimeClassInitializationSupport.singleton().initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
                         "Force initialization of sun.security.krb5.KerberosSecrets.javaxSecurityAuthKerberosAccess");
     }
 
@@ -286,13 +287,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             classCacheField = access.findField(Service.class, "classCache");
             constructorCacheField = access.findField(Service.class, "constructorCache");
         } else {
-            SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SecuritySubstitutions.class, false, "java.base", "sun.security.ec");
-            ResolvedJavaMethod sunECConstructor = constructor(a, "sun.security.ec.SunEC");
-            support.setSunECConstructor((Constructor<?>) OriginalMethodProvider.getJavaMethod(sunECConstructor));
-
             Properties securityProperties = SharedSecrets.getJavaSecurityPropertiesAccess().getInitialProperties();
-            support.setSavedInitialSecurityProperties(securityProperties);
+            ImageSingletons.add(LayeredSecurityProvidersSupport.class, new LayeredSecurityProvidersSupport(Options.AdditionalSecurityProviders.getValue().values(), securityProperties));
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SecuritySubstitutions.class, false, "java.base", "sun.security.ec");
+            if (ImageLayerBuildingSupport.lastImageBuild()) {
+                ResolvedJavaMethod sunECConstructor = constructor(a, "sun.security.ec.SunEC");
+                Constructor<?> javaSunECConstructor = (Constructor<?>) OriginalMethodProvider.getJavaMethod(sunECConstructor);
+                javaSunECConstructor.setAccessible(true);
+                ImageSingletons.add(RuntimeSecurityProvidersSupport.class, new RuntimeSecurityProvidersSupport(javaSunECConstructor, securityProperties));
+            }
 
             /*
              * For the three providers below, their packages are explicitly initialized at build
@@ -309,9 +312,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          * The SecureRandom implementations open the /dev/random and /dev/urandom files which are
          * used as sources for entropy. These files are opened in the static initializers.
          */
-        rci.initializeAtRunTime(NativePRNG.class, "for substitutions");
-        rci.initializeAtRunTime(NativePRNG.Blocking.class, "for substitutions");
-        rci.initializeAtRunTime(NativePRNG.NonBlocking.class, "for substitutions");
+        rci.initializeAtRunTime(GuestAccess.get().lookupType(NativePRNG.class), "for substitutions");
+        rci.initializeAtRunTime(GuestAccess.get().lookupType(NativePRNG.Blocking.class), "for substitutions");
+        rci.initializeAtRunTime(GuestAccess.get().lookupType(NativePRNG.NonBlocking.class), "for substitutions");
 
         rci.initializeAtRunTime(type(access, "sun.security.provider.SeedGenerator"), "for substitutions");
         rci.initializeAtRunTime(type(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
@@ -393,16 +396,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         if (isPosix()) {
             Optional<ResolvedJavaMethod> optMethodGetUnixInfo = optionalMethod(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo");
             optMethodGetUnixInfo.ifPresent(m -> {
-                access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, m);
-                /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
-                PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("com_sun_security_auth_module_UnixSystem");
+                access.registerReachabilityHandler(analysisAccess -> linkJaas(analysisAccess), m);
             });
         }
 
         if (isMscapiModulePresent) {
-            access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig, type(access, "sun.security.mscapi.SunMSCAPI"));
-            /* Resolve calls to sun_security_mscapi* as builtIn. */
-            PlatformNativeLibrarySupport.singleton().addBuiltinNativePrefix("sun_security_mscapi");
+            access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig,
+                            type(access, "sun.security.mscapi.SunMSCAPI"));
+            JNIRegistrationSupport.singleton().addLibraryRegistrationHandler(SecurityServicesFeature::registerSunMSCAPILibraryDependencies);
         }
 
         if (!FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
@@ -525,14 +526,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
-        NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) a).getNativeLibraries();
-        /* We statically link sunmscapi thus we classify it as builtIn library */
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("sunmscapi");
-
-        nativeLibraries.addStaticJniLibrary("sunmscapi");
-        /* Library sunmscapi depends on ncrypt and crypt32 */
-        nativeLibraries.addDynamicNonJniLibrary("ncrypt");
-        nativeLibraries.addDynamicNonJniLibrary("crypt32");
+        JNIRegistrationSupport.singleton().registerJNILibrary("sunmscapi");
 
         registerForThrowNew(a, "java.security.cert.CertificateParsingException", "java.security.InvalidKeyException",
                         "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
@@ -557,6 +551,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
+    private static void registerSunMSCAPILibraryDependencies(String library) {
+        if (library.equals("sunmscapi")) {
+            NativeLibraries nativeLibraries = NativeLibraries.singleton();
+            /* Library sunmscapi depends on ncrypt and crypt32. */
+            nativeLibraries.addDynamicLibrary("ncrypt");
+            nativeLibraries.addDynamicLibrary("crypt32");
+        }
+    }
+
     private static void registerLoadKeysOrCertificateChains(DuringAnalysisAccess a) {
         JVMCIRuntimeJNIAccess.register(constructor(a, "java.util.ArrayList"));
         JVMCIRuntimeJNIAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificate", byte[].class, Collection.class));
@@ -578,11 +581,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
     private static void linkJaas(DuringAnalysisAccess a) {
         JVMCIRuntimeJNIAccess.register(fields(a, "com.sun.security.auth.module.UnixSystem", "username", "uid", "gid", "groups"));
-
-        NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) a).getNativeLibraries();
-        /* We can statically link jaas, thus we classify it as builtIn library */
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("jaas");
-        nativeLibraries.addStaticJniLibrary("jaas");
     }
 
     private static Iterable<Class<?>> computeKnownServices(BeforeAnalysisAccess access) {
@@ -722,7 +720,24 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             for (Service service : services) {
                 registerService(access, service);
             }
+            if (serviceType.equals(KEM_SERVICE)) {
+                registerHybridProviderServices(access);
+            }
         }
+    }
+
+    private void registerHybridProviderServices(DuringAnalysisAccess access) {
+        optionalType(access, "sun.security.ssl.HybridProvider").ifPresent(hybridProviderType -> {
+            ResolvedJavaType originalType = OriginalClassProvider.getOriginalType(hybridProviderType);
+            // Constant reflection does not initialize the class before reading static fields.
+            originalType.initialize();
+            JavaConstant providerConst = JVMCIReflectionUtil.readStaticField(originalType, "PROVIDER");
+            Provider provider = GuestAccess.get().getSnippetReflection().asObject(Provider.class, providerConst);
+            for (Service service : provider.getServices()) {
+                registerService(access, service);
+            }
+            registerProvider(access, provider);
+        });
     }
 
     /** Service.getInstance() methods must be public static and should return the service type. */
@@ -846,7 +861,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                      * runtime, signifying successful verification.
                      */
                     String providerName = provider.getName();
-                    SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
+                    LayeredSecurityProvidersSupport support = LayeredSecurityProvidersSupport.currentLayer();
                     support.addVerifiedSecurityProvider(providerName, result instanceof Exception ? result : Boolean.TRUE);
 
                     /*

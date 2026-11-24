@@ -156,6 +156,7 @@ public class DeadlockWatchdog implements Closeable {
             System.out.println("=== Image generator watchdog is aborting image generation. To configure the watchdog, use the options " +
                             SubstrateOptionsParser.commandArgument(SubstrateOptions.DeadlockWatchdogInterval, Integer.toString(watchdogInterval), null) + " and " +
                             SubstrateOptionsParser.commandArgument(SubstrateOptions.DeadlockWatchdogExitOnTimeout, "+", null));
+            System.out.flush();
             /*
              * Since there is a likely deadlock somewhere, there is no less intrusive way to abort
              * other than a hard exit of the image builder VM.

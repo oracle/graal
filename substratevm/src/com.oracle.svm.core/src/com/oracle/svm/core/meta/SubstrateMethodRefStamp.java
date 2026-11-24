@@ -148,4 +148,14 @@ public final class SubstrateMethodRefStamp extends AbstractPointerStamp {
     public String toString() {
         return kind.description;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        return super.equals(obj) && obj instanceof SubstrateMethodRefStamp other && kind == other.kind;
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode() * 31 + kind.ordinal();
+    }
 }

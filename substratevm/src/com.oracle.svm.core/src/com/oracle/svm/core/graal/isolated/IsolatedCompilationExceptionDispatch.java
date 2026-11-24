@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.guest.staging.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 
 import jdk.graal.compiler.core.common.GraalBailoutException;
 
@@ -57,7 +58,7 @@ import jdk.graal.compiler.core.common.GraalBailoutException;
  * exception type with most information preserved in string form in their message.
  */
 public abstract class IsolatedCompilationExceptionDispatch {
-    private static final RuntimeException EXCEPTION_WITHOUT_MESSAGE = new GraalBailoutException("[no details because exception allocation failed]");
+    private static final RuntimeException EXCEPTION_WITHOUT_MESSAGE = PreallocatedExceptions.prepare(new GraalBailoutException("[no details because exception allocation failed]"));
 
     /**
      * An exception to be thrown in the current isolate as a result of it calling another isolate

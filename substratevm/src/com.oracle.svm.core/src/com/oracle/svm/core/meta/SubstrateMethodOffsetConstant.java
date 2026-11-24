@@ -30,6 +30,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+
 import jdk.vm.ci.meta.VMConstant;
 
 /**
@@ -70,7 +72,7 @@ public final class SubstrateMethodOffsetConstant implements VMConstant {
 
     @Override
     public String toString() {
-        return "method offset: " + offset.getMethod().format("%H.%n");
+        return "method offset: " + MethodRefSupport.getMethod(offset).format("%H.%n");
     }
 
     @Override
@@ -79,12 +81,12 @@ public final class SubstrateMethodOffsetConstant implements VMConstant {
             return true;
         }
         return obj instanceof SubstrateMethodOffsetConstant other &&
-                        offset.getMethod().equals(other.offset.getMethod()) &&
+                        MethodRefSupport.getMethod(offset).equals(MethodRefSupport.getMethod(other.offset)) &&
                         offset.permitsRewriteToPLT() == other.offset.permitsRewriteToPLT();
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(offset.getMethod());
+        return Objects.hashCode(MethodRefSupport.getMethod(offset));
     }
 }

@@ -459,7 +459,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();
 
         SubstrateTarget target = SubstrateTarget.singleton();
-        NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), config.getNativeLibraries(),
+        NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, hostedProviders, config.getMetaAccess(), config.getNativeLibraries(),
                         config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
                         new SubstrateClassInitializationPlugin(config.getHostVM()), target, supportsStubBasedPlugins);
 
@@ -528,7 +528,8 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
         /*
          * Ensure runtime snippet graphs are analyzed.
          */
-        NativeImageGenerator.performSnippetGraphAnalysis(config.getBigBang(), replacements, config.getBigBang().getOptions(), objectTransformer);
+        Inflation bb = (Inflation) config.getBigBang();
+        NativeImageGenerator.performSnippetGraphAnalysis(bb, replacements, bb.getOptions(), objectTransformer);
 
         /*
          * Ensure that all snippet methods have their SubstrateMethod object created by the object

@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.code;
 import java.util.IdentityHashMap;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -61,25 +60,25 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class HostedReplacements extends SubstrateReplacements {
 
     private final HostedUniverse hUniverse;
-    private final SubstrateReplacements aReplacements;
+    private final SubstrateReplacements analysisReplacements;
 
-    public HostedReplacements(HostedUniverse hUniverse, Providers providers, TargetDescription target, HostedProviders analysisProviders,
+    public HostedReplacements(HostedUniverse hUniverse, Providers providers, TargetDescription target, SubstrateReplacements analysisReplacements,
                     BytecodeProvider bytecodeProvider) {
         super(providers, bytecodeProvider, target, null);
         this.hUniverse = hUniverse;
-        this.aReplacements = (SubstrateReplacements) analysisProviders.getReplacements();
+        this.analysisReplacements = analysisReplacements;
     }
 
     @Override
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         /* We must have the snippet already available in the analysis replacements. */
-        assert aReplacements.getSnippet(((HostedMethod) method).wrapped, null, null, null, trackNodeSourcePosition, null, options) != null;
+        assert analysisReplacements.getSnippet(((HostedMethod) method).wrapped, null, null, null, trackNodeSourcePosition, null, options) != null;
     }
 
     @Override
     public void encodeSnippets(GraphEncoder encoder) {
         /* Copy over all snippets from the analysis replacements, changing out metadata objects. */
         IdentityHashMap<Object, Object> mapping = new IdentityHashMap<>();
-        super.copyFrom(aReplacements, obj -> AnalysisToHostedGraphTransplanter.replaceAnalysisObjects(obj, null, mapping, hUniverse));
+        super.copyFrom(analysisReplacements, obj -> AnalysisToHostedGraphTransplanter.replaceAnalysisObjects(obj, null, mapping, hUniverse));
     }
 }

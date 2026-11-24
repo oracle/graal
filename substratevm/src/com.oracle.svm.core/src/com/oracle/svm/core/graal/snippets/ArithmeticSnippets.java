@@ -30,7 +30,7 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import java.util.Map;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;

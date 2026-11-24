@@ -56,6 +56,8 @@ import jdk.incubator.vector.VectorShuffle;
 import jdk.incubator.vector.VectorSpecies;
 import org.graalvm.wasm.constants.Bytecode;
 
+import java.lang.foreign.MemorySegment;
+import java.nio.ByteOrder;
 import java.util.function.Function;
 
 import static org.graalvm.wasm.vector.Vector128.BYTES;
@@ -70,6 +72,16 @@ import static org.graalvm.wasm.vector.Vector128.BYTES;
 final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
 
     private static final Vector128Ops<byte[]> fallbackOps = Vector128OpsFallback.create();
+
+    // Non-owning view of native user-space addresses. WasmMemory checks the actual linear-memory
+    // bounds before access. Constructing the view here keeps native-access checks out of guest code.
+    private static final MemorySegment NATIVE_MEMORY = createNativeMemoryView();
+
+    @CompilerDirectives.TruffleBoundary
+    @SuppressWarnings("restricted")
+    private static MemorySegment createNativeMemoryView() {
+        return MemorySegment.NULL.reinterpret(Long.MAX_VALUE);
+    }
 
     static Vector128Ops<ByteVector> create() {
         return new org.graalvm.wasm.vector.Vector128OpsVectorAPI();
@@ -1232,6 +1244,16 @@ final class Vector128OpsVectorAPI implements Vector128Ops<ByteVector> {
     @Override
     public void intoArray(ByteVector vec, byte[] array, int offset) {
         castByte128(vec).intoArray(array, offset);
+    }
+
+    @Override
+    public ByteVector fromNativeMemory(long address) {
+        return ByteVector.fromMemorySegment(I8X16.species(), NATIVE_MEMORY, address, ByteOrder.LITTLE_ENDIAN);
+    }
+
+    @Override
+    public void intoNativeMemory(ByteVector vec, long address) {
+        castByte128(vec).intoMemorySegment(NATIVE_MEMORY, address, ByteOrder.LITTLE_ENDIAN);
     }
 
     @Override

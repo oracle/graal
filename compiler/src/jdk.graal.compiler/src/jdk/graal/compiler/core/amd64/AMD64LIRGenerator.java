@@ -1918,9 +1918,19 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key,
                     boolean inputMayBeOutOfRange, boolean mayEmitThreadedCode) {
+        AllocatableValue tableKey = key;
+        if (lowKey == 0) {
+            /*
+             * The jump table address uses all 64 register bits. With a nonzero low key, subtracting
+             * it clears the upper bits; otherwise the input needs an explicit zero extension.
+             * We could omit the extension if we knew at compilation time that the upper bits were
+             * zero, but the LIR operand does not record this information.
+             */
+            tableKey = asAllocatable(getArithmetic().emitZeroExtend(key, 32, 64, true, false));
+        }
         AllocatableValue scratch = newVariable(LIRKind.value(target().arch.getWordKind()));
         append(new NewScratchRegisterOp(scratch));
-        append(new RangeTableSwitchOp(this, lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key, scratch, inputMayBeOutOfRange, mayEmitThreadedCode));
+        append(new RangeTableSwitchOp(this, lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, tableKey, scratch, inputMayBeOutOfRange, mayEmitThreadedCode));
     }
 
     @Override

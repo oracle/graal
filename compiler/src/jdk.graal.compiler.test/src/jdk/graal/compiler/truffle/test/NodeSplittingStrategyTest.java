@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,10 @@
  */
 package jdk.graal.compiler.truffle.test;
 
-import com.oracle.truffle.api.dsl.test.ExpectWarning;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.FutureTask;
+
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
@@ -34,14 +37,29 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.Instruction;
+import com.oracle.truffle.api.bytecode.Instruction.Argument;
+import com.oracle.truffle.api.bytecode.Instruction.Argument.Kind;
+import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
+import com.oracle.truffle.api.bytecode.test.DebugBytecodeRootNode;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.test.ExpectWarning;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
@@ -156,6 +174,138 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
     }
 
     @Test
+    public void testDirectCallOverloadsSplitDuringExecution() {
+        OptimizedCallTarget callee = (OptimizedCallTarget) new SplittingTestRootNode(
+                        NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
+        DirectCallNode caller = runtime.createDirectCallNode(callee);
+        DirectCallNode bytecodeIndexCaller = runtime.createDirectCallNode(callee);
+        DirectCallNode rootTypeCaller = runtime.createDirectCallNode(callee);
+        Object[] arguments = new Object[]{1};
+        callee.call(arguments);
+        callee.call(0);
+        Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(callee));
+
+        Assert.assertEquals(1, caller.call(arguments));
+        Assert.assertTrue("Legacy call did not split during execution", caller.isCallTargetCloned());
+        Assert.assertEquals(1, bytecodeIndexCaller.call(42, arguments));
+        Assert.assertTrue("Bytecode-index call did not split during execution", bytecodeIndexCaller.isCallTargetCloned());
+        Assert.assertEquals(1, rootTypeCaller.call(SplittingTestRootNode.class, 42, arguments));
+        Assert.assertTrue("Root-type call did not split during execution", rootTypeCaller.isCallTargetCloned());
+        Assert.assertEquals(3, listener.splitCount);
+    }
+
+    @Test
+    public void testSplitsDirectCallsCachedByBytecodeDslOperations() {
+        Context.getCurrent().initialize(BytecodeDSLTestLanguage.ID);
+        OptimizedCallTarget callee = (OptimizedCallTarget) new SplittingTestRootNode(
+                        NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
+        SplittingBytecodeRootNode caller = createBytecodeCaller(callee);
+
+        caller.getCallTarget().call(1);
+        List<DirectCallNode> callNodes = findBytecodeDirectCallNodes(caller);
+        Assert.assertEquals(2, callNodes.size());
+        for (DirectCallNode callNode : callNodes) {
+            Assert.assertTrue(callNode instanceof OptimizedDirectCallNode);
+        }
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callee));
+
+        callee.call(0);
+        Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(callee));
+        for (DirectCallNode callNode : callNodes) {
+            Assert.assertFalse("Target split before the next direct call", callNode.isCallTargetCloned());
+        }
+
+        OptimizedCallTarget callerTarget = (OptimizedCallTarget) caller.getCallTarget();
+        Assert.assertTrue(callerTarget.prepareForCompilation(false, 1, false));
+        Assert.assertTrue(callerTarget.prepareForCompilation(true, 1, false));
+        for (DirectCallNode callNode : callNodes) {
+            Assert.assertFalse("Compilation preparation split the call target", callNode.isCallTargetCloned());
+        }
+        callerTarget.call(1);
+        for (DirectCallNode callNode : callNodes) {
+            Assert.assertTrue("Bytecode DSL cached call target was not split during execution", callNode.isCallTargetCloned());
+        }
+    }
+
+    private static SplittingBytecodeRootNode createBytecodeCaller(RootCallTarget callee) {
+        BytecodeRootNodes<SplittingBytecodeRootNode> nodes = SplittingBytecodeRootNodeGen.create(BytecodeDSLTestLanguage.REF.get(null), BytecodeConfig.DEFAULT, b -> {
+            b.beginRoot();
+            b.beginBlock();
+            b.beginCall();
+            b.emitLoadConstant(callee);
+            b.emitLoadArgument(0);
+            b.endCall();
+            b.beginReturn();
+            b.beginCall();
+            b.emitLoadConstant(callee);
+            b.emitLoadArgument(0);
+            b.endCall();
+            b.endReturn();
+            b.endBlock();
+            b.endRoot();
+        });
+        SplittingBytecodeRootNode root = nodes.getNode(0);
+        root.getBytecodeNode().setUncachedThreshold(0);
+        return root;
+    }
+
+    private static List<DirectCallNode> findBytecodeDirectCallNodes(SplittingBytecodeRootNode root) {
+        List<DirectCallNode> callNodes = new ArrayList<>();
+        for (Instruction instruction : root.getBytecodeNode().getInstructions()) {
+            for (Argument argument : instruction.getArguments()) {
+                if (argument.getKind() == Kind.NODE_PROFILE) {
+                    callNodes.addAll(NodeUtil.findAllNodeInstances(argument.asCachedNode(), DirectCallNode.class));
+                }
+            }
+        }
+        return callNodes;
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+    abstract static class SplittingBytecodeRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
+
+        protected SplittingBytecodeRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Operation
+        static final class Call {
+
+            @Specialization
+            static Object doCall(RootCallTarget target, Object argument, @Cached("create(target)") DirectCallNode callNode) {
+                return callNode.call(argument);
+            }
+
+            static DirectCallNode create(RootCallTarget target) {
+                return DirectCallNode.create(target);
+            }
+        }
+    }
+
+    @Test
+    public void testPreparationDoesNotSplitDirectCalls() {
+        OptimizedCallTarget callee = (OptimizedCallTarget) new SplittingTestRootNode(
+                        NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
+        runtime.createDirectCallNode(callee);
+        CallsInnerNode caller = new CallsInnerNode(callee);
+        OptimizedCallTarget callerTarget = (OptimizedCallTarget) caller.getCallTarget();
+        Assert.assertFalse(callerTarget.prepareForCompilation(true, 1, false));
+        callerTarget.call(1);
+        callerTarget.call(1);
+        callerTarget.call(0);
+        Assert.assertTrue(getNeedsSplit(callee));
+        Assert.assertFalse(caller.callNode.isCallTargetCloned());
+
+        Assert.assertTrue(callerTarget.prepareForCompilation(false, 1, false));
+        Assert.assertFalse("Inline preparation split the call target", caller.callNode.isCallTargetCloned());
+        Assert.assertTrue(callerTarget.prepareForCompilation(true, 1, false));
+        Assert.assertFalse("Root preparation split the call target", caller.callNode.isCallTargetCloned());
+
+        callerTarget.call(1);
+        Assert.assertTrue("The next interpreter call did not split", caller.callNode.isCallTargetCloned());
+    }
+
+    @Test
     public void testDoesNotSplitsDirectCalls() {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(
                         NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroButClassIsExcludedNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
@@ -190,7 +340,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
     }
 
     @Test
-    public void testSplitPropagatesThrongSoleCallers() {
+    public void testSplitPropagatesThroughSoleCallers() {
         OptimizedCallTarget turnsPolymorphic = (OptimizedCallTarget) new SplittingTestRootNode(
                         NodeSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsFirstArgumentNode())).getCallTarget();
         testPropagatesThroughSoleCallers(turnsPolymorphic, new Object[]{1}, new Object[]{0});
@@ -221,8 +371,12 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
 
         directCallNode.call(secondArgs);
         Assert.assertTrue("Target needs split but not split", directCallNode.isCallTargetCloned());
+        CallsInnerNode clonedOuter = (CallsInnerNode) ((RootCallTarget) directCallNode.getCurrentCallTarget()).getRootNode();
+        Assert.assertTrue("Call in the outer clone did not split", clonedOuter.callNode.isCallTargetCloned());
+        CallsInnerNode clonedInner = (CallsInnerNode) clonedOuter.callNode.getCurrentCallTarget().getRootNode();
+        Assert.assertTrue("Call in the inner clone did not split", clonedInner.callNode.isCallTargetCloned());
 
-        // Test new dirrectCallNode will split
+        // Test new directCallNode will split
         DirectCallNode newCallNode = runtime.createDirectCallNode(callsCallsInner);
         newCallNode.call(secondArgs);
         Assert.assertTrue("new call node to \"needs split\" target is not split", newCallNode.isCallTargetCloned());
@@ -285,7 +439,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         outerTarget.call(new Object[]{"foo"});
         Assert.assertTrue("Target does not need split after increase in polymorphism", getNeedsSplit(callTarget));
 
-        // Test new dirrectCallNode will split
+        // A new call node to a marked target also splits.
         outerTarget.call(firstArgs);
         directCallNode.call(firstArgs);
         Assert.assertTrue("new call node to \"needs split\" target is not split", directCallNode.isCallTargetCloned());
@@ -397,7 +551,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         callNode2.call(args[1]);
         Assert.assertFalse(callNode1.isCallTargetCloned());
         Assert.assertFalse(callNode2.isCallTargetCloned());
-        // Goes megamoprihic
+        // Goes megamorphic
         callNode1.call(args[2]);
         Assert.assertFalse(callNode1.isCallTargetCloned());
         Assert.assertFalse(callNode2.isCallTargetCloned());
@@ -514,6 +668,52 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         // Gets split
         callNode1.call(args[3]);
         Assert.assertTrue(callNode1.isCallTargetCloned());
+    }
+
+    @TruffleLanguage.Registration(id = PreparationLanguage.ID, name = PreparationLanguage.ID)
+    static final class PreparationLanguage extends TruffleLanguage<Object> {
+        static final String ID = "SplittingPreparationLanguage";
+        static final LanguageReference<PreparationLanguage> LANGUAGE_REFERENCE = LanguageReference.create(PreparationLanguage.class);
+        static final ContextReference<Object> CONTEXT_REFERENCE = ContextReference.create(PreparationLanguage.class);
+        static volatile OptimizedCallTarget target;
+
+        @Override
+        protected Object createContext(Env env) {
+            return new Object();
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) {
+            target = (OptimizedCallTarget) new RootNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return 42;
+                }
+
+                @Override
+                protected boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+                    Assert.assertSame(PreparationLanguage.this, LANGUAGE_REFERENCE.get(this));
+                    Assert.assertNull(CONTEXT_REFERENCE.get(this));
+                    return true;
+                }
+            }.getCallTarget();
+            return target;
+        }
+    }
+
+    @Test
+    public void testLanguageEnteredDuringPreparation() throws Exception {
+        try (Context context = Context.newBuilder(PreparationLanguage.ID).allowExperimentalOptions(true).option("engine.Compilation", "false").build()) {
+            context.eval(PreparationLanguage.ID, "");
+            OptimizedCallTarget target = PreparationLanguage.target;
+            FutureTask<Void> preparation = new FutureTask<>(() -> {
+                Assert.assertTrue(target.prepareForCompilation(false, 1, false));
+                Assert.assertTrue(target.prepareForCompilation(true, 1, false));
+                return null;
+            });
+            new Thread(preparation).start();
+            preparation.get();
+        }
     }
 
     @TruffleLanguage.Registration(id = SplittingLimitTestLanguage.ID, name = SplittingLimitTestLanguage.ID)

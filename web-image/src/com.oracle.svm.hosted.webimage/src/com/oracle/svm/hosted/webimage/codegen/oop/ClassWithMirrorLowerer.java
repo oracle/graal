@@ -34,8 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.webimage.api.JS;
 import org.graalvm.webimage.api.JSObject;
 
@@ -307,7 +305,7 @@ public class ClassWithMirrorLowerer extends ClassLowerer {
         String className = fullName.substring(fullName.lastIndexOf('.') + 1);
         String packageName = JVMCIReflectionUtil.getPackageName(type);
         String hub = null;
-        if (!((ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class)).maybeInitializeAtBuildTime(type)) {
+        if (!ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(type)) {
             hub = codeGenTool.getJSProviders().typeControl().requestHubName(type);
         }
         JSSnippet snippet = JSSnippets.instantiateExportMirrorClassDefinition(packageName, className, hub, internalMirrorClassName(codeGenTool, type));

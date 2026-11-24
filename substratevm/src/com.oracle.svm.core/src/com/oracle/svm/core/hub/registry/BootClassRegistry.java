@@ -42,7 +42,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.RuntimeClassLoading.ClassDefinitionInfo;
+import com.oracle.svm.guest.staging.hub.ClassDefinitionInfo;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.jdk.BootLoaderClassPathSupport;
 import com.oracle.svm.core.jdk.BootLoaderClassPathSupport.ClassFileBytes;

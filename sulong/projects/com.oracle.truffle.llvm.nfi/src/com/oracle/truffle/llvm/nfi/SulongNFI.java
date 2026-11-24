@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -57,6 +57,7 @@ import java.io.IOException;
 public final class SulongNFI extends TruffleLanguage<Env> {
 
     @CompilationFinal private SulongNFIBackend backend;
+    @CompilationFinal private ContextThreadLocal<NFIState> state;
 
     @Override
     protected Env createContext(Env env) {
@@ -68,9 +69,10 @@ public final class SulongNFI extends TruffleLanguage<Env> {
             }
 
             @Override
-            public NFIBackend createBackend(ContextThreadLocal<NFIState> state) {
+            public NFIBackend createBackend(ContextThreadLocal<NFIState> nfiState) {
                 if (backend == null) {
                     backend = new SulongNFIBackend();
+                    SulongNFI.this.state = nfiState;
                 }
                 return backend;
             }
@@ -150,6 +152,10 @@ public final class SulongNFI extends TruffleLanguage<Env> {
 
     static SulongNFI get(Node node) {
         return REFERENCE.get(node);
+    }
+
+    NFIState getNFIState() {
+        return state.get();
     }
 
     private static final ContextReference<Env> CONTEXT_REFERENCE = ContextReference.create(SulongNFI.class);

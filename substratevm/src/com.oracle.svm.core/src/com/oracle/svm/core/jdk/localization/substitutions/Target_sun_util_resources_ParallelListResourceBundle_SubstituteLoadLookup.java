@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,15 +29,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicMarkableReference;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.SubstituteLoadLookup;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 import sun.util.resources.OpenListResourceBundle;
 
@@ -51,8 +50,17 @@ final class Target_sun_util_resources_ParallelListResourceBundle_SubstituteLoadL
     @Alias
     protected native Object[][] getContents();
 
-    @Alias
-    private native void setParallelContents(OpenListResourceBundle rb);
+    @Substitute
+    private void setParallelContents(OpenListResourceBundle rb) {
+        /* Extracted contents already include supplementary contents; keep getContents unreachable. */
+        if (RuntimeClassLoading.isSupported() && DynamicHub.fromClass(getClass()).isRuntimeLoaded()) {
+            if (rb == null) {
+                parallelContents.compareAndSet(null, null, false, true);
+            } else {
+                parallelContents.compareAndSet(null, SubstrateUtil.cast(rb, Target_sun_util_resources_OpenListResourceBundle_SubstituteLoadLookup.class).getContents(), false, false);
+            }
+        }
+    }
 
     @Substitute
     private boolean areParallelContentsComplete() {
@@ -89,8 +97,7 @@ final class Target_sun_util_resources_ParallelListResourceBundle_SubstituteLoadL
             }
             return;
         }
-        LocalizationSupport support = ImageSingletons.lookup(LocalizationSupport.class);
-        Map<String, Object> content = support.getBundleContentOf(this);
+        Map<String, Object> content = BundleContentSubstitutedLocalizationSupport.getBundleContentOf(this);
         synchronized (this) {
             if (lookup == null) {
                 if (content instanceof ConcurrentMap<?, ?> concurrentContent) {

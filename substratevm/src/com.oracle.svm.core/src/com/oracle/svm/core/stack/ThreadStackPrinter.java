@@ -30,14 +30,14 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.core.code.UntetheredCodeInfo;
+import com.oracle.svm.guest.staging.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.VirtualFrame;
@@ -293,7 +293,6 @@ public class ThreadStackPrinter {
             if (runtimeMethodInfoName != null) {
                 log.string("[").string(runtimeMethodInfoName).string("] ");
             }
-            frameInfo.log(log);
             if (InterpreterSupport.isEnabled() && invocationCount == 1) {
                 InterpreterSupport interpreterSupport = InterpreterSupport.singleton();
                 int currentThreadedHandlerBCI = interpreterSupport.getThreadedHandlerBCIForCrashLog(frameInfo, sp);
@@ -301,10 +300,16 @@ public class ThreadStackPrinter {
                     threadedHandlerBCI = currentThreadedHandlerBCI;
                 }
                 if (interpreterSupport.isInterpreterRoot(frameInfo)) {
+                    frameInfo.log(log);
                     interpreterSupport.logInterpreterFrame(log, frameInfo, sp, threadedHandlerBCI);
                     threadedHandlerBCI = BytecodeFrame.UNKNOWN_BCI;
+                    return;
+                }
+                if (interpreterSupport.logRistrettoFrame(log, frameInfo)) {
+                    return;
                 }
             }
+            frameInfo.log(log);
         }
 
         private static void printFrameIdentifier(Log log, CodeInfo codeInfo, DeoptimizedFrame deoptFrame, boolean isCompilationRoot, boolean isNative) {

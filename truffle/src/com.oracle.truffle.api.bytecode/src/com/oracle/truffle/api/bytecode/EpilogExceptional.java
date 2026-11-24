@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,19 +71,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public @interface EpilogExceptional {
 
     /**
-     * Indicates whether this operation requires the bytecode index to be updated. By default, the
-     * DSL assumes that all operations with caches require the bytecode index to be updated. The DSL
-     * will emit a warning if specifying this attribute is necessary.
-     * <p>
-     * If this attribute has been set to <code>false</code>, then the {@link StoreBytecodeIndex}
-     * annotation can be used to enable this property for individual {@link Specialization} or
-     * {@link Fallback}-annotated methods.
-     * <p>
-     * This annotation only has an effect if {@link GenerateBytecode#storeBytecodeIndexInFrame()} is
-     * set to <code>true</code> or if the {@link GenerateBytecode#enableUncachedInterpreter()
-     * uncached interpreter tier} is enabled.
+     * Whether to store the BCI before executing this operation. See
+     * {@link Operation#storeBytecodeIndex()} for mode-dependent defaults.
+     * When {@code false}, {@link StoreBytecodeIndex} enables storage for individual
+     * {@link Specialization} or {@link Fallback} methods.
      *
-     * @see StoreBytecodeIndex
+     * @return whether to enable operation-level BCI storage
      * @since 25.1
      */
     boolean storeBytecodeIndex() default true;

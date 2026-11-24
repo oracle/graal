@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.impl.RuntimeStateTrimCallbackException.Phase;
 import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig;
 import org.graalvm.nativeimage.impl.RuntimeStateTrimConfig.Mode;
 
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.imagelayer.LayeredFoldResolver;

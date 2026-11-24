@@ -546,11 +546,14 @@ public class VectorAPIExpansionPhase extends PostRunCanonicalizationPhase<HighTi
                 /* This is a scalar usage, it doesn't need a SIMD stamp. */
                 continue;
             }
+            if (usage instanceof ValuePhiNode phi && isPhiToBox(phi, providers)) {
+                /*
+                 * This usage will be boxed, so stamp propagation stops here. The phi may be
+                 * marked in the flood because a proxy using it belongs to another component.
+                 */
+                continue;
+            }
             if (!flood.isMarked(usage)) {
-                if (usage instanceof ValuePhiNode phi && isPhiToBox(phi, providers)) {
-                    /* This usage will be boxed, it doesn't need a SIMD stamp. */
-                    continue;
-                }
                 /* This usage is outside all components. Outside usages are not allowed. */
                 node.graph().getDebug().log(DebugContext.DETAILED_LEVEL, "usage %s of node %s outside of all components", usage, node);
                 component.canExpand = false;

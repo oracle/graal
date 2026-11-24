@@ -56,7 +56,6 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
-import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.core.CompilationWrapper.ExceptionAction;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.debug.DebugContext;
@@ -314,7 +313,7 @@ public class RuntimeCompilationSupport {
                         null, get().invocationPlugins, new InlineInvokePlugin[0], null, null,
                         null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false) {
             @Override
-            protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod, BytecodeProvider intrinsicBytecodeProvider) {
+            protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod) {
                 GraalError.guarantee(method.equals(lookupMethod), lookupMethod.getName());
                 return encodedGraph;
             }

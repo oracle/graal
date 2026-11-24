@@ -462,8 +462,11 @@ public final class EspressoContext implements RuntimeAccess<Klass, Method, Field
                 getLanguage().tryInitializeJavaVersion(contextJavaVersion);
             }
 
-            if (!getJavaVersion().java21Or25() && getLanguage().useEspressoLibs()) {
-                throw EspressoError.fatal("Unsupported Java version for EspressoLibs. Use Java 21 or 25");
+            if (getLanguage().useEspressoLibs()) {
+                if (!getJavaVersion().java21Or25()) {
+                    throw EspressoError.fatal("Unsupported Java version for EspressoLibs. Use Java 21 or 25");
+                }
+                TruffleIO.checkOverlay(this);
             }
 
             // Spawn JNI first, then the VM.

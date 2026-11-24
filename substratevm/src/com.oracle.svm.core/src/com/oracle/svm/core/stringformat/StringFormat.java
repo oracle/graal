@@ -34,12 +34,15 @@ import java.util.IllegalFormatException;
 import java.util.Locale;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.shared.ReflectivelyAccessed;
+import com.oracle.svm.shared.singletons.LayeredImageSingletonSupport;
+import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
-import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.Duplicable;
+import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.MultiLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.guest.staging.util.ImageHeapMap;
 import com.oracle.svm.shared.util.VMError;
@@ -110,7 +113,7 @@ import com.oracle.svm.shared.util.VMError;
  * for validity, i.e., the intrinsified string formatting can throw a few kinds
  * {@link IllegalFormatException}.
  */
-@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = Duplicable.class)
+@SingletonTraits(access = AllAccess.class, layeredCallbacks = NoLayeredCallbacks.class, layeredInstallationKind = MultiLayer.class)
 public final class StringFormat {
     static final char DECIMAL_INTEGER = 'd';
     static final char OCTAL_INTEGER = 'o';
@@ -129,10 +132,16 @@ public final class StringFormat {
     static final String SUPPORTED_CONVERSIONS = "" + DECIMAL_INTEGER + OCTAL_INTEGER + HEXADECIMAL_INTEGER + HEXADECIMAL_INTEGER_UPPER + BOOLEAN + BOOLEAN_UPPER + HASHCODE + HASHCODE_UPPER +
                     CHARACTER + CHARACTER_UPPER + STRING + STRING_UPPER;
 
-    public final EconomicMap<Locale, Character> zeroChars = ImageHeapMap.create("zeroChars");
+    /* Each singleton holds only its layer's entries; getZeroChar searches across singletons. */
+    public final EconomicMap<Locale, Character> zeroChars = ImageHeapMap.createNonLayeredMap();
 
-    public static StringFormat singleton() {
-        return ImageSingletons.lookup(StringFormat.class);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static StringFormat currentLayer() {
+        return LayeredImageSingletonSupport.singleton().lookup(StringFormat.class, false, true);
+    }
+
+    public static StringFormat[] layeredSingletons() {
+        return MultiLayeredImageSingleton.getAllLayers(StringFormat.class);
     }
 
     @ReflectivelyAccessed
@@ -478,9 +487,13 @@ public final class StringFormat {
             /* No Locale means no localization requested. */
             return Character.valueOf('0');
         }
-        Character result = singleton().zeroChars.get(locale);
-        if (result != null) {
-            return result;
+        StringFormat[] layers = layeredSingletons();
+        /* Prefer later layers, matching the precedence of a layered ImageHeapMap. */
+        for (int i = layers.length - 1; i >= 0; i--) {
+            Character result = layers[i].zeroChars.get(locale);
+            if (result != null) {
+                return result;
+            }
         }
         Character numberingSystemZeroChar = getZeroCharForNumberingSystem(locale.getUnicodeLocaleType("nu"));
         if (numberingSystemZeroChar != null) {

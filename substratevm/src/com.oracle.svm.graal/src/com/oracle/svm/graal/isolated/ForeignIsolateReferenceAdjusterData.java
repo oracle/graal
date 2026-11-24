@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 
 @RawStructure
 interface ForeignIsolateReferenceAdjusterData extends PointerBase {

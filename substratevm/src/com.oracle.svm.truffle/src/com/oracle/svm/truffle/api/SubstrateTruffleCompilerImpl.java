@@ -87,7 +87,7 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
 
     @Override
     protected TruffleTier newTruffleTier(OptionValues options) {
-        InstrumentationSuite instrumentationSuite = new InstrumentationSuite(partialEvaluator.instrumentationCfg, partialEvaluator.getInstrumentation());
+        InstrumentationSuite instrumentationSuite = newInstrumentationSuite();
         instrumentationSuite.appendPhase(new BasePhase<TruffleTierContext>() {
             @Override
             protected void run(StructuredGraph graph, TruffleTierContext context) {

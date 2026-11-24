@@ -30,7 +30,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.shared.util.VMError;

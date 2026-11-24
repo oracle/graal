@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,7 +55,7 @@ import sun.management.Util;
  * with JMX. These still need to be implemented (GR-44559).
  */
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = InitialLayerOnly.class)
-public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
+public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean, VMManagementBean {
     private final AtomicLong totalStartedThreadCount = new AtomicLong(0);
     private final AtomicInteger peakThreadCount = new AtomicInteger(0);
     private final AtomicInteger threadCount = new AtomicInteger(0);
@@ -287,6 +287,14 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
     @Override
     public ThreadInfo[] dumpAllThreads(boolean lockedMonitors, boolean lockedSynchronizers) {
         return new ThreadInfo[0];
+    }
+
+    @Override
+    public long getTotalThreadAllocatedBytes() {
+        if (!isThreadAllocatedMemoryEnabled()) {
+            return -1;
+        }
+        return PlatformThreads.getTotalThreadAllocatedBytes();
     }
 
     @Override

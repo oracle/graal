@@ -54,7 +54,8 @@ class TestJITCompilationInterface(unittest.TestCase):
     def test_update_breakpoint(self):
         # set breakpoint in runtime compiled function and stop there
         # store initial breakpoint info for comparison
-        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.RuntimeCompilations::inlineTest")
+        method_name = "com.oracle.svm.test.debug.helper.RuntimeCompilations::inlineTest"
+        gdb_set_breakpoint(method_name)
         breakpoint_info_before = gdb_execute('info breakpoints')
         gdb_continue()
 
@@ -65,9 +66,10 @@ class TestJITCompilationInterface(unittest.TestCase):
         # check if old breakpoints still exist, code address must be the same
         # split at code address as multi-breakpoints are printed very different to single breakpoints
         self.assertIn(breakpoint_info_before.split('0x')[-1], breakpoint_info_after)
-        # check if exactly one new correct breakpoint was added
-        # new breakpoint address is always added after
-        self.assertEqual(breakpoint_info_after.split(breakpoint_info_before.split('0x')[-1])[-1].count('com.oracle.svm.test.debug.helper.RuntimeCompilations::inlineTest'), 1)
+        # check if exactly one new correct breakpoint was added, regardless of address order
+        count_before = breakpoint_info_before.count(method_name)
+        count_after = breakpoint_info_after.count(method_name)
+        self.assertEqual(count_after, count_before + 1)
 
         # run until the end and check if breakpoints for the run-time debuginfo are removed
         gdb_disable_breakpoints()
@@ -75,7 +77,7 @@ class TestJITCompilationInterface(unittest.TestCase):
         breakpoint_info_after_invalidation = gdb_execute('info breakpoints')
         # check if additional breakpoint is removed
         # breakpoint info is still printed as multi-breakpoint, thus we check if exactly one valid breakpoint is remaining
-        self.assertEqual(breakpoint_info_after_invalidation.count('com.oracle.svm.test.debug.helper.RuntimeCompilations::inlineTest'), 1)
+        self.assertEqual(breakpoint_info_after_invalidation.count(method_name), 1)
         # breakpoint info must change
         self.assertNotEqual(breakpoint_info_after, breakpoint_info_after_invalidation)
 

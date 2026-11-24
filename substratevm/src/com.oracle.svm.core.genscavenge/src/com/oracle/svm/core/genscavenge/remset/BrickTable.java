@@ -26,7 +26,7 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 

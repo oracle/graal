@@ -369,7 +369,8 @@ public class SBOutliningPhase extends BasePhase<CoreProviders> {
                  */
 
                 ResolvedJavaMethod target = metadataHelper.stringValueOfMethod;
-                StampPair returnStamp = metadataHelper.nonNullStringStamp;
+                /* String.valueOf(Object) can return null if the object's toString() returns null. */
+                StampPair returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), metadataHelper.stringType, false);
                 ValueNode[] arguments = {appendOperand};
                 SubstrateMethodCallTargetNode stringifyCall = graph.add(new SubstrateMethodCallTargetNode(CallTargetNode.InvokeKind.Static, target, arguments, returnStamp));
                 stringifyCall.setNodeSourcePosition(originalCall.getNodeSourcePosition());

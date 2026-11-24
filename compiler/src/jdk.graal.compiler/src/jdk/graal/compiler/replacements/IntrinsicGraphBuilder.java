@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -92,10 +92,10 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     protected ValueNode[] arguments;
     protected ValueNode returnValue;
 
-    private FrameState createStateAfterStartOfReplacementGraph(ResolvedJavaMethod original, GraphBuilderConfiguration graphBuilderConfig) {
+    private FrameState createStateAfterStartOfReplacementGraph(GraphBuilderConfiguration graphBuilderConfig) {
         FrameStateBuilder startFrameState = new FrameStateBuilder(this, code, graph, graphBuilderConfig.retainLocalVariables());
         startFrameState.initializeForMethodStart(graph.getAssumptions(), false, graphBuilderConfig.getPlugins(), null);
-        return startFrameState.createInitialIntrinsicFrameState(original);
+        return startFrameState.createInitialIntrinsicFrameState();
     }
 
     public IntrinsicGraphBuilder(OptionValues options,
@@ -130,7 +130,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
         this.invokeBci = invokeBci;
         this.lastInstr = graph.start();
         if (graphBuilderConfig != null && !method.isNative()) {
-            graph.start().setStateAfter(createStateAfterStartOfReplacementGraph(method, graphBuilderConfig));
+            graph.start().setStateAfter(createStateAfterStartOfReplacementGraph(graphBuilderConfig));
         }
         // Record method dependency in the graph
         graph.recordMethod(method);

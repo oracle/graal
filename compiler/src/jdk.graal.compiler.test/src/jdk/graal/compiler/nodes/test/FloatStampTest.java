@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,9 @@ import jdk.graal.compiler.util.EconomicHashSet;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.graal.compiler.core.common.calc.FloatConvert;
 import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
+import jdk.graal.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -52,6 +54,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.calc.CopySignNode;
+import jdk.graal.compiler.nodes.calc.RoundFloatToIntegerNode;
 import jdk.graal.compiler.nodes.calc.RoundNode;
 import jdk.graal.compiler.nodes.calc.SignumNode;
 import jdk.vm.ci.meta.JavaKind;
@@ -211,6 +214,22 @@ public class FloatStampTest extends GraphTest {
                 Assert.assertTrue(op.foldStamp(StampFactory.empty(JavaKind.Float)).isEmpty());
                 Assert.assertTrue(op.foldStamp(StampFactory.empty(JavaKind.Double)).isEmpty());
             }
+        }
+    }
+
+    @Test
+    public void testRoundToIntegerEmpty() {
+        for (JavaKind kind : new JavaKind[]{JavaKind.Float, JavaKind.Double}) {
+            ParameterNode param = new ParameterNode(0, StampPair.createSingle(StampFactory.forKind(kind)));
+            RoundFloatToIntegerNode round = new RoundFloatToIntegerNode(param);
+            Stamp emptyInput = StampFactory.empty(kind);
+            Stamp emptyResult = StampFactory.empty(kind == JavaKind.Float ? JavaKind.Int : JavaKind.Long);
+            assertEquals(emptyResult, round.foldStamp(emptyInput));
+
+            param.setStamp(emptyInput);
+            assertTrue(round.inferStamp());
+            assertEquals(emptyResult, round.stamp(NodeView.DEFAULT));
+            assertEquals(emptyResult, new RoundFloatToIntegerNode(param).stamp(NodeView.DEFAULT));
         }
     }
 
@@ -440,4 +459,20 @@ public class FloatStampTest extends GraphTest {
             }
         }
     }
+
+    private static ArithmeticOpTable conversionTable(FloatConvertOp... conversions) {
+        return new ArithmeticOpTable(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                        null, null, null, null, null, conversions);
+    }
+
+    @Test
+    public void testReorderedFloatConversionsHaveEqualHashes() {
+        FloatConvertOp toInt = FloatStamp.OPS.getFloatConvert(FloatConvert.F2I);
+        FloatConvertOp toLong = FloatStamp.OPS.getFloatConvert(FloatConvert.F2L);
+        ArithmeticOpTable first = conversionTable(toInt, toLong);
+        ArithmeticOpTable reordered = conversionTable(toLong, toInt);
+        assertEquals(first, reordered);
+        assertEquals(first.hashCode(), reordered.hashCode());
+    }
+
 }

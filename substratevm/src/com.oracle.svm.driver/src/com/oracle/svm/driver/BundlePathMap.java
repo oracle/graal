@@ -40,6 +40,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import com.oracle.svm.core.OS;
+import com.oracle.svm.driver.launcher.BundleLauncherUtil;
 import com.oracle.svm.driver.launcher.configuration.BundleConfigurationParser;
 import com.oracle.svm.driver.launcher.json.BundleJSONParser;
 import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
@@ -52,6 +53,10 @@ final class BundlePathMap {
         BundleRelative,
         Unix,
         Windows;
+
+        boolean isCurrent() {
+            return this == currentSourceStyle();
+        }
 
         static PathStyle currentSourceStyle() {
             return OS.WINDOWS.isCurrent() ? Windows : Unix;
@@ -310,6 +315,14 @@ final class BundlePathMap {
             };
         }
 
+        /// Renders a non-absolute portable path using the current host's path separators.
+        /// Windows paths use their parsed components and retain drive-relative prefixes such as `C:`.
+        /// Component boundaries are preserved when materializing the path on the current filesystem.
+        /// No filesystem lookup or working-directory resolution occurs.
+        ///
+        /// @return the host-native path text, or an empty string for an empty relative path
+        /// @throws IllegalArgumentException if this path is absolute
+        /// @throws IllegalStateException if this path represents an unavailable substitution
         String platformRelativePathText() {
             if (isAbsolute()) {
                 throw new IllegalArgumentException("Expected a relative path but got " + this);
@@ -325,12 +338,12 @@ final class BundlePathMap {
                     currentPlatformSegments.set(0, drive + ":" + currentPlatformSegments.getFirst());
                 }
             } else {
-                currentPlatformSegments = Stream.of(unixSeparatorPattern.split(text.replace('\\', '/'))).filter(segment -> !segment.isEmpty()).toList();
+                currentPlatformSegments = components.segments();
             }
             if (currentPlatformSegments.isEmpty()) {
                 return "";
             }
-            Path relativePath = Path.of(currentPlatformSegments.getFirst(), currentPlatformSegments.subList(1, currentPlatformSegments.size()).toArray(String[]::new));
+            Path relativePath = BundleLauncherUtil.materializePortablePath(String.join("/", currentPlatformSegments));
             return relativePath.toString();
         }
 
@@ -677,7 +690,7 @@ final class BundlePathMap {
         if (path.style() != PathStyle.BundleRelative || path.kind() != RootKind.Relative) {
             throw new IllegalArgumentException("Expected a bundle-relative path but got " + path);
         }
-        return bundleRoot.resolve(Path.of(path.text()));
+        return bundleRoot.resolve(BundleLauncherUtil.materializePortablePath(path.text()));
     }
 
     static <T> Stream<Map.Entry<T, T>> withoutIdentityMappings(Map<T, T> pathMap) {

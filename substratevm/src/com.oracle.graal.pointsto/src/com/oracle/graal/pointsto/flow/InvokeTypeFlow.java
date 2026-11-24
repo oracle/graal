@@ -59,6 +59,15 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
 
     protected final AnalysisType receiverType;
     protected final PointsToAnalysisMethod targetMethod;
+
+    /**
+     * Whether this is a global invoke shared by call sites for the same target method, invoke kind
+     * (virtual or special), and caller method variant. Such invokes replace call-site-specific
+     * virtual invokes after receiver saturation and also model instance root methods. Their
+     * receiver is the {@link AllInstantiatedTypeFlow all-instantiated type flow} of the target
+     * method's declaring class. This flag identifies the shared invoke independently of the analysis
+     * context-sensitivity policy.
+     */
     protected boolean isContextInsensitive;
 
     /**
@@ -112,10 +121,19 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
         return allOriginalCallees;
     }
 
+    /**
+     * Marks this as the shared global invoke described by {@link #isContextInsensitive}. This only
+     * sets the flag; replacing and relinking call-site-specific invokes happens separately.
+     */
     public void markAsContextInsensitive() {
         isContextInsensitive = true;
     }
 
+    /**
+     * Returns whether this is the shared global invoke described by {@link #isContextInsensitive}.
+     * An ordinary call-site-specific invoke returns {@code false} even when the analysis itself is
+     * context insensitive.
+     */
     @Override
     public boolean isContextInsensitive() {
         return isContextInsensitive;
@@ -297,18 +315,31 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
         }
     }
 
-    /*
-     * In the open type world we always propagate saturation of the actual receiver to the formal
-     * receiver, even after the saturated invoke was replaced by the context insensitive variant.
-     * So, if we are linking the receiver of a context insensitive invoke we immediately notify the
-     * formal receiver of saturation.
+    /**
+     * In the open type world, propagate actual receiver saturation to the formal receiver even
+     * after the saturated virtual invoke was replaced by the shared context insensitive variant.
+     * The shared invoke uses an {@link AllInstantiatedTypeFlow all-instantiated type flow} as its
+     * receiver, which is not itself saturated, so linking a callee must explicitly notify its formal
+     * receiver of saturation.
+     * <p>
+     * This notification also applies to special invokes whose receiver can be unknown in the open
+     * type world. A special invoke retains its call-site-specific invoke flow but replaces its
+     * saturated receiver with an all-instantiated type flow. Its statically known callee can execute
+     * on an extension-defined receiver even when that replacement flow is empty. Propagating
+     * saturation to the formal receiver preserves this possibility inside the callee, including
+     * through further private calls, independently of whether the callee's external entry is closed.
      */
     private void maybeSaturateFormalReceiver(PointsToAnalysis bb, TypeFlow<?> actualParam, TypeFlow<?> formalParam) {
-        if (!bb.getHostVM().isClosedTypeWorld() && this.isContextInsensitive()) {
-            AnalysisError.guarantee(actualParam instanceof AllInstantiatedTypeFlow && formalParam instanceof FormalReceiverTypeFlow);
-            /* The actualParam is not technically saturated, but we treat it as such. */
+        if (!bb.getHostVM().isClosedTypeWorld() && hasSaturatedReceiver()) {
+            AnalysisError.guarantee((actualParam.isSaturated() || actualParam instanceof AllInstantiatedTypeFlow) && formalParam instanceof FormalReceiverTypeFlow);
+            /* The actual receiver may already have been replaced by an unsaturated flow. */
             actualParam.notifyUseOfSaturation(bb, formalParam);
         }
+    }
+
+    /** Whether receiver saturation must be preserved after replacing the actual receiver flow. */
+    protected boolean hasSaturatedReceiver() {
+        return isContextInsensitive();
     }
 
     public void linkReturn(PointsToAnalysis bb, boolean isStatic, MethodFlowsGraphInfo calleeFlows) {

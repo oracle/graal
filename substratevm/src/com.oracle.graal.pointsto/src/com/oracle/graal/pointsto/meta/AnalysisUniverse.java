@@ -729,7 +729,7 @@ public class AnalysisUniverse implements Universe {
         if (imageHeapConstant != null) {
             return imageHeapConstant;
         }
-        JavaConstant canonicalResult = Objects.requireNonNull(getHostedValuesProvider().canonicalizeReplacedConstant(destination));
+        JavaConstant canonicalResult = Objects.requireNonNull(getHostedValuesProvider().canonicalizeConstant(destination));
         AnalysisError.guarantee(!(canonicalResult instanceof ImageHeapConstant), "Ordinary object replacers must not produce an ImageHeapConstant: %s", canonicalResult);
         return canonicalResult;
     }

@@ -68,13 +68,6 @@ final class TagRootNodeElement extends AbstractElement {
         this.add(GeneratorUtils.createConstructorUsingFields(Set.of(), this));
 
         parent.child(this.add(new CodeVariableElement(Set.of(), types.ProbeNode, "probe")));
-        CodeExecutableElement getProbe = this.add(new CodeExecutableElement(Set.of(), types.ProbeNode, "getProbe"));
-        CodeTreeBuilder b = getProbe.createBuilder();
-        b.declaration(types.ProbeNode, "localProbe", "this.probe");
-        b.startIf().string("localProbe == null").end().startBlock();
-        b.statement("this.probe = localProbe = insert(root.createProbe(null))");
-        b.end();
-        b.statement("return localProbe");
 
         this.add(createCopy());
     }

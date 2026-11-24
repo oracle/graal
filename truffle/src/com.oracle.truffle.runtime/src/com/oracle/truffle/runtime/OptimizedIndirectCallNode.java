@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * A call node with a dynamic {@link CallTarget} that can be optimized by Graal.
@@ -65,18 +66,43 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode {
         try {
             OptimizedCallTarget optimizedTarget = ((OptimizedCallTarget) target);
             if (CompilerDirectives.isPartialEvaluationConstant(optimizedTarget)) {
-                return optimizedTarget.callDirect(this, arguments);
+                return optimizedTarget.callDirect(this, -1, arguments);
             } else {
-                return optimizedTarget.callIndirect(this, arguments);
+                return optimizedTarget.callIndirect(this, -1, arguments);
             }
         } catch (Throwable t) {
-            throw handleException(t);
+            throw handleException(t, -1);
         }
     }
 
-    private RuntimeException handleException(Throwable t) {
+    @Override
+    public Object call(CallTarget target, int bytecodeIndex, Object[] arguments) {
+        try {
+            OptimizedCallTarget optimizedTarget = ((OptimizedCallTarget) target);
+            if (CompilerDirectives.isPartialEvaluationConstant(optimizedTarget)) {
+                return optimizedTarget.callDirect(this, bytecodeIndex, arguments);
+            } else {
+                return optimizedTarget.callIndirect(this, bytecodeIndex, arguments);
+            }
+        } catch (Throwable t) {
+            throw handleException(t, bytecodeIndex);
+        }
+    }
+
+    @Override
+    public Object call(RootNode root, int bytecodeIndex, Object[] arguments) {
+        OptimizedCallTarget target = (OptimizedCallTarget) OptimizedRuntimeAccessor.NODES.getCallTargetWithoutInitialization(root);
+        // Keep this check local to avoid an extra RootNode.call host frame.
+        if (target == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("Call target is not initialized. Call initializeCallTarget() before calling this root.");
+        }
+        return target.callRoot(this, bytecodeIndex, root, arguments);
+    }
+
+    private RuntimeException handleException(Throwable t, int bytecodeIndex) {
         Throwable profiled = profileExceptionType(t);
-        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(this, null, profiled, null);
+        OptimizedRuntimeAccessor.LANGUAGE.addStackFrameInfo(this, null, profiled, null, bytecodeIndex);
         throw OptimizedCallTarget.rethrow(profiled);
     }
 

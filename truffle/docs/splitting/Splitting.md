@@ -21,10 +21,14 @@ You can find more information on how to correctly report polymorphic specializat
 Detection of suitable splitting candidates relies on the languages reporting polymorphic specializations.
 Once the specialization is reported, you can assume that the polymorphism is coming from somewhere in the caller chain of the call target hosting the newly polymorphic node, and that by splitting the right call target (or call targets) you can return this node to a monomorphic state.
 
-You then identify the call targets for which the splitting could result in monomorphization and mark them as "needs split". During further execution, if the interpreter is about to execute a direct call to a call target that is marked as "needs split", that call target will be split (provided there are no outstanding factors preventing it such as the [root node not being allowed to be split](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#isCloningAllowed),
-the AST being too big, etc.).
-This results in a new call target with a clean profile (i.e., all its nodes are returned to an uninitialized state) to be
-re-profiled specifically for this call site, since it is the only call site calling this new call target.
+The runtime identifies call targets for which splitting could result in monomorphization and marks them as "needs split".
+When the interpreter next executes a direct call to a marked target, it considers splitting that call site.
+Splitting requires the [root node to allow cloning](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#isCloningAllowed()), sufficient splitting budget, and compliance with size and recursion limits.
+If the split succeeds, that same call executes the new target with a clean profile, with all nodes reset to an uninitialized state.
+The new target is re-profiled specifically for this call site, since it is the only call site calling the new target.
+Calls within the clone can split in turn as execution reaches them; no compilation preparation is required.
+Installing a split invalidates compiled code that depends on the rewritten caller.
+Compilation preparation does not trigger automatic splitting.
 
 Following recursive algorithm (expressed as pseudo code) is a simplified version of the approach used to decide which call targets need to be marked "needs split".
 This algorithm is applied to every call target once one of its nodes reports a polymorphic specialization.

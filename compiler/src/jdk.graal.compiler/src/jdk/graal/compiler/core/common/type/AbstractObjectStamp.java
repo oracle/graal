@@ -272,7 +272,7 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
                 }
             }
         }
-        if (joinAlwaysArray && joinType != null && !joinType.isArray() && (joinExactType || !joinType.isJavaLangObject())) {
+        if (joinAlwaysArray && joinType != null && !joinType.isArray() && (joinExactType || !isArraySupertype(joinType))) {
             joinAlwaysNull = true;
             /* If we now have joinNonNull && joinAlwaysNull, it is converted to "empty" below. */
         }
@@ -297,6 +297,12 @@ public abstract class AbstractObjectStamp extends AbstractPointerStamp {
         } else {
             return copyWith(joinType, joinExactType, joinNonNull, joinAlwaysNull, joinAlwaysArray);
         }
+    }
+
+    /// Returns whether `type` is a non-array supertype shared by all Java array classes.
+    private static boolean isArraySupertype(ResolvedJavaType type) {
+        // Arrays implement exactly these two interfaces, regardless of their component type.
+        return type.isJavaLangObject() || type.getName().equals("Ljava/lang/Cloneable;") || type.getName().equals("Ljava/io/Serializable;");
     }
 
     private static boolean isInterfaceOrArrayOfInterface(ResolvedJavaType t) {

@@ -29,14 +29,16 @@ import static com.oracle.svm.shared.util.VMError.intentionallyUnimplemented;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog.SubstrateSpeculation;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.AllAccess;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.DisallowLayered;
@@ -78,7 +80,7 @@ public class SubstrateMetaAccess implements MetaAccessProvider {
     }
 
     public SubstrateType lookupJavaTypeFromHub(DynamicHub hub) {
-        SubstrateType type = (SubstrateType) hub.getMetaType();
+        SubstrateType type = (SubstrateType) DynamicHubUtils.getMetaType(hub);
         if (type == null) {
             /*
              * If the SubstrateType is not in the image heap, we always create a new type without
@@ -140,7 +142,7 @@ public class SubstrateMetaAccess implements MetaAccessProvider {
      */
     @Override
     public int getArrayBaseOffset(JavaKind kind) {
-        return ObjectLayout.singleton().getArrayBaseOffset(kind);
+        return ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), kind);
     }
 
     /**
@@ -150,7 +152,7 @@ public class SubstrateMetaAccess implements MetaAccessProvider {
      */
     @Override
     public int getArrayIndexScale(JavaKind elementKind) {
-        return ObjectLayout.singleton().getArrayIndexScale(elementKind);
+        return ObjectLayoutCompilerSupport.getArrayIndexScale(ObjectLayout.singleton(), elementKind);
     }
 
     @Override

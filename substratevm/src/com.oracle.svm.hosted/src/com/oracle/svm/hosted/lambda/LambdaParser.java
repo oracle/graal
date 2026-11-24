@@ -232,35 +232,46 @@ public class LambdaParser {
         return new CaptureSites(invocationsBySite);
     }
 
-    private record CaptureSites(Map<String, BootstrapMethodInvocation> invocationsBySite, ConcurrentHashMap<Class<?>, String> sitesByLambdaClass) {
+    private record CaptureSites(Map<String, BootstrapMethodInvocation> invocationsBySite, ConcurrentHashMap<String, BootstrapMethodInvocation> pendingInvocationsBySite,
+                    ConcurrentHashMap<String, String> sitesByLambdaClassName) {
         CaptureSites(Map<String, BootstrapMethodInvocation> invocationsBySite) {
-            this(invocationsBySite, new ConcurrentHashMap<>());
+            this(invocationsBySite, new ConcurrentHashMap<>(invocationsBySite), new ConcurrentHashMap<>());
         }
 
         String lookup(Class<?> lambdaClass) {
-            String cachedCaptureSite = sitesByLambdaClass.get(lambdaClass);
+            /*
+             * We scope this cache to the capturing class and its loader to avoid collisions between
+             * same-named lambda classes from different loaders. Within that scope, full lambda
+             * names identify the classes without relying on their identity hashes. Layered builds
+             * give generated classes stable identity hashes, so many lambdas in one capturing class
+             * can have the same hash, making Class-keyed cache operations linear.
+             */
+            String lambdaClassName = lambdaClass.getName();
+            String cachedCaptureSite = sitesByLambdaClassName.get(lambdaClassName);
             if (cachedCaptureSite != null) {
                 return cachedCaptureSite;
             }
 
-            String captureSite = null;
-            for (Map.Entry<String, BootstrapMethodInvocation> entry : invocationsBySite.entrySet()) {
+            /* Resolved sites never change; only retry sites that have not linked yet. */
+            for (Map.Entry<String, BootstrapMethodInvocation> entry : pendingInvocationsBySite.entrySet()) {
                 String currentCaptureSite = entry.getKey();
                 JavaConstant bootstrapConstant = entry.getValue().lookup();
-                Class<?> foundLambdaClass = bootstrapConstant == null ? null : getLambdaClass(bootstrapConstant);
-                if (foundLambdaClass == null || !LambdaUtils.isLambdaClass(foundLambdaClass)) {
+                if (bootstrapConstant == null) {
                     continue;
                 }
-                String previousCaptureSite = sitesByLambdaClass.putIfAbsent(foundLambdaClass, currentCaptureSite);
+                Class<?> foundLambdaClass = getLambdaClass(bootstrapConstant);
+                if (foundLambdaClass == null || !LambdaUtils.isLambdaClass(foundLambdaClass)) {
+                    pendingInvocationsBySite.remove(currentCaptureSite);
+                    continue;
+                }
+                String previousCaptureSite = sitesByLambdaClassName.putIfAbsent(foundLambdaClass.getName(), currentCaptureSite);
                 if (previousCaptureSite != null && !previousCaptureSite.equals(currentCaptureSite)) {
                     throw VMError.shouldNotReachHere("Multiple capture sites found for lambda class " + lambdaClass.getName() + ": " + previousCaptureSite + " and " + currentCaptureSite);
                 }
-                if (!lambdaClass.getName().equals(foundLambdaClass.getName())) {
-                    continue;
-                }
-                captureSite = currentCaptureSite;
+                pendingInvocationsBySite.remove(currentCaptureSite);
             }
-            return captureSite;
+            /* Another scanning thread may have published the requested mapping. */
+            return sitesByLambdaClassName.get(lambdaClassName);
         }
 
         Class<?> lookupLambdaClass(String captureSite) {
@@ -273,7 +284,8 @@ public class LambdaParser {
 
             Class<?> lambdaClass = getLambdaClass(bootstrapConstant);
             VMError.guarantee(lambdaClass != null && LambdaUtils.isLambdaClass(lambdaClass), "Could not resolve lambda class for capture site %s", captureSite);
-            sitesByLambdaClass.put(lambdaClass, captureSite);
+            sitesByLambdaClassName.put(lambdaClass.getName(), captureSite);
+            pendingInvocationsBySite.remove(captureSite);
             return lambdaClass;
         }
     }

@@ -24,11 +24,23 @@
  */
 package com.oracle.svm.core.graal.code;
 
+import static jdk.graal.compiler.vector.replacements.VectorIntrinsics.Options.Vectorization;
+
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.shared.option.HostedOptionValues;
+import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.vector.architecture.VectorArchitecture;
+import jdk.graal.compiler.vector.architecture.aarch64.VectorAArch64;
+import jdk.graal.compiler.vector.architecture.amd64.VectorAMD64;
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.riscv64.RISCV64;
 
 public abstract class SubstrateVectorArchitectureFactory {
 
@@ -40,20 +52,18 @@ public abstract class SubstrateVectorArchitectureFactory {
      */
     private volatile VectorArchitecture vectorArchitecture = null;
 
-    @FunctionalInterface
-    public interface VectorArchitectureFactory<VectorArch extends VectorArchitecture, Arch extends Architecture> {
-        VectorArch create(Arch arch, boolean vectorArchEnabled, int referenceSize, boolean compressedReferences, int alignment, boolean enableObjectVectorization);
-    }
-
     /**
      * Returns the singleton {@link VectorArchitecture} instance to be used at image build time. The
      * first time this is called, it builds an instance and returns it. On subsequent calls, ensures
      * that the given arguments are compatible with previous calls, and returns the previously built
-     * singleton instance.
+     * singleton instance. A target without a vector architecture requires Graal vectorization to be
+     * disabled. In that case, this method returns {@code null}.
      */
-    protected <VectorArch extends VectorArchitecture, Arch extends Architecture> VectorArchitecture getSingletonVectorArchitecture(VectorArchitectureFactory<VectorArch, Arch> factory,
-                    Arch arch, boolean vectorArchEnabled, int referenceSize, int alignment, BarrierSet barrierSet) {
-        VectorArch newVectorArchitecture = factory.create(arch, vectorArchEnabled, referenceSize, true, alignment, barrierSet.supportsObjectArrayRangeBarriers());
+    protected VectorArchitecture getSingletonVectorArchitecture(Architecture arch, BarrierSet barrierSet) {
+        VectorArchitecture newVectorArchitecture = createVectorArchitecture(arch, barrierSet);
+        if (newVectorArchitecture == null) {
+            return null;
+        }
         if (vectorArchitecture == null) {
             synchronized (SubstrateVectorArchitectureFactory.class) {
                 if (vectorArchitecture == null) {
@@ -63,5 +73,26 @@ public abstract class SubstrateVectorArchitectureFactory {
         }
         VMError.guarantee(vectorArchitecture.equals(newVectorArchitecture), "must not build incompatible VectorArchitecture instances; old: %s, new: %s", vectorArchitecture, newVectorArchitecture);
         return vectorArchitecture;
+    }
+
+    private static VectorArchitecture createVectorArchitecture(Architecture arch, BarrierSet barrierSet) {
+        ObjectLayout layout = ObjectLayout.singleton();
+        /*
+         * Graal's vector optimizations still need a vector architecture when SIMD is disabled.
+         * The architecture then reports scalar widths for memory and arithmetic operations.
+         */
+        boolean enabled = !SubstrateOptions.useLLVMBackend();
+        boolean objectVectorization = barrierSet.supportsObjectArrayRangeBarriers();
+        if (arch instanceof AMD64 amd64) {
+            return new VectorAMD64(amd64, enabled, layout.getReferenceSize(), true, layout.getAlignment(), objectVectorization);
+        } else if (arch instanceof AArch64 aarch64) {
+            return new VectorAArch64(aarch64, enabled, layout.getReferenceSize(), true, layout.getAlignment(), objectVectorization);
+        } else if (arch instanceof RISCV64) {
+            UserError.guarantee(!Vectorization.getValue(HostedOptionValues.singleton().get()),
+                            "Graal vectorization is not supported for RISC-V. Disable it with %s.", SubstrateOptionsParser.commandArgument(Vectorization, "-"));
+            return null;
+        } else {
+            throw VMError.shouldNotReachHere("Unsupported vector architecture: " + arch);
+        }
     }
 }

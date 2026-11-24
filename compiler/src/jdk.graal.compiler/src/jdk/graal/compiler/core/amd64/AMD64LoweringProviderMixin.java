@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.amd64;
 
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.nodes.memory.ExtendableMemoryAccess;
+import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.spi.LoweringProvider;
 
 public interface AMD64LoweringProviderMixin extends LoweringProvider {
@@ -57,11 +58,15 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
 
     @Override
     default boolean narrowsUseCastValue() {
-        return false;
+        return true;
     }
 
+    /**
+     * Scalar integer reads support both sign and zero extension, including reads that order memory
+     * accesses. AMD64 does not require a different load instruction for those reads.
+     */
     @Override
     default boolean supportsFoldingExtendIntoAccess(ExtendableMemoryAccess access, MemoryExtendKind extendKind) {
-        return false;
+        return access instanceof ReadNode && extendKind.isExtended() && access.isCompatibleWithExtend(extendKind);
     }
 }

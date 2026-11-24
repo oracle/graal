@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.g1.G1Heap;
 import com.oracle.svm.core.g1.G1ImageHeapInfo;
 import com.oracle.svm.core.g1.G1Options;
@@ -213,5 +213,12 @@ public class G1ImageHeapLayouter implements ImageHeapLayouter {
     @Override
     public void writeMetadata(ByteBuffer imageHeapBytes, long imageHeapOffsetInBuffer) {
         // nothing to do
+    }
+
+    @Override
+    public void releaseObjectReferences() {
+        for (G1ImageHeapPartition partition : partitions) {
+            partition.releaseObjectReferences();
+        }
     }
 }

@@ -2385,6 +2385,10 @@ public class LoopVectorizationPhase extends PostRunCanonicalizationPhase<MidTier
         private StructuredGraph createInnerGraph(ValueNode value, ArrayList<ValueNode> vectorInputs, ArrayList<ValueNode> scalarInputs, final PhiNode foldAccumulator) {
             final NodeBitMap innerNodes = new NodeBitMap(graph);
             collectInnerNodes(innerNodes, value, loop, arch, false);
+            IfNode invertedFoldLimitTest = foldAccumulator != null && loop.counted().isInverted() ? loop.counted().getLimitTest() : null;
+            if (invertedFoldLimitTest != null) {
+                collectInnerNodes(innerNodes, invertedFoldLimitTest.condition(), loop, arch, false);
+            }
 
             final StructuredGraph innerGraph = new StructuredGraph.Builder(graph.getOptions(), graph.getDebug(), graph.allowAssumptions()).compilationId(graph.compilationId()).trackNodeSourcePosition(
                             graph.trackNodeSourcePosition()).build();
@@ -2426,6 +2430,17 @@ public class LoopVectorizationPhase extends PostRunCanonicalizationPhase<MidTier
                 originalValue = ((VirtualConditionalNode) value).conditional();
             }
             ValueNode dupValue = (ValueNode) duplicates.get(originalValue);
+            if (invertedFoldLimitTest != null) {
+                /*
+                 * In an inverted loop, the accumulator phi at the exit excludes the final
+                 * backedge update. Make the fold return the accumulator unchanged on the
+                 * final header visit, rather than performing an extra update.
+                 */
+                ValueNode accumulator = innerGraph.unique(new FoldVectorNode.AccumulatorNode(foldAccumulator.stamp(NodeView.DEFAULT)));
+                LogicNode condition = (LogicNode) duplicates.get(invertedFoldLimitTest.condition());
+                boolean exitsOnTrue = invertedFoldLimitTest.trueSuccessor() == loop.counted().getCountedExit();
+                dupValue = innerGraph.unique(new ConditionalNode(condition, exitsOnTrue ? accumulator : dupValue, exitsOnTrue ? dupValue : accumulator));
+            }
             ReturnNode ret = innerGraph.add(new ReturnNode(dupValue));
             innerGraph.addAfterFixed(innerGraph.start(), ret);
 

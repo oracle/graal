@@ -36,7 +36,7 @@ import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import java.util.Arrays;
 import java.util.Map;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
@@ -47,6 +47,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.MissingRegistrationUtils;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.guest.staging.SubstrateGCOptions.TLABPolicy;
 import com.oracle.svm.core.SubstrateOptions;
@@ -56,11 +57,11 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
-import com.oracle.svm.core.hub.DynamicHubProvider;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
@@ -376,26 +377,27 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     /** Foreign call: {@link #SLOW_PATH_HUB_OR_UNSAFE_INSTANTIATE_ERROR}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static DynamicHub slowPathHubOrUnsafeInstantiationError(DynamicHub hub) throws InstantiationException {
+        validateUnsafeInstanceAllocationHub(hub);
+        return hub;
+    }
+
+    public static void validateUnsafeInstanceAllocationHub(DynamicHub hub) throws InstantiationException {
         if (hub == null) {
             throw new NullPointerException("Allocation type is null.");
         } else if (!hub.isInstanceClass() || LayoutEncoding.isSpecial(hub.getLayoutEncoding())) {
             throw new InstantiationException("Can only allocate instance objects for concrete classes: " + DynamicHub.toClass(hub).getTypeName());
         } else if (LayoutEncoding.isHybrid(hub.getLayoutEncoding())) {
             throw new InstantiationException("Cannot allocate objects of special hybrid types: " + DynamicHub.toClass(hub).getTypeName());
-        } else {
-            if (hub.canUnsafeInstantiateAsInstanceSlowPath()) {
-                return hub;
-            } else {
-                Class<?> clazz = DynamicHub.toClass(hub);
-                if (FutureDefaultsOptions.exactReflection()) {
-                    throw MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
-                }
-                if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                    MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
-                }
-                throw new IllegalArgumentException("Type " + clazz.getTypeName() + " is instantiated reflectively but was never registered." +
-                                " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");
+        } else if (!hub.canUnsafeInstantiateAsInstanceSlowPath()) {
+            Class<?> clazz = DynamicHub.toClass(hub);
+            if (FutureDefaultsOptions.exactReflection()) {
+                throw MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
             }
+            if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+                MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
+            }
+            throw new IllegalArgumentException("Type " + clazz.getTypeName() + " is instantiated reflectively but was never registered." +
+                            " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");
         }
     }
 
@@ -469,7 +471,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         Object result = formatArray(objectHeader, allocationSize, arrayLength, memory, fillContents, false, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling,
                         snippetCounters);
 
-        int fromOffset = ObjectLayout.singleton().getArrayBaseOffset(JavaKind.Byte);
+        int fromOffset = ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.Byte);
         int toOffset = LayoutEncoding.getArrayBaseOffsetAsInt(hub.getLayoutEncoding()) + arrayLength - referenceMap.length;
         for (int i = 0; probability(LIKELY_PROBABILITY, i < referenceMap.length); i++) {
             byte b = ObjectAccess.readByte(referenceMap, fromOffset + i, byteArrayIdentity());
@@ -515,7 +517,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @Fold
     static int afterArrayLengthOffset() {
-        return ObjectLayout.singleton().getArrayLengthOffset() + ObjectLayout.singleton().sizeInBytes(JavaKind.Int);
+        return ObjectLayout.singleton().getArrayLengthOffset() + ObjectLayoutCompilerSupport.sizeInBytes(ObjectLayout.singleton(), JavaKind.Int);
     }
 
     @Override
@@ -869,7 +871,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     throw VMError.shouldNotReachHereUnexpectedInput(node);
                 }
 
-                DynamicHub hub = ensureMarkedAsInstantiated(DynamicHubProvider.getHub(type));
+                DynamicHub hub = ensureMarkedAsInstantiated(DynamicHubUtils.getHub(type));
                 long size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()).rawValue();
                 Arguments args;
 
@@ -904,7 +906,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 SharedType instanceClass = (SharedType) node.instanceClass();
                 ValueNode length = node.length();
-                DynamicHub hub = DynamicHubProvider.getHub(instanceClass);
+                DynamicHub hub = DynamicHubUtils.getHub(instanceClass);
                 int layoutEncoding = hub.getLayoutEncoding();
                 int arrayBaseOffset = LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding);
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
@@ -954,7 +956,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     throw VMError.shouldNotReachHereUnexpectedInput(node);
                 }
 
-                DynamicHub hub = ensureMarkedAsInstantiated(DynamicHubProvider.getHub(type));
+                DynamicHub hub = ensureMarkedAsInstantiated(DynamicHubUtils.getHub(type));
                 int layoutEncoding = hub.getLayoutEncoding();
                 int arrayBaseOffset = getArrayBaseOffset(layoutEncoding);
                 int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
@@ -1001,7 +1003,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 }
 
                 SharedType type = (SharedType) node.type();
-                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(DynamicHubProvider.getHub(type)), tool.getMetaAccess(), graph);
+                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(DynamicHubUtils.getHub(type)), tool.getMetaAccess(), graph);
 
                 Arguments args = new Arguments(newmultiarray, graph, tool.getLoweringStage());
                 args.add("hub", hubConstant);
@@ -1028,7 +1030,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 }
 
                 SharedType type = (SharedType) node.type();
-                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(DynamicHubProvider.getHub(type)), tool.getMetaAccess(), graph);
+                ConstantNode hubConstant = ConstantNode.forConstant(snippetReflection.forObject(DynamicHubUtils.getHub(type)), tool.getMetaAccess(), graph);
 
                 Arguments args = new Arguments(newmultiarray, graph, tool.getLoweringStage());
                 args.add("hub", hubConstant);

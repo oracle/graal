@@ -577,6 +577,23 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                                 return false;
                             }
                         }
+                        /*
+                         * Two cases permit removing this loop's safepoint: both the checked IV and its
+                         * root are proved non-overflowing, or the loop is a non-counted strip-mined inner
+                         * loop with its own bound. For an ordinary widened test such as (long) i < limit,
+                         * the proof must cover the updated int counter i as well as its long conversion.
+                         *
+                         * Non-counted strip mining supplies a separate bound: for a unit-stride strip, it
+                         * tests int (i - stripStart) against the strip size. Here i is the reused root IV and
+                         * i - stripStart is the checked distance. With stripStart = MAX_VALUE and i =
+                         * MIN_VALUE after one increment, the int subtraction gives 1, so overflow of i does
+                         * not lose the iteration count. The bounded inner strip returns to the outer
+                         * safepoint. Other counted loops need the checked-IV and root proofs below before
+                         * their safepoints can be removed.
+                         */
+                        if (!(loop.loopBegin().isNonCountedStripMinedInner() || loop.counted().loopAndRootCanNeverOverflow())) {
+                            return false;
+                        }
                         safepointPlan.setEndStateAllEnds(loop, SafepointState.OPTIMIZER_DISABLED);
                         if (stripMinedInner) {
                             /*

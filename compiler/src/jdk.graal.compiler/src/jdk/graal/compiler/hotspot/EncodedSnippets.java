@@ -27,7 +27,6 @@ package jdk.graal.compiler.hotspot;
 import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 import static jdk.graal.compiler.hotspot.HotSpotReplacementsImpl.isGraalClass;
 import static jdk.graal.compiler.hotspot.HotSpotReplacementsImpl.snippetsAreEncoded;
-import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -36,7 +35,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.bytecode.BytecodeProvider;
 import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecode;
 import jdk.graal.compiler.core.CompilationWrapper;
 import jdk.graal.compiler.core.GraalCompilerOptions;
@@ -359,7 +357,7 @@ public class EncodedSnippets {
                     .build();
             // @formatter:on
             try (DebugContext.Scope scope = debug.scope("LibGraal.DecodeSnippet", result)) {
-                PEGraphDecoder graphDecoder = new SubstitutionGraphDecoder(providers, result, replacements, parameterPlugin, method, INLINE_AFTER_PARSING, encodedGraph, nodePlugins, mustSucceed);
+                PEGraphDecoder graphDecoder = new SubstitutionGraphDecoder(providers, result, replacements, parameterPlugin, method, encodedGraph, nodePlugins, mustSucceed);
                 assert result.isSubstitution();
                 graphDecoder.decode(method);
                 postDecode(debug, result, original, providers.getSnippetReflection(), providers.getMetaAccess());
@@ -406,19 +404,18 @@ public class EncodedSnippets {
         private final boolean mustSucceed;
 
         SubstitutionGraphDecoder(Providers providers, StructuredGraph result, HotSpotReplacementsImpl replacements, ParameterPlugin parameterPlugin, ResolvedJavaMethod method,
-                        IntrinsicContext.CompilationContext context, EncodedGraph encodedGraph, NodePlugin[] nodePlugins, boolean mustSucceed) {
+                        EncodedGraph encodedGraph, NodePlugin[] nodePlugins, boolean mustSucceed) {
             super(providers.getCodeCache().getTarget().arch, result, providers, null,
                             replacements.getGraphBuilderPlugins().getInvocationPlugins(), new InlineInvokePlugin[0], parameterPlugin,
                             nodePlugins, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), false, false);
             this.method = method;
             this.encodedGraph = encodedGraph;
             this.mustSucceed = mustSucceed;
-            this.intrinsic = new IntrinsicContext(method, null, replacements.getDefaultReplacementBytecodeProvider(), context, false);
+            this.intrinsic = new IntrinsicContext(method, null, replacements.getDefaultReplacementBytecodeProvider());
         }
 
         @Override
-        protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod,
-                        BytecodeProvider intrinsicBytecodeProvider) {
+        protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod) {
             if (lookupMethod.equals(method)) {
                 return encodedGraph;
             } else {

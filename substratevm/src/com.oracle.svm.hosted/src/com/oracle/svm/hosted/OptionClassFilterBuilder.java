@@ -51,6 +51,8 @@ public class OptionClassFilterBuilder {
     private final Map<URI, Module> uriModuleMap;
 
     protected final Map<String, LinkedHashSet<OptionOrigin>> requireCompletePackageOrClass = new HashMap<>();
+    protected final Map<String, LinkedHashSet<OptionOrigin>> requireCompletePackages = new HashMap<>();
+    protected final Map<String, LinkedHashSet<OptionOrigin>> requireCompletePackageWildcards = new HashMap<>();
     private final LinkedHashSet<Module> requireCompleteModules = new LinkedHashSet<>();
     private boolean requireCompleteAll;
 
@@ -91,7 +93,29 @@ public class OptionClassFilterBuilder {
                             SubstrateOptionsParser.commandArgument(baseOption, value), origin);
         } else {
             for (String entry : OptionUtils.resolveOptionValuesRedirection(baseOption, value, origin)) {
-                if (OptionUtils.isValidPackageOrClassName(entry)) {
+                if (entry.startsWith("module=")) {
+                    if (!origin.commandLineLike()) {
+                        throw UserError.abort("Using module selectors with '%s' is only allowed on command line. The option was used from %s.",
+                                        SubstrateOptionsParser.commandArgument(baseOption, value), origin);
+                    }
+                    String moduleName = entry.substring("module=".length());
+                    Module module = imageClassLoader.findModule(moduleName).orElseThrow(() -> UserError.abort("Module '%s' in option '%s' was not found.",
+                                    moduleName, SubstrateOptionsParser.commandArgument(baseOption, value)));
+                    requireCompleteModules.add(module);
+                } else if (entry.startsWith("package=")) {
+                    if (!origin.commandLineLike()) {
+                        throw UserError.abort("Using package selectors with '%s' is only allowed on command line. The option was used from %s.",
+                                        SubstrateOptionsParser.commandArgument(baseOption, value), origin);
+                    }
+                    String packageName = entry.substring("package=".length());
+                    boolean wildcard = packageName.endsWith(".*");
+                    String name = wildcard ? packageName.substring(0, packageName.length() - 2) : packageName;
+                    if (!OptionUtils.isValidPackageOrClassName(name)) {
+                        throw UserError.abort("Invalid package name '%s' in option '%s'.", packageName, SubstrateOptionsParser.commandArgument(baseOption, value));
+                    }
+                    Map<String, LinkedHashSet<OptionOrigin>> packages = wildcard ? requireCompletePackageWildcards : requireCompletePackages;
+                    packages.computeIfAbsent(name, _ -> new LinkedHashSet<>()).add(origin);
+                } else if (OptionUtils.isValidPackageOrClassName(entry)) {
                     GuestTypes guestTypes = imageClassLoader.guestTypes;
                     if (!origin.commandLineLike() && !guestTypes.getDiscoveredClassNames(container).contains(entry) && !guestTypes.getDiscoveredPackageNames(container).contains(entry)) {
                         throw UserError.abort("Option '%s' provided by %s contains '%s'. No such package or class name found in '%s'.",
@@ -132,6 +156,6 @@ public class OptionClassFilterBuilder {
     }
 
     private OptionClassFilter build() {
-        return new OptionClassFilter(requireCompletePackageOrClass, requireCompleteModules, requireCompleteAll);
+        return new OptionClassFilter(requireCompletePackageOrClass, requireCompletePackages, requireCompletePackageWildcards, requireCompleteModules, requireCompleteAll);
     }
 }

@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
-import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -38,13 +37,16 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.genscavenge.compacting.CompactingAlignedChunkAccess;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils.AtomicUnsigned;
 import com.oracle.svm.guest.staging.log.Log;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
-import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.shared.util.UnsignedUtils;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.util.UnsignedUtils;
 
 /**
  * Allocates and frees the memory for aligned and unaligned heap chunks. The methods are
@@ -134,10 +136,17 @@ final class HeapChunkProvider {
         AlignedHeader cur = firstChunk;
         while (cur.isNonNull() && maxChunksToKeep.aboveThan(0)) {
             AlignedHeader next = HeapChunk.getNext(cur);
-            cleanAlignedChunk(cur);
-            pushUnusedAlignedChunk(cur);
-
-            maxChunksToKeep = maxChunksToKeep.subtract(1);
+            if (AlignedHeapChunk.hasUncommittedPages(cur)) {
+                /*
+                 * Recommitting such chunks is currently not implemented, but would need a system
+                 * call. There are likely other chunks which can be immediately recycled.
+                 */
+                freeAlignedChunk(cur);
+            } else {
+                cleanAlignedChunk(cur);
+                pushUnusedAlignedChunk(cur);
+                maxChunksToKeep = maxChunksToKeep.subtract(1);
+            }
             cur = next;
         }
         freeAlignedChunkList(cur);
@@ -148,6 +157,7 @@ final class HeapChunkProvider {
 
     private static void cleanAlignedChunk(AlignedHeader alignedChunk) {
         assert VMOperation.isGCInProgress();
+        assert !AlignedHeapChunk.hasUncommittedPages(alignedChunk);
         AlignedHeapChunk.reset(alignedChunk);
         if (HeapParameters.getZapConsumedHeapChunks()) {
             zapUnusedObjectMemory(alignedChunk, HeapParameters.getConsumedHeapChunkZapWord());
@@ -166,6 +176,7 @@ final class HeapChunkProvider {
      */
     private void pushUnusedAlignedChunk(AlignedHeader chunk) {
         assert VMOperation.isGCInProgress();
+        assert !AlignedHeapChunk.hasUncommittedPages(chunk);
 
         HeapChunk.setNext(chunk, unusedAlignedChunks.get());
         unusedAlignedChunks.set(chunk);
@@ -259,6 +270,7 @@ final class HeapChunkProvider {
 
     /** Acquire an UnalignedHeapChunk from the operating system. */
     @SuppressWarnings("static-method")
+    @NeverInline("Keep unaligned chunk acquisition and initialization out of allocation slow paths.")
     @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     UnalignedHeader produceUnalignedChunk(UnsignedWord objectSize) {
         UnsignedWord chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objectSize);
@@ -290,8 +302,17 @@ final class HeapChunkProvider {
         freeUnalignedChunkList(firstChunk);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static void zapUnusedObjectMemory(Header<?> chunk, WordBase value) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void zapConsumedUnusedObjectMemory(AlignedHeader chunk) {
+        if (AlignedHeapChunk.hasUncommittedPages(chunk)) {
+            CompactingAlignedChunkAccess.fillCommittedMemory(chunk, HeapChunk.getTopPointer(chunk), HeapChunk.getEndPointer(chunk), HeapParameters.getConsumedHeapChunkZapInt());
+        } else {
+            zapUnusedObjectMemory(chunk, HeapParameters.getConsumedHeapChunkZapWord());
+        }
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static void zapUnusedObjectMemory(Header<?> chunk, WordBase value) {
         Pointer start = HeapChunk.getTopPointer(chunk);
         Pointer limit = HeapChunk.getEndPointer(chunk);
         for (Pointer p = start; p.belowThan(limit); p = p.add(SubstrateTarget.getWordSize())) {
@@ -328,7 +349,11 @@ final class HeapChunkProvider {
 
     @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")
     private static void freeAlignedChunk(AlignedHeader chunk) {
-        ChunkBasedCommittedMemoryProvider.get().freeAlignedChunk(chunk, HeapParameters.getAlignedHeapChunkSize(), HeapParameters.getAlignedHeapChunkAlignment());
+        ChunkBasedCommittedMemoryProvider.get().freeAlignedChunk(
+                        chunk,
+                        HeapParameters.getAlignedHeapChunkSize(),
+                        HeapParameters.getAlignedHeapChunkAlignment(),
+                        AlignedHeapChunk.getCommittedSize(chunk));
     }
 
     @Uninterruptible(reason = "Allocation internals must never end up in interruptible code.")

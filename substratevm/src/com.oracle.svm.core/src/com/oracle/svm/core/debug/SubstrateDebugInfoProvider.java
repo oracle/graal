@@ -39,8 +39,9 @@ import com.oracle.objectfile.debugentry.PointerToTypeEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.hub.DynamicHubProvider;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.jvmci.shared.meta.SharedMethod;
 import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
@@ -213,7 +214,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
     @Override
     public FileEntry lookupFileEntry(ResolvedJavaType type) {
         if (type instanceof SharedType sharedType) {
-            String value = DynamicHubProvider.getHub(sharedType).getPackageName();
+            String value = DynamicHubUtils.getHub(sharedType).getPackageName();
             String[] packageElements = StringUtil.split(value, ".");
             String fileName = sharedType.getSourceFileName();
             if (fileName != null && !fileName.isEmpty()) {
@@ -230,7 +231,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
             return (javaKind == JavaKind.Void ? 0 : javaKind.getByteCount());
         } else if (type.isArray()) {
             SharedType componentType = (SharedType) type.getComponentType();
-            return getObjectLayout().getArrayBaseOffset(componentType.getStorageKind());
+            return ObjectLayoutCompilerSupport.getArrayBaseOffset(getObjectLayout(), componentType.getStorageKind());
         } else if (type.isInterface() || type.isInstanceClass()) {
             return getObjectLayout().getFirstFieldOffset();
         } else {

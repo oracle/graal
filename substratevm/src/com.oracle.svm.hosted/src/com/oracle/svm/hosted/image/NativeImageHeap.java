@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,13 +64,14 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.ImageCodeInfo;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.heap.FillerObject;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.guest.staging.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
-import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.guest.staging.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
@@ -79,10 +80,13 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.strings.StringInternSupport;
-import com.oracle.svm.core.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.HostedConfiguration;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.ameta.SVMHostedValueProvider;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -101,6 +105,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.hosted.meta.UniverseBuilder;
+import com.oracle.svm.shared.option.HostedOptionValues;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
@@ -109,6 +114,7 @@ import com.oracle.svm.util.OriginalClassProvider;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.debug.DebugOptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -152,23 +158,24 @@ public final class NativeImageHeap implements ImageHeap {
      * The constants stored in the image heap are always uncompressed. The same object info is
      * returned whenever the map is queried regardless of the compressed flag value.
      */
-    private final EconomicMap<JavaConstant, ObjectInfo> objects = EconomicMap.create();
+    private EconomicMap<JavaConstant, ObjectInfo> objects = EconomicMap.create();
+    private int objectCountAfterRelease = -1;
 
     /** Objects that must not be written to the native image heap. */
-    private final Set<Object> blacklist = Collections.newSetFromMap(new IdentityHashMap<>());
+    private Set<Object> blacklist = Collections.newSetFromMap(new IdentityHashMap<>());
 
     /** A map from hosted classes to classes that have hybrid layouts in the native image heap. */
-    private final Map<HostedClass, HybridLayout> hybridLayouts = new HashMap<>();
+    private Map<HostedClass, HybridLayout> hybridLayouts = new HashMap<>();
 
     /** A Map to build what will be the String intern map in the native image heap. */
-    private final Map<String, String> internedStrings = new HashMap<>();
+    private Map<String, String> internedStrings = new HashMap<>();
 
     // Phase variables.
     private final Phase addObjectsPhase = Phase.factory();
     private final Phase internStringsPhase = Phase.factory();
 
     /** A queue of objects that need to be added to the native image heap, to avoid recursion. */
-    private final Deque<AddObjectData> addObjectWorklist = new ArrayDeque<>();
+    private Deque<AddObjectData> addObjectWorklist = new ArrayDeque<>();
 
     /**
      * Actually adding an object to the image heap can be delayed until later, e.g., to add certain
@@ -177,10 +184,10 @@ public final class NativeImageHeap implements ImageHeap {
      * {@link ObjectInfo} has been added. This work list stores such pending operations. This is
      * currently used for interned strings, which are all added late to improve locality.
      */
-    private final List<AddLateToObjectReachabilityInfoData> addLateToObjectReachabilityInfoWorklist = new ArrayList<>();
+    private List<AddLateToObjectReachabilityInfoData> addLateToObjectReachabilityInfoWorklist = new ArrayList<>();
 
     /** Constants for objects that are known to be immutable in the image heap. */
-    private final Set<ImageHeapConstant> knownImmutableObjects = new HashSet<>();
+    private Set<ImageHeapConstant> knownImmutableObjects = new HashSet<>();
 
     /** For diagnostic purpose only. */
     Map<ObjectInfo, ObjectReachabilityInfo> objectReachabilityInfo = null;
@@ -196,7 +203,7 @@ public final class NativeImageHeap implements ImageHeap {
 
         this.minInstanceSize = objectLayout.getMinImageHeapInstanceSize();
         this.minArraySize = objectLayout.getMinImageHeapArraySize();
-        this.fillerArrayBaseOffset = objectLayout.getArrayBaseOffset(JavaKind.Int);
+        this.fillerArrayBaseOffset = ObjectLayoutCompilerSupport.getArrayBaseOffset(objectLayout, JavaKind.Int);
         assert assertFillerObjectSizes();
 
         dynamicHubLayout = DynamicHubLayout.singleton();
@@ -208,15 +215,15 @@ public final class NativeImageHeap implements ImageHeap {
 
     @Override
     public Iterable<ObjectInfo> getObjects() {
-        return objects.getValues();
+        return requireObjectInfos().getValues();
     }
 
     public Stream<ObjectInfo> streamObjects() {
-        return StreamSupport.stream(objects.getValues().spliterator(), false);
+        return StreamSupport.stream(requireObjectInfos().getValues().spliterator(), false);
     }
 
     public int getObjectCount() {
-        return objects.size();
+        return objects != null ? objects.size() : objectCountAfterRelease;
     }
 
     private Stream<ObjectInfo> getCurrentLayerObjects() {
@@ -224,25 +231,33 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public int getCurrentLayerObjectCount() {
-        return (int) getCurrentLayerObjects().count();
+        /* The object map is only released for non-layered images, where every object is local. */
+        return objects != null ? (int) getCurrentLayerObjects().count() : objectCountAfterRelease;
     }
 
     public ObjectInfo getObjectInfo(Object obj) {
         JavaConstant constant = hUniverse.getSnippetReflection().forObject(obj);
         VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
-        return objects.get(CompressibleConstant.uncompress(constant));
+        return requireObjectInfos().get(CompressibleConstant.uncompress(constant));
     }
 
     public ObjectInfo getConstantInfo(JavaConstant constant) {
         VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
-        return objects.get(CompressibleConstant.uncompress(constant));
+        return requireObjectInfos().get(CompressibleConstant.uncompress(constant));
+    }
+
+    private EconomicMap<JavaConstant, ObjectInfo> requireObjectInfos() {
+        VMError.guarantee(objects != null, "Image heap object metadata was released after image writing preparation.");
+        return objects;
     }
 
     protected HybridLayout getHybridLayout(HostedClass clazz) {
+        VMError.guarantee(hybridLayouts != null, "Hybrid layouts were released after heap writing.");
         return hybridLayouts.get(clazz);
     }
 
     protected boolean isBlacklisted(Object obj) {
+        VMError.guarantee(blacklist != null, "Heap blacklist was released after heap writing.");
         return blacklist.contains(obj);
     }
 
@@ -330,6 +345,82 @@ public final class NativeImageHeap implements ImageHeap {
         addObjectsPhase.disallow();
         assert addObjectWorklist.isEmpty() : "Heap model finalized with pending objects: " + addObjectWorklist.size();
         assert addLateToObjectReachabilityInfoWorklist.isEmpty() : "Heap model finalized with pending late constants: " + addLateToObjectReachabilityInfoWorklist.size();
+        /*
+         * Object discovery is closed here. The remaining heap-layout and heap-write phases use the
+         * ObjectInfo entries in objects; discovery worklists and construction-only caches are no
+         * longer consulted.
+         */
+        clearAddObjectsState();
+    }
+
+    private void clearAddObjectsState() {
+        /* Discovery is closed: unlike reusable collections, these fields have no later readers. */
+        addObjectWorklist = null;
+        addLateToObjectReachabilityInfoWorklist = null;
+        internedStrings = null;
+        knownImmutableObjects = null;
+    }
+
+    void clearWriteHeapState() {
+        /*
+         * The writer still consults the blacklist assertion and hybrid layouts while emitting object
+         * contents. Once the heap contents have been written, this state is no longer needed.
+         * Diagnostics may retain inclusion reasons without retaining these write-only caches.
+         */
+        VMError.guarantee(blacklist != null && hybridLayouts != null, "Heap-write state was already released.");
+        clearObjectInclusionReasonsAfterHeapWrite();
+        blacklist = null;
+        hybridLayouts = null;
+    }
+
+    /**
+     * Clears diagnostic object-inclusion chains after the heap writer has emitted all object and
+     * static-field contents. Image layers, heap diagnostics and native-debug logging continue to
+     * consume these chains.
+     */
+    private void clearObjectInclusionReasonsAfterHeapWrite() {
+        /*
+         * NativeImageDebugInfoProvider logs provenance in beforeImageWrite. Conservatively keep
+         * reasons for native-debug logging, without extending their lifetime for ordinary -g builds.
+         */
+        if (ImageLayerBuildingSupport.buildingImageLayer() ||
+                        NativeImageOptions.PrintHeapHistogram.getValue() ||
+                        ImageHeapConnectedComponentsFeature.Options.PrintImageHeapConnectedComponents.getValue() ||
+                        (SubstrateOptions.useDebugInfoGeneration() && DebugOptions.Log.getValue(HostedOptionValues.singleton().get()) != null)) {
+            return;
+        }
+        DeadlockWatchdog watchdog = DeadlockWatchdog.singleton();
+        int visited = 0;
+        for (ObjectInfo info : requireObjectInfos().getValues()) {
+            if ((visited++ & 1023) == 0) {
+                watchdog.recordActivity();
+            }
+            info.clearMainReason();
+        }
+    }
+
+    /**
+     * Releases the complete image-heap model once all consumers that inspect heap contents have
+     * finished. The object-file writer and linker only consume the already-written object-file
+     * sections, so they do not need {@link ObjectInfo} or its construction metadata.
+     * <p>
+     * Image layers persist heap metadata after image creation, and connected-components reporting
+     * traverses the model in {@code afterImageWrite}; both therefore retain the model.
+     * Object counts and scalar partition metadata remain available after release. Once released,
+     * object lookups, iteration, and a second release are invalid.
+     */
+    void releaseAfterImageWritePreparation() {
+        if (ImageLayerBuildingSupport.buildingImageLayer() || ImageHeapConnectedComponentsFeature.Options.PrintImageHeapConnectedComponents.getValue()) {
+            return;
+        }
+
+        VMError.guarantee(objectReachabilityInfo == null, "Heap reachability data is only retained for connected-components reporting.");
+        VMError.guarantee(objects != null, "Image heap object metadata was already released.");
+
+        objectCountAfterRelease = objects.size();
+        reasonSupport.releaseObjectReferences();
+        heapLayouter.releaseObjectReferences();
+        objects = null;
     }
 
     /**
@@ -381,7 +472,7 @@ public final class NativeImageHeap implements ImageHeap {
 
     /** Registers {@code object} as immutable. */
     public void registerAsImmutable(ImageHeapConstant object) {
-        assert addObjectsPhase.isBefore() : "Registering immutable object too late: phase: " + addObjectsPhase.toString();
+        VMError.guarantee(addObjectsPhase.isBefore(), "Registering immutable object after heap construction started: %s", addObjectsPhase);
         AnalysisError.guarantee(object != null && object.isBackedByHostedObject(), "Cannot register a null or unbacked image heap constant as immutable: %s", object);
         registerImageHeapConstantAsImmutable(object);
     }
@@ -396,7 +487,7 @@ public final class NativeImageHeap implements ImageHeap {
      * array elements as immutable.
      */
     public void registerAsImmutable(ImageHeapConstant root, Predicate<ImageHeapConstant> includeObject) {
-        assert addObjectsPhase.isBefore() : "Registering immutable object too late: phase: " + addObjectsPhase.toString();
+        VMError.guarantee(addObjectsPhase.isBefore(), "Registering immutable object after heap construction started: %s", addObjectsPhase);
         AnalysisError.guarantee(root != null && root.isBackedByHostedObject(), "Cannot register a null or unbacked image heap constant as immutable: %s", root);
         Deque<ImageHeapConstant> worklist = new ArrayDeque<>();
         Set<ImageHeapConstant> registeredObjects = new HashSet<>();
@@ -464,7 +555,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public void addConstant(final JavaConstant constant, boolean immutableFromParent, final Object reason) {
-        assert addObjectsPhase.isAllowed() : "Objects cannot be added at phase: " + addObjectsPhase.toString() + " with reason: " + reason;
+        VMError.guarantee(addObjectsPhase.isAllowed(), "Objects can only be added during heap construction. Phase: %s, reason: %s", addObjectsPhase, reason);
         VMError.guarantee(!(constant instanceof ImageHeapRelocatableConstant), "ImageHeapRelocatableConstants cannot be added to the image heap: %s", constant);
 
         if (constant.getJavaKind().isPrimitive() || constant.isNull() || hMetaAccess.isInstanceOf(constant, WordBase.class)) {
@@ -522,8 +613,20 @@ public final class NativeImageHeap implements ImageHeap {
 
     private void addToObjectReachabilityInfo(ObjectInfo existing, Object reason) {
         if (objectReachabilityInfo != null) {
-            objectReachabilityInfo.get(existing).addReason(reason);
+            objectReachabilityInfo.get(existing).addReason(reachabilityReason(reason));
         }
+    }
+
+    private Object referenceReason(ObjectInfo source, Object inclusionReason) {
+        return objectReachabilityInfo == null ? inclusionReason : new ObjectReferenceReason(source, inclusionReason);
+    }
+
+    private static Object inclusionReason(Object reason) {
+        return reason instanceof ObjectReferenceReason reference ? reference.inclusionReason() : reason;
+    }
+
+    private static Object reachabilityReason(Object reason) {
+        return reason instanceof ObjectReferenceReason reference ? reference.source() : reason;
     }
 
     private int computeIdentityHashCode(JavaConstant constant) {
@@ -534,7 +637,7 @@ public final class NativeImageHeap implements ImageHeap {
     public int countPatchAndVerifyDynamicHubs() {
         byte[] refMap = DynamicHubSupport.currentLayer().getReferenceMapEncoding();
         ObjectInfo refMapInfo = getObjectInfo(refMap);
-        long currentLayerRefMapDataStart = refMapInfo.getOffset() + ObjectLayout.singleton().getArrayBaseOffset(JavaKind.Byte);
+        long currentLayerRefMapDataStart = refMapInfo.getOffset() + ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.Byte);
 
         ObjectHeader objHeader = Heap.getHeap().getObjectHeader();
         int count = 0;
@@ -560,10 +663,10 @@ public final class NativeImageHeap implements ImageHeap {
     @Override
     public ObjectInfo addFillerObject(int size) {
         if (size >= minArraySize) {
-            int elementSize = objectLayout.getArrayIndexScale(JavaKind.Int);
+            int elementSize = ObjectLayoutCompilerSupport.getArrayIndexScale(objectLayout, JavaKind.Int);
             assert fillerArrayBaseOffset % elementSize == 0;
             int arrayLength = (size - fillerArrayBaseOffset) / elementSize;
-            assert objectLayout.getArraySize(JavaKind.Int, arrayLength, true) == size;
+            assert ObjectLayoutCompilerSupport.getArraySize(objectLayout, JavaKind.Int, arrayLength, true) == size;
             return addLateToImageHeap(new int[arrayLength], reasonSupport.fillerObject());
         } else if (size >= minInstanceSize) {
             return addLateToImageHeap(new FillerObject(), reasonSupport.fillerObject());
@@ -573,7 +676,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private boolean assertFillerObjectSizes() {
-        assert minArraySize == objectLayout.getArraySize(JavaKind.Int, 0, true);
+        assert minArraySize == ObjectLayoutCompilerSupport.getArraySize(objectLayout, JavaKind.Int, 0, true);
 
         HostedType filler = hMetaAccess.lookupJavaType(FillerObject.class);
         UnsignedWord fillerSize = LayoutEncoding.getPureInstanceSize(filler.getHub(), true);
@@ -614,7 +717,7 @@ public final class NativeImageHeap implements ImageHeap {
             msg.append("Image heap writing found an object whose type was not marked as instantiated by the static analysis: ");
             msg.append(type.toJavaName(true)).append("  (").append(type).append(")");
             msg.append(System.lineSeparator()).append("  reachable through:").append(System.lineSeparator());
-            reasonSupport.fillReasonStack(msg, reason);
+            reasonSupport.fillReasonStack(msg, inclusionReason(reason));
             VMError.shouldNotReachHere(msg.toString());
         }
 
@@ -689,7 +792,7 @@ public final class NativeImageHeap implements ImageHeap {
                 return;
             }
             try {
-                recursiveAddObject(hub, false, addReason);
+                recursiveAddObject(hub, false, referenceReason(info, addReason));
                 // Recursively add all the fields of the object.
                 final boolean fieldsAreImmutable = hMetaAccess.isInstanceOf(constant, String.class);
                 for (HostedField field : clazz.getInstanceFields(true)) {
@@ -725,7 +828,7 @@ public final class NativeImageHeap implements ImageHeap {
                                     patched = true;
                                 } else {
                                     Object fieldReason = reasonSupport.fieldAccess(addReason, field);
-                                    recursiveAddConstant(fieldValueConstant, fieldsAreImmutable, fieldReason);
+                                    recursiveAddConstant(fieldValueConstant, fieldsAreImmutable, referenceReason(info, fieldReason));
                                 }
                                 references = true;
                             }
@@ -740,7 +843,7 @@ public final class NativeImageHeap implements ImageHeap {
                     written = written || ((field.isWritten() || !field.isValueAvailable(constant)) && !field.isFinal() && !fieldRelocatable);
                 }
                 if (hybridArray instanceof Object[]) {
-                    relocatable = addArrayElements((Object[]) hybridArray, relocatable, addReason);
+                    relocatable = addArrayElements((Object[]) hybridArray, relocatable, addReason, info);
                     references = true;
                 }
             } catch (AnalysisError.TypeNotFoundError ex) {
@@ -750,17 +853,17 @@ public final class NativeImageHeap implements ImageHeap {
         } else if (type.isArray()) {
             HostedArrayClass clazz = (HostedArrayClass) type;
             int length = hConstantReflection.readArrayLength(constant);
-            final long size = objectLayout.getArraySize(type.getComponentType().getStorageKind(), length, true);
+            final long size = ObjectLayoutCompilerSupport.getArraySize(objectLayout, type.getComponentType().getStorageKind(), length, true);
             info = addToImageHeap(constant, clazz, size, identityHashCode, reason);
             Object addReason = reasonSupport.reasonForInfo(info);
             if (processBaseLayerConstant(constant, info)) {
                 return;
             }
             try {
-                recursiveAddObject(hub, false, addReason);
+                recursiveAddObject(hub, false, referenceReason(info, addReason));
                 if (hMetaAccess.isInstanceOf(constant, Object[].class)) {
                     VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
-                    var result = addConstantArrayElements(constant, length, false, addReason);
+                    var result = addConstantArrayElements(constant, length, false, addReason, info);
                     references = true;
                     relocatable = result.relocatable();
                     patched = result.patched();
@@ -800,7 +903,7 @@ public final class NativeImageHeap implements ImageHeap {
                 // Need to adjust to reflect displacement between code base and layer's text section
                 return true;
             }
-            ResolvedJavaMethod method = methodOffset.getMethod();
+            ResolvedJavaMethod method = MethodRefSupport.getMethod(methodOffset);
             HostedMethod hMethod = (method instanceof HostedMethod) ? (HostedMethod) method : hUniverse.lookup(method);
             if (NativeImage.isInjectedNotCompiled(hMethod)) {
                 // References code in another (maybe future) layer, which must be patched at runtime
@@ -860,7 +963,7 @@ public final class NativeImageHeap implements ImageHeap {
             msg.append("object: ").append(object).append("  of class: ").append(object.getClass().getTypeName());
         }
         msg.append(System.lineSeparator()).append("  reachable through:").append(System.lineSeparator());
-        reasonSupport.fillReasonStack(msg, reason);
+        reasonSupport.fillReasonStack(msg, inclusionReason(reason));
         throw UserError.abort("%s", msg);
     }
 
@@ -892,7 +995,7 @@ public final class NativeImageHeap implements ImageHeap {
         VMError.guarantee(add instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", add);
         VMError.guarantee(!CompressibleConstant.isCompressed(add), "Constants added to the image heap must be uncompressed.");
         ObjectInfo info = new ObjectInfo((ImageHeapConstant) add, size, clazz, identityHashCode, reason);
-        ObjectInfo previous = objects.putIfAbsent(add, info);
+        ObjectInfo previous = requireObjectInfos().putIfAbsent(add, info);
         VMError.guarantee(previous == null, "Found an existing object info associated to constant %s", add);
         return info;
     }
@@ -914,7 +1017,8 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public void dumpMetadata(ImageHeapLayoutInfo heapLayout) {
-        reasonSupport.dumpMetadata(heapLayout, getObjects());
+        /* Earlier layers have no partition or relative offset in this layer's heap layout. */
+        reasonSupport.dumpMetadata(heapLayout, () -> getCurrentLayerObjects().iterator());
     }
 
     private long getSize(Object object, HostedType type) {
@@ -923,14 +1027,14 @@ public final class NativeImageHeap implements ImageHeap {
             assert !HostedConfiguration.isArrayLikeLayout(clazz) : type;
             return LayoutEncoding.getPureInstanceSize(clazz.getHub(), true).rawValue();
         } else if (type.isArray()) {
-            return objectLayout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(object), true);
+            return ObjectLayoutCompilerSupport.getArraySize(objectLayout, type.getComponentType().getStorageKind(), Array.getLength(object), true);
         } else {
             throw shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
         }
     }
 
     // Deep-copy an array from the host heap to the model of the native image heap.
-    private boolean addArrayElements(Object[] array, boolean otherFieldsRelocatable, Object reason) {
+    private boolean addArrayElements(Object[] array, boolean otherFieldsRelocatable, Object reason, ObjectInfo source) {
         boolean relocatable = otherFieldsRelocatable;
         for (int idx = 0; idx < array.length; idx++) {
             Object element = array[idx];
@@ -939,7 +1043,7 @@ public final class NativeImageHeap implements ImageHeap {
                 relocatable = relocatable || isRelocatableValue(value);
             }
             Object elementReason = reasonSupport.arrayAccess(reason, idx);
-            recursiveAddObject(value, false, elementReason);
+            recursiveAddObject(value, false, referenceReason(source, elementReason));
         }
         return relocatable;
     }
@@ -948,7 +1052,7 @@ public final class NativeImageHeap implements ImageHeap {
 
     }
 
-    private AddConstantArrayResult addConstantArrayElements(JavaConstant array, int length, boolean otherFieldsRelocatable, Object reason) {
+    private AddConstantArrayResult addConstantArrayElements(JavaConstant array, int length, boolean otherFieldsRelocatable, Object reason, ObjectInfo source) {
         boolean relocatable = otherFieldsRelocatable;
         boolean patched = false;
         for (int idx = 0; idx < length; idx++) {
@@ -961,7 +1065,7 @@ public final class NativeImageHeap implements ImageHeap {
                 patched = true;
             } else {
                 Object elementReason = reasonSupport.arrayAccess(reason, idx);
-                recursiveAddConstant(value, false, elementReason);
+                recursiveAddConstant(value, false, referenceReason(source, elementReason));
             }
         }
         return new AddConstantArrayResult(relocatable, patched);
@@ -1022,6 +1126,8 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public final class ObjectInfo implements ImageHeapObject {
+        private static final Object RELEASED_REASON = new Object();
+
         private final ImageHeapConstant constant;
         private final HostedClass clazz;
         private final long size;
@@ -1033,7 +1139,7 @@ public final class NativeImageHeap implements ImageHeap {
          *
          * @see ImageHeapReasonSupport
          */
-        private final Object reason;
+        private Object reason;
 
         ObjectInfo(ImageHeapConstant constant, long size, HostedClass clazz, int identityHashCode, Object reason) {
             assert !(constant instanceof ImageHeapRelocatableConstant) : constant;
@@ -1045,9 +1151,9 @@ public final class NativeImageHeap implements ImageHeap {
             this.size = size;
             this.identityHashCode = identityHashCode;
 
-            this.reason = reasonSupport.objectInclusionReason(this, reason, hMetaAccess, hConstantReflection);
+            this.reason = reasonSupport.objectInclusionReason(this, inclusionReason(reason), hMetaAccess, hConstantReflection);
             if (objectReachabilityInfo != null) {
-                objectReachabilityInfo.put(this, new ObjectReachabilityInfo(this, reason));
+                objectReachabilityInfo.put(this, new ObjectReachabilityInfo(this, reachabilityReason(reason)));
             }
         }
 
@@ -1127,7 +1233,14 @@ public final class NativeImageHeap implements ImageHeap {
         }
 
         public Object getMainReason() {
+            VMError.guarantee(reason != RELEASED_REASON, "Object inclusion reason was released.");
             return this.reason;
+        }
+
+        private void clearMainReason() {
+            /* A sentinel avoids adding a lifecycle field to every image heap object. */
+            VMError.guarantee(reason != RELEASED_REASON, "Object inclusion reason was already released.");
+            reason = RELEASED_REASON;
         }
 
         @Override
@@ -1263,14 +1376,21 @@ public final class NativeImageHeap implements ImageHeap {
                 return ObjectReachabilityGroup.InternedStringsTable.flag;
             } else if (reason.equals(reasonSupport.resource())) {
                 return ObjectReachabilityGroup.Resources.flag;
-            } else if (reasonSupport.isObject(reason)) {
-                ObjectInfo r = reasonSupport.getObject(reason);
+            } else if (reason instanceof ObjectInfo r) {
                 return additionalReasonInfoHashMap.get(r).getObjectReachabilityGroup();
             } else if (reasonSupport.isStaticField(reason) || reasonSupport.isMethod(reason)) {
                 return ObjectReachabilityGroup.MethodOrStaticField.flag;
             }
             return ObjectReachabilityGroup.Other.flag;
         }
+    }
+
+    /*
+     * Profiling paths may aggregate several objects. Connected-components diagnostics need the
+     * actual source of each edge instead. Allocate this wrapper only while those diagnostics run;
+     * the worklist unwraps it into the existing per-object reachability information.
+     */
+    private record ObjectReferenceReason(ObjectInfo source, Object inclusionReason) {
     }
 }
 

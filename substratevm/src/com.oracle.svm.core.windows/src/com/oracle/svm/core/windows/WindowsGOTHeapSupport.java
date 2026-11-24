@@ -30,7 +30,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
-import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.pltgot.GOTHeapSupport;
@@ -83,7 +82,7 @@ public class WindowsGOTHeapSupport extends GOTHeapSupport {
         }
 
         Pointer gotStartInMemory = gotMappedAddress.add(getGOTOffsetFromStartOfMapping());
-        LibC.memcpy(gotStartInMemory, IMAGE_GOT_BEGIN.get(), getGOTSectionSize());
+        initializeGOTContent(gotStartInMemory);
 
         // Keep the initial GOT mapping for writing.
 

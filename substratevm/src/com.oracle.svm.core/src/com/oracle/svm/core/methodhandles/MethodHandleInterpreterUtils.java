@@ -27,12 +27,17 @@ package com.oracle.svm.core.methodhandles;
 import java.lang.invoke.MethodHandle;
 
 import com.oracle.svm.shared.util.SubstrateUtil;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.shared.util.VMError;
 
 public final class MethodHandleInterpreterUtils {
     private MethodHandleInterpreterUtils() {
+    }
+
+    /// Returns the existing VM entry, possibly null, without preparing the handle's form.
+    public static Target_java_lang_invoke_MemberName peekVMEntry(MethodHandle handle) {
+        return SubstrateUtil.cast(handle, Target_java_lang_invoke_MethodHandle.class).internalForm().vmentry;
     }
 
     public static Target_java_lang_invoke_MemberName extractVMEntry(MethodHandle handle) {

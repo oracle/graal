@@ -27,6 +27,7 @@ package com.oracle.svm.util;
 import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -369,13 +370,13 @@ public final class GuestAccess implements VMAccess {
     }
 
     /** Instantiates {@code supplierType} in the guest. */
-    private JavaConstant instantiateBooleanSupplier(ResolvedJavaType supplierType) {
+    private @GuestType(BooleanSupplier.class) JavaConstant instantiateBooleanSupplier(ResolvedJavaType supplierType) {
         ResolvedJavaMethod cons = JVMCIReflectionUtil.getDeclaredConstructor(false, supplierType);
         return invoke(cons, null);
     }
 
     /** Invokes a guest {@link BooleanSupplier}. */
-    private boolean invokeBooleanSupplier(JavaConstant supplier) {
+    private boolean invokeBooleanSupplier(@GuestType(BooleanSupplier.class) JavaConstant supplier) {
         return invoke(elements.java_util_function_BooleanSupplier_getAsBoolean, supplier).asBoolean();
     }
 
@@ -415,7 +416,7 @@ public final class GuestAccess implements VMAccess {
     /**
      * Gets an annotation instance from a guest type.
      */
-    public JavaConstant getAnnotation(ResolvedJavaType annotatedType, ResolvedJavaType annotationType) {
+    public @GuestType(Annotation.class) JavaConstant getAnnotation(ResolvedJavaType annotatedType, ResolvedJavaType annotationType) {
         JavaConstant annotatedClass = constantReflection.asJavaClass(annotatedType);
         JavaConstant annotationClass = constantReflection.asJavaClass(annotationType);
         return invoke(elements.java_lang_Class_getAnnotation, annotatedClass, annotationClass);
@@ -451,7 +452,7 @@ public final class GuestAccess implements VMAccess {
      * Converts the host string {@code value} to a guest instance and returns a reference to it as a
      * {@link JavaConstant}.
      */
-    public JavaConstant asGuestString(String value) {
+    public @GuestType(String.class) JavaConstant asGuestString(String value) {
         return constantReflection.forString(value);
     }
 
@@ -459,7 +460,7 @@ public final class GuestAccess implements VMAccess {
      * Converts the host strings in {@code values} to a guest string array and returns a reference to
      * it as a {@link JavaConstant}.
      */
-    public JavaConstant asGuestStringArray(String[] values) {
+    public @GuestType(String[].class) JavaConstant asGuestStringArray(String[] values) {
         JavaConstant[] constants = new JavaConstant[values.length];
         for (int i = 0; i < values.length; i++) {
             constants[i] = asGuestString(values[i]);
@@ -472,6 +473,18 @@ public final class GuestAccess implements VMAccess {
      * {@code expectedComponentClass}.
      */
     public Stream<JavaConstant> asGuestArrayElements(JavaConstant array, ResolvedJavaType expectedComponentClass) {
+        return readGuestArrayElements(array, expectedComponentClass, false);
+    }
+
+    /**
+     * Decodes the elements of a guest array while preserving null entries as guest null constants.
+     */
+    Stream<JavaConstant> asGuestArrayElementsAllowingNull(JavaConstant array, ResolvedJavaType expectedComponentClass) {
+        return readGuestArrayElements(array, expectedComponentClass, true);
+    }
+
+    /** Shared guest-array decoder with an explicit null-element policy. */
+    private Stream<JavaConstant> readGuestArrayElements(JavaConstant array, ResolvedJavaType expectedComponentClass, boolean allowNullElements) {
         if (array == null || array.isNull()) {
             throw new IllegalArgumentException("Guest array must not be null.");
         }
@@ -489,14 +502,17 @@ public final class GuestAccess implements VMAccess {
         }
         return IntStream.range(0, length).mapToObj(i -> {
             JavaConstant element = constantReflection.readArrayElement(array, i);
-            if (element == null || element.isNull()) {
+            if (element == null) {
+                throw new IllegalArgumentException("Could not read guest array element at index " + i + ".");
+            }
+            if (!allowNullElements && element.isNull()) {
                 throw new IllegalArgumentException("Guest array element at index " + i + " must not be null.");
             }
             return element;
         });
     }
 
-    public ResolvedJavaType[] asResolvedJavaTypes(JavaConstant array) {
+    public ResolvedJavaType[] asResolvedJavaTypes(@GuestType(Class[].class) JavaConstant array) {
         return asGuestArrayElements(array, elements.java_lang_Class).map(element -> {
             ResolvedJavaType type = constantReflection.asJavaType(element);
             if (type == null) {
@@ -506,7 +522,7 @@ public final class GuestAccess implements VMAccess {
         }).toArray(ResolvedJavaType[]::new);
     }
 
-    public ResolvedJavaMethod[] asResolvedJavaMethods(JavaConstant array) {
+    public ResolvedJavaMethod[] asResolvedJavaMethods(@GuestType(Executable[].class) JavaConstant array) {
         return asGuestArrayElements(array, lookupType(Executable.class)).map(element -> {
             ResolvedJavaMethod method = asResolvedJavaMethod(element);
             if (method == null) {
@@ -516,7 +532,7 @@ public final class GuestAccess implements VMAccess {
         }).toArray(ResolvedJavaMethod[]::new);
     }
 
-    public ResolvedJavaField[] asResolvedJavaFields(JavaConstant array) {
+    public ResolvedJavaField[] asResolvedJavaFields(@GuestType(Field[].class) JavaConstant array) {
         return asGuestArrayElements(array, elements.java_lang_reflect_Field).map(element -> {
             ResolvedJavaField field = asResolvedJavaField(element);
             if (field == null) {

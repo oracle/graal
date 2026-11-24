@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.guest.staging.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
 import com.oracle.svm.guest.staging.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;

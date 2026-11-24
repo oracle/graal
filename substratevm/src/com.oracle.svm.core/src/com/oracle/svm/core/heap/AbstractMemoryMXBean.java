@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,12 +33,14 @@ import javax.management.ObjectName;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.jdk.management.VMManagementBean;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues.Origin;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 
 import sun.management.Util;
 
-public abstract class AbstractMemoryMXBean extends AbstractMXBean implements MemoryMXBean {
+public abstract class AbstractMemoryMXBean extends AbstractMXBean implements MemoryMXBean, VMManagementBean {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public AbstractMemoryMXBean() {
@@ -70,7 +72,7 @@ public abstract class AbstractMemoryMXBean extends AbstractMXBean implements Mem
 
     @Override
     public void setVerbose(boolean value) {
-        SubstrateGCOptions.PrintGC.update(value);
+        SubstrateGCOptions.PrintGC.update(value, Origin.Runtime);
     }
 
     @Override

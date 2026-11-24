@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -40,6 +41,7 @@ import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import jdk.graal.compiler.nodes.memory.LIRLowerableAccess;
+import jdk.graal.compiler.nodes.memory.OrderedMemoryAccess;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -49,10 +51,11 @@ import jdk.vm.ci.meta.Value;
 
 /**
  * Represents the lowered version of an atomic read-and-add operation like
- * {@code sun.misc.Unsafe.getAndAddInt(Object, long, int)}.
+ * {@code sun.misc.Unsafe.getAndAddInt(Object, long, int)}. The operation has volatile memory
+ * semantics.
  */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_8, size = SIZE_2)
-public final class LoweredAtomicReadAndAddNode extends FixedAccessNode implements StateSplit, LIRLowerableAccess, SingleMemoryKill {
+public final class LoweredAtomicReadAndAddNode extends FixedAccessNode implements StateSplit, LIRLowerableAccess, SingleMemoryKill, OrderedMemoryAccess {
 
     public static final NodeClass<LoweredAtomicReadAndAddNode> TYPE = NodeClass.create(LoweredAtomicReadAndAddNode.class);
     @Input ValueNode delta;
@@ -102,7 +105,12 @@ public final class LoweredAtomicReadAndAddNode extends FixedAccessNode implement
     }
 
     @Override
+    public MemoryOrderMode getMemoryOrder() {
+        return MemoryOrderMode.VOLATILE;
+    }
+
+    @Override
     public LocationIdentity getKilledLocationIdentity() {
-        return getLocationIdentity();
+        return LocationIdentity.any();
     }
 }

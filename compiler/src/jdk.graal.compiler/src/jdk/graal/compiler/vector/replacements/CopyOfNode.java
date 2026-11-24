@@ -320,6 +320,10 @@ public abstract class CopyOfNode extends MacroWithExceptionNode implements Simpl
             }
             /* Since the new object element type is a constant it can be virtualized. */
             newArrayType = tool.getConstantReflection().asJavaType(getNewObjectArrayType().asConstant());
+            if (newArrayType == null || !newArrayType.isArray()) {
+                // Let the original call throw for a null or non-array class.
+                return;
+            }
         } else {
             /* For a primitive array copy the component type is derived from the element kind. */
             newArrayType = tool.getMetaAccess().lookupJavaType(elementKind.toJavaClass()).getArrayClass();
@@ -367,7 +371,10 @@ public abstract class CopyOfNode extends MacroWithExceptionNode implements Simpl
         if (sourceArrayType != null && getNewObjectArrayType().asConstant() != null) {
             ResolvedJavaType sourceType = sourceArrayType.getComponentType();
             ResolvedJavaType newArrayType = tool.getConstantReflection().asJavaType(getNewObjectArrayType().asConstant());
-            assert newArrayType.getComponentType() != null : "Null component type: " + newArrayType;
+            if (newArrayType == null || !newArrayType.isArray()) {
+                super.lower(tool);
+                return;
+            }
             if (newArrayType.getComponentType().isAssignableFrom(sourceType)) {
                 replaceWithUncheckedCopyOfNode(tool);
                 return;

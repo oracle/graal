@@ -29,6 +29,7 @@ import java.util.Optional;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
@@ -37,16 +38,18 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.meta.MethodOffset;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodOffset;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.meta.PatchedWordConstant;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
 public class SVMHostedValueProvider extends HostedValuesProvider {
@@ -106,24 +109,34 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
     }
 
     /**
-     * Canonicalizes a raw guest {@link WordBase} returned by an ordinary object replacer to the
-     * representation expected by Native Image. Ordinary guest constants and already canonical
-     * {@link PatchedWordConstant}s are left unchanged so that arbitrary guest objects are not
-     * materialized through {@link #interceptHosted}.
+     * Canonicalizes a raw guest {@link WordBase} constant to the representation expected by Native
+     * Image. Ordinary guest constants and already canonical {@link PatchedWordConstant}s are left
+     * unchanged so that arbitrary guest objects are not materialized.
      */
     @Override
-    public JavaConstant canonicalizeReplacedConstant(JavaConstant value) {
-        boolean needsWordCanonicalization = !(value instanceof PatchedWordConstant) && isWord(value);
-        if (!needsWordCanonicalization) {
+    public JavaConstant canonicalizeConstant(JavaConstant value) {
+        if (value == null || value.isNull() || value instanceof ImageHeapConstant || value instanceof PatchedWordConstant || !isWord(value)) {
             return value;
         }
-        JavaConstant canonicalValue = interceptHosted(value);
+        WordBase word;
+        try {
+            word = GuestAccess.get().asHostObject(WordBase.class, value);
+        } catch (JVMCIError | RuntimeException e) {
+            throw new UnsupportedFeatureException("Cannot extract guest WordBase constant for Native Image canonicalization: " + value, e);
+        }
+        if (word == null) {
+            throw new UnsupportedFeatureException("Cannot extract guest WordBase constant for Native Image canonicalization: " + value);
+        }
+        JavaConstant canonicalValue = interceptWordType(word).orElse(value);
         VMError.guarantee(canonicalValue instanceof PatchedWordConstant || !isWord(canonicalValue));
         return canonicalValue;
     }
 
     /** Returns whether {@code value} represents a guest {@link WordBase}. */
     private static boolean isWord(JavaConstant value) {
+        if (value.getJavaKind() != JavaKind.Object || value.isNull()) {
+            return false;
+        }
         var valueType = GuestAccess.get().getProviders().getMetaAccess().lookupJavaType(value);
         return valueType != null && GuestAccess.elements().WordBase.isAssignableFrom(valueType);
     }
@@ -144,7 +157,7 @@ public class SVMHostedValueProvider extends HostedValuesProvider {
      * Keeps an ordinary {@link WordBase} as a materializable object constant while replacers are
      * still running. Relocatable words retain their {@link PatchedWordConstant} representation so
      * JVMCI replacers can handle them symbolically. The final ordinary word result is converted to
-     * a {@link PrimitiveConstant} by {@link #canonicalizeReplacedConstant}.
+     * a {@link PrimitiveConstant} by {@link #canonicalizeConstant}.
      */
     @Override
     public JavaConstant forObjectReplacerResult(Object object) {

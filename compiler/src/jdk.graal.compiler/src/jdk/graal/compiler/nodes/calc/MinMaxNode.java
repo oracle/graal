@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -225,6 +225,14 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
             extension = (IntegerConvertNode<?>) otherValue;
         } else if ((x instanceof SignExtendNode || x instanceof ZeroExtendNode) && ((IntegerConvertNode<?>) x).getValue() == otherValue) {
             // Match with a wide compare but producing a narrow result. Produce a narrow min/max.
+            if (x instanceof ZeroExtendNode zeroExtend && zeroExtend.getInputBits() < zeroExtend.getResultBits()) {
+                if (!((IntegerStamp) yValue.stamp(view)).isPositive()) {
+                    // The matched values must also agree after zero extension.
+                    return null;
+                }
+                // A signed comparison of zero-extended values uses unsigned order on narrow values.
+                signedness = Signedness.UNSIGNED;
+            }
             x = otherValue;
             y = yValue;
         } else {

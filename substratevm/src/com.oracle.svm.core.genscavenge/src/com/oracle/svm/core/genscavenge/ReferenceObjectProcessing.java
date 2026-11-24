@@ -37,15 +37,15 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectHeader;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.guest.staging.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.ObjectHeader;
+import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubIntrinsics;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.guest.staging.SubstrateGCOptions;
 import com.oracle.svm.shared.AlwaysInline;
 import com.oracle.svm.shared.Uninterruptible;
@@ -251,7 +251,7 @@ final class ReferenceObjectProcessing {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean willSurviveThisCollection(Object obj) {
         if (ObjectHeaderImpl.isMarked(obj)) {
-            // Note that marking is also used in copying collections for pinned objects.
+            // Note that marking is also used in copying collections in chunks with pinned objects.
             return true;
         }
         if (SerialGCOptions.useCompactingOldGen() && GCImpl.getGCImpl().isCompleteCollection()) {

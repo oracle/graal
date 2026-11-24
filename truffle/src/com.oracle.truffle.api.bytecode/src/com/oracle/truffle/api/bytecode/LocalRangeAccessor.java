@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,8 +67,8 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
  */
 public final class LocalRangeAccessor {
 
-    private final int startOffset;
-    private final int startIndex;
+    final int startOffset;
+    final int startIndex;
     private final int length;
 
     private LocalRangeAccessor(int startOffset, int startIndex, int length) {
@@ -402,7 +402,7 @@ public final class LocalRangeAccessor {
      */
     public static LocalRangeAccessor constantOf(BytecodeLocal[] locals) {
         if (locals.length == 0) {
-            return CACHE[0][0];
+            return constantOf(0, 0, 0);
         }
         int startOffset = locals[0].getLocalOffset();
         int startIndex = locals[0].getLocalIndex();
@@ -411,7 +411,10 @@ public final class LocalRangeAccessor {
                 throw new IllegalArgumentException("Invalid locals provided. Only contiguous locals must be provided for LocalRangeAccessor.");
             }
         }
-        int length = locals.length;
+        return constantOf(startOffset, startIndex, locals.length);
+    }
+
+    static LocalRangeAccessor constantOf(int startOffset, int startIndex, int length) {
         if (startIndex == startOffset && startOffset < CACHE_MAX_START && length < CACHE_MAX_LENGTH) {
             return CACHE[length][startOffset];
         } else {

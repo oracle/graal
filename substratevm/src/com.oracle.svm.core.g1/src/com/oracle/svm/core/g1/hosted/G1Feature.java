@@ -50,8 +50,8 @@ import com.oracle.svm.core.GCRelatedMXBeans;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.config.ObjectLayout.IdentityHashMode;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout.IdentityHashMode;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.g1.G1CommittedMemoryProvider;
 import com.oracle.svm.core.g1.G1Constants;
@@ -75,7 +75,7 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.AllocationFeature;
 import com.oracle.svm.core.heap.BarrierSetProvider;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.heap.PlatformPhysicalMemorySupport;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.image.ImageHeapLayouter;
@@ -84,7 +84,7 @@ import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.metaspace.AbstractMetaspace;
-import com.oracle.svm.core.metaspace.Metaspace;
+import com.oracle.svm.guest.staging.core.metaspace.Metaspace;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.posix.darwin.DarwinPhysicalMemorySupportImpl;
 import com.oracle.svm.core.posix.linux.LinuxPhysicalMemorySupportImpl;
@@ -150,7 +150,9 @@ public class G1Feature implements InternalFeature {
         }
 
         ImageSingletons.add(PlatformPhysicalMemorySupport.class, new G1PhysicalMemorySupport(createPlatformPhysicalMemorySupport()));
-        ImageSingletons.add(GCRelatedMXBeans.class, new G1RelatedMXBeans());
+        if (ImageLayerBuildingSupport.firstImageBuild()) {
+            ImageSingletons.add(GCRelatedMXBeans.class, new G1RelatedMXBeans());
+        }
     }
 
     private static PlatformPhysicalMemorySupport createPlatformPhysicalMemorySupport() {
@@ -366,7 +368,7 @@ public class G1Feature implements InternalFeature {
         int identityHashNumBits = 31;
         int identityHashShift = 6;
 
-        return new ObjectLayout(target, referenceSize, objectAlignment, hubSize, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset,
+        return new ObjectLayout(referenceSize, objectAlignment, hubSize, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset,
                         headerIdentityHashOffset, IdentityHashMode.OBJECT_HEADER, identityHashNumBits, identityHashShift);
     }
 

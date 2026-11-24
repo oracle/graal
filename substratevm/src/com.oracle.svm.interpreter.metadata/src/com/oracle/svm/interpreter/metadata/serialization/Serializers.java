@@ -43,6 +43,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.MethodRefHolder;
 import com.oracle.svm.core.graal.code.PreparedSignature;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.espresso.classfile.ParserConstantPool;
@@ -613,7 +614,7 @@ public final class Serializers {
                             Class<?> clazz = clazzConstant.getReferent();
                             InterpreterResolvedObjectType forInterpreter = InterpreterResolvedObjectType.createForInterpreter(name, modifiers, componentType, superclass, interfaces, constantPool,
                                             clazz, isWordType, permittedSubclassNames);
-                            DynamicHub.fromClass(clazz).setInterpreterType(forInterpreter);
+                            DynamicHubUtils.setInterpreterType(DynamicHub.fromClass(clazz), forInterpreter);
                             return forInterpreter;
                         }
                     },

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,8 +43,8 @@ package com.oracle.truffle.sl.bytecode;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.bytecode.BytecodeIndexMode;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
@@ -111,8 +111,9 @@ import com.oracle.truffle.sl.runtime.SLNull;
                  * {@link SLBytecodeParser#visitFunction}.
                  */
                 enableRootBodyTagging = false, //
+                bytecodeIndexMode = BytecodeIndexMode.MANUAL, //
                 tagTreeNodeLibrary = SLBytecodeScopeExports.class, enableSerialization = true, //
-                enableTagInstrumentation = true)
+                enableTagInstrumentation = true, enableTailCallHandlers = true)
 @TypeSystemReference(SLTypes.class)
 @OperationProxy(SLAddNode.class)
 @OperationProxy(SLDivNode.class)
@@ -282,7 +283,7 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
                 }
                 return builtin.execute(frame, arguments);
             } catch (UnsupportedSpecializationException e) {
-                throw SLException.typeError(e.getNode(), e.getSuppliedValues());
+                throw SLException.typeError(e.getNode(), -1, e.getSuppliedValues());
             }
         }
 
@@ -296,17 +297,17 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
     @Operation
     public static final class SLInvoke {
         @Specialization(limit = "3", //
-                        guards = "function.getCallTarget() == cachedTarget", //
+                        guards = "function.getRootNode() == cachedRoot", //
                         assumptions = "callTargetStable")
         @SuppressWarnings("unused")
         protected static Object doDirect(SLFunction function, @Variadic Object[] arguments,
+                        @Bind("$bytecodeIndex") int bytecodeIndex,
                         @Cached("function.getCallTargetStable()") Assumption callTargetStable,
-                        @Cached("function.getCallTarget()") RootCallTarget cachedTarget,
-                        @Cached("create(cachedTarget)") DirectCallNode callNode) {
+                        @Cached(value = "function.getRootNode()", adopt = false) SLRootNode cachedRoot,
+                        @Cached("create(cachedRoot.getCallTarget())") DirectCallNode callNode) {
 
             /* Inline cache hit, we are safe to execute the cached call target. */
-            Object returnValue = callNode.call(arguments);
-            return returnValue;
+            return callNode.call(SLRootNode.class, bytecodeIndex, arguments);
         }
 
         /**
@@ -316,25 +317,26 @@ public abstract class SLBytecodeRootNode extends SLRootNode implements BytecodeR
          */
         @Specialization(replaces = "doDirect")
         protected static Object doIndirect(SLFunction function, @Variadic Object[] arguments,
+                        @Bind("$bytecodeIndex") int bytecodeIndex,
                         @Cached IndirectCallNode callNode) {
-            /*
-             * SL has a quite simple call lookup: just ask the function for the current call target,
-             * and call it.
-             */
-            return callNode.call(function.getCallTarget(), arguments);
+            return callNode.call(function.getRootNode(), bytecodeIndex, arguments);
         }
 
         @Specialization
         protected static Object doInterop(
+                        VirtualFrame frame,
                         Object function,
                         @Variadic Object[] arguments,
                         @CachedLibrary(limit = "3") InteropLibrary library,
-                        @Bind Node location) {
+                        @Bind Node location,
+                        @Bind BytecodeNode bytecodeNode,
+                        @Bind("$bytecodeIndex") int bytecodeIndex) {
             try {
+                bytecodeNode.setBytecodeIndex(frame, bytecodeIndex);
                 return library.execute(function, arguments);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 /* Execute was not successful. */
-                throw SLException.undefinedFunction(location, function);
+                throw SLException.undefinedFunction(location, bytecodeIndex, function);
             }
         }
     }

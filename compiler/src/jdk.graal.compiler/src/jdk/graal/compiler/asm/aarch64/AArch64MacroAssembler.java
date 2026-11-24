@@ -1412,7 +1412,8 @@ public abstract class AArch64MacroAssembler extends AArch64Assembler {
      * @param dst general purpose register. May not be null or stackpointer.
      * @param src1 general purpose register. May not be null or stackpointer.
      * @param src2 general purpose register. It holds a shift amount from 0 to (size - 1) in its
-     *            bottom 5 bits. May not be null or stackpointer.
+     *            bottom 5 bits for 32-bit operands or bottom 6 bits for 64-bit operands. May not be
+     *            null or stackpointer.
      */
     public void ror(int size, Register dst, Register src1, Register src2) {
         super.rorv(size, dst, src1, src2);

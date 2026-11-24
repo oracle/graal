@@ -371,6 +371,8 @@ mx_unittest.register_unittest_config(TruffleUnittestConfig())
 
 
 def append_unittest_image_build_time_options(vmArgs):
+    # Keep expensive checks enabled in tests, but allow an explicit command-line override.
+    vmArgs.insert(0, '-Dtruffle.DetailedAssertions=true')
     # Command line arguments for com.oracle.truffle.api.test.option.ConstantOptionTest
     vmArgs.append('-Dpolyglot.ConstantOptionsLanguage.ConstantOption1=configuredValue')
     return vmArgs
@@ -1143,7 +1145,6 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, build_args=None):
     excluded_tests = [
         "com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest",  # runs in its own image
         "com.oracle.truffle.api.test.profiles.*",  # GR-52260
-        "com.oracle.truffle.api.test.StackTraceTest",  # GR-52261
         "com.oracle.truffle.api.test.nodes.*",  # GR-52262
         "com.oracle.truffle.api.test.host.*",  # GR-52263
         "com.oracle.truffle.api.test.interop.*",  # GR-52264
@@ -1161,6 +1162,8 @@ def truffle_native_unit_tests_gate(use_optimized_runtime=True, build_args=None):
             "-H:+AddAllCharsets",
             "--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED",
             "--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl.asm=ALL-UNNAMED",
+            # Generated proxy tests subclass the internal proxy base, including during JUnit discovery.
+            "--add-exports=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED",
             "--enable-native-access=org.graalvm.truffle",
         ]
         + (

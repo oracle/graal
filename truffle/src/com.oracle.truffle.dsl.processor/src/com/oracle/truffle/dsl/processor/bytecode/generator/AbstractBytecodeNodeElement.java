@@ -66,6 +66,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.BytecodeIndexMode;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
@@ -263,7 +264,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         this.add(createTranslateBytecodeIndex());
         this.add(createCreateTransition());
         transition = this.add(createTransition());
-        if (parent.model.hasYieldOperation() && parent.model.enableInstructionTracing) {
+        if (parent.model.enableInstructionTracing) {
             this.add(createIsInstructionTracingEnabled());
         }
 
@@ -277,14 +278,14 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
     }
 
     private boolean needsStableBciRemappings() {
-        return parent.model.enableInstructionRewriting || parent.model.enableTagInstrumentation;
+        return parent.model.needsStableBciRemappings();
     }
 
     private CodeExecutableElement createIsInstructionTracingEnabled() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, FINAL), type(boolean.class), "isInstructionTracingEnabled");
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(boolean.class), "isInstructionTracingEnabled");
         CodeTreeBuilder b = ex.createBuilder();
         b.startReturn();
-        b.string(parent.configEncoder.checkInstructionTracingEnabled(parent.configEncoder.decodeInstrumentations("this.configEncoding")));
+        b.string(parent.configEncoder.checkInstructionTracingBit("this.configEncoding"));
         b.end();
         return ex;
     }
@@ -756,6 +757,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
     private CodeExecutableElement createValidateBytecodes() {
         CodeExecutableElement validate = new CodeExecutableElement(Set.of(PRIVATE, FINAL), type(boolean.class), "validateBytecodes");
+        validate.addParameter(new CodeVariableElement(generic(List.class, parent.asType()), "roots"));
         CodeTreeBuilder b = validate.createBuilder();
 
         b.declaration(parent.asType(), "root");
@@ -1059,7 +1061,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         return validate;
     }
 
-    static boolean tryEmitRootNodeForLocalInstruction(CodeTreeBuilder b, InstructionValidationGroup group) {
+    private static boolean tryEmitRootNodeForLocalInstruction(CodeTreeBuilder b, InstructionValidationGroup group) {
         if (group.localVar()) {
             b.startAssign("root").string("this.getRoot()").end();
             return true;
@@ -1067,7 +1069,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             InstructionImmediate rootImmediate = group.immediates.stream() //
                             .filter(imm -> imm.kind() == ImmediateKind.LOCAL_ROOT) //
                             .findFirst().get();
-            b.startAssign("root").startCall("this.getRoot().getBytecodeRootNodeImpl").tree(BytecodeRootNodeElement.readImmediate("bc", "bci", rootImmediate)).end(2);
+            b.startAssign("root").startCall("roots", "get").tree(BytecodeRootNodeElement.readImmediate("bc", "bci", rootImmediate)).end(2);
             return true;
         }
         return false;
@@ -1263,7 +1265,8 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(FINAL), returnType, "transition");
         ex.addParameter(new CodeVariableElement(this.asType(), "bc"));
         ex.addParameter(new CodeVariableElement(type(long.class), "state"));
-        if (parent.model.needsCachedTagsTransition() || parent.model.traceTransition != null) {
+        boolean translateManualBci = parent.model.bytecodeIndexMode == BytecodeIndexMode.MANUAL && parent.model.isBytecodeUpdatable();
+        if (parent.model.needsCachedTagsTransition() || parent.model.traceTransition != null || translateManualBci) {
             ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
         }
         if (parent.model.hasYieldOperation()) {
@@ -1330,6 +1333,14 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             }
             b.end(2);
             b.startAssign("newState").string(BytecodeRootNodeElement.encodeNewBci("newBci", "state")).end();
+            if (translateManualBci) {
+                b.lineComment("Translate the manually stored index independently of the execution index.");
+                b.startIf().string("frame.isLong(BCI_INDEX)").end().startBlock();
+                b.declaration(type(int.class), "storedBci", "(int) frame.getLong(BCI_INDEX)");
+                b.startIf().string("storedBci >= 0").end().startBlock();
+                parent.emitWriteBytecodeIndexToFrame(b, "frame", "translateBytecodeIndex(bc, storedBci)");
+                b.end(2);
+            }
             if (parent.model.overridesBytecodeDebugListenerMethod("onBytecodeStackTransition")) {
                 b.startStatement();
                 b.startCall("getRoot().onBytecodeStackTransition");
@@ -1343,7 +1354,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
         String transitionBciExpr;
         if (parent.model.isBytecodeUpdatable()) {
-            transitionBciExpr = "newBci";
+            transitionBciExpr = parent.castBytecodeIndexToInt("newBci");
         } else {
             transitionBciExpr = BytecodeRootNodeElement.decodeBci("state");
         }
@@ -1351,13 +1362,13 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             b.newLine();
             // When transitioning from uncached to cached we need to update local tags.
             if (!parent.model.isBytecodeUpdatable()) {
-                b.declaration(parent.getBytecodeIndexType(), "currentBci", BytecodeRootNodeElement.decodeBci("state"));
+                b.declaration(type(int.class), "currentBci", BytecodeRootNodeElement.decodeBci("state"));
                 transitionBciExpr = "currentBci";
             }
             b.startIf().string(transitionBciExpr).string(" > 0 && this.getTier().ordinal() < bc.getTier().ordinal()").end().startBlock();
             b.lineComment("Populate cached tags for any locals already stored in the frame.");
 
-            b.startDeclaration(type(int.class), "localCount").startCall("bc.getLocalCount").string(parent.castBytecodeIndexToInt(transitionBciExpr)).end(2);
+            b.startDeclaration(type(int.class), "localCount").startCall("bc.getLocalCount").string(transitionBciExpr).end(2);
             b.startFor().string("int localOffset = 0; localOffset < localCount; localOffset++").end().startBlock();
             b.startIf().startCall("FRAMES.getTag").string("frame").string(BytecodeRootNodeElement.USER_LOCALS_START_INDEX + " + localOffset").end().string(" == ").staticReference(
                             parent.frameTagsElement.getIllegal()).end().startBlock();
@@ -1366,10 +1377,10 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
             b.end();
 
             b.startStatement().startCall("bc.setLocalValue");
-            b.string(parent.castBytecodeIndexToInt(transitionBciExpr));
+            b.string(transitionBciExpr);
             b.string("frame");
             b.string("localOffset");
-            b.startCall("bc.getLocalValue").string(parent.castBytecodeIndexToInt(transitionBciExpr)).string("frame").string("localOffset").end();
+            b.startCall("bc.getLocalValue").string(transitionBciExpr).string("frame").string("localOffset").end();
             b.end(2);
             b.end();
             b.end();
@@ -1384,7 +1395,7 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         b.string("this");
         b.string(BytecodeRootNodeElement.decodeBci("state"));
         b.string("bc");
-        b.string(parent.castBytecodeIndexToInt(transitionBciExpr));
+        b.string(transitionBciExpr);
         b.string("wasCompiled");
         b.end(2); // createTransition + declaration
 

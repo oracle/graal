@@ -31,10 +31,12 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
+import com.oracle.svm.core.genscavenge.GCImpl;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
+import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.remset.AlignedChunkRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.BrickTable;
 import com.oracle.svm.core.genscavenge.remset.FirstObjectTable;
@@ -173,7 +175,7 @@ public final class ObjectMoveInfo {
      * @see AlignedHeapChunk#walkObjects
      */
     @Uninterruptible(reason = CORE_GC_CODE)
-    public static void walkObjectsForFixup(AlignedHeapChunk.AlignedHeader chunk, ObjectFixupVisitor visitor) {
+    public static void walkObjectsForFixup(AlignedHeapChunk.AlignedHeader chunk, Space space, ObjectFixupVisitor visitor) {
         FirstObjectTable.initializeTable(AlignedChunkRememberedSet.getFirstObjectTableStart(chunk), AlignedChunkRememberedSet.getFirstObjectTableSize());
 
         Pointer p = AlignedHeapChunk.getObjectsStart(chunk);
@@ -204,7 +206,7 @@ public final class ObjectMoveInfo {
                 visitor.visitObject(obj);
                 p = p.add(objSize);
             }
-            if (nextObjSeq.isNonNull() && chunk.getSweep()) {
+            if (nextObjSeq.isNonNull() && GCImpl.getGCImpl().mustSweep(chunk, space)) {
                 // We will write a filler object here, add the location to the first object table.
                 assert p.belowThan(nextObjSeq);
                 UnsignedWord offset = p.subtract(AlignedHeapChunk.getObjectsStart(chunk));
@@ -243,6 +245,7 @@ public final class ObjectMoveInfo {
         return newObjSeqAddress.add(objOffset);
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static int getSize() {
         return useCompressedLayout() ? 8 : 16;
     }
@@ -260,7 +263,7 @@ public final class ObjectMoveInfo {
             Pointer nextNewAddress = next.isNonNull() ? getNewAddress(next) : Word.nullPointer();
             Pointer nextNext = next.isNonNull() ? getNextObjectSeqAddress(next) : Word.nullPointer();
 
-            if (!visitor.visit(p, size, newAddress, next)) {
+            if (!visitor.visit(chunk, p, size, newAddress, next)) {
                 return;
             }
 
@@ -280,7 +283,7 @@ public final class ObjectMoveInfo {
          * @return {@code true} if visiting should continue, {@code false} if visiting should stop.
          */
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-        boolean visit(Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq);
+        boolean visit(AlignedHeapChunk.AlignedHeader chunk, Pointer objSeq, UnsignedWord size, Pointer newAddress, Pointer nextObjSeq);
     }
 
     private ObjectMoveInfo() {

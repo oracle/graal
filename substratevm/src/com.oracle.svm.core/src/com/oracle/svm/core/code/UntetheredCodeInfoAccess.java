@@ -27,6 +27,7 @@ package com.oracle.svm.core.code;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.guest.staging.core.code.UntetheredCodeInfo;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;

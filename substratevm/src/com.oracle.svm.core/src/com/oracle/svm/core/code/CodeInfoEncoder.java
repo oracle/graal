@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,19 +45,21 @@ import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.c.NonmovableObjectArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
+import com.oracle.svm.shared.config.ObjectLayout;
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.graal.code.SharedCompilationResult;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -626,12 +628,12 @@ public class CodeInfoEncoder {
                     assert entry.referenceMap == null && (entry.frameData == null || entry.frameData.isDefaultFrameData) : entry;
                     entry.referenceMap = (ReferenceMapEncoder.Input) debugInfo.getReferenceMap();
                     entry.frameData = frameInfoEncoder.addDebugInfo(method, compilation, infopoint, totalFrameSize);
-                    if (DeoptimizationSupport.enabled() && LazyDeoptimization.getValue() && entry.frameData.frame.isDeoptEntry && infopoint instanceof Call call && call.target != null) {
+                    if (DeoptimizationSupport.enabled() && LazyDeoptimization.getValue() && entry.frameData.isDeoptEntry && infopoint instanceof Call call && call.target != null) {
                         ResolvedJavaMethod invokeTarget = (ResolvedJavaMethod) call.target;
                         JavaType returnType = invokeTarget.getSignature().getReturnType(null);
                         entry.deoptReturnValueIsObject = ((SharedType) returnType).getStorageKind().isObject();
                     }
-                    if (entry.frameData != null && entry.frameData.frame.isDeoptEntry) {
+                    if (entry.frameData != null && entry.frameData.isDeoptEntry) {
                         BytecodeFrame frame = debugInfo.frame();
                         long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), FrameState.StackState.of(frame));
                         added = deoptEntryBcis.add(encodedBci);
@@ -808,7 +810,7 @@ public class CodeInfoEncoder {
             writeEncodedFrameInfo(encodingBuffer, data, entryFlags, chunkDefaultFrameInfoIndex);
             writeFramePointerSaveAreaOffset(encodingBuffer, data, entryFlags);
 
-            if (DeoptimizationSupport.enabled() && LazyDeoptimization.getValue() && data.frameData != null && data.frameData.frame.isDeoptEntry) {
+            if (DeoptimizationSupport.enabled() && LazyDeoptimization.getValue() && data.frameData != null && data.frameData.isDeoptEntry) {
                 /*
                  * With lazy deoptimization, we have an extra byte in the code info, which keeps
                  * track for each deopt entry point whether it is at a call that returns an object.
@@ -1017,7 +1019,7 @@ public class CodeInfoEncoder {
         if (data.frameData == null) {
             return CodeInfoDecoder.FI_NO_INFO;
         } else if (TypeConversion.isS4(data.frameData.encodedFrameInfoIndex)) {
-            if (data.frameData.frame.isDeoptEntry) {
+            if (data.frameData.isDeoptEntry) {
                 return CodeInfoDecoder.FI_DEOPT_ENTRY_INDEX_S4;
             } else {
                 if (data.frameData.isDefaultFrameData) {
@@ -1302,12 +1304,12 @@ class CodeInfoVerifier {
             int expectedLength = 0;
             for (int i = 0; i < expectedObject.getValues().length; i++) {
                 JavaValue expectedValue = expectedObject.getValues()[i];
-                UnsignedWord expectedOffset = Word.unsigned(objectLayout.getArrayElementOffset(kind, expectedLength));
+                UnsignedWord expectedOffset = Word.unsigned(ObjectLayoutCompilerSupport.getArrayElementOffset(objectLayout, kind, expectedLength));
                 ValueInfo actualValue = findActualArrayElement(actualObject, expectedOffset);
                 verifyValue(compilation, expectedValue, actualValue, actualFrame, visitedVirtualObjects);
 
                 JavaKind valueKind = expectedObject.getSlotKind(i);
-                if (objectLayout.sizeInBytes(kind) == 4 && objectLayout.sizeInBytes(valueKind) == 8) {
+                if (ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, kind) == 4 && ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, valueKind) == 8) {
                     /*
                      * Truffle uses arrays in a non-standard way: it declares an int[] array and
                      * uses it to also store long and double values. These values span two array
@@ -1333,7 +1335,7 @@ class CodeInfoVerifier {
                 valueIdx += 1;
 
                 JavaKind kind = expectedField.getStorageKind();
-                if (objectLayout.sizeInBytes(kind) == 4 && objectLayout.sizeInBytes(valueKind) == 8) {
+                if (ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, kind) == 4 && ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, valueKind) == 8) {
                     /*
                      * Truffle uses fields in a non-standard way: it declares a couple of
                      * (consecutive) int fields, and uses them to also store long and double values.
@@ -1368,7 +1370,7 @@ class CodeInfoVerifier {
         int curIdx = startIdx;
         while (curOffset.belowThan(expectedOffset)) {
             ValueInfo value = actualObject[curIdx];
-            curOffset = curOffset.add(objectLayout.sizeInBytes(value.getKind()));
+            curOffset = curOffset.add(ObjectLayoutCompilerSupport.sizeInBytes(objectLayout, value.getKind()));
             curIdx++;
         }
         if (curOffset.equal(expectedOffset)) {

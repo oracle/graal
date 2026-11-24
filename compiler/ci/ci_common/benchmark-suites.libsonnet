@@ -22,14 +22,22 @@
     all_but_main_suites:: std.setDiff(self.all_suites, self.main_suites, keyF=_suite_key),
   },
 
+  // The adapter selects iteration counts and scoring windows per benchmark.
+  interpreter_workload:: {
+    suite_run_args:: ["--iteration-policy=interpreter"],
+    suite:: super.suite + "-small",
+  },
+
   // suite definitions
   // *****************
-  awfy_template(capture_crema_libjvm_size=false):: cc.compiler_benchmark + c.heap.small + bc.bench_max_threads + {
+  awfy_template(capture_crema_libjvm_size=false, iterations=null):: cc.compiler_benchmark + c.heap.small + bc.bench_max_threads + {
     local is_interpreter_only = std.objectHasAll(self.environment, "JVM_CONFIG") &&
                     (utils.contains(self.environment["JVM_CONFIG"], "xint") || utils.contains(self.environment["JVM_CONFIG"], "no-profiling")),
     // Required for Havlak in interpreter mode to avoid a stack overflow.
     local awfy_vm_args = self.extra_vm_args + (if is_interpreter_only then ["-Xss16m"] else []),
-    local awfy_run_args = if is_interpreter_only then ["--", "-i", "5"] else [],
+    local awfy_run_args = if is_interpreter_only then ["--", "-i", "5"]
+                         else if iterations != null then ["--", "--iterations", std.toString(iterations)]
+                         else [],
     local crema_libjvm_file_size_run = if capture_crema_libjvm_size then [self.crema_libjvm_file_size_cmd] else [],
     suite:: "awfy",
     run+: [
@@ -46,8 +54,11 @@
 
   dacapo: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "dacapo",
+    suite_benchmarks:: "*",
+    suite_run_args:: [],
     run+: [
-      self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args
+      self.benchmark_cmd + [self.suite + ":" + self.suite_benchmarks, "--"] + self.extra_vm_args +
+      (if self.suite_run_args == [] then [] else ["--"] + self.suite_run_args)
     ],
     logs+: [
         "%s/*/scratch/%s" % [config.compiler.compiler_suite, file]
@@ -70,8 +81,11 @@
 
   scala_dacapo: cc.compiler_benchmark + c.heap.default + bc.bench_max_threads + {
     suite:: "scala-dacapo",
+    suite_benchmarks:: "*",
+    suite_run_args:: [],
     run+: [
-      self.benchmark_cmd + [self.suite + ":*", "--"] + self.extra_vm_args
+      self.benchmark_cmd + [self.suite + ":" + self.suite_benchmarks, "--"] + self.extra_vm_args +
+      (if self.suite_run_args == [] then [] else ["--"] + self.suite_run_args)
     ],
     timelimit: "01:30:00",
     forks_batches:: 2,
@@ -99,8 +113,8 @@
 
   barista_template(suite_version=null, suite_name="barista", max_jdk_version=null, cmd_app_prefix=["hwloc-bind --cpubind node:0.core:0-3.pu:0 --membind node:0"], non_prefix_barista_args=[]):: cc.compiler_benchmark + {
     suite:: suite_name,
-    local barista_version = "0.8.1",
-    local barista_archive_version = "0.8.0",
+    local barista_version = "0.8.2",
+    local barista_archive_version = "0.8.2",
     local suite_version_args = if suite_version != null then ["--bench-suite-version=" + suite_version] else [],
     local prefix_barista_arg = if std.length(cmd_app_prefix) > 0 then [std.format("--cmd-app-prefix=%s", std.join(" ", cmd_app_prefix))] else [],
     local all_barista_args = prefix_barista_arg + non_prefix_barista_args,

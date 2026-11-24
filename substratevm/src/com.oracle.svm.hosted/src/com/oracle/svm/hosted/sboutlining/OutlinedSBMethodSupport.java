@@ -259,7 +259,16 @@ public class OutlinedSBMethodSupport {
             outlinedUsageCount.put(key, 1);
             ResolvedJavaType declaringClass = meta.lookupJavaType(OutlinedSBMethodHolder.class);
             ConstantPool pool = declaringClass.getDeclaredConstructors(false)[0].getConstantPool();
-            return new OutlinedSBMethod(declaringClass, ResolvedSignature.fromMethodType(methodType, meta), pool, methodType);
+            OutlinedSBMethod method = new OutlinedSBMethod(declaringClass, ResolvedSignature.fromMethodType(methodType, meta), pool, methodType);
+            if (aMetaAccess.getUniverse().hostVM().buildingInitialLayer()) {
+                /*
+                 * Later layers reuse this implementation with different arguments. Pinning also
+                 * registers it as an analysis root, preventing specialization to the arguments of
+                 * only the initial layer's callers.
+                 */
+                aMetaAccess.getUniverse().lookup(method).setPinnedToInitialLayer();
+            }
+            return method;
         });
     }
 

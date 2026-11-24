@@ -28,6 +28,7 @@ import java.lang.invoke.VarHandle;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -226,6 +227,9 @@ public class ContextSensitiveMultiTypeState extends MultiTypeStateWithBitSet {
 
             @Override
             public AnalysisObject next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
                 return objects[idx++];
             }
         };

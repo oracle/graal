@@ -39,7 +39,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.PendingExceptionStateSupport;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;

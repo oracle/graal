@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.flow.context.bytecode;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -97,6 +98,9 @@ public class ContextSensitiveSingleTypeState extends SingleTypeState {
 
             @Override
             public AnalysisObject next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
                 return objects[idx++];
             }
         };

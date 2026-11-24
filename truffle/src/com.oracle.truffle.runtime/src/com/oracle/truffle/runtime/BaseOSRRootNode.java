@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,7 +95,7 @@ public abstract class BaseOSRRootNode extends RootNode {
         return false;
     }
 
-    private RootNode getOriginalRootNode() {
+    final RootNode getOriginalRootNode() {
         Node node = (Node) loopNode; // safe to cast, always a Node
         RootNode root = node.getRootNode();
         assert root != null : "Loop and OSR nodes must be adopted";

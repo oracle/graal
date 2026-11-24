@@ -235,6 +235,9 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
             newInvoke.setStateAfter(stateAfter);
             newInvoke.setStateDuring(stateDuring);
             newInvoke.setInlineControl(inlineControl);
+            newInvoke.setInOOMETry(isInOOMETry);
+            newInvoke.setPolymorphic(polymorphic);
+            newInvoke.setClassInit(classInit);
             AbstractBeginNode oldException = this.exceptionEdge;
             graph().replaceSplitWithFixed(this, newInvoke, this.next());
             GraphUtil.killCFG(oldException);

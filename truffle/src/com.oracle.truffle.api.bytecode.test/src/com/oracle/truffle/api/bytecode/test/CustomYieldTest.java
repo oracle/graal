@@ -181,9 +181,9 @@ public class CustomYieldTest {
         });
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        nodes.serialize(new DataOutputStream(output), SERIALIZER);
+        nodes.serializeBuilderBytecode(new DataOutputStream(output), SERIALIZER);
         Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
-        BytecodeRootNodes<CustomYieldTestRootNode> deserialized = CustomYieldTestRootNodeGen.deserialize(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
+        BytecodeRootNodes<CustomYieldTestRootNode> deserialized = CustomYieldTestRootNodeGen.deserializeBuilderBytecode(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
         CustomYieldTestRootNode root = deserialized.getNode(0);
 
         CustomYieldResult result = (CustomYieldResult) root.getCallTarget().call(42);
@@ -514,9 +514,9 @@ public class CustomYieldTest {
         });
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        nodes.serialize(new DataOutputStream(output), SERIALIZER);
+        nodes.serializeBuilderBytecode(new DataOutputStream(output), SERIALIZER);
         Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
-        BytecodeRootNodes<ComplexCustomYieldTestRootNode> deserialized = ComplexCustomYieldTestRootNodeGen.deserialize(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
+        BytecodeRootNodes<ComplexCustomYieldTestRootNode> deserialized = ComplexCustomYieldTestRootNodeGen.deserializeBuilderBytecode(null, BytecodeConfig.DEFAULT, input, DESERIALIZER);
         ComplexCustomYieldTestRootNode root = deserialized.getNode(0);
 
         // A: no result

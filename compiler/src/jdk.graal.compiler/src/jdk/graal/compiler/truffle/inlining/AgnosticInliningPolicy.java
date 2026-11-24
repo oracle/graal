@@ -497,11 +497,10 @@ public class AgnosticInliningPolicy implements InliningPolicy {
             costBenefit = costBenefit.withBenefitBoostedBy(frequency);
         }
         /*
-         * A single direct child may carry the entire frequency of its parent, and recursive
-         * subtrees may distribute it among multiple children. Preserve the benefit of removing the
-         * current call boundary in both cases.
+         * A single direct child may carry the entire frequency of its parent. Preserve the benefit
+         * of removing the current call boundary in this case.
          */
-        if (node.getParent().getChildren().size() == 1 || hasSingleLiveDirectChild(node) || node.getRecursionDepth() > 0) {
+        if (node.getParent().getChildren().size() == 1 || hasSingleLiveDirectChild(node)) {
             costBenefit = costBenefit.withBenefitBoostedBy(frequency);
         }
         if (node.getDirectCallTarget().getKnownCallSiteCount() == 1) {
@@ -582,7 +581,7 @@ public class AgnosticInliningPolicy implements InliningPolicy {
         }
         // Check that the argument array is safe, where safe means that it is not modified.
         final StructuredGraph ir = node.getIR();
-        final ParameterNode parameterArray = ir.getParameter(2);
+        final ParameterNode parameterArray = ir.getParameter(3);
         final ValueNode castArray = unproxifyArgumentArray(parameterArray);
         if (castArray == null) {
             return null;

@@ -27,6 +27,8 @@ package com.oracle.svm.core.code;
 import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
+
 @RawPointerTo(value = CodeInfo.class)
 public interface CodeInfoPointer extends PointerBase {
     CodeInfoPointer addressOf(long index);

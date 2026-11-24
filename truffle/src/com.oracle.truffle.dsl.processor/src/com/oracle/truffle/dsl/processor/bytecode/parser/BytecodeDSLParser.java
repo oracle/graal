@@ -76,6 +76,7 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeConfigEncoding;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLBuiltins;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.BytecodeIndexMode;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.IllegalLocalExceptionFactory;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.IllegalLocalExceptionFactory.ParameterKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
@@ -251,7 +252,16 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         model.allowUnsafe = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "allowUnsafe");
         model.enableMaterializedLocalAccesses = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableMaterializedLocalAccesses");
         model.enableYield = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableYield");
-        model.storeBciInFrame = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "storeBytecodeIndexInFrame");
+        VariableElement bytecodeIndexMode = ElementUtils.getAnnotationValue(VariableElement.class, generateBytecodeMirror, "bytecodeIndexMode");
+        model.bytecodeIndexMode = BytecodeIndexMode.valueOf(bytecodeIndexMode.getSimpleName().toString());
+        boolean storeBytecodeIndexInFrame = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "storeBytecodeIndexInFrame");
+        if (storeBytecodeIndexInFrame) {
+            AnnotationValue explicitMode = ElementUtils.getAnnotationValue(generateBytecodeMirror, "bytecodeIndexMode", false);
+            if (explicitMode != null && model.bytecodeIndexMode != BytecodeIndexMode.CACHED_NODE) {
+                model.addError(typeElement, "GenerateBytecode#storeBytecodeIndexInFrame cannot be true when GenerateBytecode#bytecodeIndexMode is explicitly set to a non-default mode.");
+            }
+            model.bytecodeIndexMode = BytecodeIndexMode.FRAME;
+        }
         model.captureFramesForTrace = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "captureFramesForTrace");
         model.enableQuickening = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableQuickening");
         model.enableTagInstrumentation = ElementUtils.getAnnotationValue(Boolean.class, generateBytecodeMirror, "enableTagInstrumentation");
@@ -1411,6 +1421,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
         supportedParams.put(new TypeMirrorKey(types.Node, typeUtils), ParameterKind.NODE);
         supportedParams.put(new TypeMirrorKey(types.BytecodeNode, typeUtils), ParameterKind.BYTECODE_NODE);
         supportedParams.put(new TypeMirrorKey(types.BytecodeLocation, typeUtils), ParameterKind.BYTECODE_LOCATION);
+        supportedParams.put(new TypeMirrorKey(model.getContext().getType(int.class), typeUtils), ParameterKind.BYTECODE_INDEX);
         supportedParams.put(new TypeMirrorKey(types.LocalVariable, typeUtils), ParameterKind.LOCAL_VARIABLE);
         for (VariableElement param : createMethod.getParameters()) {
             TypeMirror paramType = param.asType();

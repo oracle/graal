@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,18 @@
 package org.graalvm.nativeimage.impl;
 
 import org.graalvm.nativeimage.PinnedObject;
+import org.graalvm.word.Pointer;
 
 public interface PinnedObjectSupport {
     PinnedObject create(Object object);
+
+    boolean supportsPinnedAllocation();
+
+    <T> T allocateInstance(Class<T> clazz) throws InstantiationException;
+
+    Pointer addressOfPinnedObject(Object object);
+
+    Object newArray(Class<?> componentType, int length);
+
+    Pointer addressOfPinnedArrayElement(Object array, int index);
 }

@@ -65,7 +65,8 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.LayeredImageOptions;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.SVMHost;
@@ -93,6 +94,7 @@ import com.oracle.svm.hosted.sboutlining.OutlinedSBMethod;
 import com.oracle.svm.hosted.snapshot.capnproto.CapnProtoSharedLayerSnapshotFormat;
 import com.oracle.svm.hosted.snapshot.constant.ConstantReferenceData;
 import com.oracle.svm.hosted.snapshot.dynamichub.ClassInitializationInfoData;
+import com.oracle.svm.hosted.snapshot.dynamichub.ObjectLayoutData;
 import com.oracle.svm.hosted.snapshot.dynamichub.DynamicHubInfoData;
 import com.oracle.svm.hosted.snapshot.elements.PersistedAnalysisFieldData;
 import com.oracle.svm.hosted.snapshot.elements.PersistedAnalysisMethodData;
@@ -277,6 +279,16 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         HostedImageLayerBuildingSupport.singleton().getWriteLayerArchiveSupport().setClassIdentityHashCodes(constantSnapshotWriter.getClassIdentityHashCodes());
     }
 
+    private void persistObjectLayout(AnalysisType type, DynamicHub hub, ObjectLayoutData.Writer builder) {
+        /* Only reachable types are guaranteed to have a hub in the sealed analysis heap. */
+        if (type.isReachable() && nativeImageHeap.getObjectInfo(hub) != null) {
+            builder.setInstalled(true);
+            builder.setLayoutEncoding(hub.getLayoutEncoding());
+            builder.setMonitorOffset(hub.getMonitorOffset());
+            builder.setIdentityHashOffset(hub.getIdentityHashOffsetOrZero());
+        }
+    }
+
     private void persistType(AnalysisType type, Supplier<PersistedAnalysisTypeData.Writer> builderSupplier) {
         PersistedAnalysisTypeData.Writer builder = builderSupplier.get();
         HostVM hostVM = aUniverse.hostVM();
@@ -284,6 +296,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         DynamicHub hub = svmHost.dynamicHub(type);
         builder.setHubIdentityHashCode(System.identityHashCode(hub));
         builder.setHasArrayType(hub.getArrayHub() != null);
+        persistObjectLayout(type, hub, builder.initObjectLayout());
 
         ClassInitializationInfo info = hub.getClassInitializationInfo();
         if (info == null) {
@@ -303,7 +316,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             if (classInitializer != null) {
                 MethodPointer methodPointer = (MethodPointer) classInitializer.functionPointer;
                 VMError.guarantee(methodPointer.permitsRewriteToPLT() == MethodPointer.DEFAULT_PERMIT_REWRITE_TO_PLT, "Non-default value currently not supported, add in schema if needed");
-                AnalysisMethod classInitializerMethod = (AnalysisMethod) methodPointer.getMethod();
+                AnalysisMethod classInitializerMethod = (AnalysisMethod) MethodRefSupport.getMethod(methodPointer);
                 b.setInitializerMethodId(classInitializerMethod.getId());
             }
         }
@@ -402,7 +415,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             }
         }
         /*
-         * Method handle with the same inner method handles will return the same hash. They will
+         * Method handle invokers with the same structure will produce the same digest. They will
          * still have a different name, but in a multi threading context, the names can be switched.
          */
         if (type.getWrapped() instanceof MethodHandleInvokerSubstitutionType methodHandleSubstitutionType) {

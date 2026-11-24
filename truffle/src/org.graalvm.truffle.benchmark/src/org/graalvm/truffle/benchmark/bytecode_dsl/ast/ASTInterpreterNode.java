@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,11 +43,13 @@ package org.graalvm.truffle.benchmark.bytecode_dsl.ast;
 import org.graalvm.truffle.benchmark.bytecode_dsl.ast.ASTInterpreterNodeFactory.ConstNodeGen;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -192,6 +194,41 @@ public abstract class ASTInterpreterNode extends Node {
         @Specialization
         public int loadValue(VirtualFrame frame) {
             return frame.getInt(local);
+        }
+    }
+
+    public static final class RecursiveFibCallNode extends ASTInterpreterNode {
+        private final int delta;
+        @Child private ASTInterpreterNode valueNode;
+        @Child private DirectCallNode callNode;
+
+        public static RecursiveFibCallNode create(int delta, ASTInterpreterNode valueNode) {
+            return new RecursiveFibCallNode(delta, valueNode);
+        }
+
+        private RecursiveFibCallNode(int delta, ASTInterpreterNode valueNode) {
+            this.delta = delta;
+            this.valueNode = valueNode;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return executeInt(frame);
+        }
+
+        @Override
+        public int executeInt(VirtualFrame frame) {
+            int value = (int) valueNode.execute(frame);
+            return (int) getCallNode().call(value - delta);
+        }
+
+        private DirectCallNode getCallNode() {
+            DirectCallNode directCallNode = callNode;
+            if (directCallNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callNode = directCallNode = insert(Truffle.getRuntime().createDirectCallNode(getRootNode().getCallTarget()));
+            }
+            return directCallNode;
         }
     }
 
@@ -342,6 +379,25 @@ public abstract class ASTInterpreterNode extends Node {
         @Specialization
         public static Object perform(VirtualFrame frame) {
             return frame.getArguments()[0];
+        }
+    }
+
+    public static final class LoadIntArgumentNode extends ASTInterpreterNode {
+        public static LoadIntArgumentNode create() {
+            return new LoadIntArgumentNode();
+        }
+
+        private LoadIntArgumentNode() {
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return executeInt(frame);
+        }
+
+        @Override
+        public int executeInt(VirtualFrame frame) {
+            return (int) frame.getArguments()[0];
         }
     }
 

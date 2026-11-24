@@ -1,5 +1,47 @@
 {
+  "foreign": {
+    "downcalls": [
+      {
+        "condition": {"typeReached": "com.oracle.svm.configure.test.conditionalconfig.ForeignCalls"},
+        "returnType": "jlong",
+        "parameterTypes": ["void*"]
+      },
+      {
+        "condition": {"typeReached": "com.oracle.svm.configure.test.conditionalconfig.ForeignCalls"},
+        "returnType": "void",
+        "parameterTypes": ["void*", "jlong", "jlong", "void*"]
+      }
+    ],
+    "upcalls": [
+      {
+        "condition": {"typeReached": "com.oracle.svm.configure.test.conditionalconfig.ForeignCalls"},
+        "returnType": "jint",
+        "parameterTypes": ["void*", "void*"]
+      }
+    ],
+    "directUpcalls": [
+      {
+        "condition": {"typeReached": "com.oracle.svm.configure.test.conditionalconfig.ForeignCalls"},
+        "class": "com.oracle.svm.configure.test.conditionalconfig.ForeignCalls",
+        "method": "compareAscending",
+        "returnType": "jint",
+        "parameterTypes": ["void*", "void*"]
+      }
+    ]
+  },
   "reflection": [
+    {
+      "condition": {"typeReached": "com.oracle.svm.configure.test.conditionalconfig.ForeignCalls"},
+      "type": "com.oracle.svm.configure.test.conditionalconfig.ForeignCalls",
+      "methods": [
+        {"name": "compare", "parameterTypes": ["int", "java.lang.foreign.MemorySegment", "java.lang.foreign.MemorySegment"]},
+        {"name": "compareAscending", "parameterTypes": ["java.lang.foreign.MemorySegment", "java.lang.foreign.MemorySegment"]}
+      ]
+    },
+    {
+      "condition": {"typeReached": "com.oracle.svm.configure.test.conditionalconfig.ForeignCalls"},
+      "type": "com.oracle.svm.configure.test.conditionalconfig.ForeignCalls$Target"
+    },
     {
       "condition": {
         "typeReached": "com.oracle.svm.configure.test.conditionalconfig.NoPropagationNecessary"

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,8 +76,48 @@ public abstract class IndirectCallNode extends Node {
     public abstract Object call(CallTarget target, Object... arguments);
 
     /**
-     * Creates cached indirect call node using bytecode index <code>-1</code>.
+     * Performs an indirect call to the given {@link CallTarget} target with an explicit bytecode
+     * index and the provided arguments.
+     * <p>
+     * Callers that do not have an explicit bytecode index should pass <code>-1</code>.
      *
+     * @param target the {@link CallTarget} to call
+     * @param bytecodeIndex the bytecode index associated with this call, or <code>-1</code> if no
+     *            explicit bytecode index is available
+     * @param arguments the arguments to provide
+     * @return the return value of the call
+     * @since 25.6
+     */
+    public abstract Object call(CallTarget target, int bytecodeIndex, Object[] arguments);
+
+    /**
+     * Calls the given root node with an explicit bytecode index and arguments.
+     * <p>
+     * A concrete root-node type allows the host compiler to optimize the call boundary further,
+     * including inlining into {@link RootNode#execute}. Cast {@code root} to its concrete type
+     * before calling this method, even if the root instance changes between calls.
+     * <p>
+     * This call node identifies the location of the call. Callers that do not have an explicit
+     * bytecode index should pass {@code -1}. The root node's call target must already be
+     * initialized using {@link RootNode#initializeCallTarget()} or {@link RootNode#getCallTarget()}.
+     *
+     * @param root the root node to call
+     * @param bytecodeIndex the bytecode index associated with this call, or {@code -1} if no
+     *            explicit bytecode index is available
+     * @param arguments the arguments to provide
+     * @return the return value of the call
+     * @throws NullPointerException if {@code root} is {@code null}
+     * @throws IllegalStateException if the root node's call target has not been initialized
+     * @since 25.6
+     */
+    public Object call(RootNode root, int bytecodeIndex, Object[] arguments) {
+        return root.call(this, bytecodeIndex, arguments);
+    }
+
+    /**
+     * Creates a cached indirect call node.
+     *
+     * @return a new call node
      * @since 0.8 or earlier
      */
     public static IndirectCallNode create() {
@@ -94,6 +134,30 @@ public abstract class IndirectCallNode extends Node {
         @TruffleBoundary
         public Object call(CallTarget target, Object... arguments) {
             return target.call(arguments);
+        }
+
+        @Override
+        @TruffleBoundary
+        public Object call(CallTarget target, int bytecodeIndex, Object[] arguments) {
+            EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
+            Node location = encapsulating.set(null);
+            try {
+                return target.call(location, bytecodeIndex, arguments);
+            } finally {
+                encapsulating.set(location);
+            }
+        }
+
+        @Override
+        @TruffleBoundary
+        public Object call(RootNode root, int bytecodeIndex, Object[] arguments) {
+            EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
+            Node location = encapsulating.set(null);
+            try {
+                return root.call(location, bytecodeIndex, arguments);
+            } finally {
+                encapsulating.set(location);
+            }
         }
     };
 

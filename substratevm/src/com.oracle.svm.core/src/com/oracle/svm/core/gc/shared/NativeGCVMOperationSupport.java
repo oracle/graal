@@ -323,7 +323,7 @@ public class NativeGCVMOperationSupport {
         @Override
         protected void operate(NativeVMOperationData data) {
             /* Cleanup obsolete pinned objects before calling into C++. */
-            AbstractPinnedObjectSupport.singleton().removeClosedObjectsAndGetFirstOpenObject();
+            AbstractPinnedObjectSupport.singleton().removeClosedObjects();
             operate0((NativeGCVMOperationData) data);
         }
 

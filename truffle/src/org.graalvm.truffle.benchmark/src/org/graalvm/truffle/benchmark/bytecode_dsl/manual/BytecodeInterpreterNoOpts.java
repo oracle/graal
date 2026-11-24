@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -106,6 +106,13 @@ public class BytecodeInterpreterNoOpts extends BaseBytecodeRootNode {
                 }
                 // ( -- o)
                 case Opcodes.OP_LD_ARG: {
+                    FRAMES.setObject(frame, sp, frame.getArguments()[BYTES.getIntUnaligned(localBc, bci + 2)]);
+                    sp += 1;
+                    bci += 6;
+                    continue loop;
+                }
+                // ( -- i)
+                case Opcodes.OP_LD_INT_ARG: {
                     FRAMES.setObject(frame, sp, frame.getArguments()[BYTES.getIntUnaligned(localBc, bci + 2)]);
                     sp += 1;
                     bci += 6;
@@ -229,6 +236,13 @@ public class BytecodeInterpreterNoOpts extends BaseBytecodeRootNode {
                         bci = BYTES.getIntUnaligned(localBc, bci + 2);
                         continue loop;
                     }
+                }
+                // (i -- i)
+                case Opcodes.OP_RECURSE_SUBTRACT: {
+                    int value = (int) FRAMES.uncheckedGetObject(frame, sp - 1);
+                    FRAMES.setObject(frame, sp - 1, recursiveCall(value, BYTES.getIntUnaligned(localBc, bci + 2)));
+                    bci += 6;
+                    continue loop;
                 }
                 // (i -- )
                 case Opcodes.OP_RETURN: {

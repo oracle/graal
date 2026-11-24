@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,21 +40,31 @@
  */
 package com.oracle.truffle.api.bytecode.test.basic_interpreter;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Method;
+import java.util.List;
+
+import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.InstructionDescriptor;
 import com.oracle.truffle.api.bytecode.InstructionDescriptor.ArgumentDescriptor;
+import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.test.BytecodeDSLTestLanguage;
 import com.oracle.truffle.api.bytecode.test.InstructionTracingTest;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
@@ -89,6 +99,71 @@ public class BytecodeDescriptorTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testOperationClasses() {
+        int addInstructions = 0;
+        int proxyInstructions = 0;
+        for (InstructionDescriptor d : run.bytecode().getInstructionDescriptors()) {
+            String name = d.getName();
+            if (name.equals("c.AddProxy") || name.startsWith("c.AddProxy$")) {
+                assertSame(name, AddProxy.class, d.getOperationClass());
+                proxyInstructions++;
+            } else if (name.startsWith("c.")) {
+                assertNotNull(name, d.getOperationClass());
+                assertSame(name, BasicInterpreter.class, d.getOperationClass().getEnclosingClass());
+                if (name.equals("c.Add") || name.startsWith("c.Add$")) {
+                    assertSame(name, BasicInterpreter.Add.class, d.getOperationClass());
+                    addInstructions++;
+                } else if (name.equals("c.ToBoolean") || name.startsWith("c.ToBoolean$")) {
+                    assertSame(name, BasicInterpreter.ToBoolean.class, d.getOperationClass());
+                } else if (name.equals("c.IncrementValue") || name.startsWith("c.IncrementValue$")) {
+                    assertSame(name, BasicInterpreter.IncrementValue.class, d.getOperationClass());
+                }
+            } else {
+                // Includes builtins, short-circuit instructions, tag instrumentation, and tracing.
+                assertNull(name, d.getOperationClass());
+            }
+        }
+        assertTrue(addInstructions > 0);
+        assertTrue(proxyInstructions > 0);
+        if (run.hasBoxingElimination()) {
+            assertTrue(addInstructions > 1);
+            assertTrue(proxyInstructions > 1);
+        }
+
+        BasicInterpreter node = parseNode("add", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginAdd();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endAdd();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertEquals(42L, node.getCallTarget().call(40L, 2L));
+        for (var instruction : node.getBytecodeNode().getInstructions()) {
+            assertSame(instruction.getDescriptor(), run.bytecode().getInstructionDescriptor(instruction.getOperationCode()));
+            if (instruction.getName().startsWith("c.Add")) {
+                assertSame(BasicInterpreter.Add.class, instruction.getDescriptor().getOperationClass());
+            } else {
+                assertNull(instruction.getDescriptor().getOperationClass());
+            }
+        }
+    }
+
+    @SuppressWarnings("truffle-inlining")
+    @OperationProxy.Proxyable(allowUncached = true)
+    public abstract static class AddProxy extends Node {
+
+        public abstract long execute(long lhs, long rhs);
+
+        @Specialization
+        static long add(long lhs, long rhs) {
+            return lhs + rhs;
+        }
+    }
+
+    @Test
     public void testCast() {
         var descriptor = run.bytecode();
         BasicInterpreter node = descriptor.create(LANGUAGE, BytecodeConfig.DEFAULT, (b) -> {
@@ -113,6 +188,107 @@ public class BytecodeDescriptorTest extends AbstractBasicInterpreterTest {
                 return null;
             }
         }));
+    }
+
+    @Test
+    public void testConfigMatches() {
+        var descriptor = run.bytecode();
+        for (BytecodeConfig config : List.of(BytecodeConfig.DEFAULT, BytecodeConfig.WITH_SOURCE, BytecodeConfig.WITH_SOURCE_CONTENT, BytecodeConfig.COMPLETE)) {
+            assertTrue(config.matches(config));
+        }
+        BytecodeConfig empty = descriptor.newConfigBuilder().build();
+        assertTrue(BytecodeConfig.DEFAULT.matches(empty));
+        assertTrue(empty.matches(BytecodeConfig.DEFAULT));
+
+        BytecodeConfig source = descriptor.newConfigBuilder().addSource().build();
+        assertTrue(BytecodeConfig.WITH_SOURCE.matches(source));
+        assertTrue(source.matches(BytecodeConfig.WITH_SOURCE));
+        assertFalse(BytecodeConfig.DEFAULT.matches(source));
+        assertFalse(source.matches(BytecodeConfig.DEFAULT));
+
+        // These interpreters have no content supplier, so the source-content bit is ignored.
+        BytecodeConfig sourceContent = descriptor.newConfigBuilder().addSourceContent().build();
+        assertTrue(BytecodeConfig.WITH_SOURCE_CONTENT.matches(sourceContent));
+        assertTrue(sourceContent.matches(BytecodeConfig.WITH_SOURCE_CONTENT));
+        assertTrue(source.matches(sourceContent));
+        assertTrue(sourceContent.matches(source));
+
+        BytecodeConfig instrumentation = descriptor.newConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build();
+        BytecodeConfig sameInstrumentation = descriptor.newConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build();
+        assertTrue(instrumentation.matches(sameInstrumentation));
+        assertTrue(sameInstrumentation.matches(instrumentation));
+        assertFalse(instrumentation.matches(BytecodeConfig.DEFAULT));
+        assertFalse(BytecodeConfig.DEFAULT.matches(instrumentation));
+        assertFalse(instrumentation.matches(BytecodeConfig.COMPLETE));
+        assertFalse(BytecodeConfig.COMPLETE.matches(instrumentation));
+    }
+
+    @Test
+    public void testConfigMatchesForeignEncoder() {
+        var descriptor = run.bytecode();
+        var other = allVariants().stream().filter(variant -> variant != descriptor).findFirst().orElseThrow();
+        BytecodeConfig local = descriptor.newConfigBuilder().addSource().build();
+        BytecodeConfig foreign = other.newConfigBuilder().addSource().build();
+        assertFalse(local.matches(foreign));
+        assertFalse(foreign.matches(local));
+        assertTrue(foreign.matches(foreign));
+
+        // Matching is symmetric, but a generic config can match two otherwise incompatible configs.
+        assertTrue(local.matches(BytecodeConfig.WITH_SOURCE));
+        assertTrue(BytecodeConfig.WITH_SOURCE.matches(local));
+        assertTrue(foreign.matches(BytecodeConfig.WITH_SOURCE));
+        assertTrue(BytecodeConfig.WITH_SOURCE.matches(foreign));
+    }
+
+    @Test
+    public void testConfigMatchesNull() {
+        assertThrows(NullPointerException.class, () -> BytecodeConfig.DEFAULT.matches(null));
+        BytecodeConfig config = run.bytecode().newConfigBuilder().build();
+        assertThrows(NullPointerException.class, () -> config.matches(null));
+    }
+
+    @Test
+    public void testConfigDecoding() throws ReflectiveOperationException {
+        // Validate that config encode-decode round trip preserves matching.
+        // Use reflection to make non-public members accessible for testing.
+        Class<?> encoder = Class.forName(run.interpreterClass().getName() + "$BytecodeConfigEncoderImpl");
+        Method normalizeEncoding = encoder.getDeclaredMethod("normalizeEncoding", BytecodeConfig.class);
+        normalizeEncoding.setAccessible(true);
+        Method decode = encoder.getDeclaredMethod("decode", long.class);
+        decode.setAccessible(true);
+
+        var descriptor = run.bytecode();
+        BytecodeConfig instrumentation = descriptor.newConfigBuilder().addInstrumentation(BasicInterpreter.IncrementValue.class).build();
+        for (BytecodeConfig config : List.of(BytecodeConfig.DEFAULT, BytecodeConfig.WITH_SOURCE, BytecodeConfig.WITH_SOURCE_CONTENT, BytecodeConfig.COMPLETE, instrumentation)) {
+            long encoding = (long) normalizeEncoding.invoke(null, config);
+            BytecodeConfig decoded = (BytecodeConfig) decode.invoke(null, encoding);
+            assertTrue(config.matches(decoded));
+            assertTrue(decoded.matches(config));
+            assertEquals(encoding, (long) normalizeEncoding.invoke(null, decoded));
+        }
+
+        BytecodeConfig complete = (BytecodeConfig) decode.invoke(null, -1L);
+        assertTrue(BytecodeConfig.COMPLETE.matches(complete));
+        BytecodeConfig sourceWithUnusedBit = (BytecodeConfig) decode.invoke(null, Long.MIN_VALUE | 1L);
+        assertTrue(BytecodeConfig.WITH_SOURCE.matches(sourceWithUnusedBit));
+        assertTrue(sourceWithUnusedBit.matches(BytecodeConfig.WITH_SOURCE));
+
+        var other = allVariants().stream().filter(variant -> variant != descriptor).findFirst().orElseThrow();
+        assertFalse(other.newConfigBuilder().addSource().build().matches(sourceWithUnusedBit));
+    }
+
+    @Test
+    public void testConfigMatchesIgnoresGlobalConfig() {
+        try (Context context = BytecodeDSLTestLanguage.createPolyglotContextWithCompilationDisabled()) {
+            context.initialize(BytecodeDSLTestLanguage.ID);
+            BytecodeDSLTestLanguage language = BytecodeDSLTestLanguage.REF.get(null);
+            var descriptor = run.bytecode();
+            // When creating/reparsing a bytecode node, the requested config is extended with global config.
+            // This global config should not affect comparisons.
+            descriptor.update(language, BytecodeConfig.WITH_SOURCE);
+            assertFalse(BytecodeConfig.DEFAULT.matches(BytecodeConfig.WITH_SOURCE));
+            assertTrue(BytecodeConfig.DEFAULT.matches(descriptor.newConfigBuilder().build()));
+        }
     }
 
 }

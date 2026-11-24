@@ -43,6 +43,8 @@ package com.oracle.truffle.api.bytecode.test;
 import static com.oracle.truffle.api.bytecode.test.BytecodeNodeWithLocalIntrospection.IterateBytecodeFrames;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
@@ -1567,6 +1569,90 @@ public class LocalHelpersTest {
         TruffleStackTraceElement invalid = TruffleStackTraceElement.create(state.bytecode(), state.target(), state.frame(), -2);
         // Invalid bci should be rejected.
         assertThrows(IllegalArgumentException.class, () -> BytecodeFrame.get(invalid));
+    }
+
+    @Test
+    public void testFrameInstanceHelpersExplicitBytecodeIndex() {
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitCaptureFrameState();
+            b.endReturn();
+            b.endRoot();
+        });
+        CapturedFrameState state = (CapturedFrameState) root.getCallTarget().call();
+        int explicitBytecodeIndex = state.bytecode().getInstructions().iterator().next().getBytecodeIndex();
+        FrameInstance matching = createFrameInstance(state, state.bytecode(), explicitBytecodeIndex);
+
+        BytecodeLocation location = state.bytecode().getBytecodeLocation(matching);
+        assertNotNull(location);
+        assertEquals(explicitBytecodeIndex, location.getBytecodeIndex());
+        assertEquals(explicitBytecodeIndex, BytecodeLocation.get(matching).getBytecodeIndex());
+        assertEquals(explicitBytecodeIndex, BytecodeFrame.get(matching, FrameInstance.FrameAccess.READ_WRITE).getBytecodeIndex());
+        assertEquals(explicitBytecodeIndex, BytecodeFrame.getNonVirtual(matching).getBytecodeIndex());
+        assertArrayEquals(new Object[0], BytecodeNode.getLocalValues(matching));
+        assertArrayEquals(new Object[0], BytecodeNode.getLocalNames(matching));
+        assertTrue(BytecodeNode.setLocalValues(matching, new Object[0]));
+
+        BytecodeNodeWithLocalIntrospection otherRoot = parseNode(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitLoadNull();
+            b.endReturn();
+            b.endRoot();
+        });
+        assertNull(otherRoot.getBytecodeNode().getBytecodeLocation(matching));
+
+        FrameInstance missingLocation = createFrameInstance(state, null, explicitBytecodeIndex);
+        assertNull(state.bytecode().getBytecodeLocation(missingLocation));
+        assertNull(BytecodeLocation.get(missingLocation));
+        assertNull(BytecodeFrame.get(missingLocation, FrameInstance.FrameAccess.READ_WRITE));
+        assertNull(BytecodeFrame.getNonVirtual(missingLocation));
+        assertNull(BytecodeNode.getLocalValues(missingLocation));
+        assertNull(BytecodeNode.getLocalNames(missingLocation));
+        assertFalse(BytecodeNode.setLocalValues(missingLocation, new Object[0]));
+
+        FrameInstance invalidBytecodeIndex = createFrameInstance(state, state.bytecode(), -2);
+        assertNull(state.bytecode().getBytecodeLocation(invalidBytecodeIndex));
+        assertNull(BytecodeLocation.get(invalidBytecodeIndex));
+        assertThrows(AssertionError.class, () -> BytecodeFrame.get(invalidBytecodeIndex, FrameInstance.FrameAccess.READ_WRITE));
+        assertThrows(AssertionError.class, () -> BytecodeFrame.getNonVirtual(invalidBytecodeIndex));
+        assertThrows(AssertionError.class, () -> BytecodeNode.getLocalValues(invalidBytecodeIndex));
+        assertThrows(AssertionError.class, () -> BytecodeNode.getLocalNames(invalidBytecodeIndex));
+        assertThrows(AssertionError.class, () -> BytecodeNode.setLocalValues(invalidBytecodeIndex, new Object[0]));
+
+        FrameInstance outOfRangeBytecodeIndex = createFrameInstance(state, state.bytecode(), Integer.MAX_VALUE);
+        assertThrows(IllegalArgumentException.class, () -> state.bytecode().getBytecodeLocation(outOfRangeBytecodeIndex));
+        assertThrows(IllegalArgumentException.class, () -> BytecodeLocation.get(outOfRangeBytecodeIndex));
+    }
+
+    private static FrameInstance createFrameInstance(CapturedFrameState state, Node location, int bytecodeIndex) {
+        return new FrameInstance() {
+            @Override
+            public Frame getFrame(FrameAccess access) {
+                return state.frame();
+            }
+
+            @Override
+            public boolean isVirtualFrame() {
+                return false;
+            }
+
+            @Override
+            public Node getCallNode() {
+                return location;
+            }
+
+            @Override
+            public CallTarget getCallTarget() {
+                return state.target();
+            }
+
+            @Override
+            public int getBytecodeIndex() {
+                return bytecodeIndex;
+            }
+        };
     }
 
     @Test

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,6 +88,11 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private boolean generateCached = true;
     private boolean defaultInlineCached;
 
+    /* Execution metadata configured by OperationProxy.Proxyable. */
+    private boolean bindFrame = true;
+    private boolean bindBytecodeNode;
+    private boolean bindBytecodeIndex;
+
     private boolean generateTraceOnEnter;
     private boolean generateTraceOnReturn;
     private boolean generateTraceOnException;
@@ -167,6 +172,30 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public void setGenerateCached(boolean generateCached) {
         this.generateCached = generateCached;
+    }
+
+    public boolean isBindFrame() {
+        return bindFrame;
+    }
+
+    public void setBindFrame(boolean bindFrame) {
+        this.bindFrame = bindFrame;
+    }
+
+    public boolean isBindBytecodeNode() {
+        return bindBytecodeNode;
+    }
+
+    public void setBindBytecodeNode(boolean bindBytecodeNode) {
+        this.bindBytecodeNode = bindBytecodeNode;
+    }
+
+    public boolean isBindBytecodeIndex() {
+        return bindBytecodeIndex;
+    }
+
+    public void setBindBytecodeIndex(boolean bindBytecodeIndex) {
+        this.bindBytecodeIndex = bindBytecodeIndex;
     }
 
     public boolean isGenerateCached() {

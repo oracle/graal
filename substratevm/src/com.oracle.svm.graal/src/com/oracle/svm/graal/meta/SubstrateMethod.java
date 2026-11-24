@@ -42,7 +42,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
-import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.jvmci.shared.meta.DeoptStub;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;

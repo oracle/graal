@@ -111,7 +111,13 @@ public interface EconomicSet<E> extends UnmodifiableEconomicSet<E> {
      * @since 19.0
      */
     default void removeAll(EconomicSet<E> other) {
-        removeAll(other.iterator());
+        if (other == this) {
+            if (!isEmpty()) {
+                clear();
+            }
+        } else {
+            removeAll(other.iterator());
+        }
     }
 
     /**
@@ -120,7 +126,13 @@ public interface EconomicSet<E> extends UnmodifiableEconomicSet<E> {
      * @since 19.0
      */
     default void removeAll(Iterable<E> values) {
-        removeAll(values.iterator());
+        if (values == this) {
+            if (!isEmpty()) {
+                clear();
+            }
+        } else {
+            removeAll(values.iterator());
+        }
     }
 
     /**

@@ -31,11 +31,13 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
-import com.oracle.svm.core.c.NonmovableArray;
-import com.oracle.svm.core.c.NonmovableObjectArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
-import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
+import com.oracle.svm.guest.staging.core.heap.RuntimeCodeInfoGCSupport;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
+import com.oracle.svm.guest.staging.core.code.UntetheredCodeInfo;
 import com.oracle.svm.shared.util.DuplicatedInNativeCode;
 import com.oracle.svm.shared.util.VMError;
 

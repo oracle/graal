@@ -2178,7 +2178,6 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     public void adr(Register dst, int imm21, int pos) {
         assert verifyRegistersR(dst);
         ImmediateOpChecks.validateSigned(21, imm21);
-        ImmediateOpChecks.validate4ByteAlignment(imm21);
         int imm = imm21 & NumUtil.getNbitNumberInt(21);
         // higher 19 bit
         int immHi = (imm >> 2) << PcRelImmHiOffset;

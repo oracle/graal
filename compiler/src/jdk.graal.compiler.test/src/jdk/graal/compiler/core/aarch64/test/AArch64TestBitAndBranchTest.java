@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -170,6 +170,43 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
         test("testGreaterThanZeroSnippet", 0);
         test("testGreaterThanZeroSnippet", -1);
         checkLIR("testGreaterThanZeroSnippet", checkForBitTestAndBranchOp, 0);
+    }
+
+    public static int testLateZeroLessThanIntSnippet(int a) {
+        // Expose the left-side zero only after the final canonicalization.
+        if (GraalDirectives.opaque(0) < a) {
+            GraalDirectives.controlFlowAnchor();
+            return 1;
+        } else {
+            GraalDirectives.controlFlowAnchor();
+            return 2;
+        }
+    }
+
+    @Test
+    public void testLateZeroLessThanInt() {
+        for (int a : new int[]{Integer.MIN_VALUE, -1, 0, 1, Integer.MAX_VALUE}) {
+            test("testLateZeroLessThanIntSnippet", a);
+        }
+        checkLIR("testLateZeroLessThanIntSnippet", checkForBitTestAndBranchOp, 0);
+    }
+
+    public static int testLateZeroLessThanLongSnippet(long a) {
+        if (GraalDirectives.opaque(0L) < a) {
+            GraalDirectives.controlFlowAnchor();
+            return 1;
+        } else {
+            GraalDirectives.controlFlowAnchor();
+            return 2;
+        }
+    }
+
+    @Test
+    public void testLateZeroLessThanLong() {
+        for (long a : new long[]{Long.MIN_VALUE, -1L, 0L, 1L, Long.MAX_VALUE}) {
+            test("testLateZeroLessThanLongSnippet", a);
+        }
+        checkLIR("testLateZeroLessThanLongSnippet", checkForBitTestAndBranchOp, 0);
     }
 
     public static float testGreaterThanEqualZeroSnippet(int a) {

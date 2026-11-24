@@ -24,12 +24,12 @@
  */
 package jdk.graal.compiler.core.test;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.DebugDumpScope;
 import org.junit.Assert;
 import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugDumpScope;
 import jdk.graal.compiler.graph.NodeBitMap;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -86,5 +86,44 @@ public class NodesInLoopBranchTest extends GraalCompilerTest {
         }
         Assert.assertNotNull(branchIf);
         return branchIf;
+    }
+
+    private static void nestedLoopSnippet(int n, boolean flag) {
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (flag) {
+                    GraalDirectives.sideEffect();
+                } else {
+                    GraalDirectives.sideEffect();
+                    GraalDirectives.sideEffect();
+                    GraalDirectives.sideEffect();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testBranchInNestedLoop() {
+        StructuredGraph graph = parseEager("nestedLoopSnippet", StructuredGraph.AllowAssumptions.NO);
+        LoopsData loops = getDefaultHighTierContext().getLoopsDataProvider().getLoopsData(graph);
+        Assert.assertEquals(2, loops.loops().size());
+        Loop innerLoop = loops.innerFirst().getFirst();
+        IfNode branchIf = null;
+        for (IfNode ifNode : graph.getNodes(IfNode.TYPE)) {
+            if (ifNode.condition().inputs().contains(graph.getParameter(1))) {
+                Assert.assertNull(branchIf);
+                branchIf = ifNode;
+            }
+        }
+        Assert.assertNotNull(branchIf);
+        NodeBitMap trueBranchNodes = graph.createNodeBitMap();
+        innerLoop.nodesInLoopBranch(trueBranchNodes, branchIf.trueSuccessor());
+        NodeBitMap falseBranchNodes = graph.createNodeBitMap();
+        innerLoop.nodesInLoopBranch(falseBranchNodes, branchIf.falseSuccessor());
+        // Parsing a boolean condition can negate the branch, so check both possible orientations.
+        int trueCount = trueBranchNodes.filter(SideEffectNode.class).count();
+        int falseCount = falseBranchNodes.filter(SideEffectNode.class).count();
+        Assert.assertEquals(1, Math.min(trueCount, falseCount));
+        Assert.assertEquals(3, Math.max(trueCount, falseCount));
     }
 }

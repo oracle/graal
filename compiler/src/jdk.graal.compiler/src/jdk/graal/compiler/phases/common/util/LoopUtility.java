@@ -1161,6 +1161,9 @@ public class LoopUtility {
             return false;
         }
         LoopBeginNode loopBegin = loop.loopBegin();
+        if (loopBegin.valuePhis().isEmpty()) {
+            return false;
+        }
         for (PhiNode phi : loopBegin.valuePhis()) {
             if (phi.values().filter(ConstantNode.class).count() != phi.valueCount()) {
                 return false;

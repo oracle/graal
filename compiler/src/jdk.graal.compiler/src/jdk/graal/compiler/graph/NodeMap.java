@@ -26,6 +26,7 @@ package jdk.graal.compiler.graph;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.function.BiFunction;
 
 import org.graalvm.collections.EconomicMap;
@@ -163,6 +164,9 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
                     @Override
                     public Node next() {
+                        if (!hasNext()) {
+                            throw new NoSuchElementException();
+                        }
                         final int pos = i;
                         final Node key = NodeMap.this.getKey(pos);
                         i++;
@@ -245,6 +249,9 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
                     @SuppressWarnings("unchecked")
                     @Override
                     public T next() {
+                        if (!hasNext()) {
+                            throw new NoSuchElementException();
+                        }
                         final int pos = i;
                         final T value = (T) NodeMap.this.values[pos];
                         i++;

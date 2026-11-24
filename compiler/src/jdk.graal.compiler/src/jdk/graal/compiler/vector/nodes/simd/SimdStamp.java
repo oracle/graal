@@ -195,6 +195,7 @@ public class SimdStamp extends ArithmeticStamp {
      * @return The {@code SimdStamp} with the components re-arranged per the supplied mapping.
      */
     public Stamp permute(int[] destinationMapping) {
+        GraalError.guarantee(destinationMapping.length <= components.length, "Permutation must not widen the source vector: %s > %s", destinationMapping.length, components.length);
         Stamp[] permutedComponents = new Stamp[destinationMapping.length];
         for (int i = 0; i < destinationMapping.length; ++i) {
             if (destinationMapping[i] < 0) {

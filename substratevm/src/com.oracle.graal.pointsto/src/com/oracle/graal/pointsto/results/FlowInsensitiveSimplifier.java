@@ -127,7 +127,7 @@ final class FlowInsensitiveSimplifier implements CustomSimplification {
         }
         PointsToAnalysis pointsToAnalysis = (PointsToAnalysis) bb;
         PointsToAnalysisField field = (PointsToAnalysisField) node.field();
-        if (!pointsToAnalysis.isClosed(field)) {
+        if (!pointsToAnalysis.getExtensionPolicy().isFieldClosed(field)) {
             return;
         }
         Object newStampOrConstant = typeFlowStrengthener.strengthenStampFromTypeFlow(node, field.getSinkFlow(), node, tool);

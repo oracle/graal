@@ -47,8 +47,10 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaRecordComponent;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.meta.annotation.Annotated;
 
 /**
  * This class contains utility methods for commonly used reflection functionality based on JVMCI
@@ -416,6 +418,127 @@ public final class JVMCIReflectionUtil {
             return resolvedJavaType;
         }
         throw new GraalError("Method does not have a resolved return type: %s", m.format("%H.%n(%p)"));
+    }
+
+    /**
+     * Gets the declared exception types of {@code method} in declaration order.
+     * <p>
+     * Resolution is all-or-fail. If resolving any declared exception type raises a
+     * {@link LinkageError}, the error is propagated and no partial result is returned.
+     *
+     * @return an empty array if no reflection mirror is available
+     * @throws LinkageError if a declared exception type cannot be resolved
+     */
+    public static ResolvedJavaType[] getExceptionTypes(ResolvedJavaMethod method) {
+        ResolvedJavaMethod original = OriginalMethodProvider.getOriginalMethod(method);
+        if (original == null) {
+            return new ResolvedJavaType[0];
+        }
+        GuestAccess access = GuestAccess.get();
+        JavaConstant executable = access.asExecutableConstant(original);
+        if (executable == null || executable.isNull()) {
+            return new ResolvedJavaType[0];
+        }
+        return access.asResolvedJavaTypes(access.invoke(access.elements.java_lang_reflect_Executable_getExceptionTypes, executable));
+    }
+
+    /**
+     * Gets the defining class loader of {@code type} as an opaque guest constant. The null constant
+     * denotes the bootstrap class loader.
+     */
+    public static JavaConstant getClassLoader(ResolvedJavaType type) {
+        GuestAccess access = GuestAccess.get();
+        JavaConstant clazz = access.getProviders().getConstantReflection().asJavaClass(OriginalClassProvider.getOriginalType(type));
+        return access.invoke(access.elements.java_lang_Class_getClassLoader, clazz);
+    }
+
+    /**
+     * Gets the signers of {@code type} as opaque guest constants. Null signer entries are preserved
+     * as guest null constants.
+     *
+     * @return {@code null} if the guest class has no signers
+     */
+    public static JavaConstant[] getSigners(ResolvedJavaType type) {
+        GuestAccess access = GuestAccess.get();
+        JavaConstant clazz = access.getProviders().getConstantReflection().asJavaClass(OriginalClassProvider.getOriginalType(type));
+        JavaConstant signers = access.invoke(access.elements.java_lang_Class_getSigners, clazz);
+        if (signers.isNull()) {
+            return null;
+        }
+        return access.asGuestArrayElementsAllowingNull(signers, access.elements.java_lang_Object).toArray(JavaConstant[]::new);
+    }
+
+    /**
+     * Gets the raw class-file generic signature of a {@link ResolvedJavaType},
+     * {@link ResolvedJavaField}, {@link ResolvedJavaMethod}, or
+     * {@link ResolvedJavaRecordComponent}. A {@link ResolvedJavaMethod} may represent either a method
+     * or a constructor.
+     *
+     * @return the copied signature string, or {@code null} if the declaration has no signature or
+     *         no reflection mirror
+     * @throws IllegalArgumentException if {@code element} is not one of the supported JVMCI elements
+     */
+    public static String getGenericSignature(Annotated element) {
+        GuestAccess access = GuestAccess.get();
+        ResolvedJavaMethod accessor;
+        if (element instanceof ResolvedJavaType) {
+            accessor = access.elements.java_lang_Class_getGenericSignature0;
+        } else if (element instanceof ResolvedJavaField) {
+            accessor = access.elements.java_lang_reflect_Field_getGenericSignature;
+        } else if (element instanceof ResolvedJavaMethod method) {
+            accessor = method.isConstructor() ? access.elements.java_lang_reflect_Constructor_getSignature : access.elements.java_lang_reflect_Method_getGenericSignature;
+        } else if (element instanceof ResolvedJavaRecordComponent) {
+            accessor = access.elements.java_lang_reflect_RecordComponent_getGenericSignature;
+        } else {
+            throw new IllegalArgumentException("Unsupported annotated element: " + element);
+        }
+        JavaConstant receiver = asReflectionConstant(access, element);
+        if (receiver == null || receiver.isNull()) {
+            return null;
+        }
+        JavaConstant signature = access.invoke(accessor, receiver);
+        if (signature.isNull()) {
+            return null;
+        }
+        return access.asHostString(signature);
+    }
+
+    /**
+     * Recovers the guest reflection mirror for {@code element}. Field and method wrappers are first
+     * unwrapped to their original JVMCI elements. The returned constant remains guest-owned.
+     *
+     * @return the reflection mirror, or {@code null} if no original element or mirror is available
+     */
+    private static JavaConstant asReflectionConstant(GuestAccess access, Annotated element) {
+        if (element instanceof ResolvedJavaType type) {
+            return access.getProviders().getConstantReflection().asJavaClass(OriginalClassProvider.getOriginalType(type));
+        } else if (element instanceof ResolvedJavaField field) {
+            ResolvedJavaField original = OriginalFieldProvider.getOriginalField(field);
+            return original == null ? null : access.asFieldConstant(original);
+        } else if (element instanceof ResolvedJavaMethod method) {
+            ResolvedJavaMethod original = OriginalMethodProvider.getOriginalMethod(method);
+            return original == null ? null : access.asExecutableConstant(original);
+        } else if (element instanceof ResolvedJavaRecordComponent component) {
+            return asRecordComponentConstant(access, component);
+        } else {
+            throw new IllegalArgumentException("Unsupported annotated element: " + element);
+        }
+    }
+
+    /**
+     * Finds the guest reflection mirror corresponding to {@code component} by converting and
+     * comparing the declaring record's components in the active guest context.
+     */
+    private static JavaConstant asRecordComponentConstant(GuestAccess access, ResolvedJavaRecordComponent component) {
+        ResolvedJavaType declaringType = OriginalClassProvider.getOriginalType(component.getDeclaringRecord());
+        JavaConstant declaringClass = access.getProviders().getConstantReflection().asJavaClass(declaringType);
+        JavaConstant components = access.invoke(access.elements.java_lang_Class_getRecordComponents, declaringClass);
+        if (components.isNull()) {
+            return null;
+        }
+        return access.asGuestArrayElements(components, access.elements.java_lang_reflect_RecordComponent).filter(candidate -> component.equals(access.asResolvedJavaRecordComponent(candidate)))
+                        .findFirst()
+                        .orElse(null);
     }
 
     /**

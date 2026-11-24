@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import com.oracle.svm.core.deopt.Deoptimizer.Options;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.shared.Uninterruptible;
 
 /**

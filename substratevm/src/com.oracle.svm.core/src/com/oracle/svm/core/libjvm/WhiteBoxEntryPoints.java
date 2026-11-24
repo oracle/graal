@@ -58,11 +58,11 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTarget;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheck;
 import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheckImpl;
-import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.GCCause;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jfr.HasJfrSupport;
@@ -320,6 +320,10 @@ public final class WhiteBoxEntryPoints {
             case "VMContinuations" -> ContinuationSupport.isSupported();
             case "UseCompiler", "ProfileInterpreter" -> getOption("JITEnableCompilation", Boolean.class, false);
             case "UseJVMCICompiler" -> true;
+            // Account for collector layout differences and any additional header bytes.
+            case "UseCompactObjectHeaders" -> ObjectLayout.singleton().getFirstFieldOffset() <= Long.BYTES;
+            case "UseCompressedOops" -> ObjectLayout.singleton().getReferenceSize() == Integer.BYTES;
+            case "UseCompressedClassPointers" -> ObjectLayout.singleton().getHubSize() == Integer.BYTES;
             default -> null;
         };
         return value != null ? JNIObjectHandles.createLocal(value) : getRuntimeOption(nameHandle, Boolean.class);

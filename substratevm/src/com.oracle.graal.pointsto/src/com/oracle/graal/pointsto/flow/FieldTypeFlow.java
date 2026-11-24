@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,8 +49,12 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> implements GlobalFlow
         this(field, type, null);
     }
 
+    /**
+     * Stores the effective value bound after dropping unchecked interface constraints. The field's
+     * original declaration remains available through {@link AnalysisField#getType()}.
+     */
     public FieldTypeFlow(AnalysisField field, AnalysisType type, AnalysisObject object) {
-        super(field, filterUncheckedInterface(type), TypeState.forEmpty());
+        super(field, dropUncheckedInterfaceBound(type), TypeState.forEmpty());
         this.object = object;
     }
 
@@ -67,23 +71,22 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> implements GlobalFlow
     @Override
     public boolean canSaturate(PointsToAnalysis bb) {
         /*
-         * Fields with a closed declared type don't saturate; when their input saturates they are
-         * injected their declared type, and they track all its instantiated subtypes.
+         * Object fields with a closed effective value bound retain finite type information. A
+         * saturated input is replaced with all instantiated types assignable to that bound.
          */
-        return !bb.isClosed(declaredType);
+        return !bb.getExtensionPolicy().isTypeClosed(declaredType);
     }
 
     @Override
     protected void onInputSaturated(PointsToAnalysis bb, TypeFlow<?> input) {
         /* The field input, which is usually a field-store, is saturated. */
-        if (bb.isClosed(declaredType)) {
+        if (bb.getExtensionPolicy().isTypeClosed(declaredType)) {
             /*
-             * If the field's declared type is closed, conservatively assume that the field state
-             * can contain any subtype of its declared type or any primitive value for primitive
-             * fields. Even if a store is not visible to the analysis, i.e., it is from the
-             * open-world, the complete hierarchy of the field's declared type is visible.
+             * Recover all instantiated types under the effective bound, or any primitive value.
+             * The effective bound drops unchecked interface constraints from the declaration.
+             * A saturated reference input does not establish an additional array-element write.
              */
-            source.injectDeclaredType();
+            source.injectFieldValueBound();
         } else {
             /* Otherwise, propagate saturation stamp through the field flow. */
             super.onInputSaturated(bb, input);

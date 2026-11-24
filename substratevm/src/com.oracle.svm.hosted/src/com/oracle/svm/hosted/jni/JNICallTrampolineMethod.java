@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,26 +34,28 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.code.SubstrateBackend.CremaJNITrampolineData;
-import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.code.SubstrateBackend.InterpreterJNITrampolineData;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.core.hub.crema.CremaSupport;
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jni.CallVariant;
 import com.oracle.svm.core.jni.JNIJavaCallTrampolineHolder;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalOffsetProvider;
+import com.oracle.svm.guest.staging.meta.MethodPointer;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
 import com.oracle.svm.hosted.code.CompileQueue.ParseFunction;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.jvmci.shared.code.SubstrateCallingConventionKind;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
@@ -76,10 +78,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <p>
  * The {@code jmethodID} values that we pass out are the image heap offsets (or addresses) of
  * {@link JNIAccessibleMethod} objects, which are immutable so they are never moved by the garbage
- * collector. The trampoline simply jumps to the address of a specific call wrapper that is stored
- * in a {@link #jumpAddressField field} of the object. The wrappers then take care of spilling
- * callee-saved registers, transitioning from native to Java and back, obtaining the arguments in a
- * particular form (varargs, array, va_list) and boxing/unboxing object handles as necessary.
+ * collector. The trampoline loads the call wrapper entry from a {@link #jumpAddressField field} of
+ * the object, adds the thread's code base when the entry is relative, and jumps to it. The wrappers
+ * then take care of spilling callee-saved registers, transitioning from native to Java and back,
+ * obtaining the arguments in a particular form (varargs, array, va_list) and boxing/unboxing object
+ * handles as necessary.
  */
 public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
     private final ResolvedJavaField jumpAddressField;
@@ -128,16 +131,17 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
                             SubstrateCallingConventionKind.Native.toType(true), returnType, parameters.toArray(new JavaType[0]), backend);
             RegisterValue threadArg = (RegisterValue) callingConvention.getArgument(0); // JNIEnv
             int threadIsolateOffset = ImageSingletons.lookup(VMThreadLocalOffsetProvider.class).offsetOf(VMThreads.IsolateTL);
+            int threadCodeBaseOffset = SubstrateOptions.useRelativeCodePointers() ? ImageSingletons.lookup(VMThreadLocalOffsetProvider.class).offsetOf(VMThreads.CodeBaseTL) : -1;
             RegisterValue methodIdArg = (RegisterValue) callingConvention.getArgument(parameters.size() - 1);
 
-            CremaJNITrampolineData cremaData = null;
+            InterpreterJNITrampolineData interpreterData = null;
             if (RuntimeClassLoading.isSupported()) {
                 CallVariant variant = JNIJavaCallTrampolineHolder.getVariant(getName());
-                CFunctionPointer cremaJNIUpcallWrapperEntryPoint = CremaSupport.singleton().getCremaJNIUpcallWrapperEntryPoint(variant, nonVirtual);
-                ResolvedJavaMethod wrapperMethod = ((MethodPointer) cremaJNIUpcallWrapperEntryPoint).getMethod();
-                cremaData = new CremaJNITrampolineData(wrapperMethod, variant);
+                CFunctionPointer interpreterJNIUpcallWrapperEntryPoint = InterpreterSupport.singleton().getInterpreterJNIUpcallWrapperEntryPoint(variant, nonVirtual);
+                ResolvedJavaMethod wrapperMethod = MethodRefSupport.getMethod((MethodPointer) interpreterJNIUpcallWrapperEntryPoint);
+                interpreterData = new InterpreterJNITrampolineData(wrapperMethod, variant);
             }
-            return backend.createJNITrampolineMethod(method, identifier, threadArg, threadIsolateOffset, methodIdArg, getFieldOffset(providers), cremaData);
+            return backend.createJNITrampolineMethod(method, identifier, threadArg, threadIsolateOffset, threadCodeBaseOffset, methodIdArg, getFieldOffset(providers), interpreterData);
         };
     }
 

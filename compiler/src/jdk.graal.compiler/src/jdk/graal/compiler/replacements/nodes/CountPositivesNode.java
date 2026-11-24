@@ -40,6 +40,7 @@ import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -73,6 +74,11 @@ public final class CountPositivesNode extends PureFunctionStubIntrinsicNode {
     @Override
     public ValueNode[] getForeignCallArguments() {
         return new ValueNode[]{array, len};
+    }
+
+    @Override
+    public boolean needsExplicitZeroExtension(Architecture arch) {
+        return false;
     }
 
     @Override

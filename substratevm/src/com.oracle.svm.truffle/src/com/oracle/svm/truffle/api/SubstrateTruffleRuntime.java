@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle.api;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -32,13 +33,15 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues.Origin;
+import com.oracle.svm.shared.config.ObjectLayout;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.options.OptionDescriptors;
 
+import com.oracle.svm.core.config.ObjectLayoutCompilerSupport;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
@@ -49,7 +52,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.shared.option.HostedOptionKey;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
 import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -117,9 +120,11 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     private static final int DEBUG_TEAR_DOWN_TIMEOUT = 2_000;
     private static final int PRODUCTION_TEAR_DOWN_TIMEOUT = 10_000;
 
-    private KnownMethods hostedCallMethods;
+    @Platforms(Platform.HOSTED_ONLY.class) private KnownMethods hostedCallMethods;
+    @Platforms(HOSTED_ONLY.class) private Method[] exactGeneratedProxyEntries;
     private volatile BackgroundCompileQueue compileQueue;
     private volatile boolean initialized;
+    private volatile boolean compilerInitialized;
     private volatile Boolean profilingEnabled;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -155,12 +160,16 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     }
 
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
-        truffleCompiler.initialize(callTarget, true);
+        /*
+         * The compiler itself (option parsing, partial evaluator, Truffle tier) is initialized
+         * lazily on the first compilation, see getTruffleCompiler. Short runs never compile, and
+         * this runs when the first call target is created, on the startup path.
+         */
         if (SubstrateTruffleOptions.isMultiThreaded()) {
             compileQueue = TruffleSupport.singleton().createBackgroundCompileQueue(this);
         }
         if (callTarget.engine.traceTransferToInterpreter) {
-            Deoptimizer.Options.TraceDeoptimization.update(true);
+            Deoptimizer.Options.TraceDeoptimization.update(true, Origin.Runtime);
         }
         installDefaultListeners();
         RuntimeSupport.getRuntimeSupport().addTearDownHook(_ -> teardownCompilerIsolate());
@@ -206,13 +215,25 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     }
 
     public ResolvedJavaMethod[] getAnyFrameMethod() {
-        return knownMethods.anyFrameMethod;
+        return knownMethods.getAnyFrameMethods();
     }
 
+    /**
+     * Returns the compiler, initializing it first if needed. Every compilation gets the compiler
+     * through this method ({@code OptimizedTruffleRuntime.compileImpl}).
+     */
     @Override
     public SubstrateTruffleCompiler getTruffleCompiler(TruffleCompilable compilable) {
         Objects.requireNonNull(compilable, "Compilable must be non null.");
         ensureInitializedAtRuntime((OptimizedCallTarget) compilable);
+        if (!SubstrateUtil.HOSTED && !compilerInitialized) {
+            synchronized (this) {
+                if (!compilerInitialized) {
+                    truffleCompiler.initialize(compilable, true);
+                    compilerInitialized = true;
+                }
+            }
+        }
         return (SubstrateTruffleCompiler) truffleCompiler;
     }
 
@@ -253,7 +274,12 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
         return new SubstrateOptimizedCallTarget(engine);
     }
 
-    private void ensureInitializedAtRuntime(OptimizedCallTarget callTarget) {
+    /**
+     * Initializes process-local runtime services before a fresh or restored call target is used.
+     *
+     * @param callTarget a call target whose engine has current runtime options and logging
+     */
+    public void ensureInitializedAtRuntime(OptimizedCallTarget callTarget) {
         if (!SubstrateUtil.HOSTED && !initialized) {
             synchronized (this) {
                 if (!initialized) {
@@ -356,6 +382,26 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     @Platforms(HOSTED_ONLY.class)
     public void resetNativeImageState() {
         clearState();
+        exactGeneratedProxyEntries = null;
+    }
+
+    @Override
+    @Platforms(HOSTED_ONLY.class)
+    protected boolean supportsExactGeneratedProxyCall(Method method) {
+        return TypedEntrySupport.supportsExactGeneratedProxyCall(method);
+    }
+
+    @Override
+    @Platforms(HOSTED_ONLY.class)
+    protected void setExactGeneratedProxyEntries(Method[] entries) {
+        assert exactGeneratedProxyEntries == null : "Exact generated proxy entries already initialized";
+        exactGeneratedProxyEntries = entries;
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    public Method[] getExactGeneratedProxyEntries() {
+        assert exactGeneratedProxyEntries != null : "Exact generated proxy entries not initialized";
+        return exactGeneratedProxyEntries;
     }
 
     @Override
@@ -413,12 +459,12 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
 
     @Override
     protected int getArrayBaseOffset(Class<?> componentType) {
-        return ObjectLayout.singleton().getArrayBaseOffset(JavaKind.fromJavaClass(componentType));
+        return ObjectLayoutCompilerSupport.getArrayBaseOffset(ObjectLayout.singleton(), JavaKind.fromJavaClass(componentType));
     }
 
     @Override
     protected int getArrayIndexScale(Class<?> componentType) {
-        return ObjectLayout.singleton().getArrayIndexScale(JavaKind.fromJavaClass(componentType));
+        return ObjectLayoutCompilerSupport.getArrayIndexScale(ObjectLayout.singleton(), JavaKind.fromJavaClass(componentType));
     }
 
     @Override

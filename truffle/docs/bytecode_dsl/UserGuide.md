@@ -20,6 +20,7 @@ This guide presents the conceptual details of the Bytecode DSL; for more concret
 - [Locals](#locals)
   - [Accessing locals](#accessing-locals)
   - [Scoping](#scoping)
+  - [Uninitialized and cleared locals](#uninitialized-and-cleared-locals)
   - [Materialized local accesses](#materialized-local-accesses)
 - [Control flow](#control-flow)
   - [Unstructured control flow](#unstructured-control-flow)
@@ -27,12 +28,18 @@ This guide presents the conceptual details of the Bytecode DSL; for more concret
   - [Unwind Exceptions](#unwind-exceptions)
   - [Intercepting exceptions](#intercepting-exceptions)
 - [Advanced features](#advanced-features)
+  - [Bytecode index modes](#bytecode-index-modes)
+    - [CACHED_NODE (default)](#cached_node-default)
+    - [FRAME](#frame)
+    - [MANUAL](#manual)
+    - [NONE](#none)
   - [Cached and uncached execution](#cached-and-uncached-execution)
   - [Source information](#source-information)
   - [Instrumentation](#instrumentation)
   - [Reparsing](#reparsing)
   - [Tracing](#tracing)
   - [Bytecode introspection](#bytecode-introspection)
+  - [Bytecode frames in stack traces](#bytecode-frames-in-stack-traces)
   - [Reachability analysis](#reachability-analysis)
   - [Interpreter optimizations](#interpreter-optimizations)
   - [Runtime compilation](#runtime-compilation)
@@ -113,6 +120,8 @@ Custom operations can also `@Bind BytecodeNode` in their specializations (more a
 Because the bytecode may change, a bytecode index (obtained using `@Bind("$bytecodeIndex")`) must be paired with a `BytecodeNode` to meaningfully identify a program location.
 You can also instantiate a [`BytecodeLocation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeLocation.java), which logically represents the bytecode node and index, using `BytecodeNode#getBytecodeLocation(int)` or `@Bind BytecodeLocation`.
 
+See [Bytecode index modes](#bytecode-index-modes) for details on making the current bytecode index available to stack walks and other runtime code.
+
 ## Operations
 Operations are the basic unit of language semantics in the Bytecode DSL.
 Each operation performs some computation and can produce a value (excluding [source operations](#source-information)).
@@ -165,6 +174,7 @@ The built-in operations are:
 - Local variable operations (see [Locals](#locals))
   - `LoadLocal`
   - `StoreLocal`
+  - `ClearLocal`
   - `LoadLocalMaterialized`
   - `StoreLocalMaterialized`
 - Control flow operations (see [Control flow](#control-flow))
@@ -178,6 +188,10 @@ The built-in operations are:
   - `TryFinally`
   - `TryCatchOtherwise`
   - `LoadException`
+- Temporary stack value operations
+  - `BindStackValue`
+  - `LoadStackValue`
+  - `StoreStackValue`
 - Source operations (see [Source information](#source-information))
   - `Source`
   - `SourceSection`
@@ -247,12 +261,13 @@ Like Truffle nodes, Bytecode DSL operations encode the behaviour of specializati
 Expressions used in operations can access special variables that capture the current interpreter state:
 
 - `$rootNode` evaluates to the bytecode root node
-- `$bytecode` evaluates to the current `BytecodeNode`
+- `$bytecodeNode` evaluates to the current `BytecodeNode`
 - `$bytecodeIndex` evaluates to the current bytecode index (as an `int`)
 
 When using [`@Bind`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl/src/com/oracle/truffle/api/dsl/Bind.java) to bind interpreter state, you can often omit the expressions and rely on default bind expressions:
 
 - `@Bind MyBytecodeRootNode` binds the bytecode root node
+- `@Bind Node` binds the operation node in the cached interpreter, or the current `BytecodeNode` in the uncached interpreter. In [bytecode index modes](#bytecode-index-modes) other than `CACHED_NODE`, the cached interpreter may instead bind the `BytecodeNode` for stateless operations (avoiding allocation of an operation node).
 - `@Bind BytecodeNode` binds the current `BytecodeNode`
 - `@Bind BytecodeLocation` binds the current `BytecodeLocation` (constructing it from the current bytecode index and `BytecodeNode`).
 - `@Bind Instruction` binds the `Instruction` introspection object for the current instruction.
@@ -312,10 +327,6 @@ These helpers often have extra indirection, so the built-in operations and acces
 
 Local reads/writes should always use these abstractions; **you should not directly read from or write to the frame**.
 
-Loading a local before a value is stored into it throws a [`FrameSlotTypeException`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api/src/com/oracle/truffle/api/frame/FrameSlotTypeException.java).
-You can specify a `defaultLocalValue` in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java) to instead give uninitialized locals a default value.
-
-
 ### Scoping
 
 By default, interpreters use _block scoping_, in which locals are scoped to the enclosing `Block`/`Root` operation.
@@ -324,6 +335,17 @@ Since the set of live locals depends on the location in the code, most of the lo
 
 Interpreters can alternatively opt to use _root scoping_, in which all locals get a unique position in the frame and live for the entire extent of the root.
 The setting is controlled by the `enableBlockScoping` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
+
+### Uninitialized and cleared locals
+
+A local is uninitialized until a value is stored into it, and can be cleared (by `ClearLocal` or on `Block` exit for [block-scoped locals](#scoping)).
+The behaviour when loading an uninitialized or cleared local is configurable:
+
+- By default, the load throws a [`FrameSlotTypeException`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api/src/com/oracle/truffle/api/frame/FrameSlotTypeException.java).
+- Set `@GenerateBytecode(illegalLocalException=...)` to throw a custom exception instead.
+- Set `@GenerateBytecode(defaultLocalValue=...)` to make the load produce a default value instead of throwing.
+  - Note: When a default value is used, loading a cleared local can sometimes inhibit [boxing elimination](Optimization.md#boxing-elimination).
+
 
 ### Materialized local accesses
 
@@ -352,8 +374,8 @@ b.endRoot();
 
 When using materialized accesses with outer locals, you should be careful to only call the inner root when the outer local is live; otherwise, the access could produce unexpected values.
 The bytecode builder statically checks that the local is in scope when emitting a materialized access, but the interpreter cannot easily check that the access occurs at that same point in execution.
-The interpreter _will_ validate the access when it is configured to store the bytecode index in the frame (see the `storeBytecodeIndexInFrame` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java)), but for performance reasons this flag is `false` by default.
-Consider enabling the flag temporarily if you encounter unexpected behaviour with materialized local values.
+The interpreter _will_ validate the access when its bytecode index mode is `FRAME` (see `bytecodeIndexMode` in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java)), but the default mode is `CACHED_NODE` for performance reasons.
+Consider temporarily using `FRAME` mode if you encounter unexpected behaviour with materialized local values.
 
 
 ## Control flow
@@ -528,6 +550,90 @@ The hooks are invoked at most once for each throw, and may be invoked sequential
 
 This section describes some of the more advanced features supported by Bytecode DSL interpreters.
 
+### Bytecode index modes
+
+[`@GenerateBytecode.bytecodeIndexMode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java) controls how the current bytecode index (BCI) is made available to stack walks and guest stack traces.
+Depending on your use case, you can resolve the BCI from a node, store it automatically in the frame, track it manually, or pass it explicitly without frame storage.
+All modes support passing an explicit BCI through call APIs.
+
+Start with `CACHED_NODE` for the simplest integration, then prefer `MANUAL` with explicit BCI propagation as the interpreter matures.
+Choose based on how often the language needs BCI or stack lookup:
+
+| Mode | Storage and lookup cost | When to use |
+| --- | --- | --- |
+| `CACHED_NODE` | No automatic frame writes in cached execution, but more expensive node-based lookup. Uncached execution automatically stores the BCI in the frame. | Easiest starting point; BCI and stack lookups are uncommon. |
+| `FRAME` | Reserves a frame slot and automatically writes it before operations that need the BCI; cheap frame-based lookup. Highest automatic BCI-storage overhead. | Simple integration when BCI and stack lookups are frequent. |
+| `MANUAL` | No routine automatic frame writes. Reserves a frame slot for cheap lookup when the BCI is stored manually, for example before interop calls. | Recommended after getting started; explicitly propagate BCIs to calls and exceptions, and store them for boundaries that cannot carry a BCI. |
+| `NONE` | No BCI frame slot or automatic writes. | Pass the BCI explicitly to calls and exceptions. Use only if the language does not need BCI information across interop boundaries, where the BCI cannot be passed explicitly. |
+
+The sections below describe storage opt-ins and exceptions, including instrumentation and continuation resumes.
+
+#### CACHED_NODE (default)
+
+This mode derives the BCI from the enclosing operation node in cached execution; uncached lookup reads an automatically stored frame BCI.
+Location lookups require a location in the bytecode tree. Direct frame-slot access is unsupported.
+
+To perform a call in this mode, bind the operation's location node using `@Bind Node location` in the specialization, then pass it for implicit lookup:
+
+```java
+return target.call(location, arguments);
+```
+
+#### FRAME
+
+This mode reserves a frame slot for the BCI and automatically stores it before operations that need it.
+Use `@Operation(storeBytecodeIndex = true)` to request storage for an operation, or `@StoreBytecodeIndex` for individual specializations.
+Lookup reads the automatically stored frame BCI in every tier, but still requires a non-null location.
+`getBytecodeIndex` and `setBytecodeIndex` also access this slot; automatic updates replace manual values.
+
+Enable `@Operation(storeBytecodeIndex = true)` on the call operation and bind its location using `@Bind Node location` in the specialization.
+Then call implicitly:
+
+```java
+return target.call(location, arguments);
+```
+
+#### MANUAL
+
+This mode reserves a frame slot for manually storing the BCI.
+Implicit lookup reads this frame slot even without a location node; unset or cleared means unknown.
+Automatic operation storage defaults to disabled; `storeBytecodeIndex` or `@StoreBytecodeIndex` can opt in.
+Tag instrumentation is an exception: the interpreter automatically stores the BCI before tag callbacks, including exceptional returns.
+Resuming a continuation also always stores the resume BCI, replacing any previous value, including an unset or cleared value. Fresh invocations do not initialize the slot.
+
+Guest calls pass the BCI explicitly as in `NONE` below.
+For interop and native calls, which cannot carry a BCI, store it before crossing the boundary.
+Bind `@Bind BytecodeNode bytecodeNode` and `@Bind("$bytecodeIndex") int bci` in the specialization and accept `VirtualFrame frame` as its first parameter.
+For example, an interop call stores the BCI as follows:
+
+```java
+bytecodeNode.setBytecodeIndex(frame, bci);
+return interop.execute(function, arguments);
+```
+
+Leave the stored BCI in place after the call, just like `@StoreBytecodeIndex`; later stores replace it.
+In particular, do not clear it in `finally`, since exception unwinding needs the stored BCI.
+In a nested cached node where the bytecode node is not available, use `BytecodeNode.setBytecodeIndex(this, frame, bci)` to store the BCI in the frame. The static setter finds the enclosing bytecode node using `this` as the location. Uncached nodes may pass `null` to use the encapsulating node. A non-null location must be a partial evaluation constant. Prefer the instance setter when the bytecode node is already available or bound with `@Bind`.
+Handle checked interop exceptions as required by the language; see the [SimpleLanguage call operation](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.sl/src/com/oracle/truffle/sl/bytecode/SLBytecodeRootNode.java).
+
+#### NONE
+
+There is no BCI frame slot or implicit lookup. Calls, exceptions, and location-sensitive helpers must receive their BCI explicitly.
+Passing `-1` requests implicit lookup, which cannot recover a BCI in `NONE` mode.
+
+Bind `@Bind BytecodeNode bytecodeNode` and `@Bind("$bytecodeIndex") int bci` in the specialization, then pass the BCI explicitly on every call:
+
+```java
+return target.call(bytecodeNode, bci, arguments);
+```
+
+`RootNode.call`, `DirectCallNode.call`, and `IndirectCallNode.call` also accept explicit BCIs in every mode.
+Before calling a root directly or through `IndirectCallNode.call(RootNode, int, Object[])`, initialize its call target with `RootNode.initializeCallTarget()` or `RootNode.getCallTarget()` during setup; these call overloads do not initialize it implicitly.
+
+**Prefer explicit BCI propagation.**
+Use `MANUAL` if you support interop or native calls; use `NONE` if you do not and all calls, exceptions, and location-sensitive helpers receive an explicit BCI.
+Start with the default `CACHED_NODE` mode, then migrate to `MANUAL` when adding explicit BCI propagation.
+
 ### Cached and uncached execution
 
 By default, Bytecode DSL interpreters execute _cached_, allocating memory to profile conditional branches, operation specializations, and more.
@@ -541,7 +647,7 @@ After a predefined number of calls or loop iterations (see the `defaultUncachedT
 
 It is strongly recommended to enable uncached execution, because it can reduce the footprint of your language and improve start-up times.
 
-To support uncached execution, all operations must support [uncached execution](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/GenerateUncached.html).
+To support uncached execution, all operations must support [uncached execution](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.dsl/src/com/oracle/truffle/api/dsl/GenerateUncached.java).
 When `enableUncachedInterpreter` is set to `true`, the Bytecode DSL processor will verify that each operation supports uncached, and it will emit descriptive error messages if there are changes that need to be made.
 If an operation cannot easily support uncached execution, it can instead force the interpreter to transition to cached before it executes (see the `forceCached` field of [`@Operation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/Operation.java) and the other operation annotations).
 Bear in mind that declaring an operation with `forceCached` may limit the usefulness of the uncached interpreter, depending on how common the operation is.
@@ -560,6 +666,10 @@ The generated root node will override `Node#getSourceSection` to return this inf
 Source information is designed to have no performance overhead until it is requested (see [Reparsing metadata](#reparsing)).
 Take extra care if accessing source information in [compiled code](RuntimeCompilation.md#source-information).
 
+If a language needs source locations but does not usually need the source content, it can provide `@GenerateBytecode(sourceContentSupplier=...)` to lazily load source content upon request.
+
+Source information tables are compressed by default to reduce memory footprint; compression is controlled by `@GenerateBytecode(enableCompressedSources=...)`.
+
 ### Instrumentation
 
 The behaviour of a Bytecode DSL interpreter can be non-intrusively observed (and modified) using instrumentation.
@@ -574,6 +684,19 @@ The Bytecode DSL supports two forms of instrumentation:
 2. Tag-based instrumentation associates operations with particular instrumentation [`Tag`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/Tag.java)s using `Tag` operations. If these instrumentations are enabled, the bytecode will include instructions that invoke the various event callbacks on any attached [`ExecutionEventNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.instrumentation/src/com/oracle/truffle/api/instrumentation/ExecutionEventNode.java)s (e.g., `onEnter`, `onReturnValue`) when executing the enclosed operation. Tag-based instrumentation can be enabled using the `enableTagInstrumentation` flag in [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java).
 
 Override [`BytecodeRootNode.interceptOutgoingValue`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNode.java) to convert every guest-language value before it is exposed to tag instrumentation, for example to replace an internal representation with an interop-capable value. Override [`BytecodeRootNode.interceptIncomingValue`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeRootNode.java) to convert values supplied by tag instrumentation to representations supported by the guest language. The hooks add no generated calls unless they are overridden and do not apply to `@Instrumentation` operations.
+
+Override `BytecodeRootNode.getInstrumentationNodeObject(TagTreeNode)` to provide metadata for tagged regions.
+The generated instrumentation nodes delegate `InstrumentableNode.getNodeObject()` to this hook; its default returns `null`, preserving the empty node object behavior.
+Use the supplied region's tags and source sections to look up immutable semantic metadata retained by your language.
+For example, a region tagged with `ReadVariableTag` must return a read-only interop object with a `readVariableName` member; `WriteVariableTag` requires `writeVariableName`.
+Each member can contain a string name or a string-compatible descriptor with its source location, as specified by `StandardTags`.
+The hook must work before execution and without an entered context or runtime variable values, and metadata must support concurrent reads.
+Do not retain bytecode indices across reparsing: enabling instrumentation can change them.
+This hook supplies metadata only; your parser must still emit the appropriate tags and source sections.
+
+Instrumentation nodes and inline parsing locations do not themselves identify the current BCI: a tag can span multiple instructions, and its enter and return BCIs are not interchangeable.
+In `FRAME` and `MANUAL` modes, use `BytecodeNode.getBytecodeIndex(frame)` to read the BCI stored at the tagged boundary, including from inline code executed with that frame.
+Do not infer the current BCI from a tag's enter or return location; outside a callback boundary, no current BCI is guaranteed unless the language has stored or passed it explicitly.
 
 Note: once instrumentation instructions are added, they cannot be removed from the bytecode. However, in tag-based instrumentation you can still disable the instruments so that the instrumentation instructions have no effect.
 
@@ -735,8 +858,24 @@ These methods, defined on the [`BytecodeNode`](https://github.com/oracle/graal/b
 - `getExceptionHandlers`, which returns a list of [`ExceptionHandler`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/ExceptionHandler.java) table entries.
 - `getSourceInformation`, which returns a list of [`SourceInformation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/SourceInformation.java) table entries. There is also `getSourceInformationTree`, which encodes the entries as a [`SourceInformationTree`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/SourceInformationTree.java).
 
+Use `Instruction.getDescriptor().getOperationClass()` to identify the custom operation class behind an instruction without parsing its name.
+Quickened instructions return the original operation class, and operation proxies return the proxied class.
+Built-in and short-circuit instructions return `null`.
+
 Note that the bytecode encoding is an implementation detail, so the APIs and their outputs are subject to change, and introspection should only be used for debugging purposes.
 
+
+### Bytecode frames in stack traces
+
+By default, Bytecode DSL frames are not captured in [`TruffleStackTraceElement`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api/src/com/oracle/truffle/api/TruffleStackTraceElement.java) instances.
+Set `@GenerateBytecode(captureFramesForTrace = true)` to enable frame capturing.
+
+A frame captured in a `TruffleStackTraceElement` is read-only and should not be directly accessed through `TruffleStackTraceElement.getFrame()`.
+Instead, use [`BytecodeFrame.get`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeFrame.java) to access the captured frame and its local values.
+`BytecodeFrame` captures the necessary metadata for accessing the local variables in the frame.
+
+To inspect the current call stack, use `BytecodeFrame.getTop` or `BytecodeFrame.iterateBytecodeFrames`.
+These helpers walk bytecode frames and skip frames from other kinds of roots.
 
 ### Reachability analysis
 The Bytecode DSL performs some basic reachability analysis to avoid emitting bytecode when it can guarantee a location is not reachable, for example, after an explicit `Return` operation. The reachability analysis is confounded by features like branching, exception handling, and instrumentation, so reachability cannot always be precisely determined; in such cases, the builder conservatively assumes a given point in the program is reachable.

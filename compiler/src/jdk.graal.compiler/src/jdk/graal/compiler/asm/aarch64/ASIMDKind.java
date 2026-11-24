@@ -50,6 +50,10 @@ public class ASIMDKind {
         AArch64Kind returnKind = null;
         int returnLength = Integer.MAX_VALUE;
         for (AArch64Kind kind : AArch64Kind.values()) {
+            /* TODO GR-65555: full support for two-byte vector kinds. */
+            if (kind == AArch64Kind.V16_BYTE || kind == AArch64Kind.V64_SINGLE) {
+                continue;
+            }
             if (kind.getScalar() == base) {
                 int kindLength = kind.getVectorLength();
                 if (kindLength == length) {

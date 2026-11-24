@@ -45,6 +45,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import org.graalvm.wasm.debugging.DebugLineMap;
+import org.graalvm.wasm.debugging.WasmDebugException;
 
 /**
  * State of the line state machine as defined in the Dwarf Debugging Information Format version 4.
@@ -130,7 +131,10 @@ public class DebugState {
         line += lineAdvance;
     }
 
-    public void setFile(int f) {
+    public void setFile(int f) throws WasmDebugException {
+        if (f == 0 || Integer.compareUnsigned(f, lineMaps.length) >= 0) {
+            throw new WasmDebugException("invalid file index");
+        }
         file = f;
         if (lineMaps[file] == null) {
             lineMaps[file] = new DebugLineMap(filePaths.get(file));

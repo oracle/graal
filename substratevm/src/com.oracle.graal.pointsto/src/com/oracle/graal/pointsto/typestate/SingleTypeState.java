@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.typestate;
 
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -114,6 +115,9 @@ public non-sealed class SingleTypeState extends TypeState {
 
             @Override
             public T next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
                 hasNext = false;
                 return object;
             }

@@ -57,6 +57,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.bytecode.parser.BytecodeDSLParser;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.AbstractDSLExpressionVisitor;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
@@ -577,6 +578,15 @@ public final class SpecializationData extends TemplateMethod {
     public boolean isDynamicParameterBound(DSLExpression expression, boolean transitive) {
         if (expression == null) {
             return false;
+        }
+        if ((node.isBindBytecodeNode() && expression.isSymbolBound(ProcessorContext.getInstance().getTypes().BytecodeNode, BytecodeDSLParser.SYMBOL_BYTECODE_NODE)) ||
+                        (node.isBindBytecodeIndex() && expression.isSymbolBound(ProcessorContext.getInstance().getType(int.class), BytecodeDSLParser.SYMBOL_BYTECODE_INDEX))) {
+            /*
+             * Ordinary AST callers supply enabled execution metadata on every execute invocation,
+             * so it is dynamic like an evaluated argument. Operation nodes leave these flags
+             * disabled and retain the Bytecode DSL's existing PE-constant binding behavior.
+             */
+            return true;
         }
         Set<VariableElement> boundVariables = expression.findBoundVariableElements();
         for (Parameter parameter : getDynamicParameters()) {

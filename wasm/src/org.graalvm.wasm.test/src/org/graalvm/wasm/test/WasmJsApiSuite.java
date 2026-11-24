@@ -40,9 +40,11 @@
  */
 package org.graalvm.wasm.test;
 
+import static org.graalvm.wasm.test.WasmTestUtils.hexStringToByteArray;
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
@@ -57,6 +59,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.ModuleLimits;
+import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
@@ -76,18 +79,22 @@ import org.graalvm.wasm.api.ModuleImportDescriptor;
 import org.graalvm.wasm.api.Sequence;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.exception.WasmRuntimeException;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
+import org.graalvm.wasm.nodes.WasmFixedMemoryImplFunctionNode;
+import org.graalvm.wasm.nodes.WasmMemoryOverheadModeFunctionRootNode;
 import org.graalvm.wasm.types.NumberType;
 import org.graalvm.wasm.types.ReferenceType;
 import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -100,6 +107,7 @@ import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class WasmJsApiSuite {
@@ -155,6 +163,53 @@ public class WasmJsApiSuite {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    @Test
+    public void testMemoryOverheadModeRetainsFunctionGraph() throws ReflectiveOperationException {
+        try (Context context = Context.newBuilder(WasmLanguage.ID).allowExperimentalOptions(true).option("wasm.MemoryOverheadMode", "true").build()) {
+            context.initialize(WasmLanguage.ID);
+            context.enter();
+            try {
+                WebAssembly wasm = new WebAssembly(WasmContext.get(null));
+                WasmModule module = wasm.moduleDecode(binaryWithExports);
+                Assert.assertNotNull(module.codeEntries());
+                WasmInstance instance = wasm.moduleInstantiate(module, WasmConstant.NULL);
+                Assert.assertNull(module.codeEntries());
+
+                Field codeEntryField = WasmMemoryOverheadModeFunctionRootNode.class.getDeclaredField("codeEntry");
+                codeEntryField.setAccessible(true);
+                for (int functionIndex = 0; functionIndex < module.numFunctions(); functionIndex++) {
+                    RootNode root = ((RootCallTarget) instance.target(functionIndex)).getRootNode();
+                    Assert.assertTrue(root instanceof WasmMemoryOverheadModeFunctionRootNode);
+                    Assert.assertEquals(1, NodeUtil.findAllNodeInstances(root, WasmFixedMemoryImplFunctionNode.class).size());
+                    WasmCodeEntry codeEntry = (WasmCodeEntry) codeEntryField.get(root);
+                    Assert.assertNotNull(codeEntry);
+                    Assert.assertSame(module.function(functionIndex), codeEntry.function());
+                    Assert.assertSame(module.bytecode(), codeEntry.bytecode());
+                }
+            } finally {
+                context.leave();
+            }
+        }
+    }
+
+    @Test
+    public void testMemoryOverheadModeProhibitsExecution() throws InteropException {
+        try (Context context = Context.newBuilder(WasmLanguage.ID).allowExperimentalOptions(true).option("wasm.MemoryOverheadMode", "true").build()) {
+            context.initialize(WasmLanguage.ID);
+            context.enter();
+            try {
+                WebAssembly wasm = new WebAssembly(WasmContext.get(null));
+                WasmModule module = wasm.moduleDecode(binaryWithExports);
+                WasmInstance instance = wasm.moduleInstantiate(module, WasmConstant.NULL);
+                Object main = WebAssembly.instanceExport(instance, "main");
+                WasmException exception = Assert.assertThrows(WasmException.class, () -> InteropLibrary.getUncached(main).execute(main));
+                Assert.assertEquals(Failure.MEMORY_OVERHEAD_MODE.name, InteropLibrary.getUncached(exception).readMember(exception, "failure"));
+            } finally {
+                context.leave();
+            }
+        }
     }
 
     @Test
@@ -1583,6 +1638,76 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testTableGrowRejectsInvalidConcreteReference() throws IOException {
+        /*
+         * Equivalent WAT:
+         *
+         * (module
+         *   (type $small (struct (field i32)))
+         *   (type $big (struct (field i32) (field i32)))
+         *   (table (export "table") 1 2 (ref null $big))
+         *   (func (export "makeSmall") (result (ref $small))
+         *     i32.const 42
+         *     struct.new $small)
+         * )
+         */
+        final byte[] tableModule = hexStringToByteArray(
+                        "0061736d010000000110035f017f005f027f007f006000016400030201020406",
+                        "016301010102071502057461626c650100096d616b65536d616c6c00000a0901",
+                        "0700412afb00000b");
+        runTest(options -> options.option("wasm.GC", "true"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance instance = moduleInstantiate(wasm, tableModule, null);
+            final WasmTable table = (WasmTable) WebAssembly.instanceExport(instance, "table");
+
+            assertTableGrowRejectsTypeError(table, 42);
+
+            final Object small;
+            try {
+                final Object makeSmall = WebAssembly.instanceExport(instance, "makeSmall");
+                small = InteropLibrary.getUncached().execute(makeSmall);
+            } catch (InteropException e) {
+                throw new AssertionError(e);
+            }
+            assertTableGrowRejectsTypeError(table, small);
+            Assert.assertEquals("Invalid growth must not change the table size", 1, table.size());
+        });
+    }
+
+    private static void assertTableGrowRejectsTypeError(WasmTable table, Object value) {
+        try {
+            WebAssembly.tableGrow(table, 1, value);
+            Assert.fail("Table.grow must reject a value incompatible with the table element type");
+        } catch (WasmJsApiException e) {
+            Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+        }
+    }
+
+    @Test
+    public void testTableAllocRejectsInvalidFuncrefValue() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            try {
+                wasm.tableAlloc(1, 1, ReferenceType.FUNCREF, 42);
+                Assert.fail("Table allocation must reject a value incompatible with the table element type");
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Type error expected", WasmJsApiException.Kind.TypeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testTableAllocAcceptsExternrefValue() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Object value = new Object();
+            final WasmTable table = wasm.tableAlloc(2, 2, ReferenceType.EXTERNREF, value);
+            Assert.assertSame("Initial externref value should be stored at index 0", value, WebAssembly.tableRead(table, 0));
+            Assert.assertSame("Initial externref value should be stored at index 1", value, WebAssembly.tableRead(table, 1));
+        });
+    }
+
+    @Test
     public void testTableInitAnyfunc() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
@@ -1720,9 +1845,9 @@ public class WasmJsApiSuite {
             try {
                 final Object tableAlloc = wasm.readMember("table_alloc");
                 final Object tableRead = wasm.readMember("table_read");
-                final Object table = lib.execute(tableAlloc, 1, "funcref", "funcref", WasmConstant.NULL);
+                final Object table = lib.execute(tableAlloc, 1, "funcref", WasmConstant.NULL, "funcref");
                 final Object value = lib.execute(tableRead, table, 0);
-                Assert.assertEquals("Element should be funcref", "funcref", value);
+                Assert.assertEquals("Element should be null", WasmConstant.NULL, value);
             } catch (UnknownIdentifierException | UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 throw new RuntimeException(e);
             }
@@ -2534,9 +2659,8 @@ public class WasmJsApiSuite {
     }
 
     /**
-     * Trigger a {@link WasmException} during a call performed by an uncached
-     * {@link org.graalvm.wasm.nodes.WasmIndirectCallNode}, via an uncached {@link InteropLibrary},
-     * to test {@link org.graalvm.wasm.nodes.WasmIndirectCallNode#getBytecodeOffset()}.
+     * Trigger a {@link WasmException} during a call performed via an uncached
+     * {@link InteropLibrary}.
      */
     @Test
     public void testUncachedIndirectCallException() throws IOException, InterruptedException {

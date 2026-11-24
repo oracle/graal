@@ -57,9 +57,9 @@ import org.graalvm.word.impl.Word.Operation;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.GraphMetadata;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -167,9 +167,15 @@ import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
 import jdk.graal.compiler.nodes.StaticDeoptimizingNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.FieldOffsetProvider;
+import jdk.graal.compiler.nodes.extended.RawStoreNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.java.AbstractUnsafeCompareAndSwapNode;
+import jdk.graal.compiler.nodes.java.AtomicReadAndAddNode;
+import jdk.graal.compiler.nodes.java.AtomicReadAndWriteNode;
+import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
@@ -184,6 +190,7 @@ import jdk.internal.vm.annotation.Stable;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -309,8 +316,12 @@ public class SVMHost extends HostVM {
         }
         layerId = buildingImageLayer ? DynamicImageLayerInfo.getCurrentLayerNumber() : 0;
 
-        /* In a closed-world analysis all fields are closed, so the set is null. */
-        closedWorldFields = isClosedTypeWorld ? null : getAlwaysClosedFields();
+        /*
+         * Only closed-world builds outside extension layers can omit this set. Extension
+         * layers need it for the shared-field write check.
+         */
+        boolean needsClosedWorldFieldSet = !isClosedTypeWorld || buildingExtensionLayer();
+        closedWorldFields = needsClosedWorldFieldSet ? getAlwaysClosedFields() : null;
         sharedLayerForbiddenModules = buildingSharedLayer ? initializeSharedLayerForbiddenModules() : null;
         layeredStaticFieldSupport = buildingImageLayer ? LayeredStaticFieldSupport.singleton() : null;
 
@@ -687,11 +698,12 @@ public class SVMHost extends HostVM {
     }
 
     private LinkageError handleLinkageError(Class<?> javaClass, String methodName, LinkageError linkageError) {
-        if (!linkAtBuildTimeSupport.linkAtBuildTime(javaClass)) {
+        ResolvedJavaType type = originalMetaAccess.lookupJavaType(javaClass);
+        if (!linkAtBuildTimeSupport.linkAtBuildTime(type)) {
             return linkageError; /* It's rethrown at run time. */
         }
         String message = "Discovered a type for which " + methodName + " cannot be called: " + javaClass.getTypeName() + ". " +
-                        linkAtBuildTimeSupport.errorMessageFor(javaClass);
+                        linkAtBuildTimeSupport.errorMessageFor(type);
         throw new UnsupportedFeatureException(message, linkageError);
     }
 
@@ -770,6 +782,13 @@ public class SVMHost extends HostVM {
         }
     }
 
+    /** Validate writes to always-closed fields from a newly parsed or loaded method graph. */
+    public void checkClosedFieldWrites(AnalysisMethod method, List<AnalysisField> closedFieldWrites) {
+        if (buildingExtensionLayer()) {
+            ExtensionLayerImageFeature.checkNewClosedFieldWrites(method, closedFieldWrites);
+        }
+    }
+
     protected boolean deoptsForbidden(AnalysisMethod method) {
         /*
          * Runtime compiled methods can deoptimize.
@@ -778,13 +797,26 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
+    public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph, GraphMetadata.Builder metadata) {
         if (graph != null) {
             if (deoptsForbidden(method)) {
                 graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
             }
             if (parsingSupport != null) {
                 parsingSupport.afterParsingHook(method, graph);
+            }
+
+            if (buildingImageLayer()) {
+                /*
+                 * Conservatively retain writes observed after parsing and the parsing-support hook,
+                 * before static-final-field folding, optimizeAfterParsing, and final canonicalization.
+                 * Later elimination of a store does not discharge its validation obligation. Parsing
+                 * may already have simplified the graph, so this is not a bytecode-level write summary.
+                 */
+                List<AnalysisField> closedFieldWrites = graph.getNodes().stream().map(SVMHost::getWrittenField)
+                                .filter(field -> field != null && isAlwaysClosedField(field)).distinct().toList();
+                metadata.setClosedFieldWrites(closedFieldWrites);
+                checkClosedFieldWrites(method, closedFieldWrites);
             }
 
             if (!SubstrateCompilationDirectives.isRuntimeCompiledMethod(method)) {
@@ -794,7 +826,7 @@ public class SVMHost extends HostVM {
                  * StaticFinalFieldFoldingPhase and the nodes it references safe for execution at
                  * image run time.
                  */
-                if (StaticFinalFieldFoldingPhase.isEnabled() && !SubstrateCompilationDirectives.isDeoptTarget(method)) {
+                if (StaticFinalFieldFoldingPhase.isEnabled() && !SubstrateCompilationDirectives.isDeoptTarget(method) && allowAnalysisSpecialization(method)) {
                     new StaticFinalFieldFoldingPhase().apply(graph, getProviders(method.getMethodVariantKey()));
                 }
                 /*
@@ -828,12 +860,43 @@ public class SVMHost extends HostVM {
                 }
             }
 
-            super.methodAfterParsingHook(bb, method, graph);
+            super.methodAfterParsingHook(bb, method, graph, metadata);
         }
     }
 
+    /**
+     * Resolve direct field stores and Unsafe writes whose offset implements
+     * {@link FieldOffsetProvider}, identifying the target field. Plain and volatile Unsafe writes can
+     * still be {@link RawStoreNode}s before canonicalization converts them to {@link StoreFieldNode}s,
+     * while atomic updates retain their own node classes. Opaque offsets and accesses without an
+     * object receiver do not identify a field here.
+     * <p>
+     * Points-to analysis uses the same criterion for precise field accesses. It can model other
+     * Unsafe accesses through indexed or generic unsafe flows, or conservative field summaries,
+     * without identifying a target field here. Such accesses can still be supported: returning
+     * {@code null} does not establish absence of field writes, grant write permission, or provide
+     * memory safety for arbitrary offsets.
+     */
+    private static AnalysisField getWrittenField(Node node) {
+        return (AnalysisField) switch (node) {
+            case StoreFieldNode store -> store.field();
+            case RawStoreNode store -> getFieldFromNode(store.object(), store.offset());
+            case AbstractUnsafeCompareAndSwapNode atomic -> getFieldFromNode(atomic.object(), atomic.offset());
+            case AtomicReadAndWriteNode atomic -> getFieldFromNode(atomic.object(), atomic.offset());
+            case AtomicReadAndAddNode atomic -> getFieldFromNode(atomic.object(), atomic.offset());
+            default -> null;
+        };
+    }
+
+    private static AnalysisField getFieldFromNode(ValueNode object, ValueNode offset) {
+        if (object.getStackKind() == JavaKind.Object && offset instanceof FieldOffsetProvider fieldOffset) {
+            return (AnalysisField) fieldOffset.getField();
+        }
+        return null;
+    }
+
     protected void optimizeAfterParsing(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
-        if (PointstoOptions.EscapeAnalysisBeforeAnalysis.getValue(bb.getOptions())) {
+        if (bb.escapeAnalysisBeforeAnalysis()) {
             if (method.isOriginalMethod()) {
                 /*
                  * Deoptimization Targets cannot have virtual objects in frame states.

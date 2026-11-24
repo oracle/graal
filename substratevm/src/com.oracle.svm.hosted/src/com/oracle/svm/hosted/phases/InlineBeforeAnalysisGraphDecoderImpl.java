@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.phases;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
@@ -114,6 +115,14 @@ public class InlineBeforeAnalysisGraphDecoderImpl extends InlineBeforeAnalysisGr
              * available, compute them if necessary.
              */
             processClassInitializer(field.getDeclaringClass());
+        }
+        if (!bb.getHostVM().allowAnalysisSpecialization((AnalysisMethod) graph.method())) {
+            /*
+             * Simulation and field interception below bypass the method's constant-field
+             * provider. Restricted source graphs must retain the runtime access, while still
+             * completing class-initialization metadata above.
+             */
+            return node;
         }
         ConstantNode canonicalized = simulateClassInitializerSupport.tryCanonicalize(bb, node);
         if (canonicalized != null) {

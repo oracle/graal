@@ -145,6 +145,10 @@ public final class AVXKind {
 
     public static AMD64Kind getAVXKind(AMD64Kind base, AVXSize size) {
         for (AMD64Kind ret : AMD64Kind.values()) {
+            /* TODO GR-65555: full support for two-byte vector kinds. */
+            if (ret == AMD64Kind.V16_BYTE || ret == AMD64Kind.V64_SINGLE) {
+                continue;
+            }
             if (ret.getScalar() == base && ret.getSizeInBytes() == size.getBytes()) {
                 return ret;
             }
@@ -171,6 +175,10 @@ public final class AVXKind {
     public static AMD64Kind getAVXKind(AMD64Kind base, int length) {
         AMD64Kind toReturn = null;
         for (AMD64Kind ret : AMD64Kind.values()) {
+            /* TODO GR-65555: full support for two-byte vector kinds. */
+            if (ret == AMD64Kind.V16_BYTE || ret == AMD64Kind.V64_SINGLE) {
+                continue;
+            }
             if (ret.getScalar() == base && ret.getVectorLength() >= length && (toReturn == null || ret.getVectorLength() < toReturn.getVectorLength())) {
                 toReturn = ret;
             }

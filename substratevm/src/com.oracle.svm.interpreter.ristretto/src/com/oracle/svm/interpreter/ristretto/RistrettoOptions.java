@@ -27,11 +27,15 @@ package com.oracle.svm.interpreter.ristretto;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.guest.staging.option.RuntimeOptionValidators.NON_NEGATIVE;
 
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionValidation;
+import com.oracle.svm.guest.staging.option.RuntimeOptionValues.Origin;
 import com.oracle.svm.shared.option.HostedOptionKey;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -74,6 +78,9 @@ public class RistrettoOptions {
      */
     private static boolean compilationEnabled;
     private static boolean useOSR;
+
+    @Option(help = "Use CallSite target-value assumptions to fold stable mutable and volatile CallSite targets in runtime-compiled code.")//
+    public static final RuntimeOptionKey<Boolean> JITUseCallSiteTargetValueAssumptions = new RuntimeOptionKey<>(true, null, RistrettoOptions::validateCallSiteTargetValueAssumptions, Immutable);
 
     @Option(help = "Number of loop backedges before OSR compilation is triggered for a method and target BCI.")//
     public static final RuntimeOptionKey<Integer> JITCompilerOSRBackedgeThreshold = new RuntimeOptionKey<>(30000, NON_NEGATIVE, null);
@@ -153,6 +160,20 @@ public class RistrettoOptions {
     static void initializeRuntimeOptionCache() {
         compilationEnabled = JITEnableCompilation.getValue();
         useOSR = compilationEnabled && JITUseOnStackReplacement.getValue();
+    }
+
+    @Platforms(HOSTED_ONLY.class)
+    static void configureCallSiteTargetValueAssumptions() {
+        if (!useDeoptimization() && !JITUseCallSiteTargetValueAssumptions.hasBeenSet()) {
+            /* No-deoptimization images cannot honor target assumptions. Preserve explicit user values for startup validation. */
+            JITUseCallSiteTargetValueAssumptions.update(false, Origin.BuildTime);
+        }
+    }
+
+    private static void validateCallSiteTargetValueAssumptions(RuntimeOptionKey<Boolean> optionKey) {
+        if (optionKey.hasBeenSet() && optionKey.getValue() && !useDeoptimization()) {
+            throw new IllegalArgumentException("Option '" + optionKey.getName() + "' requires '-H:+JITUseDeoptimization' to be enabled at build-time.");
+        }
     }
 
     public static final class ConcealedOptions {

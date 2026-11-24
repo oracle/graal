@@ -79,6 +79,7 @@ import jdk.graal.compiler.nodes.extended.MultiGuardNode;
 import jdk.graal.compiler.nodes.java.InstanceOfNode;
 import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
+import jdk.graal.compiler.nodes.loop.DerivedOffsetInductionVariable;
 import jdk.graal.compiler.nodes.loop.InductionVariable.Direction;
 import jdk.graal.compiler.nodes.loop.InductionVariableHelper;
 import jdk.graal.compiler.nodes.loop.Loop;
@@ -254,6 +255,12 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
     @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, MidTierContext context) {
+        // Hoisting a guard replaces its per-iteration check with checks of the IV range before entry. For for
+        // (int i = 0; (long) i < limit; i++), that range cannot use a finite count if int i may overflow
+        // under the long comparison. Try to guard the limit first; each candidate still checks whether its
+        // loop has the required proof. Preparation can replace comparisons, so obtain loop information
+        // afterwards.
+        CountedLoopInfo.prepareRootOverflowGuards(graph, context);
         EconomicSetNodeEventListener change = new EconomicSetNodeEventListener(EnumSet.of(Graph.NodeEvent.INPUT_CHANGED, Graph.NodeEvent.CONTROL_FLOW_CHANGED));
         for (int i = 0; i < MAX_ITERATIONS; i++) {
             boolean iterate = false;
@@ -1374,16 +1381,77 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         }
 
         /**
-         * Determines whether the given guard's comparison can be hoisted out of the loop, including
-         * whether the required endpoint computations can be guarded against overflow and, for an
-         * unsigned comparison, against crossing zero. Hoisting is not considered possible if the
-         * hoisted guard would unconditionally deopt.
-         * <p>
-         * This method does not materialize guards or rewrite the candidate guard. Building the
-         * endpoints and their conditions can add floating arithmetic and logic nodes, which are
-         * reused if the rewrite is subsequently materialized.
+         * Checks whether the loop condition supplies a valid iteration bound for moving a guard. For example:
+         *
+         * <pre>
+         * for (int i = 0, j = 0; (long) i &lt; limit; i++, j++) {
+         *     check(j);
+         * }
+         * </pre>
+         *
+         * The guard uses {@code j}, but the exit condition tests {@code (long) i}. Thus {@code i} controls
+         * how many times {@code j} advances: {@code i} is the root IV, {@code (long) i} the limit-checked IV, and
+         * {@code j} an independent IV. If {@code i++} overflows, a count calculated as though {@code i} kept
+         * increasing cannot bound {@code j}. Require separate no-overflow proofs for the limit-checked IV
+         * and its root.
+         *
+         * <p>A head test on an offset computed at the root's own integer width is a specific exception:
+         *
+         * <pre>
+         * for (int i = Integer.MAX_VALUE - 1; i + Integer.MIN_VALUE &lt; 2; i++) {
+         *     body(i);
+         * }
+         * </pre>
+         *
+         * The checked int expression {@code i + Integer.MIN_VALUE} takes values {@code -2, -1, 0, 1}, then
+         * reaches 2 and exits. The root {@code i} overflows between the second and third iterations, yet the
+         * checked expression continues to increase by one. Its own non-overflow proof therefore gives the
+         * correct four-iteration bound.
+         *
+         * <p>This exception requires a direct addition or subtraction by a loop-invariant offset at the same
+         * integer width. {@code i - k} also advances by the root stride; {@code k - i} advances by its
+         * negation. Widening after that arithmetic, as in {@code (long) (i + k)}, or testing at the tail does
+         * not qualify. This method only inspects the loop; it adds no guards.
+         */
+        private static boolean hasSafeControllingLoop(CountedLoopInfo counted) {
+            if (counted.loopAndRootCanNeverOverflow()) {
+                return true;
+            }
+            if (counted.loopCanNeverOverflow() && !counted.isInverted()) {
+                final InductionVariable limitCheckedIV = counted.getLimitCheckedIV();
+                return limitCheckedIV instanceof DerivedOffsetInductionVariable offset && offset.getBase() == limitCheckedIV.getRootIV();
+            }
+            return false;
+        }
+
+        /**
+         * Checks whether a guard in the loop can be replaced by checks of the guarded IV's range
+         * before entry. For example:
+         *
+         * <pre>
+         * for (int i = 0, j = 5; (long) i &lt; 9; i += 3, j += 2) {
+         *     check(j &lt; bound);
+         * }
+         * </pre>
+         *
+         * The exit tests {@code (long) i}, whose root is int {@code i}; the guard tests the independent IV
+         * {@code j}. Here three iterations give body values {@code 5, 7, 9} for {@code j}. Before using
+         * endpoints to replace the guard, establish that the loop really supplies that iteration
+         * bound. A wider comparison does not exclude overflow of the root counter.
+         *
+         * <p>Then build the endpoint computations and check that their arithmetic can be guarded against
+         * overflow. For an unsigned comparison, also check that the range does not cross zero in a way that
+         * invalidates the endpoint test. Reject a replacement that would unconditionally deoptimize.
+         *
+         * <p>This method does not install the new guards or rewrite the candidate guard. It can add floating
+         * arithmetic and logic nodes while constructing endpoints and conditions; subsequent materialization
+         * reuses those nodes.
          */
         private boolean canComputeOptimizedTests(GuardNode guard, CompareNode compare, InductionVariable iv, ValueNode bound, boolean mirrored, ValueNode maxTripCountNode) {
+            if (!hasSafeControllingLoop(iv.getLoop().counted())) {
+                guard.getDebug().log("shouldOptimizeCompare(%s): controlling loop root may overflow", compare);
+                return false;
+            }
             ValueNode effectiveMaxTripCount = effectiveMaxTripCount(iv, maxTripCountNode);
             InductionVariable.Endpoints endpoints = buildEndpointsComputation(iv, effectiveMaxTripCount, extremumStamp(compare));
             for (LogicNode overflowCondition : endpoints.overflowConditions()) {

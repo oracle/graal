@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package jdk.graal.compiler.code;
 
-import static java.util.Collections.emptyList;
-import static java.util.Collections.unmodifiableList;
 import static jdk.vm.ci.meta.MetaUtil.identityHashCodeString;
 
 import java.security.MessageDigest;
@@ -218,12 +216,14 @@ public class CompilationResult {
 
     private final DataSection dataSection = new DataSection();
 
-    private final EconomicSet<Call> invalidCallDeoptimizationStates = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
-    private final List<Infopoint> infopoints = new ArrayList<>();
-    private final List<SourceMapping> sourceMapping = new ArrayList<>();
-    private final List<DataPatch> dataPatches = new ArrayList<>();
-    private final List<ExceptionHandler> exceptionHandlers = new ArrayList<>();
-    private final List<CodeMark> marks = new ArrayList<>();
+    private EconomicSet<Call> invalidCallDeoptimizationStates = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+    private List<Infopoint> infopoints = new ArrayList<>();
+    private boolean infopointDebugInfoCleared;
+    /** Null means released, as opposed to a compilation that never recorded any mappings. */
+    private List<SourceMapping> sourceMapping = new ArrayList<>();
+    private List<DataPatch> dataPatches = new ArrayList<>();
+    private List<ExceptionHandler> exceptionHandlers = new ArrayList<>();
+    private List<CodeMark> marks = new ArrayList<>();
 
     private int totalFrameSize = -1;
     private int maxInterpreterFrameSize = -1;
@@ -253,7 +253,7 @@ public class CompilationResult {
      */
     private int targetCodeSize;
 
-    private ArrayList<CodeAnnotation> annotations;
+    private List<CodeAnnotation> annotations;
 
     private Assumption[] assumptions;
 
@@ -472,6 +472,7 @@ public class CompilationResult {
      */
     public void setTargetCode(byte[] code, int size) {
         checkOpen();
+        checkCodeEmissionStateNotCleared();
         targetCode = code;
         targetCodeSize = size;
     }
@@ -486,6 +487,7 @@ public class CompilationResult {
      */
     public void recordDataPatch(int codePos, Reference ref) {
         checkOpen();
+        checkCodeEmissionStateNotCleared();
         assert codePos >= 0 && ref != null : codePos + " " + ref;
         dataPatches.add(new DataPatch(codePos, ref));
     }
@@ -500,6 +502,7 @@ public class CompilationResult {
      * @param note a note attached to data patch for use by post-processing tools
      */
     public void recordDataPatchWithNote(int codePos, Reference ref, Object note) {
+        checkCodeEmissionStateNotCleared();
         assert codePos >= 0 && ref != null : codePos + " " + ref;
         dataPatches.add(new DataPatch(codePos, ref, note));
     }
@@ -528,6 +531,7 @@ public class CompilationResult {
      */
     public void recordExceptionHandler(int codePos, int handlerPos) {
         checkOpen();
+        checkCodeEmissionStateNotCleared();
         assert validateExceptionHandlerAdd(codePos, handlerPos) : String.format("Duplicate exception handler for pc 0x%x handlerPos 0x%x", codePos, handlerPos);
         exceptionHandlers.add(new ExceptionHandler(codePos, handlerPos));
     }
@@ -592,6 +596,8 @@ public class CompilationResult {
      */
     public void addInfopoint(Infopoint infopoint) {
         checkOpen();
+        checkCodeEmissionStateNotCleared();
+        checkInfopointDebugInfoNotCleared();
         infopoints.add(infopoint);
     }
 
@@ -603,11 +609,14 @@ public class CompilationResult {
      */
     public void recordCallInvalidForDeoptimization(Call call) {
         checkOpen();
+        checkCodeEmissionStateNotCleared();
+        checkInfopointDebugInfoNotCleared();
         invalidCallDeoptimizationStates.add(call);
     }
 
     public void recordSourceMapping(int startOffset, int endOffset, NodeSourcePosition sourcePosition) {
         checkOpen();
+        checkSourceMappingsNotCleared();
         sourceMapping.add(new SourceMapping(startOffset, endOffset, sourcePosition));
     }
 
@@ -619,6 +628,7 @@ public class CompilationResult {
      */
     public CodeMark recordMark(int codePos, MarkId markId) {
         checkOpen();
+        checkCodeEmissionStateNotCleared();
         CodeMark mark = new CodeMark(codePos, markId);
         marks.add(mark);
         return mark;
@@ -644,8 +654,10 @@ public class CompilationResult {
 
     /**
      * @return the machine code generated for this method
+     * @throws IllegalStateException after {@link #clearCodeEmissionState()}
      */
     public byte[] getTargetCode() {
+        checkCodeEmissionStateNotCleared();
         return targetCode;
     }
 
@@ -657,17 +669,18 @@ public class CompilationResult {
     }
 
     /**
-     * @return the code annotations or {@code null} if there are none
+     * @return a read-only view of the code annotations, empty if none were recorded. Previously
+     *         obtained views retain their annotations after release or reset.
+     * @throws IllegalStateException after {@link #clearCodeEmissionState()}
      */
     public List<CodeAnnotation> getCodeAnnotations() {
-        if (annotations == null) {
-            return Collections.emptyList();
-        }
-        return annotations;
+        checkCodeEmissionStateNotCleared();
+        return annotations == null ? Collections.emptyList() : Collections.unmodifiableList(annotations);
     }
 
     public void addAnnotation(CodeAnnotation annotation) {
         checkOpen();
+        checkCodeEmissionStateNotCleared();
         assert annotation != null;
         if (annotations == null) {
             annotations = new ArrayList<>();
@@ -676,37 +689,52 @@ public class CompilationResult {
     }
 
     public boolean isValidCallDeoptimizationState(Call call) {
+        checkCodeEmissionStateNotCleared();
+        checkInfopointDebugInfoNotCleared();
         return call != null && !invalidCallDeoptimizationStates.contains(call);
     }
 
     /**
+     * Returns infopoints while their debug information is available. Code patching that does not
+     * inspect debug information can use {@link #getInfopointsForCodeEmission()} after debug-info
+     * release.
+     *
      * @return the list of infopoints, sorted by {@link Site#pcOffset}
+     * @throws IllegalStateException after {@link #clearInfopointDebugInfo()}
      */
     public List<Infopoint> getInfopoints() {
-        if (infopoints.isEmpty()) {
-            return emptyList();
-        }
-        return unmodifiableList(infopoints);
+        checkInfopointDebugInfoNotCleared();
+        return getInfopointsForCodeEmission();
+    }
+
+    /**
+     * Returns sites for code patching only. Debug information may already have been released and
+     * must not be inspected through this accessor. Consumers needing debug information must use
+     * {@link #getInfopoints()}, which rejects access after debug-info release.
+     *
+     * @throws IllegalStateException after {@link #clearCodeEmissionState()}
+     */
+    public List<Infopoint> getInfopointsForCodeEmission() {
+        checkCodeEmissionStateNotCleared();
+        return infopoints.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(infopoints);
     }
 
     /**
      * @return the list of data references
+     * @throws IllegalStateException after {@link #clearCodeEmissionState()}
      */
     public List<DataPatch> getDataPatches() {
-        if (dataPatches.isEmpty()) {
-            return emptyList();
-        }
-        return unmodifiableList(dataPatches);
+        checkCodeEmissionStateNotCleared();
+        return dataPatches.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(dataPatches);
     }
 
     /**
      * @return the list of exception handlers
+     * @throws IllegalStateException after {@link #clearCodeEmissionState()}
      */
     public List<ExceptionHandler> getExceptionHandlers() {
-        if (exceptionHandlers.isEmpty()) {
-            return emptyList();
-        }
-        return unmodifiableList(exceptionHandlers);
+        checkCodeEmissionStateNotCleared();
+        return exceptionHandlers.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(exceptionHandlers);
     }
 
     /**
@@ -780,22 +808,36 @@ public class CompilationResult {
 
     /**
      * @return the list of {@link CodeMark code marks}.
+     * @throws IllegalStateException after {@link #clearCodeEmissionState()}
      */
     public List<CodeMark> getMarks() {
-        if (marks.isEmpty()) {
-            return emptyList();
-        }
-        return unmodifiableList(marks);
+        checkCodeEmissionStateNotCleared();
+        return marks.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(marks);
     }
 
     /**
      * @return the list of {@link SourceMapping}s
+     * @throws IllegalStateException after {@link #clearSourceMappings()}
      */
     public List<SourceMapping> getSourceMappings() {
-        if (sourceMapping.isEmpty()) {
-            return emptyList();
-        }
-        return unmodifiableList(sourceMapping);
+        checkSourceMappingsNotCleared();
+        return sourceMapping.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(sourceMapping);
+    }
+
+    /**
+     * Clears source mappings while preserving the rest of the compilation result. This is permitted
+     * after {@link #close(OptionValues)} because it does not change generated code. Callers must
+     * ensure that all consumers have either finished or recorded the data they need. Subsequent
+     * source-mapping access is rejected rather than returning an indistinguishable empty list.
+     * Previously obtained views retain their mappings; callers must drop those references to allow
+     * reclamation. This guards owner access, not independently retained data.
+     *
+     * @throws IllegalStateException if source mappings were already cleared
+     */
+    public void clearSourceMappings() {
+        checkSourceMappingsNotCleared();
+        // Detach instead of silently emptying a view held by another consumer.
+        sourceMapping = null;
     }
 
     /**
@@ -828,17 +870,15 @@ public class CompilationResult {
      */
     public void resetForEmittingCode() {
         checkOpen();
-        // reset collections
-        infopoints.clear();
-        sourceMapping.clear();
-        dataPatches.clear();
-        exceptionHandlers.clear();
-        marks.clear();
+        // A retry must not empty or repopulate collections retained from the previous attempt.
+        infopoints = new ArrayList<>();
+        sourceMapping = new ArrayList<>();
+        dataPatches = new ArrayList<>();
+        exceptionHandlers = new ArrayList<>();
+        marks = new ArrayList<>();
         dataSection.clear();
-        invalidCallDeoptimizationStates.clear();
-        if (annotations != null) {
-            annotations.clear();
-        }
+        invalidCallDeoptimizationStates = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        annotations = null;
         // reset fields
         targetCode = null;
         targetCodeSize = 0;
@@ -846,10 +886,98 @@ public class CompilationResult {
         speculationLog = null;
         methods = null;
         bytecodeSize = 0;
+        infopointDebugInfoCleared = false;
     }
 
     public void clearInfopoints() {
+        checkCodeEmissionStateNotCleared();
         infopoints.clear();
+    }
+
+    /**
+     * Clears the debug payload of {@link Call} and {@link ImplicitExceptionDispatch} sites while
+     * preserving their code-patching and relocation fields. Other infopoints, including plain
+     * {@link Infopoint} instances and custom subtypes, are left unchanged unless a subclass extends
+     * {@link #withoutDebugInfo(Infopoint)}. This is permitted after
+     * {@link #close(OptionValues)} and may be repeated. Callers must finish encoding runtime
+     * metadata and all debug-info consumers first; in particular, deoptimization-state queries
+     * are rejected afterward. Code patching must use {@link #getInfopointsForCodeEmission()}.
+     * Previously obtained views retain their original infopoints and debug information. They must
+     * be dropped by their consumers before that data can be reclaimed. Preserving these views costs
+     * a copy of the reference list in addition to the stripped replacements. Debug graphs are not copied.
+     */
+    public void clearInfopointDebugInfo() {
+        checkCodeEmissionStateNotCleared();
+        if (infopointDebugInfoCleared) {
+            return;
+        }
+        // Preserve old views and iterators rather than exposing stripped replacements through them.
+        ArrayList<Infopoint> emissionInfopoints = new ArrayList<>(infopoints);
+        for (int i = 0; i < infopoints.size(); i++) {
+            Infopoint infopoint = infopoints.get(i);
+            if (infopoint.debugInfo != null) {
+                emissionInfopoints.set(i, withoutDebugInfo(infopoint));
+            }
+        }
+        infopoints = emissionInfopoints;
+        invalidCallDeoptimizationStates = null;
+        infopointDebugInfoCleared = true;
+    }
+
+    /**
+     * Returns a replacement without debug information for a known infopoint type, or the original
+     * infopoint for an unsupported type. Called by {@link #clearInfopointDebugInfo()} only for sites
+     * with non-null debug information. Overrides must preserve the concrete type, position, reason
+     * and all non-debug fields of any additional types they handle, and leave unknown types intact.
+     */
+    protected Infopoint withoutDebugInfo(Infopoint infopoint) {
+        if (infopoint instanceof Call call) {
+            return new Call(call.target, call.pcOffset, call.size, call.direct, null);
+        } else if (infopoint instanceof ImplicitExceptionDispatch dispatch) {
+            return new ImplicitExceptionDispatch(dispatch.pcOffset, dispatch.dispatchOffset, null);
+        } else {
+            // Keep other infopoints unchanged rather than assuming their debug payload is unused.
+            return infopoint;
+        }
+    }
+
+    /**
+     * Clears code emission state that is no longer needed after the target code bytes, call sites,
+     * data patches and annotations have been consumed by the native image writer. This preserves
+     * accounting fields such as {@link #getTargetCodeSize()}. Subsequent access to released state is
+     * rejected so that a newly introduced late consumer fails at its point of use.
+     * Previously obtained views retain their data until their consumers drop those references.
+     *
+     * @throws IllegalStateException if code-emission state was already cleared
+     */
+    public void clearCodeEmissionState() {
+        checkCodeEmissionStateNotCleared();
+        // Detach collections so earlier views cannot mistake released data for an empty result.
+        infopoints = null;
+        dataPatches = null;
+        exceptionHandlers = null;
+        marks = null;
+        invalidCallDeoptimizationStates = null;
+        annotations = null;
+        targetCode = null;
+    }
+
+    private void checkSourceMappingsNotCleared() {
+        if (sourceMapping == null) {
+            throw new IllegalStateException("Source mappings were released for " + this);
+        }
+    }
+
+    private void checkInfopointDebugInfoNotCleared() {
+        if (infopointDebugInfoCleared) {
+            throw new IllegalStateException("Infopoint debug information was released for " + this);
+        }
+    }
+
+    private void checkCodeEmissionStateNotCleared() {
+        if (infopoints == null) {
+            throw new IllegalStateException("Code-emission state was released for " + this);
+        }
     }
 
     private void checkOpen() {
@@ -901,6 +1029,7 @@ public class CompilationResult {
      *         {@link ExceptionHandler} or {@link ImplicitExceptionDispatch}.
      */
     public CompilationResultWatermark getSitesWatermark(int pendingExceptionInfoListSize, int pendingImplicitExceptionListSize) {
+        checkCodeEmissionStateNotCleared();
         return new CompilationResultWatermark(infopoints.size(), dataPatches.size(), exceptionHandlers.size(), marks.size(), pendingExceptionInfoListSize,
                         pendingImplicitExceptionListSize);
     }
@@ -948,6 +1077,8 @@ public class CompilationResult {
      * Duplicates the sites between {@code codeStart} and {@code codeEnd} with an offset.
      */
     public void duplicateSites(int codeStart, CompilationResultWatermark watermarkAtCodeStart, int codeEnd, CompilationResultWatermark watermarkAtCodeEnd, int offset) {
+        checkCodeEmissionStateNotCleared();
+        checkInfopointDebugInfoNotCleared();
         assert verifySites(codeStart, watermarkAtCodeStart, codeEnd, watermarkAtCodeEnd) : Assertions.errorMessage(codeStart, codeEnd);
         for (int i = watermarkAtCodeStart.infopointsSize; i < watermarkAtCodeEnd.infopointsSize; i++) {
             Infopoint infoPoint = infopoints.get(i);

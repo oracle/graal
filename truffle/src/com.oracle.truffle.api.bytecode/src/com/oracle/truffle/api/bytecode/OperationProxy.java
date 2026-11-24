@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -109,6 +109,18 @@ public @interface OperationProxy {
 
     /**
      * Designates a {@link com.oracle.truffle.api.nodes.Node} class as eligible for proxying.
+     * <p>
+     * Execute parameters are ordered as: optional frame when {@link #bindFrame()} is enabled,
+     * {@link BytecodeNode} when {@link #bindBytecodeNode()} is enabled, {@code int} when
+     * {@link #bindBytecodeIndex()} is enabled, then evaluated arguments. Enabled bytecode node and
+     * index parameters are required on every execute method and are not specialization operands.
+     * <p>
+     * Specializations access metadata through {@code @Bind}: this metadata comes from execute
+     * arguments during AST execution and from current interpreter state during operation
+     * execution. Without
+     * {@code bindBytecodeIndex}, {@code $bytecodeIndex} is {@code -1} during AST execution.
+     * Binding {@code $bytecodeNode} during AST execution without enabling
+     * {@code bindBytecodeNode} is a generation error.
      *
      * @since 24.2
      */
@@ -116,6 +128,34 @@ public @interface OperationProxy {
     @Retention(RetentionPolicy.CLASS)
     @Target(ElementType.TYPE)
     @interface Proxyable {
+
+        /**
+         * Whether to recognize an optional leading frame as execution metadata, accessible through
+         * {@code @Bind("$frame")} or a leading specialization parameter. When disabled, frame
+         * parameters are evaluated arguments.
+         *
+         * @return whether to bind the frame; defaults to {@code true}
+         * @since 25.6
+         */
+        boolean bindFrame() default true;
+
+        /**
+         * Whether each execute method supplies a {@link BytecodeNode} metadata parameter for
+         * {@code @Bind("$bytecodeNode")}. See {@link Proxyable} for parameter order.
+         *
+         * @return whether to bind the bytecode node; defaults to {@code false}
+         * @since 25.6
+         */
+        boolean bindBytecodeNode() default false;
+
+        /**
+         * Whether each execute method supplies an {@code int} metadata parameter for
+         * {@code @Bind("$bytecodeIndex")}. See {@link Proxyable} for parameter order.
+         *
+         * @return whether to bind the bytecode index; defaults to {@code false}
+         * @since 25.6
+         */
+        boolean bindBytecodeIndex() default false;
 
         /**
          * Whether a proxyable node allows use for uncached. If uncached use is enabled, additional
@@ -126,20 +166,12 @@ public @interface OperationProxy {
         boolean allowUncached() default false;
 
         /**
-         * Indicates whether this operation requires the bytecode index to be updated. By default,
-         * the DSL assumes that all operations with caches require the bytecode index to be updated.
-         * The DSL will emit a warning if specifying this attribute is necessary.
-         * <p>
-         * If this attribute has been set to <code>false</code>, then the {@link StoreBytecodeIndex}
-         * annotation can be used to enable this property for individual {@link Specialization} or
-         * {@link Fallback}-annotated methods.
-         * <p>
-         * This annotation only has an effect if
-         * {@link GenerateBytecode#storeBytecodeIndexInFrame()} is set to <code>true</code> or if
-         * the {@link GenerateBytecode#enableUncachedInterpreter() uncached interpreter tier} is
-         * enabled.
+         * Whether to store the BCI before executing this operation. See
+         * {@link Operation#storeBytecodeIndex()} for mode-dependent defaults.
+         * When {@code false}, {@link StoreBytecodeIndex} enables storage for individual
+         * {@link Specialization} or {@link Fallback} methods.
          *
-         * @see StoreBytecodeIndex
+         * @return whether to enable operation-level BCI storage
          * @since 25.1
          */
         boolean storeBytecodeIndex() default true;

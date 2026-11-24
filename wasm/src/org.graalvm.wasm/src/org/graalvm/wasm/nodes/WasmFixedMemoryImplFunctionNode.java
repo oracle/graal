@@ -71,23 +71,27 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
     private final int bytecodeStartOffset;
     private final int bytecodeEndOffset;
     private final int exceptionTableOffset;
+    private final WasmFunctionRootNode[] directCallTargets;
     private final Node[] callNodes;
 
     private static final WasmFunctionBaseNode[] EMPTY_FUNCTION_BASE_NODES = new WasmFunctionBaseNode[0];
 
     @Children private WasmFunctionBaseNode[] functionBaseNodes = EMPTY_FUNCTION_BASE_NODES;
 
-    protected WasmFixedMemoryImplFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, int exceptionTableOffset, Node[] callNodes) {
+    protected WasmFixedMemoryImplFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, int exceptionTableOffset,
+                    WasmFunctionRootNode[] directCallTargets, Node[] callNodes) {
         this.module = module;
         this.codeEntry = codeEntry;
         this.bytecodeStartOffset = bytecodeStartOffset;
         this.bytecodeEndOffset = bytecodeEndOffset;
         this.exceptionTableOffset = exceptionTableOffset;
+        this.directCallTargets = directCallTargets;
         this.callNodes = callNodes;
     }
 
-    public static WasmFixedMemoryImplFunctionNode create(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, int exceptionTableOffset, Node[] callNodes) {
-        return WasmFixedMemoryImplFunctionNodeGen.create(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, exceptionTableOffset, callNodes);
+    public static WasmFixedMemoryImplFunctionNode create(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, int exceptionTableOffset,
+                    WasmFunctionRootNode[] directCallTargets, Node[] callNodes) {
+        return WasmFixedMemoryImplFunctionNodeGen.create(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, exceptionTableOffset, directCallTargets, callNodes);
     }
 
     @Specialization(guards = {"memoryCount() == 1"}, limit = "3")
@@ -117,7 +121,8 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
     @NeverDefault
     protected WasmFunctionBaseNode createSpecializedFunctionNode(WasmMemoryLibrary[] memoryLibs) {
         CompilerAsserts.neverPartOfCompilation();
-        var instrumentableFunctionNode = new WasmInstrumentableFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, exceptionTableOffset, callNodes, memoryLibs);
+        var instrumentableFunctionNode = new WasmInstrumentableFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, exceptionTableOffset, directCallTargets, callNodes,
+                        memoryLibs);
         WasmFunctionBaseNode baseNode = new WasmFunctionBaseNode(instrumentableFunctionNode);
         functionBaseNodes = Arrays.copyOf(functionBaseNodes, functionBaseNodes.length + 1);
         functionBaseNodes[functionBaseNodes.length - 1] = insert(baseNode);
@@ -132,7 +137,8 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
         for (int memoryIndex = 0; memoryIndex < module.memoryCount(); memoryIndex++) {
             memoryLibs[memoryIndex] = insert(WasmMemoryLibrary.getFactory().createDispatched(3));
         }
-        var instrumentableFunctionNode = new WasmInstrumentableFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, exceptionTableOffset, callNodes, memoryLibs);
+        var instrumentableFunctionNode = new WasmInstrumentableFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, exceptionTableOffset, directCallTargets, callNodes,
+                        memoryLibs);
         WasmFunctionBaseNode baseNode = new WasmFunctionBaseNode(instrumentableFunctionNode);
         functionBaseNodes = new WasmFunctionBaseNode[]{insert(baseNode)};
         notifyInserted(instrumentableFunctionNode);
@@ -141,7 +147,7 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
 
     public abstract Object execute(VirtualFrame frame, WasmInstance instance);
 
-    final Node[] getCallNodes() {
-        return callNodes;
+    final WasmFunctionRootNode[] getDirectCallTargets() {
+        return directCallTargets;
     }
 }

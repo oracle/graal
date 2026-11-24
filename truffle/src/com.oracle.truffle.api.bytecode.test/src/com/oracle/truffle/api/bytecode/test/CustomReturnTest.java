@@ -496,14 +496,14 @@ public class CustomReturnTest {
                     BytecodeRootNodes<CustomReturnInstructionRootNode> nodes) {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try {
-            nodes.serialize(new DataOutputStream(output), SERIALIZER);
+            nodes.serializeBuilderBytecode(new DataOutputStream(output), SERIALIZER);
         } catch (IOException ex) {
             throw new AssertionError(ex);
         }
 
         Supplier<DataInput> input = () -> SerializationUtils.createByteBufferDataInput(ByteBuffer.wrap(output.toByteArray()));
         try {
-            return CustomReturnInstructionRootNodeGen.deserialize(language, config, input, DESERIALIZER);
+            return CustomReturnInstructionRootNodeGen.deserializeBuilderBytecode(language, config, input, DESERIALIZER);
         } catch (IOException ex) {
             throw new AssertionError(ex);
         }

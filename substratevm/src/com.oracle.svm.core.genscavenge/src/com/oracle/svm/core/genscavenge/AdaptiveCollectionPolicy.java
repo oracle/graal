@@ -28,7 +28,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.guest.staging.core.heap.GCCause;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.shared.util.TimeUtils;
 import com.oracle.svm.core.util.Timer;
@@ -214,8 +214,9 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
          */
         UnsignedWord averagePromoted = UnsignedUtils.fromDouble(avgPromoted.getPaddedAverage());
         UnsignedWord promotionEstimate = UnsignedUtils.min(averagePromoted, youngUsed);
-        UnsignedWord oldFree = sizes.getOldSize().subtract(oldUsed);
-        return promotionEstimate.aboveThan(oldFree);
+        UnsignedWord oldCapacity = sizes.getOldSize();
+        /* Full compaction can leave old-gen usage above its capacity. */
+        return oldUsed.aboveThan(oldCapacity) || promotionEstimate.aboveThan(oldCapacity.subtract(oldUsed));
     }
 
     private void updateAverages(boolean isSurvivorOverflow, UnsignedWord survivedChunkBytes, UnsignedWord promotedChunkBytes) {

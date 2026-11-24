@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,7 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import com.oracle.graal.pointsto.constraints.UnsupportedPlatformException;
 import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.SecurityProvidersSupport;
+import com.oracle.svm.core.jdk.LayeredSecurityProvidersSupport;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
@@ -208,8 +208,9 @@ public class ServiceLoaderFeature implements InternalFeature {
             if (serviceProvidersToSkip.contains(provider)) {
                 continue;
             }
-            if (serviceProvider.equals(accessImpl.getMetaAccess().lookupJavaType(java.security.Provider.class)) && !SecurityProvidersSupport.singleton().isUserRequestedSecurityProvider(provider)) {
-                SecurityProvidersSupport.singleton().markSecurityProviderAsNotLoaded(provider);
+            if (serviceProvider.equals(accessImpl.getMetaAccess().lookupJavaType(java.security.Provider.class)) &&
+                            !LayeredSecurityProvidersSupport.currentLayer().isUserRequestedSecurityProvider(provider)) {
+                LayeredSecurityProvidersSupport.currentLayer().markSecurityProviderAsNotLoaded(provider);
             } else {
                 registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
             }
@@ -289,6 +290,9 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     public static void registerProviderForRuntimeResourceAccess(Module module, String serviceProviderName, Set<String> registeredProviders) {
         if (!registeredProviders.isEmpty()) {
+            if (serviceProviderName.equals(java.security.Provider.class.getName()) && FutureDefaultsOptions.securityProvidersInitializedAtRunTime()) {
+                LayeredSecurityProvidersSupport.currentLayer().registerServiceProviders(registeredProviders);
+            }
             String serviceResourceLocation = "META-INF/services/" + serviceProviderName;
             byte[] serviceFileData = String.join("\n", registeredProviders).getBytes(StandardCharsets.UTF_8);
             RuntimeResourceAccess.addResource(module, serviceResourceLocation, serviceFileData);
@@ -299,6 +303,8 @@ public class ServiceLoaderFeature implements InternalFeature {
     private static ResolvedJavaMethod findNullaryConstructor(ResolvedJavaType providerClass) {
         ResolvedJavaMethod nullaryConstructor = null;
         try {
+            // Match Java reflection's linking without initializing the provider.
+            providerClass.link();
             ResolvedJavaMethod constructor = JVMCIReflectionUtil.getDeclaredConstructor(false, providerClass);
             if (Modifier.isPublic(constructor.getModifiers())) {
                 nullaryConstructor = constructor;
@@ -315,6 +321,8 @@ public class ServiceLoaderFeature implements InternalFeature {
         try {
             /* Only look for a provider() method if provider class is in an explicit module. */
             if (JVMCIReflectionUtil.getModule(providerClass).isNamed() && !JVMCIReflectionUtil.getModule(providerClass).isAutomatic()) {
+                // Match Java reflection's linking without initializing the provider.
+                providerClass.link();
                 for (ResolvedJavaMethod method : providerClass.getDeclaredMethods(false)) {
                     if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
                                     method.getSignature().getParameterCount(false) == 0 && method.getName().equals("provider")) {

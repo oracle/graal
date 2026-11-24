@@ -38,8 +38,9 @@ import org.graalvm.word.impl.Word;
  * by GC internal code that is aware of this (could result in incorrect "before"/"after" values
  * otherwise). Non-GC code should use the class {@link HeapAccounting} instead.
  *
- * ChunkBytes refer to bytes reserved (but maybe not occupied). ObjectBytes refer to bytes occupied
- * by objects.
+ * ChunkBytes refer to bytes committed (but maybe not occupied). ObjectBytes refer to bytes occupied
+ * by objects, but can include filler objects (which might be partially uncommitted). Therefore, it
+ * is possible for ObjectBytes to exceed ChunkBytes (but that should be uncommon).
  */
 public final class GCAccounting {
     /* State that is available to collection policies, etc. */

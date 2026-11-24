@@ -37,31 +37,38 @@ import java.io.File;
 import java.io.StringWriter;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.jar.Attributes;
+import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import org.junit.Test;
 
+import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.driver.BundlePathMap.PathStyle;
 import com.oracle.svm.driver.BundlePathMap.PortablePath;
 import com.oracle.svm.driver.BundlePathMap.RootKind;
 import com.oracle.svm.driver.launcher.configuration.BundleArgsParser;
 import com.oracle.svm.driver.launcher.configuration.BundleArgsParser.ArgumentGroup;
 import com.oracle.svm.driver.launcher.json.BundleJSONParserException;
+import com.oracle.svm.shared.option.BundleMember.Role;
 import com.oracle.svm.shared.option.OptionOrigin;
 
 import jdk.graal.compiler.util.json.JsonWriter;
@@ -460,6 +467,144 @@ public class BundlePathMapTest {
     }
 
     @Test
+    public void preservesUnixComponentsUntilNativeMaterialization() {
+        PortablePath original = source("reports/draft\\final.json", PathStyle.Unix);
+        String nativeFileName = File.separatorChar == '\\' ? "draft\uFFFDfinal.json" : "draft\\final.json";
+
+        // Portable parsing and filename selection preserve the literal backslash on every host.
+        assertEquals("reports/draft\\final.json", original.text());
+        assertEquals("draft\\final.json", original.getFileName().text());
+        // Native materialization replaces the character only on Windows, retaining two components.
+        assertEquals(Path.of("reports", nativeFileName).toString(), original.platformRelativePathText());
+        assertEquals(nativeFileName, original.getFileName().platformRelativePathText());
+    }
+
+    @Test
+    public void relativePathRenderingRejectsAbsolutePathsForBothSourcePlatforms() {
+        for (PortablePath absolute : List.of(source("/out/app", PathStyle.Unix), source("C:\\out\\app", PathStyle.Windows))) {
+            // Rendering must enforce the relative-only contract regardless of source syntax.
+            assertThrows(IllegalArgumentException.class, absolute::platformRelativePathText);
+        }
+    }
+
+    /// Replays a Unix bundle whose two input filenames differ only by a backslash versus U+FFFD.
+    /// Windows materializes both basenames with U+FFFD, but numbered slots retain their identities.
+    /// Derivation must record the materialized destinations while retaining the original Unix lookup keys.
+    @Test
+    public void replaysAndDerivesUnixBackslashFilenames() throws Exception {
+        Path fixture = Files.createTempDirectory("bundle-backslash-test");
+        Path bundleFile = fixture.resolve("unix.nib");
+        String destination = "input/classes/cp/0/my\\app.jar";
+        PortablePath original = source("/source/my\\app.jar", PathStyle.Unix);
+        PortablePath replacementOriginal = source("/source/my\uFFFDapp.jar", PathStyle.Unix);
+        Map<String, String> entries = Map.of(
+                        "META-INF/nibundle.properties", """
+                                        BundleFileVersionMajor=3
+                                        BundleFileVersionMinor=0
+                                        NativeImagePlatform=linux-amd64
+                                        """,
+                        "input/stage/path_canonicalizations.json", "[]",
+                        "input/stage/path_substitutions.json", json(List.of(
+                                        Map.of("src", Map.of("style", "Unix", "kind", "Absolute", "text", original.text()),
+                                                        "dst", Map.of("style", "BundleRelative", "kind", "Relative", "text", destination)),
+                                        Map.of("src", Map.of("style", "Unix", "kind", "Absolute", "text", replacementOriginal.text()),
+                                                        "dst", Map.of("style", "BundleRelative", "kind", "Relative", "text", "input/classes/cp/1/my\uFFFDapp.jar")))),
+                        "input/stage/build.json", json(List.of(Map.of("platform", "linux-amd64", "args",
+                                        List.of("--class-path=/source/my\\app.jar:/source/my\uFFFDapp.jar", "-o", "/out/my\\app")))),
+                        destination, "backslash input",
+                        "input/classes/cp/1/my\uFFFDapp.jar", "replacement input");
+        // Create the archive directly so its Unix entry names are independent of the test host.
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(bundleFile))) {
+            for (var entry : entries.entrySet()) {
+                zip.putNextEntry(new ZipEntry(entry.getKey()));
+                zip.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
+                zip.closeEntry();
+            }
+        }
+        NativeImage nativeImage = new NativeImage(new NativeImage.BuildConfiguration(Path.of("."), Path.of("."), List.of()));
+        nativeImage.bundleSupport = BundleSupport.create(nativeImage, "--bundle-apply=" + bundleFile, new NativeImage.ArgumentQueue(OptionOrigin.originUser));
+        BundleSupport support = nativeImage.bundleSupport;
+        String nativeFileName = File.separatorChar == '\\' ? "my\uFFFDapp.jar" : "my\\app.jar";
+        String nativeImageName = File.separatorChar == '\\' ? "my\uFFFDapp" : "my\\app";
+        for (int generation = 0; generation < 3; generation++) {
+            if (generation > 0) {
+                // Save the extracted files into a derived bundle and replay it in a fresh root directory.
+                support = writeAndReloadBundle(support, fixture.resolve("derived-" + generation + ".nib"));
+            }
+            // Extracted layout (the first basename becomes my\uFFFDapp.jar on Windows):
+            // bundle-root/input/classes/cp/0/my\app.jar
+            // bundle-root/input/classes/cp/1/my\uFFFDapp.jar
+            Path capturedInput = support.resolveSubstitutedPath(original);
+            Path replacementInput = support.resolveSubstitutedPath(replacementOriginal);
+            // Original Unix paths resolve to the actual extracted files, including after derivation.
+            assertEquals(support.classPathDir.resolve("0").resolve(nativeFileName), capturedInput);
+            assertEquals("backslash input", Files.readString(capturedInput));
+            // Numbered slots prevent the two source filenames from becoming the same Windows input.
+            assertEquals(support.classPathDir.resolve("1/my\uFFFDapp.jar"), replacementInput);
+            assertEquals("replacement input", Files.readString(replacementInput));
+            // Argument rewriting uses the same native destinations and preserves the image basename.
+            assertEquals(List.of("--class-path=" + capturedInput + File.pathSeparator + replacementInput, "-o", nativeImageName), support.getNativeImageArgs());
+        }
+    }
+
+    /// Applies a format 2.0 bundle with a flat input and an old output substitution, then derives it.
+    /// The input stays at its recorded location, the output cannot become an input, and the new bundle
+    /// advertises format 3.0 without losing access to the captured file.
+    @Test
+    public void upgradesVersionTwoFlatInputsToVersionThree() throws Exception {
+        Path fixture = Files.createTempDirectory("bundle-version-two-test");
+        Path bundleFile = fixture.resolve("version-two.nib");
+        PortablePath original = source("/source/app.jar", PathStyle.Unix);
+        PortablePath oldOutput = source("/source/report.json", PathStyle.Unix);
+        Map<String, String> entries = Map.of(
+                        "META-INF/nibundle.properties", """
+                                        BundleFileVersionMajor=2
+                                        BundleFileVersionMinor=0
+                                        NativeImagePlatform=linux-amd64
+                                        """,
+                        "input/stage/path_canonicalizations.json", "[]",
+                        "input/stage/path_substitutions.json", json(List.of(
+                                        Map.of("src", Map.of("style", "Unix", "kind", "Absolute", "text", original.text()),
+                                                        "dst", Map.of("style", "BundleRelative", "kind", "Relative", "text", "input/classes/cp/app.jar")),
+                                        Map.of("src", Map.of("style", "Unix", "kind", "Absolute", "text", oldOutput.text()),
+                                                        "dst", Map.of("style", "BundleRelative", "kind", "Relative", "text", "output/other/report.json")))),
+                        "input/stage/build.json", json(List.of(Map.of("platform", "linux-amd64", "args", List.of("--class-path=/source/app.jar")))),
+                        "input/classes/cp/app.jar", "version two input");
+        // The archive models the flat layout written by the format 2.0 driver:
+        // bundle-root/input/classes/cp/app.jar
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(bundleFile))) {
+            for (var entry : entries.entrySet()) {
+                zip.putNextEntry(new ZipEntry(entry.getKey()));
+                zip.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
+                zip.closeEntry();
+            }
+        }
+        NativeImage nativeImage = new NativeImage(new NativeImage.BuildConfiguration(Path.of("."), Path.of("."), List.of()));
+        nativeImage.bundleSupport = BundleSupport.create(nativeImage, "--bundle-apply=" + bundleFile, new NativeImage.ArgumentQueue(OptionOrigin.originUser));
+        BundleSupport support = nativeImage.bundleSupport;
+        Path capturedInput = support.resolveSubstitutedPath(original);
+        // Applying 2.0 resolves its recorded flat root, without needing the original source file.
+        assertEquals(support.classPathDir.resolve("app.jar"), capturedInput);
+        assertEquals("version two input", Files.readString(capturedInput));
+        // Historical output mappings are discarded rather than treated as captured inputs.
+        assertNull(support.resolveSubstitutedPath(oldOutput));
+
+        // Derive the loaded 2.0 bundle and apply the resulting bundle in a fresh root directory.
+        Path derivedFile = fixture.resolve("version-three.nib");
+        BundleSupport replay = writeAndReloadBundle(support, derivedFile);
+        try (JarFile archive = new JarFile(derivedFile.toFile())) {
+            Map<String, String> properties = ArchiveSupport.loadProperties(archive.getInputStream(archive.getJarEntry("META-INF/nibundle.properties")));
+            // Derived bundles advertise the new format, even when all their inputs retain a flat layout.
+            assertEquals("3", properties.get("BundleFileVersionMajor"));
+            assertEquals("0", properties.get("BundleFileVersionMinor"));
+        }
+        Path replayedInput = replay.resolveSubstitutedPath(original);
+        // Upgrading the bundle preserves the inherited input location and its contents.
+        assertEquals(replay.classPathDir.resolve("app.jar"), replayedInput);
+        assertEquals("version two input", Files.readString(replayedInput));
+    }
+
+    @Test
     public void rejectsPathOperationsOnUnavailableSentinel() {
         PortablePath unavailable = PortablePath.UNAVAILABLE;
         assertThrows(IllegalStateException.class, unavailable::sourcePathText);
@@ -496,8 +641,9 @@ public class BundlePathMapTest {
                         source("D:\\work\\target\\app.jar", PathStyle.Windows), bundle("input/classes/cp/app.jar"),
                         source("D:\\work\\lib\\helper.jar", PathStyle.Windows), bundle("input/classes/cp/helper.jar"));
 
-        Path bundleRoot = Path.of("/bundle");
-        BundleSupportArgumentRewriter rewriter = newRewriter(PathStyle.Windows, canonicalizations, substitutions, bundleRoot);
+        BundleSupport support = newBundleSupport(canonicalizations, substitutions);
+        Path bundleRoot = support.rootDir;
+        BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(support, noOpAPIOptionHandler, PathStyle.Windows);
         List<String> rewritten = rewriter.rewrite(List.of("-cp", "target\\app.jar;lib\\helper.jar"));
 
         String expectedClassPath = bundleRoot.resolve(Path.of("input/classes/cp/app.jar")) + File.pathSeparator + bundleRoot.resolve(Path.of("input/classes/cp/helper.jar"));
@@ -513,8 +659,9 @@ public class BundlePathMapTest {
                         source("D:\\work\\target\\app.jar", PathStyle.Windows), bundle("input/classes/cp/app.jar"),
                         source("D:\\work\\lib\\helper.jar", PathStyle.Windows), bundle("input/classes/cp/helper.jar"));
 
-        Path bundleRoot = Path.of("/bundle");
-        BundleSupportArgumentRewriter rewriter = newRewriter(PathStyle.Windows, canonicalizations, substitutions, bundleRoot);
+        BundleSupport support = newBundleSupport(canonicalizations, substitutions);
+        Path bundleRoot = support.rootDir;
+        BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(support, noOpAPIOptionHandler, PathStyle.Windows);
         List<String> rewritten = rewriter.rewrite(List.of("--class-path=target\\app.jar;lib\\helper.jar"));
 
         String expectedClassPath = bundleRoot.resolve(Path.of("input/classes/cp/app.jar")) + File.pathSeparator + bundleRoot.resolve(Path.of("input/classes/cp/helper.jar"));
@@ -523,7 +670,7 @@ public class BundlePathMapTest {
 
     @Test
     public void rewritesUnsubstitutedWindowsClasspathWithoutLegacyEncoding() {
-        BundleSupportArgumentRewriter rewriter = newRewriter(PathStyle.Windows, Map.of(), Map.of(), Path.of("/bundle"));
+        BundleSupportArgumentRewriter rewriter = newRewriter(PathStyle.Windows, Map.of(), Map.of());
 
         List<String> rewritten = rewriter.rewrite(List.of("--class-path=win-rel\\target\\app.jar"));
 
@@ -534,7 +681,7 @@ public class BundlePathMapTest {
     public void preservesUnsubstitutedAbsoluteSourcePath() {
         PathStyle style = PathStyle.currentSourceStyle();
         Path originalPath = Path.of("original", "missing.jar").toAbsolutePath();
-        BundleSupportArgumentRewriter rewriter = newRewriter(style, Map.of(), Map.of(), Path.of("/bundle"));
+        BundleSupportArgumentRewriter rewriter = newRewriter(style, Map.of(), Map.of());
 
         List<String> rewritten = rewriter.rewrite(List.of("--class-path=" + originalPath));
 
@@ -551,7 +698,7 @@ public class BundlePathMapTest {
     @Test
     public void ignoresFilesystemInvalidManifestPaths() throws Exception {
         assertManifestEntryIgnored("bad%00.jar");
-        if (PathStyle.currentSourceStyle() == PathStyle.Windows) {
+        if (PathStyle.Windows.isCurrent()) {
             assertManifestEntryIgnored("bad%3C.jar");
         }
     }
@@ -760,7 +907,7 @@ public class BundlePathMapTest {
         Path originalPath = Path.of("original", "missing.jar").toAbsolutePath();
         Map<PortablePath, PortablePath> canonicalizations = Map.of(
                         source("missing.jar", style), source(originalPath.toString(), style));
-        BundleSupportArgumentRewriter rewriter = newRewriter(style, canonicalizations, Map.of(), Path.of("/bundle"));
+        BundleSupportArgumentRewriter rewriter = newRewriter(style, canonicalizations, Map.of());
 
         // A missing input must retain its recorded location instead of using the replay directory.
         assertEquals(List.of("--class-path=" + originalPath, "--module-path=" + originalPath),
@@ -769,8 +916,8 @@ public class BundlePathMapTest {
 
     @Test
     public void preservesUnsubstitutedWindowsRootsOnWindows() {
-        assumeTrue(PathStyle.currentSourceStyle() == PathStyle.Windows);
-        BundleSupportArgumentRewriter rewriter = newRewriter(PathStyle.Windows, Map.of(), Map.of(), Path.of("/bundle"));
+        assumeTrue(PathStyle.Windows.isCurrent());
+        BundleSupportArgumentRewriter rewriter = newRewriter(PathStyle.Windows, Map.of(), Map.of());
 
         // A directory-relative path retains the current drive root, not the working directory.
         assertEquals(List.of("--class-path=\\libs\\dep.jar"), rewriter.rewrite(List.of("--class-path=\\libs\\dep.jar")));
@@ -781,12 +928,11 @@ public class BundlePathMapTest {
     @Test
     public void keepsForeignRootedPathsMissingWithoutSplittingPathLists() {
         BundleSupport bundleSupport = newBundleSupport();
-        PathStyle foreignStyle = PathStyle.currentSourceStyle() == PathStyle.Unix ? PathStyle.Windows : PathStyle.Unix;
+        PathStyle foreignStyle = PathStyle.Unix.isCurrent() ? PathStyle.Windows : PathStyle.Unix;
         List<String> originalPaths = foreignStyle == PathStyle.Windows
                         ? List.of("D:\\missing.jar", "\\libs\\dep.jar", "D:missing.jar", "\\\\server\\share\\missing.jar")
                         : List.of("/missing.jar");
-        BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(noOpAPIOptionHandler, foreignStyle, Map.of(), Map.of(),
-                        bundleSupport::lowerToNativePath);
+        BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(bundleSupport, noOpAPIOptionHandler, foreignStyle);
         String pathList = String.join(foreignStyle == PathStyle.Windows ? ";" : ":", originalPaths);
 
         for (String option : List.of("--class-path=", "--module-path=")) {
@@ -810,10 +956,10 @@ public class BundlePathMapTest {
     @Test
     public void preservesForeignCanonicalIdentityForMissingInputs() {
         BundleSupport bundleSupport = newBundleSupport();
-        PathStyle foreignStyle = PathStyle.currentSourceStyle() == PathStyle.Unix ? PathStyle.Windows : PathStyle.Unix;
+        PathStyle foreignStyle = PathStyle.Unix.isCurrent() ? PathStyle.Windows : PathStyle.Unix;
         PortablePath canonical = source(foreignStyle == PathStyle.Windows ? "D:\\original\\missing.jar" : "/original/missing.jar", foreignStyle);
-        BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(noOpAPIOptionHandler, foreignStyle,
-                        Map.of(source("missing.jar", foreignStyle), canonical), Map.of(), bundleSupport::lowerToNativePath);
+        bundleSupport.pathCanonicalizations.put(source("missing.jar", foreignStyle), canonical);
+        BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(bundleSupport, noOpAPIOptionHandler, foreignStyle);
 
         String argument = rewriter.rewrite(List.of("--class-path=missing.jar")).getFirst();
         Path missingPath = Path.of(argument.substring("--class-path=".length()));
@@ -902,7 +1048,7 @@ public class BundlePathMapTest {
 
     @Test
     public void rewritesWindowsSourceImagePathsToFileNames() {
-        BundleSupportArgumentRewriter rewriter = newRewriter(PathStyle.Windows, Map.of(), Map.of(), Path.of("/bundle"));
+        BundleSupportArgumentRewriter rewriter = newRewriter(PathStyle.Windows, Map.of(), Map.of());
 
         // Discard Windows source roots and directories regardless of the replay platform.
         for (String imageName : List.of("C:\\dir\\image", "\\dir\\image", "C:dir\\image", "\\\\server\\share\\dir\\image", "dir\\image", "dir/image", "image")) {
@@ -913,7 +1059,7 @@ public class BundlePathMapTest {
     @Test
     public void preservesNativeImageFileNameSyntax() {
         PathStyle style = PathStyle.currentSourceStyle();
-        BundleSupportArgumentRewriter rewriter = newRewriter(style, Map.of(), Map.of(), Path.of("/bundle"));
+        BundleSupportArgumentRewriter rewriter = newRewriter(style, Map.of(), Map.of());
         String relativeImageName = style == PathStyle.Windows ? "\\out\\app" : "my\\app";
         String absoluteImageName = style == PathStyle.Windows ? "D:\\out\\app" : "/out/my\\app";
         String fileName = style == PathStyle.Windows ? "app" : "my\\app";
@@ -925,7 +1071,7 @@ public class BundlePathMapTest {
 
     @Test
     public void rewritesUnixSourceImagePathsToFileNames() {
-        BundleSupportArgumentRewriter rewriter = newRewriter(PathStyle.Unix, Map.of(), Map.of(), Path.of("/bundle"));
+        BundleSupportArgumentRewriter rewriter = newRewriter(PathStyle.Unix, Map.of(), Map.of());
 
         for (String imageName : List.of("/foo/bar/image_name", "foo/bar/image_name", "image_name")) {
             assertEquals(imageName, List.of("-o", "image_name"), rewriter.rewrite(List.of("-o", imageName)));
@@ -935,7 +1081,7 @@ public class BundlePathMapTest {
     @Test
     public void rejectsImageOutputPathsWithoutFileNames() {
         for (PathStyle style : List.of(PathStyle.Unix, PathStyle.Windows)) {
-            BundleSupportArgumentRewriter rewriter = newRewriter(style, Map.of(), Map.of(), Path.of("/bundle"));
+            BundleSupportArgumentRewriter rewriter = newRewriter(style, Map.of(), Map.of());
             List<String> imageNames = style == PathStyle.Windows ? List.of("", "\\", "C:\\", "C:", "\\\\server\\share\\") : List.of("", "/");
             for (String imageName : imageNames) {
                 NativeImage.NativeImageError error = assertThrows(NativeImage.NativeImageError.class, () -> rewriter.rewrite(List.of("-o", imageName)));
@@ -1060,6 +1206,226 @@ public class BundlePathMapTest {
         }
     }
 
+    @Test
+    public void pathReferencesReuseCapturedInputsWithoutCapturingNewFiles() throws Exception {
+        BundleSupport support = newBundleSupport();
+        Path classes = Files.createDirectories(newBundleSupport().rootDir.resolve("classes"));
+        assertEquals(classes, support.substituteAuxiliaryPath(classes, Role.InputReference));
+        Path captured = support.substituteClassPath(classes);
+        assertEquals(captured, support.substituteAuxiliaryPath(classes, Role.InputReference));
+        try (Stream<Path> inputs = Files.list(support.auxiliaryDir)) {
+            assertEquals(0, inputs.count());
+        }
+    }
+
+    @Test
+    public void replayOutputsBypassInputMappingsForBothSourcePlatforms() {
+        for (PathStyle style : List.of(PathStyle.Unix, PathStyle.Windows)) {
+            BundleSupport support = newBundleSupport();
+            PortablePath original = source(style == PathStyle.Unix ? "/original/classes" : "C:\\original\\classes", style);
+            PortablePath captured = bundle("input/classes/cp/0/classes");
+            support.pathCanonicalizations.put(source("classes", style), original);
+            support.pathSubstitutions.put(original, captured);
+            BundleSupportArgumentRewriter rewriter = new BundleSupportArgumentRewriter(support, support.nativeImage.apiOptionHandler, style);
+            // Replay must restore the captured classpath input but redirect TempDirectory to the writable output directory.
+            assertEquals(List.of("-cp", support.rootDir.resolve("input/classes/cp/0/classes").toString(),
+                            "-H:TempDirectory=" + support.auxiliaryOutputDir.resolve("classes")),
+                            rewriter.rewrite(List.of("-cp", "classes", "-H:TempDirectory=classes")));
+            if (style == PathStyle.Windows) {
+                // Different capitalization of the same Windows source path must reuse the existing output destination.
+                assertEquals(support.auxiliaryOutputDir.resolve("classes"), support.substituteOutputPath(source("c:\\ORIGINAL\\CLASSES", style)));
+            }
+        }
+    }
+
+    @Test
+    public void outputPathsDoNotReuseCapturedInputs() throws Exception {
+        checkOverlappingInputAndOutput(false);
+    }
+
+    @Test
+    public void inputPathsDoNotReuseOutputDestinations() throws Exception {
+        checkOverlappingInputAndOutput(true);
+    }
+
+    /// Simulates a build that uses the same original directory for both inputs and outputs.
+    /// The bundle must capture inputs under input/ and redirect outputs under output/other,
+    /// regardless of whether output allocation happens before or after input capture.
+    ///
+    /// For each input kind (classpath, module-path, and auxiliary), capture the input, write an
+    /// output, then delete the original directory and save/reload the bundle. Verify that the
+    /// captured input survives, input references still find it,
+    /// and output allocation remains separate. Finally, check that a different original output
+    /// path with the same basename receives a distinct destination.
+    private static void checkOverlappingInputAndOutput(boolean outputFirst) throws Exception {
+        List<BiFunction<BundleSupport, Path, Path>> substitutions = List.of(
+                        BundleSupport::substituteClassPath, BundleSupport::substituteModulePath,
+                        (support, path) -> support.substituteAuxiliaryPath(path, Role.Input));
+        for (var substitute : substitutions) {
+            Path fixture = Files.createTempDirectory("bundle-overlap-test");
+            Path original = Files.createDirectory(fixture.resolve("shared"));
+            Files.writeString(original.resolve("input.txt"), "captured input");
+            BundleSupport support = newBundleSupport();
+            if (outputFirst) {
+                // Reserve an output location for fixture/shared before capturing it as an input.
+                Path allocatedOutput = support.substituteAuxiliaryPath(original, Role.Output);
+                // Processing the output before input capture must still allocate it under output/other.
+                assertEquals(support.auxiliaryOutputDir.resolve("shared"), allocatedOutput);
+            }
+            // Capture directory fixture/shared as an input directory.
+            Path input = substitute.apply(support, original);
+            // Ensure capture has placed the input under bundle-root/input, regardless of which role was processed first.
+            assertTrue(input.startsWith(support.inputDir));
+            // Reserve an output location for fixture/shared, or reuse the reservation made above.
+            Path allocatedOutput = support.substituteAuxiliaryPath(original, Role.Output);
+            // The same original path must resolve to a separate writable destination for outputs.
+            assertEquals(support.auxiliaryOutputDir.resolve("shared"), allocatedOutput);
+            Files.createDirectories(allocatedOutput);
+            Files.writeString(allocatedOutput.resolve("output.txt"), "generated output");
+            // Relevant files at this point:
+            // fixture/shared/input.txt
+            // bundle-root/input/<capture-dir>/0/shared/input.txt
+            // bundle-root/output/other/shared/output.txt
+            // <capture-dir> is classes/cp, classes/p, or auxiliary, depending on the input role.
+
+            // Remove the source directory so replay can only use the captured input.
+            Files.delete(original.resolve("input.txt"));
+            Files.delete(original);
+
+            // Now switching to bundle-apply mode
+            Path relativeInput = support.rootDir.relativize(input);
+            support = writeAndReloadBundle(support, fixture.resolve("overlap.nib"));
+            input = support.rootDir.resolve(relativeInput);
+            Path restoredInput = substitute.apply(support, original);
+            // Replay must restore the input mapping under the newly extracted bundle root.
+            assertEquals(input, restoredInput);
+            // Resolve fixture/shared as a reference to the already captured input.
+            Path referencedInput = support.substituteAuxiliaryPath(original, Role.InputReference);
+            // An input reference, such as Preserve's path= selection, must find that same captured input.
+            assertEquals(input, referencedInput);
+            // The captured contents must survive replay even though the original directory is gone.
+            assertEquals("captured input", Files.readString(input.resolve("input.txt")));
+            // Recreate the output reservation for fixture/shared in the replayed bundle.
+            Path replayedOutput = support.substituteAuxiliaryPath(original, Role.Output);
+            // Replay must allocate the output under output/other rather than reuse the input mapping.
+            assertEquals(support.auxiliaryOutputDir.resolve("shared"), replayedOutput);
+            // Reserve an output location for another original path whose basename is also shared.
+            Path collidingOutput = support.substituteAuxiliaryPath(fixture.resolve("other/shared"), Role.Output);
+            // A different original output path with the same basename must receive its own destination.
+            assertEquals(support.auxiliaryOutputDir.resolve("shared_1"), collidingOutput);
+        }
+    }
+
+    @Test
+    public void rewritesOnlyPrefixedPathEntries() {
+        BundleSupport support = newBundleSupport();
+        APIOptionHandler handler = support.nativeImage.apiOptionHandler;
+        String option = "-H:Preserve@user+api=none,module=java.logging,path=classes,package=my.library.*,all";
+        assertEquals("-H:Preserve@user+api=none,module=java.logging,path=captured,package=my.library.*,all",
+                        handler.transformBuilderArgument(option, (_, role) -> {
+                            assertEquals(Role.InputReference, role);
+                            return Path.of("captured");
+                        }));
+        assertEquals("-H:Preserve@user+api=none,module=java.logging,path=rewritten,package=my.library.*,all",
+                        handler.rewriteBundleHostedOptionArgument(option, (_, _) -> "rewritten"));
+        for (String value : List.of("", "path=")) {
+            String emptyOption = "-H:Preserve=" + value;
+            assertEquals(emptyOption, handler.transformBuilderArgument(emptyOption, (_, _) -> {
+                throw new AssertionError("Empty selection was treated as a path");
+            }));
+        }
+    }
+
+    @Test
+    public void preservesNumberedPathsAcrossBundleDerivation() throws Exception {
+        List<BiFunction<BundleSupport, Path, Path>> substitutions = List.of(
+                        BundleSupport::substituteClassPath, BundleSupport::substituteModulePath,
+                        (support, path) -> support.substituteAuxiliaryPath(path, Role.Input));
+        for (var substitute : substitutions) {
+            Path fixture = newBundleSupport().rootDir;
+            BundleSupport support = newBundleSupport();
+            Map<Path, Path> destinations = new LinkedHashMap<>();
+            for (int generation = 0; generation < 4; generation++) {
+                support.writeBundle = true;
+                for (int entry = 0; entry < 2; entry++) {
+                    Path original = Files.createDirectories(fixture.resolve(generation + "-" + entry)).resolve("same");
+                    if (entry == 0) {
+                        Files.createDirectory(original);
+                    } else {
+                        Files.writeString(original, "input");
+                    }
+                    Path destination = support.rootDir.relativize(substitute.apply(support, original));
+                    for (Path previous : destinations.values()) {
+                        assertFalse("Reused slot " + destination.getParent(), previous.getParent().equals(destination.getParent()));
+                    }
+                    destinations.put(original, destination);
+                    Files.delete(original);
+                }
+                support = writeAndReloadBundle(support, fixture.resolve(generation + ".nib"));
+                for (var entry : new ArrayList<>(destinations.entrySet()).reversed()) {
+                    assertEquals(entry.getValue(), support.rootDir.relativize(substitute.apply(support, entry.getKey())));
+                }
+            }
+        }
+    }
+
+    @Test
+    public void preservesFlatOutputPathsAcrossBundleDerivation() throws Exception {
+        Path fixture = newBundleSupport().rootDir;
+        Path original = fixture.resolve("0");
+        Path legacyBundle = fixture.resolve("legacy.nib");
+        Map<String, String> entries = Map.of(
+                        "META-INF/nibundle.properties", """
+                                        BundleFileVersionMajor=0
+                                        BundleFileVersionMinor=9
+                                        NativeImagePlatform=%s
+                                        """.formatted(NativeImage.platform),
+                        "input/stage/path_canonicalizations.json", "[]",
+                        "input/stage/path_substitutions.json", json(List.of(Map.of("src", original.toString(), "dst", "output/other/0"))),
+                        "input/stage/build.json", "[]");
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(legacyBundle))) {
+            for (var entry : entries.entrySet()) {
+                zip.putNextEntry(new ZipEntry(entry.getKey()));
+                zip.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
+                zip.closeEntry();
+            }
+        }
+        NativeImage nativeImage = new NativeImage(new NativeImage.BuildConfiguration(Path.of("."), Path.of("."), List.of()));
+        nativeImage.bundleSupport = BundleSupport.create(nativeImage, "--bundle-apply=" + legacyBundle, new NativeImage.ArgumentQueue(OptionOrigin.originUser));
+        BundleSupport support = nativeImage.bundleSupport;
+        for (int generation = 0; generation < 3; generation++) {
+            Path oldOutput = support.substituteAuxiliaryPath(original, Role.Output);
+            Path newOutput = support.substituteAuxiliaryPath(fixture.resolve("new-" + generation), Role.Output);
+            assertEquals(support.rootDir.resolve("output/other/0"), oldOutput);
+            assertEquals(support.rootDir.resolve("output/other/new-" + generation), newOutput);
+            assertTrue(Files.notExists(oldOutput));
+            support = writeAndReloadBundle(support, fixture.resolve("derived-" + generation + ".nib"));
+            assertNull(support.resolveSubstitutedPath(source(original.toString(), PathStyle.currentSourceStyle())));
+        }
+    }
+
+    @Test
+    public void relocatesDistinctOutputNamesWithoutChangingSharedTargets() throws Exception {
+        Path fixture = newBundleSupport().rootDir;
+        Path first = fixture.resolve("first/report.json");
+        Path second = fixture.resolve("second/report.json");
+        Path naturallySuffixed = fixture.resolve("third/report_1.json");
+        BundleSupport support = newBundleSupport();
+        for (int generation = 0; generation < 3; generation++) {
+            Path output = support.substituteAuxiliaryPath(first, Role.Output);
+            assertEquals(support.auxiliaryOutputDir.resolve("report.json"), output);
+            assertEquals(output, support.substituteAuxiliaryPath(first, Role.Output));
+            assertTrue(Files.notExists(output));
+            assertEquals(support.auxiliaryOutputDir.resolve("report_1.json"), support.substituteAuxiliaryPath(naturallySuffixed, Role.Output));
+            Path relocated = support.substituteAuxiliaryPath(second, Role.Output);
+            assertEquals(support.auxiliaryOutputDir.resolve("report_2.json"), relocated);
+            assertEquals(relocated, support.substituteAuxiliaryPath(second, Role.Output));
+            assertEquals(output, support.substituteAuxiliaryPath(first, Role.Output));
+            assertTrue(Files.notExists(relocated));
+            support = writeAndReloadBundle(support, fixture.resolve("outputs-" + generation + ".nib"));
+        }
+    }
+
     private static BundleSupport writeAndReloadBundle(BundleSupport bundleSupport, Path file) {
         bundleSupport.writeBundle = true;
         bundleSupport.nativeImage.buildExecutable = false;
@@ -1076,13 +1442,16 @@ public class BundlePathMapTest {
         return nativeImage.bundleSupport;
     }
 
+    private static BundleSupport newBundleSupport(Map<PortablePath, PortablePath> canonicalizations, Map<PortablePath, PortablePath> substitutions) {
+        BundleSupport support = newBundleSupport();
+        support.pathCanonicalizations.putAll(canonicalizations);
+        support.pathSubstitutions.putAll(substitutions);
+        return support;
+    }
+
     private static BundleSupportArgumentRewriter newRewriter(PathStyle style, Map<PortablePath, PortablePath> canonicalizations,
-                    Map<PortablePath, PortablePath> substitutions, Path bundleRoot) {
-        BundleSupport bundleSupport = newBundleSupport();
-        return new BundleSupportArgumentRewriter(noOpAPIOptionHandler, style, canonicalizations, substitutions,
-                        (original, substitution) -> substitution == null || substitution.kind() == RootKind.Unavailable
-                                        ? bundleSupport.lowerToNativePath(original, substitution)
-                                        : BundlePathMap.resolveBundlePath(bundleRoot, substitution));
+                    Map<PortablePath, PortablePath> substitutions) {
+        return new BundleSupportArgumentRewriter(newBundleSupport(canonicalizations, substitutions), noOpAPIOptionHandler, style);
     }
 
     private static PortablePath source(String path, PathStyle style) {

@@ -261,31 +261,19 @@ public abstract class ByteSequence {
         System.arraycopy(getUnderlyingBytes(), offset(), dest, index, length());
     }
 
-    static void writePositiveLongString(long v, byte[] dest, int offset, int length) {
-        assert length == positiveLongStringSize(v);
-        long i = v;
-        int digit = length;
-        // in '456', '4' is digit 1, '5' is digit 2, etc.
-        while (i >= 10) {
-            long q = i / 10;
-            long r = i - (10 * q);
-            dest[offset + --digit] = (byte) ('0' + r);
-            i = q;
-        }
-        assert digit == 1;
-        dest[offset] = (byte) ('0' + i);
+    /// Gets the number of hexadecimal digits needed to represent `value`.
+    static int hexadecimalLongStringSize(long value) {
+        return Math.max(1, (Long.SIZE - Long.numberOfLeadingZeros(value) + 3) / 4);
     }
 
-    static int positiveLongStringSize(long x) {
-        assert x >= 0;
-        long p = 10;
-        for (int i = 1; i < 10; i++) {
-            if (x < p) {
-                return i;
-            }
-            p = 10 * p;
+    /// Writes the lowercase hexadecimal representation of `value` to `dest`.
+    /// The representation has `length` digits and starts at `offset`.
+    static void writeHexadecimalLongString(long value, byte[] dest, int offset, int length) {
+        assert length == hexadecimalLongStringSize(value);
+        for (int digit = length - 1; digit >= 0; digit--) {
+            int shift = (length - digit - 1) * 4;
+            dest[offset + digit] = (byte) HEX[(int) (value >>> shift) & 0xf];
         }
-        return 10;
     }
 
     public void writeTo(ByteBuffer bb) {

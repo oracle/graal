@@ -193,10 +193,10 @@ public class AArch64AddressLoweringByUse extends AddressLoweringByUsePhase.Addre
 
             ZeroExtendNode wordIndex = null;
             if (scaledIndex instanceof LeftShiftNode) {
-                ValueNode var = ((LeftShiftNode) scaledIndex).getX();
-                ValueNode amount = ((LeftShiftNode) scaledIndex).getY();
-                if (amount.isConstant() && var instanceof ZeroExtendNode) {
-                    int s = amount.asJavaConstant().asInt();
+                LeftShiftNode shift = (LeftShiftNode) scaledIndex;
+                ValueNode var = shift.getX();
+                if (shift.getY().isConstant() && var instanceof ZeroExtendNode) {
+                    int s = shift.getConstantShiftAmount();
                     if (s >= 0 && s <= 4) {
                         wordIndex = (ZeroExtendNode) var;
                     }

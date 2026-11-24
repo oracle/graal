@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,12 +38,13 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.guest.staging.IsolateArgumentParser;
+import com.oracle.svm.guest.staging.SubstrateGuestOptions;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.option.CommonOptions;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey;
 import com.oracle.svm.guest.staging.option.RuntimeOptionKey.RuntimeOptionKeyFlag;
 import com.oracle.svm.guest.staging.option.RuntimeOptionParser;
@@ -54,17 +55,18 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.AppLayerCGlobalTracking;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.heap.ImageHeapObjectAdder;
+import com.oracle.svm.hosted.image.ImageHeapReasonSupport;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.imagelayer.LayeredImageUtils;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.shared.option.CommonOptionNames;
-import com.oracle.svm.shared.option.CommonOptionParser;
 import com.oracle.svm.shared.option.HostedOptionKey;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.VMError;
+import com.oracle.svm.util.GuestAccess;
 
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
@@ -131,7 +133,13 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             access.registerObjectReachabilityHandler(this::collectOptionKeys, OptionKey.class);
         } else {
-            access.registerObjectReachableCallback(OptionKey.class, this::collectOptionKeysExtension);
+            HostedValuesProvider hostedValuesProvider = access.getUniverse().getHostedValuesProvider();
+            access.registerObjectReachableCallback((analysisAccess, object, reason) -> {
+                // JVMCI migration blocked by GR-77528: Move runtime option singleton registration
+                // into the guest context
+                OptionKey<?> optionKey = hostedValuesProvider.asObject(OptionKey.class, object);
+                collectOptionKeysExtension(analysisAccess, optionKey, reason);
+            }, GuestAccess.elements().jdk_graal_compiler_options_OptionKey);
             ImageHeapObjectAdder.singleton().registerObjectAdder(this::addDefaultValuesObject);
         }
     }
@@ -142,7 +150,7 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
         HostedOptionParser optionParser = accessImpl.getImageClassLoader().classLoaderSupport.getHostedOptionParser();
         boolean firstImage = ImageLayerBuildingSupport.firstImageBuild();
         if (firstImage) {
-            registerPrintFlagsOptions(optionParser);
+            registerAlwaysAvailableOptions(optionParser);
         }
         for (var descriptor : optionParser.getAllRuntimeOptions().getValues()) {
             if (descriptor.getOptionKey() instanceof RuntimeOptionKey<?> runtimeOptionKey && runtimeOptionKey.shouldRegisterForIsolateArgumentParser()) {
@@ -176,16 +184,15 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
         }
     }
 
-    /**
-     * The {@link OptionKey} values defined in {@link CommonOptions} are not accessed in a way seen
-     * during analysis; {@link CommonOptionParser} only refers to them by name so they need to be
-     * explicitly registered.
-     */
-    private static void registerPrintFlagsOptions(HostedOptionParser optionParser) {
+    /// Registers parser options that must be available independently of runtime option references.
+    /// PrintFlags options are looked up by name, while `UnlockDiagnosticVMOptions` is a no-op
+    /// compatibility flag with no other runtime consumer.
+    private static void registerAlwaysAvailableOptions(HostedOptionParser optionParser) {
         RuntimeOptionParser parser = RuntimeOptionParser.singleton();
         UnmodifiableEconomicMap<String, OptionDescriptor> allRuntimeOptions = optionParser.getAllRuntimeOptions();
         parser.addDescriptor(allRuntimeOptions.get(CommonOptionNames.PrintFlags));
         parser.addDescriptor(allRuntimeOptions.get(CommonOptionNames.PrintFlagsWithExtraHelp));
+        parser.addDescriptor(allRuntimeOptions.get(SubstrateGuestOptions.UnlockDiagnosticVMOptions.getName()));
     }
 
     @Override
@@ -216,7 +223,7 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
     }
 
     @SuppressWarnings("unused")
-    private void collectOptionKeysExtension(DuringAnalysisAccess access, OptionKey<?> optionKey, ObjectScanner.ScanReason reason) {
+    private static void collectOptionKeysExtension(DuringAnalysisAccess access, OptionKey<?> optionKey, ObjectScanner.ScanReason reason) {
         if (optionKey instanceof HostedOptionKey<?>) {
             /*
              * HostedOptionKey's are reached when building the NativeImage driver executable.
@@ -254,7 +261,7 @@ public class RuntimeOptionFeature implements InternalFeature, IsolateArgumentPar
     }
 
     private void addDefaultValuesObject(NativeImageHeap heap, @SuppressWarnings("unused") HostedUniverse hUniverse) {
-        String addReason = "Registered as a required heap constant within RuntimeOptionFeature";
+        Object addReason = ImageHeapReasonSupport.singleton().description("Registered as a required heap constant within RuntimeOptionFeature");
 
         heap.addObject(defaultValues, false, addReason);
         heap.addObject(defaultStrings, false, addReason);

@@ -1,0 +1,45 @@
+# native-image: value-continuations
+
+# Makes the selected JDK module readers available for runtime class/resource loading from lib/modules.
+# When RuntimeClassLoading is enabled, JavaxXmlClassAndResourcesLoaderFeature only registers XML
+# implementation metadata for implementation classes that are independently AOT-reachable.
+# java.prefs is included for JCK tests that runtime-load java.util.prefs API classes.
+--add-modules=...
+java.xml
+java.xml.crypto
+java.logging
+java.prefs
+
+# Lets security providers from runtime-loaded modules such as java.xml.crypto be initialized from
+# the runtime java.security configuration instead of being snapshotted by the libjvm image build.
+# Also lets locale provider and bundle caches honor runtime configuration such as java.locale.providers.
+# File system provider initialization must likewise see runtime service providers from the launched
+# class path, for example custom providers in executable jars.
+--future-defaults=...
+run-time-initialize-security-providers
+run-time-initialize-resource-bundles
+run-time-initialize-file-system-providers
+
+--initialize-at-run-time=...
+# These fields get set via ArchivedClassLoaders and adjusted with BuiltinClassLoader.setClassPath(URLClassPath).
+jdk.internal.loader.ClassLoaders
+# These lazy holders must observe runtime java.security property overrides. JCK runs clear the
+# disabled JAR algorithm properties so legacy SHA-1 signed JARs are treated as verified.
+sun.security.pkcs.SignerInfo
+sun.security.util.DisabledAlgorithmConstraints$JarHolder
+sun.security.util.DisabledAlgorithmConstraints$CertPathHolder
+com.sun.tools.javac
+com.sun.tools.javac.file
+com.sun.source
+jdk.javadoc.internal
+com.sun.tools.doclint
+jdk.jshell.tool
+
+--enable-monitoring=...
+heapdump
+jfr
+jvmstat
+jmxserver
+jmxclient
+threaddump
+jcmd

@@ -24,15 +24,27 @@
  */
 package com.oracle.svm.core.pltgot;
 
+import com.oracle.svm.guest.staging.c.function.CEntryPointErrors;
 import com.oracle.svm.shared.Uninterruptible;
 
 public interface MethodAddressResolver {
+
+    /**
+     * Prepare resolver state after image CodeInfo is ready in each isolate.
+     */
+    @Uninterruptible(reason = "Called during isolate creation before thread initialization.")
+    default int initialize() {
+        return CEntryPointErrors.NO_ERROR;
+    }
 
     /**
      * Resolves the absolute address of a method represented by the given GOT entry.
      *
      * Note that it is the responsibility of this method to write the resolved address to the GOT
      * entry as otherwise it will be called for subsequent calls of the same method.
+     * Implementations should use {@link GOTAccess#writeToGOTEntry} or {@link GOTAccess#writeToGOTEntries}
+     * for batch writes. GOT mapping is made read-only at the next safepoint with no active writers
+     * to avoid repeated page protection changes, {@link GOTAccess#reprotectGOTAtSafepoint()}.
      *
      * This method might execute in a context that does not declare writes to the memory locations
      * it uses or other side effects that it has (e.g., foreign calls), so it must be very careful

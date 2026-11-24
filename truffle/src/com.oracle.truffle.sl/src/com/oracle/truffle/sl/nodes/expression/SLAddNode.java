@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -151,12 +152,14 @@ public abstract class SLAddNode extends SLBinaryNode {
      */
     @Specialization(guards = "isString(left, right)")
     @HostCompilerDirectives.InliningCutoff
-    public static TruffleString doString(Object left, Object right,
+    public static TruffleString doString(VirtualFrame frame, Object left, Object right,
                     @Bind Node node,
+                    @Bind("$bytecodeIndex") int bytecodeIndex,
                     @Cached SLToTruffleStringNode toTruffleStringNodeLeft,
                     @Cached SLToTruffleStringNode toTruffleStringNodeRight,
                     @Cached TruffleString.ConcatNode concatNode) {
-        return concatNode.execute(toTruffleStringNodeLeft.execute(node, left), toTruffleStringNodeRight.execute(node, right), SLLanguage.STRING_ENCODING, true);
+        return concatNode.execute(toTruffleStringNodeLeft.execute(frame, node, bytecodeIndex, left), toTruffleStringNodeRight.execute(frame, node, bytecodeIndex, right), SLLanguage.STRING_ENCODING,
+                        true);
     }
 
     /**
@@ -168,8 +171,9 @@ public abstract class SLAddNode extends SLBinaryNode {
     @HostCompilerDirectives.InliningCutoff
     public static Object doFallback(Object left, Object right,
                     @Cached SlowPathNode fallback,
-                    @Bind Node node) {
-        return fallback.execute(node, left, right);
+                    @Bind Node node,
+                    @Bind("$bytecodeIndex") int bytecodeIndex) {
+        return fallback.execute(node, bytecodeIndex, left, right);
     }
 
     /**
@@ -183,7 +187,7 @@ public abstract class SLAddNode extends SLBinaryNode {
     @GenerateUncached
     public abstract static class SlowPathNode extends Node {
 
-        abstract Object execute(Node node, Object left, Object right);
+        abstract Object execute(Node node, int bytecodeIndex, Object left, Object right);
 
         /**
          * This is the most general slow path of the arbitrary-precision arithmetic. In addition to
@@ -202,7 +206,7 @@ public abstract class SLAddNode extends SLBinaryNode {
          */
         @Specialization(guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
         @SuppressWarnings("unused")
-        static SLBigInteger doInteropBigInteger(Node node, Object left, Object right,
+        static SLBigInteger doInteropBigInteger(Node node, int bytecodeIndex, Object left, Object right,
                         @CachedLibrary("left") InteropLibrary leftLibrary,
                         @CachedLibrary("right") InteropLibrary rightLibrary) {
             try {
@@ -216,8 +220,8 @@ public abstract class SLAddNode extends SLBinaryNode {
         }
 
         @Fallback
-        static Object typeError(Node node, Object left, Object right) {
-            throw SLException.typeError(node, "+", left, right);
+        static Object typeError(Node node, int bytecodeIndex, Object left, Object right) {
+            throw SLException.typeError(node, bytecodeIndex, "+", left, right);
         }
     }
 

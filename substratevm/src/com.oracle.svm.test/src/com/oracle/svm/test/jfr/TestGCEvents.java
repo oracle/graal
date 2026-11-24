@@ -27,11 +27,13 @@
 package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
 
 import java.util.List;
 
 import org.junit.Test;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jfr.JfrEvent;
 
 import jdk.jfr.Recording;
@@ -40,6 +42,8 @@ import jdk.jfr.consumer.RecordedEvent;
 public class TestGCEvents extends JfrRecordingTest {
     @Test
     public void test() throws Throwable {
+        assumeFalse("GR-26848: G1 does not yet support these JFR events.", SubstrateOptions.useG1GC());
+
         String[] events = new String[]{JfrEvent.GarbageCollection.getName(), JfrEvent.GCPhasePause.getName(), JfrEvent.GCPhasePauseLevel1.getName(),
                         JfrEvent.GCPhasePauseLevel2.getName(), JfrEvent.ExecuteVMOperation.getName()};
         Recording recording = startRecording(events);

@@ -932,6 +932,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return wrapped;
     }
 
+    /**
+     * Returns whether this type is backed by a host VM type rather than an incomplete placeholder
+     * loaded from a shared layer.
+     */
+    public boolean isBackedByHostType() {
+        return !(wrapped instanceof BaseLayerType);
+    }
+
     @Override
     public ResolvedJavaType unwrapTowardsOriginalType() {
         return wrapped;

@@ -48,16 +48,14 @@ import static javax.lang.model.element.Modifier.STATIC;
 
 import java.io.DataInput;
 import java.io.DataOutput;
-import java.io.IOError;
-import java.io.IOException;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
@@ -88,6 +86,7 @@ final class BytecodeDescriptorElement extends AbstractElement {
         this.add(createGetInstructionDescriptors());
         this.add(createGetInstructionDescriptor());
         this.add(createCreate());
+        this.add(createGetConfigEncodingWithGlobalConfig());
         this.add(createNewConfigBuilder());
 
         this.add(createPrepareForCall());
@@ -97,8 +96,9 @@ final class BytecodeDescriptorElement extends AbstractElement {
         this.add(createRemoveInstructionTracer());
 
         if (parent.model.enableSerialization) {
-            this.add(createSerialize());
-            this.add(createDeserialize());
+            this.add(createSerializeBuilderBytecode());
+            this.add(createSerializeExecutionBytecode());
+            this.add(createDeserializeExecutionBytecode());
         }
     }
 
@@ -218,21 +218,35 @@ final class BytecodeDescriptorElement extends AbstractElement {
         ex.changeTypes(parent.model.languageClass, types.BytecodeConfig, parent.parserType);
         CodeTreeBuilder b = ex.getBuilder();
 
-        b.declaration("BytecodeRootNodesImpl", "nodes", "new BytecodeRootNodesImpl(parser, config)");
+        b.declaration(type(long.class), "encoding", "getConfigEncodingWithGlobalConfig(language, config)");
+        b.declaration("BytecodeRootNodesImpl", "nodes", "new BytecodeRootNodesImpl(parser, encoding)");
         b.startAssign("Builder builder").startNew(parent.builder.getSimpleName().toString());
         b.string("language");
         b.string("nodes");
-        b.string("withGlobalConfig(language, BytecodeConfigEncoderImpl.decode(config))");
+        b.string("encoding");
         b.end(2);
 
         b.startStatement().startCall("parser", "parse");
         b.string("builder");
         b.end(2);
 
-        b.startStatement().startCall("builder", "finish").end(2);
+        b.startStatement().startCall("builder", "finish").string("true").end(2);
 
         b.startReturn().string("nodes").end();
 
+        return ex;
+    }
+
+    private CodeExecutableElement createGetConfigEncodingWithGlobalConfig() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(long.class), "getConfigEncodingWithGlobalConfig");
+        ex.addParameter(new CodeVariableElement(parent.model.languageClass, "language"));
+        ex.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startReturn().startStaticCall(parent.configEncoder.asType(), "normalizeEncoding");
+        b.staticReference(parent.configEncoder.asType(), "INSTANCE");
+        b.startCall("withGlobalConfig").string("language");
+        b.startStaticCall(parent.configEncoder.asType(), "normalizeEncoding").string("config");
+        b.end(4);
         return ex;
     }
 
@@ -245,58 +259,46 @@ final class BytecodeDescriptorElement extends AbstractElement {
         return ex;
     }
 
-    private CodeExecutableElement createSerialize() {
-        CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeDescriptor, "serialize", new String[]{"buffer", "callback", "parser"});
+    private CodeExecutableElement createSerializeBuilderBytecode() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeDescriptor, "serializeBuilderBytecode", new String[]{"buffer", "callback", "parser"});
         ex.changeTypes(type(DataOutput.class), types.BytecodeSerializer, parent.parserType);
 
         CodeTreeBuilder b = ex.createBuilder();
-
-        b.startDeclaration(parent.bytecodeRootNodesImpl.asType(), "rootNodes");
-        b.startNew(parent.bytecodeRootNodesImpl.asType());
-        b.string("parser");
-        b.staticReference(types.BytecodeConfig, "COMPLETE");
-        b.end(); // new
-        b.end(); // declaration
-
-        b.startDeclaration(parent.bytecodeBuilderType, "builder");
-        b.startNew("Builder");
-        b.string("null"); // language not needed for serialization
-        b.string("rootNodes"); // language not needed for serialization
-        b.string("rootNodes.encoding"); // language not needed for serialization
-        b.end(); // new
-        b.end(); // declaration
-
-        b.startTryBlock();
-
-        b.startStatement().startCall("builder", "serialize");
+        b.startStatement().startStaticCall(parent.serializationEncodingElement.asType(), "serializeBuilderBytecode");
         b.string("buffer");
         b.string("callback");
+        b.string("parser");
         b.string("null"); // existingNodes
         b.end().end();
-
-        b.end().startCatchBlock(type(IOError.class), "e");
-        b.startThrow().cast(type(IOException.class), "e.getCause()").end();
-        b.end();
         return ex;
     }
 
-    private CodeExecutableElement createDeserialize() {
-        CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeDescriptor, "deserialize", new String[]{"language", "config", "input", "callback"});
-        ex.setReturnType(generic(types.BytecodeRootNodes, parent.model.getTemplateType().asType()));
-        ex.changeTypes(parent.model.languageClass, types.BytecodeConfig, generic(Supplier.class, DataInput.class), types.BytecodeDeserializer);
+    private CodeExecutableElement createSerializeExecutionBytecode() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeDescriptor, "serializeExecutionBytecode", new String[]{"language", "buffer", "config", "callback", "parser"});
+        ex.changeTypes(parent.model.languageClass, type(DataOutput.class), types.BytecodeConfig, types.BytecodeSerializer, parent.parserType);
+
         CodeTreeBuilder b = ex.createBuilder();
+        b.startStatement().startStaticCall(parent.serializationEncodingElement.asType(), "serializeExecutionBytecode");
+        b.string("language");
+        b.string("buffer");
+        b.string("config");
+        b.string("callback");
+        b.string("parser");
+        b.string("null"); // existingNodes
+        b.end().end();
+        return ex;
+    }
 
-        b.startTryBlock();
-
-        if (ElementUtils.typeEquals(parent.abstractBuilderType, types.BytecodeBuilder)) {
-            b.statement("return create(language, config, (b) -> b.deserialize(input, callback, null))");
-        } else {
-            b.statement("return create(language, config, (b) -> ((Builder) b).deserialize(input, callback, null))");
-        }
-
-        b.end().startCatchBlock(type(IOError.class), "e");
-        b.startThrow().cast(type(IOException.class), "e.getCause()").end();
-        b.end();
+    private CodeExecutableElement createDeserializeExecutionBytecode() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeDescriptor, "deserializeExecutionBytecode", new String[]{"language", "config", "builderBytecodeInput",
+                        "executionBytecodeInput", "callback"});
+        ex.setReturnType(generic(types.BytecodeRootNodes, parent.model.getTemplateType().asType()));
+        ex.changeTypes(parent.model.languageClass, types.BytecodeConfig, generic(Supplier.class, DataInput.class), generic(type(Function.class), types.BytecodeConfig, type(DataInput.class)),
+                        types.BytecodeDeserializer);
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startReturn().startStaticCall(parent.serializationEncodingElement.asType(), "deserializeExecutionBytecode");
+        b.string("language").string("config").string("builderBytecodeInput").string("executionBytecodeInput").string("callback");
+        b.end(2);
 
         return ex;
     }

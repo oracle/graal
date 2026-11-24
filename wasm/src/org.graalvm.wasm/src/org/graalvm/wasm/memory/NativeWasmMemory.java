@@ -59,6 +59,7 @@ import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -185,6 +186,10 @@ public final class NativeWasmMemory extends WasmMemory {
         return newAddress;
     }
 
+    long startAddress() {
+        return startAddress;
+    }
+
     public long newBufferSize(long targetByteSize) {
         // bufferSize <= Sizes.MAX_MEMORY_64_INSTANCE_BYTE_SIZE, so this should not overflow
         long prefBufferSize = Math.addExact(bufferSize, bufferSize >> 1);
@@ -203,7 +208,7 @@ public final class NativeWasmMemory extends WasmMemory {
         currentMinSize = declaredMinSize;
     }
 
-    private void validateAddress(Node node, long address, long length) {
+    void validateAddress(Node node, long address, long length) {
         assert size == 0 || !freed();
         validateAddress(node, address, length, byteSize());
     }
@@ -296,10 +301,7 @@ public final class NativeWasmMemory extends WasmMemory {
     @ExportMessage
     public Object load_i128(Node node, long address) {
         validateAddress(node, address, Vector128.BYTES);
-        byte[] bytes = new byte[Vector128.BYTES];
-        unsafe.copyMemory(null, startAddress + address, bytes, Unsafe.ARRAY_BYTE_BASE_OFFSET, Vector128.BYTES);
-        // Use ByteVector.fromMemorySegment after adopting FFM
-        return Vector128Ops.SINGLETON_IMPLEMENTATION.fromArray(bytes);
+        return Vector128Ops.SINGLETON_IMPLEMENTATION.fromNativeMemory(startAddress + address);
     }
 
     @ExportMessage
@@ -358,9 +360,8 @@ public final class NativeWasmMemory extends WasmMemory {
 
     @ExportMessage
     public void store_i128(Node node, long address, Object value) {
-        validateAddress(node, address, 16);
-        // Use intoMemorySegment after adopting the FFM API
-        unsafe.copyMemory(Vector128Ops.SINGLETON_IMPLEMENTATION.toArray(Vector128Ops.cast(value)), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
+        validateAddress(node, address, Vector128.BYTES);
+        Vector128Ops.SINGLETON_IMPLEMENTATION.intoNativeMemory(Vector128Ops.cast(value), startAddress + address);
     }
 
     @ExportMessage
@@ -1004,13 +1005,30 @@ public final class NativeWasmMemory extends WasmMemory {
     }
 
     @ExportMessage
-    public void copyFrom(Node node, WasmMemory source, long sourceOffset, long destinationOffset, long length) {
-        assert source instanceof NativeWasmMemory;
-        final NativeWasmMemory s = (NativeWasmMemory) source;
-        validateLength(node, length);
-        s.validateAddress(node, sourceOffset, length);
-        validateAddress(node, destinationOffset, length);
-        unsafe.copyMemory(s.startAddress + sourceOffset, this.startAddress + destinationOffset, length);
+    static final class CopyFrom {
+        @Specialization
+        static void doByteArray(NativeWasmMemory memory, Node node, ByteArrayWasmMemory source, long sourceOffset, long destinationOffset, long length) {
+            validateLength(node, length);
+            source.validateAddress(node, sourceOffset, length);
+            memory.validateAddress(node, destinationOffset, length);
+            unsafe.copyMemory(source.buffer(), Unsafe.ARRAY_BYTE_BASE_OFFSET + sourceOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, null, memory.startAddress + destinationOffset, length);
+        }
+
+        @Specialization
+        static void doUnsafe(NativeWasmMemory memory, Node node, UnsafeWasmMemory source, long sourceOffset, long destinationOffset, long length) {
+            validateLength(node, length);
+            source.validateAddress(node, sourceOffset, length);
+            memory.validateAddress(node, destinationOffset, length);
+            unsafe.copyMemory(source.startAddress() + sourceOffset, memory.startAddress + destinationOffset, length);
+        }
+
+        @Specialization
+        static void doNative(NativeWasmMemory memory, Node node, NativeWasmMemory source, long sourceOffset, long destinationOffset, long length) {
+            validateLength(node, length);
+            source.validateAddress(node, sourceOffset, length);
+            memory.validateAddress(node, destinationOffset, length);
+            unsafe.copyMemory(source.startAddress + sourceOffset, memory.startAddress + destinationOffset, length);
+        }
     }
 
     @ExportMessage

@@ -113,6 +113,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.UninterruptibleGuestValue;
 import com.oracle.svm.core.annotate.Alias;
@@ -125,13 +126,13 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.guest.staging.core.heap.Heap;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
-import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.guest.staging.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.graal.RuntimeCompilationSupport;
 import com.oracle.svm.graal.hosted.runtimecompilation.CallTreeInfo;
@@ -269,6 +270,11 @@ public class TruffleFeature implements InternalFeature {
         tempTargetAllowlistMethods = EconomicSet.create();
         warnMethods = EconomicSet.create();
         neverPartOfCompilationViolations = ConcurrentHashMap.newKeySet();
+    }
+
+    @Override
+    public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        TypedEntrySupport.registerExactEntryPlugin(plugins, ((SubstrateTruffleRuntime) Truffle.getRuntime()).getExactGeneratedProxyEntries());
     }
 
     @Override

@@ -36,16 +36,16 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.guest.staging.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.nmt.NmtCategory;
-import com.oracle.svm.core.reflect.RuntimeMetadataDecoder;
+import com.oracle.svm.core.reflect.RuntimeMetadataDecoderSupport;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
@@ -108,7 +108,7 @@ public class WebImageCodeCache extends NativeImageCodeCache {
         Class<?>[] classes = encoders.classes.encodeAll(new Class<?>[encoders.classes.getLength()]);
         String[] memberNames = encoders.memberNames.encodeAll(new String[encoders.memberNames.getLength()]);
         String[] otherStrings = encoders.otherStrings.encodeAll(new String[encoders.otherStrings.getLength()]);
-        var metadataAccessor = (WebImageMetadataAccessor) RuntimeMetadataDecoder.MetadataAccessor.singleton();
+        var metadataAccessor = (WebImageMetadataAccessor) RuntimeMetadataDecoderSupport.metadataAccessor();
         metadataAccessor.installMetadata(constants, classes, memberNames, otherStrings, codeInfoEncoder);
         runtimeMetadataEncoder.encodeAllAndInstall();
 
@@ -135,13 +135,10 @@ public class WebImageCodeCache extends NativeImageCodeCache {
     }
 
     @Override
-    public void patchMethods(DebugContext debug, RelocatableBuffer relocs, ObjectFile objectFile) {
-
-    }
-
-    @Override
-    public void writeCode(RelocatableBuffer buffer) {
-
+    public void patchAndWriteCode(DebugContext debug, RelocatableBuffer buffer, ObjectFile objectFile, boolean releaseCodeEmissionState) {
+        if (releaseCodeEmissionState) {
+            clearCodeEmissionState(getOrderedCompilations());
+        }
     }
 
     @Override

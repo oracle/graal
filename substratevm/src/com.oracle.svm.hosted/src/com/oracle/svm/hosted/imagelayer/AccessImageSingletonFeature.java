@@ -50,7 +50,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.imagelayer.AccessImageSingletonFactory;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
@@ -460,10 +460,12 @@ public class AccessImageSingletonFeature implements InternalFeature {
     public void beforeImageWrite(BeforeImageWriteAccess a) {
         BeforeImageWriteAccessImpl access = (BeforeImageWriteAccessImpl) a;
         ImageHeapScanner heapScanner = access.getHostedUniverse().getBigBang().getUniverse().getHeapScanner();
+        var hostedValuesProvider = heapScanner.getHostedValuesProvider();
         NativeImageHeap heap = access.getImage().getHeap();
         var notInstalledSingletons = LayeredImageSingletonSupport.singleton().getSingletonsWithTrait(UNAVAILABLE_AT_RUNTIME);
         for (var notInstalledSingleton : notInstalledSingletons) {
-            if (heapScanner.hasImageHeapConstant(notInstalledSingleton)) {
+            // GR-73244: Adapt the layered singleton implementation for Terminus.
+            if (heapScanner.hasImageHeapConstant(hostedValuesProvider.forObject(notInstalledSingleton))) {
                 ObjectInfo objectInfo = heap.getObjectInfo(notInstalledSingleton);
                 VMError.guarantee(objectInfo == null, "Singleton of %s annotated with %s cannot be installed in the image heap", notInstalledSingleton.getClass(), UNAVAILABLE_AT_RUNTIME);
             }

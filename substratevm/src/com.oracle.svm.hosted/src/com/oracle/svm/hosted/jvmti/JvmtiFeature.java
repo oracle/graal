@@ -41,7 +41,7 @@ import com.oracle.svm.core.jvmti.JvmtiFunctionTable;
 import com.oracle.svm.core.jvmti.JvmtiFunctions;
 import com.oracle.svm.core.jvmti.JvmtiSupport;
 import com.oracle.svm.core.jvmti.headers.JvmtiInterface;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
@@ -138,7 +138,7 @@ public class JvmtiFeature implements InternalFeature {
 
     private static CFunctionPointer getStubFunctionPointer(CompilationAccessImpl access, HostedMethod method) {
         AnalysisMethod stub = CEntryPointCallStubSupport.singleton().getStubForMethod(method.getWrapped());
-        return new MethodPointer(access.getUniverse().lookup(stub));
+        return MethodRefSupport.createMethodPointer(access.getUniverse().lookup(stub));
     }
 
     private static StructFieldInfo findFieldFor(StructInfo info, String name) {

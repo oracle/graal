@@ -109,6 +109,65 @@ public class EconomicSetTest {
     }
 
     @Test
+    public void testRemoveAllSelf() {
+        assertRemoveAllSelf(false);
+    }
+
+    @Test
+    public void testRemoveAllSelfIterable() {
+        assertRemoveAllSelf(true);
+    }
+
+    private static void assertRemoveAllSelf(boolean iterable) {
+        for (Equivalence equivalence : new Equivalence[]{Equivalence.DEFAULT, Equivalence.IDENTITY, Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE}) {
+            for (int size : new int[]{0, 1, 2, 4, 8, 32, 256}) {
+                EconomicSet<Integer> set = EconomicSet.create(equivalence);
+                ArrayList<Integer> keys = new ArrayList<>();
+                for (int i = 0; i < size; i++) {
+                    Integer key = newInteger(i);
+                    keys.add(key);
+                    set.add(key);
+                }
+                if (size > 4) {
+                    for (int i = 1; i < size; i += 3) {
+                        set.remove(keys.get(i));
+                    }
+                }
+                if (iterable) {
+                    set.removeAll((Iterable<Integer>) set);
+                } else {
+                    set.removeAll(set);
+                }
+                Assert.assertTrue(set.isEmpty());
+                Assert.assertFalse(set.iterator().hasNext());
+                Integer key = newInteger(-1);
+                set.add(key);
+                Assert.assertEquals(1, set.size());
+                Assert.assertTrue(set.contains(key));
+            }
+        }
+    }
+
+    @Test
+    public void testRemoveAllWithDifferentEquivalences() {
+        Integer first = newInteger(1);
+        Integer equal = newInteger(1);
+        EconomicSet<Integer> identitySet = EconomicSet.create(Equivalence.IDENTITY);
+        identitySet.add(first);
+        identitySet.add(equal);
+        EconomicSet<Integer> equalitySet = EconomicSet.create();
+        equalitySet.add(first);
+
+        identitySet.removeAll(equalitySet);
+        Assert.assertEquals(1, identitySet.size());
+        Assert.assertFalse(identitySet.contains(first));
+        Assert.assertTrue(identitySet.contains(equal));
+
+        equalitySet.removeAll(identitySet);
+        Assert.assertTrue(equalitySet.isEmpty());
+    }
+
+    @Test
     public void testRetainAll() {
         EconomicSet<Integer> set = EconomicSet.create();
         set.addAll(Arrays.asList(0, 1, 2));

@@ -30,9 +30,11 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
+import org.junit.AssumptionViolatedException;
 import org.junit.Test;
 
 import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.TlabOptionCache;
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -48,6 +50,16 @@ public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
 
     @Test
     public void test() throws Throwable {
+        /* GR-26848: Adapt this test for G1 once it supports JFR TLAB allocation events. */
+        if (SubstrateOptions.useG1GC()) {
+            /*
+             * Throw explicitly so image analysis cannot reach the Serial GC TlabOptionCache
+             * accesses below. An assumeFalse call does not guarantee that analysis excludes this
+             * code, which requires a singleton that is absent in G1 images.
+             */
+            throw new AssumptionViolatedException("This test requires Serial GC TLAB allocation events.");
+        }
+
         String[] events = new String[]{JfrEvent.ObjectAllocationInNewTLAB.getName()};
         Recording recording = startRecording(events);
 

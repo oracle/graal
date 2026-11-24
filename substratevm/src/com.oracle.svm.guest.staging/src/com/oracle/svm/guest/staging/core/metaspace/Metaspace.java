@@ -1,0 +1,123 @@
+/*
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.svm.guest.staging.core.metaspace;
+
+import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.Pointer;
+
+import com.oracle.svm.shared.ShouldBe;
+import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.shared.meta.GuestFold;
+import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
+
+/**
+ * The metaspace is used for VM-internal objects (such as runtime-allocated {@code DynamicHub}s)
+ * that have a different lifecycle than normal Java heap objects. Objects in the metaspace are
+ * neither collected nor moved by the GC. Objects in the metaspace also do not count towards the
+ * Java heap size.
+ */
+public interface Metaspace {
+    @GuestFold
+    static Metaspace singleton() {
+        return ImageSingletons.lookup(Metaspace.class);
+    }
+
+    @GuestFold
+    static boolean isSupported() {
+        return !(singleton() instanceof NoMetaspace);
+    }
+
+    /**
+     * Returns {@code true} if the {@link Object} reference points to a location within the address
+     * range of the metaspace. Usually faster than {@link #isInAllocatedMemory}.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    boolean isInAddressSpace(Object obj);
+
+    /**
+     * Returns {@code true} if the {@link Pointer} points to a location within the address range of
+     * the metaspace. Usually faster than {@link #isInAllocatedMemory}.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    boolean isInAddressSpace(Pointer obj);
+
+    /**
+     * Returns {@code true} if the {@link Object} reference points to allocated memory that is
+     * located in the address range of the metaspace. Usually slower than {@link #isInAddressSpace}.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    boolean isInAllocatedMemory(Object obj);
+
+    /**
+     * Returns {@code true} if the {@link Pointer} points to allocated memory that is located in the
+     * address range of the metaspace. Usually slower than {@link #isInAddressSpace}.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    boolean isInAllocatedMemory(Pointer ptr);
+
+    /**
+     * Allocates a {@code DynamicHub} and zeroes all its fields. Typically, there should be no need
+     * to call this method directly and {@code DynamicHub#allocate} should be used instead.
+     * <p>
+     * Restore the annotated return type when DynamicHub moves to guest staging (GR-78110).
+     */
+    @ShouldBe(typeName = "com.oracle.svm.core.hub.DynamicHub")
+    Object allocateDynamicHub(int numVTableEntries);
+
+    /** Allocates a byte array. */
+    byte[] allocateByteArray(int length);
+
+    /** Allocates an int array. */
+    int[] allocateIntArray(int length);
+
+    /** Allocates a long array. */
+    long[] allocateLongArray(int length);
+
+    /** Allocates a pure-instance object of the given class. */
+    <T> T allocateObject(Class<T> clazz);
+
+    default byte[] copyToMetaspace(byte[] heapArray) {
+        byte[] result = Metaspace.singleton().allocateByteArray(heapArray.length);
+        System.arraycopy(heapArray, 0, result, 0, heapArray.length);
+        return result;
+    }
+
+    default int[] copyToMetaspace(int[] heapArray) {
+        int[] result = Metaspace.singleton().allocateIntArray(heapArray.length);
+        System.arraycopy(heapArray, 0, result, 0, heapArray.length);
+        return result;
+    }
+
+    default long[] copyToMetaspace(long[] heapArray) {
+        long[] result = Metaspace.singleton().allocateLongArray(heapArray.length);
+        System.arraycopy(heapArray, 0, result, 0, heapArray.length);
+        return result;
+    }
+
+    /** Walks all metaspace objects. May only be called at a safepoint. */
+    void walkObjects(ObjectVisitor visitor);
+}

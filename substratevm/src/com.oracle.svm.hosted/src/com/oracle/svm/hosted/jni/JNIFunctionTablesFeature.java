@@ -46,7 +46,7 @@ import com.oracle.svm.core.jni.functions.JNIFunctions.UnimplementedWithJavaVMArg
 import com.oracle.svm.core.jni.functions.JNIInvocationInterface;
 import com.oracle.svm.core.jni.headers.JNIInvokeInterface;
 import com.oracle.svm.core.jni.headers.JNINativeInterface;
-import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
@@ -151,7 +151,7 @@ public class JNIFunctionTablesFeature implements Feature {
         HostedMethod hostedTrampoline = access.getUniverse().lookup(analysisTrampoline);
         hostedTrampoline.compilationInfo.setCustomParseFunction(trampolineMethod.createCustomParseFunction());
         hostedTrampoline.compilationInfo.setCustomCompileFunction(trampolineMethod.createCustomCompileFunction());
-        return new MethodPointer(hostedTrampoline);
+        return MethodRefSupport.createMethodPointer(hostedTrampoline);
     }
 
     private static ResolvedJavaMethod getSingleMethod(MetaAccessProvider metaAccess, Class<?> holder) {
@@ -162,7 +162,7 @@ public class JNIFunctionTablesFeature implements Feature {
 
     private static CFunctionPointer getStubFunctionPointer(CompilationAccessImpl access, HostedMethod method) {
         AnalysisMethod stub = CEntryPointCallStubSupport.singleton().getStubForMethod(method.getWrapped());
-        return new MethodPointer(access.getUniverse().lookup(stub));
+        return MethodRefSupport.createMethodPointer(access.getUniverse().lookup(stub));
     }
 
     private void fillJNIInvocationInterfaceTable(CompilationAccessImpl access) {

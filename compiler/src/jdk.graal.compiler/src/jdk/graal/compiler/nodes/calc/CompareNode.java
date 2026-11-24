@@ -146,6 +146,10 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                     boolean supported = isConstantConversionSupported(convertX, view, smallestCompareWidth);
                     if (supported && convertX.getValue().stamp(view) instanceof IntegerStamp) {
                         supported = convertX.getClass() == convertY.getClass();
+                        if (supported && convertX instanceof FloatConvertNode floatConvertX) {
+                            // Matching node classes are not sufficient when conversion signedness differs.
+                            supported = floatConvertX.getFloatConvert() == ((FloatConvertNode) convertY).getFloatConvert();
+                        }
                     }
 
                     if (supported) {

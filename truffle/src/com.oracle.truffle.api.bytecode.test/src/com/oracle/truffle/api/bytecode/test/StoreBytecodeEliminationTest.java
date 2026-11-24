@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,11 @@ package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.polyglot.Context;
@@ -54,9 +56,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeIndexMode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
+import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instrumentation;
@@ -73,6 +77,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
@@ -255,10 +260,155 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
 
     }
 
+    @Test
+    public void testManualTags() {
+        for (boolean cached : new boolean[]{false, true}) {
+            for (int scenario = 0; scenario < 5; scenario++) {
+                testManualTags(cached, scenario);
+            }
+        }
+    }
+
+    private static void testManualTags(boolean cached, int scenario) {
+        try (Context context = Context.create(BytecodeDSLTestLanguage.ID)) {
+            context.initialize(BytecodeDSLTestLanguage.ID);
+            context.enter();
+            try {
+                BytecodeDSLTestLanguage language = BytecodeDSLTestLanguage.REF.get(null);
+                BytecodeConfig config = ManualTagRootNodeGen.BYTECODE.newConfigBuilder().addTag(ExpressionTag.class).build();
+                ManualTagRootNode root = ManualTagRootNodeGen.create(language, config, b -> {
+                    b.beginRoot();
+                    if (scenario != 1 && scenario != 2) {
+                        b.beginReturn();
+                    }
+                    b.beginTag(ExpressionTag.class);
+                    switch (scenario) {
+                        case 0 -> {
+                            b.beginYield();
+                            b.emitLoadNull();
+                            b.endYield();
+                        }
+                        case 1 -> b.emitNoop();
+                        case 2 -> b.emitThrow();
+                        case 3 -> b.emitLoadConstant(42);
+                        case 4 -> b.emitNoResultYield();
+                        default -> throw new AssertionError();
+                    }
+                    b.endTag(ExpressionTag.class);
+                    if (scenario == 1 || scenario == 2) {
+                        b.beginReturn();
+                        b.emitLoadConstant(42);
+                    }
+                    b.endReturn();
+                    b.endRoot();
+                }).getNode(0);
+                ManualTagRootNode callee = ManualTagRootNodeGen.create(language, BytecodeConfig.DEFAULT, b -> {
+                    b.beginRoot();
+                    b.beginReturn();
+                    b.emitLoadConstant(42);
+                    b.endReturn();
+                    b.endRoot();
+                }).getNode(0);
+                if (cached) {
+                    root.getBytecodeNode().setUncachedThreshold(0);
+                    callee.getBytecodeNode().setUncachedThreshold(0);
+                }
+                List<String> events = new ArrayList<>();
+                Instrumenter instrumenter = context.getEngine().getInstruments().get(TagTestInstrumentation.ID).lookup(Instrumenter.class);
+                instrumenter.attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).build(), e -> new ExecutionEventNode() {
+                    private void check(VirtualFrame frame, String instructionName) {
+                        int expected = -1;
+                        for (Instruction instruction : root.getBytecodeNode().getInstructionsAsList()) {
+                            if (instruction.getName().equals(instructionName)) {
+                                expected = instruction.getBytecodeIndex();
+                                break;
+                            }
+                        }
+                        assertTrue(instructionName, expected >= 0);
+                        assertEquals(expected, root.getBytecodeNode().getBytecodeIndex(frame));
+                        assertEquals(42, callee.getCallTarget().call());
+                        assertEquals(expected, root.getBytecodeNode().getBytecodeIndex(frame));
+                        events.add(instructionName);
+                    }
+
+                    @Override
+                    protected void onEnter(VirtualFrame frame) {
+                        check(frame, "tag.enter");
+                    }
+
+                    @Override
+                    protected void onReturnValue(VirtualFrame frame, Object result) {
+                        check(frame, scenario == 1 ? "tag.leaveVoid" : "tag.leave");
+                    }
+
+                    @Override
+                    protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
+                        check(frame, "c.Throw");
+                    }
+
+                    @Override
+                    protected void onYield(VirtualFrame frame, Object result) {
+                        check(frame, scenario == 4 ? "tag.yieldNull" : "tag.yield");
+                    }
+
+                    @Override
+                    protected void onResume(VirtualFrame frame) {
+                        check(frame, "tag.resume");
+                    }
+                });
+                if (scenario == 2) {
+                    assertThrows(TestException.class, () -> root.getCallTarget().call());
+                    assertEquals(List.of("tag.enter", "c.Throw"), events);
+                } else {
+                    Object result = root.getCallTarget().call();
+                    if (scenario == 0 || scenario == 4) {
+                        result = ((ContinuationResult) result).continueWith(42);
+                        assertEquals(List.of("tag.enter", scenario == 4 ? "tag.yieldNull" : "tag.yield", "tag.resume", "tag.leave"), events);
+                    } else {
+                        assertEquals(List.of("tag.enter", scenario == 1 ? "tag.leaveVoid" : "tag.leave"), events);
+                    }
+                    assertEquals(42, result);
+                }
+            } finally {
+                context.leave();
+            }
+        }
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.MANUAL, enableTagInstrumentation = true, enableYield = true)
+    abstract static class ManualTagRootNode extends RootNode implements BytecodeRootNode {
+        protected ManualTagRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Yield
+        static final class NoResultYield {
+            @Specialization
+            static Object doDefault(@Bind ContinuationRootNode root, @Bind MaterializedFrame frame) {
+                return ContinuationResult.create(root, frame, null);
+            }
+        }
+
+        @Operation(storeBytecodeIndex = false)
+        static final class Noop {
+            @Specialization
+            static void doDefault() {
+            }
+        }
+
+        @Operation(storeBytecodeIndex = false)
+        static final class Throw {
+            @Specialization
+            static void doDefault() {
+                throw new TestException(null);
+            }
+        }
+    }
+
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableQuickening = true, //
                     enableUncachedInterpreter = true, //
-                    storeBytecodeIndexInFrame = true, //
+                    bytecodeIndexMode = BytecodeIndexMode.FRAME, //
                     enableSpecializationIntrospection = true, //
                     enableTagInstrumentation = true, //
                     enableYield = true //
@@ -408,7 +558,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
     @ExpectWarning("For this operation it is recommended to specify @Proxyable(storeBytecodeIndex=true|false). %")
     @OperationProxy(NoStoreBytecodeIndexProxyTest1.class)
     // no warning if the node does not bind the node
@@ -594,7 +744,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
     @ExpectError("For this operation it is recommended to specify @Proxyable(storeBytecodeIndex=true|false).%")
     @ShortCircuitOperation(name = "BoolAnd", booleanConverter = ExternalProxyNode.class, operator = Operator.AND_RETURN_VALUE)
     abstract static class StoreBytecodeEliminationWarningTestRootNode2 extends RootNode implements BytecodeRootNode {
@@ -605,7 +755,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
     abstract static class StoreBytecodeEliminationWarningTestRootNode3 extends RootNode implements BytecodeRootNode {
 
         protected StoreBytecodeEliminationWarningTestRootNode3(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -623,7 +773,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
     abstract static class StoreBytecodeEliminationWarningTestRootNode4 extends RootNode implements BytecodeRootNode {
 
         protected StoreBytecodeEliminationWarningTestRootNode4(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -640,7 +790,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true)
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
     abstract static class StoreBytecodeEliminationWarningTestRootNode5 extends RootNode implements BytecodeRootNode {
 
         protected StoreBytecodeEliminationWarningTestRootNode5(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -655,6 +805,86 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
             }
         }
 
+    }
+
+    private static final String NO_BCI_SLOT = "Explicit bytecode index storage has no effect because this interpreter does not allocate a bytecode index frame slot.";
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.NONE)
+    @ExpectWarning({NO_BCI_SLOT, NO_BCI_SLOT})
+    @OperationProxy(StoreBytecodeIndexNoWarningProxy.class)
+    @OperationProxy(SpecializationStorageProxy.class)
+    @OperationProxy(NoStoreBytecodeIndexProxyTest1.class)
+    abstract static class NoSlotRootNode extends RootNode implements BytecodeRootNode {
+
+        protected NoSlotRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @ExpectWarning(NO_BCI_SLOT)
+        @Operation(storeBytecodeIndex = true)
+        public static final class ExplicitStorage {
+            @Specialization
+            public static int doInt(int value) {
+                return value;
+            }
+        }
+
+        @Operation(storeBytecodeIndex = false)
+        public static final class SpecializationStorage {
+            @ExpectWarning(NO_BCI_SLOT)
+            @StoreBytecodeIndex
+            @Specialization
+            public static int doInt(int value, @SuppressWarnings("unused") @Bind Node node) {
+                return value;
+            }
+        }
+
+        @Operation
+        public static final class DefaultStorage {
+            @Specialization
+            public static int doInt(int value, @SuppressWarnings("unused") @Bind Node node) {
+                return value;
+            }
+        }
+
+        @Operation(storeBytecodeIndex = false)
+        public static final class DisabledStorage {
+            @Specialization
+            public static int doInt(int value) {
+                return value;
+            }
+        }
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE, enableUncachedInterpreter = false)
+    @ExpectWarning({NO_BCI_SLOT, NO_BCI_SLOT})
+    @OperationProxy(StoreBytecodeIndexNoWarningProxy.class)
+    @OperationProxy(SpecializationStorageProxy.class)
+    @OperationProxy(NoStoreBytecodeIndexProxyTest1.class)
+    abstract static class CachedNodeNoSlotRootNode extends RootNode implements BytecodeRootNode {
+
+        protected CachedNodeNoSlotRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+    }
+
+    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE, enableUncachedInterpreter = true)
+    @OperationProxy(StoreBytecodeIndexNoWarningProxy.class)
+    @OperationProxy(SpecializationStorageProxy.class)
+    abstract static class CachedNodeWithSlotRootNode extends RootNode implements BytecodeRootNode {
+
+        protected CachedNodeWithSlotRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+    }
+
+    @OperationProxy.Proxyable(allowUncached = true, storeBytecodeIndex = false)
+    public static final class SpecializationStorageProxy {
+        @StoreBytecodeIndex
+        @Specialization
+        public static int doInt(int value, @SuppressWarnings("unused") @Bind Node node) {
+            return value;
+        }
     }
 
     @TruffleInstrument.Registration(id = TagTestInstrumentation.ID, services = Instrumenter.class)

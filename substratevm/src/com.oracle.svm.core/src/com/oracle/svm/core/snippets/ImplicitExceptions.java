@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import com.oracle.svm.guest.staging.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.guest.staging.jdk.InternalVMMethod;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
+import com.oracle.svm.guest.staging.util.PreallocatedExceptions;
 import com.oracle.svm.shared.util.VMError;
 
 /**
@@ -58,17 +59,17 @@ import com.oracle.svm.shared.util.VMError;
 public class ImplicitExceptions {
     public static final String NO_STACK_MSG = "[no exception stack trace available because exception is thrown from code that must be allocation free]";
 
-    public static final NullPointerException CACHED_NULL_POINTER_EXCEPTION = new NullPointerException(NO_STACK_MSG);
-    public static final ArrayIndexOutOfBoundsException CACHED_OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException(NO_STACK_MSG);
-    public static final ClassCastException CACHED_CLASS_CAST_EXCEPTION = new ClassCastException(NO_STACK_MSG);
-    public static final ArrayStoreException CACHED_ARRAY_STORE_EXCEPTION = new ArrayStoreException(NO_STACK_MSG);
-    public static final IncompatibleClassChangeError CACHED_INCOMPATIBLE_CLASS_CHANGE_ERROR = new IncompatibleClassChangeError(NO_STACK_MSG);
-    public static final IllegalArgumentException CACHED_ILLEGAL_ARGUMENT_EXCEPTION = new IllegalArgumentException(NO_STACK_MSG);
-    public static final NegativeArraySizeException CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION = new NegativeArraySizeException(NO_STACK_MSG);
-    public static final ArithmeticException CACHED_ARITHMETIC_EXCEPTION = new ArithmeticException(NO_STACK_MSG);
-    public static final AssertionError CACHED_ASSERTION_ERROR = new AssertionError(NO_STACK_MSG);
-    public static final StackOverflowError CACHED_STACK_OVERFLOW_ERROR = new StackOverflowError(NO_STACK_MSG);
-    public static final IllegalMonitorStateException CACHED_ILLEGAL_MONITOR_STATE_EXCEPTION = new IllegalMonitorStateException(NO_STACK_MSG);
+    public static final NullPointerException CACHED_NULL_POINTER_EXCEPTION = PreallocatedExceptions.createNullPointerException(NO_STACK_MSG);
+    public static final ArrayIndexOutOfBoundsException CACHED_OUT_OF_BOUNDS_EXCEPTION = PreallocatedExceptions.createArrayIndexOutOfBoundsException(NO_STACK_MSG);
+    public static final ClassCastException CACHED_CLASS_CAST_EXCEPTION = PreallocatedExceptions.createClassCastException(NO_STACK_MSG);
+    public static final ArrayStoreException CACHED_ARRAY_STORE_EXCEPTION = PreallocatedExceptions.createArrayStoreException(NO_STACK_MSG);
+    public static final IncompatibleClassChangeError CACHED_INCOMPATIBLE_CLASS_CHANGE_ERROR = PreallocatedExceptions.createIncompatibleClassChangeError(NO_STACK_MSG);
+    public static final IllegalArgumentException CACHED_ILLEGAL_ARGUMENT_EXCEPTION = PreallocatedExceptions.createIllegalArgumentException(NO_STACK_MSG);
+    public static final NegativeArraySizeException CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION = PreallocatedExceptions.createNegativeArraySizeException(NO_STACK_MSG);
+    public static final ArithmeticException CACHED_ARITHMETIC_EXCEPTION = PreallocatedExceptions.createArithmeticException(NO_STACK_MSG);
+    public static final AssertionError CACHED_ASSERTION_ERROR = PreallocatedExceptions.createAssertionError(NO_STACK_MSG);
+    public static final StackOverflowError CACHED_STACK_OVERFLOW_ERROR = PreallocatedExceptions.createStackOverflowError(NO_STACK_MSG);
+    public static final IllegalMonitorStateException CACHED_ILLEGAL_MONITOR_STATE_EXCEPTION = PreallocatedExceptions.createIllegalMonitorStateException(NO_STACK_MSG);
 
     public static final SubstrateForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createNullPointerException", HAS_SIDE_EFFECT);
     public static final SubstrateForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createOutOfBoundsException", HAS_SIDE_EFFECT);

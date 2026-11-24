@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -336,6 +336,10 @@ public abstract class BasicArrayCopyNode extends WithExceptionNode
                         debug.log("virtualized arraycopy(%s, %d, %s, %d, %d)", getSource(), srcPosInt, getDestination(), destPosInt, len);
                     }
                 } else {
+                    if (len == 0) {
+                        // No element loads would be emitted to check the source position.
+                        return;
+                    }
                     ResolvedJavaType sourceType = StampTool.typeOrNull(srcAlias);
                     if (sourceType == null || !sourceType.isArray()) {
                         return;

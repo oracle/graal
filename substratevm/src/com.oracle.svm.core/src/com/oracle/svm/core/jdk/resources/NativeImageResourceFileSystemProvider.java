@@ -25,6 +25,8 @@
 
 package com.oracle.svm.core.jdk.resources;
 
+import static com.oracle.svm.core.SubstrateOptions.ResourceProtocol;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -60,7 +62,6 @@ import com.oracle.svm.core.hub.registry.ClassRegistries;
 
 public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
 
-    public static final String RESOURCE_PROTOCOL = "resource";
     private final String resourcePath = "/resources";
     private final String resourceUri = "file:" + resourcePath;
     private final Map<FileSystemContext, NativeImageResourceFileSystem> fileSystems = new HashMap<>();
@@ -112,7 +113,7 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
 
     @Override
     public String getScheme() {
-        return RESOURCE_PROTOCOL;
+        return ResourceProtocol.getValue();
     }
 
     @Override
@@ -215,7 +216,7 @@ public class NativeImageResourceFileSystemProvider extends FileSystemProvider {
         if (ClassRegistries.respectClassLoader()) {
             String host = uri.getHost();
             if (host == null || host.isEmpty() || rootedPath.resourceName().isEmpty()) {
-                throw new IllegalArgumentException("Loader-aware " + RESOURCE_PROTOCOL + " URIs require a loader key host and resource path.");
+                throw new IllegalArgumentException("Loader-aware " + ResourceProtocol.getValue() + " URIs require a loader key host and resource path.");
             }
             path = "/" + host + "/" + rootedPath.resourceName();
             moduleName = uri.getUserInfo();

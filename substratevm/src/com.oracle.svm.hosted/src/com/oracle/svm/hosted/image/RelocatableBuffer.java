@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
-import com.oracle.svm.core.meta.MethodRef;
+import com.oracle.svm.guest.staging.meta.MethodRef;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;

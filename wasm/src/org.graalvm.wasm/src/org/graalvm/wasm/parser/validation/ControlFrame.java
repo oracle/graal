@@ -59,6 +59,7 @@ public abstract class ControlFrame {
 
     private final int initialStackSize;
     private final int legacyCatchDepth;
+    private boolean unwindLegacyCatches;
     private boolean unreachable;
     private final int commonResultType;
     protected BitSet initializedLocals;
@@ -79,8 +80,9 @@ public abstract class ControlFrame {
         this.symbolTable = symbolTable;
         this.initialStackSize = initialStackSize;
         this.legacyCatchDepth = legacyCatchDepth;
+        this.unwindLegacyCatches = false;
         this.unreachable = false;
-        commonResultType = WasmType.getCommonValueType(resultTypes);
+        this.commonResultType = WasmType.getCommonValueType(resultTypes);
         this.initializedLocals = (BitSet) initializedLocals.clone();
     }
 
@@ -150,9 +152,42 @@ public abstract class ControlFrame {
     abstract void exit(ParserState state, RuntimeBytecodeGen bytecode);
 
     /**
+     * Registers a forward branch for fixing up and records whether it exits catches relative to
+     * this label's scope.
+     */
+    void registerForwardBranch(BytecodeFixup fixup, int sourceLegacyCatchDepth) {
+        registerBranch(sourceLegacyCatchDepth);
+        addLabelFixup(fixup);
+    }
+
+    /**
+     * Registers a backward branch and records whether it exits catches relative to this label's scope.
+     */
+    void registerBackwardBranch(int sourceLegacyCatchDepth) {
+        registerBranch(sourceLegacyCatchDepth);
+    }
+
+    /**
+     * Emits a branch to this frame, deferring target patching until the label is available.
+     * Subclasses with an already emitted label can override this to use a compact encoding.
+     */
+    void addBranch(RuntimeBytecodeGen bytecode, RuntimeBytecodeGen.BranchOp branchOp, RuntimeBytecodeGen.BranchHint branchHint, int sourceLegacyCatchDepth) {
+        registerForwardBranch(bytecode.addForwardBranch(branchOp, branchHint), sourceLegacyCatchDepth);
+    }
+
+    private void registerBranch(int sourceLegacyCatchDepth) {
+        // Use the entry depth: a legacy try exits outside its own catch clause.
+        unwindLegacyCatches |= sourceLegacyCatchDepth > legacyCatchDepth;
+    }
+
+    protected int addBranchLabel(RuntimeBytecodeGen bytecode) {
+        return bytecode.addLabel(resultTypeLength(), initialStackSize(), commonResultType(), legacyCatchDepth, unwindLegacyCatches);
+    }
+
+    /**
      * Adds a fixup that targets this control frame's label. The fixup is patched immediately when
      * the label is already available, or deferred until the frame emits its label.
-     * 
+     *
      * @param fixup The fixup that targets this frame's label.
      */
     abstract void addLabelFixup(BytecodeFixup fixup);

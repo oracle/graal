@@ -1548,11 +1548,9 @@ suite = {
                 "java.base" : [
                     "jdk.internal.misc",
                     "jdk.internal.reflect",
+                    "sun.reflect.annotation",
+                    "sun.reflect.generics.repository",
                     "sun.security.util",
-                ],
-                "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.meta.annotation",
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
@@ -2005,6 +2003,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
+                "SVM_GUEST_STAGING",
                 "SVM_SHARED",
             ],
             "requiresConcealed" : {
@@ -2430,6 +2429,11 @@ suite = {
                     "transitive org.graalvm.nativeimage",
                     "transitive org.graalvm.nativeimage.guest.staging",
                 ],
+                "requiresConcealed": {
+                    "java.base": [
+                        "jdk.internal.misc",
+                    ],
+                },
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
                 ],
@@ -2699,6 +2703,7 @@ suite = {
                         "./": [
                             "dependency:com.oracle.svm.native.libchelper/*",
                             "dependency:com.oracle.svm.native.jvm.posix/*",
+                            "dependency:svm-static-library-symbols/*",
                             "dependency:com.oracle.svm.native.libcontainer/*",
                             "file:debug/include",
                             "file:src/com.oracle.svm.core/src/com/oracle/svm/core/gc/shared/include",
@@ -2718,6 +2723,7 @@ suite = {
                         "<os>-<arch>/": [
                             "dependency:com.oracle.svm.native.libchelper/<os>-<arch>/default/*",
                             "dependency:com.oracle.svm.native.jvm.posix/<os>-<arch>/default/*",
+                            "dependency:svm-static-library-symbols/<os>-<arch>/default/*",
                             "dependency:com.oracle.svm.native.darwin/*",
                             "dependency:com.oracle.svm.native.jvm.windows/*",
                         ],

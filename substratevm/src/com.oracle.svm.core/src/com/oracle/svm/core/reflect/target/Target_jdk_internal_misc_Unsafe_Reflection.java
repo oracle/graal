@@ -26,6 +26,7 @@
 package com.oracle.svm.core.reflect.target;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.shared.util.SubstrateUtil;
@@ -36,6 +37,7 @@ import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.shared.singletons.MultiLayeredImageSingleton;
 import com.oracle.svm.core.reflect.UnsafeFieldUtil;
+import com.oracle.svm.guest.staging.reflect.target.Target_java_lang_reflect_Field;
 
 @TargetClass(className = "jdk.internal.misc.Unsafe")
 @SuppressWarnings({"static-method"})
@@ -43,6 +45,10 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
 
     @Substitute
     public long objectFieldOffset(Target_java_lang_reflect_Field field) {
+        /* Atomic field updaters rely on this check to reject static fields during construction. */
+        if (Modifier.isStatic(SubstrateUtil.cast(field, Field.class).getModifiers())) {
+            throw new IllegalArgumentException();
+        }
         return UnsafeFieldUtil.getFieldOffset(field);
     }
 
@@ -76,7 +82,8 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
         try {
             Field field = c.getDeclaredField(name);
             Target_java_lang_reflect_Field cast = SubstrateUtil.cast(field, Target_java_lang_reflect_Field.class);
-            return objectFieldOffset(cast);
+            /* JDK 25 accepts static fields in the class-and-name overload (see JDK-8361300). */
+            return UnsafeFieldUtil.getFieldOffset(cast);
         } catch (NoSuchFieldException nse) {
             throw new InternalError();
         }

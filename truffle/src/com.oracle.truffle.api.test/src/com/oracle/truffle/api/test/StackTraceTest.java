@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -106,8 +106,8 @@ public class StackTraceTest {
         StackTrace stack = (StackTrace) callTarget.call();
 
         Assert.assertEquals(1, stack.frames.size());
-        Assert.assertSame(callTarget, stack.currentFrame.getCallTarget());
-        Assert.assertNull(stack.currentFrame.getCallNode());
+        Assert.assertSame(callTarget, stack.currentFrame.callTarget);
+        Assert.assertNull(stack.currentFrame.callNode);
         assertInvariants(stack);
     }
 
@@ -121,10 +121,10 @@ public class StackTraceTest {
 
         assertInvariants(stack);
         Assert.assertEquals(2, stack.frames.size());
-        Assert.assertSame(createStackTrace, stack.currentFrame.getCallTarget());
-        Assert.assertNull(stack.currentFrame.getCallNode());
-        Assert.assertSame(call, stack.callerFrame.getCallTarget());
-        Assert.assertSame(findCallNode(call), stack.callerFrame.getCallNode());
+        Assert.assertSame(createStackTrace, stack.currentFrame.callTarget);
+        Assert.assertNull(stack.currentFrame.callNode);
+        Assert.assertSame(call, stack.callerFrame.callTarget);
+        Assert.assertSame(findCallNode(call), stack.callerFrame.callNode);
     }
 
     @Test
@@ -136,10 +136,10 @@ public class StackTraceTest {
         StackTrace stack = (StackTrace) call.call();
 
         Assert.assertEquals(2, stack.frames.size());
-        Assert.assertSame(createStackTrace, stack.currentFrame.getCallTarget());
-        Assert.assertNull(stack.currentFrame.getCallNode());
-        Assert.assertSame(call, stack.callerFrame.getCallTarget());
-        Assert.assertSame(findCallNode(call), stack.callerFrame.getCallNode());
+        Assert.assertSame(createStackTrace, stack.currentFrame.callTarget);
+        Assert.assertNull(stack.currentFrame.callNode);
+        Assert.assertSame(call, stack.callerFrame.callTarget);
+        Assert.assertSame(findCallNode(call), stack.callerFrame.callNode);
         assertInvariants(stack);
     }
 
@@ -153,10 +153,10 @@ public class StackTraceTest {
 
         assertInvariants(stack);
         Assert.assertEquals(2, stack.frames.size());
-        Assert.assertSame(createStackTrace, stack.currentFrame.getCallTarget());
-        Assert.assertNull(stack.currentFrame.getCallNode());
-        Assert.assertSame(call, stack.callerFrame.getCallTarget());
-        Assert.assertNull(stack.callerFrame.getCallNode());
+        Assert.assertSame(createStackTrace, stack.currentFrame.callTarget);
+        Assert.assertNull(stack.currentFrame.callNode);
+        Assert.assertSame(call, stack.callerFrame.callTarget);
+        Assert.assertNull(stack.callerFrame.callNode);
     }
 
     @Test
@@ -172,16 +172,16 @@ public class StackTraceTest {
         assertInvariants(stack);
         Assert.assertEquals(4, stack.frames.size());
 
-        Assert.assertSame(createStackTrace, stack.currentFrame.getCallTarget());
-        Assert.assertNull(stack.currentFrame.getCallNode());
-        Assert.assertSame(callTarget, stack.callerFrame.getCallTarget());
-        Assert.assertNull(stack.callerFrame.getCallNode());
+        Assert.assertSame(createStackTrace, stack.currentFrame.callTarget);
+        Assert.assertNull(stack.currentFrame.callNode);
+        Assert.assertSame(callTarget, stack.callerFrame.callTarget);
+        Assert.assertNull(stack.callerFrame.callNode);
 
-        Assert.assertSame(indirect, stack.frames.get(2).getCallTarget());
-        Assert.assertSame(findCallNode(indirect), stack.frames.get(2).getCallNode());
+        Assert.assertSame(indirect, stack.frames.get(2).callTarget);
+        Assert.assertSame(findCallNode(indirect), stack.frames.get(2).callNode);
 
-        Assert.assertSame(direct, stack.frames.get(3).getCallTarget());
-        Assert.assertSame(findCallNode(direct), stack.frames.get(3).getCallNode());
+        Assert.assertSame(direct, stack.frames.get(3).callTarget);
+        Assert.assertSame(findCallNode(direct), stack.frames.get(3).callNode);
     }
 
     @Test
@@ -219,6 +219,40 @@ public class StackTraceTest {
         }, builder.build(), demoIndex);
         findTestCallNode(callTarget).setNext(test);
         direct.call();
+    }
+
+    @Test
+    public void testStackWalkingNearStackLimit() {
+        FrameInstanceVisitor<Void> visitor = frame -> null;
+        Truffle.getRuntime().iterateFrames(visitor);
+        class RecursiveRoot extends RootNode {
+            boolean recurse;
+
+            RecursiveRoot() {
+                super(null);
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                if (!recurse) {
+                    return true;
+                }
+                try {
+                    return getCallTarget().call();
+                } catch (StackOverflowError expected) {
+                    try {
+                        Truffle.getRuntime().iterateFrames(visitor);
+                    } catch (StackOverflowError stillExhausted) {
+                        // Stack walking may also exhaust the stack, but must not mask the error.
+                    }
+                    return true;
+                }
+            }
+        }
+        RecursiveRoot root = new RecursiveRoot();
+        root.getCallTarget().call();
+        root.recurse = true;
+        assertEquals(true, root.getCallTarget().call());
     }
 
     @Test
@@ -286,16 +320,16 @@ public class StackTraceTest {
                             StackTrace stack = (StackTrace) direct.call();
                             assertInvariants(stack);
                             Assert.assertEquals(4, stack.frames.size());
-                            Assert.assertSame(createStackTrace, stack.currentFrame.getCallTarget());
-                            Assert.assertNull(stack.currentFrame.getCallNode());
-                            Assert.assertSame(callTarget, stack.callerFrame.getCallTarget());
-                            Assert.assertNull(stack.callerFrame.getCallNode());
+                            Assert.assertSame(createStackTrace, stack.currentFrame.callTarget);
+                            Assert.assertNull(stack.currentFrame.callNode);
+                            Assert.assertSame(callTarget, stack.callerFrame.callTarget);
+                            Assert.assertNull(stack.callerFrame.callNode);
 
-                            Assert.assertSame(indirect, stack.frames.get(2).getCallTarget());
-                            Assert.assertSame(findCallNode(indirect), stack.frames.get(2).getCallNode());
+                            Assert.assertSame(indirect, stack.frames.get(2).callTarget);
+                            Assert.assertSame(findCallNode(indirect), stack.frames.get(2).callNode);
 
-                            Assert.assertSame(direct, stack.frames.get(3).getCallTarget());
-                            Assert.assertSame(findCallNode(direct), stack.frames.get(3).getCallNode());
+                            Assert.assertSame(direct, stack.frames.get(3).callTarget);
+                            Assert.assertSame(findCallNode(direct), stack.frames.get(3).callNode);
                         }
                         return null;
                     }
@@ -343,21 +377,20 @@ public class StackTraceTest {
         }
 
         for (int i = 0; i < stack.frames.size(); i++) {
-            FrameInstance frame = stack.frames.get(i);
+            FrameSnapshot frame = stack.frames.get(i);
             if (i == 0) {
                 assertFrameEquals(stack.currentFrame, frame);
             } else if (i == 1) {
                 assertFrameEquals(stack.callerFrame, frame);
             }
-            Assert.assertNotNull(frame.getCallTarget());
-            Assert.assertNotNull(frame.toString()); // # does not crash
+            Assert.assertNotNull(frame.callTarget);
         }
     }
 
-    private static void assertFrameEquals(FrameInstance expected, FrameInstance other) {
-        Assert.assertEquals(expected.isVirtualFrame(), other.isVirtualFrame());
-        Assert.assertSame(expected.getCallNode(), other.getCallNode());
-        Assert.assertSame(expected.getCallTarget(), other.getCallTarget());
+    private static void assertFrameEquals(FrameSnapshot expected, FrameSnapshot other) {
+        Assert.assertEquals(expected.virtualFrame, other.virtualFrame);
+        Assert.assertSame(expected.callNode, other.callNode);
+        Assert.assertSame(expected.callTarget, other.callTarget);
     }
 
     private static CallTarget createCallTarget(TestCallNode callNode, FrameDescriptor descriptor, int demoIndex) {
@@ -433,24 +466,32 @@ public class StackTraceTest {
         }
     }
 
+    private record FrameSnapshot(boolean virtualFrame, Node callNode, CallTarget callTarget) {
+
+        FrameSnapshot(FrameInstance frame) {
+            this(frame.isVirtualFrame(), frame.getCallNode(), frame.getCallTarget());
+            Assert.assertNotNull(frame.toString()); // Exercise the live frame, not the snapshot.
+        }
+    }
+
     private static class StackTrace {
 
-        final List<FrameInstance> frames;
-        final FrameInstance currentFrame;
-        final FrameInstance callerFrame;
+        final List<FrameSnapshot> frames;
+        final FrameSnapshot currentFrame;
+        final FrameSnapshot callerFrame;
 
         @SuppressWarnings("deprecation")
         StackTrace() {
             frames = new ArrayList<>();
             Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
                 public Void visitFrame(FrameInstance frameInstance) {
-                    frames.add(frameInstance);
+                    frames.add(new FrameSnapshot(frameInstance));
                     return null;
                 }
             });
 
-            currentFrame = Truffle.getRuntime().iterateFrames((f) -> f, 0);
-            callerFrame = Truffle.getRuntime().iterateFrames((f) -> f, 1);
+            currentFrame = Truffle.getRuntime().iterateFrames(FrameSnapshot::new, 0);
+            callerFrame = Truffle.getRuntime().iterateFrames(FrameSnapshot::new, 1);
         }
 
     }

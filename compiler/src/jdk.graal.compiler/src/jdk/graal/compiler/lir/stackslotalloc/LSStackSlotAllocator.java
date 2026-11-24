@@ -442,13 +442,7 @@ public final class LSStackSlotAllocator extends AllocationPhase {
                     StackInterval interval = get(virtualSlot);
                     assert interval != null;
                     StackSlot slot = interval.location();
-                    if (virtualSlot instanceof SimpleVirtualStackSlotAlias) {
-                        GraalError.guarantee(mode == LIRInstruction.OperandMode.USE || mode == LIRInstruction.OperandMode.USE_KILL || mode == LIRInstruction.OperandMode.ALIVE,
-                                        "Invalid application of SimpleVirtualStackSlotAlias");
-                        // return the same slot, but with the alias's kind.
-                        return StackSlot.get(virtualSlot.getValueKind(), slot.getRawOffset(), slot.getRawAddFrameSize());
-                    }
-                    return slot;
+                    return StackSlotAllocatorUtil.toStackSlot(virtualSlot, slot, mode);
                 }
                 return value;
             }

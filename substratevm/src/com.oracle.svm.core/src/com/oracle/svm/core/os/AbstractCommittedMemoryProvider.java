@@ -81,8 +81,14 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static void free(PointerBase start, UnsignedWord nbytes, NmtCategory nmtCategory) {
+        free(start, nbytes, nbytes, nmtCategory);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected static void free(PointerBase start, UnsignedWord nbytes, UnsignedWord nbytesCommitted, NmtCategory nmtCategory) {
+        assert nbytesCommitted.belowOrEqual(nbytes);
         if (VMInspectionOptions.hasNativeMemoryTrackingSupport()) {
-            NativeMemoryTracking.singleton().trackUncommit(nbytes, nmtCategory);
+            NativeMemoryTracking.singleton().trackUncommit(nbytesCommitted, nmtCategory);
             NativeMemoryTracking.singleton().trackFree(nbytes, nmtCategory);
         }
 

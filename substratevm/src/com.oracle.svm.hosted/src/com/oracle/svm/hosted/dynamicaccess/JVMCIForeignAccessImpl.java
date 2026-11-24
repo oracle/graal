@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.dynamicaccess;
 
+import java.lang.foreign.FunctionDescriptor;
 import java.lang.invoke.MethodHandle;
 
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
@@ -31,6 +32,7 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import com.oracle.svm.hosted.ForeignAccessImpl;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestInvoked;
+import com.oracle.svm.util.GuestType;
 import com.oracle.svm.util.dynamicaccess.JVMCIAccessCondition;
 import com.oracle.svm.util.dynamicaccess.JVMCIForeignAccess;
 
@@ -72,12 +74,13 @@ public final class JVMCIForeignAccessImpl implements JVMCIForeignAccess {
      *            {@link java.lang.foreign.Linker.Option}s
      */
     @GuestInvoked
-    public void registerForDowncall(JavaConstant condition, JavaConstant desc, JavaConstant options) {
+    public void registerForDowncall(@GuestType(AccessCondition.class) JavaConstant condition, @GuestType(FunctionDescriptor.class) JavaConstant desc,
+                    @GuestType(Object[].class) JavaConstant options) {
         foreignInstance().registerForDowncall(JVMCIAccessCondition.guestAccessCondition(condition), asObject(desc), asObjects(options));
     }
 
     @Override
-    public void registerForDowncall(AccessCondition condition, JavaConstant desc, JavaConstant... options) {
+    public void registerForDowncall(AccessCondition condition, @GuestType(FunctionDescriptor.class) JavaConstant desc, JavaConstant... options) {
         foreignInstance().registerForDowncall(condition, asObject(desc), asObjects(options));
     }
 
@@ -92,12 +95,13 @@ public final class JVMCIForeignAccessImpl implements JVMCIForeignAccess {
      *            {@link java.lang.foreign.Linker.Option}s
      */
     @GuestInvoked
-    public void registerForUpcall(JavaConstant condition, JavaConstant desc, JavaConstant options) {
+    public void registerForUpcall(@GuestType(AccessCondition.class) JavaConstant condition, @GuestType(FunctionDescriptor.class) JavaConstant desc,
+                    @GuestType(Object[].class) JavaConstant options) {
         foreignInstance().registerForUpcall(JVMCIAccessCondition.guestAccessCondition(condition), asObject(desc), asObjects(options));
     }
 
     @Override
-    public void registerForUpcall(AccessCondition condition, JavaConstant desc, JavaConstant... options) {
+    public void registerForUpcall(AccessCondition condition, @GuestType(FunctionDescriptor.class) JavaConstant desc, JavaConstant... options) {
         foreignInstance().registerForUpcall(condition, asObject(desc), asObjects(options));
     }
 
@@ -113,12 +117,14 @@ public final class JVMCIForeignAccessImpl implements JVMCIForeignAccess {
      *            {@link java.lang.foreign.Linker.Option}s
      */
     @GuestInvoked
-    public void registerForDirectUpcall(JavaConstant condition, JavaConstant target, JavaConstant desc, JavaConstant options) {
+    public void registerForDirectUpcall(@GuestType(AccessCondition.class) JavaConstant condition, @GuestType(MethodHandle.class) JavaConstant target,
+                    @GuestType(FunctionDescriptor.class) JavaConstant desc, @GuestType(Object[].class) JavaConstant options) {
         foreignInstance().registerForDirectUpcall(JVMCIAccessCondition.guestAccessCondition(condition), asObject(MethodHandle.class, target), asObject(desc), asObjects(options));
     }
 
     @Override
-    public void registerForDirectUpcall(AccessCondition condition, JavaConstant target, JavaConstant desc, JavaConstant... options) {
+    public void registerForDirectUpcall(AccessCondition condition, @GuestType(MethodHandle.class) JavaConstant target,
+                    @GuestType(FunctionDescriptor.class) JavaConstant desc, JavaConstant... options) {
         foreignInstance().registerForDirectUpcall(condition, asObject(MethodHandle.class, target), asObject(desc), asObjects(options));
     }
 

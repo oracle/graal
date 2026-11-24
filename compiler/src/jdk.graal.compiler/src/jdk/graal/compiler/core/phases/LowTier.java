@@ -56,6 +56,7 @@ import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.vector.phases.VectorLoweringPhaseSuite;
+import jdk.graal.compiler.vector.phases.RemoveEmptyLoopsPhase;
 import jdk.graal.compiler.vector.replacements.VectorIntrinsics;
 import jdk.graal.compiler.virtual.phases.ea.LowTierReadEliminationPhase;
 
@@ -100,6 +101,8 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(new OptimizeOffsetAddressPhase(canonicalizerWithGVN));
 
+        appendPhase(new OptimizeExtendsPhase(OptimizeExtendsPhase.Mode.COMBINE));
+
         if (PartialRedundancySchedulePhase.Options.PartialRedundancyScheduling.getValue(options)) {
             appendPhase(new FixReadsPhase(true, new PartialRedundancySchedulePhase()));
         } else {
@@ -119,6 +122,8 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(canonicalizerWithoutGVN);
 
+        appendPhase(new RemoveEmptyLoopsPhase(canonicalizerWithoutGVN));
+
         /*
          * This placeholder should be replaced by an instance of {@link AddressLoweringPhase}
          * specific to the target architecture for this compilation. This should be done by the
@@ -136,7 +141,7 @@ public class LowTier extends BaseTier<LowTierContext> {
             appendPhase(new BreakChainedPhisPhase());
         }
 
-        appendPhase(new OptimizeExtendsPhase());
+        appendPhase(new OptimizeExtendsPhase(OptimizeExtendsPhase.Mode.FOLD_READS));
 
         appendPhase(new RemoveOpaqueValuePhase());
 

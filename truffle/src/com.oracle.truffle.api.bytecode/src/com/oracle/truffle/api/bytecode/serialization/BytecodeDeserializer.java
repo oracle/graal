@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,10 +94,12 @@ public interface BytecodeDeserializer {
      * <p>
      * The {@code context} is supplied so that a {@link BytecodeDeserializer} can transitively
      * deserialize other {@link BytecodeRootNode root nodes} (e.g., inner functions) if necessary.
+     * Root nodes may not be fully initialized, so this method must not execute these roots or
+     * request call targets/metadata updates.
      * <p>
-     * Must be idempotent. This method may be invoked multiple times for the same logical constant,
-     * so if object identity or footprint is a concern, this method may need to canonicalize such
-     * values (for example, using interning or caching).
+     * Must be idempotent. This method may be invoked multiple times for the same logical constant.
+     * See {@link BytecodeSerializer#serialize} for encoding requirements and guidance on
+     * preserving object identity across invocations and reparses.
      *
      * @since 24.2
      */

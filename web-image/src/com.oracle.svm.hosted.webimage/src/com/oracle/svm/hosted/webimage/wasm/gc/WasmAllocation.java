@@ -44,7 +44,7 @@ import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.guest.staging.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
-import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectVisitor;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -948,7 +948,7 @@ public final class WasmAllocation {
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static Object newInstance(Word objectHeader) {
-        DynamicHub hub = WasmObjectHeader.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
+        DynamicHub hub = (DynamicHub) WasmObjectHeader.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
         return newInstanceWithoutAllocating(hub);
     }
 
@@ -967,7 +967,7 @@ public final class WasmAllocation {
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
     private static Object newArrayLikeObject0(Word objectHeader, int length) {
-        DynamicHub hub = WasmObjectHeader.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
+        DynamicHub hub = (DynamicHub) WasmObjectHeader.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
 
         WasmHeap.exitIfAllocationDisallowed("WasmAllocation.newArrayLikeObject0", DynamicHub.toClass(hub).getName());
         WasmLMGC.getGC().maybeCollectOnAllocation();

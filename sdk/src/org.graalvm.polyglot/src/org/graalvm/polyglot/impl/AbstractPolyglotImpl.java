@@ -965,13 +965,15 @@ public abstract class AbstractPolyglotImpl {
 
         private static final String POLYGLOT_PACKAGE = "org.graalvm.polyglot.";
         private static final String HOST_INTEROP_PACKAGE = "com.oracle.truffle.polyglot.";
+        private static final String GENERATED_PROXY_PREFIX = "generated.$GeneratedProxy$";
         private static final String[] JAVA_INTEROP_HOST_TO_GUEST = {
                         HOST_INTEROP_PACKAGE + "PolyglotMap",
                         HOST_INTEROP_PACKAGE + "PolyglotList",
                         HOST_INTEROP_PACKAGE + "PolyglotFunction",
                         HOST_INTEROP_PACKAGE + "PolyglotMapAndFunction",
                         HOST_INTEROP_PACKAGE + "PolyglotFunctionProxyHandler",
-                        HOST_INTEROP_PACKAGE + "PolyglotObjectProxyHandler"
+                        HOST_INTEROP_PACKAGE + "PolyglotObjectProxyHandler",
+                        HOST_INTEROP_PACKAGE + "PolyglotGeneratedProxy"
         };
 
         protected AbstractHostLanguageService(AbstractPolyglotImpl polyglot) {
@@ -1078,6 +1080,9 @@ public abstract class AbstractPolyglotImpl {
             if (element.getClassName().startsWith(POLYGLOT_PACKAGE) && element.getClassName().indexOf('.', POLYGLOT_PACKAGE.length()) < 0) {
                 return !element.getClassName().equals("org.graalvm.polyglot.Engine$APIAccessImpl");
             } else if (element.getClassName().startsWith(HOST_INTEROP_PACKAGE)) {
+                if (element.getClassName().startsWith(GENERATED_PROXY_PREFIX, HOST_INTEROP_PACKAGE.length())) {
+                    return true;
+                }
                 for (String hostToGuestClassName : JAVA_INTEROP_HOST_TO_GUEST) {
                     if (element.getClassName().equals(hostToGuestClassName)) {
                         return true;

@@ -50,6 +50,7 @@ The following language implementations exist already (in alphabetical order):
 * [streamblocks-graalvm](https://github.com/streamblocks/streamblocks-graalvm), a [CAL Actor Language](https://en.wikipedia.org/wiki/CAL_Actor_Language) ([Dataflow Programming](https://en.wikipedia.org/wiki/Dataflow_programming)) implementation
 * [TruffleMATE](https://github.com/charig/TruffleMATE), a Smalltalk with a completely reified runtime system.
 * [TrufflePascal](https://github.com/Aspect26/TrufflePascal/), a Pascal interpreter.
+* [TrufflePascal (Bytecode DSL)](https://github.com/d45h71/TrufflePascal), a Pascal implementation using the Truffle Bytecode DSL.
 * [ZipPy](https://github.com/securesystemslab/zippy), a Python implementation.
 
 

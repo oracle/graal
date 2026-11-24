@@ -27,6 +27,7 @@ package com.oracle.svm.core.code;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.shared.BuildPhaseProvider;
 import com.oracle.svm.shared.util.VMError;
 

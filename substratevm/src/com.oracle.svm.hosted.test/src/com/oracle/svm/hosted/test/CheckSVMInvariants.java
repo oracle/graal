@@ -46,6 +46,7 @@ import jdk.graal.compiler.vmaccess.ResolvedJavaModuleLayer;
 import jdk.graal.compiler.vmaccess.ResolvedJavaPackage;
 import jdk.internal.module.Modules;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -67,7 +68,7 @@ public class CheckSVMInvariants {
     /**
      * A {@link InvariantsTool} that only filters for svm classes and jars.
      */
-    private final class SVMInvariantsTool extends CheckGraalInvariants.InvariantsTool {
+    final class SVMInvariantsTool extends CheckGraalInvariants.InvariantsTool {
 
         public static final String SVMINVARIANTS_JARS_PROP = "svm.test.CheckSVMInvariants.jars";
 
@@ -110,6 +111,22 @@ public class CheckSVMInvariants {
             if (!declaringClass.equals(timeUtils)) {
                 throw new VerificationError(t, "Should use System.nanoTime() for measuring elapsed time or TimeUtils.currentTimeMillis() for the time since the epoch");
             }
+        }
+
+        @Override
+        public boolean isIdentityHashCodeQueryAllowed(ResolvedJavaMethod caller) {
+            return switch (caller.format("%H.%n(%P)")) {
+                // Object-scanner diagnostics identify the original hosted object.
+                case "com.oracle.graal.pointsto.ObjectScanner.originalIdentityHashCode(jdk.vm.ci.meta.JavaConstant)" -> true;
+                // Constant conversion retains the object's identity for runtime compilation.
+                case "com.oracle.svm.graal.SubstrateGraalUtils.hostedToRuntime(com.oracle.graal.pointsto.heap.ImageHeapConstant, jdk.vm.ci.meta.ConstantReflectionProvider)" -> true;
+                // Image-heap construction and layer persistence record the object's identity.
+                case "com.oracle.svm.hosted.image.NativeImageHeap.computeIdentityHashCode(jdk.vm.ci.meta.JavaConstant)",
+                                "com.oracle.svm.hosted.imagelayer.SVMImageConstantSnapshotWriter.persistConstant(com.oracle.graal.pointsto.heap.ImageHeapConstant, " +
+                                                "com.oracle.svm.hosted.imagelayer.SVMImageConstantSnapshotWriter$ConstantParent, " +
+                                                "com.oracle.svm.hosted.snapshot.constant.PersistedConstantData$Writer, java.util.Set)" -> true;
+                default -> false;
+            };
         }
 
         @Override

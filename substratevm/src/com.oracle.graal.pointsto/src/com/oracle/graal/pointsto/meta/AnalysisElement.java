@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import java.lang.reflect.Executable;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +46,6 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.GuestAccess;
-import com.oracle.svm.util.OriginalClassProvider;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ModifiersProvider;
@@ -180,10 +178,10 @@ public abstract class AnalysisElement extends AbstractAnnotated {
     }
 
     public static final class SubtypeReachableNotification {
-        private final BiConsumer<DuringAnalysisAccess, Class<?>> callback;
+        private final BiConsumer<DuringAnalysisAccess, AnalysisType> callback;
         private final Map<AnalysisType, AnalysisFuture<Void>> seenSubtypes = new ConcurrentHashMap<>();
 
-        public SubtypeReachableNotification(BiConsumer<DuringAnalysisAccess, Class<?>> callback) {
+        public SubtypeReachableNotification(BiConsumer<DuringAnalysisAccess, AnalysisType> callback) {
             this.callback = callback;
         }
 
@@ -192,7 +190,7 @@ public abstract class AnalysisElement extends AbstractAnnotated {
             assert reachableSubtype.isReachable() : reachableSubtype;
             return seenSubtypes.computeIfAbsent(reachableSubtype, k -> {
                 AnalysisFuture<Void> newValue = new AnalysisFuture<>(() -> {
-                    callback.accept(universe.getConcurrentAnalysisAccess(), OriginalClassProvider.getJavaClass(reachableSubtype));
+                    callback.accept(universe.getConcurrentAnalysisAccess(), reachableSubtype);
                     return null;
                 });
                 execute(universe, newValue);
@@ -202,10 +200,10 @@ public abstract class AnalysisElement extends AbstractAnnotated {
     }
 
     public static final class MethodOverrideReachableNotification {
-        private final BiConsumer<DuringAnalysisAccess, Executable> callback;
+        private final BiConsumer<DuringAnalysisAccess, AnalysisMethod> callback;
         private final Set<AnalysisMethod> seenOverride = ConcurrentHashMap.newKeySet();
 
-        public MethodOverrideReachableNotification(BiConsumer<DuringAnalysisAccess, Executable> callback) {
+        public MethodOverrideReachableNotification(BiConsumer<DuringAnalysisAccess, AnalysisMethod> callback) {
             this.callback = callback;
         }
 
@@ -213,12 +211,9 @@ public abstract class AnalysisElement extends AbstractAnnotated {
         public void notifyCallback(AnalysisUniverse universe, AnalysisMethod reachableOverride) {
             assert reachableOverride.isReachable() : reachableOverride;
             if (seenOverride.add(reachableOverride)) {
-                Executable javaMethod = reachableOverride.getJavaMethod();
-                if (javaMethod != null) {
-                    execute(universe, () -> {
-                        callback.accept(universe.getConcurrentAnalysisAccess(), javaMethod);
-                    });
-                }
+                execute(universe, () -> {
+                    callback.accept(universe.getConcurrentAnalysisAccess(), reachableOverride);
+                });
             }
         }
     }

@@ -26,7 +26,7 @@ package com.oracle.svm.core.auximage;
 
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.guest.staging.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.guest.staging.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;

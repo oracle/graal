@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -74,7 +75,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.JVMCIObjectReachableCallback;
-import com.oracle.graal.pointsto.meta.ObjectReachableCallback;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.LinkerInvocation;
@@ -112,6 +112,7 @@ import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.GuestAnnotationAccess;
 import com.oracle.svm.util.GuestInvoked;
+import com.oracle.svm.util.GuestType;
 import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
@@ -389,7 +390,7 @@ public class FeatureImpl {
         }
 
         public Set<Class<?>> reachableSubtypes(Class<?> baseClass) {
-            return reachableSubtypes(getMetaAccess().lookupJavaType(baseClass)).toHashSet().stream()
+            return reachableSubtypesWithHostType(getMetaAccess().lookupJavaType(baseClass))
                             .map(OriginalClassProvider::getJavaClass).collect(Collectors.toCollection(HashSet::new));
         }
 
@@ -399,6 +400,15 @@ public class FeatureImpl {
 
         public Set<ResolvedJavaType> reachableSubtypes(ResolvedJavaType baseType) {
             return new LinkedHashSet<>(reachableSubtypes(asAnalysisType(baseType)).toHashSet());
+        }
+
+        private Stream<AnalysisType> reachableSubtypesWithHostType(ResolvedJavaType baseType) {
+            /*
+             * Base-layer placeholders have no corresponding Class in the current layer.
+             * OriginalClassProvider would map them to Object.class. The general JVMCI query
+             * preserves their analysis identity and does not need this filter.
+             */
+            return reachableSubtypes(asAnalysisType(baseType)).toHashSet().stream().filter(AnalysisType::isBackedByHostType);
         }
 
         public Set<Executable> reachableMethodOverrides(Executable baseMethod) {
@@ -423,18 +433,13 @@ public class FeatureImpl {
          * @return a {@link JavaConstant} representing the guest {@code Set<Class<?>>} of reachable subtypes
          */
         @GuestInvoked
-        public JavaConstant reachableSubtypesAsSet(JavaConstant baseClass) {
+        public @GuestType(Set.class) JavaConstant reachableSubtypesAsSet(@GuestType(Class.class) JavaConstant baseClass) {
             GuestAccess guestAccess = GuestAccess.get();
             ResolvedJavaType baseType = guestAccess.getProviders().getConstantReflection().asJavaType(baseClass);
             if (baseType == null) {
                 throw UserError.abort("Guest reachable-subtype query requires a Class object");
             }
-            Set<ResolvedJavaType> types = reachableSubtypes(baseType);
-            JavaConstant[] classes = new JavaConstant[types.size()];
-            int index = 0;
-            for (ResolvedJavaType type : types) {
-                classes[index++] = guestClassConstant(guestAccess, type);
-            }
+            JavaConstant[] classes = reachableSubtypesWithHostType(baseType).map(type -> guestClassConstant(guestAccess, type)).toArray(JavaConstant[]::new);
             return guestSetConstant(guestAccess, classes);
         }
 
@@ -446,7 +451,7 @@ public class FeatureImpl {
          * @return a {@link JavaConstant} representing the guest {@code Set<Executable>} of reachable overrides
          */
         @GuestInvoked
-        public JavaConstant reachableMethodOverridesAsSet(JavaConstant baseMethod) {
+        public @GuestType(Set.class) JavaConstant reachableMethodOverridesAsSet(@GuestType(Executable.class) JavaConstant baseMethod) {
             GuestAccess guestAccess = GuestAccess.get();
             ResolvedJavaMethod method = guestAccess.asResolvedJavaMethod(baseMethod);
             if (method == null) {
@@ -481,6 +486,10 @@ public class FeatureImpl {
         private static JavaConstant guestExecutableConstant(GuestAccess guestAccess, ResolvedJavaMethod method) {
             ResolvedJavaMethod guestMethod = OriginalMethodProvider.getOriginalMethod(method);
             return guestMethod == null ? null : guestAccess.asExecutableConstant(guestMethod);
+        }
+
+        public void rescanConstant(JavaConstant constant, ScanReason reason) {
+            getUniverse().getHeapScanner().rescanConstant(constant, reason);
         }
 
         public void rescanObject(Object obj, ScanReason reason) {
@@ -543,7 +552,7 @@ public class FeatureImpl {
          * @see org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess#registerObjectReplacer(Function)
          */
         @GuestInvoked
-        public void registerObjectReplacer(JavaConstant replacer) {
+        public void registerObjectReplacer(@GuestType(Function.class) JavaConstant replacer) {
             if (replacer == null || replacer.isNull()) {
                 throw UserError.abort("'registerObjectReplacer' called with a null replacer");
             }
@@ -593,11 +602,11 @@ public class FeatureImpl {
          * object based on specific validation rules. This will stop the image build and report how
          * the object was reached.
          *
-         * @since 24.0
+         * @param callback the callback to register
+         * @param type the type whose reachable objects trigger {@code callback}
          */
-        public <T> void registerObjectReachableCallback(Class<T> clazz, ObjectReachableCallback<T> callback) {
-            // GR-78902: migrate all clients to JVMCI or guest callbacks.
-            getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(new LegacyObjectReachableCallbackAdapter<>(callback));
+        public void registerObjectReachableCallback(JVMCIObjectReachableCallback callback, ResolvedJavaType type) {
+            asAnalysisType(type).registerObjectReachableCallback(callback);
         }
 
         @Override
@@ -620,7 +629,7 @@ public class FeatureImpl {
          * @see org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess#registerObjectReachabilityHandler(Consumer, Class)
          */
         @GuestInvoked
-        public void registerObjectReachabilityHandler(JavaConstant callback, ResolvedJavaType type) {
+        public void registerObjectReachabilityHandler(@GuestType(Consumer.class) JavaConstant callback, ResolvedJavaType type) {
             if (callback == null || callback.isNull()) {
                 throw UserError.abort("'registerObjectReachabilityHandler' called with a null callback");
             }
@@ -861,7 +870,12 @@ public class FeatureImpl {
         @Override
         public void registerMethodOverrideReachabilityHandler(BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod) {
             AnalysisMethod baseAnalysisMethod = getMetaAccess().lookupJavaMethod(baseMethod);
-            MethodOverrideReachableNotification notification = new MethodOverrideReachableNotification(callback);
+            MethodOverrideReachableNotification notification = new MethodOverrideReachableNotification((access, method) -> {
+                Executable executable = method.getJavaMethod();
+                if (executable != null) {
+                    callback.accept(access, executable);
+                }
+            });
             baseAnalysisMethod.registerOverrideReachabilityNotification(notification);
 
             /*
@@ -877,9 +891,7 @@ public class FeatureImpl {
         @Override
         public void registerMethodOverrideReachabilityHandler(BiConsumer<JVMCIFeatureAccess.DuringAnalysisAccess, ResolvedJavaMethod> callback, ResolvedJavaMethod baseMethod) {
             AnalysisMethod baseAnalysisMethod = asAnalysisMethod(baseMethod);
-            // TODO GR-76812: make the notification payload expose JVMCI metadata directly.
-            MethodOverrideReachableNotification notification = new MethodOverrideReachableNotification((access, executable) -> callback.accept((JVMCIFeatureAccess.DuringAnalysisAccess) access,
-                            getMetaAccess().lookupJavaMethod(executable)));
+            MethodOverrideReachableNotification notification = new MethodOverrideReachableNotification((access, method) -> callback.accept((JVMCIFeatureAccess.DuringAnalysisAccess) access, method));
             baseAnalysisMethod.registerOverrideReachabilityNotification(notification);
 
             for (AnalysisMethod override : reachableMethodOverrides(baseAnalysisMethod)) {
@@ -890,7 +902,16 @@ public class FeatureImpl {
         @Override
         public void registerSubtypeReachabilityHandler(BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
             AnalysisType baseType = getMetaAccess().lookupJavaType(baseClass);
-            SubtypeReachableNotification notification = new SubtypeReachableNotification(callback);
+            SubtypeReachableNotification notification = new SubtypeReachableNotification((access, type) -> {
+                /*
+                 * A placeholder for a hidden type from a shared layer has no Class in this build.
+                 * OriginalClassProvider maps it to Object.class, which would report spurious,
+                 * duplicate notifications instead of the actual reachable subtype.
+                 */
+                if (type.isBackedByHostType()) {
+                    callback.accept(access, OriginalClassProvider.getJavaClass(type));
+                }
+            });
             baseType.registerSubtypeReachabilityNotification(notification);
 
             /*
@@ -905,9 +926,7 @@ public class FeatureImpl {
         @Override
         public void registerSubtypeReachabilityHandler(BiConsumer<JVMCIFeatureAccess.DuringAnalysisAccess, ResolvedJavaType> callback, ResolvedJavaType baseType) {
             AnalysisType baseAnalysisType = asAnalysisType(baseType);
-            // TODO GR-76812: make the notification payload expose JVMCI metadata directly.
-            SubtypeReachableNotification notification = new SubtypeReachableNotification((access, clazz) -> callback.accept((JVMCIFeatureAccess.DuringAnalysisAccess) access,
-                            getMetaAccess().lookupJavaType(clazz)));
+            SubtypeReachableNotification notification = new SubtypeReachableNotification((access, type) -> callback.accept((JVMCIFeatureAccess.DuringAnalysisAccess) access, type));
             baseAnalysisType.registerSubtypeReachabilityNotification(notification);
 
             for (AnalysisType subtype : reachableSubtypes(baseAnalysisType)) {
@@ -958,7 +977,7 @@ public class FeatureImpl {
          * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerFieldValueTransformer(java.lang.reflect.Field, FieldValueTransformer)
          */
         @GuestInvoked
-        public void registerFieldValueTransformer(ResolvedJavaField field, JavaConstant transformer) {
+        public void registerFieldValueTransformer(ResolvedJavaField field, @GuestType(FieldValueTransformer.class) JavaConstant transformer) {
             registerFieldValueTransformer(field, FieldValueInterceptionSupport.WrappedFieldValueTransformer.create(transformer));
         }
 
@@ -972,7 +991,7 @@ public class FeatureImpl {
          * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerReachabilityHandler(Consumer, Object...)
          */
         @GuestInvoked
-        public void registerReachabilityHandler(JavaConstant callback, JavaConstant elements) {
+        public void registerReachabilityHandler(@GuestType(Consumer.class) JavaConstant callback, @GuestType(Object[].class) JavaConstant elements) {
             if (callback == null || callback.isNull()) {
                 throw UserError.abort("'registerReachabilityHandler' called with a null callback");
             }
@@ -993,7 +1012,7 @@ public class FeatureImpl {
          *            or {@code Executable} objects
          * @return the corresponding JVMCI types, fields, and methods
          */
-        private static Object[] decodeGuestReachabilityElements(JavaConstant elements) {
+        private static Object[] decodeGuestReachabilityElements(@GuestType(Object[].class) JavaConstant elements) {
             if (elements == null || elements.isNull()) {
                 throw UserError.abort("'registerReachabilityHandler' called with null elements; expected an Object[]");
             }
@@ -1044,7 +1063,7 @@ public class FeatureImpl {
          * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerMethodOverrideReachabilityHandler(BiConsumer, Executable)
          */
         @GuestInvoked
-        public void registerMethodOverrideReachabilityHandler(JavaConstant callback, ResolvedJavaMethod baseMethod) {
+        public void registerMethodOverrideReachabilityHandler(@GuestType(BiConsumer.class) JavaConstant callback, ResolvedJavaMethod baseMethod) {
             if (callback == null || callback.isNull()) {
                 throw UserError.abort("'registerMethodOverrideReachabilityHandler' called with a null callback");
             }
@@ -1064,7 +1083,7 @@ public class FeatureImpl {
          * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerSubtypeReachabilityHandler(BiConsumer, Class)
          */
         @GuestInvoked
-        public void registerSubtypeReachabilityHandler(JavaConstant callback, ResolvedJavaType baseType) {
+        public void registerSubtypeReachabilityHandler(@GuestType(BiConsumer.class) JavaConstant callback, ResolvedJavaType baseType) {
             if (callback == null || callback.isNull()) {
                 throw UserError.abort("'registerSubtypeReachabilityHandler' called with a null callback");
             }
@@ -1084,7 +1103,7 @@ public class FeatureImpl {
          * @see org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerClassInitializerReachabilityHandler(Consumer, Class)
          */
         @GuestInvoked
-        public void registerClassInitializerReachabilityHandler(JavaConstant callback, ResolvedJavaType type) {
+        public void registerClassInitializerReachabilityHandler(@GuestType(Consumer.class) JavaConstant callback, ResolvedJavaType type) {
             if (callback == null || callback.isNull()) {
                 throw UserError.abort("'registerClassInitializerReachabilityHandler' called with a null callback");
             }
@@ -1312,15 +1331,8 @@ public class FeatureImpl {
         public void registerAsImmutable(Object root, Predicate<Object> includeObject) {
             // GR-79002: migrate builder-side clients to JavaConstant-based registration.
             JavaConstant rootConstant = aUniverse.getHostedValuesProvider().forObject(root);
-            ImageHeapConstant imageHeapConstant = resolveImageHeapConstant(rootConstant);
-            if (imageHeapConstant == null) {
-                return;
-            }
-            heap.registerAsImmutable(imageHeapConstant, constant -> {
-                JavaConstant hostedObject = constant.getHostedObject();
-                AnalysisError.guarantee(hostedObject != null, "Cannot materialize an unbacked image heap constant: %s", constant);
-                return includeObject.test(aUniverse.getHostedValuesProvider().asObject(Object.class, hostedObject));
-            });
+            Predicate<JavaConstant> includeObjectConstant = constant -> includeObject.test(aUniverse.getHostedValuesProvider().asObject(Object.class, constant));
+            registerAsImmutable(rootConstant, includeObjectConstant);
         }
 
         @Override

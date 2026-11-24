@@ -86,8 +86,9 @@ public final class IntegerSubExactNode extends SubNode implements GuardedNode, I
                 return forX;
             }
         }
-        if (!IntegerStamp.subtractionCanOverflow((IntegerStamp) x.stamp(NodeView.DEFAULT), (IntegerStamp) y.stamp(NodeView.DEFAULT))) {
-            return new SubNode(x, y).canonical(tool);
+        // Only the supplied operand bounds can justify removing the overflow check.
+        if (!IntegerStamp.subtractionCanOverflow((IntegerStamp) forX.stamp(NodeView.DEFAULT), (IntegerStamp) forY.stamp(NodeView.DEFAULT))) {
+            return new SubNode(forX, forY).canonical(tool);
         }
         return this;
     }

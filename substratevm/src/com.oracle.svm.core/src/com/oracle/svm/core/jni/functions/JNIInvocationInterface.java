@@ -49,7 +49,7 @@ import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.JNIThreadLocalEnvironment;
 import com.oracle.svm.core.jni.JNIThreadLocalPendingException;
 import com.oracle.svm.core.jni.JNIThreadOwnedMonitors;
-import com.oracle.svm.core.jni.functions.JNIFunctions.Support.JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue;
+import com.oracle.svm.core.jni.functions.JNIFunctions.Support.JNIDetachThreadOrDestroyVMPrologue;
 import com.oracle.svm.core.jni.functions.JNIFunctions.Support.JNIJavaVMEnterAttachThreadManualJavaThreadPrologue;
 import com.oracle.svm.core.jni.functions.JNIInvocationInterface.Support.JNIGetEnvPrologue;
 import com.oracle.svm.core.jni.headers.JNIEnvironmentPointer;
@@ -68,7 +68,6 @@ import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
-import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
@@ -176,7 +175,13 @@ public final class JNIInvocationInterface {
 
                 if (code == CEntryPointErrors.NO_ERROR) {
                     // The isolate was created successfully, so we can finish the initialization.
-                    return Support.finishInitialization(vmBuf, penv, vmArgs, hasSpecialVmOptions);
+                    int result = Support.finishInitialization(vmBuf, penv, vmArgs, hasSpecialVmOptions);
+                    if (result != JNIErrors.JNI_OK()) {
+                        // A failed prologue skips the epilogue, so it must release its own isolate.
+                        CEntryPointActions.leaveTearDownIsolate();
+                        return result;
+                    }
+                    return result;
                 }
 
                 if (errorstr.isNonNull()) {
@@ -294,9 +299,10 @@ public final class JNIInvocationInterface {
      * jint DetachCurrentThread(JavaVM *vm);
      */
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
-    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveDetachThreadEpilogue.class)
+    @CEntryPointOptions(prologue = JNIDetachThreadOrDestroyVMPrologue.class, epilogue = LeaveDetachThreadEpilogue.class)
     static int DetachCurrentThread(@SuppressWarnings("unused") JNIJavaVM vm) {
-        int result = JNIErrors.JNI_OK();
+        // The epilogue will detach the current thread even if an error is returned here.
+        // For that reason, we perform additional checks in the prologue and can return early there.
 
         Throwable throwable = JNIThreadLocalPendingException.get();
         if (throwable != null) {
@@ -305,19 +311,18 @@ public final class JNIInvocationInterface {
 
         // JNI specification requires releasing all owned monitors
         Support.releaseCurrentThreadOwnedMonitors();
-        return result;
+        return JNIErrors.JNI_OK();
     }
 
     /*
      * jint DestroyJavaVM(JavaVM *vm);
      */
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
-    @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveTearDownIsolateEpilogue.class)
+    @CEntryPointOptions(prologue = JNIDetachThreadOrDestroyVMPrologue.class, epilogue = LeaveTearDownIsolateEpilogue.class)
     @SuppressWarnings("unused")
     static int DestroyJavaVM(JNIJavaVM vm) {
-        if (JavaFrameAnchors.getFrameAnchor().isNonNull()) {
-            return JNIErrors.JNI_ERR();
-        }
+        // The epilogue will tear down the isolate even if an error is returned here.
+        // For that reason, we perform additional checks in the prologue and can return early there.
 
         /* Keep this shutdown logic in sync with the shutdown logic in JavaMainWrapper. */
         RecurringCallbackSupport.suspendCallbackTimer("Recurring callbacks can't be executed during shutdown.");

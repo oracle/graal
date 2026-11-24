@@ -30,6 +30,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
+import com.oracle.svm.shared.NeverInline;
 import com.oracle.svm.shared.Uninterruptible;
 
 import jdk.internal.misc.Unsafe;
@@ -78,6 +79,7 @@ public final class JfrOldObjectProfiler {
         return sample0(obj, allocatedSize, arrayLength);
     }
 
+    @NeverInline("Keep object sampling and locking out of allocation slow paths.")
     @Uninterruptible(reason = "Must not safepoint while holding the object profiler lock.")
     private boolean sample0(Object obj, UnsignedWord allocatedSize, int arrayLength) {
         assert allocatedSize.aboveThan(0);
