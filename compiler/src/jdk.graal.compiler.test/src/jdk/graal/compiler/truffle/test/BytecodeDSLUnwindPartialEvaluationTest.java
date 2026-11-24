@@ -32,6 +32,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
@@ -155,7 +156,7 @@ public class BytecodeDSLUnwindPartialEvaluationTest extends PartialEvaluationTes
         private static final long serialVersionUID = 1L;
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, unwindExceptions = {Transfer.class, GuestTransfer.class})
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, unwindExceptions = {Transfer.class, GuestTransfer.class})
     public abstract static class UnwindInterpreter extends RootNode implements BytecodeRootNode {
         protected UnwindInterpreter(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);

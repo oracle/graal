@@ -77,6 +77,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -621,17 +622,17 @@ public class StackTraceTest extends AbstractInstructionTest {
 
     @GenerateBytecodeTestVariants({
                     @Variant(suffix = "CachedDefault", configuration = //
-                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE, enableUncachedInterpreter = false, enableYield = true, boxingEliminationTypes = {
-                                    int.class})),
+                    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE, enableUncachedInterpreter = false, enableYield = true, //
+                                    boxingEliminationTypes = {int.class})),
                     @Variant(suffix = "UncachedDefault", configuration = //
-                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE, enableUncachedInterpreter = true, enableYield = true, boxingEliminationTypes = {
-                                    int.class})),
+                    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE, enableUncachedInterpreter = true, enableYield = true, //
+                                    boxingEliminationTypes = {int.class})),
                     @Variant(suffix = "CachedBciInFrame", configuration = //
-                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.FRAME, enableUncachedInterpreter = false, enableYield = true, boxingEliminationTypes = {
-                                    int.class})),
+                    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.FRAME, enableUncachedInterpreter = false, enableYield = true, //
+                                    boxingEliminationTypes = {int.class})),
                     @Variant(suffix = "UncachedBciInFrame", configuration = //
-                    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.FRAME, enableUncachedInterpreter = true, enableYield = true, boxingEliminationTypes = {
-                                    int.class}))
+                    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.FRAME, enableUncachedInterpreter = true, enableYield = true, //
+                                    boxingEliminationTypes = {int.class}))
     })
     // The shared operations also serve variants without a bytecode index frame slot.
     @SuppressWarnings("truffle-interpreted-performance")

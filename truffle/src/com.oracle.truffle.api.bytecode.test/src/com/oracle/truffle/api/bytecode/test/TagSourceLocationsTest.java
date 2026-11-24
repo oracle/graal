@@ -63,6 +63,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
@@ -287,8 +288,10 @@ public class TagSourceLocationsTest extends AbstractPolyglotTest {
 }
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Compressed", configuration = @GenerateBytecode(languageClass = TagTestLanguage.class, enableTagInstrumentation = true, enableUncachedInterpreter = true)),
-                @Variant(suffix = "Uncompressed", configuration = @GenerateBytecode(languageClass = TagTestLanguage.class, enableTagInstrumentation = true, enableUncachedInterpreter = true, enableCompressedSources = false))})
+                @Variant(suffix = "Compressed", configuration = @GenerateBytecode(//
+                                version = BytecodeVersion.LATEST, languageClass = TagTestLanguage.class, enableTagInstrumentation = true, enableUncachedInterpreter = true)),
+                @Variant(suffix = "Uncompressed", configuration = @GenerateBytecode(//
+                                version = BytecodeVersion.LATEST, languageClass = TagTestLanguage.class, enableTagInstrumentation = true, enableUncachedInterpreter = true, enableCompressedSources = false))})
 abstract class TagSourceInterpreter extends DebugBytecodeRootNode implements BytecodeRootNode {
     protected TagSourceInterpreter(TagTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);

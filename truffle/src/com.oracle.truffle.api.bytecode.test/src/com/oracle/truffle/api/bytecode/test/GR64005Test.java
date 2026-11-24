@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.dsl.GenerateCached;
@@ -99,7 +100,7 @@ public class GR64005Test {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
     @OperationProxy(NodeInheritanceTestSubclassNode.class)
     abstract static class OperationProxyTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 

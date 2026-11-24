@@ -11,6 +11,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-79412: Restored automatic splitting during interpreter direct-call execution instead of compilation preparation. See [Splitting](docs/splitting/Splitting.md) for details.
 * GR-81915: NFI upcalls run with any earlier pending exception temporarily cleared, so subsequent callbacks and their nested native calls see a clean exception state.
   The earlier exception is restored when the upcall finishes and takes precedence over any new exception, while successful callbacks still return their results to native code.
+* GR-81970: Bytecode DSL: Added `GenerateBytecode.version` to select behaviour versions for breaking changes requiring migration. The list of versions and their migration details is maintained in the `BytecodeVersion` enum. Specify a fixed version or `BytecodeVersion.LATEST`. Version 1 is temporarily selected by default; in the future, an explicit version will be required.
 
 ## Version 25.6
 

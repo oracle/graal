@@ -26,6 +26,7 @@ package jdk.graal.compiler.truffle.test;
 
 import static org.junit.Assert.assertEquals;
 
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import org.graalvm.polyglot.Context;
 import org.junit.Before;
 import org.junit.Test;
@@ -76,7 +77,7 @@ public class BytecodeDSLConstantOperandGuardTest extends TestWithSynchronousComp
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, enableQuickening = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, enableQuickening = true)
     @SuppressWarnings("unused")
     public abstract static class ConstantGuardRootNode extends RootNode implements BytecodeRootNode {
         protected ConstantGuardRootNode(BytecodeDSLTestLanguage language, FrameDescriptor.Builder descriptor) {

@@ -66,6 +66,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
@@ -1777,10 +1778,10 @@ public class SourcesTest {
 }
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "CompressedSources", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, additionalAssertions = true)),
-                @Variant(suffix = "UncompressedSources", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, additionalAssertions = true, //
+                @Variant(suffix = "CompressedSources", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, additionalAssertions = true)),
+                @Variant(suffix = "UncompressedSources", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, additionalAssertions = true, //
                                 enableCompressedSources = false)),
-                @Variant(suffix = "CompressedSourcesWithTracing", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, additionalAssertions = true, enableInstructionTracing = true))})
+                @Variant(suffix = "CompressedSourcesWithTracing", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, additionalAssertions = true, enableInstructionTracing = true))})
 @ShortCircuitOperation(booleanConverter = SourcesInterpreter.ToBoolean.class, name = "ScAnd", operator = ShortCircuitOperation.Operator.AND_RETURN_VALUE)
 // The shared operations also serve variants without a bytecode index frame slot.
 @SuppressWarnings("truffle-interpreted-performance")

@@ -326,6 +326,13 @@ meth public abstract java.util.Set<java.lang.Class<?>> getAddedTags()
 meth public java.lang.String toString()
 supr java.lang.Object
 
+CLSS public final !enum com.oracle.truffle.api.bytecode.BytecodeVersion
+fld public final static com.oracle.truffle.api.bytecode.BytecodeVersion LATEST
+fld public final static com.oracle.truffle.api.bytecode.BytecodeVersion V1
+meth public static com.oracle.truffle.api.bytecode.BytecodeVersion valueOf(java.lang.String)
+meth public static com.oracle.truffle.api.bytecode.BytecodeVersion[] values()
+supr java.lang.Enum<com.oracle.truffle.api.bytecode.BytecodeVersion>
+
 CLSS public abstract interface !annotation com.oracle.truffle.api.bytecode.ConstantOperand
  anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.bytecode.ConstantOperand$Repeat)
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=SOURCE)
@@ -439,6 +446,7 @@ meth public abstract !hasdefault boolean enableYield()
 meth public abstract !hasdefault boolean inlinePrimitiveConstants()
 meth public abstract !hasdefault boolean storeBytecodeIndexInFrame()
 meth public abstract !hasdefault com.oracle.truffle.api.bytecode.BytecodeIndexMode bytecodeIndexMode()
+meth public abstract !hasdefault com.oracle.truffle.api.bytecode.BytecodeVersion version()
 meth public abstract !hasdefault java.lang.Class<? extends java.lang.RuntimeException> illegalLocalException()
 meth public abstract !hasdefault java.lang.Class<? extends java.lang.Throwable>[] unwindExceptions()
 meth public abstract !hasdefault java.lang.Class<?> tagTreeNodeLibrary()

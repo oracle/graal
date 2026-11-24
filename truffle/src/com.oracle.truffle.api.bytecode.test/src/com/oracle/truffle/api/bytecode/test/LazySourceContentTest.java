@@ -75,6 +75,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
@@ -717,7 +718,7 @@ public class LazySourceContentTest {
         }
 
         @SuppressWarnings("truffle")
-        @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+        @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
         abstract static class NonLazySourcesBytecodeRootNode extends RootNode implements BytecodeRootNode {
 
             protected NonLazySourcesBytecodeRootNode(BytecodeDSLTestLanguage language, FrameDescriptor fd) {
@@ -728,7 +729,7 @@ public class LazySourceContentTest {
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true, enableTagInstrumentation = true, sourceContentSupplier = "loadSourceCharacters")
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true, enableTagInstrumentation = true, sourceContentSupplier = "loadSourceCharacters")
 abstract class LazySourcesBytecodeRootNode extends RootNode implements BytecodeRootNode {
     @FunctionalInterface
     interface SourceContentSupplier extends Function<Source, Source> {
@@ -788,7 +789,7 @@ abstract class LazySourcesBytecodeRootNode extends RootNode implements BytecodeR
 }
 
 @ExpectError("The sourceContentSupplier attribute cannot be empty.%")
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, sourceContentSupplier = "")
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, sourceContentSupplier = "")
 abstract class SourceSupplierMethodEmptyRootNode extends RootNode implements BytecodeRootNode {
     protected SourceSupplierMethodEmptyRootNode(BytecodeDSLTestLanguage language, FrameDescriptor fd) {
         super(language, fd);
@@ -796,7 +797,7 @@ abstract class SourceSupplierMethodEmptyRootNode extends RootNode implements Byt
 }
 
 @ExpectError("No method 'foo' was declared on the root node with signature Source(BytecodeDSLTestLanguage, Source).%")
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, sourceContentSupplier = "foo")
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, sourceContentSupplier = "foo")
 abstract class SourceSupplierMethodNotFoundRootNode extends RootNode implements BytecodeRootNode {
     protected SourceSupplierMethodNotFoundRootNode(BytecodeDSLTestLanguage language, FrameDescriptor fd) {
         super(language, fd);
@@ -804,7 +805,7 @@ abstract class SourceSupplierMethodNotFoundRootNode extends RootNode implements 
 }
 
 @ExpectError("No method 'foo' was declared on the root node with signature Source(BytecodeDSLTestLanguage, Source).%")
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, sourceContentSupplier = "foo")
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, sourceContentSupplier = "foo")
 abstract class SourceSupplierMethodBadParametersRootNode extends RootNode implements BytecodeRootNode {
     protected SourceSupplierMethodBadParametersRootNode(BytecodeDSLTestLanguage language, FrameDescriptor fd) {
         super(language, fd);
@@ -817,7 +818,7 @@ abstract class SourceSupplierMethodBadParametersRootNode extends RootNode implem
 }
 
 @ExpectError("No method 'foo' was declared on the root node with signature Source(BytecodeDSLTestLanguage, Source).%")
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, sourceContentSupplier = "foo")
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, sourceContentSupplier = "foo")
 abstract class SourceSupplierMethodBadReturnTypeRootNode extends RootNode implements BytecodeRootNode {
     protected SourceSupplierMethodBadReturnTypeRootNode(BytecodeDSLTestLanguage language, FrameDescriptor fd) {
         super(language, fd);
@@ -830,7 +831,7 @@ abstract class SourceSupplierMethodBadReturnTypeRootNode extends RootNode implem
 }
 
 @ExpectError("The method 'foo' must be static.%")
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, sourceContentSupplier = "foo")
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, sourceContentSupplier = "foo")
 abstract class SourceSupplierMethodNotStaticRootNode extends RootNode implements BytecodeRootNode {
     protected SourceSupplierMethodNotStaticRootNode(BytecodeDSLTestLanguage language, FrameDescriptor fd) {
         super(language, fd);
@@ -843,7 +844,7 @@ abstract class SourceSupplierMethodNotStaticRootNode extends RootNode implements
 }
 
 @ExpectError("The method 'foo' must be visible to subclasses.%")
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, sourceContentSupplier = "foo")
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, sourceContentSupplier = "foo")
 abstract class SourceSupplierMethodNotVisibleRootNode extends RootNode implements BytecodeRootNode {
     protected SourceSupplierMethodNotVisibleRootNode(BytecodeDSLTestLanguage language, FrameDescriptor fd) {
         super(language, fd);

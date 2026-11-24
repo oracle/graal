@@ -55,6 +55,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.StackValue;
@@ -1129,7 +1130,7 @@ public class StackValuesTest extends AbstractBasicInterpreterTest {
                 "Custom operation with name BindStackValue conflicts with a built-in operation with the same name. The built-in operation will not be generated.%",
                 "Custom operation with name LoadStackValue conflicts with a built-in operation with the same name. The built-in operation will not be generated.%",
                 "Custom operation with name StoreStackValue conflicts with a built-in operation with the same name. The built-in operation will not be generated.%"})
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class HidesStackValueBuiltins extends RootNode implements BytecodeRootNode {
 
     protected HidesStackValueBuiltins(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

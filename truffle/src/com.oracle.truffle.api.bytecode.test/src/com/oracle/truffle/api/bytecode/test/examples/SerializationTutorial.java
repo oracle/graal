@@ -69,6 +69,7 @@ import com.oracle.truffle.api.bytecode.BytecodeDescriptor;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
@@ -104,7 +105,7 @@ public class SerializationTutorial {
      * validates that all of the non-{@code transient} fields (which will be serialized) are
      * reachable.
      */
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true)
     @ShortCircuitOperation(name = "Or", operator = ShortCircuitOperation.Operator.OR_RETURN_CONVERTED, booleanConverter = SerializableBytecodeNode.AsBoolean.class)
     public abstract static class SerializableBytecodeNode extends RootNode implements BytecodeRootNode {
         public static final Object NULL = new Object();

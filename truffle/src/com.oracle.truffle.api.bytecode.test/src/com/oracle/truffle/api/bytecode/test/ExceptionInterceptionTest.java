@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
@@ -371,7 +372,7 @@ public class ExceptionInterceptionTest {
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class BytecodeNodeInterceptsAll extends RootNode implements BytecodeRootNode {
     protected BytecodeNodeInterceptsAll(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
@@ -523,7 +524,7 @@ abstract class BytecodeNodeInterceptsAll extends RootNode implements BytecodeRoo
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class BytecodeNodeInterceptsNothing extends RootNode implements BytecodeRootNode {
 
     protected BytecodeNodeInterceptsNothing(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -549,7 +550,7 @@ abstract class BytecodeNodeInterceptsNothing extends RootNode implements Bytecod
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class BytecodeNodeInterceptsCF extends RootNode implements BytecodeRootNode {
 
     protected BytecodeNodeInterceptsCF(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -580,7 +581,7 @@ abstract class BytecodeNodeInterceptsCF extends RootNode implements BytecodeRoot
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class BytecodeNodeInterceptsInternal extends RootNode implements BytecodeRootNode {
 
     protected BytecodeNodeInterceptsInternal(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -611,7 +612,7 @@ abstract class BytecodeNodeInterceptsInternal extends RootNode implements Byteco
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class BytecodeNodeInterceptsTruffleWithEpilog extends RootNode implements BytecodeRootNode {
     public int interceptCount = 0;
 

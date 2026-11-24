@@ -60,6 +60,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
@@ -1242,7 +1243,7 @@ public class LocalsTest extends AbstractBasicInterpreterTest {
 
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, defaultLocalValue = "DEFAULT_LOCAL_VALUE")
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, defaultLocalValue = "DEFAULT_LOCAL_VALUE")
 abstract class DefaultLocalValueRootNode extends RootNode implements BytecodeRootNode {
 
     static final String DEFAULT_LOCAL_VALUE = "default";
@@ -1259,7 +1260,7 @@ abstract class DefaultLocalValueRootNode extends RootNode implements BytecodeRoo
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class IllegalDefaultValueRootNode extends RootNode implements BytecodeRootNode {
 
     protected IllegalDefaultValueRootNode(BytecodeDSLTestLanguage language, FrameDescriptor.Builder builder) {
@@ -1274,7 +1275,7 @@ abstract class IllegalDefaultValueRootNode extends RootNode implements BytecodeR
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, illegalLocalException = CustomIllegalLocalException.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, illegalLocalException = CustomIllegalLocalException.class)
 abstract class CustomIllegalLocalExceptionRootNode extends RootNode implements BytecodeRootNode {
 
     protected CustomIllegalLocalExceptionRootNode(BytecodeDSLTestLanguage language, FrameDescriptor.Builder builder) {
@@ -1302,7 +1303,7 @@ final class CustomIllegalLocalException extends AbstractTruffleException {
 }
 
 @ExpectWarning("Multiple operations declared with name ClearLocal. Operation names must be distinct.%")
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class ConflictsWithBuiltin extends RootNode implements BytecodeRootNode {
 
     protected ConflictsWithBuiltin(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

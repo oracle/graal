@@ -68,6 +68,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
@@ -1074,7 +1075,7 @@ public class PrologEpilogTest extends AbstractInstructionTest {
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, boxingEliminationTypes = {int.class})
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, boxingEliminationTypes = {int.class})
 abstract class DuplicateQuickeningEpilogRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
     protected DuplicateQuickeningEpilogRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -1112,7 +1113,7 @@ abstract class DuplicateQuickeningEpilogRootNode extends DebugBytecodeRootNode i
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true, boxingEliminationTypes = {int.class})
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true, boxingEliminationTypes = {int.class})
 abstract class CustomReturnEpilogBytecodeNode extends DebugBytecodeRootNode implements BytecodeRootNode {
     transient Object returnValue = null;
 
@@ -1171,7 +1172,7 @@ abstract class CustomReturnEpilogBytecodeNode extends DebugBytecodeRootNode impl
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true, boxingEliminationTypes = {int.class})
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true, boxingEliminationTypes = {int.class})
 abstract class PrologEpilogBytecodeNode extends DebugBytecodeRootNode implements BytecodeRootNode {
     transient Object argument = null;
     transient Object returnValue = null;
@@ -1270,7 +1271,7 @@ abstract class PrologEpilogBytecodeNode extends DebugBytecodeRootNode implements
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true)
 abstract class EpilogReturnExceptionHandlerNode extends DebugBytecodeRootNode implements BytecodeRootNode {
     transient int throwInReturnCount;
     transient int handlerCount;
@@ -1297,7 +1298,7 @@ abstract class EpilogReturnExceptionHandlerNode extends DebugBytecodeRootNode im
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true)
 abstract class ReturnEpilogTagRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
     transient RuntimeException throwInReturnEpilog;
 
@@ -1317,7 +1318,7 @@ abstract class ReturnEpilogTagRootNode extends DebugBytecodeRootNode implements 
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true, enableRootTagging = false)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true, enableRootTagging = false)
 abstract class ReturnEpilogNoRootTagRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
     transient RuntimeException throwInReturnEpilog;
 
@@ -1337,7 +1338,7 @@ abstract class ReturnEpilogNoRootTagRootNode extends DebugBytecodeRootNode imple
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class DuplicatePrologEpilogErrorNode extends RootNode implements BytecodeRootNode {
     protected DuplicatePrologEpilogErrorNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
@@ -1393,7 +1394,7 @@ abstract class DuplicatePrologEpilogErrorNode extends RootNode implements Byteco
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadPrologErrorNode extends RootNode implements BytecodeRootNode {
     protected BadPrologErrorNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
@@ -1409,7 +1410,7 @@ abstract class BadPrologErrorNode extends RootNode implements BytecodeRootNode {
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadPrologErrorNode2 extends RootNode implements BytecodeRootNode {
     protected BadPrologErrorNode2(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
@@ -1425,7 +1426,7 @@ abstract class BadPrologErrorNode2 extends RootNode implements BytecodeRootNode 
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadEpilogErrorNode extends RootNode implements BytecodeRootNode {
     protected BadEpilogErrorNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
@@ -1442,7 +1443,7 @@ abstract class BadEpilogErrorNode extends RootNode implements BytecodeRootNode {
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadEpilogErrorNode2 extends RootNode implements BytecodeRootNode {
     protected BadEpilogErrorNode2(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
@@ -1463,7 +1464,7 @@ abstract class BadEpilogErrorNode2 extends RootNode implements BytecodeRootNode 
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadExceptionalEpilogErrorNode1 extends RootNode implements BytecodeRootNode {
     protected BadExceptionalEpilogErrorNode1(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
@@ -1479,7 +1480,7 @@ abstract class BadExceptionalEpilogErrorNode1 extends RootNode implements Byteco
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadExceptionalEpilogErrorNode2 extends RootNode implements BytecodeRootNode {
     protected BadExceptionalEpilogErrorNode2(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
@@ -1515,7 +1516,7 @@ abstract class BadExceptionalEpilogErrorNode2 extends RootNode implements Byteco
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class BadExceptionalEpilogErrorNode3 extends RootNode implements BytecodeRootNode {
     protected BadExceptionalEpilogErrorNode3(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);

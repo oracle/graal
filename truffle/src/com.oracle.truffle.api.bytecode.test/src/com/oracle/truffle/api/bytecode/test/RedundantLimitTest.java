@@ -47,6 +47,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -71,7 +72,7 @@ public class RedundantLimitTest {
         assertEquals(1, nodes.getNode(0).getCallTarget().call());
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
     abstract static class RedundantLimitRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected RedundantLimitRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
@@ -508,8 +509,9 @@ public class ShortCircuitTest {
 }
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)),
-                @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, boxingEliminationTypes = {boolean.class,
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)),
+                @Variant(suffix = "WithBE", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, boxingEliminationTypes = {
+                                boolean.class,
                                 int.class}))
 })
 @OperationProxy(value = BooleanConverterOperationProxy.class, javadoc = "Converts a value to its boolean truthy value.")

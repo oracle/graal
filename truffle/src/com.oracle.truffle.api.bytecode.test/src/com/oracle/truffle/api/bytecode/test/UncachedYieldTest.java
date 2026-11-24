@@ -50,6 +50,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -130,7 +131,8 @@ public class UncachedYieldTest {
         assertEquals(0, result);
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true, defaultUncachedThreshold = "4", boxingEliminationTypes = {int.class})
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true, defaultUncachedThreshold = "4", boxingEliminationTypes = {
+                    int.class})
     public abstract static class UncachedYieldTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected UncachedYieldTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

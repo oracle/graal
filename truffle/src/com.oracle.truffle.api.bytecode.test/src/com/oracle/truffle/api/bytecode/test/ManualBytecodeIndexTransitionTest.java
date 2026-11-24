@@ -53,6 +53,7 @@ import com.oracle.truffle.api.bytecode.BytecodeIndexMode;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -312,7 +313,7 @@ public class ManualBytecodeIndexTransitionTest {
         throw new AssertionError("StoreIndex instruction not found");
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.MANUAL)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.MANUAL)
     public abstract static class ManualTransitionRootNode extends RootNode implements BytecodeRootNode {
 
         protected ManualTransitionRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

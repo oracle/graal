@@ -71,6 +71,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.TagTree;
@@ -376,7 +377,7 @@ public class InstrumentationNodeObjectTest {
         }
     }
 
-    @GenerateBytecode(languageClass = MetadataLanguage.class, enableTagInstrumentation = true, enableRootTagging = false, enableRootBodyTagging = false, enableUncachedInterpreter = true, enableSerialization = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = MetadataLanguage.class, enableTagInstrumentation = true, enableRootTagging = false, enableRootBodyTagging = false, enableUncachedInterpreter = true, enableSerialization = true)
     public abstract static class MetadataRoot extends RootNode implements BytecodeRootNode {
         protected MetadataRoot(MetadataLanguage language, FrameDescriptor descriptor) {
             super(language, descriptor);

@@ -71,6 +71,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
@@ -765,12 +766,12 @@ public class ConstantOperandTest {
 }
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Cached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = false)),
-                @Variant(suffix = "Uncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true)),
-                @Variant(suffix = "CachedNoInlining", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = false, //
-                                inlinePrimitiveConstants = false)),
-                @Variant(suffix = "UncachedNoInlining", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true, //
-                                inlinePrimitiveConstants = false))
+                @Variant(suffix = "Cached", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = false)),
+                @Variant(suffix = "Uncached", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true)),
+                @Variant(suffix = "CachedNoInlining", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, //
+                                enableUncachedInterpreter = false, inlinePrimitiveConstants = false)),
+                @Variant(suffix = "UncachedNoInlining", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSerialization = true, //
+                                enableUncachedInterpreter = true, inlinePrimitiveConstants = false))
 })
 
 abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeRootNode {
@@ -1010,7 +1011,7 @@ abstract class ConstantOperandTestRootNode extends RootNode implements BytecodeR
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 abstract class ConstantOperandsInPrologTestRootNode extends RootNode implements BytecodeRootNode {
     public final List<Object> prologEvents = new ArrayList<>();
 
@@ -1032,7 +1033,7 @@ abstract class ConstantOperandsInPrologTestRootNode extends RootNode implements 
 
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
 @SuppressWarnings("unused")
 abstract class ConstantOperandErrorRootNode extends RootNode implements BytecodeRootNode {
     protected ConstantOperandErrorRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

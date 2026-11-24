@@ -48,6 +48,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
@@ -150,7 +151,7 @@ public class ReportPolymorphismTest {
         return root;
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, enableQuickening = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, enableQuickening = true)
     @OperationProxy(AddProxy.class)
     public abstract static class ReportPolymorphismRootNode extends RootNode implements BytecodeRootNode {
 

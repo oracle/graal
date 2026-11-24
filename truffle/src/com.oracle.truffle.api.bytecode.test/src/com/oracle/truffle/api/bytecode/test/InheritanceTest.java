@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.test.error_tests.ExpectError;
@@ -84,6 +85,7 @@ public class InheritanceTest {
     }
 
     @GenerateBytecode(//
+                    version = BytecodeVersion.LATEST, //
                     languageClass = BytecodeDSLTestLanguage.class)
     abstract static class InheritanceTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -140,6 +142,7 @@ public class InheritanceTest {
     }
 
     @GenerateBytecode(//
+                    version = BytecodeVersion.LATEST, //
                     languageClass = BytecodeDSLTestLanguage.class)
     abstract static class InheritanceError1Node extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -171,6 +174,7 @@ public class InheritanceTest {
     }
 
     @GenerateBytecode(//
+                    version = BytecodeVersion.LATEST, //
                     languageClass = BytecodeDSLTestLanguage.class)
     abstract static class InheritanceError2Node extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -212,6 +216,7 @@ public class InheritanceTest {
         }
 
         @GenerateBytecode(//
+                        version = BytecodeVersion.LATEST, //
                         languageClass = BytecodeDSLTestLanguage.class)
         abstract static class InheritanceError3Node extends DebugBytecodeRootNode implements BytecodeRootNode {
 

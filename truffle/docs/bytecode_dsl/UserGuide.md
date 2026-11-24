@@ -897,6 +897,16 @@ Bytecode DSL interpreters can support serialization, which allows a language to 
 The Bytecode DSL supports single-method continuations, whereby a root node is suspended and can be resumed at a later point in time.
 Continuations can be used to implement language features like coroutines and generators that suspend the state of the current method. See the [Continuations tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/ContinuationsTutorial.java) for more details.
 
-
 ### Builtins
 Guest language builtins integrate easily with the Bytecode DSL. The [Builtins tutorial](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode.test/src/com/oracle/truffle/api/bytecode/test/examples/BuiltinsTutorial.java) describes a few different approaches you may wish to use to define your language builtins within the Bytecode DSL.
+
+### Versioning
+
+In rare scenarios, new versions of the Bytecode DSL may change user-visible behaviour, typically to address correctness bugs.
+The Bytecode DSL declares "behaviour version" constants in [`BytecodeVersion`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeVersion.java) that document these breaking changes.
+You should pin the behaviour version your interpreter uses with the `@GenerateBytecode(version = ...)` field.
+You may also use `version = BytecodeVersion.LATEST` to always opt in to the newest version, but this should not be used in production language implementations.
+
+To avoid breaking existing interpreters, a new Truffle release with breaking changes preserves the behaviour requested by the interpreter's version field.
+The annotation processor emits compilation warnings to advise you about new versions, and the `BytecodeVersion` Javadoc explains each version change and migration steps in detail.
+The old versions are supported temporarily to allow for migration; you should migrate as soon as possible, since support will eventually be removed (when removal is scheduled, the warning message and Javadoc will indicate when).

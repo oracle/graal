@@ -57,6 +57,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeIndexMode;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -240,8 +241,8 @@ public class BytecodeIndexLookupTest {
     }
 
     @GenerateBytecodeTestVariants({
-                    @Variant(suffix = "Frame", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)),
-                    @Variant(suffix = "Manual", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.MANUAL))
+                    @Variant(suffix = "Frame", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)),
+                    @Variant(suffix = "Manual", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.MANUAL))
     })
     public abstract static class YieldIndexRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -466,7 +467,7 @@ public class BytecodeIndexLookupTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true)
     @OperationProxy(BytecodeIndexProxyNode.class)
     abstract static class BytecodeIndexProxyRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -490,7 +491,7 @@ public class BytecodeIndexLookupTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
     abstract static class FrameBytecodeIndexRootNode extends IndexRootNode {
 
         protected FrameBytecodeIndexRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -511,7 +512,7 @@ public class BytecodeIndexLookupTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE)
     abstract static class CachedNodeBytecodeIndexRootNode extends IndexRootNode {
 
         protected CachedNodeBytecodeIndexRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -532,7 +533,7 @@ public class BytecodeIndexLookupTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.MANUAL)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.MANUAL)
     abstract static class ManualBytecodeIndexRootNode extends IndexRootNode {
 
         protected ManualBytecodeIndexRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -600,7 +601,7 @@ public class BytecodeIndexLookupTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.NONE)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.NONE)
     abstract static class NoBytecodeIndexRootNode extends IndexRootNode {
 
         protected NoBytecodeIndexRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -620,7 +621,7 @@ public class BytecodeIndexLookupTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, storeBytecodeIndexInFrame = true, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE)
     abstract static class LegacyFrameBytecodeIndexRootNode extends IndexRootNode {
 
         protected LegacyFrameBytecodeIndexRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -642,7 +643,7 @@ public class BytecodeIndexLookupTest {
     }
 
     @ExpectError("GenerateBytecode#storeBytecodeIndexInFrame cannot be true when GenerateBytecode#bytecodeIndexMode is explicitly set to a non-default mode.")
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, storeBytecodeIndexInFrame = true, bytecodeIndexMode = BytecodeIndexMode.MANUAL)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, storeBytecodeIndexInFrame = true, bytecodeIndexMode = BytecodeIndexMode.MANUAL)
     abstract static class ConflictingBytecodeIndexModeRootNode extends IndexRootNode {
 
         protected ConflictingBytecodeIndexModeRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
@@ -250,6 +251,7 @@ public class TypeSystemTest extends AbstractInstructionTest {
     }
 
     @GenerateBytecode(//
+                    version = BytecodeVersion.LATEST, //
                     languageClass = BytecodeDSLTestLanguage.class)
     @TypeSystemReference(TypeSystemTestTypeSystem.class)
     @SuppressWarnings("unused")
@@ -372,6 +374,7 @@ public class TypeSystemTest extends AbstractInstructionTest {
     }
 
     @GenerateBytecode(//
+                    version = BytecodeVersion.LATEST, //
                     languageClass = BytecodeDSLTestLanguage.class)
     @TypeSystemReference(InvalidTypeSystem.class)
     @SuppressWarnings("unused")
@@ -385,6 +388,7 @@ public class TypeSystemTest extends AbstractInstructionTest {
     }
 
     @GenerateBytecode(//
+                    version = BytecodeVersion.LATEST, //
                     languageClass = BytecodeDSLTestLanguage.class)
     @SuppressWarnings("unused")
     abstract static class InvalidTypeSystemRootNode2 extends RootNode implements BytecodeRootNode {
@@ -405,7 +409,7 @@ public class TypeSystemTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
     @TypeSystemReference(TypeSystemTestTypeSystem.class)
     abstract static class SameTypeSystemRootNode extends RootNode implements BytecodeRootNode {
 

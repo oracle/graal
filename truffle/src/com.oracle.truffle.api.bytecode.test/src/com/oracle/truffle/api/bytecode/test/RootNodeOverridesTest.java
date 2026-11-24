@@ -51,6 +51,7 @@ import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -221,7 +222,7 @@ public class RootNodeOverridesTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true, enableTagInstrumentation = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true, enableTagInstrumentation = true)
     abstract static class RootNodeWithOverrides extends RootNode implements BytecodeRootNode {
         public boolean readyForCompilation = false;
         public boolean instrumentable = true;
@@ -266,7 +267,7 @@ public class RootNodeOverridesTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableYield = true)
     abstract static class RootNodeWithParentOverrides extends ParentClassWithOverride implements BytecodeRootNode {
 
         protected RootNodeWithParentOverrides(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

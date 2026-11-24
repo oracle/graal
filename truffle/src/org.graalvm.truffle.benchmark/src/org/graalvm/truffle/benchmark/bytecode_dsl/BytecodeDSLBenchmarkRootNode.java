@@ -43,6 +43,7 @@ package org.graalvm.truffle.benchmark.bytecode_dsl;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.bytecode.BytecodeIndexMode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
@@ -58,23 +59,23 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "NoOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
+                @Variant(suffix = "NoOpts", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BenchmarkLanguage.class, //
                                 enableThreadedSwitch = false, enableTagInstrumentation = true, enableYield = true)),
-                @Variant(suffix = "Uncached", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
+                @Variant(suffix = "Uncached", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BenchmarkLanguage.class, //
                                 enableThreadedSwitch = true, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true)),
-                @Variant(suffix = "AllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
+                @Variant(suffix = "AllOpts", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BenchmarkLanguage.class, //
                                 enableThreadedSwitch = false, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, boxingEliminationTypes = {
                                                 int.class, boolean.class})),
-                @Variant(suffix = "ThreadedAllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
+                @Variant(suffix = "ThreadedAllOpts", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BenchmarkLanguage.class, //
                                 enableThreadedSwitch = true, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, boxingEliminationTypes = {
                                                 int.class, boolean.class})),
-                @Variant(suffix = "TailCallAllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
+                @Variant(suffix = "TailCallAllOpts", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BenchmarkLanguage.class, //
                                 enableTailCallHandlers = true, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, boxingEliminationTypes = {
                                                 int.class, boolean.class})),
-                @Variant(suffix = "TailCallExplicitBciAllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
+                @Variant(suffix = "TailCallExplicitBciAllOpts", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BenchmarkLanguage.class, //
                                 enableTailCallHandlers = true, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.NONE, boxingEliminationTypes = {
                                                 int.class, boolean.class})),
-                @Variant(suffix = "TailCallStoredBciAllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, //
+                @Variant(suffix = "TailCallStoredBciAllOpts", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BenchmarkLanguage.class, //
                                 enableTailCallHandlers = true, enableTagInstrumentation = true, enableYield = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME, boxingEliminationTypes = {
                                                 int.class, boolean.class}))
 })

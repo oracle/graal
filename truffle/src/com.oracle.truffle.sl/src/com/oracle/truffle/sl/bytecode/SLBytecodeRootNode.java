@@ -47,6 +47,7 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.bytecode.BytecodeIndexMode;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -102,6 +103,7 @@ import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
 
 @GenerateBytecode(//
+                version = BytecodeVersion.LATEST, //
                 languageClass = SLLanguage.class, //
                 boxingEliminationTypes = {long.class, boolean.class}, //
                 enableUncachedInterpreter = true,

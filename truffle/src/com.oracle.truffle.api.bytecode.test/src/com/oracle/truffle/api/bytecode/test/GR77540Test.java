@@ -52,6 +52,7 @@ import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
@@ -100,7 +101,7 @@ public class GR77540Test {
         assertEquals(42L, frame.getLocalValue(0));
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, enableQuickening = true, boxingEliminationTypes = long.class, enableYield = true, enableBlockScoping = false)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, enableQuickening = true, boxingEliminationTypes = long.class, enableYield = true, enableBlockScoping = false)
     abstract static class GR77540RootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected GR77540RootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
 import com.oracle.truffle.api.bytecode.Operation;
@@ -157,7 +158,7 @@ public class ForceCachedTest {
         }
     }
 
-    @GenerateBytecode(boxingEliminationTypes = {long.class}, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, boxingEliminationTypes = {long.class}, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true)
     @OperationProxy(AddProxy.class)
     @OperationProxy(value = AddProxyForceCached.class, forceCached = true)
     public abstract static class ForceCachedRootNode extends RootNode implements BytecodeRootNode {

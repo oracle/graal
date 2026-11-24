@@ -59,6 +59,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -640,12 +641,12 @@ public class ContinuationBytecodeBenchmark extends TruffleBenchmark {
     }
 
     @GenerateBytecodeTestVariants({
-                    @Variant(suffix = "NoOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableYield = true, enableThreadedSwitch = false)),
-                    @Variant(suffix = "AllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableYield = true, enableThreadedSwitch = false, //
+                    @Variant(suffix = "NoOpts", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BenchmarkLanguage.class, enableYield = true, enableThreadedSwitch = false)),
+                    @Variant(suffix = "AllOpts", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BenchmarkLanguage.class, enableYield = true, enableThreadedSwitch = false, //
                                     enableUncachedInterpreter = true, boxingEliminationTypes = {int.class, boolean.class})),
-                    @Variant(suffix = "ThreadedAllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableYield = true, enableThreadedSwitch = true, //
+                    @Variant(suffix = "ThreadedAllOpts", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BenchmarkLanguage.class, enableYield = true, enableThreadedSwitch = true, //
                                     enableUncachedInterpreter = true, boxingEliminationTypes = {int.class, boolean.class})),
-                    @Variant(suffix = "TailCallAllOpts", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableYield = true, enableThreadedSwitch = true, //
+                    @Variant(suffix = "TailCallAllOpts", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BenchmarkLanguage.class, enableYield = true, enableThreadedSwitch = true, //
                                     enableUncachedInterpreter = true, boxingEliminationTypes = {int.class, boolean.class}, enableTailCallHandlers = true))
     })
     public abstract static class ContinuationBenchmarkRootNode extends RootNode implements BytecodeRootNode {

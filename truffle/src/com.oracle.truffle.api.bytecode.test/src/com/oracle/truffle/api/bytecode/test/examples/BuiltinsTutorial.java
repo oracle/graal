@@ -68,6 +68,7 @@ import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.EpilogReturn;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -137,7 +138,7 @@ public class BuiltinsTutorial {
      * to show how uncached Java nodes can be integrated for builtins. We also enable serialization
      * as we will need that for the third category of builtins {@link SerializedBuiltin}.
      */
-    @GenerateBytecode(languageClass = LanguageWithBuiltins.class, enableUncachedInterpreter = true, enableSerialization = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = LanguageWithBuiltins.class, enableUncachedInterpreter = true, enableSerialization = true)
     public abstract static class BuiltinLanguageRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected BuiltinLanguageRootNode(LanguageWithBuiltins language,

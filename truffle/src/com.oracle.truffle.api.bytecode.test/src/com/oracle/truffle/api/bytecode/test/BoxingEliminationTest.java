@@ -56,6 +56,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ForceQuickening;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -2425,7 +2426,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         assertEquals("42", node.getCallTarget().call("42"));
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
                     boxingEliminationTypes = {long.class, int.class, boolean.class})

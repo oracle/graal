@@ -81,6 +81,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
@@ -2280,27 +2281,27 @@ public class LocalHelpersTest {
 }
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 captureFramesForTrace = true)),
-                @Variant(suffix = "BaseDefault", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "BaseDefault", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                                 defaultLocalValue = "DEFAULT", //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 captureFramesForTrace = true)),
-                @Variant(suffix = "BaseNoCapturedFrames", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "BaseNoCapturedFrames", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 captureFramesForTrace = false)),
-                @Variant(suffix = "WithBEIllegal", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "WithBEIllegal", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                                 enableQuickening = true, //
                                 enableUncachedInterpreter = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 captureFramesForTrace = true)),
-                @Variant(suffix = "WithBEIllegalRootScoped", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "WithBEIllegalRootScoped", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                                 enableQuickening = true, //
                                 enableUncachedInterpreter = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}, //
@@ -2308,7 +2309,7 @@ public class LocalHelpersTest {
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 captureFramesForTrace = true)),
-                @Variant(suffix = "WithBEObjectDefault", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "WithBEObjectDefault", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                                 enableQuickening = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}, //
                                 enableUncachedInterpreter = true, //
@@ -2316,7 +2317,7 @@ public class LocalHelpersTest {
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 captureFramesForTrace = true)),
-                @Variant(suffix = "WithBENullDefault", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "WithBENullDefault", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                                 enableQuickening = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}, //
                                 enableUncachedInterpreter = true, //

@@ -126,6 +126,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public InstructionModel[] invalidateInstructions;
 
     public DeclaredType languageClass;
+    public BytecodeVersion version;
     public String languageId;
     public List<TypeMirror> unwindExceptions;
     public boolean enableUncachedInterpreter;
