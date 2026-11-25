@@ -85,6 +85,7 @@ import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.methodhandles.BoundMethodHandleSpeciesSupport;
 import com.oracle.svm.hosted.methodhandles.MethodHandleInvokerRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.methodhandles.MethodHandleInvokerSubstitutionType;
 import com.oracle.svm.hosted.reflect.ReflectionExpandSignatureMethod;
@@ -381,7 +382,10 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private static void persistWrappedType(AnalysisType type, PersistedAnalysisTypeData.Writer builder) {
-        if (type.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
+        String species = BoundMethodHandleSpeciesSupport.getSpeciesKey(OriginalClassProvider.getOriginalType(type));
+        if (species != null) {
+            builder.getWrappedType().setBoundMethodHandleSpecies(species);
+        } else if (type.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
             WrappedType.SerializationGenerated.Writer b = builder.getWrappedType().initSerializationGenerated();
             var key = SerializationSupport.currentLayer().getKeyFromConstructorAccessorClass(OriginalClassProvider.getJavaClass(type));
             b.setRawDeclaringClassId(key.declaringClassId());

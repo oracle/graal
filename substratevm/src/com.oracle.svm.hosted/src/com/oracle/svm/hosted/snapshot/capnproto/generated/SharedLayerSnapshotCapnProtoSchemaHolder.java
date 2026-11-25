@@ -598,6 +598,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
             case 1 : return Which.SERIALIZATION_GENERATED;
             case 2 : return Which.LAMBDA;
             case 3 : return Which.PROXY_TYPE;
+            case 4 : return Which.BOUND_METHOD_HANDLE_SPECIES;
             default: return Which._NOT_IN_SCHEMA;
           }
         }
@@ -654,6 +655,28 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           _setShortField(7, (short)PersistedAnalysisType.WrappedType.Which.PROXY_TYPE.ordinal());
         }
 
+        public final boolean isBoundMethodHandleSpecies() {
+          return which() == PersistedAnalysisType.WrappedType.Which.BOUND_METHOD_HANDLE_SPECIES;
+        }
+        public final boolean hasBoundMethodHandleSpecies() {
+          if (which() != PersistedAnalysisType.WrappedType.Which.BOUND_METHOD_HANDLE_SPECIES) return false;
+          return !_pointerFieldIsNull(12);
+        }
+        public final com.oracle.svm.shaded.org.capnproto.Text.Builder getBoundMethodHandleSpecies() {
+          return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, null, 0, 0);
+        }
+        public final void setBoundMethodHandleSpecies(com.oracle.svm.shaded.org.capnproto.Text.Reader value) {
+          _setShortField(7, (short)PersistedAnalysisType.WrappedType.Which.BOUND_METHOD_HANDLE_SPECIES.ordinal());
+          _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, value);
+        }
+        public final void setBoundMethodHandleSpecies(String value) {
+          _setShortField(7, (short)PersistedAnalysisType.WrappedType.Which.BOUND_METHOD_HANDLE_SPECIES.ordinal());
+          _setPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, new com.oracle.svm.shaded.org.capnproto.Text.Reader(value));
+        }
+        public final com.oracle.svm.shaded.org.capnproto.Text.Builder initBoundMethodHandleSpecies(int size) {
+          _setShortField(7, (short)PersistedAnalysisType.WrappedType.Which.BOUND_METHOD_HANDLE_SPECIES.ordinal());
+          return _initPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, size);
+        }
       }
 
       public static final class Reader extends com.oracle.svm.shaded.org.capnproto.StructReader {
@@ -667,6 +690,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
             case 1 : return Which.SERIALIZATION_GENERATED;
             case 2 : return Which.LAMBDA;
             case 3 : return Which.PROXY_TYPE;
+            case 4 : return Which.BOUND_METHOD_HANDLE_SPECIES;
             default: return Which._NOT_IN_SCHEMA;
           }
         }
@@ -702,6 +726,17 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           return com.oracle.svm.shaded.org.capnproto.Void.VOID;
         }
 
+        public final boolean isBoundMethodHandleSpecies() {
+          return which() == PersistedAnalysisType.WrappedType.Which.BOUND_METHOD_HANDLE_SPECIES;
+        }
+        public boolean hasBoundMethodHandleSpecies() {
+          if (which() != PersistedAnalysisType.WrappedType.Which.BOUND_METHOD_HANDLE_SPECIES) return false;
+          return !_pointerFieldIsNull(12);
+        }
+        public com.oracle.svm.shaded.org.capnproto.Text.Reader getBoundMethodHandleSpecies() {
+          return _getPointerField(com.oracle.svm.shaded.org.capnproto.Text.factory, 12, null, 0, 0);
+        }
+
       }
 
       public enum Which {
@@ -709,6 +744,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         SERIALIZATION_GENERATED,
         LAMBDA,
         PROXY_TYPE,
+        BOUND_METHOD_HANDLE_SPECIES,
         _NOT_IN_SCHEMA,
       }
       public static class SerializationGenerated {

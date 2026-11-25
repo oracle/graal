@@ -63,6 +63,7 @@ struct PersistedAnalysisType {
       captureSite @37 :Text;
     }
     proxyType @35 :Void;
+    boundMethodHandleSpecies @38 :Text;
   }
   isRecord @36 :Bool;
   # Always present; distinguishes uninstalled hubs from missing layout metadata.
