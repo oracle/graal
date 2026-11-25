@@ -199,6 +199,12 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         rci.initializeAtBuildTime("java.awt.font.TextAttribute", "Required for sun.text.bidi.BidiBase.NumericShapings");
         rci.initializeAtBuildTime("java.awt.font.NumericShaper", "Required for sun.text.bidi.BidiBase.NumericShapings");
         rci.initializeAtBuildTime("java.awt.font.JavaAWTFontAccessImpl", "Required for sun.text.bidi.BidiBase.NumericShapings");
+        rci.initializeAtRunTime("sun.awt.X11.XDragAndDropProtocols", "Initializes X11 peer state");
+        rci.initializeAtRunTime("sun.awt.X11.XRootWindow$LazyHolder", "Initializes the X11 root window");
+        rci.initializeAtRunTime("sun.awt.screencast.ScreencastHelper", "Loads native libraries and initializes AWT");
+        rci.initializeAtRunTime("sun.awt.screencast.ScreencastHelper$TimerHolder", "Starts a timer thread");
+        rci.initializeAtRunTime("sun.awt.screencast.TokenStorage", "Creates a file watcher and captures host-specific token storage");
+        rci.initializeAtRunTime("sun.font.HBShaper", "Contains native memory segments");
 
         /* FileSystemProviders related */
         if (FutureDefaultsOptions.fileSystemProvidersInitializedAtRunTime()) {
