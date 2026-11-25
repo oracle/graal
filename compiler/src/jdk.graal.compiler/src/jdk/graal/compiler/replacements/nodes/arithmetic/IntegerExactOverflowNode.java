@@ -35,7 +35,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
-import jdk.graal.compiler.nodes.FixedGuardNode;
+import jdk.graal.compiler.nodes.AbstractFixedGuardNode;
 import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNode;
@@ -72,7 +72,7 @@ public abstract class IntegerExactOverflowNode extends LogicNode implements Cano
     @Override
     protected boolean verifyNode() {
         for (Node usage : usages()) {
-            assertTrue(usage instanceof GuardNode || usage instanceof FixedGuardNode || usage instanceof IfNode, "exact overflow node must only be used by guards or ifs, found: %s", usage);
+            assertTrue(usage instanceof GuardNode || usage instanceof AbstractFixedGuardNode || usage instanceof IfNode, "exact overflow node must only be used by guards or ifs, found: %s", usage);
         }
         return super.verifyNode();
     }

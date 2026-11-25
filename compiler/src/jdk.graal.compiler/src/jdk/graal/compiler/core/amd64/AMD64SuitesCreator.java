@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,11 +34,13 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugi
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
+import jdk.graal.compiler.phases.common.RemoveOpaqueValuePhase;
 import jdk.graal.compiler.phases.common.UseTrappingNullChecksPhase;
 import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.vector.phases.amd64.AMD64VectorLoweringPhase;
+import jdk.graal.compiler.vector.replacements.vectorapi.VectorAPIIntrinsics;
 import jdk.vm.ci.code.Architecture;
 
 public abstract class AMD64SuitesCreator extends DefaultSuitesCreator {
@@ -61,9 +63,14 @@ public abstract class AMD64SuitesCreator extends DefaultSuitesCreator {
         }
         if (GraalOptions.TargetVectorLowering.getValue(options)) {
             position = suites.getLowTier().findPhase(DeadCodeEliminationPhase.class);
+            boolean forceDCE = position == null;
+            if (forceDCE && VectorAPIIntrinsics.intrinsificationSupported(options)) {
+                // Economy has no standalone DCE; legalize before opaque values are removed.
+                position = suites.getLowTier().findPhase(RemoveOpaqueValuePhase.class);
+            }
             if (position != null) {
                 position.previous();
-                position.add(new AMD64VectorLoweringPhase());
+                position.add(new AMD64VectorLoweringPhase(forceDCE));
             }
         }
         return suites;

@@ -2,6 +2,11 @@
 
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
+## GraalVM 25.7
+* (GR-81861): Added Vector API intrinsification to the economy compiler configuration on AMD64 and AArch64.
+  Eligible operations can now use SIMD instructions, for example in Native Image quick builds (`-Ob`) or
+  in Truffle first-tier compilations of Wasm SIMD workloads.
+
 ## GraalVM 25.5 (Internal Version 25.5.5)
 * (GR-79881, GR-79883): Added aggressive partial loop unrolling and simulation-based loop peeling to the community
   compiler. Aggressive partial unrolling is enabled by default and can be disabled with
