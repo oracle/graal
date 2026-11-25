@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -327,13 +327,15 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                 }
             }
 
-            boolean canSubsitute = blockMap.hasSubstitute(cur);
+            Node substitute = blockMap.find(cur);
+            assert substitute != cur : "Must find a different value equal node";
+            boolean canSubstitute = substitute != null;
             // assume FixedGlobalValueNumberable nodes shouldn't be moved
             boolean canLICM = loopCandidate != null && !mustGVN;
             if (cur instanceof MemoryAccess) {
                 MemoryAccess access = (MemoryAccess) cur;
                 if (loopKillsLocation(thisLoopKilledLocations, access.getLocationIdentity())) {
-                    if (canSubsitute) {
+                    if (canSubstitute) {
                         // loop kills this location, do not bother trying to figure out if parts
                         // can be GVNed, let floating reads later handle that
                         return;
@@ -353,14 +355,15 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
              * all exits. Such operations that are unconditionally executed in the particular loop.
              */
             boolean substituted = false;
-            if (canSubsitute) {
+            if (canSubstitute) {
                 // GVN node
-                substituted = blockMap.substitute(cur, cfg, licmNodes, canLICM ? loopCandidate : null);
+                substituted = ValueMap.substitute(cur, substitute, cfg, licmNodes, canLICM ? loopCandidate : null);
             } else {
                 if (canLICM) {
                     tryPerformLICM(loopCandidate, cur, licmNodes);
                 }
-                blockMap.rememberNodeForGVN(cur);
+                // LICM changes control flow, but not the inputs or data used by find.
+                blockMap.add(cur);
             }
             if (mustGVN && !substituted) {
                 if (MemoryKill.isMemoryKill(cur)) {
@@ -534,7 +537,48 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             }
         }
 
+        /**
+         * Find a dominating value equal to {@code n}, which must not already be in this map.
+         */
         private Node find(Node n) {
+            if (length == 0) {
+                return null;
+            }
+            /*
+             * A value-equal node must share every input with n. As in Graph.findDuplicate, an
+             * input used only by n proves that no duplicate exists. New nodes do not yet appear
+             * in their inputs' usage lists.
+             */
+            int earlyExitUsageCount = n.graph() != null ? 1 : 0;
+            Node leastUsedInput = null;
+            int minUsageCount = Integer.MAX_VALUE;
+            for (Node input : n.inputs()) {
+                int usageCount = input.getUsageCount();
+                if (usageCount == earlyExitUsageCount) {
+                    return null;
+                }
+                if (usageCount < minUsageCount) {
+                    minUsageCount = usageCount;
+                    leastUsedInput = input;
+                }
+            }
+            /*
+             * A global duplicate may be outside the active dominator state. Use the shorter usage
+             * list only to prove absence; the array search determines membership and preserves
+             * candidate order after input mutations.
+             */
+            if (leastUsedInput != null && minUsageCount < length) {
+                boolean possibleMatch = false;
+                for (Node usage : leastUsedInput.usages()) {
+                    if (usage != n && valueEquals(usage, n)) {
+                        possibleMatch = true;
+                        break;
+                    }
+                }
+                if (!possibleMatch) {
+                    return null;
+                }
+            }
             for (int i = 0; i < length; i++) {
                 Node entry = entries[i];
                 if (entry != null) {
@@ -602,9 +646,24 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
          */
         public boolean substitute(Node n, ControlFlowGraph cfg, NodeBitMap licmNodes, Loop invariantInLoop) {
             Node edgeDataEqual = find(n);
-            if (edgeDataEqual == null) {
-                return false;
-            }
+            return edgeDataEqual != null && substitute(n, edgeDataEqual, cfg, licmNodes, invariantInLoop);
+        }
+
+        /**
+         * Replace {@code n} with a previously found equivalent node, lifting the replacement out
+         * of {@code invariantInLoop} when needed.
+         *
+         * @param n fixed node to eliminate
+         * @param edgeDataEqual dominating fixed node with equal inputs and data fields
+         * @param cfg control-flow graph with current node-to-block mappings
+         * @param licmNodes nodes already known to be loop invariant or lifted; required when
+         *            {@code invariantInLoop} is non-null
+         * @param invariantInLoop loop out of which the replacement may be lifted, or {@code null}
+         *            to disable loop invariant code motion
+         * @return {@code true} if {@code n} was removed; {@code false} if substitution would require
+         *         proxies, even if the replacement was lifted
+         */
+        private static boolean substitute(Node n, Node edgeDataEqual, ControlFlowGraph cfg, NodeBitMap licmNodes, Loop invariantInLoop) {
             assert edgeDataEqual.graph() != null;
             assert edgeDataEqual instanceof FixedNode : "Only process fixed nodes";
             StructuredGraph graph = (StructuredGraph) edgeDataEqual.graph();
