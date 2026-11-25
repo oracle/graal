@@ -27,12 +27,9 @@ Synthesizes the runtime boot module layer and all reachable module layers initia
 It initializes reads, opens, and exports for those layers.
 
 The runtime configuration supplies declared reads.
-The Native Image option `--add-reads` preserves the requested read from its source module to its targets in the executable.
-`-J--add-reads` applies only to the builder JVM.
-
-Exports and opens retain their original targets in the runtime module graph, including with runtime class loading disabled.
-The Native Image options `--add-exports` and `--add-opens` grant access during image generation and preserve it for the specified targets in the executable.
-JVM options passed through `-J--add-exports` or `-J--add-opens` grant access only in the builder JVM.
+The Native Image options `--add-reads`, `--add-exports`, and `--add-opens` grant access during image generation.
+The executable preserves each grant for its specified source and targets, including when runtime class loading is disabled.
+The corresponding `-J` options apply only to the builder JVM.
 If both forms request the same grant, the Native Image option supplies the runtime grant.
 
 Code loaded at run time can join an existing application module.
