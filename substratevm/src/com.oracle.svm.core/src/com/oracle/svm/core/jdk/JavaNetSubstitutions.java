@@ -171,7 +171,8 @@ final class Target_java_net_URL {
  * Native Image uses its own embedded-resource handler and reachability metadata for JAR handlers.
  */
 @TargetClass(value = java.net.URL.class, innerClass = "DefaultFactory", onlyWith = RuntimeClassLoading.NoRuntimeClassLoading.class)
-final class Target_java_net_URL_DefaultFactory {
+final class Target_java_net_URL_DefaultFactory implements URLStreamHandlerFactory {
+    @Override
     @Substitute
     public URLStreamHandler createURLStreamHandler(String protocol) {
         if (JavaNetSubstitutions.isDisabledURLProtocol(protocol)) {
