@@ -26,6 +26,8 @@
 
 package com.oracle.objectfile.elf.dwarf.constants;
 
+import com.oracle.objectfile.ObjectFile;
+
 /**
  * Various ELF sections created by GraalVM including all debug info sections. The enum sequence
  * starts with the text section (not defined in the DWARF spec and not created by debug info code).
@@ -42,13 +44,43 @@ public enum DwarfSectionName {
     DW_ARANGES_SECTION(".debug_aranges"),
     DW_RNGLISTS_SECTION(".debug_rnglists");
 
-    private final String value;
+    private final String elfName;
+    private final String machoName;
 
-    DwarfSectionName(String s) {
-        value = s;
+    /**
+     * Mach-O section names are stored in a 16-byte field. The field is a fixed-size
+     * char array, not a null-terminated string, so all 16 bytes can be used.
+     */
+    private static final int MACHO_SECTNAME_MAX = 16;
+
+    DwarfSectionName(String elfName) {
+        this.elfName = elfName;
+        // Convert ELF-style ".debug_*" to Mach-O style "__debug_*"
+        // e.g., ".debug_info" -> "__debug_info"
+        // Truncate to 16 characters (Mach-O section names are 16-byte fixed fields)
+        String converted = "__" + elfName.substring(1).replace('.', '_');
+        if (converted.length() > MACHO_SECTNAME_MAX) {
+            converted = converted.substring(0, MACHO_SECTNAME_MAX);
+        }
+        this.machoName = converted;
     }
 
+    /**
+     * Returns the ELF-style section name (e.g., ".debug_info").
+     */
     public String value() {
-        return value;
+        return elfName;
+    }
+
+    /**
+     * Returns the format-dependent section name.
+     * For ELF: ".debug_info"
+     * For Mach-O: "__debug_info"
+     */
+    public String getFormatDependentName(ObjectFile.Format format) {
+        if (format == ObjectFile.Format.MACH_O) {
+            return machoName;
+        }
+        return elfName;
     }
 }

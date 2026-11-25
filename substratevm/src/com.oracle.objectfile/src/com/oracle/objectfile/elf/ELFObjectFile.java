@@ -1176,7 +1176,7 @@ public class ELFObjectFile extends ObjectFile {
 
     @Override
     public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
-        DwarfDebugInfo dwarfSections = new DwarfDebugInfo(getMachine(), getByteOrder());
+        DwarfDebugInfo dwarfSections = new DwarfDebugInfo(getMachine(), getByteOrder(), getFormat());
 
         /* We need an implementation for each generated DWARF section. */
         DwarfStrSectionImpl elfStrSectionImpl = dwarfSections.getStrSectionImpl();

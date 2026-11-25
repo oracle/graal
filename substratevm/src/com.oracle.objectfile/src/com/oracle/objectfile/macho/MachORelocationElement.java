@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 import com.oracle.objectfile.BuildDependency;
+import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
@@ -102,7 +103,26 @@ class MachORelocationElement extends MachOObjectFile.LinkEditElement {
 
     @Override
     public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
-        return ObjectFile.minimalDependencies(decisions, this);
+        EconomicSet<BuildDependency> deps = ObjectFile.minimalDependencies(decisions, this);
+        /*
+         * Our size depends on the content of all sections that might generate relocations.
+         * This is needed for DWARF sections which register relocations during content generation
+         * (in createContent() called from getOrDecideContent()/getOrDecideSize()).
+         * We depend on CONTENT rather than SIZE because:
+         * 1. Relocations are registered during content generation
+         * 2. For DWARF sections, SIZE calls getOrDecideContent(), but we want the dependency
+         *    to be explicit on CONTENT to ensure proper ordering
+         */
+        LayoutDecision ourSize = decisions.get(this).getDecision(LayoutDecision.Kind.SIZE);
+        for (Element e : getOwner().getElements()) {
+            if (e instanceof MachOSection && decisions.get(e) != null) {
+                LayoutDecision sectionContent = decisions.get(e).getDecision(LayoutDecision.Kind.CONTENT);
+                if (sectionContent != null) {
+                    deps.add(BuildDependency.createOrGet(ourSize, sectionContent));
+                }
+            }
+        }
+        return deps;
     }
 
     public int startIndexFor(MachOSection s) {

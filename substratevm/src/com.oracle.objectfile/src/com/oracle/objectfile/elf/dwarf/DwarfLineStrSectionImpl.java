@@ -35,7 +35,8 @@ import jdk.graal.compiler.debug.DebugContext;
  */
 public class DwarfLineStrSectionImpl extends DwarfSectionImpl {
     public DwarfLineStrSectionImpl(DwarfDebugInfo dwarfSections) {
-        // debug_line_str section depends on line section
+        // debug_line_str section depends on line section to ensure all strings are populated
+        // before we calculate the size of this section
         super(dwarfSections, DwarfSectionName.DW_LINE_STR_SECTION, DwarfSectionName.DW_LINE_SECTION);
     }
 
