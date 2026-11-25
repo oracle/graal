@@ -231,6 +231,20 @@ public final class ClassRegistries implements ParsingContext {
     }
 
     public static Class<?> forName(String name, ClassLoader loader) throws ClassNotFoundException {
+        if (!MetadataTracer.enabled() || untracedLookupName.get() == null) {
+            return forNameImpl(name, loader);
+        }
+        /* A custom loader can perform a genuine reflective lookup, even for the JNI lookup's name. */
+        String previous = untracedLookupName.get();
+        untracedLookupName.remove();
+        try {
+            return forNameImpl(name, loader);
+        } finally {
+            untracedLookupName.set(previous);
+        }
+    }
+
+    private static Class<?> forNameImpl(String name, ClassLoader loader) throws ClassNotFoundException {
         ClassNotFoundException classNotFoundException = null;
         for (var singleton : layeredSingletons()) {
             Object result = singleton.resolve(name, loader);
@@ -256,6 +270,8 @@ public final class ClassRegistries implements ParsingContext {
      * again via {@code findLoadedClass} and {@code findBootstrapClass}, and covers the array type an
      * array name resolves to. It is limited to that name: anything else the delegated loader code
      * accesses, such as other classes or the resources a custom loader reads, is traced as usual.
+     * A nested reflective lookup through {@link #forName} suspends the suppression, even when it
+     * requests the same name.
      */
     public static Class<?> forNameUntraced(String name, ClassLoader loader) throws ClassNotFoundException {
         if (!MetadataTracer.enabled()) {
@@ -264,9 +280,13 @@ public final class ClassRegistries implements ParsingContext {
         String previous = untracedLookupName.get();
         untracedLookupName.set(name);
         try {
-            return forName(name, loader);
+            return forNameImpl(name, loader);
         } finally {
-            untracedLookupName.set(previous);
+            if (previous == null) {
+                untracedLookupName.remove();
+            } else {
+                untracedLookupName.set(previous);
+            }
         }
     }
 
