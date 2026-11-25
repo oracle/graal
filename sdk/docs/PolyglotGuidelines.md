@@ -139,7 +139,7 @@ try (Engine engine = Engine.newBuilder(languageId)
 }
 ```
 
-**Further reading:** See [Polyglot isolates](../../docs/reference-manual/embedding/embed-languages.md#polyglot-isolates) and [Engine Permitted Languages](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#newBuilder(java.lang.String...)).
+**Further reading:** See [Polyglot isolates](https://www.graalvm.org/latest/reference-manual/embed-languages/#polyglot-isolates) and [Engine Permitted Languages](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#newBuilder(java.lang.String...)).
 
 ---
 
@@ -178,7 +178,7 @@ static void checkDeployment(String requiredLanguageId) {
 }
 ```
 
-**Further reading:** See [Embedding Dependency Setup](../../docs/reference-manual/embedding/embed-languages.md#dependency-setup) and [Engine.getLanguages](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#getLanguages()).
+**Further reading:** See [Embedding Dependency Setup](https://www.graalvm.org/latest/reference-manual/embed-languages/#dependency-setup) and [Engine.getLanguages](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#getLanguages()).
 
 ---
 
@@ -219,7 +219,7 @@ void prepareResources(Path resourceDirectory, String... selectedLanguageIds)
 }
 ```
 
-**Further reading:** See [Managing Internal Resources](../../docs/reference-manual/embedding/embed-languages.md#managing-internal-resources) and [Engine.copyResources](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#copyResources(java.nio.file.Path,java.lang.String...)).
+**Further reading:** See [Managing Internal Resources](https://www.graalvm.org/latest/reference-manual/embed-languages/#managing-internal-resources) and [Engine.copyResources](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#copyResources(java.nio.file.Path,java.lang.String...)).
 
 ---
 
@@ -610,7 +610,7 @@ try (Context context = Context.newBuilder(languageId)
 }
 ```
 
-**Further reading:** See [Host callback parameter scoping](../../docs/reference-manual/embedding/embed-languages.md#controlling-host-callback-parameter-scoping) and [Value.pin](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#pin()).
+**Further reading:** See [Host callback parameter scoping](https://www.graalvm.org/latest/reference-manual/embed-languages/#controlling-host-callback-parameter-scoping) and [Value.pin](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#pin()).
 
 ---
 
@@ -656,7 +656,7 @@ int[] evaluateBatch(Source[] sources) {
 }
 ```
 
-**Further reading:** See [Manage the Lifecycle of Contexts and Engines](../../docs/reference-manual/embedding/embed-languages.md#manage-the-lifecycle-of-contexts-and-engines).
+**Further reading:** See [Manage the Lifecycle of Contexts and Engines](https://www.graalvm.org/latest/reference-manual/embed-languages/#manage-the-lifecycle-of-contexts-and-engines).
 
 ---
 
@@ -748,7 +748,7 @@ void runBatch(Value exports, int[] inputs) {
 }
 ```
 
-**Further reading:** See [Guest functions as Java values](../../docs/reference-manual/embedding/embed-languages.md#define-guest-language-functions-as-java-values) and [Value.invokeMember](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#invokeMember(java.lang.String,java.lang.Object...)).
+**Further reading:** See [Guest functions as Java values](https://www.graalvm.org/latest/reference-manual/embed-languages/#define-guest-language-functions-as-java-values) and [Value.invokeMember](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#invokeMember(java.lang.String,java.lang.Object...)).
 
 ---
 
@@ -796,7 +796,7 @@ final class ProgramRunner implements AutoCloseable {
 }
 ```
 
-**Further reading:** See [Code Caching Across Multiple Contexts](../../docs/reference-manual/embedding/embed-languages.md#code-caching-across-multiple-contexts) and [Source Cache Policy](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#cached(boolean)).
+**Further reading:** See [Code Caching Across Multiple Contexts](https://www.graalvm.org/latest/reference-manual/embed-languages/#code-caching-across-multiple-contexts) and [Source Cache Policy](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#cached(boolean)).
 
 ---
 
@@ -1305,4 +1305,4 @@ byte[] runWithCapturedLogs(Source source) {
 }
 ```
 
-**Further reading:** See [Logging Options](../../truffle/docs/Options.md#default-language-launcher-options) and [Context Logging Stream](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#logHandler(java.io.OutputStream)).
+**Further reading:** See [Logging Options](https://www.graalvm.org/latest/graalvm-as-a-platform/language-implementation-framework/Options/#default-language-launcher-options) and [Context Logging Stream](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#logHandler(java.io.OutputStream)).
