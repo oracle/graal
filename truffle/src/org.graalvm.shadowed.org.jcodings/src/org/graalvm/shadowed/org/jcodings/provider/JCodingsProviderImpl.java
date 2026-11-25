@@ -138,13 +138,19 @@ public final class JCodingsProviderImpl implements JCodingsProvider {
             CaseInsensitiveBytesHash<EncodingDB.Entry> encodings = EncodingDB.getEncodings();
             assert encodings.size() <= MAX_JCODINGS_INDEX_VALUE : String.format(
                             "Assumption broken: jcodings has more than %d encodings (actual: %d)!", MAX_JCODINGS_INDEX_VALUE, encodings.size());
-            // Load all encodings in registration order to ensure consistent Encoding.getIndex().
+            /*
+             * Encoding indexes depend on class initialization order, so validate the stable
+             * database registration indexes.
+             */
+            boolean[] seenIndexes = new boolean[encodings.size()];
             for (EncodingDB.Entry entry : encodings) {
                 var enc = entry.getEncoding();
-                int i = enc.getIndex();
+                int i = entry.getIndex();
                 assert i >= 0 && i < encodings.size() : String.format(
-                                "Assumption broken: index of jcodings encoding \"%s\" is greater than number of encodings (index: %d, number of encodings: %d)!",
+                                "Assumption broken: registration index of jcodings encoding \"%s\" is greater than number of encodings (index: %d, number of encodings: %d)!",
                                 enc, i, encodings.size());
+                assert !seenIndexes[i] : String.format("Assumption broken: duplicate registration index %d for jcodings encoding \"%s\"!", i, enc);
+                seenIndexes[i] = true;
             }
         }
 
