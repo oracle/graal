@@ -391,10 +391,10 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         } else if (!hub.canUnsafeInstantiateAsInstanceSlowPath()) {
             Class<?> clazz = DynamicHub.toClass(hub);
             if (FutureDefaultsOptions.exactReflection()) {
-                throw MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
+                throw MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz, hub.getUnsafeAllocationMetadata());
             }
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz);
+                MissingReflectionRegistrationUtils.reportUnsafeAllocation(clazz, hub.getUnsafeAllocationMetadata());
             }
             throw new IllegalArgumentException("Type " + clazz.getTypeName() + " is instantiated reflectively but was never registered." +
                             " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");

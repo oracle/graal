@@ -44,6 +44,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.metadata.MetadataTracer;
 import com.oracle.svm.core.reflect.RuntimeMetadataDecoderSupport;
 import com.oracle.svm.guest.staging.reflect.target.ReflectionObjectFactory;
+import com.oracle.svm.guest.staging.reflect.target.Target_java_lang_reflect_AccessibleObject;
 import com.oracle.svm.guest.staging.reflect.target.Target_java_lang_reflect_Executable;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
@@ -368,6 +369,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = decodeDynamicAccessMetadata(buf, layerId, preserved);
         if (inHeap) {
             Field field = (Field) decodeObject(buf, layerId);
+            SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata = RuntimeDynamicAccessMetadata.alwaysAvailable(preserved);
             if (publicOnly && !Modifier.isPublic(field.getModifiers())) {
                 /*
                  * Generate negative copy of the field. Finding a non-public field when looking for
@@ -543,6 +545,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = decodeDynamicAccessMetadata(buf, layerId, preserved);
         if (inHeap) {
             Executable executable = (Executable) decodeObject(buf, layerId);
+            SubstrateUtil.cast(executable, Target_java_lang_reflect_AccessibleObject.class).dynamicAccessMetadata = RuntimeDynamicAccessMetadata.alwaysAvailable(preserved);
             if (publicOnly && !Modifier.isPublic(executable.getModifiers())) {
                 /*
                  * Generate negative copy of the executable. Finding a non-public method when

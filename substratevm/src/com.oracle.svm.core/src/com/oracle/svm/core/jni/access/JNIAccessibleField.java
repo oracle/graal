@@ -29,6 +29,7 @@ import java.lang.reflect.Modifier;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.impl.Word;
@@ -60,8 +61,9 @@ public final class JNIAccessibleField extends JNIAccessibleMember implements Pre
     /* 00000111...1 */
     private static final UnsignedWord ID_OFFSET_MASK = ID_LAYER_NUMBER_MASK.subtract(1);
 
-    public static JNIAccessibleField negativeFieldQuery(JNIAccessibleClass jniClass) {
-        return new JNIAccessibleField(jniClass, null, 0, false);
+    @Platforms(HOSTED_ONLY.class)
+    public static JNIAccessibleField negativeFieldQuery(JNIAccessibleClass jniClass, AccessCondition condition) {
+        return new JNIAccessibleField(jniClass, condition, null, 0, false);
     }
 
     /**
@@ -118,8 +120,8 @@ public final class JNIAccessibleField extends JNIAccessibleMember implements Pre
     private UnsignedWord id = Word.zero();
 
     @Platforms(HOSTED_ONLY.class)
-    public JNIAccessibleField(JNIAccessibleClass declaringClass, JavaKind kind, int modifiers, boolean preserved) {
-        super(declaringClass);
+    public JNIAccessibleField(JNIAccessibleClass declaringClass, AccessCondition condition, JavaKind kind, int modifiers, boolean preserved) {
+        super(declaringClass, condition);
 
         UnsignedWord bits = Modifier.isStatic(modifiers) ? ID_STATIC_FLAG : Word.zero();
         if (kind == null) {

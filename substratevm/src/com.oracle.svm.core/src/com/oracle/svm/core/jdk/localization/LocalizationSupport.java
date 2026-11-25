@@ -342,6 +342,31 @@ public class LocalizationSupport {
         return registered;
     }
 
+    /**
+     * Returns the inactive metadata of a bundle lookup that only fails because its conditions are
+     * not satisfied, or {@code null} if no layer registers the bundle or one layer registers it
+     * with satisfied conditions.
+     */
+    public static RuntimeDynamicAccessMetadata getBundleLookupDynamicAccessMetadata(String baseName, Locale locale, Object controlOrStrategy) {
+        if (baseName == null || locale == null || controlOrStrategy == null) {
+            return null;
+        }
+        RuntimeDynamicAccessMetadata unsatisfiedMetadata = null;
+        var localizationSupports = getAllLayers();
+        for (int i = localizationSupports.length - 1; i >= 0; i--) {
+            RuntimeDynamicAccessMetadata dynamicAccessMetadata = localizationSupports[i].registeredBundles.get(baseName);
+            if (dynamicAccessMetadata != null) {
+                if (dynamicAccessMetadata.satisfied()) {
+                    return null;
+                }
+                if (unsatisfiedMetadata == null) {
+                    unsatisfiedMetadata = dynamicAccessMetadata;
+                }
+            }
+        }
+        return unsatisfiedMetadata;
+    }
+
     private static EconomicSet<String> getLanguageTags(EconomicSet<Locale> locales) {
         EconomicSet<String> names = EconomicSet.create();
         for (Locale locale : locales) {

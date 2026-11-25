@@ -107,10 +107,20 @@ public class SerializationRegistrationTest {
         }
     }
 
+    public record PrimitiveRecord(double value) implements Serializable {
+        private static final long serialVersionUID = 1L;
+    }
+
+    public record AllPrimitiveExtractorsRecord(boolean booleanValue, char charValue, short shortValue, int intValue, float floatValue, long longValue, double doubleValue) implements Serializable {
+        private static final long serialVersionUID = 1L;
+    }
+
     private static final byte[] serializedObject;
     private static final List<SerializableTestClass> list;
     private static AssociatedRegistrationTestClass testClass;
     private static final byte[] serializedAssociatedRegistrationTestClass;
+    private static final byte[] serializedPrimitiveRecord;
+    private static final byte[] serializedAllPrimitiveExtractorsRecord;
 
     static {
         list = new ArrayList<>();
@@ -120,6 +130,9 @@ public class SerializationRegistrationTest {
 
         testClass = new AssociatedRegistrationTestClass(101, new long[]{1L, 2L, 123L});
         serializedAssociatedRegistrationTestClass = serializeObject(testClass);
+
+        serializedPrimitiveRecord = serializeObject(new PrimitiveRecord(42.5d));
+        serializedAllPrimitiveExtractorsRecord = serializeObject(new AllPrimitiveExtractorsRecord(true, 'G', (short) 7, 11, 13.5f, 17L, 19.5d));
     }
 
     private static byte[] serializeObject(Object obj) {
@@ -152,6 +165,24 @@ public class SerializationRegistrationTest {
         Object deserializedObject = deSerialize(serializedAssociatedRegistrationTestClass);
         Assert.assertEquals(testClass, deserializedObject);
     }
+
+    @Test
+    public void testRecordRegistration() throws IOException, ClassNotFoundException {
+        PrimitiveRecord deserializedRecord = (PrimitiveRecord) deSerialize(serializedPrimitiveRecord);
+        Assert.assertEquals(42.5d, deserializedRecord.value(), 0.0d);
+    }
+
+    @Test
+    public void testAllPrimitiveExtractorRegistration() throws IOException, ClassNotFoundException {
+        AllPrimitiveExtractorsRecord deserializedRecord = (AllPrimitiveExtractorsRecord) deSerialize(serializedAllPrimitiveExtractorsRecord);
+        Assert.assertTrue(deserializedRecord.booleanValue());
+        Assert.assertEquals('G', deserializedRecord.charValue());
+        Assert.assertEquals((short) 7, deserializedRecord.shortValue());
+        Assert.assertEquals(11, deserializedRecord.intValue());
+        Assert.assertEquals(13.5f, deserializedRecord.floatValue(), 0.0f);
+        Assert.assertEquals(17L, deserializedRecord.longValue());
+        Assert.assertEquals(19.5d, deserializedRecord.doubleValue(), 0.0d);
+    }
 }
 
 class SerializationRegistrationTestFeature implements Feature {
@@ -159,5 +190,7 @@ class SerializationRegistrationTestFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         RuntimeSerialization.register(ArrayList.class, SerializationRegistrationTest.SerializableTestClass.class);
         RuntimeSerialization.registerIncludingAssociatedClasses(SerializationRegistrationTest.AssociatedRegistrationTestClass.class);
+        RuntimeSerialization.register(SerializationRegistrationTest.PrimitiveRecord.class);
+        RuntimeSerialization.register(SerializationRegistrationTest.AllPrimitiveExtractorsRecord.class);
     }
 }

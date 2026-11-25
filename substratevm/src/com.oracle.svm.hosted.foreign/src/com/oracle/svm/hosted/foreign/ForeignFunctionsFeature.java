@@ -90,6 +90,7 @@ import com.oracle.svm.core.foreign.AbiUtils;
 import com.oracle.svm.core.foreign.ForeignFunctionsRuntime;
 import com.oracle.svm.core.foreign.JavaEntryPointInfo;
 import com.oracle.svm.core.foreign.NativeEntryPointHelper;
+import com.oracle.svm.core.foreign.ForeignRegistrationConditions;
 import com.oracle.svm.core.foreign.NativeEntryPointInfo;
 import com.oracle.svm.core.foreign.RuntimeSystemLookup;
 import com.oracle.svm.core.foreign.SubstrateForeignUtil;
@@ -343,9 +344,9 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forDowncall(desc, options);
                 SharedDesc sharedDesc = new SharedDesc(desc, linkerOptions);
-                runConditionalTask(condition, _ -> {
+                runConditionalTask(condition, cnd -> {
                     NativeEntryPointInfo nepi = abiUtils.makeNativeEntrypoint(sharedDesc.fd, sharedDesc.options);
-                    DowncallStub stub = createStub(DowncallStubFactory.INSTANCE, nepi);
+                    DowncallStub stub = createStub(DowncallStubFactory.INSTANCE, nepi, cnd);
                     if (stub != null) {
                         createStub(DowncallStubInvokerFactory.INSTANCE, nepi.methodType());
                     }
@@ -361,7 +362,7 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
                 SharedDesc sharedDesc = new SharedDesc(desc, linkerOptions);
-                runConditionalTask(condition, _ -> createStub(UpcallStubFactory.INSTANCE, sharedDesc));
+                runConditionalTask(condition, cnd -> createStub(UpcallStubFactory.INSTANCE, sharedDesc, cnd));
             } catch (IllegalArgumentException e) {
                 throw UserError.abort(e, "Could not register upcall");
             }
@@ -387,26 +388,33 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
                 DirectUpcallDesc directUpcallDesc = new DirectUpcallDesc(target, directMethodHandleDesc, desc, linkerOptions);
-                runConditionalTask(condition, _ -> {
+                runConditionalTask(condition, cnd -> {
                     ImageSingletons.lookup(RuntimeReflectionSupport.class).register(AccessCondition.unconditional(), false, method);
-                    createStub(UpcallStubFactory.INSTANCE, directUpcallDesc.toSharedDesc());
-                    createStub(DirectUpcallStubFactory.INSTANCE, directUpcallDesc);
+                    createStub(UpcallStubFactory.INSTANCE, directUpcallDesc.toSharedDesc(), cnd);
+                    createStub(DirectUpcallStubFactory.INSTANCE, directUpcallDesc, cnd);
                 });
             } catch (IllegalArgumentException e) {
                 throw UserError.abort(e, "Could not register direct upcall");
             }
         }
 
+        private <S, T, U extends ResolvedJavaMethod> U createStub(StubFactory<S, T, U> factory, T descriptor) {
+            return createStub(factory, descriptor, null);
+        }
+
         /**
          * Generic routine for creating a single stub. This method must be thread-safe because it is
-         * called during analysis.
+         * called during analysis. A non-null {@code condition} is the run-time condition of a
+         * registration: the stub is available at run time only if one of the conditions recorded
+         * for its key is satisfied. Stubs created without a registration, e.g., for method handles
+         * linked at build time, record no condition.
          *
          * @param <S> The descriptor type which instances uniquely identify the stubs at run time
          *            (e.g. {@link NativeEntryPointInfo}).
          * @param <T> The stub descriptor type (e.g. {@link SharedDesc}).
          * @param <U> The stub type (e.g. {@link DowncallStub}).
          */
-        private <S, T, U extends ResolvedJavaMethod> U createStub(StubFactory<S, T, U> factory, T descriptor) {
+        private <S, T, U extends ResolvedJavaMethod> U createStub(StubFactory<S, T, U> factory, T descriptor, AccessCondition condition) {
 
             /*
              * If foreign function calls are generally not supported on this platform, we just
@@ -418,6 +426,9 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
             }
 
             S key = factory.createKey(ForeignFunctionsFeature.this, descriptor);
+            if (condition != null) {
+                factory.registerCondition(ForeignRegistrationConditions.currentLayer(), key, condition);
+            }
 
             /*
              * Early test if there is already a stub for 'key'. We do this just to save some
@@ -524,6 +535,7 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
         ImageSingletons.add(AbiUtils.class, abiUtils);
         ImageSingletons.add(ForeignSupport.class, foreignFunctionsRuntime);
         ImageSingletons.add(ForeignFunctionsRuntime.class, foreignFunctionsRuntime);
+        ForeignRegistrationConditions.create();
         ImageSingletons.add(ForeignHostedSupport.class, this);
     }
 
@@ -585,6 +597,11 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
         boolean stubExists(ForeignFunctionsRuntime runtime, S key);
 
         boolean registerAsEntryPoint();
+
+        /**
+         * Records the run-time condition of a registration of the stub identified by {@code key}.
+         */
+        void registerCondition(ForeignRegistrationConditions conditions, S key, AccessCondition condition);
     }
 
     private record DowncallStubFactory() implements StubFactory<NativeEntryPointInfo, NativeEntryPointInfo, DowncallStub> {
@@ -608,6 +625,11 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
         @Override
         public boolean stubExists(ForeignFunctionsRuntime runtime, NativeEntryPointInfo key) {
             return runtime.downcallStubExists(key);
+        }
+
+        @Override
+        public void registerCondition(ForeignRegistrationConditions conditions, NativeEntryPointInfo key, AccessCondition condition) {
+            conditions.addDowncall(key, condition);
         }
 
         @Override
@@ -638,6 +660,11 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
         @Override
         public boolean stubExists(ForeignFunctionsRuntime runtime, MethodType methodType) {
             return runtime.downcallStubInvokerExists(methodType);
+        }
+
+        @Override
+        public void registerCondition(ForeignRegistrationConditions conditions, MethodType key, AccessCondition condition) {
+            /* Invokers are shared by downcall stubs, and the downcall stub carries the condition. */
         }
 
         @Override
@@ -683,6 +710,11 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
         @Override
         public boolean stubExists(ForeignFunctionsRuntime runtime, JavaEntryPointInfo key) {
             return runtime.upcallStubExists(key);
+        }
+
+        @Override
+        public void registerCondition(ForeignRegistrationConditions conditions, JavaEntryPointInfo key, AccessCondition condition) {
+            conditions.addUpcall(key, condition);
         }
 
         @Override
@@ -816,6 +848,11 @@ public class ForeignFunctionsFeature implements InternalFeature, ForeignHostedSu
         @Override
         public boolean stubExists(ForeignFunctionsRuntime runtime, DirectUpcall key) {
             return runtime.directUpcallStubExists(key.targetDesc(), key.nativeJep(), key.nativeFd());
+        }
+
+        @Override
+        public void registerCondition(ForeignRegistrationConditions conditions, DirectUpcall key, AccessCondition condition) {
+            conditions.addDirectUpcall(key.targetDesc(), key.nativeJep(), key.nativeFd(), condition);
         }
 
         @Override

@@ -71,7 +71,7 @@ final class Target_java_io_ObjectStreamClass {
                 MetadataTracer.singleton().traceSerializationType(cl);
             }
             if (!hub.isRegisteredForSerialization()) {
-                MissingSerializationRegistrationUtils.reportSerialization(cl);
+                MissingSerializationRegistrationUtils.reportSerialization(cl, SerializationSupport.getDynamicAccessMetadataForSerialization(hub));
             }
         }
 

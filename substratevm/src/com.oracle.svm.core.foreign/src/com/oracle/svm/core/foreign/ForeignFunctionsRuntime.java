@@ -245,7 +245,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
      * convention alone does not distinguish bindings such as pointers with different target layouts.
      * Function descriptors must have their layout names stripped, as in AbstractLinker.upcallStub.
      */
-    private record DirectUpcallKey(DirectMethodHandleDesc target, JavaEntryPointInfo jep, FunctionDescriptor functionDescriptor) {
+    record DirectUpcallKey(DirectMethodHandleDesc target, JavaEntryPointInfo jep, FunctionDescriptor functionDescriptor) {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -264,7 +264,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
 
     public CFunctionPointer getDowncallStubPointer(NativeEntryPointInfo nep, boolean reportMissingDowncalls) {
         FunctionPointerHolder holder = downcallStubs.get(nep);
-        if (holder != null) {
+        if (holder != null && ForeignRegistrationConditions.isAvailable(nep)) {
             return holder.functionPointer;
         }
         if (reportMissingDowncalls) {
@@ -302,7 +302,7 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
         FunctionPointerHolder holder = upcallStubs.get(jep);
         CFunctionPointer upcallStubPointer;
         Object runtimeArgument;
-        if (holder != null) {
+        if (holder != null && ForeignRegistrationConditions.isAvailable(jep)) {
             upcallStubPointer = holder.functionPointer;
             runtimeArgument = methodHandle;
         } else if (InterpreterForeignFunctionsSupport.isAvailable()) {
@@ -362,8 +362,9 @@ public class ForeignFunctionsRuntime implements ForeignSupport, OptimizeSharedAr
         }
 
         JavaEntryPointInfo jep = AbiUtils.singleton().makeJavaEntryPoint(functionDescriptor, options);
-        FunctionPointerHolder functionPointerHolder = directUpcallStubs.get(new DirectUpcallKey(desc, jep, functionDescriptor));
-        if (functionPointerHolder == null) {
+        DirectUpcallKey key = new DirectUpcallKey(desc, jep, functionDescriptor);
+        FunctionPointerHolder functionPointerHolder = directUpcallStubs.get(key);
+        if (functionPointerHolder == null || !ForeignRegistrationConditions.isAvailable(key)) {
             return;
         }
 

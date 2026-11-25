@@ -27,17 +27,20 @@ package com.oracle.svm.core.jni.access;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 import com.oracle.svm.shared.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.guest.staging.core.heap.UnknownObjectField;
 
-abstract class JNIAccessibleMember {
+abstract class JNIAccessibleMember extends JNIConditionalElement {
     private final JNIAccessibleClass declaringClass;
 
     @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl", canBeNull = true, availability = ReadyForCompilation.class) //
     private EconomicSet<Class<?>> hidingSubclasses;
 
-    JNIAccessibleMember(JNIAccessibleClass declaringClass) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    JNIAccessibleMember(JNIAccessibleClass declaringClass, AccessCondition condition) {
+        super(condition);
         this.declaringClass = declaringClass;
     }
 
