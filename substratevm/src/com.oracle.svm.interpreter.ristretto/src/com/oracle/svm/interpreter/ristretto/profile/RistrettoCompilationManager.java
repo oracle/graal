@@ -530,11 +530,12 @@ public final class RistrettoCompilationManager {
                 cancelRequestBeforeExecution(request);
             }
         }
+        OutOfMemoryError interruptFailure = null;
         for (int i = 0; i < compilerThreads.size(); i++) {
-            compilerThreads.get(i).interrupt();
+            interruptFailure = interruptForShutdown(compilerThreads.get(i), interruptFailure);
         }
         if (statisticsReporterThread != null) {
-            statisticsReporterThread.interrupt();
+            interruptFailure = interruptForShutdown(statisticsReporterThread, interruptFailure);
         }
         try {
             for (int i = 0; i < compilerThreads.size(); i++) {
@@ -552,6 +553,24 @@ public final class RistrettoCompilationManager {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
+        if (interruptFailure != null) {
+            throw interruptFailure;
+        }
+    }
+
+    /**
+     * Interrupts a thread and retains the first OOME so shutdown can finish interrupting and joining
+     * the threads before reporting it.
+     */
+    private static OutOfMemoryError interruptForShutdown(Thread thread, OutOfMemoryError firstFailure) {
+        try {
+            thread.interrupt();
+        } catch (OutOfMemoryError failure) {
+            if (firstFailure == null) {
+                return failure;
+            }
+        }
+        return firstFailure;
     }
 
     public static final class TestingBackdoor {
