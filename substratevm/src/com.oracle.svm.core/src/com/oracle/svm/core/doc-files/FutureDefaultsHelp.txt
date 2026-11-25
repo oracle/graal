@@ -1,11 +1,11 @@
-Enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'none', 'run-time-initialize-jdk', 'class-for-name-respects-class-loader', 'exact-reflection', 'run-time-initialize-file-system-providers', 'run-time-initialize-security-providers', 'run-time-initialize-resource-bundles', 'explicit-feature-singleton-registration'. The preferred usage is '--future-defaults=all'.
+Enable options that are planned to become defaults in future releases. Comma-separated list can contain 'all', 'none', 'run-time-initialize-jdk', 'class-for-name-respects-class-loader', 'exact-reflection', 'run-time-initialize-file-system-providers', 'run-time-initialize-security-providers', 'run-time-initialize-resource-bundles', 'run-time-initialize-xml', 'explicit-feature-singleton-registration'. The preferred usage is '--future-defaults=all'.
 
 The meaning of each possible option is as follows:
   'all' - is the preferred option, and it enables all other behaviors.
 
   'none' - forcefully disables all enabled options. This can be used only on the command line to override choices taken by inaccessible parts of the build process.
 
-  'run-time-initialize-jdk' - enables all behaviors related to run-time initialization of the JDK: ['run-time-initialize-security-providers', 'run-time-initialize-file-system-providers', 'run-time-initialize-resource-bundles'].
+  'run-time-initialize-jdk' - enables all behaviors related to run-time initialization of the JDK: ['run-time-initialize-security-providers', 'run-time-initialize-file-system-providers', 'run-time-initialize-resource-bundles', 'run-time-initialize-xml'].
 
   'class-for-name-respects-class-loader' - 'Class#forName' and 'ClassLoader#loadClass' respect their class loader argument. Instead of one flat namespace, each class loader has its own namespace and may delegate to other class loaders.
 
@@ -16,5 +16,7 @@ The meaning of each possible option is as follows:
   'run-time-initialize-file-system-providers' - shifts away from build-time initialization for 'java.nio.file.spi.FileSystemProvider'. Unless you store 'FileSystemProvider'-related classes in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
 
   'run-time-initialize-resource-bundles' - shifts away from build-time initialization for 'java.util.ResourceBundle'. Unless you store 'ResourceBundle'-related classes in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
+
+  'run-time-initialize-xml' - shifts away from build-time initialization for the 'java.xml' and 'java.xml.crypto' modules. Three parts stay initialized at build time: the JDK built-in XML catalog, which takes its catalog settings from the image build; a few stateless helper classes that resource bundles hold; and, unless 'run-time-initialize-security-providers' is enabled, the 'XMLDSig' security provider. The image reads the JAXP configuration file 'conf/jaxp.properties' from its 'java.home' at run time, or applies the one of the JDK that builds it if it has no 'java.home'. Set 'java.xml.config.file' at run time, as on the JVM: a value given to the image builder with '-D' does not apply. Unless you store XML-related classes in the image heap, this option should not affect you. In case this option breaks your build, follow the suggestions in the error messages.
 
   'explicit-feature-singleton-registration' - stops automatically publishing user features reached from '--features' as 'ImageSingletons'. If code needs feature-singleton lookup compatibility, the feature must register its feature object explicitly.
