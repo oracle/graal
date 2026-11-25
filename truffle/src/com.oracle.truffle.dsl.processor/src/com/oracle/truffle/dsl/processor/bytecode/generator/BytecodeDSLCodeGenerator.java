@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,8 +79,8 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
     public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, BytecodeDSLModels modelList) {
         List<CodeTypeElement> results = new ArrayList<>();
 
-        // For testing: when using {@code @ExpectError}, we don't want to actually generate the
-        // code, since compilation will likely fail.
+        // For testing: when using @ExpectError, we don't want to actually generate the code, since
+        // compilation will likely fail. @ExpectWarning is OK and should not prevent generation.
         if (hasExpectErrors(modelList.getTemplateType())) {
             return results;
         }
@@ -227,7 +227,8 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
     }
 
     private boolean hasExpectErrors(Element element) {
-        if (!ExpectError.getExpectedErrors(element).isEmpty()) {
+        // Warnings are OK.
+        if (!ExpectError.getExpectedErrors(element, false).isEmpty()) {
             return true;
         }
 
