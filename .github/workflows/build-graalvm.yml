@@ -157,7 +157,23 @@ jobs:
           fi
       - name: Create GraalVM archive
         shell: bash
-        run: tar -czhf ${{ steps.set_outputs.outputs.artifact-file-name }} -C $(dirname ${GRAALVM_HOME}) $(basename ${GRAALVM_HOME})
+        run: |
+          # Follow the distribution root, preserving symlinks inside the distribution.
+          # Transform member and hard-link names, leaving symbolic-link targets unchanged.
+          tar -czf "${{ steps.set_outputs.outputs.artifact-file-name }}" \
+            --transform='flags=rh;s,^\.,graalvm,' -C "${GRAALVM_HOME}" .
+      - name: Verify GraalVM archive
+        shell: bash
+        run: |
+          artifact_dir=$(mktemp -d)
+          trap 'rm -rf "$artifact_dir"' EXIT
+          tar -xzf "${{ steps.set_outputs.outputs.artifact-file-name }}" -C "$artifact_dir"
+          for tool in native-image-configure native-image-utils; do
+            launcher="$artifact_dir/graalvm/bin/$tool"
+            if [[ -e "$launcher" || -L "$launcher" ]]; then
+              "$launcher" help > /dev/null
+            fi
+          done
       - name: Upload GraalVM archive as artifact
         uses: actions/upload-artifact@v7.0.2
         with:
