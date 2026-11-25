@@ -273,6 +273,7 @@ def runLLVMUnittests(unittest_runner):
                   '--add-exports=org.graalvm.llvm_community/com.oracle.truffle.llvm.runtime=ALL-UNNAMED',
                   '--add-exports=org.graalvm.llvm_community/com.oracle.truffle.llvm.runtime.except=ALL-UNNAMED',
                   '--add-exports=org.graalvm.llvm_community/com.oracle.truffle.llvm.runtime.memory=ALL-UNNAMED',
+                  '--add-exports=org.graalvm.llvm_community/com.oracle.truffle.llvm.runtime.nodes.api=ALL-UNNAMED',
                   '--add-exports=org.graalvm.llvm_community/com.oracle.truffle.llvm.runtime.pointer=ALL-UNNAMED',
                   '--initialize-at-build-time',
                   '--language:llvm'] + java_run_props
