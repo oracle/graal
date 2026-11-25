@@ -84,6 +84,11 @@ public final class RistrettoCompilationManager {
     private static volatile RistrettoCompilationManager MANAGER;
 
     /*
+     * Guards lazy initialization of the compilation manager.
+     */
+    private static final VMMutex INITIALIZATION_MUTEX = new VMMutex("ristrettoCompilationManagerInitialization");
+
+    /*
      * Protects the compilation queue.
      */
     private static final VMMutex QUEUE_MUTEX = new VMMutex("ristrettoCompilationQueue");
@@ -123,7 +128,7 @@ public final class RistrettoCompilationManager {
     public static RistrettoCompilationManager get() {
         RistrettoCompilationManager manager = MANAGER;
         if (manager == null) {
-            synchronized (RistrettoCompilationManager.class) {
+            try (var _ = INITIALIZATION_MUTEX.lock()) {
                 manager = MANAGER;
                 if (manager == null) {
                     manager = new RistrettoCompilationManager();
