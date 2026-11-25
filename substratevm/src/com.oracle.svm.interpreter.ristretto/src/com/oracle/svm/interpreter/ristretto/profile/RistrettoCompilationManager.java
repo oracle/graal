@@ -472,23 +472,25 @@ public final class RistrettoCompilationManager {
     }
 
     public void submitCompilationRequest(RistrettoCompilationRequest request) {
-        int queueSize;
+        boolean compilationWatchdogEnabled = RistrettoOptions.JITCompilationWatchdogTimeoutSeconds.getValue() > 0;
+        request.markSubmitted(compilationWatchdogEnabled ? System.nanoTime() : 0);
+        submittedRequests.incrementAndGet();
+        int queueSize = -1;
         try (var _ = QUEUE_MUTEX.lock()) {
-            boolean compilationWatchdogEnabled = RistrettoOptions.JITCompilationWatchdogTimeoutSeconds.getValue() > 0;
-            request.markSubmitted(compilationWatchdogEnabled ? System.nanoTime() : 0);
-            submittedRequests.incrementAndGet();
-            if (!acceptingRequests || isolateTearingDown) {
-                cancelRequestBeforeExecution(request);
-                return;
-            }
-            try {
+            if (acceptingRequests && !isolateTearingDown) {
                 compilationQueue.add(request);
-            } catch (RuntimeException | Error failure) {
-                cancelRequestBeforeExecution(request);
-                throw failure;
+                queueSize = compilationQueue.size();
+                QUEUE_CONDITION.signal();
             }
-            QUEUE_CONDITION.signal();
-            queueSize = compilationQueue.size();
+        } catch (RuntimeException | Error failure) {
+            if (queueSize < 0) {
+                cancelRequestBeforeExecution(request);
+            }
+            throw failure;
+        }
+        if (queueSize < 0) {
+            cancelRequestBeforeExecution(request);
+            return;
         }
         RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Queue size after submitting %s =%s %n", request, queueSize);
     }
@@ -515,7 +517,12 @@ public final class RistrettoCompilationManager {
         }
     }
 
+    /**
+     * Cancels a request outside the queue mutex. Cancellation can block on a Java monitor and
+     * unmount a virtual thread, leaving the mutex locked on its carrier.
+     */
     private void cancelRequestBeforeExecution(RistrettoCompilationRequest request) {
+        assert !QUEUE_MUTEX.isOwner() : "Cancelling a request can unmount a virtual thread.";
         request.cancelBeforeExecution();
         finishedRequests.incrementAndGet();
     }
@@ -525,10 +532,16 @@ public final class RistrettoCompilationManager {
         try (var _ = QUEUE_MUTEX.lock()) {
             acceptingRequests = false;
             QUEUE_CONDITION.broadcast();
+        }
+        while (true) { // TERMINATION ARGUMENT: the closed queue loses one request per iteration
             RistrettoCompilationRequest request;
-            while ((request = compilationQueue.poll()) != null) {
-                cancelRequestBeforeExecution(request);
+            try (var _ = QUEUE_MUTEX.lock()) {
+                request = compilationQueue.poll();
             }
+            if (request == null) {
+                break;
+            }
+            cancelRequestBeforeExecution(request);
         }
         OutOfMemoryError interruptFailure = null;
         for (int i = 0; i < compilerThreads.size(); i++) {
