@@ -31,7 +31,10 @@ import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
@@ -58,6 +61,43 @@ public class ReflectionRegistrationTest {
     }
 
     public static class UnsafeAllocationTarget {
+    }
+
+    public interface SuperclassInterface {
+        int SUPERCLASS_INTERFACE_FIELD = 1;
+
+        default void superclassInterfaceMethod() {
+        }
+    }
+
+    public interface GrandSuperclassSuperinterface {
+        int GRAND_SUPERCLASS_SUPERINTERFACE_FIELD = 2;
+
+        default void grandSuperclassSuperinterfaceMethod() {
+        }
+    }
+
+    public interface GrandSuperclassInterface extends GrandSuperclassSuperinterface {
+        int GRAND_SUPERCLASS_INTERFACE_FIELD = 3;
+
+        default void grandSuperclassInterfaceMethod() {
+        }
+    }
+
+    public static class InheritanceGrandSuperclass implements GrandSuperclassInterface {
+    }
+
+    public static class InheritanceSuperclass extends InheritanceGrandSuperclass implements SuperclassInterface {
+    }
+
+    /**
+     * Implements no interface itself: it inherits every interface member through its superclasses.
+     */
+    public static class InheritanceTarget extends InheritanceSuperclass {
+        public int ownField;
+
+        public void ownMethod() {
+        }
     }
 
     public static class TestFeature implements Feature {
@@ -131,6 +171,7 @@ public class ReflectionRegistrationTest {
 
             RuntimeReflection.register(FieldLookupTarget.class);
             RuntimeReflection.registerFieldLookup(FieldLookupTarget.class, "value");
+            RuntimeReflection.register(InheritanceTarget.class);
         }
 
         @Override
@@ -151,6 +192,31 @@ public class ReflectionRegistrationTest {
     public void testFieldLookupAllowsAccess() throws ReflectiveOperationException {
         Field field = FieldLookupTarget.class.getDeclaredField("value");
         assertEquals(FIELD_LOOKUP_TEST_VALUE, field.get(new FieldLookupTarget()));
+    }
+
+    /**
+     * Registering a type for reflection exposes the public fields and methods it inherits through
+     * the interfaces of its superclasses, as {@link Class#getFields()} and {@link Class#getMethods()}
+     * return them on HotSpot.
+     */
+    @Test
+    public void testMembersInheritedThroughSuperclassInterfaces() {
+        Class<?> target = hideFromAnalysis(InheritanceTarget.class);
+
+        Set<String> fieldNames = Arrays.stream(target.getFields()).map(Field::getName).collect(Collectors.toSet());
+        assertEquals(Set.of("ownField", "SUPERCLASS_INTERFACE_FIELD", "GRAND_SUPERCLASS_INTERFACE_FIELD", "GRAND_SUPERCLASS_SUPERINTERFACE_FIELD"), fieldNames);
+
+        Set<String> methodNames = Arrays.stream(target.getMethods()).map(Method::getName).collect(Collectors.toSet());
+        Set<String> expectedMethodNames = Set.of("ownMethod", "superclassInterfaceMethod", "grandSuperclassInterfaceMethod", "grandSuperclassSuperinterfaceMethod");
+        assertTrue("getMethods() returned " + methodNames, methodNames.containsAll(expectedMethodNames));
+    }
+
+    /**
+     * Returns {@code clazz} through a value the analysis cannot fold, so that bulk queries on it
+     * are neither folded nor registered automatically at build time.
+     */
+    private static Class<?> hideFromAnalysis(Class<?> clazz) {
+        return System.nanoTime() == Long.MIN_VALUE ? Object.class : clazz;
     }
 
     private static Object unsafeAllocate(Class<?> clazz) throws ReflectiveOperationException {

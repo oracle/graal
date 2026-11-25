@@ -249,7 +249,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerAllClasses(AnalysisType type) {
-        forAllSuperTypes(type, t -> {
+        forAllSuperclasses(type, t -> {
             try {
                 for (var innerType : t.getDeclaredTypes()) {
                     if (innerType.isPublic()) {
@@ -506,12 +506,27 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
+    /**
+     * Visits {@code type}, its superclasses, and the interfaces of each of them with their
+     * superinterfaces: the types whose public members {@link Class#getFields()} and
+     * {@link Class#getMethods()} return.
+     */
     private static void forAllSuperTypes(AnalysisType type, Consumer<AnalysisType> callback) {
         for (AnalysisType current = type; current != null; current = current.getSuperclass()) {
             callback.accept(current);
-            for (AnalysisType intf : type.getInterfaces()) {
+            for (AnalysisType intf : current.getInterfaces()) {
                 forAllSuperTypes(intf, callback);
             }
+        }
+    }
+
+    /**
+     * Visits {@code type} and its superclasses, but no interfaces: the types whose public member
+     * classes {@link Class#getClasses()} returns.
+     */
+    private static void forAllSuperclasses(AnalysisType type, Consumer<AnalysisType> callback) {
+        for (AnalysisType current = type; current != null; current = current.getSuperclass()) {
+            callback.accept(current);
         }
     }
 
@@ -1314,7 +1329,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     for (var innerType : type.getDeclaredTypes()) {
                         innerTypes.add(OriginalClassProvider.getOriginalType(innerType));
                     }
-                    forAllSuperTypes(type, t -> {
+                    forAllSuperclasses(type, t -> {
                         var superTypeInnerTypes = innerClasses.computeIfAbsent(OriginalClassProvider.getOriginalType(t), _ -> new HashSet<>());
                         for (var innerType : t.getDeclaredTypes()) {
                             if (innerType.isPublic()) {
