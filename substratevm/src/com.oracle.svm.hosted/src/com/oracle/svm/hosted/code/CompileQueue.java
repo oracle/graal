@@ -75,6 +75,7 @@ import com.oracle.svm.core.meta.MethodRefSupport;
 import com.oracle.svm.core.meta.SubstrateMethodOffsetConstant;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageGenerator;
@@ -1622,6 +1623,7 @@ public class CompileQueue {
         if (customFunction != null) {
             return customFunction.compile(debug, method, compilationIdentifier, reason, runtimeConfig);
         }
+        reportUnlinkedMethodWithoutCompilationGraph(method);
         try {
             return defaultCompileFunction(debug, method, compilationIdentifier, reason, runtimeConfig, false);
         } catch (RuntimeException | Error t) {
@@ -1641,6 +1643,20 @@ public class CompileQueue {
                 } else {
                     throw t;
                 }
+            }
+        }
+    }
+
+    private static void reportUnlinkedMethodWithoutCompilationGraph(HostedMethod method) {
+        if (method.compilationInfo.getCompilationGraph() == null && !method.getDeclaringClass().isLinked()) {
+            try {
+                method.getDeclaringClass().link();
+            } catch (LinkageError error) {
+                throw UserError.abort(error,
+                                "The method %s cannot be compiled because its declaring class %s could not be linked. " +
+                                                "Linking failed with %s. This may indicate that a required dependency is missing from the image classpath. " +
+                                                "Add the dependency that provides the missing class and check its transitive dependencies.",
+                                method.format("%H.%n(%p)"), method.getDeclaringClass().toJavaName(), error);
             }
         }
     }
