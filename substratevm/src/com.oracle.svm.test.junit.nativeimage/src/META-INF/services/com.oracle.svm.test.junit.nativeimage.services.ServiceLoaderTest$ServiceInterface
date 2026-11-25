@@ -1,0 +1,3 @@
+com.oracle.svm.test.junit.nativeimage.services.ServiceLoaderTest$ServiceA
+com.oracle.svm.test.junit.nativeimage.services.ServiceLoaderTest$ServiceB
+com.oracle.svm.test.junit.nativeimage.services.ServiceLoaderTest$ServiceHostedOnly

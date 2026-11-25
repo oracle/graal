@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,10 +58,12 @@ public final class IsolatedSpeculationLog extends IsolatedObjectProxy<Speculatio
     }
 
     private static byte[] encodeAsByteArray(SpeculationReason reason) {
-        int groupId = 0;
-        Object[] context = null;
+        int groupId;
+        String groupName;
+        Object[] context;
         try {
             final Field groupIdField;
+            final Field groupNameField;
             final Field contextField;
             /*
              * The following reflective accesses do not add runtime overhead as they are being
@@ -72,27 +74,32 @@ public final class IsolatedSpeculationLog extends IsolatedObjectProxy<Speculatio
             if (reason instanceof UnencodedSpeculationReason) {
                 final Class<?> klass = UnencodedSpeculationReason.class;
                 groupIdField = klass.getDeclaredField("groupId");
+                groupNameField = klass.getDeclaredField("groupName");
                 contextField = klass.getDeclaredField("context");
             } else {
                 final Class<?> klass = Class.forName("jdk.vm.ci.meta.EncodedSpeculationReason");
                 groupIdField = klass.getDeclaredField("groupId");
+                groupNameField = klass.getDeclaredField("groupName");
                 contextField = klass.getDeclaredField("context");
             }
             groupIdField.setAccessible(true);
             groupId = groupIdField.getInt(reason);
+            groupNameField.setAccessible(true);
+            groupName = (String) groupNameField.get(reason);
             contextField.setAccessible(true);
             context = (Object[]) contextField.get(reason);
         } catch (IllegalAccessException | NoSuchFieldException | ClassNotFoundException e) {
-            VMError.shouldNotReachHere("Failed to encode speculation reason", e);
+            throw VMError.shouldNotReachHere("Failed to encode speculation reason", e);
         }
-        IsolatedSpeculationReasonEncoding encoding = encode(groupId, context);
+        IsolatedSpeculationReasonEncoding encoding = encode(groupId, groupName, context);
         return encoding.getByteArray();
     }
 
     /** Adapted from {@code jdk.vm.ci.meta.EncodedSpeculationReason#encode}. */
-    private static IsolatedSpeculationReasonEncoding encode(int groupId, Object[] context) {
+    private static IsolatedSpeculationReasonEncoding encode(int groupId, String groupName, Object[] context) {
         IsolatedSpeculationReasonEncoding encoding = new IsolatedSpeculationReasonEncoding();
         encoding.addInt(groupId);
+        encoding.addInt(groupName.hashCode());
         for (Object o : context) {
             if (o == null) {
                 encoding.addInt(0);

@@ -1,0 +1,2 @@
+com.oracle.svm.test.junit.nativeimage.services.DeletedServiceTest$DeletedServiceA
+com.oracle.svm.test.junit.nativeimage.services.DeletedServiceTest$DeletedServiceB

@@ -1,0 +1,2 @@
+com.oracle.svm.test.junit.shared.services.NoProviderConstructorServiceLoaderTest$ProperService
+com.oracle.svm.test.junit.shared.services.NoProviderConstructorServiceLoaderTest$NoProviderConstructorService

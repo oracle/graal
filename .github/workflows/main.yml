@@ -123,7 +123,7 @@ jobs:
               PRIMARY: "substratevm"
           - env:
               JDK_VERSION: "latest"
-              GATE_TAGS: "build,helloworld,native_unittests,standalone_pointsto_unittests"
+              GATE_TAGS: "build,helloworld,native_unittests,hosted_unittests,standalone_pointsto_unittests"
               PRIMARY: "substratevm"
               DYNAMIC_IMPORTS: "/espresso-compiler-stub"
               PIP_PACKAGES: "jsonschema==4.6.1"

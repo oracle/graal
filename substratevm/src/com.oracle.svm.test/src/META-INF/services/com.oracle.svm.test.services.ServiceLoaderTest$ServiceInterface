@@ -1,3 +1,0 @@
-com.oracle.svm.test.services.ServiceLoaderTest$ServiceA
-com.oracle.svm.test.services.ServiceLoaderTest$ServiceB
-com.oracle.svm.test.services.ServiceLoaderTest$ServiceHostedOnly

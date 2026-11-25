@@ -62,10 +62,10 @@ import org.junit.runners.Suite;
 public final class NativeImageBuildArgsSupport {
     /*
      * JUNIT_SUPPORT is shared across native-unittest configurations, so this helper avoids a direct
-     * compile-time dependency on com.oracle.svm.test.NativeImageBuildArgs and reads the annotation
+     * compile-time dependency on com.oracle.svm.test.api.NativeImageBuildArgs and reads the annotation
      * reflectively by name instead.
      */
-    private static final String NATIVE_IMAGE_BUILD_ARGS_ANNOTATION = "com.oracle.svm.test.NativeImageBuildArgs";
+    private static final String NATIVE_IMAGE_BUILD_ARGS_ANNOTATION = "com.oracle.svm.test.api.NativeImageBuildArgs";
 
     private NativeImageBuildArgsSupport() {
     }

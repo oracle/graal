@@ -1,0 +1,169 @@
+/*
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
+package com.oracle.svm.test.junit.shared.configure;
+
+import java.io.IOException;
+import java.io.PipedReader;
+import java.io.PipedWriter;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.oracle.svm.configure.ConfigurationParserOption;
+import com.oracle.svm.configure.ResourceConfigurationParser;
+import com.oracle.svm.configure.ResourcesRegistry;
+import com.oracle.svm.configure.UnresolvedAccessCondition;
+import com.oracle.svm.configure.config.ResourceConfiguration;
+import com.oracle.svm.configure.config.conditional.AccessConditionResolver;
+import com.oracle.svm.test.api.AddExports;
+
+import jdk.graal.compiler.util.json.JsonWriter;
+
+@AddExports({"org.graalvm.nativeimage/org.graalvm.nativeimage.impl", "jdk.graal.compiler/jdk.graal.compiler.util.json"})
+public class ResourceConfigurationTest {
+
+    @Test
+    public void anyResourceMatches() {
+        ResourceConfiguration rc = new ResourceConfiguration();
+        UnresolvedAccessCondition defaultCond = UnresolvedAccessCondition.unconditional();
+        rc.addResourcePattern(defaultCond, ".*/Resource.*txt$");
+
+        Assert.assertTrue(rc.anyResourceMatches("com/my/app/Resource0.txt"));
+        Assert.assertTrue(rc.anyResourceMatches("com/my/app/Resource1.txt"));
+        Assert.assertTrue(rc.anyResourceMatches("/Resource2.txt"));
+        Assert.assertTrue(rc.anyResourceMatches("/Resource3.txt"));
+
+        rc.ignoreResourcePattern(defaultCond, ".*/Resource2.txt$");
+
+        Assert.assertTrue(rc.anyResourceMatches("com/my/app/Resource0.txt"));
+        Assert.assertTrue(rc.anyResourceMatches("com/my/app/Resource1.txt"));
+        Assert.assertFalse(rc.anyResourceMatches("/Resource2.txt"));
+        Assert.assertTrue(rc.anyResourceMatches("/Resource3.txt"));
+    }
+
+    @Test
+    public void printJson() {
+        ResourceConfiguration rc = new ResourceConfiguration();
+        UnresolvedAccessCondition defaultCond = UnresolvedAccessCondition.unconditional();
+        rc.addResourcePattern(defaultCond, ".*/Resource.*txt$");
+        rc.ignoreResourcePattern(defaultCond, ".*/Resource2.txt$");
+        PipedWriter pw = new PipedWriter();
+        JsonWriter jw = new JsonWriter(pw);
+
+        try (PipedReader pr = new PipedReader()) {
+            pr.connect(pw);
+
+            Thread writerThread = new Thread(() -> {
+                try (JsonWriter w = jw) {
+                    rc.printLegacyJson(w);
+                } catch (IOException e) {
+                    Assert.fail(e.getMessage());
+                }
+            });
+
+            List<String> addedResources = new LinkedList<>();
+            List<String> ignoredResources = new LinkedList<>();
+
+            ResourceConfigurationParser<UnresolvedAccessCondition> rcp = createParser(addedResources, ignoredResources);
+            writerThread.start();
+            rcp.parseAndRegister(pr);
+
+            writerThread.join();
+
+            Assert.assertTrue(addedResources.contains(".*/Resource.*txt$"));
+            Assert.assertTrue(ignoredResources.contains(".*/Resource2.txt$"));
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    public void quotedRegexExcludeRegistersAsRegex() throws IOException {
+        List<String> ignoredResources = new ArrayList<>();
+        ResourceConfigurationParser<UnresolvedAccessCondition> parser = createParser(new LinkedList<>(), ignoredResources);
+        String config = "{ \"resources\": { \"includes\": [], \"excludes\": [ " +
+                        "{ \"pattern\": \"\\\\QMETA-INF/services/com.alibaba.csp.sentinel.cluster.TokenService\\\\E\" } ] } }";
+
+        parser.parseAndRegister(new StringReader(config));
+
+        Assert.assertEquals(List.of("\\QMETA-INF/services/com.alibaba.csp.sentinel.cluster.TokenService\\E"), ignoredResources);
+    }
+
+    /* JUnit inspects method signatures before applying @AddExports, so keep ResourcesRegistry local. */
+    private static ResourceConfigurationParser<UnresolvedAccessCondition> createParser(List<String> addedResources, List<String> ignoredResources) {
+        ResourcesRegistry<UnresolvedAccessCondition> registry = new ResourcesRegistry<>() {
+
+            @Override
+            public void addResources(UnresolvedAccessCondition condition, String pattern, Object origin) {
+                addedResources.add(pattern);
+            }
+
+            @Override
+            public void addGlob(UnresolvedAccessCondition condition, String module, String glob, Object origin) {
+                throw new AssertionError("Unused function.");
+            }
+
+            @Override
+            public void addResourceEntry(Module module, String resourcePath, Object origin) {
+                throw new AssertionError("Unused function.");
+            }
+
+            @Override
+            public void injectResource(Module module, String resourcePath, byte[] resourceContent, Object origin) {
+            }
+
+            @Override
+            public void ignoreResources(UnresolvedAccessCondition condition, String pattern, Object origin) {
+                ignoredResources.add(pattern);
+            }
+
+            @Override
+            public void addResourceBundles(UnresolvedAccessCondition condition, boolean preserved, String name) {
+            }
+
+            @Override
+            public void addResourceBundles(UnresolvedAccessCondition condition, String basename, Collection<Locale> locales) {
+            }
+
+            @Override
+            public void addCondition(AccessCondition accessCondition, Module module, String resourcePath) {
+            }
+
+            @Override
+            public void addClassBasedResourceBundle(UnresolvedAccessCondition condition, String basename, String className) {
+            }
+        };
+        return ResourceConfigurationParser.create(false, AccessConditionResolver.identityResolver(), registry, EnumSet.of(ConfigurationParserOption.STRICT_CONFIGURATION));
+    }
+}

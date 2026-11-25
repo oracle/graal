@@ -1,0 +1,89 @@
+/*
+ * Copyright (c) 2026, 2026, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.svm.test.junit.shared.configure;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.oracle.svm.configure.ConfigurationFile;
+import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.test.api.AddExports;
+
+@AddExports({"org.graalvm.nativeimage/org.graalvm.nativeimage.impl", "jdk.graal.compiler/jdk.graal.compiler.util", "jdk.graal.compiler/jdk.graal.compiler.util.json"})
+public class ConfigurationSetTest {
+
+    @Test
+    public void foreignOnlyDowncallIsNonempty() {
+        ConfigurationSet set = new ConfigurationSet();
+        set.getForeignConfiguration().addDowncall("jlong", List.of("void*"), Map.of());
+        Assert.assertFalse("A foreign-only downcall configuration must not be empty", set.isEmpty());
+    }
+
+    @Test
+    public void foreignOnlyUpcallIsNonempty() {
+        ConfigurationSet set = new ConfigurationSet();
+        set.getForeignConfiguration().addUpcall("jint", List.of("void*", "void*"), Map.of());
+        Assert.assertFalse("A foreign-only upcall configuration must not be empty", set.isEmpty());
+    }
+
+    @Test
+    public void foreignOnlyDirectUpcallIsNonempty() {
+        ConfigurationSet set = new ConfigurationSet();
+        set.getForeignConfiguration().addDirectUpcall("jint", List.of("void*", "void*"), Map.of(), "lib.Native", "compare");
+        Assert.assertFalse("A foreign-only direct upcall configuration must not be empty", set.isEmpty());
+    }
+
+    @Test
+    public void pathResolverExceptionIdentifiesConfigurationFile() {
+        IOException exception = Assert.assertThrows(IOException.class, () -> {
+            ConfigurationSet configurationSet = new ConfigurationSet();
+            configurationSet.writeConfiguration(_ -> {
+                throw new NullPointerException("test failure");
+            });
+        });
+
+        assertMessageIdentifiesReachabilityMetadata(exception);
+        Assert.assertTrue(exception.getCause() instanceof NullPointerException);
+    }
+
+    @Test
+    public void nullResolvedPathIdentifiesConfigurationFile() {
+        IOException exception = Assert.assertThrows(IOException.class, () -> {
+            ConfigurationSet configurationSet = new ConfigurationSet();
+            configurationSet.writeConfiguration(_ -> null);
+        });
+
+        assertMessageIdentifiesReachabilityMetadata(exception);
+    }
+
+    private static void assertMessageIdentifiesReachabilityMetadata(IOException exception) {
+        Assert.assertTrue(exception.getMessage(), exception.getMessage().contains(ConfigurationFile.REACHABILITY_METADATA.name()));
+        Assert.assertTrue(exception.getMessage(), exception.getMessage().contains(ConfigurationFile.REACHABILITY_METADATA.getFileName()));
+    }
+}
