@@ -85,10 +85,8 @@ import jdk.vm.ci.riscv64.RISCV64;
  * Encodes and decodes {@link RecordedCompilationUnit recorded compilation units} in the compact
  * binary replay format.
  * <p>
- * The binary format stores the same logical replay data as {@link JsonReplayCodec} while using a
- * versioned tag-based encoding with shared tables.
+ * The binary format uses a versioned tag-based encoding with shared tables.
  *
- * @see JsonReplayCodec
  * @see ReplayCompilationSupport
  */
 public final class BinaryReplayCodec {

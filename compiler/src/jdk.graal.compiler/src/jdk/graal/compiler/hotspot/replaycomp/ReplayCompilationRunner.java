@@ -68,7 +68,6 @@ import jdk.graal.compiler.util.args.IntegerValue;
 import jdk.graal.compiler.util.args.OptionValue;
 import jdk.graal.compiler.util.args.Program;
 import jdk.graal.compiler.util.args.StringValue;
-import jdk.graal.compiler.util.json.JsonParserException;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -391,7 +390,7 @@ public class ReplayCompilationRunner {
      */
     private static List<Path> findReplayFiles(Path root) throws IOException {
         if (Files.isRegularFile(root)) {
-            return ReplayCompilationSupport.ReplayFileFormat.isReplayFile(root.getFileName().toString()) ? List.of(root) : List.of();
+            return root.getFileName().toString().endsWith(ReplayCompilationSupport.REPLAY_FILE_EXTENSION) ? List.of(root) : List.of();
         }
         List<Path> paths = new ArrayList<>();
         Files.walkFileTree(root, new FileVisitor<>() {
@@ -402,7 +401,7 @@ public class ReplayCompilationRunner {
 
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                if (Files.isRegularFile(file) && ReplayCompilationSupport.ReplayFileFormat.isReplayFile(file.getFileName().toString())) {
+                if (Files.isRegularFile(file) && file.getFileName().toString().endsWith(ReplayCompilationSupport.REPLAY_FILE_EXTENSION)) {
                     paths.add(file);
                 }
                 return FileVisitResult.CONTINUE;
@@ -457,8 +456,7 @@ public class ReplayCompilationRunner {
         public void compareCompilationProducts(boolean compareGraphs) throws ReplayLauncherFailure {
             if (recordedProduct instanceof CompilationTaskProduct.CompilationTaskException recordedException &&
                             replayedProduct instanceof CompilationTaskProduct.CompilationTaskException replayedException &&
-                            !recordedException.className().equals(replayedException.className()) &&
-                            recordedException != CompilationTaskProduct.CompilationTaskException.UNKNOWN) {
+                            !recordedException.className().equals(replayedException.className())) {
                 throw new ReplayLauncherFailure("Replay compilation ended with a different exception than the recorded one");
             } else if (compareGraphs && recordedProduct instanceof CompilationTaskProduct.RecordedCompilationTaskArtifacts(String finalGraph) &&
                             replayedProduct instanceof CompilationTaskProduct.CompilationTaskArtifacts replayedArtifacts &&
@@ -532,31 +530,20 @@ public class ReplayCompilationRunner {
                 HotSpotJVMCIRuntime.runtime().getCompiler();
             }
             Path path = Path.of(fileName);
-            var fileFormat = ReplayCompilationSupport.ReplayFileFormat.fromFileName(path.getFileName().toString());
             ReplayCompilationProxies proxies = new ReplayCompilationProxies(declarations, globalMetrics, options);
             out.println("Loading " + fileName);
             RecordedCompilationUnit compilationUnit;
             try {
                 Platform hostPlatform = Platform.ofCurrentHost();
                 var hostTarget = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget();
-                compilationUnit = switch (fileFormat) {
-                    case Json -> {
-                        JsonReplayCodec codec = new JsonReplayCodec(declarations, hostPlatform, hostTarget);
-                        try (var reader = Files.newBufferedReader(path)) {
-                            yield codec.load(reader, proxies::createProxy);
-                        }
-                    }
-                    case Binary -> {
-                        BinaryReplayCodec codec = new BinaryReplayCodec(declarations, hostPlatform, hostTarget);
-                        try (var input = new BufferedInputStream(Files.newInputStream(path))) {
-                            yield codec.read(input, proxies::createProxy);
-                        }
-                    }
-                };
+                BinaryReplayCodec codec = new BinaryReplayCodec(declarations, hostPlatform, hostTarget);
+                try (var input = new BufferedInputStream(Files.newInputStream(path))) {
+                    compilationUnit = codec.read(input, proxies::createProxy);
+                }
                 proxies.setTargetPlatform(compilationUnit.platform());
                 proxies.loadOperationResults(compilationUnit.operations(), internPool);
             } catch (Exception exception) {
-                if (exception instanceof JsonParserException parserException && parserException.isAtEOF().isTrue() || exception instanceof EOFException) {
+                if (exception instanceof EOFException) {
                     throw new ReplayParserFailure("Failed to parse an incomplete replay file (likely caused by VM shutdown during the recorded compilation).");
                 }
                 throw new ReplayParserFailure("Parsing failed due to " + exception.getMessage());

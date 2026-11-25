@@ -48,14 +48,10 @@ import jdk.graal.compiler.hotspot.Platform;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.options.EnumOptionKey;
 import jdk.graal.compiler.options.LibGraalSupport;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
@@ -75,8 +71,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <p>
  * <b>Proxies.</b> Recording and replay require creating proxies for JVMCI objects. During
  * recording, these proxies record the arguments and results of methods to serialize them into a
- * replay file ({@link JsonReplayCodec}/{@link BinaryReplayCodec}). During replay, they look up and
- * return the appropriate results. The behavior of every proxy and method is configured in
+ * replay file ({@link BinaryReplayCodec}). During replay, they look up and return the appropriate
+ * results. The behavior of every proxy and method is configured in
  * {@link CompilerInterfaceDeclarations}.
  *
  * <p>
@@ -112,70 +108,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public final class ReplayCompilationSupport {
     /**
-     * Supported on-disk formats for recorded replay compilation files.
+     * File extension for binary replay compilation recordings.
      */
-    public enum ReplayFileFormat {
-        /**
-         * Legacy JSON replay format.
-         */
-        Json(".json"),
-
-        /**
-         * Compact binary replay format.
-         */
-        Binary(".replay");
-
-        private final String fileExtension;
-
-        ReplayFileFormat(String fileExtension) {
-            this.fileExtension = fileExtension;
-        }
-
-        /**
-         * Gets the file extension associated with this replay file format.
-         */
-        public String fileExtension() {
-            return fileExtension;
-        }
-
-        private boolean matchesFileName(String fileName) {
-            return fileName.endsWith(fileExtension);
-        }
-
-        /**
-         * Determines whether a file name uses one of the supported replay file extensions.
-         */
-        public static boolean isReplayFile(String fileName) {
-            for (ReplayFileFormat format : values()) {
-                if (format.matchesFileName(fileName)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /**
-         * Determines the replay file format from a file name.
-         *
-         * @throws IllegalArgumentException if {@code fileName} does not match a supported replay
-         *             file extension
-         */
-        public static ReplayFileFormat fromFileName(String fileName) {
-            for (ReplayFileFormat format : values()) {
-                if (format.matchesFileName(fileName)) {
-                    return format;
-                }
-            }
-            throw new IllegalArgumentException("Unsupported replay file: " + fileName);
-        }
-    }
-
-    public static class Options {
-        // @formatter:off
-        @Option(help = "Format used for recorded replay compilation files.", type = OptionType.Debug)
-        public static final EnumOptionKey<ReplayFileFormat> ReplayFileFormat = new EnumOptionKey<>(ReplayCompilationSupport.ReplayFileFormat.Binary);
-        // @formatter:on
-    }
+    public static final String REPLAY_FILE_EXTENSION = ".replay";
 
     /**
      * Checks whether the given method's compilation should be recorded according to the given
@@ -344,8 +279,7 @@ public final class ReplayCompilationSupport {
             String directory = PathUtilities.getPath(DebugOptions.getDumpDirectory(initialOptions), "replaycomp");
             PathUtilities.createDirectories(directory);
             String requestId = Integer.toString(originalRequest.getId());
-            ReplayFileFormat format = Options.ReplayFileFormat.getValue(initialOptions);
-            String fileName = requestId + format.fileExtension();
+            String fileName = requestId + REPLAY_FILE_EXTENSION;
             Path path = Path.of(directory, fileName);
             Platform hostPlatform = Platform.ofCurrentHost();
             var hostTarget = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget();
@@ -354,19 +288,9 @@ public final class ReplayCompilationSupport {
             RecordedCompilationUnit compilationUnit = new RecordedCompilationUnit(originalRequest, compilerConfigurationName,
                             LibGraalSupport.inLibGraalRuntime(), recordingCompilationProxies.targetPlatform(), GraalServices.getSavedProperties(), linkages, product,
                             recordingCompilationProxies.collectOperationsForSerialization());
-            switch (format) {
-                case Json -> {
-                    JsonReplayCodec codec = new JsonReplayCodec(proxies.getDeclarations(), hostPlatform, hostTarget);
-                    try (JsonWriter jsonWriter = new JsonWriter(path)) {
-                        codec.dump(compilationUnit, jsonWriter);
-                    }
-                }
-                case Binary -> {
-                    BinaryReplayCodec codec = new BinaryReplayCodec(proxies.getDeclarations(), hostPlatform, hostTarget);
-                    try (var output = new BufferedOutputStream(PathUtilities.openOutputStream(path.toString()))) {
-                        codec.write(compilationUnit, output);
-                    }
-                }
+            BinaryReplayCodec codec = new BinaryReplayCodec(proxies.getDeclarations(), hostPlatform, hostTarget);
+            try (var output = new BufferedOutputStream(PathUtilities.openOutputStream(path.toString()))) {
+                codec.write(compilationUnit, output);
             }
             TTY.println("Serialized " + originalRequest + " to " + path);
         } catch (Exception exception) {

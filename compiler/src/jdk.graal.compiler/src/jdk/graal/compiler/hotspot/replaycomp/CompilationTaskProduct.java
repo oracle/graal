@@ -47,13 +47,6 @@ public sealed interface CompilationTaskProduct {
      * @param stackTrace the stack trace of the exception
      */
     record CompilationTaskException(String className, String stackTrace) implements CompilationTaskProduct {
-        /**
-         * Represents an unknown exception recorded by an earlier compiler version, which did not
-         * record this information. This is temporarily needed for compatibility with older replay
-         * files.
-         */
-        public static final CompilationTaskException UNKNOWN = new CompilationTaskException("unknown", "unknown");
-
         @Override
         public boolean isSuccess() {
             return false;
