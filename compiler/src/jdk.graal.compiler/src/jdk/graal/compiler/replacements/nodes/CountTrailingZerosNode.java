@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -54,7 +53,6 @@ public final class CountTrailingZerosNode extends UnaryNode implements Arithmeti
 
     protected CountTrailingZerosNode(ValueNode value) {
         super(TYPE, computeStamp(value.stamp(NodeView.DEFAULT), value), value);
-        assert value.getStackKind() == JavaKind.Int || value.getStackKind() == JavaKind.Long : Assertions.errorMessage(value);
     }
 
     public static ValueNode create(ValueNode value) {
@@ -72,6 +70,7 @@ public final class CountTrailingZerosNode extends UnaryNode implements Arithmeti
 
     static Stamp computeStamp(Stamp newStamp, ValueNode value) {
         assert newStamp.isCompatible(value.stamp(NodeView.DEFAULT));
+        assert StampTool.verifyIntOrLong(value);
         IntegerStamp valueStamp = (IntegerStamp) newStamp;
         return StampTool.stampForTrailingZeros(valueStamp);
     }
