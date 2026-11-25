@@ -512,6 +512,7 @@ public final class NativeImageClassLoaderSupport {
     private OptionValues parsedHostedOptions;
     private List<AddExportsAndOpensAndReadsFormatValue> imageExports = List.of();
     private List<AddExportsAndOpensAndReadsFormatValue> imageOpens = List.of();
+    private List<AddExportsAndOpensAndReadsFormatValue> imageReads = List.of();
     private List<String> remainingArguments;
 
     public HostedOptionParser setupHostedOptionParser(List<String> arguments, Predicate<OptionDescriptors> builderOptionFilter) {
@@ -712,15 +713,16 @@ public final class NativeImageClassLoaderSupport {
                 }
             }
         }
-        processOption(NativeImageClassLoaderOptions.AddReads).forEach(val -> {
-            if (val.targetModules.isEmpty()) {
-                ReflectionUtil.invokeMethod(implAddReadsAllUnnamed, val.module);
+        imageReads = processOption(NativeImageClassLoaderOptions.AddReads).toList();
+        for (var read : imageReads) {
+            if (read.targetModules.isEmpty()) {
+                ReflectionUtil.invokeMethod(implAddReadsAllUnnamed, read.module);
             } else {
-                for (Module targetModule : val.targetModules) {
-                    Modules.addReads(val.module, targetModule);
+                for (Module targetModule : read.targetModules) {
+                    Modules.addReads(read.module, targetModule);
                 }
             }
-        });
+        }
         NativeImageClassLoaderOptions.EnableNativeAccess.getValue(parsedHostedOptions).values().forEach(moduleName -> {
             if (ALL_UNNAMED.equals(moduleName)) {
                 ReflectionUtil.invokeMethod(implAddEnableNativeAccessToAllUnnamed, null);
@@ -879,6 +881,10 @@ public final class NativeImageClassLoaderSupport {
 
     List<AddExportsAndOpensAndReadsFormatValue> getImageOpens() {
         return imageOpens;
+    }
+
+    List<AddExportsAndOpensAndReadsFormatValue> getImageReads() {
+        return imageReads;
     }
 
     private static boolean hasPackage(AddExportsAndOpensAndReadsFormatValue value) {

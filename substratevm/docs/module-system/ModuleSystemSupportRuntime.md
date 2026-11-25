@@ -23,7 +23,12 @@ Some data structures also need to be substituted/reset as to not pull in hosted 
 
 ## ModuleLayerFeature
 
-Synthesizes the runtime boot module layer and all reachable module layers initialized at image-build time. It also replicates build-time module relations at runtime (i.e., reads, opens and exports).
+Synthesizes the runtime boot module layer and all reachable module layers initialized at image-build time.
+It initializes reads, opens, and exports for those layers.
+
+The runtime configuration supplies declared reads.
+The Native Image option `--add-reads` preserves the requested read from its source module to its targets in the executable.
+`-J--add-reads` applies only to the builder JVM.
 
 Exports and opens retain their original targets in the runtime module graph, including with runtime class loading disabled.
 The Native Image options `--add-exports` and `--add-opens` grant access during image generation and preserve it for the specified targets in the executable.

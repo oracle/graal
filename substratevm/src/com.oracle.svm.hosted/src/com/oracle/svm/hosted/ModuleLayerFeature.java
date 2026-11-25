@@ -697,12 +697,14 @@ public class ModuleLayerFeature implements InternalFeature {
                 Module hostedFrom = e1.getKey();
                 Module runtimeFrom = e1.getValue();
                 for (Map.Entry<Module, Module> e2 : namedModulePairs.entrySet()) {
-                    replicateVisibilityModification(accessImpl, applicationModules, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue(), builderExports, builderOpens);
+                    replicateVisibilityModification(accessImpl, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue(), builderExports, builderOpens);
                 }
                 for (Map.Entry<Module, Module> e2 : unnamedModulePairs.entrySet()) {
-                    replicateVisibilityModification(accessImpl, applicationModules, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue(), builderExports, builderOpens);
+                    replicateVisibilityModification(accessImpl, hostedFrom, e2.getKey(), runtimeFrom, e2.getValue(), builderExports, builderOpens);
                 }
             }
+            // The runtime configuration supplies declared readability. Replay explicit image reads.
+            applyImageReadGrants(accessImpl, namedModulePairs, cl.classLoaderSupport.getImageReads());
             // The same grant can appear in both the builder JVM and Native Image options.
             applyImagePackageGrants(accessImpl, namedModulePairs, cl.classLoaderSupport.getImageOpens(), true);
             applyImagePackageGrants(accessImpl, namedModulePairs, cl.classLoaderSupport.getImageExports(), false);
@@ -744,6 +746,26 @@ public class ModuleLayerFeature implements InternalFeature {
         }
     }
 
+    private void applyImageReadGrants(AfterAnalysisAccessImpl accessImpl, Map<Module, Module> namedModules, List<AddExportsAndOpensAndReadsFormatValue> grants)
+                    throws IllegalAccessException {
+        for (var grant : grants) {
+            Module source = namedModules.get(grant.module());
+            if (source == null) {
+                continue;
+            }
+            if (grant.targetModules().isEmpty()) {
+                moduleLayerFeatureUtils.addReads(accessImpl, source, moduleLayerFeatureUtils.allUnnamedModule);
+            } else {
+                for (Module hostedTarget : grant.targetModules()) {
+                    Module target = namedModules.get(hostedTarget);
+                    if (target != null && target != source) {
+                        moduleLayerFeatureUtils.addReads(accessImpl, source, target);
+                    }
+                }
+            }
+        }
+    }
+
     private void applyImagePackageGrants(AfterAnalysisAccessImpl accessImpl, Map<Module, Module> namedModules, List<AddExportsAndOpensAndReadsFormatValue> grants, boolean opens)
                     throws IllegalAccessException {
         for (var grant : grants) {
@@ -772,21 +794,15 @@ public class ModuleLayerFeature implements InternalFeature {
         }
     }
 
-    private void replicateVisibilityModification(AfterAnalysisAccessImpl accessImpl, List<Module> applicationModules, Module hostedFrom, Module hostedTo, Module runtimeFrom, Module runtimeTo,
+    private void replicateVisibilityModification(AfterAnalysisAccessImpl accessImpl, Module hostedFrom, Module hostedTo, Module runtimeFrom, Module runtimeTo,
                     Map<ModulePair, Set<String>> builderExports, Map<ModulePair, Set<String>> builderOpens) throws IllegalAccessException {
         if (hostedTo == hostedFrom) {
             return;
         }
 
-        Module builderModule = ModuleLayerFeatureUtils.getBuilderModule();
-        assert builderModule != null;
-        if (ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom) || hostedFrom.canRead(hostedTo)) {
+        boolean synthetic = ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom);
+        if (synthetic) {
             moduleLayerFeatureUtils.addReads(accessImpl, runtimeFrom, runtimeTo);
-            if (hostedFrom == builderModule) {
-                for (Module appModule : applicationModules) {
-                    moduleLayerFeatureUtils.addReads(accessImpl, appModule, runtimeTo);
-                }
-            }
         }
 
         Module builderTarget = !hostedTo.isNamed() && hostedTo != moduleLayerFeatureUtils.everyoneModule ? moduleLayerFeatureUtils.allUnnamedModule : hostedTo;
@@ -796,7 +812,6 @@ public class ModuleLayerFeature implements InternalFeature {
 
         // Preserve the original target. An open also makes isExported report true, so
         // filter JVM-only opens from both queries.
-        boolean synthetic = ModuleLayerFeatureUtils.isModuleSynthetic(hostedFrom);
         for (String pn : runtimeFrom.getPackages()) {
             boolean jvmOpen = jvmOpens.contains(pn);
             if (synthetic || (!jvmOpen && hostedFrom.isOpen(pn, hostedTo))) {
@@ -1081,10 +1096,6 @@ public class ModuleLayerFeature implements InternalFeature {
                             .map(p -> 1 + ModuleLayerFeatureUtils.distanceFromBootModuleLayer(p))
                             .max(Integer::compareTo)
                             .orElse(0);
-        }
-
-        public static Module getBuilderModule() {
-            return ModuleLayerFeature.class.getModule();
         }
 
         public static String getMainModuleName() {
