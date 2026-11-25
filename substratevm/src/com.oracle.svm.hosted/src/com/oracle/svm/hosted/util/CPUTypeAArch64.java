@@ -29,7 +29,12 @@ import static jdk.vm.ci.aarch64.AArch64.CPUFeature.ASIMD;
 import static jdk.vm.ci.aarch64.AArch64.CPUFeature.CRC32;
 import static jdk.vm.ci.aarch64.AArch64.CPUFeature.FP;
 import static jdk.vm.ci.aarch64.AArch64.CPUFeature.LSE;
+import static jdk.vm.ci.aarch64.AArch64.CPUFeature.PACA;
 import static jdk.vm.ci.aarch64.AArch64.CPUFeature.PMULL;
+import static jdk.vm.ci.aarch64.AArch64.CPUFeature.SHA1;
+import static jdk.vm.ci.aarch64.AArch64.CPUFeature.SHA2;
+import static jdk.vm.ci.aarch64.AArch64.CPUFeature.SHA3;
+import static jdk.vm.ci.aarch64.AArch64.CPUFeature.SHA512;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,6 +46,7 @@ import java.util.stream.Stream;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
@@ -60,12 +66,22 @@ import jdk.vm.ci.aarch64.AArch64.CPUFeature;
 public enum CPUTypeAArch64 implements CPUType {
     ARMV8_A("armv8-a", FP, ASIMD),
     ARMV8_1_A("armv8.1-a", ARMV8_A, CRC32, LSE),
+    APPLE_M1("apple-m1", ARMV8_1_A, AES, PMULL, SHA1, SHA2),
 
     // Special symbols
     COMPATIBILITY(NativeImageOptions.MICRO_ARCHITECTURE_COMPATIBILITY, ARMV8_A),
     NATIVE(NativeImageOptions.MICRO_ARCHITECTURE_NATIVE, getNativeOrEmpty());
 
-    private static final String AVAILABLE_FEATURE_MODIFIERS = StringUtil.joinSingleQuoted("aes", "lse", "fp", "simd");
+    private static final String AES_MODIFIER = "aes";
+    private static final String FP_MODIFIER = "fp";
+    private static final String LSE_MODIFIER = "lse";
+    private static final String PACA_MODIFIER = "paca";
+    private static final String SHA2_MODIFIER = "sha2";
+    private static final String SHA3_MODIFIER = "sha3";
+    private static final String SHA512_MODIFIER = "sha512";
+    private static final String SIMD_MODIFIER = "simd";
+    private static final String AVAILABLE_FEATURE_MODIFIERS = StringUtil.joinSingleQuoted(
+                    AES_MODIFIER, FP_MODIFIER, LSE_MODIFIER, PACA_MODIFIER, SHA2_MODIFIER, SHA3_MODIFIER, SHA512_MODIFIER, SIMD_MODIFIER);
 
     private static CPUFeature[] getNativeOrEmpty() {
         CPUFeature[] empty = new CPUFeature[0];
@@ -115,6 +131,9 @@ public enum CPUTypeAArch64 implements CPUType {
     }
 
     public static String getDefaultName(boolean printFallbackWarning) {
+        if (OS.DARWIN.isCurrent()) {
+            return APPLE_M1.getName();
+        }
         if (NATIVE.getFeatures().containsAll(ARMV8_1_A.getFeatures())) {
             return ARMV8_1_A.getName();
         } else {
@@ -176,11 +195,17 @@ public enum CPUTypeAArch64 implements CPUType {
 
     private static List<CPUFeature> getFeatures(String featureModifier) {
         return switch (featureModifier) {
-            case "lse", "nolse" -> List.of(LSE);
-            case "aes", "noaes" -> List.of(AES, PMULL);
             // fp and simd are required
-            case "fp", "simd" -> Collections.emptyList();
-            case "nofp", "nosimd" -> throw UserError.abort("The '%s' CPU feature is required by the Graal compiler and thus cannot be disabled.%s", featureModifier, getUserAction());
+            case FP_MODIFIER, SIMD_MODIFIER -> Collections.emptyList();
+            case "no" + FP_MODIFIER, "no" + SIMD_MODIFIER ->
+                throw UserError.abort("The '%s' CPU feature is required by the Graal compiler and thus cannot be disabled.%s", featureModifier, getUserAction());
+            // other features
+            case AES_MODIFIER, "no" + AES_MODIFIER -> List.of(AES, PMULL);
+            case LSE_MODIFIER, "no" + LSE_MODIFIER -> List.of(LSE);
+            case PACA_MODIFIER, "no" + PACA_MODIFIER -> List.of(PACA);
+            case SHA2_MODIFIER, "no" + SHA2_MODIFIER -> List.of(SHA1, SHA2);
+            case SHA3_MODIFIER, "no" + SHA3_MODIFIER -> List.of(SHA3);
+            case SHA512_MODIFIER, "no" + SHA512_MODIFIER -> List.of(SHA512);
             default -> throw UserError.abort("Unsupported AArch64 feature modifier '%s'.%s Only %s are available.", featureModifier, getUserAction(), AVAILABLE_FEATURE_MODIFIERS);
         };
     }
