@@ -715,12 +715,11 @@ public final class NativeImageClassLoaderSupport {
         }
         imageReads = processOption(NativeImageClassLoaderOptions.AddReads).toList();
         for (var read : imageReads) {
-            if (read.targetModules.isEmpty()) {
+            if (read.allUnnamed) {
                 ReflectionUtil.invokeMethod(implAddReadsAllUnnamed, read.module);
-            } else {
-                for (Module targetModule : read.targetModules) {
-                    Modules.addReads(read.module, targetModule);
-                }
+            }
+            for (Module targetModule : read.targetModules) {
+                Modules.addReads(read.module, targetModule);
             }
         }
         NativeImageClassLoaderOptions.EnableNativeAccess.getValue(parsedHostedOptions).values().forEach(moduleName -> {
@@ -896,7 +895,7 @@ public final class NativeImageClassLoaderSupport {
     }
 
     record AddExportsAndOpensAndReadsFormatValue(Module module, String packageName,
-                    List<Module> targetModules) {
+                    List<Module> targetModules, boolean allUnnamed) {
     }
 
     private AddExportsAndOpensAndReadsFormatValue asAddExportsAndOpensAndReadsFormatValue(OptionKey<?> option, ValueWithOrigin<String> valueOrigin) {
@@ -954,16 +953,18 @@ public final class NativeImageClassLoaderSupport {
         Module module = findModule(moduleName).orElseThrow(() -> {
             throw userWarningModuleNotFound(option, moduleName);
         });
+        boolean allUnnamed = targetModuleNamesList.contains(ALL_UNNAMED);
         List<Module> targetModules;
-        if (targetModuleNamesList.contains(ALL_UNNAMED)) {
+        if (allUnnamed && !reads) {
             targetModules = Collections.emptyList();
         } else {
             targetModules = targetModuleNamesList.stream()
+                            .filter(mn -> !mn.equals(ALL_UNNAMED))
                             .map(mn -> findModule(mn)
                                             .orElseThrow(() -> userWarningModuleNotFound(option, mn)))
                             .collect(Collectors.toList());
         }
-        return new AddExportsAndOpensAndReadsFormatValue(module, packageName, targetModules);
+        return new AddExportsAndOpensAndReadsFormatValue(module, packageName, targetModules, allUnnamed);
     }
 
     private static UserError.UserException userErrorAddExportsAndOpensAndReads(OptionKey<?> option, OptionOrigin origin, String value, String detailMessage) {

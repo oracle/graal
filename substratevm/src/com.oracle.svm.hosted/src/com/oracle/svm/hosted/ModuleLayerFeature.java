@@ -753,14 +753,13 @@ public class ModuleLayerFeature implements InternalFeature {
             if (source == null) {
                 continue;
             }
-            if (grant.targetModules().isEmpty()) {
+            if (grant.allUnnamed()) {
                 moduleLayerFeatureUtils.addReads(accessImpl, source, moduleLayerFeatureUtils.allUnnamedModule);
-            } else {
-                for (Module hostedTarget : grant.targetModules()) {
-                    Module target = namedModules.get(hostedTarget);
-                    if (target != null && target != source) {
-                        moduleLayerFeatureUtils.addReads(accessImpl, source, target);
-                    }
+            }
+            for (Module hostedTarget : grant.targetModules()) {
+                Module target = namedModules.get(hostedTarget);
+                if (target != null && target != source) {
+                    moduleLayerFeatureUtils.addReads(accessImpl, source, target);
                 }
             }
         }

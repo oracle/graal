@@ -76,7 +76,7 @@ public final class Target_java_lang_Module {
     @Alias private volatile Set<Module> reads;
 
     @Substitute
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+36/src/java.base/share/classes/java/lang/Module.java")
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/lang/Module.java")
     public boolean canRead(Module other) {
         Objects.requireNonNull(other);
         Module self = SubstrateUtil.cast(this, Module.class);
