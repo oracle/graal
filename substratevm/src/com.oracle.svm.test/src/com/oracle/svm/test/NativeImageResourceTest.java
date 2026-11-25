@@ -128,6 +128,31 @@ public class NativeImageResourceTest {
         Assert.assertNull("Resource " + resourceNameWTrailingSlash + " is found!", url);
     }
 
+    /**
+     * Numeric addresses have equivalent spellings, but resource authorities name loaders or modules.
+     * Using numeric addresses makes this independent of DNS and localhost's address-family selection.
+     */
+    @Test
+    @SuppressWarnings("deprecation")
+    public void resourceURLIdentityUsesAuthority() throws MalformedURLException {
+        URL base = resourceNameToURL(RESOURCE_FILE_1, true);
+        URL first = new URL(base, "//127.0.0.1/1!/x");
+        URL second = new URL(base, "//127.1/1!/x");
+        Assert.assertNotEquals("different resource authorities must stay distinct", first, second);
+        Assert.assertFalse("different resource authorities must stay distinct", first.sameFile(second));
+        Set<URL> urls = new LinkedHashSet<>();
+        urls.add(first);
+        urls.add(second);
+        Assert.assertEquals(2, urls.size());
+        Assert.assertEquals(first, new URL(base, "//127.0.0.1/1!/x"));
+        Assert.assertEquals(first.hashCode(), new URL(base, "//127.0.0.1/1!/x").hashCode());
+        URL byName = new URL(base, "//APP/1!/x");
+        URL lowerCase = new URL(base, "//app/1!/x");
+        Assert.assertEquals(byName, lowerCase);
+        Assert.assertEquals(byName.hashCode(), lowerCase.hashCode());
+        Assert.assertFalse(first.sameFile(new URL(base, "//127.0.0.1/2!/x")));
+    }
+
     @Test
     @SuppressWarnings("deprecation")
     public void classGetResourceBypassesUserURLHandlers() throws IOException {
