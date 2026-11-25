@@ -48,13 +48,13 @@
     "oraclejdk25":        {"name": "jpg-jdk",   "version": "25",      "build_id": "jdk-25.0.2+10", "platformspecific": true, "extrabundles": ["static-libs"]},
     "graalvm-ee-25-ea":   {"name": "graalvm-jdk", "version": "25.0.0", "ea": "36", "platformspecific": true },
 
-    "oraclejdk-latest":       {"name": "jpg-jdk",   "version": "25",      "build_id": "jdk-25.0.5.0.3+1", "platformspecific": true, "extrabundles": ["static-libs"]},
-    "labsjdk-ce-latest":      {"name": "labsjdk",   "version": "ce-25.0.5.1+0-jvmci-25.6-b27", "platformspecific": true },
-    "labsjdk-ce-latestDebug": {"name": "labsjdk",   "version": "ce-25.0.5.1+0-jvmci-25.6-b27-debug", "platformspecific": true },
-    "labsjdk-ce-latest-llvm": {"name": "labsjdk",   "version": "ce-25.0.5.1+0-jvmci-25.6-b27-sulong", "platformspecific": true },
-    "labsjdk-ee-latest":      {"name": "labsjdk",   "version": "ee-25.0.5.1+0-jvmci-25.6-b27", "platformspecific": true },
-    "labsjdk-ee-latestDebug": {"name": "labsjdk",   "version": "ee-25.0.5.1+0-jvmci-25.6-b27-debug", "platformspecific": true },
-    "labsjdk-ee-latest-llvm": {"name": "labsjdk",   "version": "ee-25.0.5.1+0-jvmci-25.6-b27-sulong", "platformspecific": true }
+    "oraclejdk-latest":       {"name": "jpg-jdk",   "version": "25",      "build_id": "jdk-25.0.5.1+4", "platformspecific": true, "extrabundles": ["static-libs"]},
+    "labsjdk-ce-latest":      {"name": "labsjdk",   "version": "ce-25.0.5.1+2-jvmci-25.7-b28-20261125112413-33f051ac35", "platformspecific": true },
+    "labsjdk-ce-latestDebug": {"name": "labsjdk",   "version": "ce-25.0.5.1+2-jvmci-25.7-b28-20261125112413-33f051ac35-debug", "platformspecific": true },
+    "labsjdk-ce-latest-llvm": {"name": "labsjdk",   "version": "ce-25.0.5.1+2-jvmci-25.7-b28-20261125112413-33f051ac35-sulong", "platformspecific": true },
+    "labsjdk-ee-latest":      {"name": "labsjdk",   "version": "ee-25.0.5.1+4-jvmci-25.7-b28-20261125112349-1e683d4021+5ffda09e3a", "platformspecific": true },
+    "labsjdk-ee-latestDebug": {"name": "labsjdk",   "version": "ee-25.0.5.1+4-jvmci-25.7-b28-20261125112349-1e683d4021+5ffda09e3a-debug", "platformspecific": true },
+    "labsjdk-ee-latest-llvm": {"name": "labsjdk",   "version": "ee-25.0.5.1+4-jvmci-25.7-b28-20261125112349-1e683d4021+5ffda09e3a-sulong", "platformspecific": true }
   },
 
   "default_jdks" : ["labsjdk-ee-latest", "labsjdk-ce-latest"],
