@@ -83,6 +83,11 @@ public final class RistrettoCompilationManager {
      */
     private static volatile RistrettoCompilationManager MANAGER;
 
+    /**
+     * Set at isolate teardown under {@link #INITIALIZATION_MUTEX}. Also read during submission.
+     */
+    private static volatile boolean isolateTearingDown;
+
     /*
      * Guards lazy initialization of the compilation manager.
      */
@@ -118,19 +123,28 @@ public final class RistrettoCompilationManager {
      */
     public static RuntimeSupport.Hook getProfileSupportTearDownHook() {
         return _ -> {
-            RistrettoCompilationManager manager = MANAGER;
+            RistrettoCompilationManager manager;
+            try (var _ = INITIALIZATION_MUTEX.lock()) {
+                isolateTearingDown = true;
+                manager = MANAGER;
+            }
             if (manager != null) {
                 manager.shutDown();
             }
         };
     }
 
+    /**
+     * Returns the compilation manager, creating it on first use.
+     *
+     * @return the manager, or {@code null} if teardown started before it was created
+     */
     public static RistrettoCompilationManager get() {
         RistrettoCompilationManager manager = MANAGER;
         if (manager == null) {
             try (var _ = INITIALIZATION_MUTEX.lock()) {
                 manager = MANAGER;
-                if (manager == null) {
+                if (manager == null && !isolateTearingDown) {
                     manager = new RistrettoCompilationManager();
                     MANAGER = manager;
                 }
@@ -461,7 +475,7 @@ public final class RistrettoCompilationManager {
             boolean compilationWatchdogEnabled = RistrettoOptions.JITCompilationWatchdogTimeoutSeconds.getValue() > 0;
             request.markSubmitted(compilationWatchdogEnabled ? System.nanoTime() : 0);
             submittedRequests.incrementAndGet();
-            if (!acceptingRequests) {
+            if (!acceptingRequests || isolateTearingDown) {
                 cancelRequestBeforeExecution(request);
                 return;
             }

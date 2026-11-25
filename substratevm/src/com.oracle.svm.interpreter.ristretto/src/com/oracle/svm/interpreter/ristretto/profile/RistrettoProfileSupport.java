@@ -326,7 +326,11 @@ public class RistrettoProfileSupport {
             }
             throw failure;
         }
-        manager.submitCompilationRequestForCurrentMode(request);
+        if (manager == null) {
+            request.cancelBeforeExecution();
+        } else {
+            manager.submitCompilationRequestForCurrentMode(request);
+        }
     }
 
     /**
