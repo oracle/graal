@@ -49,6 +49,9 @@ public final class RistrettoCompilationManager {
         RistrettoCompilerThread(Runnable target, int workerIndex) {
             super(null, target, "Ristretto Compiler-" + workerIndex, 0, false);
             setDaemon(true);
+            setUncaughtExceptionHandler((_, _) -> {
+                // Class loading is disabled on compiler threads, so skip application exception handlers.
+            });
         }
 
         /**
