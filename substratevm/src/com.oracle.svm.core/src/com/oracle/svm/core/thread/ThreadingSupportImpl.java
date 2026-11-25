@@ -51,12 +51,12 @@ public class ThreadingSupportImpl implements ThreadingSupport {
     @Deprecated(since = "25.1")
     @SuppressWarnings("deprecation")
     public void registerRecurringCallback(long interval, TimeUnit unit, Threading.RecurringCallback callback) {
-        /*
-         * JFR can enable the callback machinery even when SupportRecurringCallback is disabled.
-         * Guard removal as well, since it could clear a timer installed internally by JFR.
-         */
         if (SubstrateOptions.useRistretto()) {
-            throw new UnsupportedOperationException("Application-registered recurring callbacks are not supported with Ristretto compilation.");
+            if (callback != null) {
+                throw new UnsupportedOperationException("Application-registered recurring callbacks are not supported with Ristretto compilation.");
+            }
+            // JFR can install its own timer. Leave it alone.
+            return;
         }
         if (callback != null) {
             if (!RecurringCallbackSupport.isEnabled()) {
