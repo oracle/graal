@@ -290,6 +290,9 @@ public class AMD64VectorLoweringPhase extends TargetVectorLoweringPhase {
      */
     private static int vectorRotateLeftAmount(SimdPermuteNode permute) {
         int[] indices = permute.getDestinationMapping();
+        if (((SimdStamp) permute.getValue().stamp(NodeView.DEFAULT)).getVectorLength() != indices.length) {
+            return -1;
+        }
         int origin = indices[0];
         if (origin == -1) {
             return -1;
