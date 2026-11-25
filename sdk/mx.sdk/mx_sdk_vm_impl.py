@@ -2483,6 +2483,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         if not mx.is_windows():
             _dynamic_cflags += ['-pthread']
             _dynamic_cflags += ['-Werror=undef'] # fail on undefined macro used in preprocessor
+        if mx.is_linux():
+            _dynamic_cflags += ['-fPIE'] # not all toolchains default to position-independent executables
 
         def escaped_path(path):
             if mx.is_windows():
@@ -2583,6 +2585,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _dynamic_ldflags = []
         if not mx.is_windows():
             _dynamic_ldflags += ['-pthread']
+        if mx.is_linux():
+            _dynamic_ldflags += ['-fPIE', '-pie']
         return super().ldflags + _dynamic_ldflags
 
     @property

@@ -643,6 +643,8 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
         if not mx.is_windows():
             _dynamic_cflags += ['-pthread']
             _dynamic_cflags += ['-Werror=undef'] # fail on undefined macro used in preprocessor
+        if mx.is_linux():
+            _dynamic_cflags += ['-fPIE'] # not all toolchains default to position-independent executables
 
         def escaped_path(path):
             if mx.is_windows():
@@ -751,6 +753,8 @@ class ThinLauncherProject(mx_native.DefaultNativeProject):
             _dynamic_ldflags += ['/MANIFEST:EMBED', '/MANIFESTINPUT:' + self.windows_manifest]
         if not mx.is_windows():
             _dynamic_ldflags += ['-pthread']
+        if mx.is_linux():
+            _dynamic_ldflags += ['-fPIE', '-pie']
         if self.uses_musl_swcfi_toolchain:
             # Use $$ to escape the $ from expansion by mx. If we use musl swcfi
             # and their libc, the libc++, libc++abi and libunwind must be
