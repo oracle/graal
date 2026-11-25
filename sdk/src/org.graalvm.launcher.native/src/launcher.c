@@ -170,6 +170,7 @@
     #include <sys/types.h>
     #include <sys/stat.h>
     #define getpid _getpid
+    #define execv _execv
     #define stat _stat
 #else
     #error platform not supported or undefined
@@ -179,8 +180,6 @@
 typedef jint(*CreateJavaVM_type)(JavaVM **, void **, void *);
 // jint JNI_GetDefaultJavaVMInitArgs(void *vm_args);
 typedef jint(*GetDefaultJavaVMInitArgs_type)(void *);
-
-extern char **environ;
 
 static bool debug = false;
 static bool relaunch = false;
@@ -1135,7 +1134,7 @@ static int jvm_main_thread(struct MainThreadArgs *parsedArgs) {
 
     const char *svm_error = NULL;
     if (!jvmMode) {
-        curOpt->optionString = strdup("_createvm_errorstr");
+        curOpt->optionString = xstrdup("_createvm_errorstr");
         curOpt->extraInfo = &svm_error;
         curOpt++;
     }
@@ -1154,7 +1153,7 @@ static int jvm_main_thread(struct MainThreadArgs *parsedArgs) {
             char *pid = str_format("%d", (int) getpid());
             launcher_setenv(str_format("%s%s", NMT_ENV_NAME, pid), val);
         }
-        curOpt->optionString = strdup(arg);
+        curOpt->optionString = xstrdup(arg);
         curOpt++;
     }
 
@@ -1171,7 +1170,7 @@ static int jvm_main_thread(struct MainThreadArgs *parsedArgs) {
     /* In general we want to validate VM arguments.
      * But we must disable it for the case there is a native library and we saw a --jvm argument,
      * as the VM arguments are then JVM VM arguments and not SVM VM arguments.
-     * In that case we validate them after the execve() when running in --jvm mode. */
+     * In that case we validate them after the execv() when running in --jvm mode. */
     vmInitArgs.ignoreUnrecognized = found_switch_to_jvm_flag && !jvmMode;
 
     JavaVM *vm;
@@ -1330,9 +1329,10 @@ static int jvm_main_thread(struct MainThreadArgs *parsedArgs) {
             }
             /* relaunch with correct VM arguments */
             char *path = exe_path();
-            execve(path, argv_native, environ);
-            /* if we reach here, execve failed for sure */
-            perror("execve failed");
+            /* execv() passes the current environment, including the variables set above */
+            execv(path, argv_native);
+            /* if we reach here, execv failed for sure */
+            perror("execv failed");
             return -1;
         }
         (*env)->ExceptionDescribe(env);
