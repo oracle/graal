@@ -1316,7 +1316,7 @@ static int jvm_main_thread(struct MainThreadArgs *parsedArgs) {
                     return -1;
                 }
                 const char *vmArg = (*env)->GetStringUTFChars(env, vmArgString, NULL);
-                if ((*env)->ExceptionCheck(env)) {
+                if (vmArg == NULL || (*env)->ExceptionCheck(env)) {
                     fprintf(stderr, "Error in GetStringUTFChars:\n");
                     (*env)->ExceptionDescribe(env);
                     return -1;
