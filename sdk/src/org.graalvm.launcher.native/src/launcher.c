@@ -187,7 +187,8 @@ static bool relaunch = false;
 static bool found_switch_to_jvm_flag = false;
 
 /* The x* functions exit with an error message when out of memory, so callers do not need to check for NULL.
- * xstrndup() is also needed because strndup() does not exist on Windows. */
+ * xstrdup() and xstrndup() are also needed because strdup() is not declared with /std:c11 on Windows
+ * and strndup() does not exist there. */
 static void *xmalloc(size_t size) {
     void *p = malloc(size);
     if (p == NULL) {
@@ -206,7 +207,12 @@ static void *xrealloc(void *ptr, size_t size) {
     return p;
 }
 
+/* like strndup(): copies at most len characters of str */
 static char *xstrndup(const char *str, size_t len) {
+    const char *end = (const char *) memchr(str, '\0', len);
+    if (end != NULL) {
+        len = end - str;
+    }
     char *copy = (char *) xmalloc(len + 1);
     memcpy(copy, str, len);
     copy[len] = '\0';
