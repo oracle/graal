@@ -50,8 +50,10 @@ public final class RistrettoCompilationManager {
         RistrettoCompilerThread(Runnable target, int workerIndex) {
             super(null, target, "Ristretto Compiler-" + workerIndex, 0, false);
             setDaemon(true);
-            setUncaughtExceptionHandler((_, _) -> {
+            setUncaughtExceptionHandler((worker, failure) -> {
                 // Class loading is disabled on compiler threads, so skip application exception handlers.
+                Log.log().string("Uncaught exception in Ristretto compiler thread \"").string(worker.getName())
+                                .string("\": ").string(failure.getClass().getName()).newline();
             });
         }
 
