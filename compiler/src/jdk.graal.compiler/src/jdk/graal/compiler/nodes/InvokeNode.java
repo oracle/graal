@@ -51,6 +51,7 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.memory.AbstractMemoryCheckpoint;
+import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -74,32 +75,44 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     @OptionalInput ValueNode classInit;
     @Input(Extension) CallTargetNode callTarget;
     @OptionalInput(State) FrameState stateDuring;
+    @OptionalInput(Memory) MemoryKill lastLocationAccess;
     protected int bci;
     protected boolean polymorphic;
     protected InlineControl inlineControl;
-    protected final LocationIdentity identity;
+    /**
+     * The location killed by the invoke. Typically, it will be {@link LocationIdentity#any()}, but
+     * an interprocedural analysis can provide more precise location.
+     */
+    protected LocationIdentity killedLocationIdentity;
+    /**
+     * The location accessed by the invoke. Typically, it will be {@link LocationIdentity#any()},
+     * but an interprocedural analysis can provide a more precise location.
+     */
+    protected LocationIdentity locationIdentity;
     private boolean isInOOMETry;
     private boolean sideEffect;
+    private boolean guaranteedNotToThrow;
 
     public InvokeNode(CallTargetNode callTarget, int bci) {
         this(callTarget, bci, callTarget.returnStamp().getTrustedStamp());
     }
 
-    public InvokeNode(CallTargetNode callTarget, int bci, LocationIdentity identity) {
-        this(callTarget, bci, callTarget.returnStamp().getTrustedStamp(), identity);
+    public InvokeNode(CallTargetNode callTarget, int bci, LocationIdentity killedLocationIdentity) {
+        this(callTarget, bci, callTarget.returnStamp().getTrustedStamp(), killedLocationIdentity);
     }
 
     public InvokeNode(CallTargetNode callTarget, int bci, Stamp stamp) {
         this(callTarget, bci, stamp, LocationIdentity.any());
     }
 
-    public InvokeNode(CallTargetNode callTarget, int bci, Stamp stamp, LocationIdentity identity) {
+    public InvokeNode(CallTargetNode callTarget, int bci, Stamp stamp, LocationIdentity killedLocationIdentity) {
         super(TYPE, stamp);
         this.callTarget = callTarget;
         this.bci = bci;
         this.polymorphic = false;
         this.inlineControl = InlineControl.Normal;
-        this.identity = identity;
+        this.killedLocationIdentity = killedLocationIdentity;
+        this.locationIdentity = LocationIdentity.any();
         this.sideEffect = super.hasSideEffect();
     }
 
@@ -149,7 +162,34 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        return identity;
+        return killedLocationIdentity;
+    }
+
+    public void setKilledLocationIdentity(LocationIdentity identity) {
+        this.killedLocationIdentity = identity;
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return locationIdentity;
+    }
+
+    /**
+     * Sets the location accessed by this invoke.
+     */
+    public void setLocationIdentity(LocationIdentity identity) {
+        this.locationIdentity = identity;
+    }
+
+    @Override
+    public MemoryKill getLastLocationAccess() {
+        return lastLocationAccess;
+    }
+
+    @Override
+    public void setLastLocationAccess(MemoryKill lla) {
+        updateUsagesInterface(lastLocationAccess, lla);
+        lastLocationAccess = lla;
     }
 
     @Override
@@ -269,6 +309,20 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
 
     public void setSideEffect(boolean sideEffect) {
         this.sideEffect = sideEffect;
+    }
+
+    /**
+     * Records that an interprocedural analysis proved this invoke cannot throw an exception.
+     */
+    public void setGuaranteedNotToThrow() {
+        guaranteedNotToThrow = true;
+    }
+
+    /**
+     * Returns whether an interprocedural analysis proved this invoke cannot throw an exception.
+     */
+    public boolean isGuaranteedNotToThrow() {
+        return guaranteedNotToThrow;
     }
 
     @Override

@@ -2113,6 +2113,8 @@ public class GraphDecoder {
         try (InliningLog.UpdateScope updateScope = InliningLog.openUpdateScopeTrackingReplacement(graph.getInliningLog(), invokeNode)) {
             assert updateScope != null;
             InvokeWithExceptionNode replacement = graph.add(new InvokeWithExceptionNode(callTarget, null, invokeNode.bci(), invokeNode.stamp(NodeView.DEFAULT)));
+            replacement.setLocationIdentity(invokeNode.getLocationIdentity());
+            replacement.setLastLocationAccess(invokeNode.getLastLocationAccess());
             replacement.setStateAfter(invokeNode.stateAfter());
             replacement.setStateDuring(invokeNode.stateDuring());
             replacement.setInlineControl(invokeNode.getInlineControl());
