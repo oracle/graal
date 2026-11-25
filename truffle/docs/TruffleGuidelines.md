@@ -163,7 +163,6 @@ The before and after examples are illustrative; they omit imports and surroundin
 ## Language registration, options, and parsing
 
 <a name="separate-implementation-version-from-guest-compatibility"></a>
-<a name="separate-implementation-version-from-guest-compatibility--tr-registration-version"></a>
 
 ### `TR-REGISTRATION-VERSION` — Separate implementation version from guest compatibility
 
@@ -212,7 +211,6 @@ final class SampleLanguage extends SampleLanguageBase {
 ---
 
 <a name="read-user-configuration-through-declared-language-options"></a>
-<a name="read-user-configuration-through-declared-language-options--tr-env-options"></a>
 
 ### `TR-ENV-OPTIONS` — Read user configuration through declared language options
 
@@ -258,7 +256,6 @@ protected LanguageState createContext(Env env) {
 ---
 
 <a name="include-shared-code-options-in-language-compatibility"></a>
-<a name="include-shared-code-options-in-language-compatibility--tr-option-compat"></a>
 
 ### `TR-OPTION-COMPAT` — Include shared-code options in language compatibility
 
@@ -292,7 +289,6 @@ protected boolean areOptionsCompatible(OptionValues first, OptionValues next) {
 ---
 
 <a name="reuse-typed-options-from-the-parsing-request"></a>
-<a name="reuse-typed-options-from-the-parsing-request--tr-source-options"></a>
 
 ### `TR-SOURCE-OPTIONS` — Reuse typed options from the parsing request
 
@@ -334,7 +330,6 @@ private CallTarget parseUnit(Source source, OptionValues options) {
 ---
 
 <a name="choose-internal-source-visibility-deliberately"></a>
-<a name="choose-internal-source-visibility-deliberately--tr-internal-sources"></a>
 
 ### `TR-INTERNAL-SOURCES` — Choose internal source visibility deliberately
 
@@ -374,7 +369,6 @@ Source createSource(SourceUnit unit) {
 ---
 
 <a name="validate-enabled-features-at-the-actual-parser-entry"></a>
-<a name="validate-enabled-features-at-the-actual-parser-entry--tr-feature-gating"></a>
 
 ### `TR-FEATURE-GATING` — Validate enabled features at the actual parser entry
 
@@ -425,7 +419,6 @@ final class BinaryParser {
 ---
 
 <a name="match-source-content-to-the-parsers-byte-or-character-contract"></a>
-<a name="match-source-content-to-the-parsers-byte-or-character-contract--tr-source-content"></a>
 
 ### `TR-SOURCE-CONTENT` — Match source content to the parser's byte or character contract
 
@@ -471,7 +464,6 @@ final class ExampleLanguage extends TruffleLanguage<State> {
 ---
 
 <a name="recognize-ambiguous-binary-formats-through-their-content"></a>
-<a name="recognize-ambiguous-binary-formats-through-their-content--tr-source-detection"></a>
 
 ### `TR-SOURCE-DETECTION` — Recognize ambiguous binary formats through their content
 
@@ -516,7 +508,6 @@ public final class BinaryDetector implements TruffleFile.FileTypeDetector {
 ---
 
 <a name="review-sandbox-eligibility-separately-from-option-stability"></a>
-<a name="review-sandbox-eligibility-separately-from-option-stability--tr-sandbox-options"></a>
 
 ### `TR-SANDBOX-OPTIONS` — Review sandbox eligibility separately from option stability
 
@@ -551,7 +542,6 @@ static final OptionKey<Boolean> EXTENDED_FEATURE = new OptionKey<>(false);
 ---
 
 <a name="advertise-the-tokens-your-option-converter-accepts"></a>
-<a name="advertise-the-tokens-your-option-converter-accepts--tr-option-text"></a>
 
 ### `TR-OPTION-TEXT` — Advertise the tokens your option converter accepts
 
@@ -592,7 +582,6 @@ OptionDescriptor descriptor = OptionDescriptor.newBuilder(key, "sample.Mode")
 ---
 
 <a name="finish-context-creation-before-cross-language-initialization"></a>
-<a name="finish-context-creation-before-cross-language-initialization--tr-context-initialization"></a>
 
 ### `TR-CONTEXT-INITIALIZATION` — Finish context creation before cross-language initialization
 
@@ -632,7 +621,6 @@ protected void initializeContext(LanguageContext state) {
 ---
 
 <a name="parse-implementation-dependencies-without-widening-guest-access"></a>
-<a name="parse-implementation-dependencies-without-widening-guest-access--tr-dependency-parsing"></a>
 
 ### `TR-DEPENDENCY-PARSING` — Parse implementation dependencies without widening guest access
 
@@ -681,7 +669,6 @@ Object invokeHelper(LanguageContext state, Object input) {
 ---
 
 <a name="build-reusable-code-during-parsing-not-guest-execution-state"></a>
-<a name="build-reusable-code-during-parsing-not-guest-execution-state--tr-parse-side-effects"></a>
 
 ### `TR-PARSE-SIDE-EFFECTS` — Build reusable code during parsing, not guest execution state
 
@@ -735,7 +722,6 @@ final class EntryRoot extends RootNode {
 ---
 
 <a name="bound-resource-version-tokens-without-losing-their-inputs"></a>
-<a name="bound-resource-version-tokens-without-losing-their-inputs--tr-internal-resource-version"></a>
 
 ### `TR-INTERNAL-RESOURCE-VERSION` — Bound resource version tokens without losing their inputs
 
@@ -778,7 +764,6 @@ public String versionHash(Env env) throws IOException {
 ## Context lifecycle, sharing, and host services
 
 <a name="keep-context-owned-values-out-of-caches-shared-across-contexts"></a>
-<a name="keep-context-owned-values-out-of-caches-shared-across-contexts--tr-ownership"></a>
 
 ### `TR-OWNERSHIP` — Keep context-owned values out of caches shared across contexts
 
@@ -816,7 +801,6 @@ GuestArray argumentTypes(FormatKey key, MyContext context) {
 ---
 
 <a name="do-not-run-guest-code-during-context-disposal"></a>
-<a name="do-not-run-guest-code-during-context-disposal--tr-dispose"></a>
 
 ### `TR-DISPOSE` — Do not run guest code during context disposal
 
@@ -855,7 +839,6 @@ protected void disposeContext(MyContext context) {
 ---
 
 <a name="keep-native-backed-views-within-their-storage-lifetime"></a>
-<a name="keep-native-backed-views-within-their-storage-lifetime--tr-native-lifetime"></a>
 
 ### `TR-NATIVE-LIFETIME` — Keep native-backed views within their storage lifetime
 
@@ -887,7 +870,6 @@ sharedNames.put(key, name);
 ---
 
 <a name="do-not-reuse-an-incompatible-outer-lookup-node-inside-an-inner-context"></a>
-<a name="do-not-reuse-an-incompatible-outer-lookup-node-inside-an-inner-context--tr-inner-context"></a>
 
 ### `TR-INNER-CONTEXT` — Do not reuse an incompatible outer lookup node inside an inner context
 
@@ -926,7 +908,6 @@ try {
 ---
 
 <a name="cooperate-during-long-running-and-blocking-work"></a>
-<a name="cooperate-during-long-running-and-blocking-work--tr-safepoints"></a>
 
 ### `TR-SAFEPOINTS` — Cooperate during long-running and blocking work
 
@@ -966,7 +947,6 @@ long total(Node location, int[] values) {
 ---
 
 <a name="do-not-grant-concurrent-context-access-just-to-suppress-an-error"></a>
-<a name="do-not-grant-concurrent-context-access-just-to-suppress-an-error--tr-thread-access"></a>
 
 ### `TR-THREAD-ACCESS` — Do not grant concurrent context access just to suppress an error
 
@@ -1007,7 +987,6 @@ void backgroundCallback(ConcurrentWaitRegistry registry, WaitKey key) {
 ---
 
 <a name="release-context-owned-external-resources-explicitly"></a>
-<a name="release-context-owned-external-resources-explicitly--tr-resource-cleanup"></a>
 
 ### `TR-RESOURCE-CLEANUP` — Release context-owned external resources explicitly
 
@@ -1050,7 +1029,6 @@ assertTrue(allocation.isReleased());
 ---
 
 <a name="keep-source-cache-anchors-for-the-intended-reuse-lifetime"></a>
-<a name="keep-source-cache-anchors-for-the-intended-reuse-lifetime--tr-source-cache-lifetime"></a>
 
 ### `TR-SOURCE-CACHE-LIFETIME` — Keep source cache anchors for the intended reuse lifetime
 
@@ -1085,7 +1063,6 @@ CallTarget parseHelper(TruffleLanguage.Env env, SourceKey key) {
 ---
 
 <a name="exercise-the-modes-that-mutate-reusable-code"></a>
-<a name="exercise-the-modes-that-mutate-reusable-code--tr-execution-modes"></a>
 
 ### `TR-EXECUTION-MODES` — Exercise the modes that mutate reusable code
 
@@ -1134,7 +1111,6 @@ try (Engine engine = Engine.create()) {
 ---
 
 <a name="handle-the-at-most-once-contract-of-leave-and-reenter-waits"></a>
-<a name="handle-the-at-most-once-contract-of-leave-and-reenter-waits--tr-blocking-contract"></a>
 
 ### `TR-BLOCKING-CONTRACT` — Handle the at-most-once contract of leave-and-reenter waits
 
@@ -1173,7 +1149,6 @@ WaitResult awaitHostInput(TruffleContext context, Node location,
 ---
 
 <a name="stop-and-join-owned-threads-in-the-correct-lifecycle-phase"></a>
-<a name="stop-and-join-owned-threads-in-the-correct-lifecycle-phase--tr-thread-shutdown"></a>
 
 ### `TR-THREAD-SHUTDOWN` — Stop and join owned threads in the correct lifecycle phase
 
@@ -1229,7 +1204,6 @@ protected void disposeContext(MyContext context) {
 ---
 
 <a name="honor-native-access-permission-when-selecting-a-backend"></a>
-<a name="honor-native-access-permission-when-selecting-a-backend--tr-native-permissions"></a>
 
 ### `TR-NATIVE-PERMISSIONS` — Honor native-access permission when selecting a backend
 
@@ -1264,7 +1238,6 @@ MemoryBackend selectBackend(TruffleLanguage.Env env, String requested) {
 ---
 
 <a name="use-the-configured-file-systems-actual-capabilities"></a>
-<a name="use-the-configured-file-systems-actual-capabilities--tr-file-system-contract"></a>
 
 ### `TR-FILE-SYSTEM-CONTRACT` — Use the configured file system's actual capabilities
 
@@ -1302,7 +1275,6 @@ Set<PosixFilePermission> readGuestPermissions(TruffleFile file)
 ---
 
 <a name="match-file-access-to-the-operations-resource-authority"></a>
-<a name="match-file-access-to-the-operations-resource-authority--tr-file-privileges"></a>
 
 ### `TR-FILE-PRIVILEGES` — Match file access to the operation's resource authority
 
@@ -1337,7 +1309,6 @@ Source loadDebugSource(TruffleLanguage.Env env, String language,
 ---
 
 <a name="derive-host-service-availability-from-the-environment-grant"></a>
-<a name="derive-host-service-availability-from-the-environment-grant--tr-env-capabilities"></a>
 
 ### `TR-ENV-CAPABILITIES` — Derive host-service availability from the environment grant
 
@@ -1379,7 +1350,6 @@ Object openNetworkResource(Object address, Node location) {
 ---
 
 <a name="match-inner-context-termination-to-entry-and-exit-policy"></a>
-<a name="match-inner-context-termination-to-entry-and-exit-policy--tr-context-termination"></a>
 
 ### `TR-CONTEXT-TERMINATION` — Match inner-context termination to entry and exit policy
 
@@ -1429,7 +1399,6 @@ final class InnerTaskController {
 ## ASTs, frames, and object layouts
 
 <a name="keep-private-backing-slots-out-of-guest-property-names"></a>
-<a name="keep-private-backing-slots-out-of-guest-property-names--tr-internal-storage"></a>
 
 ### `TR-INTERNAL-STORAGE` — Keep private backing slots out of guest property names
 
@@ -1476,7 +1445,6 @@ Object readBacking(DynamicObject receiver, Object missing,
 ---
 
 <a name="include-all-semantic-inputs-in-stable-cache-keys"></a>
-<a name="include-all-semantic-inputs-in-stable-cache-keys--tr-cache-key"></a>
 
 ### `TR-CACHE-KEY` — Include all semantic inputs in stable cache keys
 
@@ -1515,7 +1483,6 @@ if (target == null) {
 ---
 
 <a name="keep-invocation-state-out-of-shared-ast-nodes"></a>
-<a name="keep-invocation-state-out-of-shared-ast-nodes--tr-execution-state"></a>
 
 ### `TR-EXECUTION-STATE` — Keep invocation state out of shared AST nodes
 
@@ -1555,7 +1522,6 @@ final class EvaluateNode extends Node {
 ---
 
 <a name="preserve-the-asts-parent-child-structure"></a>
-<a name="preserve-the-asts-parent-child-structure--tr-adoption"></a>
 
 ### `TR-ADOPTION` — Preserve the AST's parent-child structure
 
@@ -1594,7 +1560,6 @@ final class ReserveNode extends Node {
 ---
 
 <a name="look-up-shared-language-metadata-without-a-context-detour"></a>
-<a name="look-up-shared-language-metadata-without-a-context-detour--tr-language-reference"></a>
 
 ### `TR-LANGUAGE-REFERENCE` — Look up shared language metadata without a context detour
 
@@ -1630,7 +1595,6 @@ Object execute(VirtualFrame frame) {
 ---
 
 <a name="make-identity-guarded-metadata-recur-at-the-cache"></a>
-<a name="make-identity-guarded-metadata-recur-at-the-cache--tr-identity-cache"></a>
 
 ### `TR-IDENTITY-CACHE` — Make identity-guarded metadata recur at the cache
 
@@ -1684,7 +1648,6 @@ final class Request {
 ---
 
 <a name="prepare-dynamic-object-storage-before-concurrent-publication"></a>
-<a name="prepare-dynamic-object-storage-before-concurrent-publication--tr-shared-shapes"></a>
 
 ### `TR-SHARED-SHAPES` — Prepare dynamic-object storage before concurrent publication
 
@@ -1723,7 +1686,6 @@ final class PublishNode extends Node {
 ---
 
 <a name="preserve-useful-root-type-information-on-interpreter-call-paths"></a>
-<a name="preserve-useful-root-type-information-on-interpreter-call-paths--tr-typed-root-calls"></a>
 
 ### `TR-TYPED-ROOT-CALLS` — Preserve useful root type information on interpreter call paths
 
@@ -1771,7 +1733,6 @@ final class FunctionCode {
 ---
 
 <a name="supply-privileged-access-for-a-custom-object-layout"></a>
-<a name="supply-privileged-access-for-a-custom-object-layout--tr-layout-lookup"></a>
 
 ### `TR-LAYOUT-LOOKUP` — Supply privileged access for a custom object layout
 
@@ -1822,7 +1783,6 @@ final class PayloadObject extends DynamicObject {
 ---
 
 <a name="preserve-receiver-safety-before-disabling-shape-checks"></a>
-<a name="preserve-receiver-safety-before-disabling-shape-checks--tr-static-shape-safety"></a>
 
 ### `TR-STATIC-SHAPE-SAFETY` — Preserve receiver safety before disabling shape checks
 
@@ -1884,7 +1844,6 @@ final class PayloadLayout {
 ---
 
 <a name="keep-property-handles-with-their-declaring-layout"></a>
-<a name="keep-property-handles-with-their-declaring-layout--tr-static-shape-construction"></a>
 
 ### `TR-STATIC-SHAPE-CONSTRUCTION` — Keep property handles with their declaring layout
 
@@ -1938,7 +1897,6 @@ int secondValue = second.value().getInt(secondObject);
 ---
 
 <a name="implement-missing-argument-semantics-before-indexed-loads"></a>
-<a name="implement-missing-argument-semantics-before-indexed-loads--tr-argument-bounds"></a>
 
 ### `TR-ARGUMENT-BOUNDS` — Implement missing-argument semantics before indexed loads
 
@@ -1984,7 +1942,6 @@ b.endReturn();
 ---
 
 <a name="read-slot-metadata-from-its-owning-frame-layout"></a>
-<a name="read-slot-metadata-from-its-owning-frame-layout--tr-frame-descriptor"></a>
 
 ### `TR-FRAME-DESCRIPTOR` — Read slot metadata from its owning frame layout
 
@@ -2036,7 +1993,6 @@ final class ScopedSlotNameNode extends Node {
 ---
 
 <a name="preserve-caller-arguments-when-adapting-a-call"></a>
-<a name="preserve-caller-arguments-when-adapting-a-call--tr-frame-argument-ownership"></a>
 
 ### `TR-FRAME-ARGUMENT-OWNERSHIP` — Preserve caller arguments when adapting a call
 
@@ -2087,7 +2043,6 @@ final class ForwardNode extends Node {
 ---
 
 <a name="preserve-descriptor-based-slot-generalization"></a>
-<a name="preserve-descriptor-based-slot-generalization--tr-frame-slot-policy"></a>
 
 ### `TR-FRAME-SLOT-POLICY` — Preserve descriptor-based slot generalization
 
@@ -2153,7 +2108,6 @@ final class LocalWriteNode extends Node {
 ## Truffle DSL specializations and caches
 
 <a name="order-disjoint-specializations-from-representative-frequencies"></a>
-<a name="order-disjoint-specializations-from-representative-frequencies--tr-specialization-order"></a>
 
 ### `TR-SPECIALIZATION-ORDER` — Order disjoint specializations from representative frequencies
 
@@ -2208,7 +2162,6 @@ record ColdValue(Object payload) { }
 ---
 
 <a name="keep-uncached-dispatch-off-guest-compilation-paths"></a>
-<a name="keep-uncached-dispatch-off-guest-compilation-paths--tr-uncached-pe"></a>
 
 ### `TR-UNCACHED-PE` — Keep uncached dispatch off guest compilation paths
 
@@ -2246,7 +2199,6 @@ public Object execute(VirtualFrame frame) {
 ---
 
 <a name="handle-expected-lookup-failures-outside-cache-initializers"></a>
-<a name="handle-expected-lookup-failures-outside-cache-initializers--tr-cache-initializer"></a>
 
 ### `TR-CACHE-INITIALIZER` — Handle expected lookup failures outside cache initializers
 
@@ -2305,7 +2257,6 @@ FieldInfo lookupGeneric(String name) throws UnknownIdentifierException {
 ---
 
 <a name="pass-the-actual-storage-node-to-inlined-helpers"></a>
-<a name="pass-the-actual-storage-node-to-inlined-helpers--tr-inlining-target"></a>
 
 ### `TR-INLINING-TARGET` — Pass the actual storage node to inlined helpers
 
@@ -2361,7 +2312,6 @@ abstract class LookupNode extends Node {
 ---
 
 <a name="guard-cached-results-against-every-relevant-change"></a>
-<a name="guard-cached-results-against-every-relevant-change--tr-cache-validity"></a>
 
 ### `TR-CACHE-VALIDITY` — Guard cached results against every relevant change
 
@@ -2406,7 +2356,6 @@ static Object readGeneric(Cell cell) {
 ---
 
 <a name="treat-guard-idempotence-as-a-correctness-promise"></a>
-<a name="treat-guard-idempotence-as-a-correctness-promise--tr-guard-idempotence"></a>
 
 ### `TR-GUARD-IDEMPOTENCE` — Treat guard idempotence as a correctness promise
 
@@ -2449,7 +2398,6 @@ Object disabled(Object value) {
 ---
 
 <a name="audit-cache-retention-within-a-live-context"></a>
-<a name="audit-cache-retention-within-a-live-context--tr-cache-retention"></a>
 
 ### `TR-CACHE-RETENTION` — Audit cache retention within a live context
 
@@ -2479,7 +2427,6 @@ longLivedKeys.add(retained);
 ---
 
 <a name="choose-dsl-helper-layout-for-its-actual-usage"></a>
-<a name="choose-dsl-helper-layout-for-its-actual-usage--tr-dsl-footprint"></a>
 
 ### `TR-DSL-FOOTPRINT` — Choose DSL helper layout for its actual usage
 
@@ -2530,7 +2477,6 @@ static int doValue(Object value, @Bind("this") Node storage,
 ---
 
 <a name="preserve-results-across-specialization-transitions"></a>
-<a name="preserve-results-across-specialization-transitions--tr-specialization-semantics"></a>
 
 ### `TR-SPECIALIZATION-SEMANTICS` — Preserve results across specialization transitions
 
@@ -2586,7 +2532,6 @@ static int requireNonNegative(int value) {
 ---
 
 <a name="keep-ordinary-helpers-separate-from-dsl-execute-entries"></a>
-<a name="keep-ordinary-helpers-separate-from-dsl-execute-entries--tr-dsl-execute-entries"></a>
 
 ### `TR-DSL-EXECUTE-ENTRIES` — Keep ordinary helpers separate from DSL execute entries
 
@@ -2635,7 +2580,6 @@ abstract class IncrementNode extends Node {
 ---
 
 <a name="deoptimize-before-handing-off-interpreter-re-specialization"></a>
-<a name="deoptimize-before-handing-off-interpreter-re-specialization--tr-slow-path-exceptions"></a>
 
 ### `TR-SLOW-PATH-EXCEPTIONS` — Deoptimize before handing off interpreter re-specialization
 
@@ -2707,7 +2651,6 @@ final class IntegerValueNode extends Node {
 ## Compilation and partial evaluation
 
 <a name="profile-important-data-dependent-branches-in-handwritten-operations"></a>
-<a name="profile-important-data-dependent-branches-in-handwritten-operations--tr-profiles"></a>
 
 ### `TR-PROFILES` — Profile important data-dependent branches in handwritten operations
 
@@ -2747,7 +2690,6 @@ static Object select(Object value, @Bind Node node,
 ---
 
 <a name="invalidate-compiled-assumptions-before-changing-compilation-final-state"></a>
-<a name="invalidate-compiled-assumptions-before-changing-compilation-final-state--tr-compilation-final"></a>
 
 ### `TR-COMPILATION-FINAL` — Invalidate compiled assumptions before changing compilation-final state
 
@@ -2783,7 +2725,6 @@ void grow(int newSize) {
 ---
 
 <a name="scope-loop-explosion-to-the-intended-loops"></a>
-<a name="scope-loop-explosion-to-the-intended-loops--tr-loop-explosion"></a>
 
 ### `TR-LOOP-EXPLOSION` — Scope loop explosion to the intended loops
 
@@ -2835,7 +2776,6 @@ static int sumComponents(int[] components) {
 ---
 
 <a name="assert-required-partial-evaluation-constants-instead-of-ignoring-a-query"></a>
-<a name="assert-required-partial-evaluation-constants-instead-of-ignoring-a-query--tr-pe-assertions"></a>
 
 ### `TR-PE-ASSERTIONS` — Assert required partial-evaluation constants instead of ignoring a query
 
@@ -2876,7 +2816,6 @@ static Object readField(RecordValue value, int fieldKind, int fieldIndex) {
 ---
 
 <a name="bound-invalidation-by-shared-code-state-not-by-each-new-object"></a>
-<a name="bound-invalidation-by-shared-code-state-not-by-each-new-object--tr-deopt-stability"></a>
 
 ### `TR-DEOPT-STABILITY` — Bound invalidation by shared-code state, not by each new object
 
@@ -2926,7 +2865,6 @@ void initializeResource() {
 ---
 
 <a name="keep-boundaries-around-the-work-that-must-remain-opaque"></a>
-<a name="keep-boundaries-around-the-work-that-must-remain-opaque--tr-boundary-scope"></a>
 
 ### `TR-BOUNDARY-SCOPE` — Keep boundaries around the work that must remain opaque
 
@@ -2965,7 +2903,6 @@ static long lookupAddress(long handle, String name) {
 ---
 
 <a name="preserve-interpreter-state-needed-after-deoptimization"></a>
-<a name="preserve-interpreter-state-needed-after-deoptimization--tr-deopt-state"></a>
 
 ### `TR-DEOPT-STATE` — Preserve interpreter state needed after deoptimization
 
@@ -3000,7 +2937,6 @@ if (CompilerDirectives.hasNextTier()) {
 ---
 
 <a name="keep-required-interpreter-dispatch-resolvable-during-partial-evaluation"></a>
-<a name="keep-required-interpreter-dispatch-resolvable-during-partial-evaluation--tr-pe-visibility"></a>
 
 ### `TR-PE-VISIBILITY` — Keep required interpreter dispatch resolvable during partial evaluation
 
@@ -3047,7 +2983,6 @@ int begin(MatchData match, int group) {
 ---
 
 <a name="avoid-temporary-containers-solely-to-feed-a-child-operation"></a>
-<a name="avoid-temporary-containers-solely-to-feed-a-child-operation--tr-result-carriers"></a>
 
 ### `TR-RESULT-CARRIERS` — Avoid temporary containers solely to feed a child operation
 
@@ -3099,7 +3034,6 @@ final class CopyHeadNode extends Node {
 ---
 
 <a name="avoid-replicating-one-body-across-equivalent-alternatives"></a>
-<a name="avoid-replicating-one-body-across-equivalent-alternatives--tr-ast-duplication"></a>
 
 ### `TR-AST-DUPLICATION` — Avoid replicating one body across equivalent alternatives
 
@@ -3158,7 +3092,6 @@ ExpressionNode translateAlternatives(Syntax[] alternatives,
 ---
 
 <a name="keep-compiler-preparation-repeatable-and-context-independent"></a>
-<a name="keep-compiler-preparation-repeatable-and-context-independent--tr-compilation-preparation"></a>
 
 ### `TR-COMPILATION-PREPARATION` — Keep compiler preparation repeatable and context-independent
 
@@ -3214,7 +3147,6 @@ public Object execute(VirtualFrame frame) {
 ---
 
 <a name="fix-allocation-placement-only-for-a-required-failure-boundary"></a>
-<a name="fix-allocation-placement-only-for-a-required-failure-boundary--tr-allocation-placement"></a>
 
 ### `TR-ALLOCATION-PLACEMENT` — Fix allocation placement only for a required failure boundary
 
@@ -3256,7 +3188,6 @@ byte[] tryAllocateStorage(int length) {
 ## Interop and data representation
 
 <a name="convert-foreign-values-through-their-interop-protocol"></a>
-<a name="convert-foreign-values-through-their-interop-protocol--tr-interop-conversion"></a>
 
 ### `TR-INTEROP-CONVERSION` — Convert foreign values through their interop protocol
 
@@ -3300,7 +3231,6 @@ final class ForeignArgumentsNode extends Node {
 ---
 
 <a name="keep-capability-predicates-and-operations-consistent"></a>
-<a name="keep-capability-predicates-and-operations-consistent--tr-interop-consistency"></a>
 
 ### `TR-INTEROP-CONSISTENCY` — Keep capability predicates and operations consistent
 
@@ -3346,7 +3276,6 @@ SourceSection getSourceLocation() throws UnsupportedMessageException {
 ---
 
 <a name="use-interop-identity-for-foreign-objects"></a>
-<a name="use-interop-identity-for-foreign-objects--tr-foreign-identity"></a>
 
 ### `TR-FOREIGN-IDENTITY` — Use interop identity for foreign objects
 
@@ -3388,7 +3317,6 @@ final class ForeignIdentityNode extends Node {
 ---
 
 <a name="use-the-interop-protocol-inside-guest-execution"></a>
-<a name="use-the-interop-protocol-inside-guest-execution--tr-spi-interop"></a>
 
 ### `TR-SPI-INTEROP` — Use the interop protocol inside guest execution
 
@@ -3425,7 +3353,6 @@ Object guestReceiver = env.asGuestValue(hostBuffer);
 ---
 
 <a name="bound-temporary-storage-for-guest-requested-transfers"></a>
-<a name="bound-temporary-storage-for-guest-requested-transfers--tr-transfer-buffers"></a>
 
 ### `TR-TRANSFER-BUFFERS` — Bound temporary storage for guest-requested transfers
 
@@ -3474,7 +3401,6 @@ static void copy(Node location, InteropLibrary buffers, Object source,
 ---
 
 <a name="distinguish-character-ranges-from-byte-based-ranges"></a>
-<a name="distinguish-character-ranges-from-byte-based-ranges--tr-string-range"></a>
 
 ### `TR-STRING-RANGE` — Distinguish character ranges from byte-based ranges
 
@@ -3513,7 +3439,6 @@ boolean containsOnlyAscii(TruffleString text) {
 ---
 
 <a name="enforce-guest-string-limits-before-allocation-and-growth"></a>
-<a name="enforce-guest-string-limits-before-allocation-and-growth--tr-string-limits"></a>
 
 ### `TR-STRING-LIMITS` — Enforce guest string limits before allocation and growth
 
@@ -3556,7 +3481,6 @@ return finish.execute(out);
 ---
 
 <a name="report-specified-failures-through-the-guest-error-protocol"></a>
-<a name="report-specified-failures-through-the-guest-error-protocol--tr-expected-guest-errors"></a>
 
 ### `TR-EXPECTED-GUEST-ERRORS` — Report specified failures through the guest error protocol
 
@@ -3613,7 +3537,6 @@ static final class GuestIOError extends AbstractTruffleException {
 ---
 
 <a name="use-byte-based-view-ranges-across-buffer-representations"></a>
-<a name="use-byte-based-view-ranges-across-buffer-representations--tr-buffer-ranges"></a>
 
 ### `TR-BUFFER-RANGES` — Use byte-based view ranges across buffer representations
 
@@ -3667,7 +3590,6 @@ void writeView(Object storage, long byteOffset, long elementCount,
 ---
 
 <a name="avoid-a-host-string-round-trip-for-encoded-guest-data"></a>
-<a name="avoid-a-host-string-round-trip-for-encoded-guest-data--tr-string-conversion"></a>
 
 ### `TR-STRING-CONVERSION` — Avoid a host string round trip for encoded guest data
 
@@ -3705,7 +3627,6 @@ static TruffleString convert(byte[] bytes, int byteOffset, int byteLength,
 ---
 
 <a name="preserve-foreign-sizes-and-centralize-trait-selection"></a>
-<a name="preserve-foreign-sizes-and-centralize-trait-selection--tr-interop-array-size"></a>
 
 ### `TR-INTEROP-ARRAY-SIZE` — Preserve foreign sizes and centralize trait selection
 
@@ -3741,7 +3662,6 @@ static void checkArrayRange(InteropLibrary arrays, Object receiver,
 ---
 
 <a name="separate-unaligned-immutable-reads-from-concurrent-memory-access"></a>
-<a name="separate-unaligned-immutable-reads-from-concurrent-memory-access--tr-byte-array-access"></a>
 
 ### `TR-BYTE-ARRAY-ACCESS` — Separate unaligned immutable reads from concurrent memory access
 
@@ -3793,7 +3713,6 @@ final class ReadHeaderNode extends Node {
 ## Bytecode execution and the Bytecode DSL
 
 <a name="use-built-in-local-operations-for-ordinary-local-accesses"></a>
-<a name="use-built-in-local-operations-for-ordinary-local-accesses--tr-local-fastpath"></a>
 
 ### `TR-LOCAL-FASTPATH` — Use built-in local operations for ordinary local accesses
 
@@ -3840,7 +3759,6 @@ b.endProcessValue();
 ---
 
 <a name="resolve-captured-execution-frames-through-bytecode-aware-apis"></a>
-<a name="resolve-captured-execution-frames-through-bytecode-aware-apis--tr-frame-resolution"></a>
 
 ### `TR-FRAME-RESOLUTION` — Resolve captured execution frames through bytecode-aware apis
 
@@ -3876,7 +3794,6 @@ if (frame != null) {
 ---
 
 <a name="copy-captured-frame-state-before-resuming-when-it-must-remain-stable"></a>
-<a name="copy-captured-frame-state-before-resuming-when-it-must-remain-stable--tr-frame-lifetime"></a>
 
 ### `TR-FRAME-LIFETIME` — Copy captured frame state before resuming when it must remain stable
 
@@ -3907,7 +3824,6 @@ inspect(snapshot.getLocalValue(localOffset));
 ---
 
 <a name="preserve-primitive-paths-across-custom-operation-boundaries"></a>
-<a name="preserve-primitive-paths-across-custom-operation-boundaries--tr-boxing"></a>
 
 ### `TR-BOXING` — Preserve primitive paths across custom operation boundaries
 
@@ -3952,7 +3868,6 @@ public static final class Discard {
 ---
 
 <a name="invalidate-persisted-bytecode-when-compatibility-assumptions-change"></a>
-<a name="invalidate-persisted-bytecode-when-compatibility-assumptions-change--tr-serialization"></a>
 
 ### `TR-SERIALIZATION` — Invalidate persisted bytecode when compatibility assumptions change
 
@@ -3989,7 +3904,6 @@ return deserializeBytecode(input);
 ---
 
 <a name="resume-osr-at-the-location-described-by-the-frame-state"></a>
-<a name="resume-osr-at-the-location-described-by-the-frame-state--tr-osr-state"></a>
 
 ### `TR-OSR-STATE` — Resume OSR at the location described by the frame state
 
@@ -4044,7 +3958,6 @@ if (result != null) {
 ---
 
 <a name="keep-a-bytecode-index-paired-with-its-bytecode-node"></a>
-<a name="keep-a-bytecode-index-paired-with-its-bytecode-node--tr-bytecode-location"></a>
 
 ### `TR-BYTECODE-LOCATION` — Keep a bytecode index paired with its bytecode node
 
@@ -4084,7 +3997,6 @@ inspect(current);
 ---
 
 <a name="keep-required-cleanup-on-the-configured-unwind-path"></a>
-<a name="keep-required-cleanup-on-the-configured-unwind-path--tr-bytecode-unwind"></a>
 
 ### `TR-BYTECODE-UNWIND` — Keep required cleanup on the configured unwind path
 
@@ -4119,7 +4031,6 @@ b.endTryFinally();
 ---
 
 <a name="distinguish-single-method-suspension-from-whole-stack-capture"></a>
-<a name="distinguish-single-method-suspension-from-whole-stack-capture--tr-continuation-scope"></a>
 
 ### `TR-CONTINUATION-SCOPE` — Distinguish single-method suspension from whole-stack capture
 
@@ -4165,7 +4076,6 @@ GuestStep caller(RootCallTarget generator, Object argument) {
 ---
 
 <a name="keep-label-creation-and-emission-in-the-same-builder-scope"></a>
-<a name="keep-label-creation-and-emission-in-the-same-builder-scope--tr-bytecode-label-scope"></a>
 
 ### `TR-BYTECODE-LABEL-SCOPE` — Keep label creation and emission in the same builder scope
 
@@ -4205,7 +4115,6 @@ b.endBlock();
 ---
 
 <a name="preserve-evaluation-order-and-the-selected-operand"></a>
-<a name="preserve-evaluation-order-and-the-selected-operand--tr-short-circuit-semantics"></a>
 
 ### `TR-SHORT-CIRCUIT-SEMANTICS` — Preserve evaluation order and the selected operand
 
@@ -4247,7 +4156,6 @@ abstract class ExampleRoot extends RootNode implements BytecodeRootNode {
 ---
 
 <a name="rewrite-cleared-static-slots-before-reading-them"></a>
-<a name="rewrite-cleared-static-slots-before-reading-them--tr-static-frame-liveness"></a>
 
 ### `TR-STATIC-FRAME-LIVENESS` — Rewrite cleared static slots before reading them
 
@@ -4291,7 +4199,6 @@ int calculate(VirtualFrame frame, int temporarySlot, boolean chooseLeft,
 ## Threaded interpreter dispatch
 
 <a name="store-handler-return-state-directly-into-its-logical-local"></a>
-<a name="store-handler-return-state-directly-into-its-logical-local--tr-handler-unwind"></a>
 
 ### `TR-HANDLER-UNWIND` — Store handler return state directly into its logical local
 
@@ -4330,7 +4237,6 @@ switch (opcode) {
 ---
 
 <a name="do-not-depend-on-the-identity-of-fully-expanded-handler-state"></a>
-<a name="do-not-depend-on-the-identity-of-fully-expanded-handler-state--tr-handler-identity"></a>
 
 ### `TR-HANDLER-IDENTITY` — Do not depend on the identity of fully expanded handler state
 
@@ -4379,7 +4285,6 @@ static int read(Frame frame, State state) {
 ---
 
 <a name="keep-template-state-valid-at-each-threaded-dispatch"></a>
-<a name="keep-template-state-valid-at-each-threaded-dispatch--tr-handler-templates"></a>
 
 ### `TR-HANDLER-TEMPLATES` — Keep template state valid at each threaded dispatch
 
@@ -4431,7 +4336,6 @@ static void selectNext(State state, boolean keepOperand, boolean alternateMode) 
 ---
 
 <a name="keep-per-instruction-work-inside-threaded-handlers"></a>
-<a name="keep-per-instruction-work-inside-threaded-handlers--tr-handler-dispatch"></a>
 
 ### `TR-HANDLER-DISPATCH` — Keep per-instruction work inside threaded handlers
 
@@ -4484,7 +4388,6 @@ switch (opcode) {
 ## Instrumentation, source locations, and diagnostics
 
 <a name="associate-root-locations-with-the-actual-parsed-source"></a>
-<a name="associate-root-locations-with-the-actual-parsed-source--tr-source-sections"></a>
 
 ### `TR-SOURCE-SECTIONS` — Associate root locations with the actual parsed source
 
@@ -4529,7 +4432,6 @@ final class FunctionRoot extends RootNode {
 ---
 
 <a name="refresh-lazy-source-information-before-reading-it"></a>
-<a name="refresh-lazy-source-information-before-reading-it--tr-source-metadata"></a>
 
 ### `TR-SOURCE-METADATA` — Refresh lazy source information before reading it
 
@@ -4562,7 +4464,6 @@ SourceSection findSection(BytecodeLocation location) {
 ---
 
 <a name="keep-tooling-language-views-out-of-execution-data-flow"></a>
-<a name="keep-tooling-language-views-out-of-execution-data-flow--tr-language-views"></a>
 
 ### `TR-LANGUAGE-VIEWS` — Keep tooling language views out of execution data flow
 
@@ -4595,7 +4496,6 @@ executeOperation(value);
 ---
 
 <a name="tag-language-statements-rather-than-source-lines"></a>
-<a name="tag-language-statements-rather-than-source-lines--tr-statement-tags"></a>
 
 ### `TR-STATEMENT-TAGS` — Tag language statements rather than source lines
 
@@ -4637,7 +4537,6 @@ for (StatementSyntax statement : body.statements()) {
 ---
 
 <a name="preserve-non-execution-behavior-through-instrumentation-wrappers"></a>
-<a name="preserve-non-execution-behavior-through-instrumentation-wrappers--tr-wrapper-delegation"></a>
 
 ### `TR-WRAPPER-DELEGATION` — Preserve non-execution behavior through instrumentation wrappers
 
@@ -4690,7 +4589,6 @@ abstract class ExpressionNode extends Node implements InstrumentableNode {
 ---
 
 <a name="complete-manual-instrumentation-events-on-every-exit"></a>
-<a name="complete-manual-instrumentation-events-on-every-exit--tr-probe-pairing"></a>
 
 ### `TR-PROBE-PAIRING` — Complete manual instrumentation events on every exit
 
@@ -4746,7 +4644,6 @@ Object execute(VirtualFrame frame) {
 ---
 
 <a name="make-root-preparation-stabilize-for-repeated-tags"></a>
-<a name="make-root-preparation-stabilize-for-repeated-tags--tr-instrumentation-preparation"></a>
 
 ### `TR-INSTRUMENTATION-PREPARATION` — Make root preparation stabilize for repeated tags
 
@@ -4790,7 +4687,6 @@ protected void prepareForInstrumentation(Set<Class<?>> tags) {
 ---
 
 <a name="do-not-substitute-instruction-tracing-for-semantic-events"></a>
-<a name="do-not-substitute-instruction-tracing-for-semantic-events--tr-instruction-tracing"></a>
 
 ### `TR-INSTRUCTION-TRACING` — Do not substitute instruction tracing for semantic events
 
@@ -4839,7 +4735,6 @@ roots.update(config);
 ---
 
 <a name="establish-prolog-state-before-the-root-body-event"></a>
-<a name="establish-prolog-state-before-the-root-body-event--tr-root-body-scope"></a>
 
 ### `TR-ROOT-BODY-SCOPE` — Establish prolog state before the root-body event
 
@@ -4908,7 +4803,6 @@ final class BodyNode extends InstrumentableExpressionNode {
 ---
 
 <a name="report-allocation-intent-before-creating-the-guest-value"></a>
-<a name="report-allocation-intent-before-creating-the-guest-value--tr-allocation-events"></a>
 
 ### `TR-ALLOCATION-EVENTS` — Report allocation intent before creating the guest value
 
@@ -4965,7 +4859,6 @@ final class GuestBox implements TruffleObject {
 ---
 
 <a name="keep-compiler-diagnostics-independent-of-guest-execution"></a>
-<a name="keep-compiler-diagnostics-independent-of-guest-execution--tr-diagnostic-safety"></a>
 
 ### `TR-DIAGNOSTIC-SAFETY` — Keep compiler diagnostics independent of guest execution
 
@@ -5008,7 +4901,6 @@ final class OperationNode extends Node {
 ---
 
 <a name="preserve-syntax-and-source-locations-when-materializing-nodes"></a>
-<a name="preserve-syntax-and-source-locations-when-materializing-nodes--tr-instrumentable-materialization"></a>
 
 ### `TR-INSTRUMENTABLE-MATERIALIZATION` — Preserve syntax and source locations when materializing nodes
 

@@ -69,7 +69,6 @@ The before and after examples are illustrative; they omit imports and surroundin
 ## Engine configuration and deployment
 
 <a name="configure-shared-engine-options-on-the-engine"></a>
-<a name="configure-shared-engine-options-on-the-engine--pg-engine-options"></a>
 
 ### `PG-ENGINE-OPTIONS` — Configure shared engine options on the engine
 
@@ -109,7 +108,6 @@ try (Engine engine = Engine.newBuilder()
 ---
 
 <a name="match-isolate-configuration-to-permitted-languages-and-dependencies"></a>
-<a name="match-isolate-configuration-to-permitted-languages-and-dependencies--pg-isolate-configuration"></a>
 
 ### `PG-ISOLATE-CONFIGURATION` — Match isolate configuration to permitted languages and dependencies
 
@@ -142,7 +140,6 @@ try (Engine engine = Engine.newBuilder(languageId)
 ---
 
 <a name="include-the-required-language-artifacts-in-the-deployment"></a>
-<a name="include-the-required-language-artifacts-in-the-deployment--pg-language-dependencies"></a>
 
 ### `PG-LANGUAGE-DEPENDENCIES` — Include the required language artifacts in the deployment
 
@@ -180,7 +177,6 @@ static void checkDeployment(String requiredLanguageId) {
 ---
 
 <a name="prepare-resource-trees-through-the-public-copy-operation"></a>
-<a name="prepare-resource-trees-through-the-public-copy-operation--pg-resource-copy"></a>
 
 ### `PG-RESOURCE-COPY` — Prepare resource trees through the public copy operation
 
@@ -220,7 +216,6 @@ void prepareResources(Path resourceDirectory, String... selectedLanguageIds)
 ---
 
 <a name="keep-experimental-options-out-of-default-production-configuration"></a>
-<a name="keep-experimental-options-out-of-default-production-configuration--pg-experimental-options"></a>
 
 ### `PG-EXPERIMENTAL-OPTIONS` — Keep experimental options out of default production configuration
 
@@ -268,7 +263,6 @@ String evaluate(Source source, Map<String, String> stableEngineOptions) {
 ## Host permissions and file access
 
 <a name="audit-the-actual-grants-of-a-host-access-policy"></a>
-<a name="audit-the-actual-grants-of-a-host-access-policy--pg-host-privileges"></a>
 
 ### `PG-HOST-PRIVILEGES` — Audit the actual grants of a host access policy
 
@@ -318,7 +312,6 @@ try (Context context = Context.newBuilder(source.getLanguage())
 ---
 
 <a name="expose-internal-resources-through-the-read-only-adapter"></a>
-<a name="expose-internal-resources-through-the-read-only-adapter--pg-internal-resources"></a>
 
 ### `PG-INTERNAL-RESOURCES` — Expose internal resources through the read-only adapter
 
@@ -351,7 +344,6 @@ try (Context context = Context.newBuilder(languageId)
 ---
 
 <a name="configure-the-composites-working-directory-not-its-delegates"></a>
-<a name="configure-the-composites-working-directory-not-its-delegates--pg-composite-filesystem"></a>
 
 ### `PG-COMPOSITE-FILESYSTEM` — Configure the composite's working directory, not its delegates
 
@@ -389,7 +381,6 @@ Path target = composite.toAbsolutePath(composite.parsePath("input.dat"));
 ---
 
 <a name="choose-io-grants-with-an-explicit-upgrade-policy"></a>
-<a name="choose-io-grants-with-an-explicit-upgrade-policy--pg-io-privileges"></a>
 
 ### `PG-IO-PRIVILEGES` — Choose I/O grants with an explicit upgrade policy
 
@@ -432,7 +423,6 @@ void execute(Source program) {
 ## Context lifecycle and cancellation
 
 <a name="restore-explicit-context-entry-on-exceptional-paths"></a>
-<a name="restore-explicit-context-entry-on-exceptional-paths--pg-enter-leave"></a>
 
 ### `PG-ENTER-LEAVE` — Restore explicit context entry on exceptional paths
 
@@ -466,7 +456,6 @@ try {
 ---
 
 <a name="do-not-reuse-a-cancelled-context-or-conflate-failure-properties"></a>
-<a name="do-not-reuse-a-cancelled-context-or-conflate-failure-properties--pg-cancellation"></a>
 
 ### `PG-CANCELLATION` — Do not reuse a cancelled context or conflate failure properties
 
@@ -516,7 +505,6 @@ void executeOnce(Source source) {
 ---
 
 <a name="avoid-keeping-an-idle-coordinator-entered-while-workers-run"></a>
-<a name="avoid-keeping-an-idle-coordinator-entered-while-workers-run--pg-entered-waits"></a>
 
 ### `PG-ENTERED-WAITS` — Avoid keeping an idle coordinator entered while workers run
 
@@ -550,7 +538,6 @@ worker.get(); // Coordinator never entered; eval enters for the worker operation
 ---
 
 <a name="scope-host-callback-parameters-to-their-actual-lifetime"></a>
-<a name="scope-host-callback-parameters-to-their-actual-lifetime--pg-callback-scoping"></a>
 
 ### `PG-CALLBACK-SCOPING` — Scope host callback parameters to their actual lifetime
 
@@ -602,7 +589,6 @@ try (Context context = Context.newBuilder(languageId)
 ---
 
 <a name="close-owned-contexts-and-engines-without-relying-on-gc"></a>
-<a name="close-owned-contexts-and-engines-without-relying-on-gc--pg-context-lifetime"></a>
 
 ### `PG-CONTEXT-LIFETIME` — Close owned contexts and engines without relying on GC
 
@@ -647,7 +633,6 @@ int[] evaluateBatch(Source[] sources) {
 ---
 
 <a name="keep-guest-exit-from-terminating-the-host-process"></a>
-<a name="keep-guest-exit-from-terminating-the-host-process--pg-guest-exit"></a>
 
 ### `PG-GUEST-EXIT` — Keep guest exit from terminating the host process
 
@@ -695,7 +680,6 @@ void runGuest(Source source) {
 ## Sources, evaluation, and reuse
 
 <a name="capture-a-callable-only-when-repeated-calls-should-use-that-value"></a>
-<a name="capture-a-callable-only-when-repeated-calls-should-use-that-value--pg-member-dispatch"></a>
 
 ### `PG-MEMBER-DISPATCH` — Capture a callable only when repeated calls should use that value
 
@@ -737,7 +721,6 @@ void runBatch(Value exports, int[] inputs) {
 ---
 
 <a name="retain-reusable-sources-for-the-intended-code-cache-lifetime"></a>
-<a name="retain-reusable-sources-for-the-intended-code-cache-lifetime--pg-source-cache"></a>
 
 ### `PG-SOURCE-CACHE` — Retain reusable sources for the intended code-cache lifetime
 
@@ -784,7 +767,6 @@ final class ProgramRunner implements AutoCloseable {
 ---
 
 <a name="do-not-treat-a-parsed-value-as-a-memoized-result"></a>
-<a name="do-not-treat-a-parsed-value-as-a-memoized-result--pg-parsed-execution"></a>
 
 ### `PG-PARSED-EXECUTION` — Do not treat a parsed value as a memoized result
 
@@ -823,7 +805,6 @@ try (Context context = Context.newBuilder(source.getLanguage()).build()) {
 ## Guest values and Java mappings
 
 <a name="match-typed-interfaces-to-guest-members-and-mapping-policy"></a>
-<a name="match-typed-interfaces-to-guest-members-and-mapping-policy--pg-interface-mapping"></a>
 
 ### `PG-INTERFACE-MAPPING` — Match typed interfaces to guest members and mapping policy
 
@@ -872,7 +853,6 @@ try (Context context = Context.newBuilder(source.getLanguage())
 ---
 
 <a name="inspect-guest-values-through-public-capabilities"></a>
-<a name="inspect-guest-values-through-public-capabilities--pg-value-capabilities"></a>
 
 ### `PG-VALUE-CAPABILITIES` — Inspect guest values through public capabilities
 
@@ -906,7 +886,6 @@ String readLabel(Value result) {
 ---
 
 <a name="select-the-intended-languages-top-level-bindings"></a>
-<a name="select-the-intended-languages-top-level-bindings--pg-language-bindings"></a>
 
 ### `PG-LANGUAGE-BINDINGS` — Select the intended language's top-level bindings
 
@@ -942,7 +921,6 @@ Value requiredGlobal(Context context, String languageId, String name) {
 ---
 
 <a name="request-the-numeric-value-rather-than-guessing-its-java-wrapper"></a>
-<a name="request-the-numeric-value-rather-than-guessing-its-java-wrapper--pg-numeric-conversion"></a>
 
 ### `PG-NUMERIC-CONVERSION` — Request the numeric value rather than guessing its Java wrapper
 
@@ -977,7 +955,6 @@ long readCount(Value result) {
 ---
 
 <a name="preserve-proxy-cursor-and-failure-semantics"></a>
-<a name="preserve-proxy-cursor-and-failure-semantics--pg-iterator-contract"></a>
 
 ### `PG-ITERATOR-CONTRACT` — Preserve proxy cursor and failure semantics
 
@@ -1024,7 +1001,6 @@ public Object getNext() {
 ---
 
 <a name="separate-conversion-order-from-overload-precedence"></a>
-<a name="separate-conversion-order-from-overload-precedence--pg-target-mapping"></a>
 
 ### `PG-TARGET-MAPPING` — Separate conversion order from overload precedence
 
@@ -1068,7 +1044,6 @@ try (Context context = Context.newBuilder(source.getLanguage())
 ---
 
 <a name="use-the-hash-protocol-for-guest-dictionary-entries"></a>
-<a name="use-the-hash-protocol-for-guest-dictionary-entries--pg-hash-entries"></a>
 
 ### `PG-HASH-ENTRIES` — Use the hash protocol for guest dictionary entries
 
@@ -1107,7 +1082,6 @@ Value requiredEntry(Value dictionary, String key) {
 ---
 
 <a name="handle-the-public-operations-documented-failure"></a>
-<a name="handle-the-public-operations-documented-failure--pg-failure-protocol"></a>
 
 ### `PG-FAILURE-PROTOCOL` — Handle the public operation's documented failure
 
@@ -1154,7 +1128,6 @@ Value requiredMember(Value receiver, String name) {
 ## Output, logging, and diagnostics
 
 <a name="bound-host-side-output-independently-of-guest-memory"></a>
-<a name="bound-host-side-output-independently-of-guest-memory--pg-resource-output"></a>
 
 ### `PG-RESOURCE-OUTPUT` — Bound host-side output independently of guest memory
 
@@ -1190,7 +1163,6 @@ try (Context context = Context.newBuilder(source.getLanguage())
 ---
 
 <a name="isolate-guest-driven-diagnostic-failures"></a>
-<a name="isolate-guest-driven-diagnostic-failures--pg-diagnostics"></a>
 
 ### `PG-DIAGNOSTICS` — Isolate guest-driven diagnostic failures
 
@@ -1238,7 +1210,6 @@ catch (PolyglotException original) {
 ---
 
 <a name="choose-one-intended-logging-destination-per-scope"></a>
-<a name="choose-one-intended-logging-destination-per-scope--pg-log-routing"></a>
 
 ### `PG-LOG-ROUTING` — Choose one intended logging destination per scope
 
