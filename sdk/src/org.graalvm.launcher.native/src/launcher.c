@@ -281,19 +281,30 @@ static void strbuf_appendf(struct strbuf *buf, const char *format, ...) {
     free(str);
 }
 
-/* a list of strings which are never freed */
+/* a list of strings, which owns its strings */
 struct strlist {
-    const char **items;
+    char **items;
     size_t len;
     size_t capacity;
 };
 
-static void strlist_push(struct strlist *list, const char *str) {
+/* str must be allocated with malloc(), the list takes ownership of it */
+static void strlist_push(struct strlist *list, char *str) {
     if (list->len == list->capacity) {
         list->capacity = list->capacity == 0 ? 16 : list->capacity * 2;
-        list->items = (const char **) xrealloc(list->items, list->capacity * sizeof(char *));
+        list->items = (char **) xrealloc(list->items, list->capacity * sizeof(char *));
     }
     list->items[list->len++] = str;
+}
+
+static void strlist_free(struct strlist *list) {
+    for (size_t i = 0; i < list->len; i++) {
+        free(list->items[i]);
+    }
+    free(list->items);
+    list->items = NULL;
+    list->len = 0;
+    list->capacity = 0;
 }
 
 /* platform-independent environment setter, use empty value to clear */
@@ -407,7 +418,9 @@ static char *canonicalize(const char *path) {
  */
 static void *load_jli_lib(const char *exeDir) {
     char *libjliPath = str_format("%s%s%s", exeDir, DIR_SEP_STR, LIBJLI_RELPATH_STR);
-    return dlopen(libjliPath, RTLD_NOW);
+    void *handle = dlopen(libjliPath, RTLD_NOW);
+    free(libjliPath);
+    return handle;
 }
 #endif
 
@@ -624,6 +637,7 @@ static char *arg_file_next_token(FILE *input) {
     }
 done:
     if (token.len == 0) {
+        free(token.data);
         return NULL;
     }
     return token.data;
@@ -649,10 +663,13 @@ static void expand_vm_arg_file(const char *arg_file,
         if (token != NULL) {
             if (STARTS_WITH(token, "--class-path=")) {
                 strbuf_appendf(cp, "%s%s", CP_SEP_STR, token + sizeof("--class-path=") - 1);
+                free(token);
             } else if (STARTS_WITH(token, "--module-path=")) {
                 strbuf_appendf(modulePath, "%s%s", CP_SEP_STR, token + sizeof("--module-path=") - 1);
+                free(token);
             } else if (STARTS_WITH(token, "-Djava.library.path=")) {
                 strbuf_appendf(libraryPath, "%s%s", CP_SEP_STR, token + sizeof("-Djava.library.path=") - 1);
+                free(token);
             } else {
                 if (STARTS_WITH(token, "-Xss")) {
                     *stack_size = parse_size(token + sizeof("-Xss") - 1);
@@ -707,9 +724,9 @@ static void parse_vm_options(struct MainThreadArgs *parsedArgs) {
     /* set system properties */
     if (jvmMode) {
         /* this is only needed for jvm mode */
-        strlist_push(vmArgs, "-Dorg.graalvm.launcher.class=" LAUNCHER_CLASS_STR);
+        strlist_push(vmArgs, xstrdup("-Dorg.graalvm.launcher.class=" LAUNCHER_CLASS_STR));
     }
-    strlist_push(vmArgs, "-Dorg.graalvm.version=" GRAALVM_VERSION_STR);
+    strlist_push(vmArgs, xstrdup("-Dorg.graalvm.version=" GRAALVM_VERSION_STR));
 
     struct strbuf executablename = strbuf_new();
     strbuf_appendf(&executablename, "-Dorg.graalvm.launcher.executablename=");
@@ -738,7 +755,10 @@ static void parse_vm_options(struct MainThreadArgs *parsedArgs) {
         int launcherModulePathCnt = sizeof(launcherModulePathEntries) / sizeof(*launcherModulePathEntries);
         for (int i = 0; i < launcherModulePathCnt; i++) {
             char *entry = str_format("%s%s%s", exeDir, DIR_SEP_STR, launcherModulePathEntries[i]);
-            strbuf_appendf(&modulePath, "%s", canonicalize(entry));
+            char *canonicalEntry = canonicalize(entry);
+            strbuf_appendf(&modulePath, "%s", canonicalEntry);
+            free(canonicalEntry);
+            free(entry);
             if (i < launcherModulePathCnt-1) {
                 strbuf_appendf(&modulePath, "%s", CP_SEP_STR);
             }
@@ -767,6 +787,7 @@ static void parse_vm_options(struct MainThreadArgs *parsedArgs) {
                     }
                 }
                 closedir(dir);
+                free(canonicalDir);
             }
             #else
             // From https://learn.microsoft.com/en-us/windows/win32/fileio/listing-the-files-in-a-directory
@@ -783,8 +804,11 @@ static void parse_vm_options(struct MainThreadArgs *parsedArgs) {
                     }
                 } while (FindNextFileA(dir, &entry));
                 FindClose(dir);
+                free(canonicalDir);
             }
+            free(searchDir);
             #endif
+            free(absoluteDir);
         }
     }
     #endif
@@ -808,8 +832,11 @@ static void parse_vm_options(struct MainThreadArgs *parsedArgs) {
     int launcherLangHomeNamesCnt = sizeof(launcherLangHomeNames) / sizeof(*launcherLangHomeNames);
     for (int i = 0; i < launcherLangHomeNamesCnt; i++) {
         char *relativeHome = str_format("%s%s%s", exeDir, DIR_SEP_STR, launcherLangHomePaths[i]);
-        char *ss = str_format("-Dorg.graalvm.language.%s.home=%s", launcherLangHomeNames[i], canonicalize(relativeHome));
+        char *home = canonicalize(relativeHome);
+        char *ss = str_format("-Dorg.graalvm.language.%s.home=%s", launcherLangHomeNames[i], home);
         strlist_push(vmArgs, ss);
+        free(home);
+        free(relativeHome);
     }
     #endif
 
@@ -820,8 +847,11 @@ static void parse_vm_options(struct MainThreadArgs *parsedArgs) {
         int extractedLibCnt = sizeof(extractedLibNames) / sizeof(*extractedLibNames);
         for (int i = 0; i < extractedLibCnt; i++) {
             char *relativePath = str_format("%s%s%s", exeDir, DIR_SEP_STR, extractedLibPaths[i]);
-            char *ss = str_format("-D%s=%s", extractedLibNames[i], canonicalize(relativePath));
+            char *path = canonicalize(relativePath);
+            char *ss = str_format("-D%s=%s", extractedLibNames[i], path);
             strlist_push(vmArgs, ss);
+            free(path);
+            free(relativePath);
         }
     }
     #endif
@@ -882,12 +912,14 @@ static void parse_vm_options(struct MainThreadArgs *parsedArgs) {
             char *envKey = str_format("GRAALVM_LANGUAGE_LAUNCHER_VMARGS_%d", i);
             char *cur = getenv(envKey);
             if (!cur) {
+                free(envKey);
                 fprintf(stderr, "VM arguments specified: %d but argument %dmissing\n", vmArgCount, i);
                 break;
             }
             parse_vm_option(vmArgs, &cp, &modulePath, &libraryPath, stack_size, startOnFirstThread, cur);
             /* clean up env variable */
             launcher_setenv(envKey, "");
+            free(envKey);
         }
     }
 
@@ -900,14 +932,18 @@ static void parse_vm_options(struct MainThreadArgs *parsedArgs) {
             strlist_push(vmArgs, str_format("-Djava.library.path=%s", libraryPath.data + 1));
         }
 #ifdef LAUNCHER_MODULE_PATH
-        strlist_push(vmArgs, modulePath.data);
-        strlist_push(vmArgs, "-Djdk.module.main=" LAUNCHER_MAIN_MODULE_STR);
-        strlist_push(vmArgs, "-Dgraalvm.locatorDisabled=true");
+        strlist_push(vmArgs, xstrdup(modulePath.data));
+        strlist_push(vmArgs, xstrdup("-Djdk.module.main=" LAUNCHER_MAIN_MODULE_STR));
+        strlist_push(vmArgs, xstrdup("-Dgraalvm.locatorDisabled=true"));
 #endif
 
         /* Allow Truffle NFI Panama to use Linker#{downcallHandle,upcallStub} without warnings. */
-        strlist_push(vmArgs, "--enable-native-access=org.graalvm.truffle");
+        strlist_push(vmArgs, xstrdup("--enable-native-access=org.graalvm.truffle"));
     }
+
+    free(cp.data);
+    free(modulePath.data);
+    free(libraryPath.data);
 }
 
 static int jvm_main_thread(struct MainThreadArgs *mainArgs);
@@ -980,6 +1016,7 @@ int main(int argc, char *argv[]) {
     if (!jvmMode) {
         if (!exists(libPath)) {
             /* switch to JVM mode */
+            free(libPath);
             libPath = vm_path(exeDir, true);
             jvmMode = true;
         }
@@ -1045,6 +1082,7 @@ int main(int argc, char *argv[]) {
         if (pthread_create(&main_thr, &attr, &jvm_main_thread_start, threadArgs) != 0) {
             fprintf(stderr, "Could not create main thread: %s\n", strerror(errno));
             pthread_attr_destroy(&attr);
+            free(threadArgs);
             return -1;
         }
 
@@ -1123,7 +1161,7 @@ static int jvm_main_thread(struct MainThreadArgs *parsedArgs) {
 
         if (jdk24_or_higher) {
             // GR-59703: Migrate sun.misc.* usages.
-            strlist_push(vmArgs, "--sun-misc-unsafe-memory-access=allow");
+            strlist_push(vmArgs, xstrdup("--sun-misc-unsafe-memory-access=allow"));
         }
     }
 
@@ -1150,12 +1188,15 @@ static int jvm_main_thread(struct MainThreadArgs *parsedArgs) {
             nmtPos += sizeof(NMT_ARG_NAME) - 1;
             /* skip the '=' */
             const char *val = (*nmtPos == '\0') ? nmtPos : nmtPos + 1;
-            char *pid = str_format("%d", (int) getpid());
-            launcher_setenv(str_format("%s%s", NMT_ENV_NAME, pid), val);
+            char *nmtEnv = str_format("%s%d", NMT_ENV_NAME, (int) getpid());
+            launcher_setenv(nmtEnv, val);
+            free(nmtEnv);
         }
         curOpt->optionString = xstrdup(arg);
         curOpt++;
     }
+    /* the options have their own copy of the VM arguments */
+    strlist_free(vmArgs);
 
     CreateJavaVM_type createVM = (CreateJavaVM_type) get_function(library, "JNI_CreateJavaVM");
     if (!createVM) {
@@ -1277,6 +1318,8 @@ static int jvm_main_thread(struct MainThreadArgs *parsedArgs) {
         }
     }
 
+    strlist_free(optionVarsArgs);
+
     /* invoke launcher entry point */
     jlong argv_native_long = (jlong)(uintptr_t)(void*)argv_native;
     (*env)->CallStaticVoidMethod(env, launcherClass, runLauncherMid, optionVarsArgsArray, args, argc_native, argv_native_long, relaunch);
@@ -1307,6 +1350,7 @@ static int jvm_main_thread(struct MainThreadArgs *parsedArgs) {
             if (launcher_setenv("GRAALVM_LANGUAGE_LAUNCHER_VMARGS", ss) == -1) {
                 return -1;
             }
+            free(ss);
             for (int i = 0; i < vmArgCount; i++) {
                 jstring vmArgString = (jstring)(*env)->GetObjectArrayElement(env, vmArgs, i);
                 if ((*env)->ExceptionCheck(env)) {
@@ -1326,6 +1370,8 @@ static int jvm_main_thread(struct MainThreadArgs *parsedArgs) {
                 if (launcher_setenv(key, arg) == -1) {
                     return -1;
                 }
+                free(key);
+                (*env)->ReleaseStringUTFChars(env, vmArgString, vmArg);
             }
             /* relaunch with correct VM arguments */
             char *path = exe_path();
