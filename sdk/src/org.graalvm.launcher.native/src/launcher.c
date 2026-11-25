@@ -1140,6 +1140,11 @@ static int jvm_main_thread(struct MainThreadArgs *parsedArgs) {
         fprintf(stderr, "Could not load VM library from %s.\n", libPath);
         return -1;
     }
+    /* the paths are no longer needed once the VM library is loaded */
+    free(parsedArgs->libPath);
+    parsedArgs->libPath = NULL;
+    free(parsedArgs->exeDir);
+    parsedArgs->exeDir = NULL;
 
     if (jvmMode) {
         GetDefaultJavaVMInitArgs_type getDefaultJavaVMInitArgs = (GetDefaultJavaVMInitArgs_type) get_function(library, "JNI_GetDefaultJavaVMInitArgs");
