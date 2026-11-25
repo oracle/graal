@@ -95,7 +95,10 @@ public final class FieldOffsetNode extends FloatingNode implements FieldOffsetPr
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (field instanceof SharedField sharedField) {
-            long fieldOffset = sharedField.getLocation();
+            int fieldOffset = sharedField.getLocation();
+            if (field.isStatic()) {
+                fieldOffset = tool.getMetaAccessExtensionProvider().getStaticFieldOffset(field, fieldOffset);
+            }
             if (fieldOffset <= 0) {
                 throw VMError.shouldNotReachHere("No offset for field " + field);
             }
