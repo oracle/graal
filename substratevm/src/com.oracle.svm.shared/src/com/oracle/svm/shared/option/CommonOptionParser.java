@@ -374,7 +374,11 @@ public class CommonOptionParser {
             valueString = valueString.substring(0, valueString.length() - 1);
         }
 
-        return Long.parseLong(valueString) * scale;
+        try {
+            return Math.multiplyExact(Long.parseLong(valueString), scale);
+        } catch (ArithmeticException ex) {
+            throw new NumberFormatException("Value out of range: " + v);
+        }
     }
 
     /**
