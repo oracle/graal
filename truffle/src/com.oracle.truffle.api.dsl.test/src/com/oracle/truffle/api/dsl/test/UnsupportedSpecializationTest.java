@@ -43,6 +43,7 @@ package com.oracle.truffle.api.dsl.test;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -276,7 +277,13 @@ public class UnsupportedSpecializationTest {
 
         @ExportMessage
         static final class WriteMember {
-
+            /*
+             * PBTI's InitializeNewRoots can initialize TypeWithUnsupportedGen and register this
+             * export even when the test itself is unreachable. The specialization can then become
+             * reachable for runtime compilation through unrelated interop paths. Keep the
+             * test-only assertion and its diagnostic string formatting out of partial evaluation.
+             */
+            @TruffleBoundary
             @Specialization
             static void write(TypeWithUnsupported receiver, String name, int value) {
                 Assert.fail("unexpected: " + receiver + ", " + name + ", " + value);
