@@ -212,6 +212,19 @@ public abstract class ClangLikeBase extends Driver {
     private List<String> getVectorInstructionSetFlags() {
         switch (arch) {
             case X86_64:
+                /*
+                 * By default, post-SSE2 vector instruction sets are disabled so that clang does
+                 * not emit intrinsics the Sulong runtime cannot execute. SULONG_VECTORIZATION
+                 * relaxes this for the tiers the runtime does support: "sse4" stops suppressing
+                 * SSE3/SSSE3/SSE4.x, "avx2" additionally stops suppressing AVX/AVX2/FMA (the
+                 * user still selects the actual target via -mavx2/-march as usual).
+                 */
+                String vectorization = System.getenv("SULONG_VECTORIZATION");
+                if ("avx2".equals(vectorization)) {
+                    return Collections.emptyList();
+                } else if ("sse4".equals(vectorization)) {
+                    return Arrays.asList("-mno-avx");
+                }
                 return Arrays.asList("-mno-sse3", "-mno-avx");
             default:
                 return Collections.emptyList();
