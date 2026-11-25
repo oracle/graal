@@ -265,6 +265,8 @@ GraalTags = Tags([
     'debuginfotest',
     'standalone_pointsto_unittests',
     'driver_unittests',
+    'scismoketest',
+    'scifallbacktest',
     'native_unittests',
     'generic_field_type',
     'runtime_assertions',
@@ -550,6 +552,16 @@ def svm_gate_body(args, tasks):
             elif '--static' not in args.extra_image_builder_arguments:
                 with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                     layereddebuginfotest(['--output-path', svmbuild_dir()] + args.extra_image_builder_arguments)
+
+    with Task('image scismoketest', tasks, tags=[GraalTags.scismoketest]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                scismoketest(['--output-path', svmbuild_dir()] + args.extra_image_builder_arguments)
+
+    with Task('image scifallbacktest', tasks, tags=[GraalTags.scifallbacktest]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                scifallbacktest(['--output-path', svmbuild_dir()] + args.extra_image_builder_arguments)
 
     with Task('image debughelpertest', tasks, tags=[GraalTags.debuginfotest]) as t:
         if t:
@@ -1906,6 +1918,161 @@ def testhello_ni_args(cincludepath, sourcepath):
         '-H:DebugInfoSourceSearchPath=' + sourcepath,
     ])
 
+def _run_scismoke_binary(binary_path):
+    expected_output = 'PASS' + os.linesep
+    actual_output = []
+
+    def _collector(x):
+        actual_output.append(x)
+        mx.log(x)
+
+    mx.run([binary_path], out=_collector)
+
+    # Basic correctness check.
+    if ''.join(actual_output) != expected_output:
+        mx.abort('Unexpected output: ' + str(actual_output) + ' != ' + str([expected_output]))
+
+
+class _ScismokeHistogramTracker:
+    _HISTOGRAM_HEADER = 'Code Size; Nodes Parsing'
+    _HISTOGRAM_FOOTER = 'Size all methods'
+
+    def __init__(self):
+        self.in_histogram = False
+        self.has_single = False
+        self.has_multi = False
+        self.verified_histogram = False
+
+    def process_line(self, line):
+        # Only verify within method histogram bounds.
+        if line.startswith(self._HISTOGRAM_HEADER):
+            self.in_histogram = True
+            self.verified_histogram = True
+        elif self.in_histogram:
+            if line.startswith(self._HISTOGRAM_FOOTER):
+                self.in_histogram = False
+            else:
+                if 'singleCallsiteHelper' in line:
+                    self.has_single = True
+                if 'multiCallsiteHelper' in line:
+                    self.has_multi = True
+
+
+def _find_methodhistogram_file(reports_dir):
+    matches = glob(join(reports_dir, 'methodhistogram_*.txt'))
+    if not matches:
+        return None
+    return max(matches, key=os.path.getmtime)
+
+
+def _parse_methodhistogram_file(histogram_file):
+    tracker = _ScismokeHistogramTracker()
+    with open(histogram_file, 'r', encoding='utf-8') as histogram:
+        for line in histogram:
+            tracker.process_line(line.rstrip('\n'))
+    return tracker
+
+
+def _build_scismoke_image(native_image, build_args, reports_dir):
+    def _log_output(line):
+        mx.log(line)
+
+    native_image(build_args, out=_log_output, err=_log_output)
+    histogram_file = _find_methodhistogram_file(reports_dir)
+    if histogram_file is None:
+        mx.abort('PrintMethodHistogram report not found in ' + reports_dir)
+    mx.log('Parsing method histogram from: ' + histogram_file)
+    tracker = _parse_methodhistogram_file(histogram_file)
+    if not tracker.verified_histogram:
+        mx.abort('PrintMethodHistogram output not found in ' + histogram_file)
+    return tracker
+
+
+def _assert_scismoke_histogram(tracker, is_sci_enabled, variant_name):
+    if not tracker.has_multi:
+        mx.abort(variant_name + ': multiCallsiteHelper should always appear in histogram')
+    if is_sci_enabled:
+        if tracker.has_single:
+            mx.abort(variant_name + ': singleCallsiteHelper should not appear in histogram with SCI enabled')
+    elif not tracker.has_single:
+        mx.abort(variant_name + ': singleCallsiteHelper should appear in histogram with SCI disabled')
+
+def _scifallbacktest(native_image, path, args):
+    mx_util.ensure_dir_exists(path)
+    binary_path = join(path, 'scifallback')
+    # Generate enough non-foldable work to cross the production 50,000 size limit.
+    # Each adjacent pair stays below the limit, so only tracking the immediate
+    # caller (instead of the root's accumulated size) incorrectly inlines it all.
+    source_path = join(path, 'SciFallbackTest.java')
+    classes_path = join(path, 'scifallback-classes')
+    mx_util.ensure_dir_exists(classes_path)
+    chain_length = 128
+    with open(source_path, 'w', encoding='utf-8') as source:
+        source.write('import com.oracle.svm.core.NeverInlineTrivial;\n'
+                     'public class SciFallbackTest {\n'
+                     '    private static volatile int input = 17;\n'
+                     '    public static void main(String[] args) {\n'
+                     '        System.out.println("Result: " + chainLink0(args.length));\n'
+                     '    }\n')
+        for method in range(chain_length):
+            source.write('    @NeverInlineTrivial(reason = "Exercise single-callsite inlining")\n'
+                         f'    private static int chainLink{method}(int result) {{\n')
+            # Volatile accesses prevent folding; straight-line code grows the graph
+            # without relying on loop unrolling or creating additional callsites.
+            # Stores also avoid long arithmetic dependency chains if all callees
+            # are incorrectly inlined, so the size assertion detects the regression.
+            for operation in range(128):
+                source.write(f'        input = (result ^ input) * 31 + {operation};\n')
+            result = f'chainLink{method + 1}(input)' if method + 1 < chain_length else 'input'
+            source.write(f'        return {result};\n    }}\n')
+        source.write('}\n')
+    mx.run([mx.get_jdk().javac, '-cp', mx.classpath('com.oracle.svm.core'),
+            '-d', classes_path, source_path])
+    build_args = [
+        '-cp', classes_path,
+        '--initialize-at-build-time=SciFallbackTest',
+        'SciFallbackTest',
+    ] + svm_experimental_options([
+        '-H:+AOTSingleCallsiteInline',
+    ]) + [
+        '-o', binary_path,
+    ] + args
+
+    # Build should not assert
+    native_image(build_args)
+    mx.run([binary_path])
+
+
+def _scismoketest(native_image, path, args):
+    mx_util.ensure_dir_exists(path)
+
+    base_args = [
+        '--native-image-info',
+        '-cp', classpath('com.oracle.svm.test.sci'),
+        '--initialize-at-build-time=com.oracle.svm.test.sci',
+        'com.oracle.svm.test.sci.SciSmoke',
+    ] + args
+
+    def build_and_run(variant_name, sci_flag, is_sci_enabled):
+        variant_path = join(path, variant_name)
+        mx_util.ensure_dir_exists(variant_path)
+        binary_path = join(variant_path, 'scismoke')
+        build_args = base_args + svm_experimental_options([
+            sci_flag,
+            '-H:+PrintMethodHistogram',
+        ]) + [
+            '-o', binary_path,
+        ]
+        reports_dir = join(variant_path, 'reports')
+        mx.log(f'native_image {build_args}')
+        tracker = _build_scismoke_image(native_image, build_args, reports_dir)
+        _assert_scismoke_histogram(tracker, is_sci_enabled, variant_name)
+        _run_scismoke_binary(binary_path)
+
+    build_and_run('sci_on', '-H:+AOTSingleCallsiteInline', True)
+    build_and_run('sci_off', '-H:-AOTSingleCallsiteInline', False)
+
+
 def _gdbdebughelperstest(native_image, path, args):
 
     # ====== check gdb version ======
@@ -2874,6 +3041,44 @@ def run_helloworld_command(args, config, command_name, native_image_wrapper=None
         config=config,
     )
 
+@mx.command(suite_name=suite.name, command_name='scismoketest', usage_msg='[options]')
+def scismoketest(args, config=None):
+    """
+    Build and run a simple app with AOTSingleCallsiteInline enabled and disabled.
+    The output of the app is verified for correctness.
+    PrintMethodHistogram is parsed to verify the expected inlining happened.
+    """
+    parser = ArgumentParser(prog='mx scismoketest')
+    all_args = ['--output-path', '--build-only']
+    masked_args = [_mask(arg, all_args) for arg in args]
+    parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir()])
+    parser.add_argument('image_args', nargs='*', default=[])
+    parsed = parser.parse_args(masked_args)
+    output_path = unmask(parsed.output_path)[0]
+    native_image_context_run(
+        lambda native_image, a:
+            _scismoketest(native_image, output_path, a), unmask(parsed.image_args),
+        config=config
+    )
+
+@mx.command(suite_name=suite.name, command_name='scifallbacktest', usage_msg='[options]')
+def scifallbacktest(args, config=None):
+    """
+    Build and run an app with nested single callsite calls with AOTSingleCallsiteInline enabled.
+    Ensure the root method size limit is respected.
+    """
+    parser = ArgumentParser(prog='mx scifallbacktest')
+    all_args = ['--output-path', '--build-only']
+    masked_args = [_mask(arg, all_args) for arg in args]
+    parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir()])
+    parser.add_argument('image_args', nargs='*', default=[])
+    parsed = parser.parse_args(masked_args)
+    output_path = unmask(parsed.output_path)[0]
+    native_image_context_run(
+        lambda native_image, a:
+        _scifallbacktest(native_image, output_path, a), unmask(parsed.image_args),
+        config=config
+    )
 
 @mx.command(suite_name=suite.name, command_name='debuginfotest', usage_msg='[options]')
 def debuginfotest(args, config=None):
