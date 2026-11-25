@@ -56,12 +56,19 @@ public final class RistrettoCompilationManager {
          */
         @Override
         public void interrupt() {
-            super.interrupt();
-            if (QUEUE_MUTEX.isOwner()) {
-                QUEUE_CONDITION.broadcast();
-            } else {
-                try (var _ = QUEUE_MUTEX.lock()) {
+            try {
+                super.interrupt();
+            } finally {
+                /*
+                 * The JDK sets the interrupt flag before the parker allocation, which may fail.
+                 * Wake native queue waiters even if that allocation throws.
+                 */
+                if (QUEUE_MUTEX.isOwner()) {
                     QUEUE_CONDITION.broadcast();
+                } else {
+                    try (var _ = QUEUE_MUTEX.lock()) {
+                        QUEUE_CONDITION.broadcast();
+                    }
                 }
             }
         }
