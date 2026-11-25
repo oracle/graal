@@ -28,9 +28,11 @@ package com.oracle.svm.hosted.webimage.wasm.ast;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.SequencedMap;
+import java.util.Set;
 
 import com.oracle.svm.hosted.webimage.wasm.ast.id.WasmId;
 import com.oracle.svm.hosted.webimage.wasmgc.ast.RecursiveGroup;
@@ -64,6 +66,16 @@ public class WasmModule {
     protected List<Data> dataSegments = new ArrayList<>();
 
     protected final ActiveData activeData = new ActiveData();
+
+    /**
+     * Functions that need to be declared in a declarative element segment.
+     * <p>
+     * Per the WebAssembly spec, any function referenced by {@code ref.func} outside of an
+     * active/passive element segment must be declared in a declarative element segment.
+     * This is required for validation by strict validators like {@code wasm-tools validate}
+     * and {@code wasmtime}.
+     */
+    protected final Set<WasmId.Func> declarativeFuncRefs = new LinkedHashSet<>();
 
     protected StartFunction startFunction = null;
 
@@ -159,6 +171,17 @@ public class WasmModule {
 
     public void addActiveData(long offset, byte[] data) {
         activeData.addData(offset, data);
+    }
+
+    /**
+     * Declares a function reference for a declarative element segment.
+     */
+    public void addDeclarativeFuncRef(WasmId.Func func) {
+        declarativeFuncRefs.add(func);
+    }
+
+    public Set<WasmId.Func> getDeclarativeFuncRefs() {
+        return Collections.unmodifiableSet(declarativeFuncRefs);
     }
 
     public void constructActiveDataSegments() {
