@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.util;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.ADX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AES;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AMD_3DNOW_PREFETCH;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.APX_F;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512BW;
@@ -34,6 +35,12 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512CD;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512DQ;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512VL;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512_IFMA;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512_VAES;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512_VBMI;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512_VBMI2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512_VPCLMULQDQ;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX_IFMA;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.BMI1;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.BMI2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.CLMUL;
@@ -44,13 +51,18 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.F16C;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.FLUSHOPT;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.FMA;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.FXSR;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.GFNI;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.LZCNT;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.MMX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.PKU;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.POPCNT;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.RDPID;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SHA;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SHA512;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE3;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4A;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_1;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSSE3;
@@ -62,14 +74,12 @@ import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.shared.util.StringUtil;
 import com.oracle.svm.util.GuestAccess;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 
@@ -98,6 +108,12 @@ public enum CPUTypeAMD64 implements CPUType {
     HASWELL("haswell", X86_64, AES, SSE3, SSSE3, SSE4_1, SSE4_2, POPCNT, CLMUL, AVX, F16C, AVX2, BMI1, BMI2, LZCNT, FMA),
     SKYLAKE("skylake", HASWELL, ADX, AMD_3DNOW_PREFETCH, FLUSHOPT),
     SKYLAKE_AVX512("skylake-avx512", SKYLAKE, PKU, AVX512F, AVX512CD, AVX512VL, AVX512BW, AVX512DQ, CLWB),
+    ICELAKE_SERVER("icelake-server", SKYLAKE_AVX512, SHA, RDPID, GFNI, AVX512_VPCLMULQDQ, AVX512_VAES, AVX512_VBMI, AVX512_VBMI2, AVX512_IFMA),
+    DIAMONDRAPIDS("diamondrapids", ICELAKE_SERVER, APX_F, AVX_IFMA, SHA512),
+
+    // AMD selection
+    ZNVER3("znver3", X86_64_V3, AES, CLMUL, ADX, SSE4A, SHA, RDPID),
+    ZNVER4("znver4", ZNVER3, AVX512F, AVX512BW, AVX512CD, AVX512DQ, AVX512VL, GFNI, AVX512_VPCLMULQDQ, AVX512_VAES, AVX512_VBMI, AVX512_VBMI2, AVX512_IFMA),
 
     // Special symbols
     COMPATIBILITY(NativeImageOptions.MICRO_ARCHITECTURE_COMPATIBILITY, X86_64),
