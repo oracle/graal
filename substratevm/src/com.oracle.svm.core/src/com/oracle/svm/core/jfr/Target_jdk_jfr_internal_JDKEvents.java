@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
+import static com.oracle.svm.core.log.CoreLogSupport.log;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -73,14 +75,23 @@ final class Target_jdk_jfr_internal_JDKEvents {
 
     @Substitute
     private static void emitContainerConfiguration() {
-        Metrics metrics = containerMetrics;
-        if (metrics != null) {
-            EventConfiguration configuration = JVMSupport.getConfiguration(ContainerConfigurationEvent.class);
-            if (configuration != null && configuration.isEnabled()) {
-                JfrContainerEvents.emitContainerConfiguration(configuration, metrics.getProvider(), metrics.getCpuPeriod(), metrics.getCpuQuota(), metrics.getCpuShares(),
-                                metrics.getEffectiveCpuCount(), metrics.getMemorySoftLimit(), metrics.getMemoryLimit(), metrics.getMemoryAndSwapLimit(),
-                                JVM.hostTotalMemory(), JVM.hostTotalSwapMemory());
+        try {
+            Metrics metrics = containerMetrics;
+            if (metrics != null) {
+                EventConfiguration configuration = JVMSupport.getConfiguration(ContainerConfigurationEvent.class);
+                if (configuration != null && configuration.isEnabled()) {
+                    JfrContainerEvents.emitContainerConfiguration(configuration, metrics.getProvider(), metrics.getCpuPeriod(), metrics.getCpuQuota(), metrics.getCpuShares(),
+                                    metrics.getEffectiveCpuCount(), metrics.getMemorySoftLimit(), metrics.getMemoryLimit(), metrics.getMemoryAndSwapLimit(),
+                                    JVM.hostTotalMemory(), JVM.hostTotalSwapMemory());
+                }
             }
+        } catch (Throwable t) {
+            /*
+             * The JDK periodic task logger discards the exception type and stack trace. This
+             * temporary diagnostic will be removed as part of GR-78139.
+             */
+            log().string("Failed to emit jdk.ContainerConfiguration: ").exception(t).newline();
+            throw t;
         }
     }
 
