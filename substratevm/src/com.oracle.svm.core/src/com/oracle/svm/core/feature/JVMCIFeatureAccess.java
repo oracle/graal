@@ -143,10 +143,22 @@ public final class JVMCIFeatureAccess {
     }
 
     /**
+     * JVMCI-based counterpart of {@link org.graalvm.nativeimage.hosted.Feature.BeforeFieldValueAccess}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public interface BeforeFieldValueAccess {
+        /**
+         * JVMCI-based counterpart of
+         * {@link org.graalvm.nativeimage.hosted.Feature.BeforeFieldValueAccess#registerFieldValueTransformer(java.lang.reflect.Field, org.graalvm.nativeimage.hosted.FieldValueTransformer)}.
+         */
+        void registerFieldValueTransformer(ResolvedJavaField field, JVMCIFieldValueTransformer transformer);
+    }
+
+    /**
      * JVMCI-based counterpart of {@link org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess}.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public interface BeforeAnalysisAccess extends FeatureAccess {
+    public interface BeforeAnalysisAccess extends FeatureAccess, BeforeFieldValueAccess {
         /**
          * JVMCI-based counterpart of {@link org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerAsUsed(Class)}.
          */
@@ -205,9 +217,10 @@ public final class JVMCIFeatureAccess {
 
         /**
          * JVMCI-based counterpart of
-         * {@link org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerFieldValueTransformer(java.lang.reflect.Field, org.graalvm.nativeimage.hosted.FieldValueTransformer)}.
+         * {@link org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess#registerBeforeFieldValueAccessHandler(BiConsumer, Class)}.
          */
-        void registerFieldValueTransformer(ResolvedJavaField field, JVMCIFieldValueTransformer transformer);
+        void registerBeforeFieldValueAccessHandler(BiConsumer<BeforeFieldValueAccess, ResolvedJavaType> callback,
+                        ResolvedJavaType baseType);
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.util.function.Function;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.FieldValueTransformerRequiresUniverse;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -70,7 +71,7 @@ import jdk.graal.compiler.lir.LIRInstructionClass;
 public class FieldsOffsetsFeature implements Feature {
 
     /** Recomputes the {@code Fields.offsets} value after the image field layout is available. */
-    private static final class OffsetsRecomputation implements FieldValueTransformerWithAvailability {
+    private static final class OffsetsRecomputation implements FieldValueTransformerWithAvailability, FieldValueTransformerRequiresUniverse {
         // JVMCI migration blocked by GR-72589: Migrate GraalCompilerFeature to terminus
         @Override
         public boolean isAvailable() {
@@ -88,7 +89,7 @@ public class FieldsOffsetsFeature implements Feature {
         }
     }
 
-    private static final class IterationMaskRecomputation implements FieldValueTransformerWithAvailability {
+    private static final class IterationMaskRecomputation implements FieldValueTransformerWithAvailability, FieldValueTransformerRequiresUniverse {
         // JVMCI migration blocked by GR-72589: Migrate GraalCompilerFeature to terminus
         @Override
         public boolean isAvailable() {

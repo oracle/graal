@@ -34,6 +34,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class ImageLayerLoader {
     /**
@@ -43,6 +44,12 @@ public class ImageLayerLoader {
      */
     @SuppressWarnings("unused")
     public int lookupHostedTypeInBaseLayer(AnalysisType type) {
+        throw AnalysisError.shouldNotReachHere("This method should not be called");
+    }
+
+    /** Returns whether the given hosted type was persisted in a base layer. */
+    @SuppressWarnings("unused")
+    public boolean hasHostedTypeInBaseLayer(ResolvedJavaType type) {
         throw AnalysisError.shouldNotReachHere("This method should not be called");
     }
 

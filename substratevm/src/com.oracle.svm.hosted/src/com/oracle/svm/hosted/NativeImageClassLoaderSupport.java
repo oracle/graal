@@ -90,6 +90,7 @@ import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.libgraal.hosted.LibGraalLoader;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SharedConstants;
 import com.oracle.svm.core.SubstrateOptions;
@@ -172,6 +173,7 @@ public final class NativeImageClassLoaderSupport {
     private final IncludeSelectors layerSelectors = new IncludeSelectors(LayeredImageOptions.LayerCreate);
     private final IncludeSelectors preserveSelectors = new IncludeSelectors(SubstrateOptions.Preserve);
     private final IncludeSelectors dynamicAccessSelectors = new IncludeSelectors(SubstrateOptions.TrackDynamicAccess);
+    private final IncludeSelectors unconditionalInitializationSelectors = new IncludeSelectors(FutureDefaultsOptions.FutureDefaults);
     private boolean includeConfigSealed;
     private ValueWithOrigin<String> preserveAllOrigin;
 
@@ -456,6 +458,33 @@ public final class NativeImageClassLoaderSupport {
 
     public void loadAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
         VMError.guarantee(!includeConfigSealed, "This method should be executed only once.");
+
+        ValueWithOrigin<String> valueWithOrigin = FutureDefaultsOptions.predictableBuildTimeInitializationOrigin(parsedHostedOptions);
+        // if (valueWithOrigin == null) {
+        /*
+         * This selector mirrors -H:Preserve=all but without actually requiring to resolve
+         * all selected modules, nor actually retaining any new types in the generated image.
+         * This stops class initialization and disallowed object exceptions being hidden by reachability.
+         */
+        IncludeOptionsSupport.ExtendedOptionWithOrigin unconditionalInitializationOrigin = valueWithOrigin == null ? null
+                        : new IncludeOptionsSupport.ExtendedOptionWithOrigin(
+                                        new IncludeOptionsSupport.ExtendedOption("", PreserveOptionsSupport.PRESERVE_ALL), valueWithOrigin);
+        for (ModuleReference module : getModulePathsFinder().findAll()) {
+            Path modulePath = module.location().map(Path::of).orElse(null);
+            if (!imageProvidedJars.contains(modulePath)) {
+                unconditionalInitializationSelectors.addModule(module.descriptor().name(), unconditionalInitializationOrigin);
+            }
+        }
+        PreserveOptionsSupport.JDK_MODULES_TO_PRESERVE.forEach(
+                        moduleName -> unconditionalInitializationSelectors.addModule(moduleName, unconditionalInitializationOrigin));
+        unconditionalInitializationSelectors.addModule(ALL_UNNAMED, unconditionalInitializationOrigin);
+        /*
+         * unconditionalInitializationSelectors.verifyAndResolve() is intentionally not called.
+         * This selector is a subset of the -H:Preserve=all selector and does not require all
+         * modules and class paths to be loaded.
+         */
+        // TODO: preserveClassPathOrigin, null valueWithOrigin
+        // }
 
         if (isPreserveAll()) {
             String msg = """
@@ -1178,6 +1207,7 @@ public final class NativeImageClassLoaderSupport {
             try (ModuleReader moduleReader = moduleReference.open()) {
                 Module module = optionalModule.get();
                 final boolean includeUnconditionally = layerSelectors.moduleNames().contains(module.getName());
+                final boolean initializeUnconditionally = unconditionalInitializationSelectors.moduleNames().contains(module.getName());
                 final boolean preserveModule = preserveSelectors.moduleNames().contains(module.getName());
                 var container = moduleReference.location().orElseThrow();
                 final boolean isBuilderContainer = ModuleLayer.boot().equals(module.getLayer());
@@ -1193,7 +1223,8 @@ public final class NativeImageClassLoaderSupport {
                         if (className != null) {
                             currentlyProcessedEntry = moduleReferenceLocation + fileSystemSeparatorChar + moduleResource;
                             if (visibleToGuest) {
-                                executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally, registerTypes, preserveModule, isBuilderContainer));
+                                executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally, registerTypes, preserveModule, isBuilderContainer,
+                                                initializeUnconditionally));
                             } else {
                                 executor.execute(() -> {
                                     handleBuilderModuleClassFileName(module, className, registerTypes);
@@ -1237,6 +1268,7 @@ public final class NativeImageClassLoaderSupport {
         private void loadClassesFromPath(Path path) {
             final boolean includeUnconditionally = layerSelectors.classpathEntries().contains(path);
             final boolean includeAllMetadata = preserveSelectors.classpathEntries().contains(path);
+            final boolean initializeUnconditionally = unconditionalInitializationSelectors.classpathEntries().contains(path);
             if (ClasspathUtils.isJar(path)) {
                 try {
                     URI container = path.toAbsolutePath().toUri();
@@ -1250,7 +1282,7 @@ public final class NativeImageClassLoaderSupport {
                     }
                     if (probeJarFileSystem != null) {
                         try (FileSystem jarFileSystem = probeJarFileSystem) {
-                            loadClassesFromPath(container, jarFileSystem.getPath("/"), null, Collections.emptySet(), includeUnconditionally, includeAllMetadata, true);
+                            loadClassesFromPath(container, jarFileSystem.getPath("/"), null, Collections.emptySet(), includeUnconditionally, includeAllMetadata, initializeUnconditionally, true);
                         }
                     }
                 } catch (ClosedByInterruptException ignored) {
@@ -1261,13 +1293,14 @@ public final class NativeImageClassLoaderSupport {
             } else {
                 URI container = path.toUri();
                 loadClassesFromPath(container, path, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES, includeUnconditionally,
-                                includeAllMetadata, false);
+                                includeAllMetadata, initializeUnconditionally, false);
             }
         }
 
         private static final String CLASS_EXTENSION = ".class";
 
-        private void loadClassesFromPath(URI container, Path root, Path excludeRoot, Set<Path> excludes, boolean includeUnconditionally, boolean includeAllMetadata, boolean isJar) {
+        private void loadClassesFromPath(URI container, Path root, Path excludeRoot, Set<Path> excludes, boolean includeUnconditionally, boolean includeAllMetadata,
+                        boolean initializeUnconditionally, boolean isJar) {
             boolean useFilter = root.equals(excludeRoot);
             if (useFilter) {
                 String excludesStr = excludes.stream().map(Path::toString).collect(Collectors.joining(", "));
@@ -1294,7 +1327,7 @@ public final class NativeImageClassLoaderSupport {
                     String className = extractClassName(fileName, fileSystemSeparatorChar);
                     if (className != null) {
                         currentlyProcessedEntry = file.toUri().toString();
-                        executor.execute(() -> handleClassFileName(container, null, className, includeUnconditionally, true, includeAllMetadata, false));
+                        executor.execute(() -> handleClassFileName(container, null, className, includeUnconditionally, true, includeAllMetadata, false, initializeUnconditionally));
                     }
                     if (isInImageClassPathOfLayeredBuild) {
                         executor.execute(() -> PathDigests.storePathFileDigest(container, fileName, isJar, pathDigests.cpDigests));
@@ -1386,7 +1419,7 @@ public final class NativeImageClassLoaderSupport {
          * origin.
          */
         private void handleClassFileName(URI container, Module module, String className, boolean includeUnconditionally, boolean registerTypes, boolean preserveReflectionMetadata,
-                        boolean isBuilderContainer) {
+                        boolean isBuilderContainer, boolean initializeUnconditionally) {
             handleClassFileNameInBuilderContext(module, className, registerTypes);
 
             imageClassLoader.guestTypes.handleClassFileName(container,
@@ -1397,6 +1430,7 @@ public final class NativeImageClassLoaderSupport {
                             registerTypes,
                             preserveReflectionMetadata,
                             isBuilderContainer,
+                            initializeUnconditionally,
                             includePackages,
                             preservePackages);
 
@@ -1582,9 +1616,11 @@ public final class NativeImageClassLoaderSupport {
         public void addModule(String moduleName, IncludeOptionsSupport.ExtendedOptionWithOrigin extendedOptionWithOrigin) {
             VMError.guarantee(!includeConfigSealed, CLASS_INCLUSION_SEALED_MSG);
             if (moduleName.equals(ALL_UNNAMED)) {
-                preserveClassPathOrigin = extendedOptionWithOrigin.valueWithOrigin();
-                IncludeOptionsSupport.ExtendedOptionWithOrigin includeOptionsSupport = new IncludeOptionsSupport.ExtendedOptionWithOrigin(extendedOptionWithOrigin.option(),
-                                extendedOptionWithOrigin.valueWithOrigin());
+                IncludeOptionsSupport.ExtendedOptionWithOrigin includeOptionsSupport = null;
+                if (extendedOptionWithOrigin != null) {
+                    preserveClassPathOrigin = extendedOptionWithOrigin.valueWithOrigin();
+                    includeOptionsSupport = new IncludeOptionsSupport.ExtendedOptionWithOrigin(extendedOptionWithOrigin.option(), extendedOptionWithOrigin.valueWithOrigin());
+                }
                 for (Path path : applicationClassPath()) {
                     if (!imageProvidedJars.contains(path)) {
                         classpathEntries.put(path, includeOptionsSupport);

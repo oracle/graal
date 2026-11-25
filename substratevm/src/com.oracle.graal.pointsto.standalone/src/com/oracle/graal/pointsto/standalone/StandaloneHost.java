@@ -182,6 +182,10 @@ public class StandaloneHost extends HostVM {
     }
 
     @Override
+    public void beforeFieldValueAccess(ResolvedJavaType type) {
+    }
+
+    @Override
     public boolean isClosedTypeWorld() {
         return closedTypeWorld;
     }

@@ -536,7 +536,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
          * replacer, to avoid corner cases later when writing the native image.
          */
         for (ResolvedJavaMethod method : replacements.getSnippetMethods()) {
-            objectReplacer.apply(method);
+            objectReplacer.replaceObject(method, true);
         }
 
         /*

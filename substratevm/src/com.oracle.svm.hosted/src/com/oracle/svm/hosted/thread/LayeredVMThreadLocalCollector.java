@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,15 +81,22 @@ public class LayeredVMThreadLocalCollector extends VMThreadLocalCollector {
     }
 
     @Override
-    public Object apply(Object source) {
-        /* Make sure all names have been assigned in the prior layers. */
+    public Object replaceObject(Object source, boolean reachable) {
+        /*
+         * Make sure all names have been assigned in the prior layers
+         */
         if (!initialLayer) {
             if (source instanceof FastThreadLocal threadLocal) {
+                if (!reachable) {
+                    /* Unreachable, current layer fast thread local can be found by pbti */
+                    return CANNOT_REPLACE_MARKER;
+                }
+
                 var name = threadLocal.getName();
                 VMError.guarantee(threadLocalAssignmentMap.containsKey(name), "Found thread local which was not created in the initial layer %s", name);
             }
         }
-        return super.apply(source);
+        return super.replaceObject(source, reachable);
     }
 
     @Override

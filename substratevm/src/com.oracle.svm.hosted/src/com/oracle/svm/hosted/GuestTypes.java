@@ -127,6 +127,13 @@ public final class GuestTypes {
      */
     private final EconomicSet<ResolvedJavaType> hostedOnlyTypes = EconomicSet.create();
 
+    /**
+     * Application types selected as roots for unconditional build-time initialization. This is
+     * separate from {@link #applicationTypes} so that modules provided by the Native Image builder
+     * can be excluded.
+     */
+    private final EconomicSet<ResolvedJavaType> unconditionalInitializationTypes = EconomicSet.create();
+
     private final Set<ResolvedJavaType> typesToPreserve = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<String> classNamesToPreserve = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -289,6 +296,10 @@ public final class GuestTypes {
      */
     public boolean isUserType(ResolvedJavaType type) {
         return !builderTypes.contains(type);
+    }
+
+    public EconomicSet<ResolvedJavaType> getUnconditionalInitializationTypes() {
+        return unconditionalInitializationTypes;
     }
 
     /**
@@ -455,6 +466,7 @@ public final class GuestTypes {
                     boolean classRequiresInit,
                     boolean preserveReflectionMetadata,
                     boolean isBuilderContainer,
+                    boolean initializeUnconditionally,
                     NativeImageClassLoaderSupport.PackageRequest includePackages,
                     NativeImageClassLoaderSupport.PackageRequest preservePackages) {
         recordDiscoveredClassName(container, className, packageName);
@@ -479,6 +491,11 @@ public final class GuestTypes {
             includedJavaPackages.add(packageName);
             if (includeUnconditionally || includePackages.shouldInclude(packageName)) {
                 typesToIncludeUnconditionally.add(type);
+            }
+            if (initializeUnconditionally) {
+                synchronized (unconditionalInitializationTypes) {
+                    unconditionalInitializationTypes.add(type);
+                }
             }
             if (classRequiresInit) {
                 registerType(type);
