@@ -55,7 +55,7 @@ import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_
  * This class is a hosted-only placeholder. Image building replaces reachable instances with
  * {@link RuntimeVMMutex} objects.
  */
-public class VMMutex extends VMLockingPrimitive {
+public class VMMutex extends VMLockingPrimitive implements AutoCloseable {
     static final UnsignedWord UNSPECIFIED_OWNER = Word.unsigned(-1);
 
     private final String name;
@@ -75,7 +75,8 @@ public class VMMutex extends VMLockingPrimitive {
      * acquiring the mutex successfully, the current isolate thread is registered as the lock owner.
      * Recursive locking is not allowed.
      *
-     * @return "this" for use in a try-with-resources statement.
+     * @return this mutex for use in a try-with-resources statement, subject to the restrictions
+     *         documented on {@link #close()}.
      */
     public VMMutex lock() {
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
@@ -119,6 +120,18 @@ public class VMMutex extends VMLockingPrimitive {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public void unlock() {
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
+    }
+
+    /**
+     * Releases the mutex acquired by {@link #lock()} in a try-with-resources statement.
+     * <p>
+     * Use explicit {@code try/finally} with {@link #unlock()} in uninterruptible code or when
+     * allocation must be avoided even on exceptional paths. If both the body and resource cleanup
+     * throw, try-with-resources calls {@link Throwable#addSuppressed(Throwable)}, which can allocate.
+     */
+    @Override
+    public final void close() {
+        unlock();
     }
 
     /**

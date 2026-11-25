@@ -60,11 +60,8 @@ public final class RistrettoCompilationManager {
             if (QUEUE_MUTEX.isOwner()) {
                 QUEUE_CONDITION.broadcast();
             } else {
-                QUEUE_MUTEX.lock();
-                try {
+                try (var _ = QUEUE_MUTEX.lock()) {
                     QUEUE_CONDITION.broadcast();
-                } finally {
-                    QUEUE_MUTEX.unlock();
                 }
             }
         }
@@ -235,15 +232,12 @@ public final class RistrettoCompilationManager {
      * or interrupt status.
      */
     private void abortStartup() {
-        QUEUE_MUTEX.lock();
-        try {
+        try (var _ = QUEUE_MUTEX.lock()) {
             acceptingRequests = false;
             QUEUE_CONDITION.broadcast();
             while (activeCompilerWorkers != 0) {
                 WORKERS_EXITED.block();
             }
-        } finally {
-            QUEUE_MUTEX.unlock();
         }
     }
 
@@ -251,15 +245,12 @@ public final class RistrettoCompilationManager {
      * Processes queued requests until this worker is interrupted or the manager closes admission.
      */
     private void runCompilerWorker() {
-        QUEUE_MUTEX.lock();
-        try {
+        try (var _ = QUEUE_MUTEX.lock()) {
             /* Startup rollback may have closed admission before this thread entered its target. */
             if (!acceptingRequests) {
                 return;
             }
             activeCompilerWorkers++;
-        } finally {
-            QUEUE_MUTEX.unlock();
         }
         try {
             while (true) {
@@ -278,13 +269,10 @@ public final class RistrettoCompilationManager {
      * Records the exit of a worker that entered the loop.
      */
     private void compilerWorkerExited() {
-        QUEUE_MUTEX.lock();
-        try {
+        try (var _ = QUEUE_MUTEX.lock()) {
             if (--activeCompilerWorkers == 0) {
                 WORKERS_EXITED.broadcast();
             }
-        } finally {
-            QUEUE_MUTEX.unlock();
         }
     }
 
@@ -293,8 +281,7 @@ public final class RistrettoCompilationManager {
      */
     private RistrettoCompilationRequest takeCompilationRequest() {
         Thread worker = Thread.currentThread();
-        QUEUE_MUTEX.lock();
-        try {
+        try (var _ = QUEUE_MUTEX.lock()) {
             while (compilationQueue.isEmpty() && acceptingRequests && !worker.isInterrupted()) {
                 QUEUE_CONDITION.block();
             }
@@ -302,8 +289,6 @@ public final class RistrettoCompilationManager {
                 return null;
             }
             return pollCompilationRequest();
-        } finally {
-            QUEUE_MUTEX.unlock();
         }
     }
 
@@ -323,11 +308,8 @@ public final class RistrettoCompilationManager {
      * Returns the number of queued compilation requests.
      */
     private int compilationQueueSize() {
-        QUEUE_MUTEX.lock();
-        try {
+        try (var _ = QUEUE_MUTEX.lock()) {
             return compilationQueue.size();
-        } finally {
-            QUEUE_MUTEX.unlock();
         }
     }
 
@@ -335,11 +317,8 @@ public final class RistrettoCompilationManager {
      * Returns a stable queue snapshot for test diagnostics.
      */
     private List<RistrettoCompilationRequest> compilationQueueSnapshot() {
-        QUEUE_MUTEX.lock();
-        try {
+        try (var _ = QUEUE_MUTEX.lock()) {
             return new ArrayList<>(compilationQueue);
-        } finally {
-            QUEUE_MUTEX.unlock();
         }
     }
 
@@ -381,13 +360,10 @@ public final class RistrettoCompilationManager {
         List<RistrettoCompilationRequest> queueSample;
         int trackedQueueSize;
         int queueSize;
-        QUEUE_MUTEX.lock();
-        try {
+        try (var _ = QUEUE_MUTEX.lock()) {
             queueSample = queuedRequestsToReportSnapshot();
             trackedQueueSize = queuedRequestsToReportCount;
             queueSize = compilationQueue.size();
-        } finally {
-            QUEUE_MUTEX.unlock();
         }
         long nowNanos = System.nanoTime();
         log.string("[Ristretto Compilation Watchdog] Queue sample tracked=").signed(trackedQueueSize).string(" total=").signed(queueSize).string(" complete=")
@@ -456,8 +432,7 @@ public final class RistrettoCompilationManager {
     }
 
     private void clearQueuedRequestsToReport() {
-        QUEUE_MUTEX.lock();
-        try {
+        try (var _ = QUEUE_MUTEX.lock()) {
             RistrettoCompilationRequest request = firstQueuedRequestToReport;
             while (request != null) {
                 RistrettoCompilationRequest next = request.nextQueuedRequestToReport;
@@ -469,8 +444,6 @@ public final class RistrettoCompilationManager {
             firstQueuedRequestToReport = null;
             lastQueuedRequestToReport = null;
             queuedRequestsToReportCount = 0;
-        } finally {
-            QUEUE_MUTEX.unlock();
         }
     }
 
@@ -548,8 +521,7 @@ public final class RistrettoCompilationManager {
 
     public void submitCompilationRequest(RistrettoCompilationRequest request) {
         int queueSize;
-        QUEUE_MUTEX.lock();
-        try {
+        try (var _ = QUEUE_MUTEX.lock()) {
             boolean compilationWatchdogEnabled = RistrettoOptions.JITCompilationWatchdogTimeoutSeconds.getValue() > 0;
             request.markSubmitted(compilationWatchdogEnabled ? System.nanoTime() : 0);
             submittedRequests.incrementAndGet();
@@ -568,8 +540,6 @@ public final class RistrettoCompilationManager {
             }
             QUEUE_CONDITION.signal();
             queueSize = compilationQueue.size();
-        } finally {
-            QUEUE_MUTEX.unlock();
         }
         RistrettoProfileSupport.trace(RistrettoOptions.JITTraceCompilationQueuing, "[Ristretto Compile Queue]Queue size after submitting %s =%s %n", request, queueSize);
     }
@@ -603,16 +573,13 @@ public final class RistrettoCompilationManager {
 
     public void shutDown() {
         // we want this to be fast, tear down the world
-        QUEUE_MUTEX.lock();
-        try {
+        try (var _ = QUEUE_MUTEX.lock()) {
             acceptingRequests = false;
             QUEUE_CONDITION.broadcast();
             RistrettoCompilationRequest request;
             while ((request = pollCompilationRequest()) != null) {
                 cancelRequestBeforeExecution(request);
             }
-        } finally {
-            QUEUE_MUTEX.unlock();
         }
         for (int i = 0; i < compilerThreads.size(); i++) {
             compilerThreads.get(i).interrupt();
@@ -653,11 +620,8 @@ public final class RistrettoCompilationManager {
 
         public static int getQueuedRequestsToReportCount() {
             RistrettoCompilationManager manager = get();
-            QUEUE_MUTEX.lock();
-            try {
+            try (var _ = QUEUE_MUTEX.lock()) {
                 return manager.queuedRequestsToReportSnapshot().size();
-            } finally {
-                QUEUE_MUTEX.unlock();
             }
         }
 
