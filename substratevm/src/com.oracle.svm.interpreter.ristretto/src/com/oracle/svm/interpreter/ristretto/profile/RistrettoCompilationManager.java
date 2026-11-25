@@ -26,6 +26,7 @@ package com.oracle.svm.interpreter.ristretto.profile;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.concurrent.TimeUnit;
@@ -83,7 +84,7 @@ public final class RistrettoCompilationManager {
     private static volatile RistrettoCompilationManager MANAGER;
 
     /*
-     * Protects compilation requests and the watchdog's live-queue view.
+     * Protects the compilation queue.
      */
     private static final VMMutex QUEUE_MUTEX = new VMMutex("ristrettoCompilationQueue");
     private static final VMCondition QUEUE_CONDITION = new VMCondition(QUEUE_MUTEX, "workAvailable");
@@ -137,21 +138,6 @@ public final class RistrettoCompilationManager {
      * Compilation requests ordered by priority. Guarded by {@link #QUEUE_MUTEX}.
      */
     private final PriorityQueue<RistrettoCompilationRequest> compilationQueue;
-
-    /**
-     * First request in the watchdog's intrusive live-queue view. Guarded by {@link #QUEUE_MUTEX}.
-     */
-    private RistrettoCompilationRequest firstQueuedRequestToReport;
-
-    /**
-     * Last request in the watchdog's live-queue view. Guarded by {@link #QUEUE_MUTEX}.
-     */
-    private RistrettoCompilationRequest lastQueuedRequestToReport;
-
-    /**
-     * Number of requests in the watchdog's live-queue view. Guarded by {@link #QUEUE_MUTEX}.
-     */
-    private int queuedRequestsToReportCount;
 
     /**
      * The platform threads that run the compilation queue.
@@ -298,20 +284,8 @@ public final class RistrettoCompilationManager {
             if (!acceptingRequests || worker.isInterrupted()) {
                 return null;
             }
-            return pollCompilationRequest();
+            return compilationQueue.poll();
         }
-    }
-
-    /**
-     * Removes the next compilation request and unlinks it from watchdog tracking if needed.
-     */
-    private RistrettoCompilationRequest pollCompilationRequest() {
-        assert QUEUE_MUTEX.isOwner() : "Polling a compilation request requires the compilation queue mutex.";
-        RistrettoCompilationRequest request = compilationQueue.poll();
-        if (request != null && request.sampledForCompilationWatchdog) {
-            removeQueuedRequestToReport(request);
-        }
-        return request;
     }
 
     /**
@@ -368,16 +342,13 @@ public final class RistrettoCompilationManager {
             }
         }
         List<RistrettoCompilationRequest> queueSample;
-        int trackedQueueSize;
         int queueSize;
         try (var _ = QUEUE_MUTEX.lock()) {
             queueSample = queuedRequestsToReportSnapshot();
-            trackedQueueSize = queuedRequestsToReportCount;
             queueSize = compilationQueue.size();
         }
         long nowNanos = System.nanoTime();
-        log.string("[Ristretto Compilation Watchdog] Queue sample tracked=").signed(trackedQueueSize).string(" total=").signed(queueSize).string(" complete=")
-                        .bool(trackedQueueSize == queueSize).newline();
+        log.string("[Ristretto Compilation Watchdog] Queue sample size=").signed(queueSample.size()).string(" total=").signed(queueSize).newline();
         int queuedRequestIndex = 0;
         for (RistrettoCompilationRequest request : queueSample) {
             long submittedAtNanos = request.getSubmittedAtNanos();
@@ -394,67 +365,17 @@ public final class RistrettoCompilationManager {
         compilationWatchDogReportCount.incrementAndGet();
     }
 
-    private void addQueuedRequestToReport(RistrettoCompilationRequest request) {
-        assert QUEUE_MUTEX.isOwner() : "Adding a queued request requires the compilation queue mutex.";
-        request.sampledForCompilationWatchdog = true;
-        request.previousQueuedRequestToReport = lastQueuedRequestToReport;
-        if (lastQueuedRequestToReport == null) {
-            firstQueuedRequestToReport = request;
-        } else {
-            lastQueuedRequestToReport.nextQueuedRequestToReport = request;
-        }
-        lastQueuedRequestToReport = request;
-        queuedRequestsToReportCount++;
-    }
-
-    private void removeQueuedRequestToReport(RistrettoCompilationRequest request) {
-        assert QUEUE_MUTEX.isOwner() : "Removing a queued request requires the compilation queue mutex.";
-        RistrettoCompilationRequest previous = request.previousQueuedRequestToReport;
-        RistrettoCompilationRequest next = request.nextQueuedRequestToReport;
-        if (previous == null) {
-            firstQueuedRequestToReport = next;
-        } else {
-            previous.nextQueuedRequestToReport = next;
-        }
-        if (next == null) {
-            lastQueuedRequestToReport = previous;
-        } else {
-            next.previousQueuedRequestToReport = previous;
-        }
-        request.previousQueuedRequestToReport = null;
-        request.nextQueuedRequestToReport = null;
-        request.sampledForCompilationWatchdog = false;
-        queuedRequestsToReportCount--;
-    }
-
     /**
-     * Copies the bounded watchdog sample while the caller holds the queue mutex.
+     * Copies a bounded sample in queue iteration order while the caller holds the queue mutex.
      */
     private List<RistrettoCompilationRequest> queuedRequestsToReportSnapshot() {
         assert QUEUE_MUTEX.isOwner() : "Sampling queued requests requires the compilation queue mutex.";
         List<RistrettoCompilationRequest> snapshot = new ArrayList<>(MAX_QUEUED_REQUESTS_TO_REPORT);
-        RistrettoCompilationRequest request = firstQueuedRequestToReport;
-        while (request != null && snapshot.size() < MAX_QUEUED_REQUESTS_TO_REPORT) {
-            snapshot.add(request);
-            request = request.nextQueuedRequestToReport;
+        Iterator<RistrettoCompilationRequest> iterator = compilationQueue.iterator();
+        while (snapshot.size() < MAX_QUEUED_REQUESTS_TO_REPORT && iterator.hasNext()) {
+            snapshot.add(iterator.next());
         }
         return snapshot;
-    }
-
-    private void clearQueuedRequestsToReport() {
-        try (var _ = QUEUE_MUTEX.lock()) {
-            RistrettoCompilationRequest request = firstQueuedRequestToReport;
-            while (request != null) {
-                RistrettoCompilationRequest next = request.nextQueuedRequestToReport;
-                request.previousQueuedRequestToReport = null;
-                request.nextQueuedRequestToReport = null;
-                request.sampledForCompilationWatchdog = false;
-                request = next;
-            }
-            firstQueuedRequestToReport = null;
-            lastQueuedRequestToReport = null;
-            queuedRequestsToReportCount = 0;
-        }
     }
 
     private Thread startStatisticsReporterThread() {
@@ -545,9 +466,6 @@ public final class RistrettoCompilationManager {
                 cancelRequestBeforeExecution(request);
                 throw failure;
             }
-            if (compilationWatchdogEnabled) {
-                addQueuedRequestToReport(request);
-            }
             QUEUE_CONDITION.signal();
             queueSize = compilationQueue.size();
         }
@@ -587,7 +505,7 @@ public final class RistrettoCompilationManager {
             acceptingRequests = false;
             QUEUE_CONDITION.broadcast();
             RistrettoCompilationRequest request;
-            while ((request = pollCompilationRequest()) != null) {
+            while ((request = compilationQueue.poll()) != null) {
                 cancelRequestBeforeExecution(request);
             }
         }
@@ -681,7 +599,6 @@ public final class RistrettoCompilationManager {
             m.startedRequests.set(0);
             m.finishedRequests.set(0);
             m.compilationWatchDogReportCount.set(0);
-            m.clearQueuedRequestsToReport();
             RistrettoDiagnostics.reset();
         }
 

@@ -98,11 +98,6 @@ public class RistrettoCompilationRequest implements Comparable<RistrettoCompilat
     /// Compilation requests are one-shot queue entries.
     private boolean submitted;
 
-    /// Intrusive links used only while this request is tracked for watchdog diagnostics.
-    RistrettoCompilationRequest previousQueuedRequestToReport;
-    RistrettoCompilationRequest nextQueuedRequestToReport;
-    boolean sampledForCompilationWatchdog;
-
     public RistrettoCompilationRequest(RistrettoMethod rMethod, int priority) {
         this(rMethod, priority, RistrettoUtils.INVOCATION_ENTRY_BCI, RistrettoMethod.NO_OSR_COMPILATION_REQUEST);
     }
