@@ -334,7 +334,7 @@ static char *exe_path() {
         _NSGetExecutablePath(path, &path_len);
         char *realPath = realpath(path, NULL);
     #elif defined (_WIN32)
-        char *realPath = (char *)malloc(_MAX_PATH);
+        char *realPath = (char *)xmalloc(_MAX_PATH);
         GetModuleFileNameA(NULL, realPath, _MAX_PATH);
         /* try to do a realpath equivalent */
         HANDLE handle = CreateFile(realPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -354,6 +354,10 @@ static char *exe_path() {
             CloseHandle(handle);
         }
     #endif
+    if (realPath == NULL) {
+        fprintf(stderr, "Could not determine the path of the executable\n");
+        exit(EXIT_FAILURE);
+    }
     return realPath;
 }
 
