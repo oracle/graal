@@ -186,7 +186,7 @@ static bool relaunch = false;
 static bool found_switch_to_jvm_flag = false;
 
 /* The x* functions exit with an error message when out of memory, so callers do not need to check for NULL.
- * xstrdup() and xstrndup() are also needed because strdup() is not declared with /std:c11 on Windows
+ * xstrdup() and xstrndup() are also needed because strdup() is a deprecated name on Windows
  * and strndup() does not exist there. */
 static void *xmalloc(size_t size) {
     void *p = malloc(size);

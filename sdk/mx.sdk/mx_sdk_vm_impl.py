@@ -2474,13 +2474,16 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _exe_paths = _dist.find_source_location('dependency:' + NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config))
         _exe_dirs = {dirname(p) for p in _exe_paths}
         _dynamic_cflags = [
-            ('/std:c11' if mx.is_windows() else '-std=gnu11'),
             '-O3', # Note: no -g to save 0.2MB on Linux
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
             '-DGRAALVM_VERSION=' + _suite.release_version(),
         ]
         if not mx.is_windows():
+            # No /std:c11 on Windows: it enables the conforming preprocessor of MSVC, which crashes
+            # (internal compiler error) when stringizing the macros containing paths with backslashes.
+            # The default C mode of MSVC supports the C99 features the launcher uses.
+            _dynamic_cflags += ['-std=gnu11']
             _dynamic_cflags += ['-pthread']
             _dynamic_cflags += ['-Werror=undef'] # fail on undefined macro used in preprocessor
         if mx.is_linux():
