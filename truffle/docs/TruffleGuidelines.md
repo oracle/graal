@@ -208,6 +208,8 @@ final class SampleLanguage extends SampleLanguageBase {
 }
 ```
 
+**Further reading:** See [Registration Version Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration.html#version()) and [Language Options](Options.md).
+
 ---
 
 <a name="read-user-configuration-through-declared-language-options"></a>
@@ -253,6 +255,8 @@ protected LanguageState createContext(Env env) {
 }
 ```
 
+**Further reading:** See [Language and Launcher Options](Options.md) and [Environment Option Values](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getOptions()).
+
 ---
 
 <a name="include-shared-code-options-in-language-compatibility"></a>
@@ -285,6 +289,8 @@ protected boolean areOptionsCompatible(OptionValues first, OptionValues next) {
                     first.get(LAYOUT_VERSION).equals(next.get(LAYOUT_VERSION));
 }
 ```
+
+**Further reading:** See [Language-Instance Code Sharing](AOTOverview.md#code-sharing-within-the-same-isolateprocess) and [areOptionsCompatible and example](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#areOptionsCompatible(org.graalvm.options.OptionValues,org.graalvm.options.OptionValues)).
 
 ---
 
@@ -327,6 +333,8 @@ private CallTarget parseUnit(Source source, OptionValues options) {
 }
 ```
 
+**Further reading:** See [ParsingRequest.getOptionValues](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.ParsingRequest.html#getOptionValues()) and [Source option descriptors](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#getSourceOptionDescriptors()).
+
 ---
 
 <a name="choose-internal-source-visibility-deliberately"></a>
@@ -365,6 +373,8 @@ Source createSource(SourceUnit unit) {
                     .build();
 }
 ```
+
+**Further reading:** See [Source.isInternal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html#isInternal()) and [SourceBuilder.internal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.SourceBuilder.html#internal(boolean)).
 
 ---
 
@@ -416,6 +426,8 @@ final class BinaryParser {
 }
 ```
 
+**Further reading:** See [ParsingRequest.getOptionValues](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.ParsingRequest.html#getOptionValues()).
+
 ---
 
 <a name="match-source-content-to-the-parsers-byte-or-character-contract"></a>
@@ -461,6 +473,8 @@ final class ExampleLanguage extends TruffleLanguage<State> {
 }
 ```
 
+**Further reading:** See [Byte MIME Types](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration.html#byteMimeTypes()) and [Character MIME Types](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration.html#characterMimeTypes()).
+
 ---
 
 <a name="recognize-ambiguous-binary-formats-through-their-content"></a>
@@ -505,6 +519,8 @@ public final class BinaryDetector implements TruffleFile.FileTypeDetector {
 }
 ```
 
+**Further reading:** See [File-Type Detector Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.FileTypeDetector.html) and [MIME Detection](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.FileTypeDetector.html#findMimeType(com.oracle.truffle.api.TruffleFile)).
+
 ---
 
 <a name="review-sandbox-eligibility-separately-from-option-stability"></a>
@@ -538,6 +554,8 @@ static final OptionKey<Boolean> EXTENDED_FEATURE = new OptionKey<>(false);
                 sandbox = SandboxPolicy.TRUSTED)
 static final OptionKey<Boolean> EXTENDED_FEATURE = new OptionKey<>(false);
 ```
+
+**Further reading:** See [Option Stability](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html#stability()) and [Option Sandbox Eligibility](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html#sandbox()).
 
 ---
 
@@ -579,6 +597,8 @@ OptionDescriptor descriptor = OptionDescriptor.newBuilder(key, "sample.Mode")
                 .build();
 ```
 
+**Further reading:** See [Option Declaration Usage Syntax](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html#usageSyntax()) and [Option Type Conversion](https://www.graalvm.org/sdk/javadoc/org/graalvm/options/OptionType.html).
+
 ---
 
 <a name="finish-context-creation-before-cross-language-initialization"></a>
@@ -617,6 +637,8 @@ protected void initializeContext(LanguageContext state) {
     state.dependency = state.env.parseInternal(state.dependencySource);
 }
 ```
+
+**Further reading:** See [Context Creation Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#createContext(com.oracle.truffle.api.TruffleLanguage.Env)) and [Complex Context Initialization](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#initializeContext(C)).
 
 ---
 
@@ -665,6 +687,8 @@ Object invokeHelper(LanguageContext state, Object input) {
     return state.helperTarget.call(input);
 }
 ```
+
+**Further reading:** See [Implementation Parsing](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#parseInternal(com.oracle.truffle.api.source.Source,java.lang.String...)) and [Public Guest Parsing](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#parsePublic(com.oracle.truffle.api.source.Source,java.lang.String...)).
 
 ---
 
@@ -719,6 +743,8 @@ final class EntryRoot extends RootNode {
 }
 ```
 
+**Further reading:** See [Parsing and Entity Initialization Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest)).
+
 ---
 
 <a name="bound-resource-version-tokens-without-losing-their-inputs"></a>
@@ -759,6 +785,8 @@ public String versionHash(Env env) throws IOException {
 }
 ```
 
+**Further reading:** See [Internal Resource Cache and Deployment](../../docs/reference-manual/embedding/embed-languages.md#managing-internal-resources) and [Resource Version Limit](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/InternalResource.html#versionHash(com.oracle.truffle.api.InternalResource.Env)).
+
 ---
 
 ## Context lifecycle, sharing, and host services
@@ -798,6 +826,8 @@ GuestArray argumentTypes(FormatKey key, MyContext context) {
 }
 ```
 
+**Further reading:** See [Context-Independent Code](AOTOverview.md#supporting-context-independent-code).
+
 ---
 
 <a name="do-not-run-guest-code-during-context-disposal"></a>
@@ -836,6 +866,8 @@ protected void disposeContext(MyContext context) {
 }
 ```
 
+**Further reading:** See [Context Exit Phases](Exit.md) and [disposeContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#disposeContext(C)).
+
 ---
 
 <a name="keep-native-backed-views-within-their-storage-lifetime"></a>
@@ -866,6 +898,8 @@ TruffleString name = fromNative.execute(
                 pointer, 0, byteLength, encoding, true);
 sharedNames.put(key, name);
 ```
+
+**Further reading:** See [FromNativePointerNode.execute](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.FromNativePointerNode.html#execute(java.lang.Object,int,int,com.oracle.truffle.api.strings.TruffleString.Encoding,boolean)).
 
 ---
 
@@ -904,6 +938,8 @@ try {
     inner.leave(this, previous);
 }
 ```
+
+**Further reading:** See [ContextReference.get](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.ContextReference.html#get(com.oracle.truffle.api.nodes.Node)) and [TruffleContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.html).
 
 ---
 
@@ -944,6 +980,8 @@ long total(Node location, int[] values) {
 }
 ```
 
+**Further reading:** See [Safepoint Tutorial](Safepoints.md#language-support) and [TruffleSafepoint](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleSafepoint.html).
+
 ---
 
 <a name="do-not-grant-concurrent-context-access-just-to-suppress-an-error"></a>
@@ -983,6 +1021,8 @@ void backgroundCallback(ConcurrentWaitRegistry registry, WaitKey key) {
     registry.signal(key); // Thread-safe host-only operation; no context entry.
 }
 ```
+
+**Further reading:** See [isThreadAccessAllowed](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#isThreadAccessAllowed(java.lang.Thread,boolean)) and [initializeMultiThreading](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#initializeMultiThreading(C)).
 
 ---
 
@@ -1026,6 +1066,8 @@ context.close();
 assertTrue(allocation.isReleased());
 ```
 
+**Further reading:** See [finalizeContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#finalizeContext(C)) and [disposeContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#disposeContext(C)).
+
 ---
 
 <a name="keep-source-cache-anchors-for-the-intended-reuse-lifetime"></a>
@@ -1059,6 +1101,8 @@ CallTarget parseHelper(TruffleLanguage.Env env, SourceKey key) {
     return env.parseInternal(source);
 }
 ```
+
+**Further reading:** See [SourceBuilder.cached](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.SourceBuilder.html#cached(boolean)) and [Code sharing overview](AOTOverview.md#code-sharing-within-the-same-isolateprocess).
 
 ---
 
@@ -1108,6 +1152,8 @@ try (Engine engine = Engine.create()) {
 }
 ```
 
+**Further reading:** See [Cached and Uncached Execution](bytecode_dsl/UserGuide.md#cached-and-uncached-execution) and [Context-independent code](AOTOverview.md#supporting-context-independent-code).
+
 ---
 
 <a name="handle-the-at-most-once-contract-of-leave-and-reenter-waits"></a>
@@ -1145,6 +1191,8 @@ WaitResult awaitHostInput(TruffleContext context, Node location,
     return new WaitResult(false, item);
 }
 ```
+
+**Further reading:** See [leaveAndEnter](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.html#leaveAndEnter(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint.Interrupter,com.oracle.truffle.api.TruffleSafepoint.InterruptibleFunction,T)) and [Safepoint support for blocking calls](Safepoints.md#language-support).
 
 ---
 
@@ -1201,6 +1249,8 @@ protected void disposeContext(MyContext context) {
 }
 ```
 
+**Further reading:** See [Context-Accessing Thread Builder](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#newTruffleThreadBuilder(java.lang.Runnable)) and [finalizeContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#finalizeContext(C)).
+
 ---
 
 <a name="honor-native-access-permission-when-selecting-a-backend"></a>
@@ -1234,6 +1284,8 @@ MemoryBackend selectBackend(TruffleLanguage.Env env, String requested) {
     return factory.create();
 }
 ```
+
+**Further reading:** See [Env.isNativeAccessAllowed](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#isNativeAccessAllowed()) and [Native Function Interface](NFI.md).
 
 ---
 
@@ -1272,6 +1324,8 @@ Set<PosixFilePermission> readGuestPermissions(TruffleFile file)
 }
 ```
 
+**Further reading:** See [FileSystem SPI](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html) and [TruffleFile.getPosixPermissions](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#getPosixPermissions(java.nio.file.LinkOption...)).
+
 ---
 
 <a name="match-file-access-to-the-operations-resource-authority"></a>
@@ -1305,6 +1359,8 @@ Source loadDebugSource(TruffleLanguage.Env env, String language,
     return Source.newBuilder(language, file).build();
 }
 ```
+
+**Further reading:** See [Env.getPublicTruffleFile](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getPublicTruffleFile(java.lang.String)) and [Env.getInternalTruffleFile](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getInternalTruffleFile(java.lang.String)).
 
 ---
 
@@ -1346,6 +1402,8 @@ Object openNetworkResource(Object address, Node location) {
     return openPermittedNetworkResource(address);
 }
 ```
+
+**Further reading:** See [Env.isSocketIOAllowed](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#isSocketIOAllowed()) and [Env.isCreateProcessAllowed](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#isCreateProcessAllowed()).
 
 ---
 
@@ -1393,6 +1451,8 @@ final class InnerTaskController {
     }
 }
 ```
+
+**Further reading:** See [Hard-Exit Entry and Notifications](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.html#closeExited(com.oracle.truffle.api.nodes.Node,int)), [Cancellation Entry and Waiting](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.html#closeCancelled(com.oracle.truffle.api.nodes.Node,java.lang.String)), and [Ordinary Close Preconditions](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.html#close()).
 
 ---
 
@@ -1442,6 +1502,8 @@ Object readBacking(DynamicObject receiver, Object missing,
 }
 ```
 
+**Further reading:** See [HiddenKey Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/HiddenKey.html) and [Dynamic Object Model](DynamicObjectModel.md).
+
 ---
 
 <a name="include-all-semantic-inputs-in-stable-cache-keys"></a>
@@ -1479,6 +1541,8 @@ if (target == null) {
     compiledFormats.put(key, target);
 }
 ```
+
+**Further reading:** See [String Equality and Comparison](TruffleStrings.md#string-equality-and-comparison).
 
 ---
 
@@ -1519,6 +1583,8 @@ final class EvaluateNode extends Node {
 }
 ```
 
+**Further reading:** See [SHARED Context Policy](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.ContextPolicy.html#SHARED).
+
 ---
 
 <a name="preserve-the-asts-parent-child-structure"></a>
@@ -1557,6 +1623,8 @@ final class ReserveNode extends Node {
 }
 ```
 
+**Further reading:** See [Node.Child](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.Child.html) and [Node.insert](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#insert(T)).
+
 ---
 
 <a name="look-up-shared-language-metadata-without-a-context-detour"></a>
@@ -1591,6 +1659,8 @@ Object execute(VirtualFrame frame) {
     return evaluateWithLayout(frame, language.layout());
 }
 ```
+
+**Further reading:** See [LanguageReference.get](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.LanguageReference.html#get(com.oracle.truffle.api.nodes.Node)) and [Context-Independent Code](AOTOverview.md#supporting-context-independent-code).
 
 ---
 
@@ -1645,6 +1715,8 @@ final class Request {
 }
 ```
 
+**Further reading:** See [Cached](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Cached.html) and [Dynamic Object Caching Considerations](DynamicObjectModel.md#caching-considerations).
+
 ---
 
 <a name="prepare-dynamic-object-storage-before-concurrent-publication"></a>
@@ -1682,6 +1754,8 @@ final class PublishNode extends Node {
     }
 }
 ```
+
+**Further reading:** See [DynamicObject.MarkSharedNode](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObject.MarkSharedNode.html) and [Shape.makeSharedShape contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/Shape.html#makeSharedShape()).
 
 ---
 
@@ -1729,6 +1803,8 @@ final class FunctionCode {
     }
 }
 ```
+
+**Further reading:** See [RootNode.call, since 25.6](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#call(com.oracle.truffle.api.nodes.Node,int,java.lang.Object[])) and [Host Compilation](HostCompilation.md).
 
 ---
 
@@ -1779,6 +1855,8 @@ final class PayloadObject extends DynamicObject {
     }
 }
 ```
+
+**Further reading:** See [Shape.Builder.layout](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/Shape.Builder.html#layout(java.lang.Class,java.lang.invoke.MethodHandles.Lookup)).
 
 ---
 
@@ -1841,6 +1919,8 @@ final class PayloadLayout {
 }
 ```
 
+**Further reading:** See [Static Object Model Safety Checks](StaticObjectModel.md#safety-checks) and [StaticShape.Builder.safetyChecks](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticShape.Builder.html#safetyChecks(boolean)).
+
 ---
 
 <a name="keep-property-handles-with-their-declaring-layout"></a>
@@ -1894,6 +1974,8 @@ int firstValue = first.value().getInt(firstObject);
 int secondValue = second.value().getInt(secondObject);
 ```
 
+**Further reading:** See [Static Object Model Construction](StaticObjectModel.md#getting-started) and [Property Registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticShape.Builder.html#property(com.oracle.truffle.api.staticobject.StaticProperty,java.lang.Class,boolean)).
+
 ---
 
 <a name="implement-missing-argument-semantics-before-indexed-loads"></a>
@@ -1938,6 +2020,8 @@ b.beginReturn();
     b.emitReadOptionalSecondArgument();
 b.endReturn();
 ```
+
+**Further reading:** See [Frame Argument Array](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/Frame.html#getArguments()) and [Bytecode Built-In Operations](bytecode_dsl/UserGuide.md#built-in-operations).
 
 ---
 
@@ -1990,6 +2074,8 @@ final class ScopedSlotNameNode extends Node {
 }
 ```
 
+**Further reading:** See [Frame Layout Owner](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/Frame.html#getFrameDescriptor()) and [Indexed Slot Names](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameDescriptor.html#getSlotName(int)).
+
 ---
 
 <a name="preserve-caller-arguments-when-adapting-a-call"></a>
@@ -2039,6 +2125,8 @@ final class ForwardNode extends Node {
     }
 }
 ```
+
+**Further reading:** See [Frame Argument Access](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/Frame.html#getArguments()) and [Direct Call Arguments](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/DirectCallNode.html#call(java.lang.Object...)).
 
 ---
 
@@ -2103,6 +2191,8 @@ final class LocalWriteNode extends Node {
 }
 ```
 
+**Further reading:** See [Indexed Slot-Kind Update](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/FrameDescriptor.html#setSlotKind(int,com.oracle.truffle.api.frame.FrameSlotKind)) and [Per-Frame Value Tag](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/Frame.html#getTag(int)).
+
 ---
 
 ## Truffle DSL specializations and caches
@@ -2159,6 +2249,8 @@ record HotValue(Object payload) { }
 record ColdValue(Object payload) { }
 ```
 
+**Further reading:** See [Specialization Declaration Order](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Specialization.html) and [Specialization Histogram](SpecializationHistogram.md).
+
 ---
 
 <a name="keep-uncached-dispatch-off-guest-compilation-paths"></a>
@@ -2195,6 +2287,8 @@ public Object execute(VirtualFrame frame) {
     return interop.isNull(receiver);
 }
 ```
+
+**Further reading:** See [LibraryFactory](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/library/LibraryFactory.html) and [GenerateUncached](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/GenerateUncached.html).
 
 ---
 
@@ -2254,6 +2348,8 @@ FieldInfo lookupGeneric(String name) throws UnknownIdentifierException {
 }
 ```
 
+**Further reading:** See [Cached](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Cached.html) and [Cached.neverDefault](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Cached.html#neverDefault()).
+
 ---
 
 <a name="pass-the-actual-storage-node-to-inlined-helpers"></a>
@@ -2309,6 +2405,8 @@ abstract class LookupNode extends Node {
 }
 ```
 
+**Further reading:** See [Passing Along Nodes Correctly](DSLNodeObjectInlining.md#passing-along-nodes-correctly) and [GenerateInline](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/GenerateInline.html).
+
 ---
 
 <a name="guard-cached-results-against-every-relevant-change"></a>
@@ -2353,6 +2451,8 @@ static Object readGeneric(Cell cell) {
 }
 ```
 
+**Further reading:** See [Specialization.assumptions](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Specialization.html#assumptions()) and [Assumption](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Assumption.html).
+
 ---
 
 <a name="treat-guard-idempotence-as-a-correctness-promise"></a>
@@ -2395,6 +2495,8 @@ Object disabled(Object value) {
 }
 ```
 
+**Further reading:** See [Guard Expression Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Specialization.html#guards()) and [NonIdempotent](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/NonIdempotent.html).
+
 ---
 
 <a name="audit-cache-retention-within-a-live-context"></a>
@@ -2423,6 +2525,8 @@ TruffleString compact = materializeSubstring.execute(key, encoding);
 TruffleString retained = asManaged.execute(compact, encoding, false);
 longLivedKeys.add(retained);
 ```
+
+**Further reading:** See [MaterializeSubstringNode](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.MaterializeSubstringNode.html) and [AsManagedNode](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.AsManagedNode.html).
 
 ---
 
@@ -2473,6 +2577,8 @@ static int doValue(Object value, @Bind("this") Node storage,
     return fastResult(value);
 }
 ```
+
+**Further reading:** See [DSL footprint and helper-call guidelines](DSLGuidelines.md#avoid-unused-large-inline-nodes) and [Specialization-Time Cache Initialization](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Cached.html).
 
 ---
 
@@ -2529,6 +2635,8 @@ static int requireNonNegative(int value) {
 }
 ```
 
+**Further reading:** See [Specialization and Caching Guidelines](DSLGuidelines.md) and [Specialization.replaces](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Specialization.html#replaces()).
+
 ---
 
 <a name="keep-ordinary-helpers-separate-from-dsl-execute-entries"></a>
@@ -2576,6 +2684,8 @@ abstract class IncrementNode extends Node {
     }
 }
 ```
+
+**Further reading:** See [Specialization and Execute Method Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Specialization.html) and [DSL Node Layout](DSLGuidelines.md#avoid-duplicated-specializations).
 
 ---
 
@@ -2646,6 +2756,8 @@ final class IntegerValueNode extends Node {
 }
 ```
 
+**Further reading:** See [Deoptimizing Slow Paths](PartialEvaluation.md#invalidation-and-re-specialization-using-slow-path-code) and [Explicit Invalidating Transfer](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html#transferToInterpreterAndInvalidate()).
+
 ---
 
 ## Compilation and partial evaluation
@@ -2687,6 +2799,8 @@ static Object select(Object value, @Bind Node node,
 }
 ```
 
+**Further reading:** See [Condition profiles](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/profiles/InlinedConditionProfile.html) and [Counted-Loop Condition Injection](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/profiles/LoopConditionProfile.html#inject(boolean)).
+
 ---
 
 <a name="invalidate-compiled-assumptions-before-changing-compilation-final-state"></a>
@@ -2721,6 +2835,8 @@ void grow(int newSize) {
     storage = Arrays.copyOf(storage, newSize);
 }
 ```
+
+**Further reading:** See [CompilationFinal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.CompilationFinal.html) and [Handoff With Invalidation](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html#transferToInterpreterAndInvalidate()).
 
 ---
 
@@ -2773,6 +2889,8 @@ static int sumComponents(int[] components) {
 }
 ```
 
+**Further reading:** See [Shaping Loops for Partial Evaluation](PartialEvaluation.md#shaping-loops-for-partial-evaluation) and [ExplodeLoop](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/ExplodeLoop.html).
+
 ---
 
 <a name="assert-required-partial-evaluation-constants-instead-of-ignoring-a-query"></a>
@@ -2812,6 +2930,8 @@ static Object readField(RecordValue value, int fieldKind, int fieldIndex) {
     };
 }
 ```
+
+**Further reading:** See [CompilerAsserts](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerAsserts.html#partialEvaluationConstant(int)) and [isPartialEvaluationConstant](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html#isPartialEvaluationConstant(java.lang.Object)).
 
 ---
 
@@ -2862,6 +2982,8 @@ void initializeResource() {
 }
 ```
 
+**Further reading:** See [CyclicAssumption invalidation warning](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/utilities/CyclicAssumption.html) and [Compilation-Final Field of a Non-Constant Object](DeoptCyclePatterns.md#compilation-final-field-of-a-non-constant-object).
+
 ---
 
 <a name="keep-boundaries-around-the-work-that-must-remain-opaque"></a>
@@ -2900,6 +3022,8 @@ static long lookupAddress(long handle, String name) {
 }
 ```
 
+**Further reading:** See [TruffleBoundary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.TruffleBoundary.html) and [Interpreter and Runtime Separation](PartialEvaluation.md#separating-interpreter-and-runtime-code).
+
 ---
 
 <a name="preserve-interpreter-state-needed-after-deoptimization"></a>
@@ -2933,6 +3057,8 @@ if (CompilerDirectives.hasNextTier()) {
     counters[0]++;
 }
 ```
+
+**Further reading:** See [Partial evaluation and frame reconstruction](PartialEvaluation.md#working-with-virtualframes).
 
 ---
 
@@ -2979,6 +3105,8 @@ int begin(MatchData match, int group) {
     return match.region.getBegin(group);
 }
 ```
+
+**Further reading:** See [Writing Interpreters for Partial Evaluation](PartialEvaluation.md#writing-interpreters-for-partial-evaluation) and [Optimizing Truffle Interpreters](Optimizing.md).
 
 ---
 
@@ -3030,6 +3158,8 @@ final class CopyHeadNode extends Node {
     }
 }
 ```
+
+**Further reading:** See [NodeChild.executeWith](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/NodeChild.html#executeWith()) and [Partial Evaluation](PartialEvaluation.md).
 
 ---
 
@@ -3089,6 +3219,8 @@ ExpressionNode translateAlternatives(Syntax[] alternatives,
 }
 ```
 
+**Further reading:** See [Duplication Seen by Partial Evaluation](DSLGuidelines.md#avoid-duplicated-specializations) and [AST Child Ownership](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#isAdoptable()).
+
 ---
 
 <a name="keep-compiler-preparation-repeatable-and-context-independent"></a>
@@ -3144,6 +3276,8 @@ public Object execute(VirtualFrame frame) {
 }
 ```
 
+**Further reading:** See [Compilation Preparation Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#prepareForCompilation(boolean,int,boolean)).
+
 ---
 
 <a name="fix-allocation-placement-only-for-a-required-failure-boundary"></a>
@@ -3182,6 +3316,8 @@ byte[] tryAllocateStorage(int length) {
     }
 }
 ```
+
+**Further reading:** See [Precise Allocation Placement Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html#ensureAllocatedHere(T)) and [Allocation Elision and Virtual Frames](PartialEvaluation.md#working-with-virtualframes).
 
 ---
 
@@ -3228,6 +3364,8 @@ final class ForeignArgumentsNode extends Node {
 }
 ```
 
+**Further reading:** See [Numeric Category Versus Representation](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#isNumber(java.lang.Object)) and [Lossless BigInteger Conversion](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#asBigInteger(java.lang.Object)).
+
 ---
 
 <a name="keep-capability-predicates-and-operations-consistent"></a>
@@ -3273,6 +3411,8 @@ SourceSection getSourceLocation() throws UnsupportedMessageException {
 }
 ```
 
+**Further reading:** See [Source-location capability](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#hasSourceLocation(java.lang.Object)) and [Source-location access](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#getSourceLocation(java.lang.Object)).
+
 ---
 
 <a name="use-interop-identity-for-foreign-objects"></a>
@@ -3314,6 +3454,8 @@ final class ForeignIdentityNode extends Node {
 }
 ```
 
+**Further reading:** See [InteropLibrary.isIdentical](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#isIdentical(java.lang.Object,java.lang.Object,com.oracle.truffle.api.interop.InteropLibrary)) and [identityHashCode](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#identityHashCode(java.lang.Object)).
+
 ---
 
 <a name="use-the-interop-protocol-inside-guest-execution"></a>
@@ -3349,6 +3491,8 @@ boolean executeForeign(Object guestReceiver) {
 // Setup, outside the compiled execution root:
 Object guestReceiver = env.asGuestValue(hostBuffer);
 ```
+
+**Further reading:** See [Interop protocol and cached dispatch](InteropMigration.md) and [InteropLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html).
 
 ---
 
@@ -3398,6 +3542,8 @@ static void copy(Node location, InteropLibrary buffers, Object source,
 }
 ```
 
+**Further reading:** See [InteropLibrary.readBuffer](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#readBuffer(java.lang.Object,long,byte%5B%5D,int,int)) and [Safepoint integration](Safepoints.md).
+
 ---
 
 <a name="distinguish-character-ranges-from-byte-based-ranges"></a>
@@ -3435,6 +3581,8 @@ boolean containsOnlyAscii(TruffleString text) {
                     TruffleString.CodeRange.ASCII;
 }
 ```
+
+**Further reading:** See [String Storage and Encodings](TruffleStrings.md#encodings) and [Conservative Code Range](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.GetCodeRangeImpreciseNode.html#execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString.Encoding)).
 
 ---
 
@@ -3477,6 +3625,8 @@ for (TruffleString piece : escapedPieces(input)) {
 }
 return finish.execute(out);
 ```
+
+**Further reading:** See [TruffleString creation and builders](TruffleStrings.md#instantiation) and [TruffleStringBuilder](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleStringBuilder.html).
 
 ---
 
@@ -3534,6 +3684,8 @@ static final class GuestIOError extends AbstractTruffleException {
 }
 ```
 
+**Further reading:** See [AbstractTruffleException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/exception/AbstractTruffleException.html) and [Interop Failure Translation](InteropMigration.md#fast-path-sending-interop-messages).
+
 ---
 
 <a name="use-byte-based-view-ranges-across-buffer-representations"></a>
@@ -3587,6 +3739,8 @@ void writeView(Object storage, long byteOffset, long elementCount,
 }
 ```
 
+**Further reading:** See [Bulk Buffer Read](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#readBuffer(java.lang.Object,long,byte[],int,int)) and [Byte Offset and Byte Order](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#readBufferInt(java.lang.Object,java.nio.ByteOrder,long)).
+
 ---
 
 <a name="avoid-a-host-string-round-trip-for-encoded-guest-data"></a>
@@ -3624,6 +3778,8 @@ static TruffleString convert(byte[] bytes, int byteOffset, int byteLength,
 }
 ```
 
+**Further reading:** See [Truffle String Instantiation](TruffleStrings.md#instantiation) and [Direct Byte Conversion](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.FromByteArrayNode.html#execute(byte[],int,int,com.oracle.truffle.api.strings.TruffleString.Encoding,boolean)).
+
 ---
 
 <a name="preserve-foreign-sizes-and-centralize-trait-selection"></a>
@@ -3658,6 +3814,8 @@ static void checkArrayRange(InteropLibrary arrays, Object receiver,
     }
 }
 ```
+
+**Further reading:** See [Foreign Array Size](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#getArraySize(java.lang.Object)) and [Foreign Buffer Size in Bytes](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#getBufferSize(java.lang.Object)).
 
 ---
 
@@ -3708,6 +3866,8 @@ final class ReadHeaderNode extends Node {
 }
 ```
 
+**Further reading:** See [ByteArraySupport Alignment and Thread Safety](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/memory/ByteArraySupport.html) and [Explicit Unaligned Long Read](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/memory/ByteArraySupport.html#getLongUnaligned(byte[],int)).
+
 ---
 
 ## Bytecode execution and the Bytecode DSL
@@ -3756,6 +3916,8 @@ b.beginProcessValue();
 b.endProcessValue();
 ```
 
+**Further reading:** See [Accessing Locals](bytecode_dsl/UserGuide.md#accessing-locals) and [LocalAccessor](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/LocalAccessor.html).
+
 ---
 
 <a name="resolve-captured-execution-frames-through-bytecode-aware-apis"></a>
@@ -3791,6 +3953,8 @@ if (frame != null) {
 }
 ```
 
+**Further reading:** See [Typed Descriptor Root Resolution](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/BytecodeDescriptor.html#cast(com.oracle.truffle.api.CallTarget)) and [BytecodeFrame](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/BytecodeFrame.html).
+
 ---
 
 <a name="copy-captured-frame-state-before-resuming-when-it-must-remain-stable"></a>
@@ -3820,6 +3984,8 @@ BytecodeFrame snapshot = captureCurrentBytecodeFrame().copy();
 resumeGuestExecution();
 inspect(snapshot.getLocalValue(localOffset));
 ```
+
+**Further reading:** See [Bytecode Frame Capture Narrative](bytecode_dsl/UserGuide.md#bytecode-frames-in-stack-traces) and [BytecodeFrame.copy](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/BytecodeFrame.html#copy()).
 
 ---
 
@@ -3865,6 +4031,8 @@ public static final class Discard {
 }
 ```
 
+**Further reading:** See [Boxing Elimination](bytecode_dsl/Optimization.md#boxing-elimination) and [Operation Quickening](bytecode_dsl/Optimization.md#quickening).
+
 ---
 
 <a name="invalidate-persisted-bytecode-when-compatibility-assumptions-change"></a>
@@ -3900,6 +4068,8 @@ if (!readCacheStamp(input).equals(expected)) {
 }
 return deserializeBytecode(input);
 ```
+
+**Further reading:** See [Serialization](bytecode_dsl/UserGuide.md#serialization) and [GenerateBytecode.enableSerialization](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/GenerateBytecode.html#enableSerialization()).
 
 ---
 
@@ -3955,6 +4125,8 @@ if (result != null) {
 // Continue ordinary dispatch at resumeBci with the same prepared frame.
 ```
 
+**Further reading:** See [Bytecode OSR](OnStackReplacement.md#osr-for-bytecode-interpreters) and [BytecodeOSRNode.tryOSR](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/BytecodeOSRNode.html#tryOSR(com.oracle.truffle.api.nodes.BytecodeOSRNode,int,java.lang.Object,java.lang.Runnable,com.oracle.truffle.api.frame.VirtualFrame)).
+
 ---
 
 <a name="keep-a-bytecode-index-paired-with-its-bytecode-node"></a>
@@ -3994,6 +4166,8 @@ BytecodeLocation current = loadLocation().update();
 inspect(current);
 ```
 
+**Further reading:** See [Location From a Stack Frame](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/BytecodeLocation.html#get(com.oracle.truffle.api.frame.FrameInstance)) and [Bytecode Index Modes](bytecode_dsl/UserGuide.md#bytecode-index-modes).
+
 ---
 
 <a name="keep-required-cleanup-on-the-configured-unwind-path"></a>
@@ -4027,6 +4201,8 @@ b.beginTryFinally(b::emitReleaseResource);
     b.endTryCatch();
 b.endTryFinally();
 ```
+
+**Further reading:** See [Unwind Exceptions](bytecode_dsl/UserGuide.md#unwind-exceptions) and [GenerateBytecode.unwindExceptions](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/GenerateBytecode.html#unwindExceptions()).
 
 ---
 
@@ -4073,6 +4249,8 @@ GuestStep caller(RootCallTarget generator, Object argument) {
 }
 ```
 
+**Further reading:** See [Single-Method Continuations](bytecode_dsl/UserGuide.md#continuations) and [Yield Result and Bound Continuation State](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/Yield.html).
+
 ---
 
 <a name="keep-label-creation-and-emission-in-the-same-builder-scope"></a>
@@ -4111,6 +4289,8 @@ b.beginBlock();
     b.emitLabel(exit);
 b.endBlock();
 ```
+
+**Further reading:** See [Label Creation, Emission, and Branch Scope](bytecode_dsl/UserGuide.md#unstructured-control-flow).
 
 ---
 
@@ -4153,6 +4333,8 @@ abstract class ExampleRoot extends RootNode implements BytecodeRootNode {
 }
 ```
 
+**Further reading:** See [Short-Circuit Operation Semantics](bytecode_dsl/ShortCircuitOperations.md) and [Operator Stop and Result Policies](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/ShortCircuitOperation.Operator.html).
+
 ---
 
 <a name="rewrite-cleared-static-slots-before-reading-them"></a>
@@ -4194,6 +4376,8 @@ int calculate(VirtualFrame frame, int temporarySlot, boolean chooseLeft,
 }
 ```
 
+**Further reading:** See [Static Clearing Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/frame/Frame.html#clearStatic(int)) and [OSR Frame Transfer and Live Variables](OnStackReplacement.md#osr-for-bytecode-interpreters).
+
 ---
 
 ## Threaded interpreter dispatch
@@ -4233,6 +4417,8 @@ switch (opcode) {
     case CALL -> pc = callHandler(pc, state, bytecode, frame);
 }
 ```
+
+**Further reading:** See [Handler returnValue](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/HostCompilerDirectives.BytecodeInterpreterHandlerConfig.Argument.html#returnValue()) and [One Compilation per Bytecode Handler](OneCompilationPerBytecodeHandler.md).
 
 ---
 
@@ -4281,6 +4467,8 @@ static int read(Frame frame, State state) {
     return state.owner.read(frame, state.stackPointer);
 }
 ```
+
+**Further reading:** See [Full Parameter Expansion](OneCompilationPerBytecodeHandler.md#full-parameter-expansion) and [ExpansionKind](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/HostCompilerDirectives.BytecodeInterpreterHandlerConfig.Argument.ExpansionKind.html).
 
 ---
 
@@ -4333,6 +4521,8 @@ static void selectNext(State state, boolean keepOperand, boolean alternateMode) 
 }
 ```
 
+**Further reading:** See [Bytecode Handler Templates](OneCompilationPerBytecodeHandler.md#bytecode-handler-templates) and [Field.templateVariable](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/HostCompilerDirectives.BytecodeInterpreterHandlerConfig.Argument.Field.html#templateVariable()).
+
 ---
 
 <a name="keep-per-instruction-work-inside-threaded-handlers"></a>
@@ -4383,6 +4573,8 @@ switch (opcode) {
 }
 ```
 
+**Further reading:** See [Handler Threading](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/HostCompilerDirectives.BytecodeInterpreterHandler.html#threading()) and [Opcode Fetch Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/HostCompilerDirectives.BytecodeInterpreterFetchOpcode.html).
+
 ---
 
 ## Instrumentation, source locations, and diagnostics
@@ -4429,6 +4621,8 @@ final class FunctionRoot extends RootNode {
 }
 ```
 
+**Further reading:** See [Source Range Coordinates](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html#createSection(int,int,int,int)) and [Nearest AST Source Location](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#getEncapsulatingSourceSection()).
+
 ---
 
 <a name="refresh-lazy-source-information-before-reading-it"></a>
@@ -4461,6 +4655,8 @@ SourceSection findSection(BytecodeLocation location) {
 }
 ```
 
+**Further reading:** See [Runtime Compilation: Source information](bytecode_dsl/RuntimeCompilation.md#source-information) and [BytecodeNode.ensureSourceInformation](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/BytecodeNode.html#ensureSourceInformation()).
+
 ---
 
 <a name="keep-tooling-language-views-out-of-execution-data-flow"></a>
@@ -4492,6 +4688,8 @@ Object inspectionView = createLanguageInspectionView(value);
 showInDebugger(inspectionView);
 executeOperation(value);
 ```
+
+**Further reading:** See [getLanguageView](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#getLanguageView(C,java.lang.Object)).
 
 ---
 
@@ -4533,6 +4731,8 @@ for (StatementSyntax statement : body.statements()) {
     endSourceRange(b);
 }
 ```
+
+**Further reading:** See [StatementTag](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/StandardTags.StatementTag.html) and [Stable Tag Semantics](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/InstrumentableNode.html#hasTag(java.lang.Class)).
 
 ---
 
@@ -4585,6 +4785,8 @@ abstract class ExpressionNode extends Node implements InstrumentableNode {
     }
 }
 ```
+
+**Further reading:** See [Instrumentation Inserts Wrapping Nodes](../../docs/graalvm-as-a-platform/implement-instrument.md#execution-event-node) and [GenerateWrapper](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/GenerateWrapper.html).
 
 ---
 
@@ -4641,6 +4843,8 @@ Object execute(VirtualFrame frame) {
 }
 ```
 
+**Further reading:** See [ProbeNode and Recommended Wrapper](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/ProbeNode.html) and [Exceptional Completion and Unwind](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/ProbeNode.html#onReturnExceptionalOrUnwind(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Throwable,boolean)).
+
 ---
 
 <a name="make-root-preparation-stabilize-for-repeated-tags"></a>
@@ -4683,6 +4887,8 @@ protected void prepareForInstrumentation(Set<Class<?>> tags) {
     });
 }
 ```
+
+**Further reading:** See [Root Instrumentation Preparation](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#prepareForInstrumentation(java.util.Set)).
 
 ---
 
@@ -4731,6 +4937,8 @@ BytecodeConfig config = MyRootNodeGen.newConfigBuilder()
                 .addInstrumentation(ObserveResult.class).build();
 roots.update(config);
 ```
+
+**Further reading:** See [Instrumentation Operation Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/Instrumentation.html) and [Instruction Tracing](bytecode_dsl/UserGuide.md#tracing).
 
 ---
 
@@ -4800,6 +5008,8 @@ final class BodyNode extends InstrumentableExpressionNode {
 }
 ```
 
+**Further reading:** See [Root-Body Tag Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/StandardTags.RootBodyTag.html) and [Scope Query and Event Phase](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/NodeLibrary.html#getScope(java.lang.Object,com.oracle.truffle.api.frame.Frame,boolean)).
+
 ---
 
 <a name="report-allocation-intent-before-creating-the-guest-value"></a>
@@ -4856,6 +5066,8 @@ final class GuestBox implements TruffleObject {
 }
 ```
 
+**Further reading:** See [Allocation Reporter Contract and Example](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/AllocationReporter.html) and [Allocation Intent](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/AllocationReporter.html#onEnter(java.lang.Object,long,long)).
+
 ---
 
 <a name="keep-compiler-diagnostics-independent-of-guest-execution"></a>
@@ -4897,6 +5109,8 @@ final class OperationNode extends Node {
     }
 }
 ```
+
+**Further reading:** See [Node Debug Property Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#getDebugProperties()).
 
 ---
 
@@ -5000,3 +5214,5 @@ final class AddNode extends ExpressionNode {
     }
 }
 ```
+
+**Further reading:** See [Instrumentation Source Sections and Events](../../docs/graalvm-as-a-platform/implement-instrument.md#source-section-listener) and [Materialization Contract](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/InstrumentableNode.html#materializeInstrumentableNodes(java.util.Set)).

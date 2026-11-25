@@ -105,6 +105,8 @@ try (Engine engine = Engine.newBuilder()
 }
 ```
 
+**Further reading:** See [Engine.Builder.option](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#option(java.lang.String,java.lang.String)) and [Context.Builder.option](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#option(java.lang.String,java.lang.String)).
+
 ---
 
 <a name="match-isolate-configuration-to-permitted-languages-and-dependencies"></a>
@@ -136,6 +138,8 @@ try (Engine engine = Engine.newBuilder(languageId)
     }
 }
 ```
+
+**Further reading:** See [Polyglot isolates](../../docs/reference-manual/embedding/embed-languages.md#polyglot-isolates) and [Engine Permitted Languages](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#newBuilder(java.lang.String...)).
 
 ---
 
@@ -173,6 +177,8 @@ static void checkDeployment(String requiredLanguageId) {
     }
 }
 ```
+
+**Further reading:** See [Embedding Dependency Setup](../../docs/reference-manual/embedding/embed-languages.md#dependency-setup) and [Engine.getLanguages](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#getLanguages()).
 
 ---
 
@@ -212,6 +218,8 @@ void prepareResources(Path resourceDirectory, String... selectedLanguageIds)
     recordResourcePreparation(resourceDirectory, copied);
 }
 ```
+
+**Further reading:** See [Managing Internal Resources](../../docs/reference-manual/embedding/embed-languages.md#managing-internal-resources) and [Engine.copyResources](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#copyResources(java.nio.file.Path,java.lang.String...)).
 
 ---
 
@@ -257,6 +265,8 @@ String evaluate(Source source, Map<String, String> stableEngineOptions) {
     }
 }
 ```
+
+**Further reading:** See [Engine Experimental-Option Gate](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#allowExperimentalOptions(boolean)) and [Context Experimental-Option Gate](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowExperimentalOptions(boolean)).
 
 ---
 
@@ -309,6 +319,8 @@ try (Context context = Context.newBuilder(source.getLanguage())
 }
 ```
 
+**Further reading:** See [HostAccess](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html) and [HostAccess.Builder.allowImplementations](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowImplementations(java.lang.Class)).
+
 ---
 
 <a name="expose-internal-resources-through-the-read-only-adapter"></a>
@@ -340,6 +352,8 @@ try (Context context = Context.newBuilder(languageId)
     runApplication(context);
 }
 ```
+
+**Further reading:** See [allowInternalResources](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#allowInternalResources(org.graalvm.polyglot.io.FileSystem)).
 
 ---
 
@@ -377,6 +391,8 @@ FileSystem configureFiles(FileSystem fallback,
 FileSystem composite = configureFiles(fallback, routes, directory);
 Path target = composite.toAbsolutePath(composite.parsePath("input.dat"));
 ```
+
+**Further reading:** See [Composite FileSystem contract](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#newCompositeFileSystem(org.graalvm.polyglot.io.FileSystem,org.graalvm.polyglot.io.FileSystem.Selector...)) and [Working-directory contract](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#setCurrentWorkingDirectory(java.nio.file.Path)).
 
 ---
 
@@ -418,6 +434,8 @@ void execute(Source program) {
 }
 ```
 
+**Further reading:** See [IOAccess.NONE](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/IOAccess.html#NONE) and [Context IO Configuration](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowIO(org.graalvm.polyglot.io.IOAccess)).
+
 ---
 
 ## Context lifecycle and cancellation
@@ -452,6 +470,8 @@ try {
     context.leave();
 }
 ```
+
+**Further reading:** See [Context.enter](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#enter()) and [Context.leave](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#leave()).
 
 ---
 
@@ -502,6 +522,8 @@ void executeOnce(Source source) {
 }
 ```
 
+**Further reading:** See [PolyglotException.isCancelled](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html#isCancelled()) and [Context.close(boolean)](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#close(boolean)).
+
 ---
 
 <a name="avoid-keeping-an-idle-coordinator-entered-while-workers-run"></a>
@@ -534,6 +556,8 @@ try {
 Future<?> worker = executor.submit(() -> context.eval(source));
 worker.get(); // Coordinator never entered; eval enters for the worker operation.
 ```
+
+**Further reading:** See [Context.safepoint](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#safepoint()) and [Context.enter](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#enter()).
 
 ---
 
@@ -586,6 +610,8 @@ try (Context context = Context.newBuilder(languageId)
 }
 ```
 
+**Further reading:** See [Host callback parameter scoping](../../docs/reference-manual/embedding/embed-languages.md#controlling-host-callback-parameter-scoping) and [Value.pin](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#pin()).
+
 ---
 
 <a name="close-owned-contexts-and-engines-without-relying-on-gc"></a>
@@ -629,6 +655,8 @@ int[] evaluateBatch(Source[] sources) {
     return results;
 }
 ```
+
+**Further reading:** See [Manage the Lifecycle of Contexts and Engines](../../docs/reference-manual/embedding/embed-languages.md#manage-the-lifecycle-of-contexts-and-engines).
 
 ---
 
@@ -675,6 +703,8 @@ void runGuest(Source source) {
 }
 ```
 
+**Further reading:** See [System Exit Policy](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#useSystemExit(boolean)) and [Exit Classification](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html#isExit()).
+
 ---
 
 ## Sources, evaluation, and reuse
@@ -717,6 +747,8 @@ void runBatch(Value exports, int[] inputs) {
     }
 }
 ```
+
+**Further reading:** See [Guest functions as Java values](../../docs/reference-manual/embedding/embed-languages.md#define-guest-language-functions-as-java-values) and [Value.invokeMember](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#invokeMember(java.lang.String,java.lang.Object...)).
 
 ---
 
@@ -764,6 +796,8 @@ final class ProgramRunner implements AutoCloseable {
 }
 ```
 
+**Further reading:** See [Code Caching Across Multiple Contexts](../../docs/reference-manual/embedding/embed-languages.md#code-caching-across-multiple-contexts) and [Source Cache Policy](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#cached(boolean)).
+
 ---
 
 <a name="do-not-treat-a-parsed-value-as-a-memoized-result"></a>
@@ -799,6 +833,8 @@ try (Context context = Context.newBuilder(source.getLanguage()).build()) {
     inspectSameResult(result); // Application must not re-execute the entry.
 }
 ```
+
+**Further reading:** See [Context.parse Contract](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#parse(org.graalvm.polyglot.Source)).
 
 ---
 
@@ -850,6 +886,8 @@ try (Context context = Context.newBuilder(source.getLanguage())
 }
 ```
 
+**Further reading:** See [Interface and Recursive Target Mapping](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#as(java.lang.Class)) and [Interface Implementation Permission](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowImplementations(java.lang.Class)).
+
 ---
 
 <a name="inspect-guest-values-through-public-capabilities"></a>
@@ -882,6 +920,8 @@ String readLabel(Value result) {
     return result.asString();
 }
 ```
+
+**Further reading:** See [Value Capabilities and Lifetime](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html) and [String Capability](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#isString()).
 
 ---
 
@@ -918,6 +958,8 @@ Value requiredGlobal(Context context, String languageId, String name) {
 }
 ```
 
+**Further reading:** See [Language Bindings](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#getBindings(java.lang.String)) and [Polyglot Exchange Bindings](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#getPolyglotBindings()).
+
 ---
 
 <a name="request-the-numeric-value-rather-than-guessing-its-java-wrapper"></a>
@@ -951,6 +993,8 @@ long readCount(Value result) {
     return result.asLong();
 }
 ```
+
+**Further reading:** See [Value.as target type and Object mapping rules](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#as(java.lang.Class)) and [Value.fitsInLong](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#fitsInLong()).
 
 ---
 
@@ -998,6 +1042,8 @@ public Object getNext() {
 }
 ```
 
+**Further reading:** See [Proxy Iterator Availability](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/proxy/ProxyIterator.html#hasNext()) and [Proxy Iterator Consumption](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/proxy/ProxyIterator.html#getNext()).
+
 ---
 
 <a name="separate-conversion-order-from-overload-precedence"></a>
@@ -1041,6 +1087,8 @@ try (Context context = Context.newBuilder(source.getLanguage())
 }
 ```
 
+**Further reading:** See [Target Mapping Precedence](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.TargetMappingPrecedence.html) and [Custom Target Mappings](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#targetTypeMapping(java.lang.Class,java.lang.Class,java.util.function.Predicate,java.util.function.Function,org.graalvm.polyglot.HostAccess.TargetMappingPrecedence)).
+
 ---
 
 <a name="use-the-hash-protocol-for-guest-dictionary-entries"></a>
@@ -1078,6 +1126,8 @@ Value requiredEntry(Value dictionary, String key) {
     return entry;
 }
 ```
+
+**Further reading:** See [Hash Capability](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#hasHashEntries()) and [Hash Lookup and Failures](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#getHashValue(java.lang.Object)).
 
 ---
 
@@ -1123,6 +1173,8 @@ Value requiredMember(Value receiver, String name) {
 }
 ```
 
+**Further reading:** See [getMember Result and Failure Contract](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#getMember(java.lang.String)).
+
 ---
 
 ## Output, logging, and diagnostics
@@ -1159,6 +1211,8 @@ try (Context context = Context.newBuilder(source.getLanguage())
     context.eval(source);
 }
 ```
+
+**Further reading:** See [Context.Builder.out](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#out(java.io.OutputStream)) and [Sandbox Resource Limits](https://www.graalvm.org/latest/security-guide/sandboxing/).
 
 ---
 
@@ -1207,6 +1261,8 @@ catch (PolyglotException original) {
 }
 ```
 
+**Further reading:** See [PolyglotException.getGuestObject](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html#getGuestObject()).
+
 ---
 
 <a name="choose-one-intended-logging-destination-per-scope"></a>
@@ -1248,3 +1304,5 @@ byte[] runWithCapturedLogs(Source source) {
     return capture.toByteArray();
 }
 ```
+
+**Further reading:** See [Logging Options](../../truffle/docs/Options.md#default-language-launcher-options) and [Context Logging Stream](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#logHandler(java.io.OutputStream)).
