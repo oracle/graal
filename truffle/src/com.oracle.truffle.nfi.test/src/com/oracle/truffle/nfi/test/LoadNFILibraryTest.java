@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.nfi.test;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.InteropException;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -54,6 +55,19 @@ public class LoadNFILibraryTest extends NFITest {
     public void loadTestLib() {
         Object library = eval("load '%s'", getLibPath("nativetest"));
         Assert.assertNotNull(library);
+    }
+
+    @Test
+    public void preBoundMembersInDeclarationOrder() throws InteropException {
+        Object library = eval("load '%s' { increment_SINT64 (sint64):sint64; increment_SINT8 (sint8):sint8; increment_SINT32 (sint32):sint32; }", getLibPath("nativetest"));
+        String[] expected = {"increment_SINT64", "increment_SINT8", "increment_SINT32"};
+        for (boolean includeInternal : new boolean[]{false, true}) {
+            Object members = UNCACHED_INTEROP.getMembers(library, includeInternal);
+            Assert.assertEquals(expected.length, UNCACHED_INTEROP.getArraySize(members));
+            for (int i = 0; i < expected.length; i++) {
+                Assert.assertEquals(expected[i], UNCACHED_INTEROP.asString(UNCACHED_INTEROP.readArrayElement(members, i)));
+            }
+        }
     }
 
     @Test

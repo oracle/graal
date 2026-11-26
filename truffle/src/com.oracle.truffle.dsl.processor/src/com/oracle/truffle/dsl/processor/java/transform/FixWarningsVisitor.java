@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.dsl.processor.java.transform;
 
 import java.io.Serializable;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.StringTokenizer;
@@ -68,7 +69,7 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
 
     private final DeclaredType overrideType;
 
-    private Set<String> suppressedWarnings = new HashSet<>();
+    private Set<String> suppressedWarnings = new LinkedHashSet<>();
     private boolean computeSymbols = false;
     private boolean seenDeprecatedElement = false;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,9 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import org.junit.Test;
@@ -212,6 +215,25 @@ public class IndexedFrameTest {
         assertEquals(0, descriptor.getAuxiliarySlots().size());
         // all auxiliary slots disabled: storage should shrink
         assertEquals(0, descriptor.getNumberOfAuxiliarySlots());
+    }
+
+    @Test
+    public void testAuxiliarySlotOrder() {
+        FrameDescriptor descriptor = FrameDescriptor.newBuilder().build();
+        assertEquals(0, descriptor.findOrAddAuxiliarySlot("zeta"));
+        assertEquals(1, descriptor.findOrAddAuxiliarySlot("mu"));
+        assertEquals(2, descriptor.findOrAddAuxiliarySlot("alpha"));
+        Map<Object, Integer> snapshot = descriptor.getAuxiliarySlots();
+        assertEquals(List.of("zeta", "mu", "alpha"), new ArrayList<>(snapshot.keySet()));
+        assertEquals(List.of(0, 1, 2), new ArrayList<>(snapshot.values()));
+
+        descriptor.disableAuxiliarySlot("mu");
+        assertEquals(List.of("zeta", "alpha"), new ArrayList<>(descriptor.getAuxiliarySlots().keySet()));
+        assertEquals(1, descriptor.findOrAddAuxiliarySlot(new String("mu")));
+        assertEquals(List.of("zeta", "mu", "alpha"), new ArrayList<>(descriptor.getAuxiliarySlots().keySet()));
+
+        descriptor.findOrAddAuxiliarySlot("beta");
+        assertEquals(List.of("zeta", "mu", "alpha"), new ArrayList<>(snapshot.keySet()));
     }
 
     @Test

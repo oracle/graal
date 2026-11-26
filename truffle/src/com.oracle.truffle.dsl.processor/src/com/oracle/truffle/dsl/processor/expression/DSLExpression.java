@@ -43,6 +43,7 @@ package com.oracle.truffle.dsl.processor.expression;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -323,7 +324,7 @@ public abstract class DSLExpression {
     }
 
     public final Set<ExecutableElement> findBoundExecutableElements() {
-        final Set<ExecutableElement> methods = new HashSet<>();
+        final Set<ExecutableElement> methods = new LinkedHashSet<>();
         this.accept(new AbstractDSLExpressionVisitor() {
 
             @Override
@@ -338,7 +339,7 @@ public abstract class DSLExpression {
     }
 
     public final Set<VariableElement> findBoundVariableElements() {
-        final Set<VariableElement> variables = new HashSet<>();
+        final Set<VariableElement> variables = new LinkedHashSet<>();
         this.accept(new AbstractDSLExpressionVisitor() {
 
             @Override

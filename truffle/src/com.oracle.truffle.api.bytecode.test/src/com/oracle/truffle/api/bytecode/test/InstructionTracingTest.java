@@ -801,6 +801,9 @@ public class InstructionTracingTest extends AbstractInstructionTest {
             localSum += entry.getValue();
         }
         assertEquals(histogram.getInstructionsExecuted(), localSum);
+        if (histogram.getGroups() == null) {
+            assertEquals(new ArrayList<>(histogram.getCounters().keySet()), new ArrayList<>(histogram.getStatistics().keySet()));
+        }
         long localStatisticSum = 0;
         for (var entry : histogram.getStatistics().entrySet()) {
             localStatisticSum += entry.getValue().getSum();

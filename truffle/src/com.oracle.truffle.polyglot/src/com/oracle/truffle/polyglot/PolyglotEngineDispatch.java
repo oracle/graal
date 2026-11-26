@@ -47,7 +47,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -128,7 +128,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
             Map<String, PolyglotInstrument> publicInstrument = receiver.getInstruments();
-            Map<String, Object> result = new HashMap<>(publicInstrument.size());
+            Map<String, Object> result = new LinkedHashMap<>(publicInstrument.size());
             Engine engine = receiver.getEngineAPI();
             APIAccess apiAccess = polyglot.getAPIAccess();
             for (Map.Entry<String, PolyglotInstrument> e : publicInstrument.entrySet()) {
@@ -145,7 +145,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
             Map<String, PolyglotLanguage> publicLanguages = receiver.getPublicLanguages();
-            Map<String, Object> result = new HashMap<>(publicLanguages.size());
+            Map<String, Object> result = new LinkedHashMap<>(publicLanguages.size());
             Engine engine = receiver.getEngineAPI();
             APIAccess apiAccess = polyglot.getAPIAccess();
             for (Map.Entry<String, PolyglotLanguage> e : publicLanguages.entrySet()) {

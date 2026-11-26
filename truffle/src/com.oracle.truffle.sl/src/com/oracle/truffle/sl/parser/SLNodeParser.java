@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,7 @@ package com.oracle.truffle.sl.parser;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -133,7 +133,7 @@ public class SLNodeParser extends SLBaseParser {
     private SLStatementVisitor statementVisitor = new SLStatementVisitor();
     private SLExpressionVisitor expressionVisitor = new SLExpressionVisitor();
     private int loopDepth = 0;
-    private final Map<TruffleString, RootCallTarget> functions = new HashMap<>();
+    private final Map<TruffleString, RootCallTarget> functions = new LinkedHashMap<>();
 
     protected SLNodeParser(SLLanguage language, Source source) {
         super(language, source);

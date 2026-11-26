@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -58,6 +62,15 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class NodeUtilTest {
+
+    @Test
+    public void testDebugPropertyOrder() {
+        Map<String, Object> properties = new TestNode().getDebugProperties();
+        properties.put("zeta", 1);
+        properties.put("mu", 2);
+        properties.put("alpha", 3);
+        assertEquals(List.of("zeta", "mu", "alpha"), new ArrayList<>(properties.keySet()));
+    }
 
     @Test
     public void testAssertAdoptedSuccess() {
