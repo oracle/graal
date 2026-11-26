@@ -213,6 +213,43 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testRefArrayInteropTypeCheck() throws IOException {
+        /*
+         * (module
+         *   (type $struct (struct))
+         *   (type $array (array (mut (ref null $struct))))
+         *   (func (export "makeArray") (result (ref $array))
+         *     ref.null $struct
+         *     i32.const 1
+         *     array.new $array
+         *   )
+         *   (func (export "makeStruct") (result (ref $struct))
+         *     struct.new $struct
+         *   )
+         * )
+         */
+        final byte[] binary = hexStringToByteArray(
+                        "0061736d010000000111045f005e63000160000164016000016400030302",
+                        "0203071a02096d616b65417272617900000a6d616b655374727563740001",
+                        "0a11020900d0004101fb06010b0500fb00000b");
+        runTest(builder -> builder.option("wasm.GC", "true"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance instance = moduleInstantiate(wasm, binary, null);
+            final InteropLibrary interop = InteropLibrary.getUncached();
+            try {
+                final Object array = interop.execute(WebAssembly.instanceExport(instance, "makeArray"));
+                final Object struct = interop.execute(WebAssembly.instanceExport(instance, "makeStruct"));
+
+                Assert.assertThrows(UnsupportedTypeException.class, () -> interop.writeArrayElement(array, 0, array));
+                interop.writeArrayElement(array, 0, struct);
+                Assert.assertSame(struct, interop.readArrayElement(array, 0));
+            } catch (InteropException e) {
+                throw new AssertionError(e);
+            }
+        });
+    }
+
+    @Test
     public void testInstantiateWithImports() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
