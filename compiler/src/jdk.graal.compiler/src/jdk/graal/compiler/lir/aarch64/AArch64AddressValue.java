@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -94,18 +94,29 @@ public final class AArch64AddressValue extends CompositeValue {
             return new AArch64AddressValue(kind, bitMemoryTransferSize, base, Value.ILLEGAL, 0, 1, AddressingMode.BASE_REGISTER_ONLY);
 
         } else {
-            int byteMemoryTransferSize = bitMemoryTransferSize / Byte.SIZE;
-            /* Addresses using IMMEDIATE_UNSIGNED_SCALED must be non-negative and shiftable. */
-            boolean canScale = displacement >= 0 &&
-                            AArch64Address.isOffsetAligned(bitMemoryTransferSize, displacement);
-            AArch64Address.AddressingMode mode = canScale ? IMMEDIATE_UNSIGNED_SCALED : IMMEDIATE_SIGNED_UNSCALED;
+            AddressingMode mode = selectImmediateAddressingMode(bitMemoryTransferSize, displacement);
             if (AArch64Address.isValidImmediateAddress(bitMemoryTransferSize, mode, displacement)) {
-                int scalingFactor = isImmediateScaled(mode) ? byteMemoryTransferSize : 1;
+                int scalingFactor = isImmediateScaled(mode) ? bitMemoryTransferSize / Byte.SIZE : 1;
                 return new AArch64AddressValue(kind, bitMemoryTransferSize, base, Value.ILLEGAL, displacement, scalingFactor, mode);
             } else {
                 throw GraalError.shouldNotReachHere("Could not create AddressValue with requested displacement."); // ExcludeFromJacocoGeneratedReport
             }
         }
+    }
+
+    /**
+     * Returns whether {@code displacement}, in bytes, can be represented directly by
+     * {@link #makeAddress(ValueKind, int, AllocatableValue, int)}.
+     */
+    public static boolean canMakeImmediateAddress(int bitMemoryTransferSize, int displacement) {
+        return displacement == 0 || AArch64Address.isValidImmediateAddress(bitMemoryTransferSize,
+                        selectImmediateAddressingMode(bitMemoryTransferSize, displacement), displacement);
+    }
+
+    private static AddressingMode selectImmediateAddressingMode(int bitMemoryTransferSize, int displacement) {
+        /* Addresses using IMMEDIATE_UNSIGNED_SCALED must be non-negative and shiftable. */
+        boolean canScale = displacement >= 0 && AArch64Address.isOffsetAligned(bitMemoryTransferSize, displacement);
+        return canScale ? IMMEDIATE_UNSIGNED_SCALED : IMMEDIATE_SIGNED_UNSCALED;
     }
 
     private static Register toRegister(AllocatableValue value) {
