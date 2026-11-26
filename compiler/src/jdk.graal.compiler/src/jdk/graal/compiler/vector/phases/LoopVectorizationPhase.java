@@ -1506,13 +1506,14 @@ public class LoopVectorizationPhase extends PostRunCanonicalizationPhase<MidTier
                 if (keepPostLoop) {
                     loop.loopBegin().setPostLoop();
 
+                    /* Compute last values using the original IV starts, before stepping them. */
+                    fixNonRecursivePhis(graph, loop, vectorLoop);
+
                     /*
                      * Fixup the loop counter and other IVs. The VectorLoop's value is the number of
                      * iterations it has processed. Therefore step by this amount.
                      */
                     LoopUtility.stepLoopIVs(graph, loop, vectorLoop);
-
-                    fixLoopInvariantPhis(graph, loop, vectorLoop);
                 }
 
                 VectorLoopMarkerNode vectorLoopMarker = graph.addWithoutUnique(new VectorLoopMarkerNode());
@@ -1525,14 +1526,24 @@ public class LoopVectorizationPhase extends PostRunCanonicalizationPhase<MidTier
         /**
          * Adjust all non-recursive loop phis on the scalar post-loop. These are phis of the form
          * {@code phi(<loop not entered>, <loop entered>)}. The "loop not entered" case must take
-         * into account whether the vector loop was entered.
+         * into account whether the vector loop was entered. If the backedge is an IV, use its
+         * value in the last iteration consumed by the vector loop. Must run before stepping IVs.
+         *
+         * Before this call, analysis and consumer construction have established that observable
+         * non-IV phis satisfy {@link RemoveEmptyLoopsPhase#isOptimizablePhi} or have starts initialized
+         * from vector fold results. This method adjusts invariant and optimizable IV backedges;
+         * {@link LoopUtility#stepLoopIVs} advances IV phis afterward.
          */
-        private static void fixLoopInvariantPhis(StructuredGraph graph, Loop loop, VectorLoopNode vectorLoop) {
+        private static void fixNonRecursivePhis(StructuredGraph graph, Loop loop, VectorLoopNode vectorLoop) {
             for (ValuePhiNode phi : loop.loopBegin().valuePhis()) {
                 GraalError.guarantee(phi.valueCount() == 2, "loop must have one end, phi must have two values");
-                if (loop.isOutsideLoop(phi.valueAt(1))) {
+                ValueNode entered = phi.valueAt(1);
+                InductionVariable iv = loop.getInductionVariables().get(entered);
+                if (loop.isOutsideLoop(entered) || (iv != null && RemoveEmptyLoopsPhase.isOptimizablePhi(phi, loop))) {
                     ValueNode notEntered = phi.valueAt(0);
-                    ValueNode entered = phi.valueAt(1);
+                    if (iv != null) {
+                        entered = iv.extremumNode(true, entered.stamp(NodeView.DEFAULT), vectorLoop);
+                    }
                     ValueNode zero = ConstantNode.forIntegerStamp(vectorLoop.stamp(NodeView.DEFAULT), 0, graph);
                     LogicNode vectorLoopEntered = IntegerLessThanNode.create(zero, vectorLoop, NodeView.DEFAULT);
                     ValueNode vectorLoopPhiValue = ConditionalNode.create(vectorLoopEntered, entered, notEntered, NodeView.DEFAULT);
@@ -2734,9 +2745,10 @@ public class LoopVectorizationPhase extends PostRunCanonicalizationPhase<MidTier
                 }
             }
 
-            if (foldShaped) {
+            /* Inspect value phis even when fold vectorization is disabled. */
+            if (loop.loopBegin().valuePhis().isNotEmpty()) {
                 EconomicMap<Node, InductionVariable> ivs = loop.getInductionVariables();
-                for (PhiNode phi : loop.loopBegin().phis().snapshot()) {
+                for (PhiNode phi : loop.loopBegin().phis()) {
                     if (ivs.get(phi) != null) {
                         continue;
                     }
@@ -2753,6 +2765,7 @@ public class LoopVectorizationPhase extends PostRunCanonicalizationPhase<MidTier
                                     values.complexPhis++;
                                     continue;
                                 }
+                                GraalError.guarantee(foldShaped, "Fold vectorization is required to update this phi before advancing the scalar post loop");
                                 values.rootValues.add(value);
                                 values.folds++;
                                 collectInnerNodes(values.allValues, value, loop, arch, true);
