@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -86,10 +86,8 @@ public abstract class PartialEvaluator {
 
     // Configs
     protected final TruffleCompilerConfiguration config;
-    // TODO GR-37097 Move to TruffleCompilerImpl
-    private volatile GraphBuilderConfiguration graphBuilderConfigForParsing;
+    private volatile boolean trackNodeSourcePositions;
     // Plugins
-    private final GraphBuilderConfiguration graphBuilderConfigPrototype;
     protected final InvocationPlugins firstTierDecodingPlugins;
     protected final InvocationPlugins lastTierDecodingPlugins;
     protected final PELoopExplosionPlugin loopExplosionPlugin = new PELoopExplosionPlugin();
@@ -119,7 +117,7 @@ public abstract class PartialEvaluator {
     public PartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
         this.config = config;
         this.types = config.types();
-        this.graphBuilderConfigPrototype = createGraphBuilderConfig(configForRoot, true);
+        this.trackNodeSourcePositions = configForRoot.trackNodeSourcePosition();
         this.firstTierDecodingPlugins = createDecodingInvocationPlugins(config.firstTier().partialEvaluator(), configForRoot.getPlugins(), config.firstTier().providers());
         this.lastTierDecodingPlugins = createDecodingInvocationPlugins(config.lastTier().partialEvaluator(), configForRoot.getPlugins(), config.lastTier().providers());
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
@@ -128,14 +126,10 @@ public abstract class PartialEvaluator {
 
     protected void initialize(OptionValues options) {
         instrumentationCfg = new InstrumentPhase.InstrumentationConfiguration(options);
-        boolean needSourcePositions = graphBuilderConfigPrototype.trackNodeSourcePosition() ||
-                        TruffleCompilerOptions.NodeSourcePositions.getValue(options) ||
+        trackNodeSourcePositions |= TruffleCompilerOptions.NodeSourcePositions.getValue(options) ||
                         instrumentationCfg.instrumentBranches ||
                         instrumentationCfg.instrumentBoundaries ||
                         !TruffleCompilerOptions.TracePerformanceWarnings.getValue(options).kinds().isEmpty();
-
-        graphBuilderConfigForParsing = graphBuilderConfigPrototype.withNodeSourcePosition(needSourcePositions).withOmitAssertions(
-                        TruffleCompilerOptions.ExcludeAssertions.getValue(options));
 
         this.allowAssumptionsDuringParsing = TruffleCompilerOptions.ParsePEGraphsWithAssumptions.getValue(options);
         // Graphs with assumptions cannot be cached across compilations, so the persistent cache is
@@ -344,28 +338,13 @@ public abstract class PartialEvaluator {
     }
 
     /**
-     * Returns the root {@link GraphBuilderConfiguration}. The root configuration provides plugins
-     * used by this {@link PartialEvaluator} but it's not configured with engine options. The root
-     * configuration should be used in image generation time where the {@link PartialEvaluator} is
-     * not yet initialized with engine options. At runtime the
-     * {@link #getGraphBuilderConfigForParsing} should be used.
-     */
-    public GraphBuilderConfiguration getGraphBuilderConfigPrototype() {
-        return graphBuilderConfigPrototype;
-    }
-
-    /**
-     * Returns the {@link GraphBuilderConfiguration} used by parsing. The returned configuration is
-     * configured with engine options. In the image generation time the {@link PartialEvaluator} is
-     * not yet initialized and the {@link #getGraphBuilderConfigPrototype} should be used instead.
+     * Returns whether partial evaluation tracks node source positions after
+     * {@link #initialize(OptionValues) initialization} with engine options.
      *
-     * @throws IllegalStateException when called on non initialized {@link PartialEvaluator}
+     * @return whether node source positions are tracked
      */
-    public GraphBuilderConfiguration getGraphBuilderConfigForParsing() {
-        if (graphBuilderConfigForParsing == null) {
-            throw new IllegalStateException("PartialEvaluator is not yet initialized");
-        }
-        return graphBuilderConfigForParsing;
+    public final boolean trackNodeSourcePositions() {
+        return trackNodeSourcePositions;
     }
 
     public KnownTruffleTypes getTypes() {
@@ -521,11 +500,6 @@ public abstract class PartialEvaluator {
                     NodePlugin[] nodePluginList, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache,
                     Supplier<AutoCloseable> createCachedGraphScope);
 
-    protected final GraphBuilderConfiguration getGraphBuilderConfigurationCopy(boolean forceNodeSourcePositions) {
-        GraphBuilderConfiguration copy = getGraphBuilderConfigForParsing().copy();
-        return copy.withNodeSourcePosition(copy.trackNodeSourcePosition() || forceNodeSourcePositions);
-    }
-
     protected abstract GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts);
 
     @SuppressWarnings("try")
@@ -567,8 +541,12 @@ public abstract class PartialEvaluator {
      * Graph-builder configuration is shared between the first- and the second-tier compilations,
      * because the encoded graphs for the partial evaluator are shared between these compilation
      * tiers.
+     *
+     * @param graphBuilderConfig root configuration whose plugins are inherited by the copy
+     * @param canDelayIntrinsification whether invocation plugins may defer intrinsification
+     * @return a configuration with the Truffle parsing plugins registered
      */
-    private GraphBuilderConfiguration createGraphBuilderConfig(GraphBuilderConfiguration graphBuilderConfig, boolean canDelayIntrinsification) {
+    public final GraphBuilderConfiguration createGraphBuilderConfig(GraphBuilderConfiguration graphBuilderConfig, boolean canDelayIntrinsification) {
         GraphBuilderConfiguration newConfig = graphBuilderConfig.copy();
         InvocationPlugins invocationPlugins = newConfig.getPlugins().getInvocationPlugins();
         registerGraphBuilderInvocationPlugins(invocationPlugins, canDelayIntrinsification);

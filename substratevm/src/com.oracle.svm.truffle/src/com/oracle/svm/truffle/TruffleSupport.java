@@ -54,7 +54,6 @@ import com.oracle.truffle.runtime.OptimizedAssumption;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.truffle.EconomyPartialEvaluatorConfiguration;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluatorConfiguration;
@@ -80,7 +79,6 @@ public class TruffleSupport {
 
     protected static TruffleCompilerConfiguration createSubstrateTruffleCompilerConfig(SubstrateTruffleRuntime runtime, String compilerConfigurationName) {
         RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
-        final GraphBuilderConfiguration.Plugins graphBuilderPlugins = runtimeCompilationFeature.getHostedProviders().getGraphBuilderPlugins();
         SubstrateBackend substrateBackend = RuntimeCompilationSupport.getRuntimeConfig().getBackendForNormalMethod();
         substrateBackend.setRuntimeToRuntimeInvokeMethod(ReflectionUtil.lookupMethod(SubstrateOptimizedCallTarget.class, "doInvoke", Object[].class));
         KnownTruffleTypes types = ImageSingletons.lookup(KnownTruffleTypes.class);
@@ -94,7 +92,7 @@ public class TruffleSupport {
                         RuntimeCompilationSupport.getRuntimeConfig().getProviders(), RuntimeCompilationSupport.getFullOptSuites(),
                         RuntimeCompilationSupport.getLIRSuites(),
                         types);
-        return new TruffleCompilerConfiguration(runtime, graphBuilderPlugins, runtimeCompilationFeature.getHostedProviders().getSnippetReflection(), firstTier, lastTier, types,
+        return new TruffleCompilerConfiguration(runtime, runtimeCompilationFeature.getHostedProviders().getSnippetReflection(), firstTier, lastTier, types,
                         RuntimeCompilationSupport.getFullOptSuites(), null);
     }
 

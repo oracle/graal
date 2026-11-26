@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -128,7 +128,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     }
 
     protected TruffleCompilerConfiguration config;
-    protected final GraphBuilderConfiguration builderConfig;
     protected final PartialEvaluator partialEvaluator;
     protected final TrufflePostCodeInstallationTaskFactory codeInstallationTaskFactory;
     private volatile ExpansionStatistics expansionStatistics;
@@ -146,7 +145,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
                     UseTypeCheckHints);
 
     @SuppressWarnings("this-escape")
-    public TruffleCompilerImpl(TruffleCompilerConfiguration config) {
+    public TruffleCompilerImpl(TruffleCompilerConfiguration config, Plugins plugins) {
         this.config = config;
         this.codeInstallationTaskFactory = new TrufflePostCodeInstallationTaskFactory();
 
@@ -154,16 +153,26 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             initializeBackend(backend);
         }
 
-        GraphBuilderConfiguration baseConfig = GraphBuilderConfiguration.getDefault(new Plugins(this.config.plugins()));
-        this.builderConfig = baseConfig //
-                        .withSkippedExceptionTypes(config.types().skippedExceptionTypes) //
+        this.partialEvaluator = createPartialEvaluator(config, createRootGraphBuilderConfig(config.types(), plugins));
+    }
+
+    /**
+     * Creates the Truffle graph-builder defaults before applying engine options. The returned
+     * configuration uses a child plugin container so registrations do not modify the supplied
+     * plugins.
+     *
+     * @param types known Truffle types used to configure skipped exceptions
+     * @param plugins parent graph-builder plugins
+     * @return the root graph-builder configuration
+     */
+    public static GraphBuilderConfiguration createRootGraphBuilderConfig(KnownTruffleTypes types, Plugins plugins) {
+        return GraphBuilderConfiguration.getDefault(new Plugins(plugins)) //
+                        .withSkippedExceptionTypes(types.skippedExceptionTypes) //
                         .withOmitAssertions(TruffleCompilerOptions.ExcludeAssertions.getDefaultValue()) //
                         .withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly) //
                         // Avoid deopt loops caused by unresolved constant pool entries when parsed
                         // graphs are cached across compilations.
                         .withEagerResolving(true);
-
-        this.partialEvaluator = createPartialEvaluator(config);
     }
 
     public void initializeBackend(Backend backend) {
@@ -177,7 +186,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     /**
      * Creates the partial evaluator used by this compiler.
      */
-    protected abstract PartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration configuration);
+    protected abstract PartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration configuration, GraphBuilderConfiguration builderConfig);
 
     public static final TimerKey PartialEvaluationTime = DebugContext.timer("PartialEvaluationTime").doc("Total time spent in the Truffle tier.");
     public static final TimerKey CompilationTime = DebugContext.timer("CompilationTime");

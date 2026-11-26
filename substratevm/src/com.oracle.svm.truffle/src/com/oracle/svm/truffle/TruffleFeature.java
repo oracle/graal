@@ -206,6 +206,7 @@ import jdk.graal.compiler.phases.util.BytecodeInterpreterAnnotations;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.truffle.KnownTruffleTypes;
 import jdk.graal.compiler.truffle.PartialEvaluator;
+import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.host.HostInliningPhase;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.truffle.nodes.TruffleEarlyEscapeAnchorNode;
@@ -448,7 +449,9 @@ public class TruffleFeature implements InternalFeature {
 
         PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
         registerKnownTruffleFields(config, ImageSingletons.lookup(KnownTruffleTypes.class));
-        GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getGraphBuilderConfigPrototype();
+        // Parsing plugins are owned by the hosted graph encoder, not the runtime partial evaluator.
+        GraphBuilderConfiguration rootConfig = TruffleCompilerImpl.createRootGraphBuilderConfig(partialEvaluator.getTypes(), runtimeCompilationFeature.getHostedProviders().getGraphBuilderPlugins());
+        GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.createGraphBuilderConfig(rootConfig, true);
 
         TruffleAllowInliningPredicate allowInliningPredicate = new TruffleAllowInliningPredicate(runtimeCompilationFeature.getHostedProviders().getReplacements(),
                         graphBuilderConfig.getPlugins().getInvocationPlugins(),
