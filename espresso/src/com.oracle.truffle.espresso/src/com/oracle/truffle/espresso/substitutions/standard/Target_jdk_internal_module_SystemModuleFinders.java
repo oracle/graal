@@ -109,12 +109,14 @@ final class Target_jdk_internal_module_SystemModuleFinders {
     @TruffleBoundary
     private static StaticObject extendModuleFinders(EspressoLanguage language, Meta meta, StaticObject moduleFinder, StaticObject pathArray) {
         // ModuleFinder extension = ModulePath.of(pathArray);
-        // moduleFinder = ModuleFinder.compose(extension, moduleFinder);
+        // moduleFinder = ModuleFinder.compose(moduleFinder, extension);
         StaticObject extension = (StaticObject) meta.jdk_internal_module_ModulePath_of.invokeDirectStatic(pathArray);
         StaticObject moduleFinderArray = meta.java_lang_module_ModuleFinder.allocateReferenceArray(2);
         StaticObject[] unwrapped = moduleFinderArray.unwrap(language);
-        unwrapped[0] = extension;
-        unwrapped[1] = moduleFinder;
+        // A successful system module lookup short-circuits the search and avoids opening the
+        // extension JARs through the ZIP-backed finder.
+        unwrapped[0] = moduleFinder;
+        unwrapped[1] = extension;
         return (StaticObject) meta.java_lang_module_ModuleFinder_compose.invokeDirectStatic(moduleFinderArray);
     }
 
