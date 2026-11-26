@@ -37,6 +37,7 @@ import java.util.Hashtable;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
@@ -123,6 +124,18 @@ final class Target_java_net_URL {
             return handler;
         }
 
+        /*
+         * Deviation from the JDK: a JDK protocol whose handler is not in the image has no entry in
+         * the handler table, so the JDK's lookup below would run again on every URL with that
+         * protocol: the provider lookup scans the image's resources with a ServiceLoader, the
+         * default factory tries to load the handler class by reflection, and both fail before the
+         * MalformedURLException. Unless a factory was installed since, a protocol already found
+         * unsupported throws that exception at once.
+         */
+        if (factory == null && JavaNetSubstitutions.isUnsupportedURLProtocol(protocol)) {
+            JavaNetSubstitutions.unsupported(protocol, JavaNetSubstitutions.handlerClassName(protocol), null);
+        }
+
         boolean checkedWithFactory = false;
         URLStreamHandlerFactory currentFactory;
         boolean overrideable = isOverrideable(protocol) && !ResourceProtocol.getValue().equals(protocol);
@@ -197,6 +210,7 @@ final class Target_java_net_URL {
             } catch (ClassNotFoundException | NoSuchMethodException e) {
                 /* A reachable handler class can still lack constructor reflection metadata. */
                 if (JavaNetSubstitutions.KNOWN_JDK_PROTOCOLS.contains(protocol)) {
+                    JavaNetSubstitutions.markUnsupportedURLProtocol(protocol);
                     JavaNetSubstitutions.unsupported(protocol, name, e);
                 }
             } catch (Exception e) {
@@ -321,8 +335,19 @@ public final class JavaNetSubstitutions {
     static final Set<String> KNOWN_JDK_PROTOCOLS = Set.of(
                     "file", "ftp", "http", "https", "jar", "jmod", "jrt", "mailto");
 
+    /** JDK protocols whose handler a lookup at run time did not find in the image. */
+    private static final Set<String> UNSUPPORTED_PROTOCOLS = ConcurrentHashMap.newKeySet();
+
     static boolean isAllURLProtocolsOption(String protocol) {
         return ALL_PROTOCOLS.equals(protocol);
+    }
+
+    static boolean isUnsupportedURLProtocol(String protocol) {
+        return UNSUPPORTED_PROTOCOLS.contains(protocol);
+    }
+
+    static void markUnsupportedURLProtocol(String protocol) {
+        UNSUPPORTED_PROTOCOLS.add(protocol);
     }
 
     static boolean isDisabledURLProtocol(String protocol) {
