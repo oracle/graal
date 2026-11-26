@@ -73,6 +73,9 @@ class IfFrame extends ControlFrame {
     }
 
     void enterElse(ParserState state, RuntimeBytecodeGen bytecode) {
+        if (elseBranch) {
+            throw WasmException.create(Failure.TYPE_MISMATCH, "Else branch can only occur once in an if.");
+        }
         initializedLocals = (BitSet) parentFrame.initializedLocals.clone();
         final BytecodeFixup location = bytecode.addForwardBranch(RuntimeBytecodeGen.BranchOp.BR);
         falseJumpLocation.patch(bytecode.location());
@@ -89,11 +92,9 @@ class IfFrame extends ControlFrame {
             if (resultTypes().length != paramTypes().length) {
                 throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
             }
-            if (!isUnreachable()) {
-                for (int i = 0; i < resultTypes().length; i++) {
-                    if (!getSymbolTable().matchesType(resultTypes()[i], paramTypes()[i])) {
-                        throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
-                    }
+            for (int i = 0; i < resultTypes().length; i++) {
+                if (!getSymbolTable().matchesType(resultTypes()[i], paramTypes()[i])) {
+                    throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with incompatible param and result types requires else branch.");
                 }
             }
         }
