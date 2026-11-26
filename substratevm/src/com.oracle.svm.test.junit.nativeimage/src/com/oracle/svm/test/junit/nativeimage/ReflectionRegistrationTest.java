@@ -47,6 +47,7 @@ import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.test.api.NativeImageBuildArgs;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -201,7 +202,8 @@ public class ReflectionRegistrationTest {
      */
     @Test
     public void testMembersInheritedThroughSuperclassInterfaces() {
-        Class<?> target = hideFromAnalysis(InheritanceTarget.class);
+        // With exact metadata, a constant receiver would make the build register the queries itself.
+        Class<?> target = GraalDirectives.opaque(InheritanceTarget.class);
 
         Set<String> fieldNames = Arrays.stream(target.getFields()).map(Field::getName).collect(Collectors.toSet());
         assertEquals(Set.of("ownField", "SUPERCLASS_INTERFACE_FIELD", "GRAND_SUPERCLASS_INTERFACE_FIELD", "GRAND_SUPERCLASS_SUPERINTERFACE_FIELD"), fieldNames);
@@ -209,14 +211,6 @@ public class ReflectionRegistrationTest {
         Set<String> methodNames = Arrays.stream(target.getMethods()).map(Method::getName).collect(Collectors.toSet());
         Set<String> expectedMethodNames = Set.of("ownMethod", "superclassInterfaceMethod", "grandSuperclassInterfaceMethod", "grandSuperclassSuperinterfaceMethod");
         assertTrue("getMethods() returned " + methodNames, methodNames.containsAll(expectedMethodNames));
-    }
-
-    /**
-     * Returns {@code clazz} through a value the analysis cannot fold, so that bulk queries on it
-     * are neither folded nor registered automatically at build time.
-     */
-    private static Class<?> hideFromAnalysis(Class<?> clazz) {
-        return System.nanoTime() == Long.MIN_VALUE ? Object.class : clazz;
     }
 
     private static Object unsafeAllocate(Class<?> clazz) throws ReflectiveOperationException {
@@ -269,7 +263,7 @@ public class ReflectionRegistrationTest {
         }
 
         private static String fieldName() {
-            return System.nanoTime() == Long.MIN_VALUE ? "missing" : "value";
+            return GraalDirectives.opaque("value");
         }
     }
 }
