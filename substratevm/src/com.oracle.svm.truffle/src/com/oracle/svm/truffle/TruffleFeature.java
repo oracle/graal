@@ -209,6 +209,7 @@ import jdk.graal.compiler.truffle.host.HostInliningPhase;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.truffle.nodes.TruffleEarlyEscapeAnchorNode;
 import jdk.graal.compiler.truffle.nodes.asserts.NeverPartOfCompilationNode;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -793,6 +794,9 @@ public class TruffleFeature implements InternalFeature {
         markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportClassQuery", Class.class, String.class);
         markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportProxyAccess", Class[].class);
         markTruffleBoundary(metaAccess, MissingReflectionRegistrationUtils.class, "reportArrayInstantiation", Class.class, int.class);
+        // Keep the uninterruptible fill helpers out of Truffle partial evaluation.
+        markTruffleBoundary(metaAccess, Unsafe.class, "setMemory0", Object.class, long.class, long.class, byte.class);
+
         // Keep the intrinsified array diagnostic path outside runtime compilation.
         markTruffleBoundary(metaAccess, Array.class, "newInstance", Class.class, int.class);
         markTruffleBoundary(metaAccess, MissingResourceRegistrationUtils.class, "reportResourceAccess", Module.class, String.class);
