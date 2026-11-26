@@ -107,6 +107,7 @@ public class VerifyJavaTypeGetNameUsage extends VerifyPhase<CoreProviders> {
                     "com.oracle.svm.hosted.pgo.PGOInstrumentationFeature",
                     "com.oracle.svm.hosted.pgo.ProfilingUtilities",
                     "com.oracle.svm.hosted.pgo.ReceiverProfileInstrumentationPhase",
+                    "com.oracle.svm.hosted.pgo.profiles.IprofProfileResolver",
                     "com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin",
                     "com.oracle.svm.hosted.scala.ScalaAnalysisPlugin",
                     "com.oracle.svm.hosted.substitute.AutomaticUnsafeTransformationSupport",

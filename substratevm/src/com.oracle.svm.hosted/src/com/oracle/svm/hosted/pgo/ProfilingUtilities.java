@@ -161,9 +161,13 @@ public class ProfilingUtilities {
     }
 
     /**
-     * Enumerates the conditionals that {@link BranchProfileInstrumentationPhase} instruments, in
-     * deterministic graph iteration order. {@code inliningContext}, when present, is appended as
-     * the caller chain of every site.
+     * Enumerates the conditionals that {@link BranchProfileInstrumentationPhase} instruments and
+     * {@code PGOApplyProfilesPhase} applies profiles to, in deterministic graph iteration order.
+     * {@code inliningContext}, when present, is appended as the caller chain of every site.
+     *
+     * @param graph the graph to enumerate
+     * @param inliningContext the caller chain to append, or {@code null}
+     * @return every site with its calling context, innermost frame first
      */
     public static List<ConditionalSite> relevantConditionalSitesFromGraph(StructuredGraph graph, NodeSourcePosition inliningContext) {
         EconomicMap<NodeSourcePosition, List<ControlSplitNode>> groups = allConditionalNodesFromGraph(graph);

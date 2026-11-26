@@ -54,7 +54,8 @@ public final class ProfileDumper {
     public static final class Options {
         @Option(help = "File path for the profile produced by a --pgo-instrument image. %p is replaced by the process id and %t by the time of the dump in " +
                         "milliseconds, so that training runs with different process ids, or that end in different milliseconds, can write into one " +
-                        "directory without overwriting each other. In containers every run may get the same process id, so use %t or a path per container there.")//
+                        "directory without overwriting each other. --pgo=<directory> merges every .iprof file in that directory. In containers every run " +
+                        "may get the same process id, so use %t or a path per container there.")//
         public static final RuntimeOptionKey<String> ProfilesDumpFile = new RuntimeOptionKey<>("default.iprof");
 
         @Option(help = "Print what the profile dump wrote, and what the stack sampler, the type recorder and the call-count recorder saw.")//

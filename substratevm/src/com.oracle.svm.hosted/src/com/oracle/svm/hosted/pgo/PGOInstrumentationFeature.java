@@ -47,6 +47,7 @@ import com.oracle.svm.core.pgo.TypeProfileRecorder;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.jdk.RuntimeSupport;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -83,7 +84,7 @@ public final class PGOInstrumentationFeature implements InternalFeature {
     public static final class Options {
         // @formatter:off
         @APIOption(name = "pgo-instrument")//
-        @Option(help = "Instrument the image to record an execution profile, written as an .iprof file when the application exits. " +
+        @Option(help = "Instrument the image to record a profile for --pgo. " +
                        "Branches, switches, receiver types, monitor enters and call edges are counted in each root before priority inlining " +
                        "and in each callee the priority inliner expands, and call stacks are sampled. " +
                        "Raises the default optimization level -O2 to -O3; an -O given after this option wins.")//
@@ -207,6 +208,9 @@ public final class PGOInstrumentationFeature implements InternalFeature {
             /* Below -O3 the priority inliner explores less, so code only -O3 inlines gets no sites in its caller's context. */
             LogUtils.warning("--pgo-instrument should be used with -O3, the level of the optimized build; otherwise code that only -O3 inlines is profiled without its caller's context");
         }
+        if (PGOProfileUseFeature.enabled()) {
+            throw UserError.abort("Profile instrumentation and profile consumption cannot be used in the same image build");
+        }
         RuntimeSupport.getRuntimeSupport().addTearDownHook(ProfileDumper.getTeardownHook());
         if (Options.PGOProfileBranches.getValue()) {
             BranchProfileRecorder.enable();
@@ -292,11 +296,13 @@ public final class PGOInstrumentationFeature implements InternalFeature {
     }
 
     /**
-     * Adds the instrumentation phases immediately before the inliner, so every branch and call is
-     * instrumented in the shape of the graph before inlining; the inliner instruments the graphs it
-     * expands (see {@link #instrumentExpandedGraph}). Phases placed after the inliner would see
-     * branches that inlining and canonicalization had already split or folded, and miss every call
-     * the instrumented image inlined or devirtualized.
+     * Adds the instrumentation {@code phase} to {@code highTier} immediately before the inliner,
+     * where {@code --pgo} applies the root's profiles, so every branch and call is instrumented in
+     * the shape the optimized build queries; the inliner instruments the graphs it expands (see
+     * {@link #instrumentExpandedGraph}). Phases placed after the inliner would see branches that
+     * inlining and canonicalization had already split or folded, and miss every call the
+     * instrumented image inlined or devirtualized. Without an inliner the phase runs first in the
+     * high tier.
      */
     private static void addBeforeInliner(PhaseSuite<HighTierContext> highTier, BasePhase<HighTierContext> phase) {
         ListIterator<BasePhase<? super HighTierContext>> inliner = highTier.findPhase(AbstractInliningPhase.class);
