@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.automaton;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.PrimitiveIterator;
 
 import org.graalvm.collections.EconomicSet;
 
@@ -288,7 +289,11 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
              * constraints.
              */
             CodePointSet matcher = matcherBuilders[iStage1];
-            for (int i : intersectingArgs[iStage1]) {
+            // Push initial arguments in reverse input order so they are popped in priority order.
+            // Constraint remainders stay on top and are processed before the next argument.
+            PrimitiveIterator.OfInt intersectingArgsIterator = intersectingArgs[iStage1].reverseIterator();
+            while (intersectingArgsIterator.hasNext()) {
+                int i = intersectingArgsIterator.nextInt();
                 addToStack(argTransitions.get(i), matcher, argConstraints.get(i), argOperations.get(i), resultLength);
             }
             constraintDeduplicationSet.clear();
