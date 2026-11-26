@@ -36,7 +36,7 @@ import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 
 @SingletonTraits(access = RuntimeAccessOnly.class, layeredCallbacks = SingleLayer.class, layeredInstallationKind = ApplicationLayerOnly.class)
 public class DefaultCharsetSingleton {
-    private final Charset defaultCharset;
+    private volatile Charset defaultCharset;
 
     public DefaultCharsetSingleton(Charset defaultCharset) {
         this.defaultCharset = defaultCharset;
@@ -49,5 +49,9 @@ public class DefaultCharsetSingleton {
     /** The application chooses the default charset; registrations are combined across layers. */
     public Charset getDefaultCharset() {
         return defaultCharset;
+    }
+
+    public void setDefaultCharset(Charset charset) {
+        defaultCharset = charset;
     }
 }

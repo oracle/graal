@@ -87,6 +87,8 @@ public class LocalizationSupport {
 
     public final Map<String, Charset> charsets = new HashMap<>();
 
+    private final Map<String, String> canonicalCharsetNames = new HashMap<>();
+
     public final Locale[] allLocales;
 
     public final EconomicSet<String> supportedLanguageTags;
@@ -105,6 +107,34 @@ public class LocalizationSupport {
 
     protected static LocalizationSupport[] getAllLayers() {
         return substituteLoadLookupEnabled() ? BundleContentSubstitutedLocalizationSupport.getAllLayers() : MultiLayeredImageSingleton.getAllLayers(LocalizationSupport.class);
+    }
+
+    public static Charset lookupCharset(String charsetName) {
+        return charsetName == null ? null : getCharset(charsetName.toLowerCase(Locale.ROOT));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void addCharsetName(Charset charset) {
+        canonicalCharsetNames.put(charset.name().toLowerCase(Locale.ROOT), charset.name());
+        for (String name : charset.aliases()) {
+            canonicalCharsetNames.put(name.toLowerCase(Locale.ROOT), charset.name());
+        }
+    }
+
+    public static String canonicalizeCharsetName(String charsetName) {
+        if (charsetName == null) {
+            return null;
+        }
+        LocalizationSupport[] layers = getAllLayers();
+        String normalizedName = charsetName.toLowerCase(Locale.ROOT);
+        for (int i = layers.length - 1; i >= 0; i--) {
+            String canonicalName = layers[i].canonicalCharsetNames.get(normalizedName);
+            if (canonicalName != null) {
+                return canonicalName;
+            }
+        }
+        Charset charset = lookupCharset(charsetName);
+        return charset == null ? null : charset.name();
     }
 
     public static Locale[] getAllLocales() {

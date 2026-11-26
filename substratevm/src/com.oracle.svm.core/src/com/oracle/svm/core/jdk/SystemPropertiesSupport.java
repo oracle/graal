@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import static jdk.graal.compiler.options.LibGraalSupport.LIBGRAAL_SETTING_PROPERTY_PREFIX;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -53,9 +54,13 @@ import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.hub.registry.ClassRegistries;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LayeredFoldResolver;
+import com.oracle.svm.core.jdk.localization.DefaultCharsetSingleton;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.libjvm.LibJVMSupport;
 import com.oracle.svm.guest.staging.core.graal.KnownIntrinsics;
 import com.oracle.svm.shared.NeverInline;
+import com.oracle.svm.guest.staging.log.Log;
+import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -71,6 +76,11 @@ import jdk.graal.compiler.options.LibGraalSupport;
  * accessed, or when all properties are accessed.
  */
 public abstract class SystemPropertiesSupport implements RuntimeSystemPropertiesSupport {
+
+    private static final String FILE_ENCODING = "file.encoding";
+    private static final String NATIVE_ENCODING = "native.encoding";
+    private static final String SUN_JNU_ENCODING = "sun.jnu.encoding";
+    private static final String FILE_ENCODING_COMPAT = "COMPAT";
 
     /** System properties that are taken from the VM hosting the image generator. */
     @Platforms(Platform.HOSTED_ONLY.class) //
@@ -96,9 +106,9 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
                     /* Platform Unicode byte order. */
                     "sun.io.unicode.encoding",
                     /* For our convenience for now. */
-                    "file.encoding",
-                    "sun.jnu.encoding",
-                    "native.encoding",
+                    FILE_ENCODING,
+                    SUN_JNU_ENCODING,
+                    NATIVE_ENCODING,
                     "stdout.encoding",
                     "stderr.encoding",
                     "stdin.encoding",
@@ -117,6 +127,8 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
 
     private Properties currentProperties = new Properties();
     private boolean allPropertiesInitialized;
+    private volatile boolean runtimeEncodingInitialized;
+    private volatile String runtimeNativeEncoding;
 
     @Fold(resolver = LayeredFoldResolver.InitialLayer.class)
     public static SystemPropertiesSupport singleton() {
@@ -227,8 +239,14 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         VMError.guarantee(key != null, "The key for a system property must not be null.");
         VMError.guarantee(value != null, "System property must have a non-null value.");
 
-        initialProperties.put(key, value);
-        currentProperties.setProperty(key, value);
+        if (runtimeEncodingInitialized && (NATIVE_ENCODING.equals(key) || SUN_JNU_ENCODING.equals(key))) {
+            return;
+        }
+
+        String normalizedValue = normalizeInitialPropertyValue(key, value);
+
+        initialProperties.put(key, normalizedValue);
+        currentProperties.setProperty(key, normalizedValue);
 
         /*
          * If there is a lazy system property, then mark it as initialized to ensure that the lazy
@@ -238,6 +256,60 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         if (property != null) {
             property.markAsInitialized();
         }
+    }
+
+    private String normalizeInitialPropertyValue(String key, String value) {
+        if (FILE_ENCODING.equals(key) && FILE_ENCODING_COMPAT.equals(value)) {
+            if (SubstrateUtil.HOSTED) {
+                return value;
+            }
+
+            initializeRuntimeEncoding();
+            Charset charset = LocalizationSupport.lookupCharset(runtimeNativeEncoding);
+            VMError.guarantee(charset != null, "The selected native encoding must be available in the image.");
+            DefaultCharsetSingleton.singleton().setDefaultCharset(charset);
+            return runtimeNativeEncoding;
+        }
+        return value;
+    }
+
+    /**
+     * Selects the native encoding for the execution environment when file.encoding=COMPAT is
+     * requested during runtime option parsing. The locale has already been initialized, and static
+     * JDK properties and JNI encoding support have not been initialized yet.
+     */
+    private synchronized void initializeRuntimeEncoding() {
+        if (runtimeEncodingInitialized) {
+            return;
+        }
+
+        String expectedEncoding = LocaleSupport.getNativeEncoding();
+        String canonicalExpectedEncoding = LocalizationSupport.canonicalizeCharsetName(expectedEncoding);
+        Charset selectedCharset = LocalizationSupport.lookupCharset(expectedEncoding);
+        boolean useDetectedEncoding = selectedCharset != null;
+        if (!useDetectedEncoding) {
+            selectedCharset = DefaultCharsetSingleton.singleton().getDefaultCharset();
+            if (expectedEncoding != null) {
+                // Checkstyle: Allow raw info or warning printing - begin
+                if (canonicalExpectedEncoding == null) {
+                    Log.log().string("Warning: The expected native.encoding '").string(expectedEncoding)
+                                    .string("' is not supported by this JDK. Using '").string(selectedCharset.name())
+                                    .string("' instead.").newline();
+                } else {
+                    Log log = Log.log().string("Warning: The expected native.encoding '").string(canonicalExpectedEncoding)
+                                    .string("' is not available in this image. Using '").string(selectedCharset.name())
+                                    .string("' instead. Rebuild the image with ");
+                    log.string("-H:DefaultCharset=").string(canonicalExpectedEncoding).string(" or ");
+                    log.string("-H:+AddAllCharsets.").newline();
+                }
+                // Checkstyle: Allow raw info or warning printing - end
+            }
+        }
+
+        runtimeNativeEncoding = useDetectedEncoding ? expectedEncoding : selectedCharset.name();
+        initializeProperty(NATIVE_ENCODING, runtimeNativeEncoding);
+        initializeProperty(SUN_JNU_ENCODING, runtimeNativeEncoding);
+        runtimeEncodingInitialized = true;
     }
 
     public Map<String, String> getInitialProperties() {

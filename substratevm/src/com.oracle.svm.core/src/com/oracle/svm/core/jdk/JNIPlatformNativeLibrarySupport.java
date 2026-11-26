@@ -26,6 +26,8 @@ package com.oracle.svm.core.jdk;
 
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -190,12 +192,18 @@ public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibr
      * encoding</em>. It is platform-dependent, and is mainly used for platform-dependent tasks,
      * (e.g. for file paths, or in our case, converting from C to Java Strings).
      *
-     * Currently, we inherit the {@code sun.jnu.encoding} system property from image build time (see
-     * {@link SystemPropertiesSupport}), i.e., we do not allow it to be specified at run time and
-     * (more importantly) also do not look at environment variables to determine the encoding.
+     * {@link SystemPropertiesSupport} resolves {@code sun.jnu.encoding} from the execution
+     * environment during isolate startup, before this method is called. If the corresponding
+     * charset is not included in the image, the system-property support selects the image's
+     * configured fallback charset instead.
      */
     private void initializeEncoding() {
-        try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCString(System.getProperty("sun.jnu.encoding"))) {
+        String encoding = System.getProperty("sun.jnu.encoding");
+        byte[] bytes = encoding == null ? null : encoding.getBytes(StandardCharsets.US_ASCII);
+        if (bytes != null) {
+            bytes = Arrays.copyOf(bytes, bytes.length + 1);
+        }
+        try (CTypeConversion.CCharPointerHolder name = CTypeConversion.toCBytes(bytes)) {
             if (isLibjavaDynamic()) {
                 PointerBase initializeEncoding = getDynamicLibjava().findSymbol("InitializeEncoding");
                 VMError.guarantee(initializeEncoding.isNonNull());

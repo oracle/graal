@@ -41,6 +41,7 @@ import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -280,7 +281,11 @@ public class LocalizationFeature implements InternalFeature {
             ImageSingletons.add(LocalizationSupport.class, support);
         }
 
-        addCharsets();
+        SortedMap<String, Charset> availableCharsets = Charset.availableCharsets();
+        if (!Options.AddAllCharsets.getValue()) {
+            addCharsetNames(availableCharsets);
+        }
+        addCharsets(availableCharsets);
         this.imageClassLoader = ((AfterRegistrationAccessImpl) access).getImageClassLoader();
     }
 
@@ -436,9 +441,9 @@ public class LocalizationFeature implements InternalFeature {
      * more than this can add additional charsets.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    private void addCharsets() {
+    private void addCharsets(SortedMap<String, Charset> availableCharsets) {
         if (Options.AddAllCharsets.getValue()) {
-            for (Charset c : Charset.availableCharsets().values()) {
+            for (Charset c : availableCharsets.values()) {
                 addCharset(c);
             }
         } else {
@@ -449,6 +454,13 @@ public class LocalizationFeature implements InternalFeature {
             addCharset(StandardCharsets.UTF_16BE);
             addCharset(StandardCharsets.UTF_16LE);
             addCharset(StandardCharsets.UTF_16);
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private void addCharsetNames(SortedMap<String, Charset> availableCharsets) {
+        for (Charset charset : availableCharsets.values()) {
+            support.addCharsetName(charset);
         }
     }
 
