@@ -5,6 +5,8 @@ This changelog summarizes major changes to GraalVM Native Image.
 ## GraalVM 25.7
 
 * (GR-81985) On macOS AArch64, Native Image now uses a new `apple-m1` target by default. This enables the `AES`, `PMULL`, `SHA1`, and `SHA2` instructions, which are available on Apple M1 and later. Linux AArch64 retains its existing default.
+* (GR-82232) On macOS AArch64, `-march=compatibility` now selects the same CPU features as `-march=apple-m1`.
+* (GR-82232) Added the AMD64 targets `icelake-server`, `diamondrapids`, `znver3`, and `znver4`.
 
 ## GraalVM 25.6
 
