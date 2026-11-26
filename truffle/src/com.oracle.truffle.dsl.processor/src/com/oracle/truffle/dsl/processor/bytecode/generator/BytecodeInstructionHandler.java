@@ -2015,6 +2015,22 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 b.startCase().staticReference(parent.parent.frameTagsElement.getObject()).end();
                 b.startCase().staticReference(parent.parent.frameTagsElement.getIllegal()).end();
                 b.startCaseBlock();
+                if (model().defaultLocalValue != null) {
+                    // Reading the default can quicken this load to generic before any store has
+                    // set the cached tag. Set it to OBJECT so future stores agree with the load.
+                    b.startIf().string("tag == ").staticReference(parent.parent.frameTagsElement.getIllegal()).end().startBlock();
+                    b.startStatement().startCall(bytecodeNode, "setCachedLocalTagInternal");
+                    if (materialized) {
+                        b.startCall(bytecodeNode, "getLocalTags").end();
+                    } else {
+                        b.string("localTags");
+                    }
+                    b.tree(localIndex);
+                    b.staticReference(parent.parent.frameTagsElement.getObject());
+                    b.end(2);
+                    b.startStatement().string("tag = ").staticReference(parent.parent.frameTagsElement.getObject()).end();
+                    b.end();
+                }
                 b.startStatement().string("newInstruction = ").tree(parent.parent.createInstructionConstant(genericTypeInstruction)).end();
                 parent.parent.emitOnSpecialize(b, "this", "bci", BytecodeRootNodeElement.readInstruction("bc", "bci"), "LoadLocal$" + genericTypeInstruction.getQuickeningName());
                 b.startStatement();
@@ -2031,7 +2047,6 @@ final class BytecodeInstructionHandler extends CodeExecutableElement implements 
                 b.end(); // switch
 
                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
-                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
 
                 // If an UnexpectedResultException occurs, specialize to the generic
                 // version.

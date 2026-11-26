@@ -356,6 +356,18 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.startCase().staticReference(parent.frameTagsElement.get(boxingType)).end();
                 b.startCaseBlock();
 
+                if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
+                    /*
+                     * Updating the cached tag when the default value is observed (like load.local
+                     * is expensive in the interpreter because we don't have the local index.
+                     * Instead, we require compiled paths expecting a primitive tag to handle a
+                     * default value.
+                     */
+                    b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end();
+                    b.string(" && frame.isObject(frameIndex) && frame.getObject(frameIndex) == DEFAULT_LOCAL_VALUE").end().startBlock();
+                    b.statement("return DEFAULT_LOCAL_VALUE");
+                    b.end();
+                }
                 b.startReturn();
                 BytecodeRootNodeElement.startExpectFrame(b, "frame", boxingType, false).string("frameIndex").end();
                 b.end();
@@ -662,9 +674,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.startCase().staticReference(parent.frameTagsElement.getIllegal()).end();
                 b.startCaseBlock();
                 if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
-                    b.startReturn();
-                    b.string("DEFAULT_LOCAL_VALUE");
-                    b.end();
+                    b.statement("return DEFAULT_LOCAL_VALUE");
                 } else {
                     b.startThrow().startNew(types.FrameSlotTypeException).end().end();
                 }
@@ -677,6 +687,15 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.end(); // switch block
                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
+                    b.startIf().string("getCachedLocalTag(").string("localIndex").string(") != ").staticReference(parent.frameTagsElement.getObject()).end().startBlock();
+                    b.startStatement().startCall("setCachedLocalTagInternal");
+                    b.tree(readLocalTagsFastPath());
+                    b.string("localIndex");
+                    b.staticReference(parent.frameTagsElement.getObject());
+                    b.end(2);
+                    b.end();
+                }
                 b.startReturn().string("ex.getResult()").end();
                 b.end(); // catch
             } else {
