@@ -69,7 +69,7 @@ public enum CPUTypeAArch64 implements CPUType {
     APPLE_M1("apple-m1", ARMV8_1_A, AES, PMULL, SHA1, SHA2),
 
     // Special symbols
-    COMPATIBILITY(NativeImageOptions.MICRO_ARCHITECTURE_COMPATIBILITY, ARMV8_A),
+    COMPATIBILITY(NativeImageOptions.MICRO_ARCHITECTURE_COMPATIBILITY, OS.DARWIN.isCurrent() ? APPLE_M1 : ARMV8_A),
     NATIVE(NativeImageOptions.MICRO_ARCHITECTURE_NATIVE, getNativeOrEmpty());
 
     private static final String AES_MODIFIER = "aes";
