@@ -31,15 +31,34 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class LLVMX86_ConversionNode {
+
+    // Convert one float/double to i32 with x86 semantics: on NaN or out-of-range the hardware
+    // yields the "integer indefinite" value 0x80000000; otherwise truncate toward zero (cvtt*)
+    // or round to nearest-even (cvt*, the default MXCSR mode Sulong models).
+    static int floatToInt(float value, boolean truncate) {
+        if (Float.isNaN(value) || value >= 2147483648.0f || value < -2147483648.0f) {
+            return Integer.MIN_VALUE;
+        }
+        return truncate ? (int) value : (int) Math.rint(value);
+    }
+
+    static int doubleToInt(double value, boolean truncate) {
+        if (Double.isNaN(value) || value >= 2147483648.0 || value < -2147483648.0) {
+            return Integer.MIN_VALUE;
+        }
+        return truncate ? (int) value : (int) Math.rint(value);
+    }
 
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_ConversionFloatToIntNode extends LLVMBuiltin { // implements
@@ -68,6 +87,58 @@ public abstract class LLVMX86_ConversionNode {
             // returns an int instead of a long,
             // causes an exception in one OpenCV test application when returning a long
             return Math.toIntExact(Math.round(vector.getValue(0)));
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_ConversionDoubleToFloatNode extends LLVMBuiltin { // cvtpd2ps
+        @Specialization
+        protected LLVMFloatVector doIntrinsic(LLVMDoubleVector vector) {
+            // sse2 cvtpd2ps: convert <2 x double> to the low two lanes of a <4 x float>, zeroing
+            // the upper two lanes. The avx cvt.pd2.ps.256 form converts <4 x double> to a full
+            // <4 x float> with no padding. Java's (float) cast rounds to nearest-even, matching
+            // the default MXCSR rounding mode Sulong models.
+            int len = vector.getLength();
+            float[] result = new float[len == 2 ? 4 : len];
+            for (int i = 0; i < len; i++) {
+                result[i] = (float) vector.getValue(i);
+            }
+            return LLVMFloatVector.create(result);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "truncate", type = boolean.class)
+    public abstract static class LLVMX86_ConversionFloatToIntVectorNode extends LLVMBuiltin { // cvt(t)ps2dq
+        protected abstract boolean isTruncate();
+
+        @Specialization
+        protected LLVMI32Vector doConvert(LLVMFloatVector vector) {
+            // 128-bit form: <4 x float> -> <4 x i32>; avx 256-bit form: <8 x float> -> <8 x i32>.
+            int len = vector.getLength();
+            int[] result = new int[len];
+            for (int i = 0; i < len; i++) {
+                result[i] = floatToInt(vector.getValue(i), isTruncate());
+            }
+            return LLVMI32Vector.create(result);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeField(name = "truncate", type = boolean.class)
+    public abstract static class LLVMX86_ConversionDoubleToIntVectorNode extends LLVMBuiltin { // cvt(t)pd2dq
+        protected abstract boolean isTruncate();
+
+        @Specialization
+        protected LLVMI32Vector doConvert(LLVMDoubleVector vector) {
+            // sse2 form: <2 x double> -> low two lanes of a <4 x i32>, upper two zeroed; avx
+            // 256-bit form: <4 x double> -> <4 x i32> with no padding.
+            int len = vector.getLength();
+            int[] result = new int[len == 2 ? 4 : len];
+            for (int i = 0; i < len; i++) {
+                result[i] = doubleToInt(vector.getValue(i), isTruncate());
+            }
+            return LLVMI32Vector.create(result);
         }
     }
 
