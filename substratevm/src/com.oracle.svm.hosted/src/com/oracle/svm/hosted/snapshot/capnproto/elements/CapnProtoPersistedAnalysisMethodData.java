@@ -167,6 +167,11 @@ record PersistedAnalysisMethodWriterAdapter(PersistedAnalysisMethod.Builder dele
     }
 
     @Override
+    public void setIsInlined(boolean value) {
+        delegate.setIsInlined(value);
+    }
+
+    @Override
     public void setIsIntrinsicMethod(boolean value) {
         delegate.setIsIntrinsicMethod(value);
     }
@@ -341,6 +346,11 @@ record PersistedAnalysisMethodLoaderAdapter(PersistedAnalysisMethod.Reader deleg
     @Override
     public boolean getIsImplementationInvoked() {
         return delegate.getIsImplementationInvoked();
+    }
+
+    @Override
+    public boolean getIsInlined() {
+        return delegate.getIsInlined();
     }
 
     @Override

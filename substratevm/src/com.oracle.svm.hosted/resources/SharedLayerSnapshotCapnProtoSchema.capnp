@@ -120,6 +120,7 @@ struct PersistedAnalysisMethod {
   compilationBehaviorOrdinal @28 :Int8;
   # IDs of always-closed fields written by the unspecialized graph, captured before caller-specific inlining and graph optimizations.
   closedFieldWrites @43 :List(FieldId);
+  isInlined @44 :Bool;
   wrappedMethod :union {
     none @29 :Void; # default
     factoryMethod :group {
@@ -172,6 +173,8 @@ struct PersistedAnalysisField {
   assignmentStatus @18 :Int32;
   simulatedFieldValue @19 :ConstantReference;
   updatableReceivers @20 :List(ConstantId);
+  # JVM type character of the field's storage kind.
+  storageKind @21 :UInt8;
 }
 
 struct CEntryPointLiteralReference {

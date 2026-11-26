@@ -83,9 +83,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.JVMCIFeatureAccess;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import com.oracle.svm.jvmci.shared.meta.SharedField;
-import com.oracle.svm.jvmci.shared.meta.SharedMethod;
-import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.layered.LayeredFieldValueTransformer;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
@@ -93,13 +90,14 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.bootstrap.BootstrapMethodConfiguration;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
-import com.oracle.svm.hosted.dynamicaccess.JVMCIJNIAccessImpl;
 import com.oracle.svm.hosted.dynamicaccess.JVMCIForeignAccessImpl;
+import com.oracle.svm.hosted.dynamicaccess.JVMCIJNIAccessImpl;
 import com.oracle.svm.hosted.dynamicaccess.JVMCIReflectiveAccessImpl;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -107,6 +105,9 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
+import com.oracle.svm.jvmci.shared.meta.SharedField;
+import com.oracle.svm.jvmci.shared.meta.SharedMethod;
+import com.oracle.svm.jvmci.shared.meta.SharedType;
 import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAccess;
@@ -117,8 +118,8 @@ import com.oracle.svm.util.JVMCIFieldValueTransformer;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.svm.util.OriginalFieldProvider;
 import com.oracle.svm.util.OriginalMethodProvider;
-import com.oracle.svm.util.dynamicaccess.JVMCIJNIAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIForeignAccess;
+import com.oracle.svm.util.dynamicaccess.JVMCIJNIAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIReflectiveAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIResourceAccess;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
@@ -353,40 +354,60 @@ public class FeatureImpl {
             return method instanceof AnalysisMethod aMethod ? aMethod : getUniverse().lookup(method);
         }
 
+        private SVMImageLayerLoader previousLayer() {
+            return (SVMImageLayerLoader) getUniverse().getImageLayerLoader();
+        }
+
+        /* Scalar reachability queries only inspect existing analysis elements and the snapshot. */
         public boolean isReachable(Class<?> clazz) {
-            return isReachable(getMetaAccess().lookupJavaType(clazz));
+            return isReachable(getMetaAccess().getWrapped().lookupJavaType(clazz));
         }
 
         public boolean isReachable(ResolvedJavaType type) {
-            return asAnalysisType(type).isReachable();
+            AnalysisType current = type instanceof AnalysisType analysisType ? analysisType : getUniverse().optionalLookup(type);
+            if (current != null && current.isReachable()) {
+                return true;
+            }
+            SVMImageLayerLoader previous = previousLayer();
+            return previous != null && previous.isReachableInPreviousLayer(type);
         }
 
         public boolean isReachable(AnalysisType type) {
-            return type.isReachable();
+            return isReachable((ResolvedJavaType) type);
         }
 
         public boolean isReachable(Field field) {
-            return isReachable(getMetaAccess().lookupJavaField(field));
+            return isReachable(getMetaAccess().getWrapped().lookupJavaField(field));
         }
 
         public boolean isReachable(ResolvedJavaField field) {
-            return asAnalysisField(field).isAccessed();
+            AnalysisField current = field instanceof AnalysisField analysisField ? analysisField : getUniverse().optionalLookup(field);
+            if (current != null && current.isAccessed()) {
+                return true;
+            }
+            SVMImageLayerLoader previous = previousLayer();
+            return previous != null && previous.isReachableInPreviousLayer(field);
         }
 
         public boolean isReachable(AnalysisField field) {
-            return field.isAccessed();
+            return isReachable((ResolvedJavaField) field);
         }
 
         public boolean isReachable(Executable method) {
-            return isReachable(getMetaAccess().lookupJavaMethod(method));
+            return isReachable(getMetaAccess().getWrapped().lookupJavaMethod(method));
         }
 
         public boolean isReachable(ResolvedJavaMethod method) {
-            return asAnalysisMethod(method).isReachable();
+            AnalysisMethod current = method instanceof AnalysisMethod analysisMethod ? analysisMethod : getUniverse().optionalLookup(method);
+            if (current != null && current.isReachable()) {
+                return true;
+            }
+            SVMImageLayerLoader previous = previousLayer();
+            return previous != null && previous.isReachableInPreviousLayer(current != null ? current : method);
         }
 
         public boolean isReachable(AnalysisMethod method) {
-            return method.isReachable();
+            return isReachable((ResolvedJavaMethod) method);
         }
 
         public Set<Class<?>> reachableSubtypes(Class<?> baseClass) {

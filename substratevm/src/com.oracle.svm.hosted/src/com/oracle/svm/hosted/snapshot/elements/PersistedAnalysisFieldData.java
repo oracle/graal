@@ -28,6 +28,8 @@ import com.oracle.svm.hosted.snapshot.constant.ConstantReferenceData;
 import com.oracle.svm.hosted.snapshot.util.SnapshotPrimitiveList;
 import com.oracle.svm.hosted.snapshot.util.SnapshotStructList;
 
+import jdk.vm.ci.meta.JavaKind;
+
 /** Persisted representation of an analysis field. */
 public interface PersistedAnalysisFieldData {
     interface Writer {
@@ -38,6 +40,8 @@ public interface PersistedAnalysisFieldData {
         void setName(String value);
 
         void setIsAccessed(boolean value);
+
+        void setStorageKind(JavaKind value);
 
         void setIsRead(boolean value);
 
@@ -84,6 +88,8 @@ public interface PersistedAnalysisFieldData {
         String getName();
 
         boolean getIsAccessed();
+
+        JavaKind getStorageKind();
 
         boolean getIsRead();
 

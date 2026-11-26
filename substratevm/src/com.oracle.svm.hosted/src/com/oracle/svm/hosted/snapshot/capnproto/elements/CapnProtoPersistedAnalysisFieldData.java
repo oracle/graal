@@ -37,6 +37,8 @@ import com.oracle.svm.hosted.snapshot.elements.PersistedAnnotationData;
 import com.oracle.svm.hosted.snapshot.util.SnapshotPrimitiveList;
 import com.oracle.svm.hosted.snapshot.util.SnapshotStructList;
 
+import jdk.vm.ci.meta.JavaKind;
+
 public final class CapnProtoPersistedAnalysisFieldData {
     public static PersistedAnalysisFieldData.Writer writer(PersistedAnalysisField.Builder delegate) {
         return new PersistedAnalysisFieldWriterAdapter(delegate);
@@ -61,6 +63,11 @@ record PersistedAnalysisFieldWriterAdapter(PersistedAnalysisField.Builder delega
     @Override
     public void setName(String value) {
         delegate.setName(value);
+    }
+
+    @Override
+    public void setStorageKind(JavaKind value) {
+        delegate.setStorageKind((byte) value.getTypeChar());
     }
 
     @Override
@@ -173,6 +180,18 @@ record PersistedAnalysisFieldLoaderAdapter(PersistedAnalysisField.Reader delegat
     @Override
     public String getName() {
         return delegate.getName().toString();
+    }
+
+    @Override
+    public JavaKind getStorageKind() {
+        char typeChar = (char) delegate.getStorageKind();
+        if (typeChar == JavaKind.Object.getTypeChar()) {
+            return JavaKind.Object;
+        }
+        if (typeChar == 0 || typeChar == JavaKind.Illegal.getTypeChar()) {
+            return JavaKind.Illegal;
+        }
+        return JavaKind.fromPrimitiveOrVoidTypeChar(typeChar);
     }
 
     @Override

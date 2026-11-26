@@ -398,6 +398,16 @@ public class AnalysisUniverse implements Universe {
         return result;
     }
 
+    /** Looks up an existing method without creating analysis state. */
+    public AnalysisMethod optionalLookup(ResolvedJavaMethod method) {
+        return methods.get(substitutions.lookup(method));
+    }
+
+    /** Looks up an existing field without creating analysis state. */
+    public AnalysisField optionalLookup(ResolvedJavaField field) {
+        return fields.get(substitutions.lookup(field));
+    }
+
     @Override
     public AnalysisMethod lookup(JavaMethod method) {
         JavaMethod result = lookupAllowUnresolved(method);
@@ -516,7 +526,8 @@ public class AnalysisUniverse implements Universe {
         return uniqueSignatures.computeIfAbsent(key, k -> k);
     }
 
-    private ResolvedJavaType resolveSignatureType(JavaType type, ResolvedJavaType defaultAccessingClass) {
+    /** Resolves a signature type, using {@link Object} if the type is missing. */
+    public ResolvedJavaType resolveSignatureType(JavaType type, ResolvedJavaType defaultAccessingClass) {
         /*
          * We must not invoke resolve() on an already resolved type because it can actually fail the
          * accessibility check when synthetic methods and synthetic signatures are involved.

@@ -488,6 +488,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsInvoked(method.isSimplyInvoked());
         builder.setIsImplementationInvoked(method.isSimplyImplementationInvoked());
         builder.setIsIntrinsicMethod(method.isIntrinsicMethod());
+        builder.setIsInlined(method.isInlined());
 
         var compilationBehavior = method.getCompilationBehavior();
         if (compilationBehavior == LayeredCompilationBehavior.Behavior.PINNED_TO_INITIAL_LAYER) {
@@ -565,6 +566,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setDeclaringTypeId(field.getDeclaringClass().getId());
         builder.setName(field.getName());
         builder.setIsAccessed(field.getAccessedReason() != null);
+        builder.setStorageKind(field.getStorageKind());
         builder.setIsRead(field.getReadReason() != null);
         builder.setIsWritten(field.getWrittenReason() != null);
         builder.setIsFolded(field.getFoldedReason() != null);
