@@ -238,6 +238,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         hasNeverInlineDirective = hostVM.hasNeverInlineDirective(wrapped);
         hasNeverStrengthenGraphWithConstantsDirective = hostVM.hasNeverStrengthenGraphWithConstantsDirective(wrapped);
 
+        // The base-layer lookup below reads this field to identify proxy constructor factories.
+        this.methodVariantKey = methodVariantKey;
         name = createName(wrapped, methodVariantKey);
         qualifiedName = format("%H.%n(%P)");
         modifiers = wrapped.getModifiers();
@@ -293,7 +295,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         }
         localVariableTable = analysisLocalVariableTable;
 
-        this.methodVariantKey = methodVariantKey;
         this.methodVariantsMap = methodVariantsMap;
 
         if (universe.analysisPolicy().trackAccessChain()) {

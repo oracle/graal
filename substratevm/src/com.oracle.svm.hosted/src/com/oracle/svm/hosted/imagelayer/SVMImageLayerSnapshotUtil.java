@@ -30,6 +30,7 @@ import static com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProce
 import static jdk.graal.compiler.java.LambdaUtils.isLambdaType;
 
 import java.io.IOException;
+import java.lang.constant.ClassDesc;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -107,6 +108,7 @@ import jdk.graal.compiler.util.ObjectCopierInputStream;
 import jdk.graal.compiler.util.ObjectCopierOutputStream;
 import jdk.graal.compiler.vmaccess.ResolvedJavaModule;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -301,9 +303,31 @@ public class SVMImageLayerSnapshotUtil {
             return getGeneratedSerializationName(type);
         }
         if (isProxyType(type)) {
-            return javaName;
+            return proxyTypeDescriptor(OriginalClassProvider.getOriginalType(type));
         }
         return addModuleName(javaName, JVMCIReflectionUtil.getModule(type).getName());
+    }
+
+    /// The defining loader and ordered interface list identify the proxy independently of the
+    /// generated class name. Interface descriptors are self-delimiting, even for empty lists.
+    public static String proxyTypeDescriptor(ResolvedJavaType proxyType) {
+        GuestAccess access = GuestAccess.get();
+        StringBuilder descriptor = new StringBuilder("proxy:");
+        for (ResolvedJavaType iface : proxyType.getInterfaces()) {
+            descriptor.append(ClassDesc.of(iface.toClassName()).descriptorString());
+        }
+        JavaConstant loader = JVMCIReflectionUtil.getClassLoader(proxyType);
+        if (loader.isNull()) {
+            descriptor.append(":bootstrap");
+        } else {
+            String name = access.asHostString(access.invoke(access.elements.java_lang_ClassLoader_getName, loader));
+            if (name == null) {
+                descriptor.append(":unnamed:").append(access.getProviders().getMetaAccess().lookupJavaType(loader).toClassName());
+            } else {
+                descriptor.append(":named:").append(name);
+            }
+        }
+        return descriptor.append(';').toString();
     }
 
     public String getMethodDescriptor(AnalysisMethod method) {
@@ -314,6 +338,11 @@ public class SVMImageLayerSnapshotUtil {
         }
         if (method.wrapped instanceof FactoryMethod factoryMethod) {
             AnalysisMethod targetConstructor = method.getUniverse().lookup(factoryMethod.getTargetConstructor());
+            AnalysisType instantiatedType = method.getUniverse().lookup(factoryMethod.getInstantiatedType());
+            if (isProxyType(instantiatedType)) {
+                // The generated stub name contains a digest of the hosted proxy package.
+                return "proxy-factory:" + targetConstructor.getId() + ":" + instantiatedType.getId() + ":" + factoryMethod.throwAllocatedObject() + ":" + method.getMethodVariantKey();
+            }
             return addModuleName(targetConstructor.getDeclaringClass().toJavaName(true) + getQualifiedName(method), moduleName);
         }
         if (method.wrapped instanceof IncompatibleClassChangeFallbackMethod fallbackMethod) {
@@ -334,6 +363,15 @@ public class SVMImageLayerSnapshotUtil {
             String originalModule = JVMCIReflectionUtil.getModule(original.getDeclaringClass()).getName();
             return addModuleName(getResolvedJavaMethodQualifiedName(original), originalModule) + "->" + addModuleName(getResolvedJavaMethodQualifiedName(annotated), annotatedModule);
         }
+        if (isProxyType(declaringClass)) {
+            // Use the resolved signature and owner IDs. A parameter package can itself contain
+            // the generated module name and must retain its identity.
+            StringBuilder descriptor = new StringBuilder("proxy-method:").append(declaringClass.getId()).append(':').append(method.getName()).append('(');
+            for (AnalysisType parameter : method.getSignature().toParameterList(null)) {
+                descriptor.append(parameter.getId()).append(',');
+            }
+            return descriptor.append(')').append(method.getSignature().getReturnType().getId()).toString();
+        }
         if (!(method.wrapped instanceof HotSpotResolvedJavaMethod)) {
             return addModuleName(getQualifiedName(method), moduleName);
         }
@@ -341,7 +379,7 @@ public class SVMImageLayerSnapshotUtil {
          * Those methods cannot use the name of the wrapped method as it would not use the name of
          * the SubstitutionType
          */
-        if (isLambdaType(declaringClass) || isInjectedInvokerType(declaringClass) || isMethodHandleType(declaringClass) || isProxyType(declaringClass)) {
+        if (isLambdaType(declaringClass) || isInjectedInvokerType(declaringClass) || isMethodHandleType(declaringClass)) {
             return getQualifiedName(method);
         }
         Executable originalMethod = OriginalMethodProvider.getJavaMethod(method);

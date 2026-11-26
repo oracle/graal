@@ -28,9 +28,15 @@ import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
+import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -57,6 +63,18 @@ public class ProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
 
     private final ConcurrentMap<ResolvedJavaType, ProxySubstitutionType> typeSubstitutions = new ConcurrentHashMap<>();
     private final EconomicSet<String> uniqueTypeNames = EconomicSet.create();
+
+    private final EconomicMap<String, String> baseLayerProxyNames = EconomicMap.create();
+
+    public ProxyRenamingSubstitutionProcessor() {
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            HostedImageLayerBuildingSupport.singleton().getLoader().forEachPersistedProxyName((descriptor, name) -> {
+                baseLayerProxyNames.put(descriptor, name);
+                // A new proxy may be discovered before the proxy that already owns this name.
+                uniqueTypeNames.add(name);
+            });
+        }
+    }
 
     public static boolean isProxyType(ResolvedJavaType type) {
         GuestAccess guestAccess = GuestAccess.get();
@@ -85,13 +103,11 @@ public class ProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private ProxySubstitutionType getSubstitution(ResolvedJavaType original) {
-        Class<?> clazz = OriginalClassProvider.getJavaClass(original);
-        return typeSubstitutions.computeIfAbsent(original, key -> new ProxySubstitutionType(key, getUniqueProxyName(clazz)));
+        return typeSubstitutions.computeIfAbsent(original, key -> new ProxySubstitutionType(key, getUniqueProxyName(key)));
     }
 
-    public String getUniqueProxyName(Class<?> clazz) {
-        StringBuilder sb = new StringBuilder();
-
+    private String getUniqueProxyName(ResolvedJavaType original) {
+        Class<?> clazz = OriginalClassProvider.getJavaClass(original);
         /*
          * According to the Proxy documentation: "A proxy class implements exactly the interfaces
          * specified at its creation, in the same order. Invoking {@link Class#getInterfaces()
@@ -102,6 +118,16 @@ public class ProxyRenamingSubstitutionProcessor extends SubstitutionProcessor {
          * JSON. The order is important as changing it creates a different Proxy type.
          */
         Class<?>[] interfaces = clazz.getInterfaces();
+        String persistedName = baseLayerProxyNames.isEmpty() ? null : baseLayerProxyNames.get(SVMImageLayerSnapshotUtil.proxyTypeDescriptor(original));
+        if (ImageLayerBuildingSupport.buildingSharedLayer() || persistedName != null) {
+            // Layer replay recreates the proxy from its interfaces using their common loader.
+            UserError.guarantee(clazz == DynamicProxySupport.singleton().getProxyClassHosted(interfaces),
+                            "Layered images require the defining loader of proxy %s to be the common loader of its interfaces %s.", clazz.getName(), Arrays.toString(interfaces));
+        }
+        if (persistedName != null) {
+            return persistedName;
+        }
+        StringBuilder sb = new StringBuilder();
         Arrays.stream(interfaces).forEach(i -> sb.append(i.getName()));
 
         /*
