@@ -42,6 +42,7 @@ import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.Instruction.Argument;
@@ -261,7 +262,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         return callNodes;
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
     abstract static class SplittingBytecodeRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected SplittingBytecodeRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

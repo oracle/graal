@@ -46,6 +46,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
@@ -221,7 +222,7 @@ public final class BytecodeDSLContinuationCompilationTest extends TestWithSynchr
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableYield = true)
     abstract static class ExceptionInterceptingInterpreter extends DebugBytecodeRootNode implements BytecodeRootNode {
         protected ExceptionInterceptingInterpreter(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
@@ -298,7 +299,7 @@ public final class BytecodeDSLContinuationCompilationTest extends TestWithSynchr
         CONTROL_FLOW
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, captureFramesForTrace = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, captureFramesForTrace = true)
     abstract static class TruffleExceptionInterceptingInterpreter extends DebugBytecodeRootNode implements BytecodeRootNode {
         protected TruffleExceptionInterceptingInterpreter(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);

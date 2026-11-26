@@ -194,7 +194,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
             // Errors are not reported reliably when GenerateSlowPathOnly is set.
             return false;
         }
-        return !ProcessorContext.types().ExpectErrorTypes.isEmpty();
+        return !ProcessorContext.types().ExpectErrorAndWarningTypes.isEmpty();
     }
 
     private static void verifyExpectedErrors(Element element, Map<Element, List<Message>> emitted) {

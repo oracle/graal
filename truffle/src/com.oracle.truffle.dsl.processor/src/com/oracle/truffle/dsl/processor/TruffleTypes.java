@@ -65,12 +65,17 @@ public class TruffleTypes {
 
     // Testing API
 
-    private static final String[] EXPECT_ERROR_TYPES = new String[]{
+    private static final String[] EXPECT_ERROR_AND_WARNING_TYPES = new String[]{
                     TruffleTypes.EXPECT_ERROR_CLASS_NAME1,
                     TruffleTypes.EXPECT_ERROR_CLASS_NAME2,
                     TruffleTypes.EXPECT_ERROR_CLASS_NAME3,
                     TruffleTypes.EXPECT_WARNING_CLASS_NAME1,
                     TruffleTypes.EXPECT_WARNING_CLASS_NAME2,
+    };
+    private static final String[] EXPECT_ERROR_TYPES = new String[]{
+                    TruffleTypes.EXPECT_ERROR_CLASS_NAME1,
+                    TruffleTypes.EXPECT_ERROR_CLASS_NAME2,
+                    TruffleTypes.EXPECT_ERROR_CLASS_NAME3,
     };
     public static final String ALWAYS_SLOW_PATH_MODE_NAME = "com.oracle.truffle.api.dsl.test.AlwaysGenerateOnlySlowPath";
     public static final String DISABLE_STATE_BITWIDTH_MODIFICATION = "com.oracle.truffle.api.dsl.test.DisableStateBitWidthModfication";
@@ -85,9 +90,15 @@ public class TruffleTypes {
     public final DeclaredType SlowPathListener = c.getDeclaredTypeOptional(SlowPathListener_Name);
     public final DeclaredType AlwaysSlowPath = c.getDeclaredTypeOptional(ALWAYS_SLOW_PATH_MODE_NAME);
     public final DeclaredType DisableStateBitWidthModification = c.getDeclaredTypeOptional(DISABLE_STATE_BITWIDTH_MODIFICATION);
+    public final List<DeclaredType> ExpectErrorAndWarningTypes;
     public final List<DeclaredType> ExpectErrorTypes;
     {
-        List<DeclaredType> types = new ArrayList<>(EXPECT_ERROR_TYPES.length);
+        List<DeclaredType> types = new ArrayList<>(EXPECT_ERROR_AND_WARNING_TYPES.length);
+        for (String errorType : EXPECT_ERROR_AND_WARNING_TYPES) {
+            types.add(c.getDeclaredTypeOptional(errorType));
+        }
+        ExpectErrorAndWarningTypes = Collections.unmodifiableList(types);
+        types = new ArrayList<>(EXPECT_ERROR_TYPES.length);
         for (String errorType : EXPECT_ERROR_TYPES) {
             types.add(c.getDeclaredTypeOptional(errorType));
         }

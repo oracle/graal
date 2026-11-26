@@ -54,7 +54,7 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 public final class ExpectError {
 
     public static void assertNoErrorExpected(Element element) {
-        for (DeclaredType errorType : ProcessorContext.types().ExpectErrorTypes) {
+        for (DeclaredType errorType : ProcessorContext.types().ExpectErrorAndWarningTypes) {
             assertNoErrorExpectedImpl(element, errorType);
         }
     }
@@ -82,11 +82,16 @@ public final class ExpectError {
     }
 
     public static List<String> getExpectedErrors(Element element) {
-        if (element == null || ProcessorContext.types().ExpectErrorTypes.isEmpty()) {
+        return getExpectedErrors(element, true);
+    }
+
+    public static List<String> getExpectedErrors(Element element, boolean includeWarnings) {
+        if (element == null) {
             return Collections.emptyList();
         }
         List<String> expectedErrors = new ArrayList<>();
-        for (DeclaredType errorType : ProcessorContext.types().ExpectErrorTypes) {
+        List<DeclaredType> errorTypes = includeWarnings ? ProcessorContext.types().ExpectErrorAndWarningTypes : ProcessorContext.types().ExpectErrorTypes;
+        for (DeclaredType errorType : errorTypes) {
             collectExpectedErrors(expectedErrors, element, errorType);
         }
         return expectedErrors;

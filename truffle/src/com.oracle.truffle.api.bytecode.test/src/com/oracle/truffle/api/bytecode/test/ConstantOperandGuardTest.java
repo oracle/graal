@@ -45,6 +45,7 @@ import static org.junit.Assert.assertThrows;
 
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
@@ -328,7 +329,7 @@ public class ConstantOperandGuardTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, enableQuickening = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, enableQuickening = true)
     @OperationProxy(ProxyGuardNode.class)
     @SuppressWarnings("unused")
     public abstract static class ConstantOperandGuardRootNode extends RootNode implements BytecodeRootNode {

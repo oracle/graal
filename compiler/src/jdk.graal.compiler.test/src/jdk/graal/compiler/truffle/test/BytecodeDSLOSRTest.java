@@ -49,6 +49,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -569,7 +570,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLOSRTestLanguage.class)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLOSRTestLanguage.class)
     public abstract static class BytecodeDSLOSRTestRootNode extends DebugBytecodeRootNode {
 
         @SuppressWarnings("serial")
@@ -679,7 +680,7 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLOSRTestLanguage.class, enableYield = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLOSRTestLanguage.class, enableYield = true)
     public abstract static class BytecodeDSLOSRTestRootNodeWithYield extends DebugBytecodeRootNode {
 
         protected BytecodeDSLOSRTestRootNodeWithYield(BytecodeDSLOSRTestLanguage language, FrameDescriptor fd) {

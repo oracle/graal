@@ -50,6 +50,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.dsl.Bind;
@@ -86,7 +87,7 @@ public class GR71154Test {
         assertEquals(6L, root.getCallTarget().call(3L));
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
     abstract static class TestAssumptionsRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         final Assumption assumption = Truffle.getRuntime().createAssumption();

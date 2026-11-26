@@ -54,6 +54,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.OperationProxy;
@@ -531,7 +532,7 @@ public class ProxyExecutionMetadataTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, enableQuickening = true, boxingEliminationTypes = {int.class})
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, enableQuickening = true, boxingEliminationTypes = {int.class})
     @OperationProxy(AllMetadataNode.class)
     @OperationProxy(TypedMetadataNode.class)
     @OperationProxy(BytecodeIndexOnlyNode.class)

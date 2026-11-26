@@ -53,6 +53,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
@@ -210,10 +211,14 @@ public class NodeOptimizationTest extends AbstractInstructionTest {
     }
 
     @GenerateBytecodeTestVariants({
-                    @Variant(suffix = "CachedNode", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE)),
-                    @Variant(suffix = "Frame", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)),
-                    @Variant(suffix = "Manual", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.MANUAL)),
-                    @Variant(suffix = "None", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.NONE))
+                    @Variant(suffix = "CachedNode", configuration = @GenerateBytecode(//
+                                    version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE)),
+                    @Variant(suffix = "Frame", configuration = @GenerateBytecode(//
+                                    version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)),
+                    @Variant(suffix = "Manual", configuration = @GenerateBytecode(//
+                                    version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.MANUAL)),
+                    @Variant(suffix = "None", configuration = @GenerateBytecode(//
+                                    version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.NONE))
     })
     public abstract static class BoundNodeRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -249,7 +254,7 @@ public class NodeOptimizationTest extends AbstractInstructionTest {
         return nodes.getNode(nodes.count() - 1);
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableSpecializationIntrospection = true, enableQuickening = true, //
                     boxingEliminationTypes = {long.class, int.class, boolean.class})

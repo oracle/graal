@@ -81,6 +81,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.IllegalL
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.IllegalLocalExceptionFactory.ParameterKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel.LoadIllegalLocalStrategy;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModels;
+import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeVersion;
 import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
@@ -233,8 +234,38 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         typeElement.getSimpleName() + suffix);
     }
 
+    private static BytecodeVersion parseVersion(BytecodeDSLModel model, AnnotationMirror annotation) {
+        AnnotationValue explicitVersion = ElementUtils.getAnnotationValue(annotation, "version", false);
+        VariableElement selected = ElementUtils.getAnnotationValue(VariableElement.class, annotation, "version");
+        String selectedName = selected.getSimpleName().toString();
+        BytecodeVersion version = BytecodeVersion.getVersion(selectedName);
+        if (version.number() < BytecodeVersion.MIN_SUPPORTED) {
+            String supportedVersions = BytecodeVersion.getSupportedVersions().stream().map(v -> "BytecodeVersion." + v.name()).collect(Collectors.joining(", "));
+            model.addError(annotation, explicitVersion,
+                            "Unsupported Bytecode DSL behaviour version BytecodeVersion.%s.\nPlease migrate to the newest version. See the BytecodeVersion Javadoc for migration instructions.\nSupported versions: %s.",
+                            selectedName, supportedVersions);
+            return null;
+        }
+        if (explicitVersion == null) {
+            model.addWarning(annotation, null,
+                            "A version should be specified explicitly. Defaulting to version %d. In the future, an explicit version will be required. See BytecodeVersion#%s for the selected behaviour.",
+                            version.number(), version.name());
+        }
+        if (version != BytecodeVersion.getLatestVersion()) {
+            String status = version.removalRelease() == null ? "" : "\nSupport will be removed in release " + version.removalRelease() + ".";
+            model.addWarning(annotation, explicitVersion,
+                            "Bytecode DSL behaviour version %d is older than the newest version %d.\nPlease migrate to the newest version. See the BytecodeVersion Javadoc for migration instructions.%s",
+                            version.number(), BytecodeVersion.getLatestVersion().number(), status);
+        }
+        return version;
+    }
+
     @SuppressWarnings("unchecked")
     private void parseBytecodeDSLModel(TypeElement typeElement, BytecodeDSLModel model, AnnotationMirror generateBytecodeMirror) {
+        model.version = parseVersion(model, generateBytecodeMirror);
+        if (model.hasErrors()) {
+            return;
+        }
         model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateBytecodeMirror, "languageClass").getValue();
         model.unwindExceptions = ElementUtils.getAnnotationValueList(TypeMirror.class, generateBytecodeMirror, "unwindExceptions");
         for (TypeMirror exceptionType : model.unwindExceptions) {

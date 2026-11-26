@@ -996,7 +996,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         } else {
             nodeType = CodeTypeElement.cloneShallow(typeElement);
         }
-        nodeType.getAnnotationMirrors().removeIf(m -> typeEqualsAny(m.getAnnotationType(), types.ExpectErrorTypes));
+        nodeType.getAnnotationMirrors().removeIf(m -> typeEqualsAny(m.getAnnotationType(), types.ExpectErrorAndWarningTypes));
         return nodeType;
     }
 

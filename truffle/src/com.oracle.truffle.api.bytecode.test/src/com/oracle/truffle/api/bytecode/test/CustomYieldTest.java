@@ -70,6 +70,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
@@ -218,7 +219,7 @@ public class CustomYieldTest {
     /**
      * A simple root node with a custom yield (and no built-in yield).
      */
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true)
     public abstract static class CustomYieldTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected CustomYieldTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -348,7 +349,7 @@ public class CustomYieldTest {
     /**
      * A root node with custom yield and uncached support.
      */
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true)
     public abstract static class CustomYieldUncachedRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected CustomYieldUncachedRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -440,7 +441,7 @@ public class CustomYieldTest {
     /**
      * An uncachable root node with a multi-specialization custom yield.
      */
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true)
     public abstract static class SpecializingCustomYieldTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected SpecializingCustomYieldTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -948,7 +949,7 @@ public class CustomYieldTest {
      * A root node with most Bytecode DSL features enabled (uncached, tag instrumentation,
      * serialization, BE).
      */
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true, enableTagInstrumentation = true, enableSerialization = true, boxingEliminationTypes = {
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableUncachedInterpreter = true, enableTagInstrumentation = true, enableSerialization = true, boxingEliminationTypes = {
                     int.class})
     public abstract static class ComplexCustomYieldTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -1008,7 +1009,7 @@ public class CustomYieldTest {
      * A root node whose custom yields all use the first dynamic operand for their result index,
      * fixing the result stack offset at two slots from the top of stack.
      */
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true)
     public abstract static class FixedResultStackOffsetYieldTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected FixedResultStackOffsetYieldTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -1043,7 +1044,7 @@ public class CustomYieldTest {
     /**
      * A root node with only a no-result custom yield.
      */
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true)
     public abstract static class NoResultTagYieldTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected NoResultTagYieldTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -1062,7 +1063,7 @@ public class CustomYieldTest {
     /**
      * A root node with constants around multiple dynamic custom yield operands.
      */
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableTagInstrumentation = true)
     public abstract static class ConstantOperandMultiYieldTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected ConstantOperandMultiYieldTestRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -1130,7 +1131,7 @@ public class CustomYieldTest {
         fail("Could not find Instructions class");
     }
 
-    @GenerateBytecode(languageClass = ErrorLanguage.class, boxingEliminationTypes = {int.class})
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = ErrorLanguage.class, boxingEliminationTypes = {int.class})
     public abstract static class CustomYieldWithBEableReturnTypeTest extends RootNode implements BytecodeRootNode {
 
         protected CustomYieldWithBEableReturnTypeTest(ErrorLanguage language, FrameDescriptor frameDescriptor) {
@@ -1148,7 +1149,7 @@ public class CustomYieldTest {
     }
 
     @SuppressWarnings("unused")
-    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = ErrorLanguage.class)
     public abstract static class InvalidYieldTest extends RootNode implements BytecodeRootNode {
         protected InvalidYieldTest(ErrorLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);

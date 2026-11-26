@@ -59,6 +59,7 @@ import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
@@ -181,7 +182,7 @@ public class InstructionBytecodeSizeTest {
     record ContinueAtSizes(NameAndSize cached, NameAndSize uncached) {
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                     enableSerialization = true, //
                     enableYield = true, //
                     boxingEliminationTypes = {boolean.class}, //
@@ -202,7 +203,7 @@ public class InstructionBytecodeSizeTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                     enableSerialization = true, //
                     enableYield = true, //
                     boxingEliminationTypes = {boolean.class}, //
@@ -231,7 +232,7 @@ public class InstructionBytecodeSizeTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                     enableSerialization = true, //
                     enableYield = true, //
                     boxingEliminationTypes = {boolean.class}, //
@@ -404,7 +405,7 @@ public class InstructionBytecodeSizeTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                     enableSerialization = true, //
                     enableYield = true, //
                     boxingEliminationTypes = {boolean.class, int.class, byte.class, long.class, float.class, double.class}, //

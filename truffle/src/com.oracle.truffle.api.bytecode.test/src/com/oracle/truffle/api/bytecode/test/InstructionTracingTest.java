@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,6 +68,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instruction;
 import com.oracle.truffle.api.bytecode.InstructionTracer;
@@ -903,7 +904,7 @@ public class InstructionTracingTest extends AbstractInstructionTest {
         b.endSource();
     }
 
-    @GenerateBytecode(languageClass = InstructionTracingLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = InstructionTracingLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableUncachedInterpreter = true,  //
                     boxingEliminationTypes = {long.class, int.class, boolean.class})
@@ -963,7 +964,7 @@ public class InstructionTracingTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = InstructionTracingLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = InstructionTracingLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableUncachedInterpreter = true,  //
                     enableInstructionTracing = false, boxingEliminationTypes = {long.class, int.class, boolean.class})

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
@@ -183,7 +184,7 @@ public class SetTraceFuncTest extends AbstractInstructionTest {
         }
     }
 
-    @GenerateBytecode(languageClass = TraceFunLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = TraceFunLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
                     enableUncachedInterpreter = true,  //

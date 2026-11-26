@@ -70,6 +70,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.ExceptionHandler.HandlerKind;
@@ -583,7 +584,7 @@ public class CustomReturnTest {
         }
     };
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, enableTagInstrumentation = true, enableSerialization = true, boxingEliminationTypes = {
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, enableTagInstrumentation = true, enableSerialization = true, boxingEliminationTypes = {
                     int.class})
     public abstract static class CustomReturnInstructionRootNode extends RootNode implements BytecodeRootNode {
         protected CustomReturnInstructionRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -663,7 +664,7 @@ public class CustomReturnTest {
     }
 
     @SuppressWarnings("unused")
-    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = ErrorLanguage.class)
     public abstract static class InvalidReturnTest extends RootNode implements BytecodeRootNode {
         protected InvalidReturnTest(ErrorLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);

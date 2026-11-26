@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test;
 
 import static org.junit.Assert.assertEquals;
 
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.dsl.Specialization;
 import org.junit.Test;
@@ -139,7 +140,7 @@ public class GR77658Test extends AbstractInstructionTest {
         assertStable(quickenings, node, false);
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                     enableMaterializedLocalAccesses = true, //
                     defaultLocalValue = "DEFAULT_LOCAL_VALUE", //
                     boxingEliminationTypes = int.class)

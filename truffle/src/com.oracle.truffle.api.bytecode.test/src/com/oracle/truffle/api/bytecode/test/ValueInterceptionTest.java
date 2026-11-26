@@ -57,6 +57,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Instrumentation;
@@ -652,7 +653,8 @@ public class ValueInterceptionTest {
         }
     }
 
-    @GenerateBytecode(languageClass = TagTest.TagTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = false, enableTagInstrumentation = true, enableYield = true, boxingEliminationTypes = int.class)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = TagTest.TagTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = false, enableTagInstrumentation = true, enableYield = true, //
+                    boxingEliminationTypes = int.class)
     abstract static class ValueInterceptionTestRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         int incomingConversions;

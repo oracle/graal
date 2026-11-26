@@ -59,6 +59,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
@@ -313,7 +314,7 @@ public class OuterContextConstantTest {
 
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableSerialization = true)
 abstract class OuterContextConstantRootNode extends RootNode implements BytecodeRootNode {
 
     protected OuterContextConstantRootNode(BytecodeDSLTestLanguage language, FrameDescriptor fd) {

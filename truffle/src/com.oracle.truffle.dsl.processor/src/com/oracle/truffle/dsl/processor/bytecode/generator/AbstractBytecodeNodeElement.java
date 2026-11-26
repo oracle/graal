@@ -358,9 +358,9 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
         b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
         b.startIf().string("frame.isObject(frameIndex)").end().startBlock();
-        b.startReturn().string("frame.getObject(frameIndex)").end();
+        b.statement("return frame.getObject(frameIndex)");
         b.end();
-        b.statement("return null");
+        b.statement(parent.model.version.usesInvalidLocalMarker() ? "return INVALID" : "return null");
 
         return ex;
     }
@@ -406,10 +406,21 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         AbstractBytecodeNodeElement.buildVerifyLocalsIndex(b);
         buildVerifyFrameDescriptor(b, false);
         b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
+        emitMaybeInvalidateLocalValue(b, "frameIndex");
         b.startStatement();
         b.startCall("frame", BytecodeRootNodeElement.getSetMethod(type(Object.class))).string("frameIndex").string("value").end();
         b.end();
         return ex;
+    }
+
+    void emitMaybeInvalidateLocalValue(CodeTreeBuilder b, String frameIndex) {
+        if (!parent.model.version.usesInvalidLocalMarker()) {
+            return;
+        }
+        b.startIf().string("value == INVALID").end().startBlock();
+        b.statement("frame.clear(", frameIndex, ")");
+        b.statement("return");
+        b.end();
     }
 
     private CodeExecutableElement createSetLocalValueInternal() {

@@ -165,6 +165,7 @@ public final class BytecodeFrame {
      * {@code [0, getLocalCount())}.
      *
      * @since 25.1
+     * @see BytecodeNode#getLocalValue(int, Frame, int)
      */
     public Object getLocalValue(int localOffset) {
         return bytecode.getLocalValue(bytecodeIndex, frame, localOffset);
@@ -178,6 +179,7 @@ public final class BytecodeFrame {
      * writes.
      *
      * @since 25.1
+     * @see BytecodeNode#setLocalValue(int, Frame, int, Object)
      */
     public void setLocalValue(int localOffset, Object value) {
         bytecode.setLocalValue(bytecodeIndex, frame, localOffset, value);

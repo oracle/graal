@@ -22,7 +22,7 @@ The downside to bytecode interpreters is that they are more difficult to impleme
 
 Below is the complete Bytecode DSL specification for a small interpreter with a custom `Add` operation.
 ```java
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+@GenerateBytecode(version = BytecodeVersion.V2, languageClass = BytecodeDSLTestLanguage.class)
 public abstract static class SampleInterpreter extends RootNode implements BytecodeRootNode {
 
     protected SampleInterpreter(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

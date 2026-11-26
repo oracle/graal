@@ -193,10 +193,11 @@ public abstract class AbstractBasicInterpreterTest {
         }
 
         public Object getDefaultLocalValue() {
-            if (interpreterClass() == BasicInterpreterWithOptimizations.class || interpreterClass() == BasicInterpreterWithRootScoping.class) {
-                return BasicInterpreter.LOCAL_DEFAULT_VALUE;
-            }
-            return null;
+            return AbstractBasicInterpreterTest.getDefaultLocalValue(interpreterClass());
+        }
+
+        public Object getBytecodeNodeDefaultLocalValue() {
+            return AbstractBasicInterpreterTest.getBytecodeNodeDefaultLocalValue(interpreterClass());
         }
 
     }
@@ -758,12 +759,16 @@ public abstract class AbstractBasicInterpreterTest {
                         interpreterClass == BasicInterpreterProductionRootScoping.class || interpreterClass == BasicInterpreterProductionRootScopingTailCall.class;
     }
 
-    public static Object getDefaultLocalValue(Class<? extends BasicInterpreter> interpreterClass) {
-        if (interpreterClass == BasicInterpreterWithOptimizations.class || interpreterClass == BasicInterpreterWithRootScoping.class ||
-                        interpreterClass == BasicInterpreterProductionRootScopingTailCall.class) {
+    private static Object getDefaultLocalValue(Class<? extends BasicInterpreter> interpreterClass) {
+        if (interpreterClass == BasicInterpreterWithOptimizations.class || interpreterClass == BasicInterpreterWithRootScoping.class) {
             return BasicInterpreter.LOCAL_DEFAULT_VALUE;
         }
         return null;
+    }
+
+    private static Object getBytecodeNodeDefaultLocalValue(Class<? extends BasicInterpreter> interpreterClass) {
+        Object defaultValue = getDefaultLocalValue(interpreterClass);
+        return (defaultValue == null) ? BytecodeNode.INVALID : defaultValue;
     }
 
     /// Code gen helpers

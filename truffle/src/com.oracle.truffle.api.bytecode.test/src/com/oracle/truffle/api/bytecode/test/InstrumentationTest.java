@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,6 +64,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.InstructionTracer;
 import com.oracle.truffle.api.bytecode.Instrumentation;
@@ -445,7 +446,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
                         root.getBytecodeNode().getInstructionsAsList().size());
     }
 
-    @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeInstrumentationTestLanguage.class, //
                     enableQuickening = true, //
                     enableUncachedInterpreter = true,  //
                     boxingEliminationTypes = {int.class})
@@ -610,7 +611,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
         static final LanguageReference<BytecodeInstrumentationTestLanguage> REF = LanguageReference.create(BytecodeInstrumentationTestLanguage.class);
     }
 
-    @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeInstrumentationTestLanguage.class)
     public abstract static class InstrumentationErrorRootNode1 extends DebugBytecodeRootNode implements BytecodeRootNode {
 
         protected InstrumentationErrorRootNode1(BytecodeInstrumentationTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -694,7 +695,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeInstrumentationTestLanguage.class, //
                     enableTagInstrumentation = true, //
                     enableRootBodyTagging = false, enableRootTagging = false)
     public abstract static class ManyInstrumentationsRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
@@ -925,7 +926,7 @@ public class InstrumentationTest extends AbstractInstructionTest {
     }
 
     @ExpectError("Too many @Instrumentation annotated operations specified. %")
-    @GenerateBytecode(languageClass = BytecodeInstrumentationTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeInstrumentationTestLanguage.class, //
                     enableTagInstrumentation = true, //
                     enableRootBodyTagging = false, enableRootTagging = false)
     public abstract static class TooManyInstrumentationsRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {

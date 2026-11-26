@@ -118,6 +118,32 @@ public @interface GenerateBytecode {
     Class<? extends TruffleLanguage<?>> languageClass();
 
     /**
+     * Selects the Bytecode DSL behaviour version. Versions distinguish breaking behaviour changes
+     * that require migration of language implementations. They do not identify Truffle releases
+     * or version internal implementation details, optimizations, or performance changes. Breaking
+     * changes are rare and avoided whenever possible. For details, refer to
+     * {@link BytecodeVersion}.
+     * <p>
+     * This field allows you to pin the version so that updating Truffle does not automatically
+     * adopt breaking changes. Instead, when new breaking changes are introduced, the compiler will
+     * emit a warning referring to the {@link BytecodeVersion} Javadoc for migration instructions.
+     * It is recommended to always migrate to the newest version, since old versions are deprecated
+     * and will eventually be unsupported in future releases.
+     * <p>
+     * You can specify {@link BytecodeVersion#LATEST} to always opt in to the newest behaviour.
+     * Your interpreter will be recompiled with the latest behaviour every time Truffle is updated.
+     * This option should not be used in production language implementations; select an explicit
+     * version instead.
+     * <p>
+     * For compatibility, this field defaults to version 1, with a compiler warning to explicitly
+     * specify it. An explicit version will be required in subsequent releases.
+     *
+     * @see BytecodeVersion
+     * @since 25.7
+     */
+    BytecodeVersion version() default BytecodeVersion.V1;
+
+    /**
      * Specifies exception types that unwind the bytecode interpreter through guest {@code finally}
      * handlers.
      * <p>

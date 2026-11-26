@@ -72,6 +72,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
@@ -3101,7 +3102,7 @@ public class TagTest extends AbstractInstructionTest {
     static final class SelectedUnwindException extends ControlFlowException {
     }
 
-    @GenerateBytecode(languageClass = TagTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = TagTestLanguage.class, //
                     unwindExceptions = SelectedUnwindException.class, //
                     enableQuickening = true, //
                     enableUncachedInterpreter = true,  //
@@ -3263,7 +3264,7 @@ public class TagTest extends AbstractInstructionTest {
         }
     }
 
-    @GenerateBytecode(languageClass = TagTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = TagTestLanguage.class, //
                     enableQuickening = true, //
                     enableUncachedInterpreter = true,  //
                     enableTagInstrumentation = true, //
@@ -3445,7 +3446,7 @@ public class TagTest extends AbstractInstructionTest {
 
     @ExpectError("Tag instrumentation uses implicit root tagging, but the RootTag was not provided by the language class 'com.oracle.truffle.api.bytecode.test.TagTest.NoRootTagTestLanguage'. " +
                     "Specify the tag using @ProvidedTags(RootTag.class) on the language class or explicitly disable root tagging using @GenerateBytecode(.., enableRootTagging=false) to resolve this.")
-    @GenerateBytecode(languageClass = NoRootTagTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = NoRootTagTestLanguage.class, //
                     enableTagInstrumentation = true)
     public abstract static class ErrorNoRootTag extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -3464,7 +3465,7 @@ public class TagTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = NoRootTagTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = NoRootTagTestLanguage.class, //
                     enableTagInstrumentation = true, enableRootTagging = false)
     public abstract static class NoRootTagNoError extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -3498,7 +3499,7 @@ public class TagTest extends AbstractInstructionTest {
 
     @ExpectError("Tag instrumentation uses implicit root body tagging, but the RootTag was not provided by the language class 'com.oracle.truffle.api.bytecode.test.TagTest.NoRootBodyTagTestLanguage'. " +
                     "Specify the tag using @ProvidedTags(RootBodyTag.class) on the language class or explicitly disable root tagging using @GenerateBytecode(.., enableRootBodyTagging=false) to resolve this.")
-    @GenerateBytecode(languageClass = NoRootBodyTagTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = NoRootBodyTagTestLanguage.class, //
                     enableTagInstrumentation = true)
     public abstract static class ErrorNoRootBodyTag extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -3517,7 +3518,7 @@ public class TagTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = NoRootBodyTagTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = NoRootBodyTagTestLanguage.class, //
                     enableTagInstrumentation = true, enableRootBodyTagging = false)
     public abstract static class NoRootBodyTagNoError extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -3536,7 +3537,7 @@ public class TagTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = NoRootBodyTagTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = NoRootBodyTagTestLanguage.class, //
                     enableTagInstrumentation = false)
     public abstract static class ErrorImplicitTag1 extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -3557,7 +3558,7 @@ public class TagTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = NoRootTagTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = NoRootTagTestLanguage.class, //
                     enableTagInstrumentation = true, enableRootTagging = false)
     public abstract static class ErrorImplicitTag2 extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -3577,7 +3578,7 @@ public class TagTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = NoRootBodyTagTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = NoRootBodyTagTestLanguage.class, //
                     enableTagInstrumentation = false)
     @ExpectError("Tag instrumentation is not enabled. The tags attribute can only be used if tag instrumentation is enabled for the parent root node. " +
                     "Enable tag instrumentation using @GenerateBytecode(... enableTagInstrumentation = true) to resolve this or remove the tags attribute.")
@@ -3590,7 +3591,7 @@ public class TagTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = NoRootTagTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = NoRootTagTestLanguage.class, //
                     enableTagInstrumentation = true, enableRootTagging = false)
     @ExpectError("Invalid tag 'StatementTag' specified. The tag is not provided by language 'com.oracle.truffle.api.bytecode.test.TagTest.NoRootTagTestLanguage'.")
     @OperationProxy(value = ExpressionAdd.class, tags = StatementTag.class)
@@ -3758,7 +3759,7 @@ public class TagTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = ManyRootTagTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = ManyRootTagTestLanguage.class, //
                     enableTagInstrumentation = true, enableRootBodyTagging = false, enableRootTagging = false)
     public abstract static class ManyTagsRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
 
@@ -3824,7 +3825,7 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @ExpectError("Tag instrumentation is currently limited to a maximum of 32 tags.%")
-    @GenerateBytecode(languageClass = TooManyTagTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = TooManyTagTestLanguage.class, //
                     enableTagInstrumentation = true, //
                     enableRootBodyTagging = false, enableRootTagging = false)
     public abstract static class TooManyTagsRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {
@@ -3845,7 +3846,7 @@ public class TagTest extends AbstractInstructionTest {
     }
 
     @ExpectError("Too many @Instrumentation annotated operations and provided tags specified. %")
-    @GenerateBytecode(languageClass = ManyRootTagTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = ManyRootTagTestLanguage.class, //
                     enableTagInstrumentation = true, //
                     enableRootBodyTagging = false, enableRootTagging = false)
     public abstract static class TooManyTagsAndInstrumentsRootNode extends DebugBytecodeRootNode implements BytecodeRootNode {

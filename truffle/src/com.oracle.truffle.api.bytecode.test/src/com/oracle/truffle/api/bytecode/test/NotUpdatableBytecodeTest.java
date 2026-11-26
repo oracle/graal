@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.bytecode.test;
 
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -60,7 +61,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public class NotUpdatableBytecodeTest {
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableInstructionTracing = false)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableInstructionTracing = false)
     public abstract static class TracingDisabledRootNode extends RootNode implements BytecodeRootNode {
 
         protected TracingDisabledRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {

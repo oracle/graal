@@ -136,7 +136,7 @@ final class DefaultBytecodeScope implements TruffleObject {
                 return Null.INSTANCE;
             }
             Object o = cachedBytecode.getLocalValue(cachedBci, frame, index);
-            if (o == null) {
+            if (o == null || o == BytecodeNode.INVALID) {
                 o = Null.INSTANCE;
             }
             return o;

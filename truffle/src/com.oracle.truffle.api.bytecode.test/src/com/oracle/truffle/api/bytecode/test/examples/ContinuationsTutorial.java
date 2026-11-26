@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocation;
 import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -80,7 +81,7 @@ public class ContinuationsTutorial {
      * {@link GenerateBytecode} specification, set {@code enableYield = true}. Then, rebuild your
      * project to update the generated interpreter.
      */
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableYield = true)
     public abstract static class YieldingBytecodeNode extends RootNode implements BytecodeRootNode {
         protected YieldingBytecodeNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
@@ -260,7 +261,7 @@ public class ContinuationsTutorial {
      * Below we define a new root node with a {@code Resume} operation that defines an inline cache
      * over continuation roots.
      */
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSpecializationIntrospection = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableYield = true, enableSpecializationIntrospection = true)
     public abstract static class YieldingBytecodeNodeWithResume extends RootNode implements BytecodeRootNode {
         protected YieldingBytecodeNodeWithResume(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);

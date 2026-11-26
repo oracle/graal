@@ -81,6 +81,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
@@ -1750,6 +1751,54 @@ public class LocalHelpersTest {
     }
 
     @Test
+    public void testNullLocalValueRoundTrip() {
+        for (boolean cached : new boolean[]{false, true}) {
+            BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+                b.beginRoot();
+                BytecodeLocal local = b.createLocal();
+                b.beginStoreLocal(local);
+                b.emitLoadArgument(0);
+                b.endStoreLocal();
+                b.beginYield();
+                b.emitLoadConstant(0);
+                b.endYield();
+                b.beginReturn();
+                b.emitLoadLocal(local);
+                b.endReturn();
+                b.endRoot();
+            });
+            root.getBytecodeNode().setUncachedThreshold(cached ? 0 : Integer.MAX_VALUE);
+            ContinuationResult source = (ContinuationResult) root.getCallTarget().call((Object) null);
+            ContinuationResult target = (ContinuationResult) root.getCallTarget().call(42L);
+            BytecodeNode node = root.getBytecodeNode();
+            int bci = source.getContinuationRootNode().getLocation().getBytecodeIndex();
+            MaterializedFrame sourceFrame = source.getFrame();
+            MaterializedFrame targetFrame = target.getFrame();
+
+            assertNull(node.getLocalValue(bci, sourceFrame, 0));
+            assertArrayEquals(new Object[]{null}, node.getLocalValues(bci, sourceFrame));
+            node.copyLocalValues(bci, sourceFrame, targetFrame);
+            assertNull(node.getLocalValue(bci, targetFrame, 0));
+
+            node.setLocalValue(bci, sourceFrame, 0, BytecodeNode.INVALID);
+            assertSame(BytecodeNode.INVALID, node.getLocalValue(bci, sourceFrame, 0));
+            node.copyLocalValues(bci, sourceFrame, targetFrame, 0, 1);
+            assertSame(BytecodeNode.INVALID, node.getLocalValue(bci, targetFrame, 0));
+            assertArrayEquals(new Object[]{BytecodeNode.INVALID}, node.getLocalValues(bci, sourceFrame));
+            node.setLocalValues(bci, targetFrame, new Object[]{BytecodeNode.INVALID});
+            assertSame(BytecodeNode.INVALID, node.getLocalValue(bci, targetFrame, 0));
+
+            node.setLocalValues(bci, sourceFrame, new Object[]{null});
+            assertNull(node.getLocalValue(bci, sourceFrame, 0));
+            node.copyLocalValues(bci, sourceFrame, targetFrame, 0, 1);
+            assertNull(node.getLocalValue(bci, targetFrame, 0));
+            // Ordinary bytecode loads must see Java null, never the API marker.
+            assertNull(source.continueWith(null));
+            assertNull(target.continueWith(null));
+        }
+    }
+
+    @Test
     public void testGetLocalDefaultOrIllegalGetLocal() {
         // @formatter:off
         // // B0
@@ -1808,12 +1857,12 @@ public class LocalHelpersTest {
             assertSame(defaultLocal, root.getCallTarget().call(true));
             assertSame(defaultLocal, root.getCallTarget().call(false));
         } else {
-            // Illegal returns null for getLocal
-            assertNull(root.getCallTarget().call(true));
-            assertNull(root.getCallTarget().call(false));
+            // Illegal returns INVALID for getLocal
+            assertSame(BytecodeNode.INVALID, root.getCallTarget().call(true));
+            assertSame(BytecodeNode.INVALID, root.getCallTarget().call(false));
             root.getBytecodeNode().setUncachedThreshold(0);
-            assertNull(root.getCallTarget().call(true));
-            assertNull(root.getCallTarget().call(false));
+            assertSame(BytecodeNode.INVALID, root.getCallTarget().call(true));
+            assertSame(BytecodeNode.INVALID, root.getCallTarget().call(false));
         }
     }
 
@@ -2280,27 +2329,27 @@ public class LocalHelpersTest {
 }
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 captureFramesForTrace = true)),
-                @Variant(suffix = "BaseDefault", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "BaseDefault", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                                 defaultLocalValue = "DEFAULT", //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 captureFramesForTrace = true)),
-                @Variant(suffix = "BaseNoCapturedFrames", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "BaseNoCapturedFrames", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 captureFramesForTrace = false)),
-                @Variant(suffix = "WithBEIllegal", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "WithBEIllegal", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                                 enableQuickening = true, //
                                 enableUncachedInterpreter = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}, //
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 captureFramesForTrace = true)),
-                @Variant(suffix = "WithBEIllegalRootScoped", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "WithBEIllegalRootScoped", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                                 enableQuickening = true, //
                                 enableUncachedInterpreter = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}, //
@@ -2308,7 +2357,7 @@ public class LocalHelpersTest {
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 captureFramesForTrace = true)),
-                @Variant(suffix = "WithBEObjectDefault", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "WithBEObjectDefault", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                                 enableQuickening = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}, //
                                 enableUncachedInterpreter = true, //
@@ -2316,7 +2365,7 @@ public class LocalHelpersTest {
                                 enableYield = true, //
                                 enableMaterializedLocalAccesses = true, //
                                 captureFramesForTrace = true)),
-                @Variant(suffix = "WithBENullDefault", configuration = @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+                @Variant(suffix = "WithBENullDefault", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                                 enableQuickening = true, //
                                 boxingEliminationTypes = {boolean.class, long.class}, //
                                 enableUncachedInterpreter = true, //

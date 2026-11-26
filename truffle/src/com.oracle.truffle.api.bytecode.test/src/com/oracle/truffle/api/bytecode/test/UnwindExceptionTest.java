@@ -56,6 +56,7 @@ import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
 import com.oracle.truffle.api.bytecode.BytecodeTier;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.EpilogExceptional;
 import com.oracle.truffle.api.bytecode.ExceptionHandler;
@@ -432,7 +433,7 @@ public class UnwindExceptionTest {
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, unwindExceptions = Throwable.class)
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, unwindExceptions = Throwable.class)
 abstract class UnwindWithoutInterceptorsRootNode extends RootNode implements BytecodeRootNode {
 
     int cleanupCount;
@@ -458,7 +459,7 @@ abstract class UnwindWithoutInterceptorsRootNode extends RootNode implements Byt
     }
 }
 
-@GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+@GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                 enableYield = true, //
                 enableUncachedInterpreter = true, //
                 unwindExceptions = {UnwindExceptionTest.SelectedControlFlowException.class, UnwindExceptionTest.SelectedRuntimeException.class,

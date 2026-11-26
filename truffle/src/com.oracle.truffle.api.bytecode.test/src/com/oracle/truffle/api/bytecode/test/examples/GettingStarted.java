@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
@@ -81,11 +82,12 @@ public class GettingStarted {
      * or {@link OperationProxy} and {@link ShortCircuitOperation} annotations. The Bytecode DSL
      * uses the specification to generate a bytecode interpreter with all supporting code.
      * <p>
-     * Your class should be annotated with {@link GenerateBytecode}. The annotated class must be
-     * abstract, must be a subclass of {@link RootNode}, and must implement
+     * Your class should be annotated with {@link GenerateBytecode}, which should declare
+     * {@link GenerateBytecode#version} and {@link GenerateBytecode#languageClass} fields. The
+     * annotated class must be abstract, must be a subclass of {@link RootNode}, and must implement
      * {@link BytecodeRootNode}.
      */
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class)
     /*
      * Defines a new {@code ScOr} operation ({@code Sc} stands for "short-circuit"). It uses {@code
      * OR} semantics, converts values to boolean using {@link ToBool}, and produces the converted

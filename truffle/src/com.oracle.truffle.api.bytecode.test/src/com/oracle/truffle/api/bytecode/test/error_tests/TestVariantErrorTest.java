@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.api.bytecode.test.error_tests;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
@@ -55,8 +56,8 @@ public class TestVariantErrorTest {
 
     @ExpectError("A variant with suffix \"A\" already exists. Each variant must have a unique suffix.")
     @GenerateBytecodeTestVariants({
-                    @Variant(suffix = "A", configuration = @GenerateBytecode(languageClass = ErrorLanguage.class)),
-                    @Variant(suffix = "A", configuration = @GenerateBytecode(languageClass = ErrorLanguage.class))})
+                    @Variant(suffix = "A", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = ErrorLanguage.class)),
+                    @Variant(suffix = "A", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = ErrorLanguage.class))})
     @OperationProxy(ConstantOperation.class)
     public abstract static class SameName extends RootNode implements BytecodeRootNode {
         protected SameName(ErrorLanguage language, FrameDescriptor frameDescriptor) {
@@ -66,8 +67,8 @@ public class TestVariantErrorTest {
 
     @ExpectError("Incompatible variant: all variants must use the same language class.")
     @GenerateBytecodeTestVariants({
-                    @Variant(suffix = "A", configuration = @GenerateBytecode(languageClass = ErrorLanguage.class)),
-                    @Variant(suffix = "B", configuration = @GenerateBytecode(languageClass = AnotherErrorLanguage.class))
+                    @Variant(suffix = "A", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = ErrorLanguage.class)),
+                    @Variant(suffix = "B", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = AnotherErrorLanguage.class))
     })
     @OperationProxy(ConstantOperation.class)
     public abstract static class DifferentLanguage extends RootNode implements BytecodeRootNode {
@@ -78,8 +79,8 @@ public class TestVariantErrorTest {
 
     @ExpectError("Incompatible variant: all variants must have the same value for enableYield.")
     @GenerateBytecodeTestVariants({
-                    @Variant(suffix = "A", configuration = @GenerateBytecode(languageClass = ErrorLanguage.class, enableYield = true)),
-                    @Variant(suffix = "B", configuration = @GenerateBytecode(languageClass = ErrorLanguage.class))
+                    @Variant(suffix = "A", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = ErrorLanguage.class, enableYield = true)),
+                    @Variant(suffix = "B", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = ErrorLanguage.class))
     })
     @OperationProxy(ConstantOperation.class)
     public abstract static class DifferentYield extends RootNode implements BytecodeRootNode {
@@ -90,8 +91,8 @@ public class TestVariantErrorTest {
 
     // no errors expected
     @GenerateBytecodeTestVariants({
-                    @Variant(suffix = "Tier1", configuration = @GenerateBytecode(languageClass = ErrorLanguage.class)),
-                    @Variant(suffix = "Tier0", configuration = @GenerateBytecode(languageClass = ErrorLanguage.class, enableUncachedInterpreter = true))
+                    @Variant(suffix = "Tier1", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = ErrorLanguage.class)),
+                    @Variant(suffix = "Tier0", configuration = @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = ErrorLanguage.class, enableUncachedInterpreter = true))
     })
     @OperationProxy(ConstantOperation.class)
     public abstract static class DifferentUncachedInterpreters extends RootNode implements BytecodeRootNode {

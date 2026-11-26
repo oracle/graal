@@ -59,6 +59,7 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeIndexMode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
@@ -375,7 +376,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.MANUAL, enableTagInstrumentation = true, enableYield = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.MANUAL, enableTagInstrumentation = true, enableYield = true)
     abstract static class ManualTagRootNode extends RootNode implements BytecodeRootNode {
         protected ManualTagRootNode(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
@@ -405,7 +406,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, //
                     enableQuickening = true, //
                     enableUncachedInterpreter = true, //
                     bytecodeIndexMode = BytecodeIndexMode.FRAME, //
@@ -558,7 +559,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
     @ExpectWarning("For this operation it is recommended to specify @Proxyable(storeBytecodeIndex=true|false). %")
     @OperationProxy(NoStoreBytecodeIndexProxyTest1.class)
     // no warning if the node does not bind the node
@@ -744,7 +745,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
     @ExpectError("For this operation it is recommended to specify @Proxyable(storeBytecodeIndex=true|false).%")
     @ShortCircuitOperation(name = "BoolAnd", booleanConverter = ExternalProxyNode.class, operator = Operator.AND_RETURN_VALUE)
     abstract static class StoreBytecodeEliminationWarningTestRootNode2 extends RootNode implements BytecodeRootNode {
@@ -755,7 +756,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
     abstract static class StoreBytecodeEliminationWarningTestRootNode3 extends RootNode implements BytecodeRootNode {
 
         protected StoreBytecodeEliminationWarningTestRootNode3(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -773,7 +774,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
     abstract static class StoreBytecodeEliminationWarningTestRootNode4 extends RootNode implements BytecodeRootNode {
 
         protected StoreBytecodeEliminationWarningTestRootNode4(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -790,7 +791,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
 
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, enableQuickening = true, enableUncachedInterpreter = true, bytecodeIndexMode = BytecodeIndexMode.FRAME)
     abstract static class StoreBytecodeEliminationWarningTestRootNode5 extends RootNode implements BytecodeRootNode {
 
         protected StoreBytecodeEliminationWarningTestRootNode5(BytecodeDSLTestLanguage language, FrameDescriptor frameDescriptor) {
@@ -809,7 +810,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
 
     private static final String NO_BCI_SLOT = "Explicit bytecode index storage has no effect because this interpreter does not allocate a bytecode index frame slot.";
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.NONE)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.NONE)
     @ExpectWarning({NO_BCI_SLOT, NO_BCI_SLOT})
     @OperationProxy(StoreBytecodeIndexNoWarningProxy.class)
     @OperationProxy(SpecializationStorageProxy.class)
@@ -856,7 +857,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE, enableUncachedInterpreter = false)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE, enableUncachedInterpreter = false)
     @ExpectWarning({NO_BCI_SLOT, NO_BCI_SLOT})
     @OperationProxy(StoreBytecodeIndexNoWarningProxy.class)
     @OperationProxy(SpecializationStorageProxy.class)
@@ -868,7 +869,7 @@ public class StoreBytecodeEliminationTest extends AbstractInstructionTest {
         }
     }
 
-    @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE, enableUncachedInterpreter = true)
+    @GenerateBytecode(version = BytecodeVersion.LATEST, languageClass = BytecodeDSLTestLanguage.class, bytecodeIndexMode = BytecodeIndexMode.CACHED_NODE, enableUncachedInterpreter = true)
     @OperationProxy(StoreBytecodeIndexNoWarningProxy.class)
     @OperationProxy(SpecializationStorageProxy.class)
     abstract static class CachedNodeWithSlotRootNode extends RootNode implements BytecodeRootNode {
