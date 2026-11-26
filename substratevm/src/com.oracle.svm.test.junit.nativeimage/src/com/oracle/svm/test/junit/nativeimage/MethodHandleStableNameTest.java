@@ -67,6 +67,26 @@ public class MethodHandleStableNameTest {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface Greeter {
+        default int greet() {
+            return 1;
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface InterfaceCaller extends Greeter {
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface OtherCaller extends Greeter {
+    }
+
+    /** A receiver type that both invokespecial callers accept, so that their handles share it. */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface BothCallers extends InterfaceCaller, OtherCaller {
+    }
+
     /** Initialized by the first invocation of {@link #twice}, which the test observes. */
     @Platforms(Platform.HOSTED_ONLY.class)
     static final class Lazy {
@@ -124,6 +144,8 @@ public class MethodHandleStableNameTest {
                 testWarmUp();
                 testDelegatingHandles();
                 testIntrinsicData();
+                testReceiverChecks();
+                testEntryNames();
             } catch (AssertionError e) {
                 throw e;
             } catch (Throwable e) {
@@ -165,6 +187,8 @@ public class MethodHandleStableNameTest {
             Object[] buffer = new Object[1];
             buffer[0] = buffer;
             String cyclic = invokerName(identity.bindTo(buffer));
+            // Checked before a duplicate is named, which alone would make the name unstable.
+            assertFalse(cyclic, isNameAlwaysStable(cyclic));
             buffer[0] = new Object();
             String mutated = invokerName(identity.bindTo(buffer));
             assertDuplicates(cyclic, mutated);
@@ -176,6 +200,7 @@ public class MethodHandleStableNameTest {
             assertTrue(firstLambda.getClass().isHidden());
             assertTrue(secondLambda.getClass().isHidden());
             String firstHidden = invokerName(identity.bindTo(firstLambda.getClass()));
+            assertFalse(firstHidden, isNameAlwaysStable(firstHidden));
             String secondHidden = invokerName(identity.bindTo(secondLambda.getClass()));
             assertDuplicates(firstHidden, secondHidden);
 
@@ -188,14 +213,16 @@ public class MethodHandleStableNameTest {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
             MethodHandle add = lookup.findStatic(MethodHandleStableNameTest.class, "add", BINARY);
 
-            // Customization gives a frequently invoked handle its own copy of a shared form.
+            /*
+             * Customization gives a frequently invoked handle its own copy of a shared form. The
+             * test customizes directly, because the JDK can be configured never to customize.
+             */
             MethodHandle sharedForm = MethodHandles.filterArguments(add, 0, MethodHandles.insertArguments(add, 0, 11), MethodHandles.insertArguments(add, 0, 22));
             MethodHandle warmChild = MethodHandles.insertArguments(add, 0, 22);
             Object coldForm = form(warmChild);
-            for (int i = 0; i < 1024; i++) {
-                assertEquals(23, (int) warmChild.invokeExact(1));
-            }
-            assertNotSame("warm-up did not customize the handle", coldForm, form(warmChild));
+            customize(warmChild);
+            assertNotSame("customization did not copy the form", coldForm, form(warmChild));
+            assertEquals(23, (int) warmChild.invokeExact(1));
             MethodHandle customizedForm = MethodHandles.filterArguments(add, 0, MethodHandles.insertArguments(add, 0, 11), warmChild);
             assertDuplicates(invokerName(sharedForm), invokerName(customizedForm));
 
@@ -228,15 +255,70 @@ public class MethodHandleStableNameTest {
             assertNotEquals(baseName(twoCases), baseName(threeCases));
         }
 
+        /**
+         * Handles of one method can share their type and form and still check their receivers
+         * against different interfaces. The verifier does not check interface types, so such
+         * handles reject different receivers.
+         */
+        private void testReceiverChecks() throws ReflectiveOperationException {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            MethodType greet = MethodType.methodType(int.class);
+            MethodType view = MethodType.methodType(int.class, BothCallers.class);
+            MethodHandle select = lookup.findStatic(MethodHandleStableNameTest.class, "select", UNARY);
+
+            MethodHandle fromInterface = MethodHandles.privateLookupIn(InterfaceCaller.class, lookup).findSpecial(Greeter.class, "greet", greet, InterfaceCaller.class).asType(view);
+            MethodHandle fromOther = MethodHandles.privateLookupIn(OtherCaller.class, lookup).findSpecial(Greeter.class, "greet", greet, OtherCaller.class).asType(view);
+            assertSame("both invokespecial handles check the receiver with one form", form(fromInterface), form(fromOther));
+            assertNotEquals(baseName(invokerName(MethodHandles.filterReturnValue(fromInterface, select))), baseName(invokerName(MethodHandles.filterReturnValue(fromOther, select))));
+
+            MethodHandle viaSubinterface = lookup.findVirtual(InterfaceCaller.class, "greet", greet);
+            MethodHandle viaInterface = lookup.findVirtual(Greeter.class, "greet", greet).asType(viaSubinterface.type());
+            assertSame("both invokeinterface handles check the receiver with one form", form(viaSubinterface), form(viaInterface));
+            assertNotEquals(baseName(invokerName(MethodHandles.filterReturnValue(viaSubinterface, select))), baseName(invokerName(MethodHandles.filterReturnValue(viaInterface, select))));
+        }
+
+        /**
+         * The layer loader finds an invoker's entry point by its name, which debug names number in
+         * discovery order. Invokers that share a base name must therefore share the entry name.
+         */
+        private void testEntryNames() throws ReflectiveOperationException {
+            MethodHandle identity = MethodHandles.identity(Object.class);
+            MethodHandle first = identity.bindTo("entry");
+            // The JDK caches derived forms through soft references and recreates a cleared one.
+            Object derivedFrom = ReflectionUtil.lookupMethod(form(identity).getClass(), "uncustomize").invoke(form(identity));
+            ReflectionUtil.writeField(derivedFrom.getClass(), "transformCache", derivedFrom, null);
+            MethodHandle second = identity.bindTo("entry");
+            assertNotSame("the form was not recreated", form(first), form(second));
+            String firstName = invokerName(first);
+            String secondName = invokerName(second);
+            boolean debugNames = Boolean.getBoolean("java.lang.invoke.MethodHandle.DEBUG_NAMES");
+            assertEquals("debug names number the entry points, see MethodHandleStableNameDebugNamesTest", debugNames, !entryName(first).equals(entryName(second)));
+            assertEquals(firstName + " " + secondName, entryName(first).equals(entryName(second)), baseName(firstName).equals(baseName(secondName)));
+        }
+
         private String invokerName(MethodHandle handle) throws ReflectiveOperationException {
-            ReflectionUtil.lookupMethod(MethodHandle.class, "customize").invoke(handle);
+            customize(handle);
             Object form = form(handle);
             ReflectionUtil.lookupMethod(form.getClass(), "compileToBytecode").invoke(form);
-            Object entry = ReflectionUtil.readField(form.getClass(), "vmentry", form);
+            Object entry = entry(handle);
             Class<?> invoker = (Class<?>) ReflectionUtil.lookupMethod(entry.getClass(), "getDeclaringClass").invoke(entry);
             String name = ((JVMCIFeatureAccess.BeforeAnalysisAccess) access).getMetaAccess().lookupJavaType(invoker).getName();
             assertTrue(name, name.startsWith("Ljava/lang/invoke/LambdaForm$MH.s"));
             return name;
+        }
+
+        private static void customize(MethodHandle handle) throws ReflectiveOperationException {
+            ReflectionUtil.lookupMethod(MethodHandle.class, "customize").invoke(handle);
+        }
+
+        private static Object entry(MethodHandle handle) {
+            Object form = form(handle);
+            return ReflectionUtil.readField(form.getClass(), "vmentry", form);
+        }
+
+        private static String entryName(MethodHandle handle) throws ReflectiveOperationException {
+            Object entry = entry(handle);
+            return (String) ReflectionUtil.lookupMethod(entry.getClass(), "getName").invoke(entry);
         }
 
         private boolean isNameAlwaysStable(String name) throws ReflectiveOperationException {
