@@ -52,6 +52,8 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.util.Comparator;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -63,6 +65,8 @@ import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 import org.graalvm.wasm.predefined.wasi.types.Filetype;
+import org.graalvm.wasm.predefined.wasi.types.Oflags;
+import org.graalvm.wasm.predefined.wasi.types.Rights;
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -754,12 +758,173 @@ public class WasiRegressionTests {
         }
     }
 
+    private static final String FD_READDIR_WAT = """
+                    (module
+                      (import "wasi_snapshot_preview1" "path_open"
+                        (func $path_open (param i32 i32 i32 i32 i32 i64 i64 i32 i32) (result i32)))
+                      (import "wasi_snapshot_preview1" "fd_readdir"
+                        (func $fd_readdir (param i32 i32 i32 i64 i32) (result i32)))
+                      (memory 1)
+                      (data (i32.const 8) "\\03\\00\\00\\00")  ;; fd to read: the preopened directory
+                      (data (i32.const 64) "subdir")
+                      (export "memory" (memory 0))
+                      (func (export "open") (param $oflags i32) (param $rights i64) (result i32)
+                        (call $path_open
+                          (i32.const 3)            ;; fd
+                          (i32.const 1)            ;; dirflags: symlink follow
+                          (i32.const 64)           ;; path pointer: "subdir"
+                          (i32.const 6)            ;; path length
+                          (local.get $oflags)      ;; oflags
+                          (local.get $rights)      ;; rights base
+                          (local.get $rights)      ;; rights inheriting
+                          (i32.const 0)            ;; fdflags: none
+                          (i32.const 8)            ;; fd address
+                        ))
+                      (func (export "readdir") (param $cookie i64) (result i32)
+                        (call $fd_readdir
+                          (i32.load (i32.const 8)) ;; fd
+                          (i32.const 1024)         ;; buf
+                          (i32.const 4096)         ;; buf length
+                          (local.get $cookie)      ;; cookie
+                          (i32.const 0)            ;; bufused address
+                        ))
+                      (func (export "load8") (param $address i32) (result i32)
+                        (i32.load8_u (local.get $address)))
+                      (func (export "load32") (param $address i32) (result i32)
+                        (i32.load (local.get $address))))
+                    """;
+
+    // Rights requested by Go's wasip1 os.Open for O_RDONLY: file rights only, without fd_readdir.
+    private static final long FILE_READ_RIGHTS = (1L << Rights.FdRead.ordinal()) | (1L << Rights.FdSeek.ordinal()) | (1L << Rights.FdTell.ordinal());
+    private static final long DIRECTORY_READ_RIGHTS = 1L << Rights.FdReaddir.ordinal();
+    private static final int OFLAGS_DIRECTORY = 1 << Oflags.Directory.ordinal();
+
+    // Given a preopen whose guest path does not exist on the host,
+    // when the guest reads the preopened directory,
+    // then the entries of the mapped host directory are returned instead of EIO.
+    @Test
+    public void testFdReaddirListsHostDirectoryOfPreopenWithRelativeGuestPath() throws IOException, InterruptedException {
+        assertFdReaddirListsHostDirectoryOfPreopen("test");
+    }
+
+    // Given a preopen mapped to the guest root,
+    // when the guest reads the preopened directory,
+    // then the entries of the mapped host directory are returned, not those of the host root.
+    @Test
+    public void testFdReaddirListsHostDirectoryOfPreopenWithGuestRoot() throws IOException, InterruptedException {
+        assertFdReaddirListsHostDirectoryOfPreopen("/");
+    }
+
+    // Given a cookie past the "." and ".." entries,
+    // when the guest reads the preopened directory,
+    // then only the host directory's own entries are returned.
+    @Test
+    public void testFdReaddirHonorsCookie() throws IOException, InterruptedException {
+        Path preopenedDirectory = createDirectoryWithFileAndSubdirectory();
+        try (Context context = contextForPreopenedDirectory("/", preopenedDirectory)) {
+            Value exports = context.eval(fdReaddirSource()).newInstance().getMember("exports");
+            assertEquals(Errno.Success.ordinal(), exports.getMember("readdir").execute(2L).asInt());
+            assertEquals(Map.of(
+                            "file.txt", Filetype.RegularFile.ordinal(),
+                            "subdir", Filetype.Directory.ordinal()), readDirents(exports));
+        } finally {
+            deleteTree(preopenedDirectory);
+        }
+    }
+
+    // Given a directory inside the preopen,
+    // when the guest opens it without O_DIRECTORY and with file rights (like Go's os.Open does),
+    // then path_open fails with EISDIR instead of EIO, so the guest can retry with O_DIRECTORY.
+    @Test
+    public void testPathOpenOfDirectoryWithoutDirectoryFlagReturnsIsdir() throws IOException, InterruptedException {
+        Path preopenedDirectory = createDirectoryWithFileAndSubdirectory();
+        try (Context context = contextForPreopenedDirectory("/", preopenedDirectory)) {
+            Value exports = context.eval(fdReaddirSource()).newInstance().getMember("exports");
+            assertEquals(Errno.Isdir.ordinal(), exports.getMember("open").execute(0, FILE_READ_RIGHTS).asInt());
+        } finally {
+            deleteTree(preopenedDirectory);
+        }
+    }
+
+    // Given a subdirectory opened with O_DIRECTORY,
+    // when the guest reads the new directory fd,
+    // then the entries of the corresponding host subdirectory are returned.
+    @Test
+    public void testFdReaddirListsHostDirectoryOfDirectoryOpenedWithPathOpen() throws IOException, InterruptedException {
+        Path preopenedDirectory = createDirectoryWithFileAndSubdirectory();
+        Files.writeString(preopenedDirectory.resolve("subdir").resolve("nested.txt"), "nested", StandardCharsets.UTF_8);
+        try (Context context = contextForPreopenedDirectory("/", preopenedDirectory)) {
+            Value exports = context.eval(fdReaddirSource()).newInstance().getMember("exports");
+            assertEquals(Errno.Success.ordinal(), exports.getMember("open").execute(OFLAGS_DIRECTORY, DIRECTORY_READ_RIGHTS).asInt());
+            assertEquals(Errno.Success.ordinal(), exports.getMember("readdir").execute(0L).asInt());
+            assertEquals(Map.of(
+                            ".", Filetype.Directory.ordinal(),
+                            "..", Filetype.Directory.ordinal(),
+                            "nested.txt", Filetype.RegularFile.ordinal()), readDirents(exports));
+        } finally {
+            deleteTree(preopenedDirectory);
+        }
+    }
+
+    private static void assertFdReaddirListsHostDirectoryOfPreopen(String guestPath) throws IOException, InterruptedException {
+        Path preopenedDirectory = createDirectoryWithFileAndSubdirectory();
+        try (Context context = contextForPreopenedDirectory(guestPath, preopenedDirectory)) {
+            Value exports = context.eval(fdReaddirSource()).newInstance().getMember("exports");
+            assertEquals(Errno.Success.ordinal(), exports.getMember("readdir").execute(0L).asInt());
+            assertEquals(Map.of(
+                            ".", Filetype.Directory.ordinal(),
+                            "..", Filetype.Directory.ordinal(),
+                            "file.txt", Filetype.RegularFile.ordinal(),
+                            "subdir", Filetype.Directory.ordinal()), readDirents(exports));
+        } finally {
+            deleteTree(preopenedDirectory);
+        }
+    }
+
+    private static Path createDirectoryWithFileAndSubdirectory() throws IOException {
+        Path directory = Files.createTempDirectory("gh-14882-");
+        Files.writeString(directory.resolve("file.txt"), "content", StandardCharsets.UTF_8);
+        Files.createDirectory(directory.resolve("subdir"));
+        return directory;
+    }
+
+    private static Source fdReaddirSource() throws IOException, InterruptedException {
+        return Source.newBuilder(WasmLanguage.ID, ByteSequence.create(compileWat("main", FD_READDIR_WAT)), "main").build();
+    }
+
+    /**
+     * Decodes the dirents written by {@code fd_readdir} at address 1024 into a map from name to
+     * file type. The number of bytes written is stored at address 0.
+     */
+    private static Map<String, Integer> readDirents(Value exports) {
+        Value load8 = exports.getMember("load8");
+        Value load32 = exports.getMember("load32");
+        int end = 1024 + load32.execute(0).asInt();
+        Map<String, Integer> entries = new TreeMap<>();
+        int address = 1024;
+        while (address < end) {
+            int nameLength = load32.execute(address + 16).asInt();
+            int fileType = load8.execute(address + 20).asInt();
+            byte[] name = new byte[nameLength];
+            for (int i = 0; i < nameLength; i++) {
+                name[i] = (byte) load8.execute(address + 24 + i).asInt();
+            }
+            entries.put(new String(name, StandardCharsets.UTF_8), fileType);
+            address += 24 + nameLength;
+        }
+        return entries;
+    }
+
     private static Context contextForPreopenedDirectory(Path preopenedDirectory) {
+        return contextForPreopenedDirectory("test", preopenedDirectory);
+    }
+
+    private static Context contextForPreopenedDirectory(String guestPath, Path preopenedDirectory) {
         Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.allowExperimentalOptions(true);
         contextBuilder.allowIO(IOAccess.ALL);
         contextBuilder.option("wasm.Builtins", "wasi_snapshot_preview1");
-        contextBuilder.option("wasm.WasiMapDirs", "test::" + preopenedDirectory.toAbsolutePath());
+        contextBuilder.option("wasm.WasiMapDirs", guestPath + "::" + preopenedDirectory.toAbsolutePath());
         return contextBuilder.build();
     }
 

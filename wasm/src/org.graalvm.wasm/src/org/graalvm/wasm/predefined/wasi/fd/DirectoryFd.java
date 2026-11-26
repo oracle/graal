@@ -444,6 +444,12 @@ class DirectoryFd extends Fd {
                     return Errno.Notdir;
                 }
             } else {
+                if (resolvedHostChildFile.isDirectory(FdUtils.linkOptions(followSymlinks))) {
+                    // A directory cannot be backed by a file channel. Report EISDIR (as other
+                    // runtimes do) rather than EIO, so guests such as Go's os.Open can retry with
+                    // O_DIRECTORY.
+                    return Errno.Isdir;
+                }
                 final int fd = fdManager.put(new FileFd(resolvedHostChildFile, childOflags, childFsRightsBase, childFsRightsInheriting, childFdFlags, followSymlinks));
                 WasmMemoryLibrary.getUncached().store_i32(memory, node, fdAddress, fd);
                 return Errno.Success;
@@ -482,11 +488,19 @@ class DirectoryFd extends Fd {
         }
         try {
             FdUtils.validateU32MemoryRange(memory, bufAddress, bufLength);
-            Collection<TruffleFile> children = virtualFile.list();
-            List<TruffleFile> entries = new ArrayList<>(children.size() + 2);
+            // The directory must be listed on the host: the virtual path is only meaningful
+            // inside the guest and may not exist (or be a different directory) on the host.
+            final TruffleFile hostDirectory = preopenedRoot.virtualFileToHostFile(virtualFile);
+            if (hostDirectory == null) {
+                return Errno.Noent;
+            }
+            Collection<TruffleFile> hostChildren = hostDirectory.list();
+            List<TruffleFile> entries = new ArrayList<>(hostChildren.size() + 2);
             entries.add(virtualFile.resolve("."));
             entries.add(virtualFile.resolve(".."));
-            entries.addAll(children);
+            for (TruffleFile hostChild : hostChildren) {
+                entries.add(virtualFile.resolve(hostChild.getName()));
+            }
             final LinkOption[] linkOptions = FdUtils.NOFOLLOW_LINKS;
 
             int bufPointer = bufAddress;
