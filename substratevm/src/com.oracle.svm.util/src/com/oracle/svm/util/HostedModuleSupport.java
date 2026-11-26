@@ -58,6 +58,7 @@ public final class HostedModuleSupport {
                     "org.graalvm.word");
 
     public static final Set<String> STANDARD_GUEST_MODULES = Set.of(
+                    "org.graalvm.espresso.shared.svm",
                     "org.graalvm.nativeimage.guest",
                     "org.graalvm.nativeimage.guest.staging",
                     "org.graalvm.nativeimage.shared");

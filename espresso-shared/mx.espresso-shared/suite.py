@@ -142,6 +142,11 @@ suite = {
                 "name" : "org.graalvm.espresso.shared.svm",
                 "exports": [
                     "* to org.graalvm.nativeimage.builder",
+                    # Export all packages to guest modules for future Crema use.
+                    "* to org.graalvm.nativeimage.guest,org.graalvm.nativeimage.guest.staging",
+                    # SVM_SHARED only needs the kind and descriptor APIs.
+                    "com.oracle.svm.espresso.classfile to org.graalvm.nativeimage.shared",
+                    "com.oracle.svm.espresso.classfile.descriptors to org.graalvm.nativeimage.shared",
                 ],
             },
             "description" : "Espresso shared code for runtime class loading (shaded for SVM)",

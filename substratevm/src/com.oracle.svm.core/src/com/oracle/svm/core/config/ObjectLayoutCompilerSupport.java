@@ -31,7 +31,6 @@ import java.util.Objects;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.shared.util.CodeUtil;
 import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -59,39 +58,59 @@ public final class ObjectLayoutCompilerSupport {
 
     public static int sizeInBytes(ObjectLayout layout, JavaKind kind) {
         Objects.requireNonNull(layout);
+        return layout.sizeInBytes(toGuestJavaKind(kind));
+    }
+
+    /**
+     * Maps a JVMCI kind to the guest-facing enum representation in the current context; it does not
+     * transfer a value to another VM.
+     */
+    public static com.oracle.svm.espresso.classfile.JavaKind toGuestJavaKind(JavaKind kind) {
         return switch (kind) {
-            case Object -> layout.getReferenceSize();
-            case Boolean, Byte, Char, Short, Int, Long, Float, Double -> kind.getByteCount();
-            default -> throw new NullPointerException();
+            case Boolean -> com.oracle.svm.espresso.classfile.JavaKind.Boolean;
+            case Byte -> com.oracle.svm.espresso.classfile.JavaKind.Byte;
+            case Char -> com.oracle.svm.espresso.classfile.JavaKind.Char;
+            case Short -> com.oracle.svm.espresso.classfile.JavaKind.Short;
+            case Int -> com.oracle.svm.espresso.classfile.JavaKind.Int;
+            case Long -> com.oracle.svm.espresso.classfile.JavaKind.Long;
+            case Float -> com.oracle.svm.espresso.classfile.JavaKind.Float;
+            case Double -> com.oracle.svm.espresso.classfile.JavaKind.Double;
+            case Object -> com.oracle.svm.espresso.classfile.JavaKind.Object;
+            case Void -> com.oracle.svm.espresso.classfile.JavaKind.Void;
+            case Illegal -> com.oracle.svm.espresso.classfile.JavaKind.Illegal;
         };
     }
 
     public static int getArrayIndexScale(ObjectLayout layout, JavaKind kind) {
-        return sizeInBytes(layout, kind);
+        Objects.requireNonNull(layout);
+        return layout.getArrayIndexScale(toGuestJavaKind(kind));
     }
 
     public static int getArrayIndexShift(ObjectLayout layout, JavaKind kind) {
-        return CodeUtil.log2(getArrayIndexScale(layout, kind));
+        Objects.requireNonNull(layout);
+        return layout.getArrayIndexShift(toGuestJavaKind(kind));
     }
 
     public static int getArrayBaseOffset(ObjectLayout layout, JavaKind kind) {
-        return layout.getArrayBaseOffset(sizeInBytes(layout, kind));
+        Objects.requireNonNull(layout);
+        return layout.getArrayBaseOffset(toGuestJavaKind(kind));
     }
 
     public static long getArrayElementOffset(ObjectLayout layout, JavaKind kind, int index) {
-        return layout.getArrayElementOffset(sizeInBytes(layout, kind), index);
+        Objects.requireNonNull(layout);
+        return layout.getArrayElementOffset(toGuestJavaKind(kind), index);
     }
 
     public static long getArraySize(ObjectLayout layout, JavaKind kind, int length, boolean withOptionalIdHashField) {
         Objects.requireNonNull(layout);
         assert length >= 0 : length;
-        return layout.getArraySize(sizeInBytes(layout, kind), length, withOptionalIdHashField);
+        return layout.getArraySize(toGuestJavaKind(kind), length, withOptionalIdHashField);
     }
 
     public static long getArrayIdentityHashOffset(ObjectLayout layout, JavaKind kind, int length) {
         Objects.requireNonNull(layout);
         assert length >= 0 : length;
-        return layout.getArrayIdentityHashOffset(sizeInBytes(layout, kind), length);
+        return layout.getArrayIdentityHashOffset(toGuestJavaKind(kind), length);
     }
 
     public static JavaKind getCallSignatureKind(boolean isEntryPoint, JavaType type, MetaAccessProvider metaAccess, TargetDescription target) {

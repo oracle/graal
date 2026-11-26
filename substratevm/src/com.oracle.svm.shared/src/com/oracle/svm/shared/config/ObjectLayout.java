@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.impl.Word;
 
+import com.oracle.svm.espresso.classfile.JavaKind;
 import com.oracle.svm.shared.SharedIntrinsics;
 import com.oracle.svm.shared.Uninterruptible;
 import com.oracle.svm.shared.singletons.ImageSingletonLoader;
@@ -141,6 +142,26 @@ public final class ObjectLayout {
     }
 
     /**
+     * The size (in bytes) of values with the given kind. Object values use the reference size of
+     * this layout.
+     */
+    public int sizeInBytes(JavaKind kind) {
+        return switch (kind) {
+            case Object -> getReferenceSize();
+            case Boolean, Byte, Char, Short, Int, Long, Float, Double -> kind.getByteCount();
+            case Void, ReturnAddress, Illegal -> throw VMError.shouldNotReachHere("No storage size for Java kind " + kind.name());
+        };
+    }
+
+    public int getArrayIndexShift(JavaKind kind) {
+        return CodeUtil.log2(getArrayIndexScale(kind));
+    }
+
+    public int getArrayIndexScale(JavaKind kind) {
+        return sizeInBytes(kind);
+    }
+
+    /**
      * Align the specified offset or address up to {@link #getAlignment()}.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -227,45 +248,44 @@ public final class ObjectLayout {
     }
 
     /**
-     * Returns the base offset of an array with elements of the given storage size in bytes.
+     * Returns the base offset of an array with elements of the given kind.
      *
-     * @param elementSize the element storage size in bytes, a positive power of two
+     * @param kind the array element kind
      */
-    public int getArrayBaseOffset(int elementSize) {
-        return NumUtil.roundUp(arrayBaseOffset, elementSize);
+    public int getArrayBaseOffset(JavaKind kind) {
+        return NumUtil.roundUp(arrayBaseOffset, sizeInBytes(kind));
     }
 
     /**
-     * Returns the offset of an array element with the given storage size in bytes.
+     * Returns the offset of an array element with the given kind.
      *
-     * @param elementSize the element storage size in bytes, a positive power of two
+     * @param kind the array element kind
      */
-    public long getArrayElementOffset(int elementSize, int index) {
-        return getArrayBaseOffset(elementSize) + ((long) index) * elementSize;
+    public long getArrayElementOffset(JavaKind kind, int index) {
+        return getArrayBaseOffset(kind) + ((long) index) * sizeInBytes(kind);
     }
 
     /**
-     * Returns the size of an array with elements of the given storage size in bytes.
+     * Returns the size of an array with elements of the given kind.
      *
-     * @param elementSize the element storage size in bytes, a positive power of two
+     * @param kind the array element kind
      */
-    public long getArraySize(int elementSize, int length, boolean withOptionalIdHashField) {
-        return computeArrayTotalSize(getArrayUnalignedSize(elementSize, length), withOptionalIdHashField);
+    public long getArraySize(JavaKind kind, int length, boolean withOptionalIdHashField) {
+        return computeArrayTotalSize(getArrayUnalignedSize(kind, length), withOptionalIdHashField);
     }
 
-    private long getArrayUnalignedSize(int elementSize, int length) {
+    private long getArrayUnalignedSize(JavaKind kind, int length) {
         assert length >= 0 : length;
-        return getArrayBaseOffset(elementSize) + ((long) length << CodeUtil.log2(elementSize));
+        return getArrayBaseOffset(kind) + ((long) length << getArrayIndexShift(kind));
     }
 
     /**
-     * Returns the offset of an array's identity hash field with elements of the given storage size
-     * in bytes.
+     * Returns the offset of an array's identity hash field with elements of the given kind.
      *
-     * @param elementSize the element storage size in bytes, a positive power of two
+     * @param kind the array element kind
      */
-    public long getArrayIdentityHashOffset(int elementSize, int length) {
-        return getArrayIdentityHashOffset(getArrayUnalignedSize(elementSize, length));
+    public long getArrayIdentityHashOffset(JavaKind kind, int length) {
+        return getArrayIdentityHashOffset(getArrayUnalignedSize(kind, length));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -304,7 +324,7 @@ public final class ObjectLayout {
     }
 
     public int getMinImageHeapArraySize() {
-        return NumUtil.safeToInt(getArraySize(Byte.BYTES, 0, true));
+        return NumUtil.safeToInt(getArraySize(JavaKind.Byte, 0, true));
     }
 
     @GuestFold
