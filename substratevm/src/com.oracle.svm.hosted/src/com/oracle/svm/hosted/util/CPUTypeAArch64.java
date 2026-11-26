@@ -73,6 +73,7 @@ public enum CPUTypeAArch64 implements CPUType {
     NATIVE(NativeImageOptions.MICRO_ARCHITECTURE_NATIVE, getNativeOrEmpty());
 
     private static final String AES_MODIFIER = "aes";
+    private static final String CRC32_MODIFIER = "crc32";
     private static final String FP_MODIFIER = "fp";
     private static final String LSE_MODIFIER = "lse";
     private static final String PACA_MODIFIER = "paca";
@@ -81,7 +82,7 @@ public enum CPUTypeAArch64 implements CPUType {
     private static final String SHA512_MODIFIER = "sha512";
     private static final String SIMD_MODIFIER = "simd";
     private static final String AVAILABLE_FEATURE_MODIFIERS = StringUtil.joinSingleQuoted(
-                    AES_MODIFIER, FP_MODIFIER, LSE_MODIFIER, PACA_MODIFIER, SHA2_MODIFIER, SHA3_MODIFIER, SHA512_MODIFIER, SIMD_MODIFIER);
+                    AES_MODIFIER, CRC32_MODIFIER, FP_MODIFIER, LSE_MODIFIER, PACA_MODIFIER, SHA2_MODIFIER, SHA3_MODIFIER, SHA512_MODIFIER, SIMD_MODIFIER);
 
     private static CPUFeature[] getNativeOrEmpty() {
         CPUFeature[] empty = new CPUFeature[0];
@@ -201,6 +202,7 @@ public enum CPUTypeAArch64 implements CPUType {
                 throw UserError.abort("The '%s' CPU feature is required by the Graal compiler and thus cannot be disabled.%s", featureModifier, getUserAction());
             // other features
             case AES_MODIFIER, "no" + AES_MODIFIER -> List.of(AES, PMULL);
+            case CRC32_MODIFIER, "no" + CRC32_MODIFIER -> List.of(CRC32);
             case LSE_MODIFIER, "no" + LSE_MODIFIER -> List.of(LSE);
             case PACA_MODIFIER, "no" + PACA_MODIFIER -> List.of(PACA);
             case SHA2_MODIFIER, "no" + SHA2_MODIFIER -> List.of(SHA1, SHA2);
