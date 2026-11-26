@@ -468,6 +468,10 @@ public final class IntegerStamp extends PrimitiveStamp {
         return new IntegerStamp(bits, minValueForMasks(bits, mustBeSet, mayBeSet), maxValueForMasks(bits, mustBeSet, mayBeSet), mustBeSet, mayBeSet, true);
     }
 
+    public boolean canBeZero() {
+        return canBeZero;
+    }
+
     @Override
     public IntegerStamp unrestricted() {
         return create(getBits());
@@ -478,7 +482,7 @@ public final class IntegerStamp extends PrimitiveStamp {
         return createEmptyStamp(getBits());
     }
 
-    static IntegerStamp createEmptyStamp(int bits) {
+    public static IntegerStamp createEmptyStamp(int bits) {
         assert isPowerOf2(bits);
         return emptyStamps[CodeUtil.log2(bits)];
     }
