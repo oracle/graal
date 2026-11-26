@@ -41,6 +41,8 @@ import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
@@ -52,6 +54,11 @@ public final class SignumNode extends UnaryNode implements ArithmeticLIRLowerabl
 
     public SignumNode(ValueNode x) {
         super(TYPE, computeStamp(x.stamp(NodeView.DEFAULT)), x);
+    }
+
+    public static boolean isSupported(Architecture arch) {
+        // The AArch64 implementation uses NEON even for scalar inputs.
+        return !(arch instanceof AArch64 aarch64) || aarch64.getFeatures().contains(AArch64.CPUFeature.ASIMD);
     }
 
     private static Stamp computeStamp(Stamp stamp) {
