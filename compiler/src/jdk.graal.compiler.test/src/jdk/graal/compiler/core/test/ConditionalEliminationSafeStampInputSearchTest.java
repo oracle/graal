@@ -36,6 +36,7 @@ import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.GuardedValueNode;
@@ -44,8 +45,11 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.ConditionalEliminationConditionStack;
 import jdk.graal.compiler.phases.common.ConditionalEliminationUtil;
+import jdk.graal.compiler.phases.common.ConditionalEliminationUtil.InfoElement;
 import jdk.graal.compiler.phases.common.SafeStampInputSearch;
 import jdk.graal.compiler.phases.util.GraphOrder;
 
@@ -142,6 +146,46 @@ public class ConditionalEliminationSafeStampInputSearchTest extends ConditionalE
             GraalDirectives.deoptimize();
         }
         return value;
+    }
+
+    @Test
+    public void testBinaryFactChainsPreserveOtherOperandStampPolicy() {
+        StructuredGraph graph = prepareGraph("snippet");
+        ValueNode x = graph.getParameter(0);
+        ValueNode y = graph.getParameter(1);
+        BeginNode proofGuard = graph.add(new BeginNode());
+        for (boolean factsOnX : new boolean[]{false, true}) {
+            ValueNode factValue = factsOnX ? x : y;
+            ValueNode otherValue = factsOnX ? y : x;
+            IntegerStamp otherStamp = factsOnX ? IntegerStamp.create(32, 100, 200) : IntegerStamp.create(32, 0, 50);
+            ValueNode other = graph.addWithoutUnique(new PiNode(otherValue, otherStamp, proofGuard));
+            IntegerLessThanNode query = graph.addWithoutUnique(new IntegerLessThanNode(factsOnX ? factValue : other, factsOnX ? other : factValue));
+            IntegerStamp overlappingStamp = IntegerStamp.create(32, 0, 150);
+            for (boolean outcome : new boolean[]{false, true}) {
+                IntegerStamp decisiveStamp = factsOnX
+                                ? (outcome ? IntegerStamp.create(32, 0, 50) : IntegerStamp.create(32, 200, 300))
+                                : (outcome ? IntegerStamp.create(32, 100, 200) : IntegerStamp.create(32, -100, 0));
+                InfoElement decisive = new InfoElement(decisiveStamp, proofGuard, null, null);
+                InfoElement first = new InfoElement(overlappingStamp, graph.start(), null, decisive);
+                for (boolean allowControlFlowDependentStamp : new boolean[]{false, true}) {
+                    try (ConditionalEliminationConditionStack conditions = new ConditionalEliminationConditionStack(graph)) {
+                        boolean proved = ConditionalEliminationUtil.tryProveGuardCondition(value -> value == factValue ? first : null,
+                                        conditions, null, null, query, (guard, result, stamp, input) -> {
+                                            Assert.assertSame(proofGuard, guard);
+                                            Assert.assertEquals(outcome, result);
+                                            Assert.assertEquals(decisiveStamp, stamp);
+                                            return true;
+                                        }, allowControlFlowDependentStamp, new SafeStampInputSearch(graph));
+                        Assert.assertEquals("Only fixed If proofs may use the opposite operand's Pi stamp", allowControlFlowDependentStamp, proved);
+                        Assert.assertFalse(ConditionalEliminationUtil.tryProveGuardCondition(value -> null, conditions, null, null, query,
+                                        (guard, result, stamp, input) -> {
+                                            Assert.fail("Empty fact chains cannot supply a proof");
+                                            return true;
+                                        }, allowControlFlowDependentStamp, new SafeStampInputSearch(graph)));
+                    }
+                }
+            }
+        }
     }
 
     @Test

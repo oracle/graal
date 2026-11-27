@@ -39,6 +39,7 @@ import jdk.graal.compiler.nodes.spi.LIRLowerable;
 public final class LogicConstantNode extends LIRLowerableLogicNode implements LIRLowerable {
 
     public static final NodeClass<LogicConstantNode> TYPE = NodeClass.create(LogicConstantNode.class);
+
     protected final boolean value;
 
     public LogicConstantNode(boolean value) {

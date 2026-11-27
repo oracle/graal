@@ -26,6 +26,8 @@ package jdk.graal.compiler.nodes.calc;
 
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
 
+import java.util.function.Consumer;
+
 import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.calc.Condition;
@@ -393,6 +395,27 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         } else {
             return logic;
         }
+    }
+
+    /**
+     * Querying by X alone is sufficient because registered comparisons are indexed under both
+     * operands. The indexed implication rules require matching operand pairs (possibly swapped)
+     * or matching X values, so every applicable registered comparison appears in this bucket.
+     */
+    @Override
+    public final ValueNode getImplicationKey() {
+        return getX();
+    }
+
+    /**
+     * The proofs below require matching operand pairs (possibly swapped), or the same X and constant
+     * bounds. Thus the query comparison's X must match one of these operands.
+     */
+    @Override
+    public boolean forEachImplicationKey(Consumer<ValueNode> consumer) {
+        consumer.accept(getX());
+        consumer.accept(getY());
+        return true;
     }
 
     @Override

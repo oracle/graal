@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.nodes;
 
+import java.util.function.Consumer;
+
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -70,6 +72,18 @@ public abstract class UnaryOpLogicNode extends LIRLowerableLogicNode implements 
     public abstract Stamp getSucceedingStampForValue(boolean negated);
 
     public abstract TriState tryFold(Stamp valueStamp);
+
+    /** Unary proofs require matching values after skipping Pis/proxies. */
+    @Override
+    public final ValueNode getImplicationKey() {
+        return getValue();
+    }
+
+    @Override
+    public boolean forEachImplicationKey(Consumer<ValueNode> consumer) {
+        consumer.accept(getValue());
+        return true;
+    }
 
     @Override
     public TriState implies(boolean thisNegated, LogicNode other) {

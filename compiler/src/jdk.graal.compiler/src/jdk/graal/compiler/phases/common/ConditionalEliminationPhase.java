@@ -220,7 +220,9 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                 blockToNodes = getBlockToNodes(cfg);
             }
             ControlFlowGraph.RecursiveVisitor<?> visitor = createVisitor(graph, cfg, blockToNodes, nodeToBlock, context);
-            cfg.visitDominatorTree(visitor, graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL));
+            try (ConditionalEliminationConditionStack conditions = visitor instanceof Instance instance ? instance.conditions : null) {
+                cfg.visitDominatorTree(visitor, graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL));
+            }
         }
     }
 
@@ -432,7 +434,8 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
         protected final EconomicMap<MergeNode, EconomicMap<ValuePhiNode, PhiInfoElement>> mergeMaps;
         private final ConditionalEliminationUtil.InfoElementProvider infoElementProvider;
         private final ConditionalEliminationUtil.GuardFolding guardFolding;
-        protected final ArrayDeque<ConditionalEliminationUtil.GuardedCondition> conditions;
+        /** Dominating conditions available for implication proofs in the current traversal scope. */
+        protected final ConditionalEliminationConditionStack conditions;
         private final boolean processFieldAccess;
         private final SafeStampInputSearch safeStampInputSearch;
         private final List<RebuildPiData> piCache = new ArrayList<>(8);
@@ -452,7 +455,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
             this.undoOperations = new NodeStack();
             this.map = graph.createNodeMap();
             this.pendingTests = new ArrayDeque<>();
-            this.conditions = new ArrayDeque<>();
+            this.conditions = new ConditionalEliminationConditionStack(graph);
             this.safeStampInputSearch = new SafeStampInputSearch(graph);
             tool = GraphUtil.getDefaultSimplifier(context, false, graph.getAssumptions(), graph.getOptions());
             mergeMaps = EconomicMap.create(Equivalence.IDENTITY);
@@ -754,13 +757,8 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
         }
 
         private boolean tryProveIfConditionFromExistingCondition(IfNode node) {
-            for (ConditionalEliminationUtil.GuardedCondition guardedCondition : conditions) {
-                TriState result = guardedCondition.getCondition().implies(guardedCondition.isNegated(), node.condition());
-                if (result.isKnown()) {
-                    return rewriteIfCondition(node, guardedCondition.getGuard(), result.toBoolean());
-                }
-            }
-            return false;
+            ConditionalEliminationUtil.Implication implication = conditions.findImplication(node.condition());
+            return implication != null && rewriteIfCondition(node, implication.condition().getGuard(), implication.result());
         }
 
         private boolean rewriteIfCondition(IfNode node, GuardingNode guard, boolean result) {
@@ -1257,8 +1255,8 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
 
         protected boolean tryProveGuardCondition(DeoptimizingGuard thisGuard, LogicNode node, ConditionalEliminationUtil.GuardRewirer rewireGuardFunction,
                         boolean allowControlFlowDependentOtherStamp) {
-            return ConditionalEliminationUtil.tryProveGuardCondition(infoElementProvider, conditions, guardFolding, thisGuard, node, rewireGuardFunction, allowControlFlowDependentOtherStamp,
-                            safeStampInputSearch);
+            return ConditionalEliminationUtil.tryProveGuardCondition(infoElementProvider, conditions, guardFolding, thisGuard, node, rewireGuardFunction,
+                            allowControlFlowDependentOtherStamp, safeStampInputSearch);
         }
 
         protected void registerCondition(LogicNode condition, boolean negated, GuardingNode guard) {

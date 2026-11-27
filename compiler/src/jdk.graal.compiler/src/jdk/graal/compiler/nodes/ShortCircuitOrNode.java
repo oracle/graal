@@ -47,6 +47,7 @@ import jdk.vm.ci.meta.TriState;
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class ShortCircuitOrNode extends LogicNode implements IterableNodeType, Canonicalizable.Binary<LogicNode> {
     public static final NodeClass<ShortCircuitOrNode> TYPE = NodeClass.create(ShortCircuitOrNode.class);
+
     @Input(Condition) LogicNode x;
     @Input(Condition) LogicNode y;
     protected boolean xNegated;
