@@ -48,6 +48,8 @@ public interface FutureDefaultsOptionsSupport {
 
     boolean resourceBundlesInitializedAtRunTime();
 
+    boolean xmlInitializedAtRunTime();
+
     boolean exactReflection();
 
     boolean explicitFeatureSingletonRegistration();

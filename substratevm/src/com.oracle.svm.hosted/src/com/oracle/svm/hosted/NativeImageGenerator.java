@@ -1075,6 +1075,9 @@ public class NativeImageGenerator {
                 ImageSingletons.add(SubstrateOptions.ReportingSupport.class, new SubstrateOptions.ReportingSupport(
                                 DiagnosticsMode.getValue() ? DiagnosticsDir.getValue().lastValue().get() : Path.of("reports")));
                 FutureDefaultsOptions.parseAndVerifyOptions();
+                if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                    HostedImageLayerBuildingSupport.singleton().getLoadLayerArchiveSupport().verifyXmlInitialization(FutureDefaultsOptions.xmlInitializedAtRunTime());
+                }
                 GuestImageGeneratorSupport.installArgsSupport();
                 if (javaMainMethod != null) {
                     installJavaMainSupport(javaMainClass, javaMainMethod);

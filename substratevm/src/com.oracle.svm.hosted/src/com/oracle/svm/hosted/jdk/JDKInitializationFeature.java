@@ -40,6 +40,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.guest.staging.jdk.ProtectionDomainSupport;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -106,7 +107,6 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         rci.initializeAtBuildTime("javax.naming", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.net", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.tools", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("javax.xml", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("jdk.management.jfr.internal.FlightRecorderMXBeanProvider$SingleMBeanComponent", "Ends up in the image heap with -H:Preserve=all");
 
@@ -121,15 +121,6 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         rci.initializeAtBuildTime("jdk.net", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.nio", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.vm.ci", "Native Image classes are always initialized at build time");
-        rci.initializeAtBuildTime("jdk.xml", JDK_CLASS_REASON);
-        /*
-         * The XML classes have cyclic class initializer dependencies, and class initialization can
-         * deadlock/fail when initialization is started at the "wrong part" of the cycle.
-         * Force-initializing the correct class of the cycle here, in addition to the
-         * "whole package" initialization above, breaks the cycle because it triggers immediate
-         * initilalization here before the static analysis is started.
-         */
-        rci.initializeAtBuildTime("jdk.xml.internal.JdkXmlUtils", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("sun.invoke", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.launcher", JDK_CLASS_REASON);
@@ -226,9 +217,47 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
             rci.initializeAtBuildTime("sun.nio.fs.WindowsPath", "Allow WindowsPath objects in the image heap (" + FutureDefaultsOptions.RUN_TIME_INITIALIZE_FILE_SYSTEM_PROVIDERS_REASON + ")");
         }
 
-        rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
+        /* XML-related */
+        if (FutureDefaultsOptions.xmlInitializedAtRunTime()) {
+            /*
+             * The java.xml and java.xml.crypto classes are initialized at run time by default, with
+             * three exceptions. The JDK built-in catalog is loaded from a jrt: URL that images
+             * cannot open at run time (see JRTSupport), so it is built at image build time together
+             * with the javax.xml.catalog classes of the objects it holds, and it takes its catalog
+             * features from the image build. The XResourceBundle array wrappers below are the
+             * second. The XMLDSigRI security provider is the third: it stays initialized at build
+             * time as long as the security providers are (see
+             * Target_sun_security_ssl_TrustStoreManager).
+             */
+            String catalogReason = "The JDK built-in XML catalog is loaded from a jrt: URL that images cannot open at run time";
+            rci.initializeAtBuildTime("javax.xml.catalog", catalogReason);
+            /* Parsing the catalog consults the builder's JAXP limits. Defer it until needed. */
+            ClassInitializationSupport.singleton().initializeAtBuildTimeWhenReached("jdk.xml.internal.JdkXmlConfig$CatalogHolder", catalogReason);
+            /*
+             * The contents of resource bundles are stored in the image heap, and the XResourceBundle
+             * family holds these stateless array wrappers.
+             */
+            String bundleContentReason = "Stored in the image heap as contents of the java.xml XResourceBundle resource bundles";
+            rci.initializeAtBuildTime("com.sun.org.apache.xml.internal.utils.res.CharArrayWrapper", bundleContentReason);
+            rci.initializeAtBuildTime("com.sun.org.apache.xml.internal.utils.res.IntArrayWrapper", bundleContentReason);
+            rci.initializeAtBuildTime("com.sun.org.apache.xml.internal.utils.res.LongArrayWrapper", bundleContentReason);
+            rci.initializeAtBuildTime("com.sun.org.apache.xml.internal.utils.res.StringArrayWrapper", bundleContentReason);
+        } else {
+            rci.initializeAtBuildTime("javax.xml", JDK_CLASS_REASON);
+            rci.initializeAtBuildTime("jdk.xml", JDK_CLASS_REASON);
+            /*
+             * The XML classes have cyclic class initializer dependencies, and class initialization
+             * can deadlock/fail when initialization is started at the "wrong part" of the cycle.
+             * Force-initializing the correct class of the cycle here, in addition to the
+             * "whole package" initialization above, breaks the cycle because it triggers immediate
+             * initilalization here before the static analysis is started.
+             */
+            rci.initializeAtBuildTime("jdk.xml.internal.JdkXmlUtils", JDK_CLASS_REASON);
+            rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
+            rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
+            rci.initializeAtBuildTime("com.sun.org.slf4j.internal", JDK_CLASS_REASON);
+            rci.initializeAtRunTime("com.sun.org.apache.xml.internal.serialize.HTMLdtd", "Fails build-time initialization");
+        }
 
         /* Security services */
         rci.initializeAtBuildTime("com.sun.crypto.provider", JDK_CLASS_REASON);
@@ -311,8 +340,6 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
         rci.initializeAtRunTime("jdk.internal.foreign.abi.fallback.FFIType", "Fails build-time initialization");
         rci.initializeAtRunTime("jdk.internal.foreign.abi.fallback.FFIABI", "Fails build-time initialization");
         rci.initializeAtRunTime("sun.reflect.misc.Trampoline", "Fails build-time initialization");
-
-        rci.initializeAtRunTime("com.sun.org.apache.xml.internal.serialize.HTMLdtd", "Fails build-time initialization");
 
         rci.initializeAtRunTime("sun.security.ssl.SSLContextImpl$DefaultSSLContextHolder", "Stores secure random");
         rci.initializeAtRunTime("sun.security.ssl.SSLSocketFactoryImpl", "Stores secure random");

@@ -35,17 +35,49 @@ import static com.oracle.svm.hosted.xml.XMLParsersRegistration.StAXParserClasses
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.TransformerClassesAndResources;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.XMLCryptoTransformServiceClassesAndResources;
 
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import java.util.List;
+import java.util.Map;
 
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+
+import com.oracle.svm.configure.ResourcesRegistry;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 
 @AutomaticallyRegisteredFeature
 public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil implements InternalFeature {
+
+    private static final String XERCES_MESSAGES = "com.sun.org.apache.xerces.internal.impl.msg.";
+    private static final String SERIALIZER = "com.sun.org.apache.xml.internal.serializer.";
+
+    /**
+     * The classes that load resource bundles, with the bundles each one loads. A parser formats its
+     * errors with the Xerces message bundles, and the serializer of a transformer or of an
+     * {@code LSSerializer} escapes characters with its entity bundles. Both can be created without
+     * any factory lookup (for example with {@code DocumentBuilderFactory.newDefaultInstance()},
+     * {@code TransformerFactory.newDefaultInstance()} or {@code DOMImplementationLS}).
+     */
+    private static final Map<String, List<String>> MESSAGE_BUNDLE_LOADERS = Map.ofEntries(
+                    Map.entry("com.sun.org.apache.xerces.internal.impl.msg.XMLMessageFormatter", List.of(XERCES_MESSAGES + "XMLMessages")),
+                    Map.entry("com.sun.org.apache.xerces.internal.dom.DOMMessageFormatter",
+                                    List.of(XERCES_MESSAGES + "DOMMessages", XERCES_MESSAGES + "XMLSerializerMessages", XERCES_MESSAGES + "XMLMessages")),
+                    Map.entry("com.sun.org.apache.xerces.internal.util.SAXMessageFormatter", List.of(XERCES_MESSAGES + "SAXMessages")),
+                    Map.entry("com.sun.org.apache.xerces.internal.impl.xs.XSMessageFormatter", List.of(XERCES_MESSAGES + "XMLSchemaMessages")),
+                    Map.entry("com.sun.org.apache.xerces.internal.impl.dv.DatatypeException", List.of(XERCES_MESSAGES + "XMLSchemaMessages")),
+                    Map.entry("com.sun.org.apache.xerces.internal.jaxp.validation.JAXPValidationMessageFormatter", List.of(XERCES_MESSAGES + "JAXPValidationMessages")),
+                    Map.entry("com.sun.org.apache.xerces.internal.util.DatatypeMessageFormatter", List.of(XERCES_MESSAGES + "DatatypeMessages")),
+                    Map.entry("com.sun.org.apache.xerces.internal.xinclude.XIncludeMessageFormatter", List.of(XERCES_MESSAGES + "XIncludeMessages")),
+                    Map.entry("com.sun.org.apache.xerces.internal.xpointer.XPointerMessageFormatter", List.of(XERCES_MESSAGES + "XPointerMessages")),
+                    Map.entry("com.sun.org.apache.xerces.internal.impl.xpath.regex.RegexParser", List.of("com.sun.org.apache.xerces.internal.impl.xpath.regex.message")),
+                    Map.entry("com.sun.org.apache.xalan.internal.xsltc.compiler.util.ErrorMsg", List.of("com.sun.org.apache.xalan.internal.xsltc.compiler.util.ErrorMessages")),
+                    Map.entry(SERIALIZER + "ToXMLStream", List.of(SERIALIZER + "XMLEntities")),
+                    Map.entry(SERIALIZER + "ToHTMLStream", List.of(SERIALIZER + "HTMLEntities")),
+                    Map.entry(SERIALIZER + "Encodings", List.of(SERIALIZER + "Encodings")),
+                    Map.entry(SERIALIZER + "utils.Utils", List.of(SERIALIZER + "utils.SerializerMessages")));
 
     /** The java.xml module is optional: without it, there are no XML classes to register. */
     @Override
@@ -65,8 +97,22 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
             registerImplementationClassReachabilityHandlers(access);
         } else {
             registerApiReachabilityHandlers(access);
-            initializeJdkCatalog();
         }
+        MESSAGE_BUNDLE_LOADERS.forEach((loader, bundles) -> access.registerReachabilityHandler(_ -> registerMessageBundles(bundles), type(access, loader)));
+    }
+
+    static void registerTransformerBundles() {
+        registerMessageBundles(MESSAGE_BUNDLE_LOADERS.values().stream().flatMap(List::stream).distinct().toList());
+        registerMessageBundles(List.of("com.sun.org.apache.xalan.internal.res.XSLTInfo"));
+    }
+
+    private static void registerMessageBundles(List<String> bundles) {
+        /* Registering resource bundles during analysis needs an unsealed configuration. */
+        ClassInitializationSupport.singleton().withUnsealedConfiguration(() -> {
+            for (String bundle : bundles) {
+                ResourcesRegistry.singleton().addResourceBundles(AccessCondition.unconditional(), false, bundle);
+            }
+        });
     }
 
     private static void registerApiReachabilityHandlers(BeforeAnalysisAccess access) {
@@ -117,20 +163,6 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
     private static void registerOnImplementationClassReachable(BeforeAnalysisAccess access, XMLParsersRegistration registration) {
         for (String className : registration.xmlParserClasses()) {
             access.registerReachabilityHandler(a -> registration.registerConfig(a, className), type(access, className));
-        }
-    }
-
-    /**
-     * Initialize the {@code CatalogHolder#catalog} field. We do this eagerly (instead of e.g. in a
-     * {@link FieldValueTransformer}) to work around a race condition in
-     * XMLSecurityManager#prepareCatalog (JDK-8350189).
-     */
-    private static void initializeJdkCatalog() {
-        if (JVMCIReflectionUtil.bootModuleLayer().findModule("java.xml").isPresent()) {
-            // Ensure the JdkXmlConfig$CatalogHolder#catalog field is initialized.
-            Class<?> xmlSecurityManager = ReflectionUtil.lookupClass(false, "jdk.xml.internal.JdkXmlConfig$CatalogHolder");
-            // The constructor call prepareCatalog which will call JdkCatalog#init.
-            ReflectionUtil.readStaticField(xmlSecurityManager, "JDKCATALOG");
         }
     }
 }

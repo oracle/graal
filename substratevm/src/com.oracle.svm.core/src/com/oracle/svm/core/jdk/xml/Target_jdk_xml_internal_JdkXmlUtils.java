@@ -28,7 +28,12 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "jdk.xml.internal.JdkXmlUtils", onlyWith = JavaXmlModulePresent.class)
+/**
+ * Keeps the {@code java.home} of the image builder out of the image heap when {@code JdkXmlUtils}
+ * is initialized at build time. When it is initialized at run time, its class initializer reads
+ * the run-time value itself.
+ */
+@TargetClass(className = "jdk.xml.internal.JdkXmlUtils", onlyWith = {JavaXmlModulePresent.class, XmlInitializedAtBuildTime.class})
 public final class Target_jdk_xml_internal_JdkXmlUtils {
     // Checkstyle: stop
     @Alias @InjectAccessors(JdkXmlUtilsJavaHomeAccessors.class) //

@@ -40,8 +40,9 @@ import com.oracle.svm.core.hub.RuntimeClassLoading.NoRuntimeClassLoading;
  * the initialization code would pull intermediate types (e.g. {@code CatalogReader}) into the image
  * heap. To avoid this, the catalog can be initialized at build time.
  *
- * Ideally, we would initialize all of {@code jdk.xml} at run time, but that is too intrusive at the
- * current point in time (GR-50683).
+ * The catalog stays initialized at build time also when the rest of {@code java.xml} is initialized
+ * at run time ({@code --future-defaults=run-time-initialize-xml}): it is loaded from a {@code jrt:}
+ * URL, which an image cannot open at run time.
  */
 @TargetClass(className = "jdk.xml.internal.JdkXmlConfig$CatalogHolder", onlyWith = {NoRuntimeClassLoading.class, JavaXmlModulePresent.class})
 public final class Target_jdk_xml_internal_JdkXmlConfig_CatalogHolder {
@@ -69,8 +70,7 @@ final class JdkCatalogSupplier implements FieldValueTransformer {
 
     /**
      * Verifies that {@link Target_jdk_xml_internal_JdkXmlConfig_CatalogHolder#JDKCATALOG} is
-     * non-null. The initialization is triggered in
-     * {@code com.oracle.svm.hosted.xml.JavaxXmlClassAndResourcesLoaderFeature#initializeJdkCatalog()}
+     * non-null. Its holder class is initialized at build time, so the catalog must be loaded.
      */
     @Override
     public Object transform(Object receiver, Object originalValue) {

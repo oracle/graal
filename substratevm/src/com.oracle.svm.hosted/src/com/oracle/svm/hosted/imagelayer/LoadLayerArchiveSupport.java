@@ -67,6 +67,10 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
         layerProperties.loadAndVerify(current);
     }
 
+    public void verifyXmlInitialization(boolean current) {
+        layerProperties.verifyXmlInitialization(current);
+    }
+
     private static <T> List<T> loadBuildEntries(Path path, Function<String, T> stringParser, String buildEntryTypeDescription) {
         try (Stream<String> lines = Files.lines(path)) {
             return lines.map(stringParser).toList();

@@ -5,6 +5,13 @@ This changelog summarizes major changes to GraalVM Native Image.
 ## GraalVM 25.7
 
 * (GR-81985) On macOS AArch64, Native Image now uses a new `apple-m1` target by default. This enables the `AES`, `PMULL`, `SHA1`, and `SHA2` instructions, which are available on Apple M1 and later. Linux AArch64 retains its existing default.
+* (GR-50683) Introduced `--future-defaults=run-time-initialize-xml` that initializes most of the `java.xml` and `java.xml.crypto` modules at run time.
+  When the JDK built-in XML catalog is reachable, Native Image parses it at build time with the builder’s catalog settings and XML parser limits.
+  The `XMLDSig` security provider also stays initialized at build time unless `run-time-initialize-security-providers` is enabled.
+  JAXP configuration set at run time, such as the `java.xml.config.file` and `jdk.xml.overrideDefaultParser` system properties, then takes effect as on the JVM.
+  The image reads `conf/jaxp.properties` from its `java.home` when it has one at run time, and otherwise applies the one of the JDK that built it.
+  Set `java.xml.config.file` at run time to override the configuration in the executable.
+  The value is included in `--future-defaults=run-time-initialize-jdk` and `--future-defaults=all`.
 
 ## GraalVM 25.6
 

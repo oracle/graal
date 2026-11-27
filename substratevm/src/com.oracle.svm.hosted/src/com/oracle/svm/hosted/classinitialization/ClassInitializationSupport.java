@@ -422,6 +422,12 @@ public class ClassInitializationSupport implements JVMCIRuntimeClassInitializati
         }
     }
 
+    /** Configures a class for build-time initialization without running its initializer eagerly. */
+    public void initializeAtBuildTimeWhenReached(String className, String reason) {
+        UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
+        classInitializationConfiguration.insert(className, InitKind.BUILD_TIME, reason, true);
+    }
+
     static boolean isClassListedInStringOption(AccumulatingLocatableMultiOptionValue.Strings option, Class<?> clazz) {
         return option.values().contains(clazz.getName());
     }
