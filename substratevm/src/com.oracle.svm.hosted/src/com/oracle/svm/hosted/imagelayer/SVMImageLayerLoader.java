@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
@@ -1304,6 +1305,14 @@ public class SVMImageLayerLoader extends ImageLayerLoader implements AutoCloseab
 
     public ImageHeapConstant getOrCreateConstant(int id) {
         return constantLoader.getOrCreateConstant(id);
+    }
+
+    public void forEachPersistedProxyName(BiConsumer<String, String> consumer) {
+        for (var type : snapshot.getTypes()) {
+            if (type.getWrappedType().isProxyType()) {
+                consumer.accept(type.getDescriptor(), type.getClassName());
+            }
+        }
     }
 
     /** Visits the relinked hosted objects for all persisted base-layer MethodTypes. */
