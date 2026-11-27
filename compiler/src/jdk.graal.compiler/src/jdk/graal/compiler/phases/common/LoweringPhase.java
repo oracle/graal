@@ -683,7 +683,8 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
 
         // Lower the instructions of this block.
         List<Node> nodes = schedule.nodesFor(b);
-        for (Node node : nodes) {
+        for (int i = 0; i < nodes.size(); i++) {
+            Node node = nodes.get(i);
 
             if (node.isDeleted()) {
                 // This case can happen when previous lowerings deleted nodes.
@@ -721,30 +722,54 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
             }
 
             if (!loweringTool.nextFixedNode().isAlive()) {
-                // can happen when the rest of the block is killed by lowering
-                // (e.g. by an unconditional deopt)
-                break;
-            } else {
-                Node nextLastFixed = loweringTool.nextFixedNode().predecessor();
-                if (!(nextLastFixed instanceof FixedWithNextNode)) {
-                    /**
-                     * There is no FixedWithNextNode where subsequently lowered nodes can be
-                     * attached to. This can happen when lowering a FixedWithNextNode to a control
-                     * split while the FixedWithNextNode is followed by some kind of BeginNode. For
-                     * example when a FixedGuard followed by a loop exit is lowered to a
-                     * control-split + deopt. If there are further nodes to be lowered between the
-                     * split and the next begin, {@link LoweringToolImpl#lastFixedNode()}) will
-                     * lazily introduce a BeginNode.
-                     */
-                    nextLastFixed = null;
+                /*
+                 * The lowering deleted the fixed node that followed the lowered node. Usually the
+                 * lowering ended the block, by an unconditional deoptimization, and the rest of the
+                 * block is dead. A lowering can also delete only that node and leave the rest of
+                 * the block alive: the lowering of a CommitAllocationNode removes the monitor exits
+                 * of a nested lock on a materialized object, and the first of them is the node
+                 * after the commit. Lowering then goes on at the next scheduled fixed node that is
+                 * still alive; otherwise the nodes after the deleted one would stay unlowered.
+                 */
+                FixedNode nextAlive = nextAliveFixedNode(nodes, i + 1);
+                if (nextAlive == null) {
+                    break;
                 }
-                loweringTool.setLastFixedNode((FixedWithNextNode) nextLastFixed);
+                loweringTool.setNextFixedNode(nextAlive);
             }
+            Node nextLastFixed = loweringTool.nextFixedNode().predecessor();
+            if (!(nextLastFixed instanceof FixedWithNextNode)) {
+                /**
+                 * There is no FixedWithNextNode where subsequently lowered nodes can be
+                 * attached to. This can happen when lowering a FixedWithNextNode to a control
+                 * split while the FixedWithNextNode is followed by some kind of BeginNode. For
+                 * example when a FixedGuard followed by a loop exit is lowered to a
+                 * control-split + deopt. If there are further nodes to be lowered between the
+                 * split and the next begin, {@link LoweringToolImpl#lastFixedNode()}) will
+                 * lazily introduce a BeginNode.
+                 */
+                nextLastFixed = null;
+            }
+            loweringTool.setLastFixedNode((FixedWithNextNode) nextLastFixed);
             if (Options.DumpAfterEveryLowering.getValue(debug.getOptions())) {
                 debug.dump(DebugContext.VERY_DETAILED_LEVEL, b.getBeginNode().graph(), "After lowering %s", node);
             }
         }
         return loweringTool.getCurrentGuardAnchor();
+    }
+
+    /**
+     * Gets the first node of {@code nodes} from {@code from} on that is a fixed node still in the
+     * graph, or null when there is none.
+     */
+    private static FixedNode nextAliveFixedNode(List<Node> nodes, int from) {
+        for (int i = from; i < nodes.size(); i++) {
+            Node node = nodes.get(i);
+            if (node.isAlive() && node instanceof FixedNode fixed) {
+                return fixed;
+            }
+        }
+        return null;
     }
 
     /**
