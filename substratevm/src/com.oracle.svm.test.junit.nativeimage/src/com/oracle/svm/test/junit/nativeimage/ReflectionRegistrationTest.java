@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -64,8 +65,11 @@ public class ReflectionRegistrationTest {
     public static class UnsafeAllocationTarget {
     }
 
-    public interface SuperclassInterface {
+    public interface SuperclassInterface extends GrandSuperclassSuperinterface {
         int SUPERCLASS_INTERFACE_FIELD = 1;
+
+        static void staticInterfaceMethod() {
+        }
 
         default void superclassInterfaceMethod() {
         }
@@ -243,12 +247,51 @@ public class ReflectionRegistrationTest {
         }
     }
 
+    static class LookupCondition {
+        static void reach() {
+        }
+    }
+
+    static class AccessConditionType {
+        static void reach() {
+        }
+    }
+
+    public interface ConditionalInterface {
+        int VALUE = 42;
+
+        default int value() {
+            return VALUE;
+        }
+    }
+
+    public static class ConditionalParent implements ConditionalInterface {
+    }
+
+    public static class ConditionalChild extends ConditionalParent {
+        public int own;
+    }
+
     @NativeImageBuildArgs({
                     "--exact-reachability-metadata=com.oracle.svm.test.junit.nativeimage",
+                    "--initialize-at-run-time=com.oracle.svm.test.junit.nativeimage.ReflectionRegistrationTest$LookupCondition,com.oracle.svm.test.junit.nativeimage.ReflectionRegistrationTest$AccessConditionType",
                     "--features=com.oracle.svm.test.junit.nativeimage.ReflectionRegistrationTest$ExactReachabilityTest$TestFeature"
     })
     public static class ExactReachabilityTest {
         public static class TestFeature implements Feature {
+            @Override
+            public void afterRegistration(AfterRegistrationAccess access) {
+                var reflection = access.getReflectiveAccess();
+                reflection.register(AccessCondition.typeReached(LookupCondition.class), ConditionalChild.class);
+                var accessCondition = AccessCondition.typeReached(AccessConditionType.class);
+                try {
+                    reflection.register(accessCondition, ConditionalInterface.class.getDeclaredMethod("value"));
+                    reflection.register(accessCondition, ConditionalInterface.class.getDeclaredField("VALUE"));
+                } catch (ReflectiveOperationException e) {
+                    throw new AssertionError(e);
+                }
+            }
+
             @Override
             public void beforeAnalysis(BeforeAnalysisAccess access) {
                 RuntimeReflection.registerFieldLookup(FieldLookupTarget.class, "value");
@@ -260,6 +303,32 @@ public class ReflectionRegistrationTest {
             Field field = FieldLookupTarget.class.getDeclaredField(fieldName());
             assertEquals(fieldName(), field.getName());
             assertThrows(MissingReflectionRegistrationError.class, () -> field.get(new FieldLookupTarget()));
+        }
+
+        @Test
+        public void testConditionalMemberQueries() throws ReflectiveOperationException {
+            Class<?> child = GraalDirectives.opaque(ConditionalChild.class);
+            assertThrows(MissingReflectionRegistrationError.class, () -> child.getMethod("value"));
+            assertThrows(MissingReflectionRegistrationError.class, () -> child.getField("VALUE"));
+            assertThrows(MissingReflectionRegistrationError.class, () -> child.getDeclaredField("own"));
+            assertThrows(MissingReflectionRegistrationError.class, () -> child.getMethod("absent"));
+            LookupCondition.reach();
+            Field field = child.getField("VALUE");
+            Method method = child.getMethod("value");
+            assertEquals(ConditionalChild.class, child.getDeclaredField("own").getDeclaringClass());
+            assertThrows(NoSuchMethodException.class, () -> child.getMethod("absent"));
+            assertThrows(MissingReflectionRegistrationError.class, () -> field.get(null));
+            ConditionalChild instance = new ConditionalChild();
+            assertThrows(MissingReflectionRegistrationError.class, () -> method.invoke(instance));
+            AccessConditionType.reach();
+            assertEquals(42, field.get(null));
+            assertEquals(42, method.invoke(instance));
+        }
+
+        @Test
+        public void testStaticInterfaceMethodRequiresOwnRegistration() {
+            Class<?> declaringInterface = GraalDirectives.opaque(SuperclassInterface.class);
+            assertThrows(MissingReflectionRegistrationError.class, () -> declaringInterface.getDeclaredMethod("staticInterfaceMethod"));
         }
 
         private static String fieldName() {

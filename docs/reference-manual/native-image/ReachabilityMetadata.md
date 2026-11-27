@@ -408,6 +408,11 @@ The following methods on `java.lang.Class` will throw a `MissingRegistrationErro
 * `Class[] getClasses()`
 * `Class[] getDeclaredClasses() throws SecurityException`
 
+Registering a type includes lookups of public members inherited through the interfaces of its superclasses.
+A conditional type registration enables these member lookups when its condition is reached.
+A separate registration can enable invocation or field access under a different condition.
+A static interface method requires a registration for its declaring interface or for the method itself.
+
 Furthermore, all reflective lookups via `java.lang.invoke.MethodHandles.Lookup` will also require metadata for the type to be present, or they will throw `MissingReflectionRegistrationError`.
 
 Note that for lambda-proxy classes, metadata can not be provided.

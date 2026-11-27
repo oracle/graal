@@ -154,7 +154,7 @@ import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 ///    with the necessary information.
 /// 3. Private `registerTypesFor...` methods then perform the necessary registrations for the registered elements to
 ///    be accessible at runtime. This can include making elements reachable, rescanning objects on the heap, etc. In
-///    particular, [#registerTypesForTypeQuery(AnalysisType, TypeData, boolean, boolean)] registers the complete metadata for a
+///    particular, [#registerTypesForTypeQuery(AccessCondition, AnalysisType, TypeData, boolean, boolean)] registers the complete metadata for a
 ///    given type, including fields, methods, inner types, etc. The fields and methods are not registered for reflective
 ///    access themselves.
 /// 4. The contents of the metadata maps are queried from NativeImageCodeCache using the [ReflectionHostedSupport]
@@ -326,6 +326,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             types.compute(analysisType, (_, td) -> {
                 TypeData typeData = td == null ? new TypeData() : td;
 
+                /* A new condition on an already registered type also widens its member queries. */
+                RuntimeDynamicAccessMetadata previousMetadata = typeData.dynamicAccess;
                 ConfigurationMemberAccessibility previous = typeData.registerAs(accessibility);
                 if (previous == null) {
                     registerTypesForHeapType(analysisType);
@@ -342,8 +344,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     typeData.updateDynamicAccessMetadata(cnd, preserved, accessibility);
                 }
                 if (accessibility == ACCESSED) {
-                    if (previous == null || !previous.includes(ACCESSED) || !preserved && typeData.dynamicAccess.isPreserved()) {
-                        registerTypesForTypeQuery(analysisType, typeData, preserved, typeData.hasLinkageError());
+                    if (previous == null || !previous.includes(ACCESSED) || previousMetadata != typeData.dynamicAccess || !preserved && typeData.dynamicAccess.isPreserved()) {
+                        registerTypesForTypeQuery(cnd, analysisType, typeData, preserved, typeData.hasLinkageError());
                     }
                 }
                 return typeData;
@@ -351,17 +353,17 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
-    private void registerTypesForTypeQuery(AnalysisType type, TypeData typeData, boolean preserved, boolean linkageError) {
+    private void registerTypesForTypeQuery(AccessCondition condition, AnalysisType type, TypeData typeData, boolean preserved, boolean linkageError) {
         type.registerAsReachable("Is registered for reflection.");
         runConditionalTask(unconditional(), _ -> {
             registerTypeForRuntimeAccess(type);
             if (!linkageError) {
-                registerAllDeclaredFieldsQuery(type, typeData, preserved, QUERIED);
-                registerAllFieldsQuery(type, typeData, preserved, QUERIED);
-                registerAllDeclaredMethodsQuery(type, typeData, preserved);
-                registerAllMethodsQuery(type, typeData, preserved);
-                registerAllDeclaredConstructorsQuery(type, typeData, preserved);
-                registerAllConstructorsQuery(type, typeData, preserved);
+                registerAllDeclaredFieldsQuery(condition, type, typeData, preserved, QUERIED);
+                registerAllFieldsQuery(condition, type, typeData, preserved, QUERIED);
+                registerAllDeclaredMethodsQuery(condition, type, typeData, preserved);
+                registerAllMethodsQuery(condition, type, typeData, preserved);
+                registerAllDeclaredConstructorsQuery(condition, type, typeData, preserved);
+                registerAllConstructorsQuery(condition, type, typeData, preserved);
                 registerRecordComponents(type, typeData);
             }
             registerAllDeclaredClasses(type, typeData);
@@ -485,7 +487,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerMethodDeclaringType(AccessCondition condition, ResolvedJavaType declaringType, boolean isConstructor, boolean preserved) {
-        runConditionalTask(condition, _ -> {
+        runConditionalTask(condition, cnd -> {
             AnalysisType analysisType = reflectivityFilter.getFilteredAnalysisType(declaringType);
             if (analysisType != null) {
                 types.compute(analysisType, (_, td) -> {
@@ -498,24 +500,30 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     return data;
                 });
                 if (isConstructor) {
-                    registerAllDeclaredConstructorsQuery(analysisType, preserved);
+                    registerAllDeclaredConstructorsQuery(cnd, analysisType, preserved);
                 } else {
-                    registerAllDeclaredMethodsQuery(analysisType, preserved);
+                    registerAllDeclaredMethodsQuery(cnd, analysisType, preserved);
                 }
             }
         });
     }
 
     /**
-     * Visits {@code type}, its superclasses, and the interfaces of each of them with their
-     * superinterfaces: the types whose public members {@link Class#getFields()} and
+     * Visits {@code type}, its superclasses, and each distinct interface of those types with its
+     * superinterfaces. These are the types whose public members {@link Class#getFields()} and
      * {@link Class#getMethods()} return.
      */
     private static void forAllSuperTypes(AnalysisType type, Consumer<AnalysisType> callback) {
+        forAllSuperTypes(type, callback, new HashSet<>());
+    }
+
+    private static void forAllSuperTypes(AnalysisType type, Consumer<AnalysisType> callback, Set<AnalysisType> visitedInterfaces) {
         for (AnalysisType current = type; current != null; current = current.getSuperclass()) {
             callback.accept(current);
             for (AnalysisType intf : current.getInterfaces()) {
-                forAllSuperTypes(intf, callback);
+                if (visitedInterfaces.add(intf)) {
+                    forAllSuperTypes(intf, callback, visitedInterfaces);
+                }
             }
         }
     }
@@ -530,14 +538,14 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
-    private void registerAllMethodsQuery(AnalysisType type, TypeData activeTypeData, boolean preserved) {
+    private void registerAllMethodsQuery(AccessCondition condition, AnalysisType type, TypeData activeTypeData, boolean preserved) {
         forAllSuperTypes(type, t -> {
             try {
                 ClassAccess.checkPublicMethods(t);
                 for (var method : t.getDeclaredMethods(false)) {
-                    if (method.isPublic()) {
+                    if (method.isPublic() && (t == type || !t.isInterface() || !method.isStatic())) {
                         checkMethodSignature(method);
-                        registerMethod(unconditional(), QUERIED, preserved, method);
+                        registerMethod(condition, QUERIED, preserved, method);
                     }
                 }
             } catch (LinkageError e) {
@@ -546,29 +554,29 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
-    private void registerAllDeclaredMethodsQuery(AnalysisType type, boolean preserved) {
-        registerAllDeclaredMethodsQuery(type, null, preserved);
+    private void registerAllDeclaredMethodsQuery(AccessCondition condition, AnalysisType type, boolean preserved) {
+        registerAllDeclaredMethodsQuery(condition, type, null, preserved);
     }
 
-    private void registerAllDeclaredMethodsQuery(AnalysisType type, TypeData activeTypeData, boolean preserved) {
+    private void registerAllDeclaredMethodsQuery(AccessCondition condition, AnalysisType type, TypeData activeTypeData, boolean preserved) {
         try {
             ClassAccess.checkDeclaredMethods(type);
             for (var method : type.getDeclaredMethods(false)) {
                 checkMethodSignature(method);
-                registerMethod(unconditional(), QUERIED, preserved, method);
+                registerMethod(condition, QUERIED, preserved, method);
             }
         } catch (LinkageError e) {
             registerLinkageError(type, type, activeTypeData, e, TypeData::registerDeclaredMethodLookupError);
         }
     }
 
-    private void registerAllConstructorsQuery(AnalysisType type, TypeData activeTypeData, boolean preserved) {
+    private void registerAllConstructorsQuery(AccessCondition condition, AnalysisType type, TypeData activeTypeData, boolean preserved) {
         try {
             ClassAccess.checkPublicConstructors(type);
             for (var constructor : type.getDeclaredConstructors(false)) {
                 if (constructor.isPublic()) {
                     checkMethodSignature(constructor);
-                    registerMethod(unconditional(), QUERIED, preserved, constructor);
+                    registerMethod(condition, QUERIED, preserved, constructor);
                 }
             }
         } catch (LinkageError e) {
@@ -576,16 +584,16 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
-    private void registerAllDeclaredConstructorsQuery(AnalysisType type, boolean preserved) {
-        registerAllDeclaredConstructorsQuery(type, null, preserved);
+    private void registerAllDeclaredConstructorsQuery(AccessCondition condition, AnalysisType type, boolean preserved) {
+        registerAllDeclaredConstructorsQuery(condition, type, null, preserved);
     }
 
-    private void registerAllDeclaredConstructorsQuery(AnalysisType type, TypeData activeTypeData, boolean preserved) {
+    private void registerAllDeclaredConstructorsQuery(AccessCondition condition, AnalysisType type, TypeData activeTypeData, boolean preserved) {
         try {
             ClassAccess.checkDeclaredConstructors(type);
             for (var constructor : type.getDeclaredConstructors(false)) {
                 checkMethodSignature(constructor);
-                registerMethod(unconditional(), QUERIED, preserved, constructor);
+                registerMethod(condition, QUERIED, preserved, constructor);
             }
         } catch (LinkageError e) {
             registerLinkageError(type, type, activeTypeData, e, TypeData::registerDeclaredConstructorLookupError);
@@ -677,7 +685,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerFieldDeclaringType(AccessCondition condition, ResolvedJavaType declaringType, boolean preserved) {
-        runConditionalTask(condition, _ -> {
+        runConditionalTask(condition, cnd -> {
             AnalysisType analysisType = reflectivityFilter.getFilteredAnalysisType(declaringType);
             if (analysisType != null) {
                 types.compute(analysisType, (_, td) -> {
@@ -685,7 +693,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     data.fieldsRegistered = true;
                     return data;
                 });
-                registerAllDeclaredFieldsQuery(analysisType, preserved, QUERIED);
+                registerAllDeclaredFieldsQuery(cnd, analysisType, preserved, QUERIED);
             }
         });
     }
@@ -694,12 +702,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public void registerAllFields(AccessCondition condition, boolean preserved, Class<?> clazz) {
         abortIfSealed();
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "reflection"));
-        runConditionalTask(condition, _ -> {
+        runConditionalTask(condition, cnd -> {
             AnalysisType analysisType = reflectivityFilter.getFilteredAnalysisType(GuestAccess.get().lookupType(clazz));
             if (analysisType == null) {
                 return;
             }
-            registerAllFieldsQuery(analysisType, preserved, ACCESSED);
+            registerAllFieldsQuery(cnd, analysisType, preserved, ACCESSED);
         });
     }
 
@@ -707,27 +715,27 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public void registerAllDeclaredFields(AccessCondition condition, boolean preserved, Class<?> clazz) {
         abortIfSealed();
         Objects.requireNonNull(clazz, () -> nullErrorMessage("class", "reflection"));
-        runConditionalTask(condition, _ -> {
+        runConditionalTask(condition, cnd -> {
             AnalysisType analysisType = reflectivityFilter.getFilteredAnalysisType(GuestAccess.get().lookupType(clazz));
             if (analysisType == null) {
                 return;
             }
-            registerAllDeclaredFieldsQuery(analysisType, preserved, ACCESSED);
+            registerAllDeclaredFieldsQuery(cnd, analysisType, preserved, ACCESSED);
         });
     }
 
-    private void registerAllFieldsQuery(AnalysisType type, boolean preserved, ConfigurationMemberAccessibility accessibility) {
-        registerAllFieldsQuery(type, null, preserved, accessibility);
+    private void registerAllFieldsQuery(AccessCondition condition, AnalysisType type, boolean preserved, ConfigurationMemberAccessibility accessibility) {
+        registerAllFieldsQuery(condition, type, null, preserved, accessibility);
     }
 
-    private void registerAllFieldsQuery(AnalysisType type, TypeData activeTypeData, boolean preserved, ConfigurationMemberAccessibility accessibility) {
+    private void registerAllFieldsQuery(AccessCondition condition, AnalysisType type, TypeData activeTypeData, boolean preserved, ConfigurationMemberAccessibility accessibility) {
         forAllSuperTypes(type, t -> {
             try {
                 ClassAccess.checkPublicFields(t);
                 JVMCIReflectionUtil.getAllFields(t).forEach(field -> {
                     if (field.isPublic()) {
                         checkFieldType(field);
-                        registerField(unconditional(), accessibility, preserved, field);
+                        registerField(condition, accessibility, preserved, field);
                     }
                 });
             } catch (LinkageError e) {
@@ -736,16 +744,16 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         });
     }
 
-    private void registerAllDeclaredFieldsQuery(AnalysisType type, boolean preserved, ConfigurationMemberAccessibility accessibility) {
-        registerAllDeclaredFieldsQuery(type, null, preserved, accessibility);
+    private void registerAllDeclaredFieldsQuery(AccessCondition condition, AnalysisType type, boolean preserved, ConfigurationMemberAccessibility accessibility) {
+        registerAllDeclaredFieldsQuery(condition, type, null, preserved, accessibility);
     }
 
-    private void registerAllDeclaredFieldsQuery(AnalysisType type, TypeData activeTypeData, boolean preserved, ConfigurationMemberAccessibility accessibility) {
+    private void registerAllDeclaredFieldsQuery(AccessCondition condition, AnalysisType type, TypeData activeTypeData, boolean preserved, ConfigurationMemberAccessibility accessibility) {
         try {
             ClassAccess.checkDeclaredFields(type);
             JVMCIReflectionUtil.getAllFields(type).forEach(field -> {
                 checkFieldType(field);
-                registerField(unconditional(), accessibility, preserved, field);
+                registerField(condition, accessibility, preserved, field);
             });
         } catch (LinkageError e) {
             registerLinkageError(type, type, activeTypeData, e, TypeData::registerDeclaredFieldLookupError);
@@ -799,13 +807,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     data.inHeap = true;
                     analysisField.registerAsUnsafeAccessed("is registered for reflection.");
                 }
-                if (accessibility.includes(QUERIED) && (previous == null || !previous.includes(QUERIED))) {
-                    if (analysisField.getDeclaringClass().isAnnotation()) {
-                        processAnnotationField(accessibility, analysisField);
-                    }
-                    if (!throwMissingRegistrationErrors()) {
-                        checkHidingFields(analysisField);
-                    }
+                if (accessibility.includes(QUERIED) && analysisField.getDeclaringClass().isAnnotation()) {
+                    processAnnotationField(cnd, accessibility, analysisField);
+                }
+                if (accessibility.includes(QUERIED) && (previous == null || !previous.includes(QUERIED)) && !throwMissingRegistrationErrors()) {
+                    checkHidingFields(analysisField);
                 }
                 if (accessibility.includes(QUERIED)) {
                     data.updateDynamicAccessMetadata(cnd, preserved, accessibility);
@@ -918,12 +924,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
-    private void processAnnotationField(ConfigurationMemberAccessibility accessibility, AnalysisField field) {
+    private void processAnnotationField(AccessCondition condition, ConfigurationMemberAccessibility accessibility, AnalysisField field) {
         AnalysisType annotationType = field.getDeclaringClass();
         AnalysisType proxyType = classAccess.getProxyType(annotationType);
         AnalysisField proxyField = proxyType != null ? universe.lookup(JVMCIReflectionUtil.getUniqueDeclaredField(true, proxyType, field.getName())) : null;
         if (proxyField != null) {
-            registerField(unconditional(), accessibility, false, proxyField);
+            registerField(condition, accessibility, false, proxyField);
         }
     }
 
@@ -1895,6 +1901,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * element. */
         /* Query metadata keeps members discoverable but must not satisfy guarded access. */
         boolean accessMetadata = false;
+        private RuntimeDynamicAccessMetadata queryMetadata;
 
         ConfigurationMemberAccessibility registerAs(ConfigurationMemberAccessibility newAccessibility) {
             ConfigurationMemberAccessibility previous = accessibility;
@@ -1913,6 +1920,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         void updateDynamicAccessMetadata(AccessCondition condition, boolean preserved, ConfigurationMemberAccessibility newAccessibility) {
+            queryMetadata = RuntimeDynamicAccessMetadata.addCondition(queryMetadata, condition, true);
             boolean accessRegistration = newAccessibility.includes(ACCESSED);
             if (dynamicAccess == null || accessRegistration && !accessMetadata) {
                 dynamicAccess = null;
@@ -1929,7 +1937,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
         RuntimeDynamicAccessMetadata getDynamicAccessMetadata() {
             VMError.guarantee((dynamicAccess != null) == isRegisteredAs(QUERIED), "Dynamic access metadata should be present on queried elements");
-            return dynamicAccess != null ? dynamicAccess : RuntimeDynamicAccessMetadata.alwaysAvailable(false);
+            return dynamicAccess != null ? dynamicAccess.withQueryConditions(queryMetadata) : RuntimeDynamicAccessMetadata.alwaysAvailable(false);
         }
     }
 

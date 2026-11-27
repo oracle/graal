@@ -38,6 +38,9 @@ import com.oracle.svm.guest.staging.configure.RuntimeDynamicAccessMetadata;
 public interface RuntimeMetadataDecoder {
     int NO_DATA = -1;
 
+    /** Marker preceding the query and access condition arrays when they differ for a member. */
+    int SEPARATE_QUERY_CONDITIONS = -1;
+
     int COMPLETE_FLAG_MASK = 1 << 31;
     int IN_HEAP_FLAG_MASK = 1 << 30;
     int HIDING_FLAG_MASK = 1 << 29;
