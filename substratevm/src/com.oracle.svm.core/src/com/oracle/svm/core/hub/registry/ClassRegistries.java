@@ -125,6 +125,9 @@ public final class ClassRegistries implements ParsingContext {
 
     private static final ReferenceQueue<Object> collectedLoaders = new ReferenceQueue<>();
 
+    /** The name whose lookups are not traced on this thread, see {@link #forNameUntraced}. */
+    private static final ThreadLocal<String> untracedLookupName = new ThreadLocal<>();
+
     public final TimerCollection timers = TimerCollection.create(false);
 
     @Platforms(Platform.HOSTED_ONLY.class)//
@@ -228,6 +231,20 @@ public final class ClassRegistries implements ParsingContext {
     }
 
     public static Class<?> forName(String name, ClassLoader loader) throws ClassNotFoundException {
+        if (!MetadataTracer.enabled() || untracedLookupName.get() == null) {
+            return forNameImpl(name, loader);
+        }
+        /* A custom loader can perform a genuine reflective lookup, even for the JNI lookup's name. */
+        String previous = untracedLookupName.get();
+        untracedLookupName.remove();
+        try {
+            return forNameImpl(name, loader);
+        } finally {
+            untracedLookupName.set(previous);
+        }
+    }
+
+    private static Class<?> forNameImpl(String name, ClassLoader loader) throws ClassNotFoundException {
         ClassNotFoundException classNotFoundException = null;
         for (var singleton : layeredSingletons()) {
             Object result = singleton.resolve(name, loader);
@@ -243,6 +260,51 @@ public final class ClassRegistries implements ParsingContext {
             classNotFoundException = new ClassNotFoundException(name);
         }
         throw classNotFoundException;
+    }
+
+    /**
+     * Like {@link #forName}, but does not trace the lookups of {@code name} as reflective accesses.
+     * This is for lookups that are not reflective, such as JNI {@code FindClass}, whose callers
+     * trace the access under their own metadata. The suppression follows {@code name}, and the
+     * element type of an array name, through class loader delegation, which looks the same name up
+     * again via {@code findLoadedClass} and {@code findBootstrapClass}, and covers the array type an
+     * array name resolves to. It is limited to that name: anything else the delegated loader code
+     * accesses, such as other classes or the resources a custom loader reads, is traced as usual.
+     * A nested reflective lookup through {@link #forName} suspends the suppression, even when it
+     * requests the same name.
+     */
+    public static Class<?> forNameUntraced(String name, ClassLoader loader) throws ClassNotFoundException {
+        if (!MetadataTracer.enabled()) {
+            return forName(name, loader);
+        }
+        String previous = untracedLookupName.get();
+        untracedLookupName.set(name);
+        try {
+            return forNameImpl(name, loader);
+        } finally {
+            if (previous == null) {
+                untracedLookupName.remove();
+            } else {
+                untracedLookupName.set(previous);
+            }
+        }
+    }
+
+    private static boolean isUntracedLookup(String name) {
+        String untraced = untracedLookupName.get();
+        if (untraced == null) {
+            return false;
+        }
+        if (untraced.equals(name)) {
+            return true;
+        }
+        int dimensions = 0;
+        while (dimensions < untraced.length() && untraced.charAt(dimensions) == '[') {
+            dimensions++;
+        }
+        // An object array name such as "[[Lfoo.Bar;" also resolves its element type "foo.Bar".
+        return dimensions > 0 && untraced.length() == dimensions + name.length() + 2 && untraced.charAt(dimensions) == 'L' &&
+                        untraced.startsWith(name, dimensions + 1) && untraced.endsWith(";");
     }
 
     /**
@@ -282,7 +344,7 @@ public final class ClassRegistries implements ParsingContext {
         }
         Class<?> result = elementalResult;
         if (arrayDimensions > 0 && result != null) {
-            result = getArrayClass(elementalResult, arrayDimensions);
+            result = getArrayClass(elementalResult, arrayDimensions, MetadataTracer.enabled() && isUntracedLookup(name));
         }
         if (result == null) {
             result = PredefinedClassesSupport.getLoadedForNameOrNull(name, loader);
@@ -297,7 +359,7 @@ public final class ClassRegistries implements ParsingContext {
      */
     private Object checkResult(DynamicHub result, String name) {
         Object knownClassName = shouldFollowReflectionConfiguration() ? knownClassNames.get(name) : null;
-        if (MetadataTracer.enabled() && shouldTraceClassLookup(result, knownClassName)) {
+        if (MetadataTracer.enabled() && shouldTraceClassLookup(result, knownClassName) && !isUntracedLookup(name)) {
             MetadataTracer.singleton().traceReflectionType(name);
         }
         if (result == null && shouldFollowReflectionConfiguration()) {
@@ -383,7 +445,7 @@ public final class ClassRegistries implements ParsingContext {
         return getRegistry(loader).loadClass(type);
     }
 
-    private static Class<?> getArrayClass(Class<?> elementalResult, int arrayDimensions) {
+    private static Class<?> getArrayClass(Class<?> elementalResult, int arrayDimensions, boolean untraced) {
         assert elementalResult != void.class : "Must be filtered in the caller";
         assert arrayDimensions > 0 && arrayDimensions <= 255 : "Must be filtered in the caller";
         DynamicHub hub = SubstrateUtil.cast(elementalResult, DynamicHub.class);
@@ -397,7 +459,17 @@ public final class ClassRegistries implements ParsingContext {
             hub = arrayHub;
         }
         // Perform the MissingRegistrationError check for the final element
-        hub = hub.arrayType();
+        if (untraced) {
+            /*
+             * arrayType traces a missing reflection registration of the array type, which an
+             * untraced lookup does not need either. It runs no class loader code.
+             */
+            try (var _ = MetadataTracer.disableTracing("untraced array class lookup")) {
+                hub = hub.arrayType();
+            }
+        } else {
+            hub = hub.arrayType();
+        }
         return SubstrateUtil.cast(hub, Class.class);
     }
 

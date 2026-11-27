@@ -2050,11 +2050,12 @@ public final class JNIFunctions {
                 throw new NoClassDefFoundError(name);
             }
 
-            if (MetadataTracer.enabled()) {
-                MetadataTracer.singleton().traceJNIType(ClassNameSupport.jniNameToTypeName(name));
-            }
-
-            Class<?> clazz;
+            Class<?> clazz = null;
+            /*
+             * The registry lookup is an implementation detail of FindClass, not a reflective access:
+             * it must not emit reflection metadata. The JNI type is traced in the finally below.
+             * Everything else the class loaders run during the lookup is still traced.
+             */
             try {
                 /*
                  * Loader-aware lookup must not be governed by reflection metadata. JNI accessibility is
@@ -2063,12 +2064,15 @@ public final class JNIFunctions {
                 var support = ClassLoadingSupport.singleton();
                 support.startIgnoreReflectionConfigurationScope();
                 try {
-                    clazz = ClassRegistries.forName(ClassNameSupport.jniNameToReflectionName(name), getClassLoader(callerClass));
+                    clazz = ClassRegistries.forNameUntraced(ClassNameSupport.jniNameToReflectionName(name), getClassLoader(callerClass));
                 } finally {
                     support.endIgnoreReflectionConfigurationScope();
                 }
             } catch (ClassNotFoundException e) {
-                clazz = null;
+                // Not found: clazz stays null.
+            } finally {
+                // Also when a class loader throws: the access leaves clazz null, like a missing class.
+                traceClassLookup(name, clazz);
             }
 
             /*
@@ -2088,6 +2092,21 @@ public final class JNIFunctions {
             }
 
             return clazz;
+        }
+
+        /**
+         * Traces like the reflection dictionary does: emits only accesses whose JNI metadata is
+         * missing, or that are registered for replay. Tracing every lookup would also report
+         * classes that the image already registered for JNI access, such as the exception classes
+         * that libnio looks up via FindClass on every failed syscall.
+         */
+        private static void traceClassLookup(String name, Class<?> clazz) {
+            if (MetadataTracer.enabled()) {
+                boolean metadataMissing = clazz == null || !DynamicHub.fromClass(clazz).isJNIAccessible();
+                if (MetadataTracer.shouldTraceMetadata(metadataMissing, JNIReflectionDictionary.isNegativeOrPreservedClassLookup(name))) {
+                    MetadataTracer.singleton().traceJNIType(ClassNameSupport.jniNameToTypeName(name));
+                }
+            }
         }
 
         private static Class<?> findClassInReflectionDictionary(CCharPointer cname) {
