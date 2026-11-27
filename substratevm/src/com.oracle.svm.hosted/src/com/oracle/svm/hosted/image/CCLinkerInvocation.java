@@ -553,11 +553,11 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         WindowsCCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> symbols, String imageName) {
             super(imageKind, nativeLibs, symbols);
             this.imageName = imageName;
-            this.staticVCRuntime = SubstrateOptions.StaticVCRuntime.getValue() && imageKind.isExecutable;
-            if (staticVCRuntime && ImageLayerBuildingSupport.buildingImageLayer()) {
+            if (SubstrateOptions.StaticVCRuntime.getValue() && ImageLayerBuildingSupport.buildingImageLayer()) {
                 /* Image layer DLLs are linked with the DLL runtime, so the image would still need it. */
                 throw UserError.abort("Option StaticVCRuntime is not supported when building image layers.");
             }
+            this.staticVCRuntime = SubstrateOptions.StaticVCRuntime.getValue() && imageKind.isExecutable;
         }
 
         @Override
