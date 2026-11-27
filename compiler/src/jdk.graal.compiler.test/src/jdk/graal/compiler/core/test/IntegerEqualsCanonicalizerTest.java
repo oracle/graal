@@ -42,8 +42,11 @@ import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
+import jdk.graal.compiler.nodes.calc.NotNode;
+import jdk.graal.compiler.nodes.calc.OrNode;
 import jdk.graal.compiler.nodes.calc.XorNode;
 import jdk.graal.compiler.nodes.java.StoreFieldNode;
 import jdk.graal.compiler.phases.BasePhase;
@@ -225,6 +228,113 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
         field = y == z ? 1 : 0;
         field = y == z ? 1 : 0;
         field = y == z ? 1 : 0;
+    }
+
+    @Test
+    public void testAndOrEquality() {
+        // (x & y) == (x | y) is equivalent to x == y
+        StructuredGraph g = parseEager("testAndOrEqualsSnippet", AllowAssumptions.NO);
+        CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
+        Assert.assertEquals(0, g.getNodes().filter(n -> n instanceof AndNode).count());
+        Assert.assertEquals(0, g.getNodes().filter(n -> n instanceof OrNode).count());
+
+        // test graph equivalence to reference snippet
+        test("testAndOrEqualsSnippet", "testAndOrEqualsReference");
+        test("testAndOrEqualsLongSnippet", "testAndOrEqualsLongReference");
+    }
+
+    public static void testAndOrEqualsSnippet(int x, int y) {
+        field = (x & y) == (x | y) ? 1 : 0;
+        field = (x & y) == (y | x) ? 1 : 0;
+        field = (y & x) == (x | y) ? 1 : 0;
+        field = (y & x) == (y | x) ? 1 : 0;
+        field = (x | y) == (x & y) ? 1 : 0;
+        field = (x | y) == (y & x) ? 1 : 0;
+        field = (y | x) == (x & y) ? 1 : 0;
+        field = (y | x) == (y & x) ? 1 : 0;
+    }
+
+    public static void testAndOrEqualsReference(int x, int y) {
+        field = x == y ? 1 : 0;
+        field = x == y ? 1 : 0;
+        field = x == y ? 1 : 0;
+        field = x == y ? 1 : 0;
+        field = x == y ? 1 : 0;
+        field = x == y ? 1 : 0;
+        field = x == y ? 1 : 0;
+        field = x == y ? 1 : 0;
+    }
+
+    public static void testAndOrEqualsLongSnippet(long x, long y) {
+        field = (x & y) == (x | y) ? 1 : 0;
+        field = (x | y) == (y & x) ? 1 : 0;
+    }
+
+    public static void testAndOrEqualsLongReference(long x, long y) {
+        field = x == y ? 1 : 0;
+        field = x == y ? 1 : 0;
+    }
+
+    @Test
+    public void testAndOrDifferentOperands() {
+        // (x & y) == (x | z) must not be simplified, it is not equivalent to y == z
+        StructuredGraph g = parseEager("testAndOrDifferentOperandsSnippet", AllowAssumptions.NO);
+        CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
+        Assert.assertEquals(1, g.getNodes().filter(n -> n instanceof AndNode).count());
+        Assert.assertEquals(1, g.getNodes().filter(n -> n instanceof OrNode).count());
+    }
+
+    public static void testAndOrDifferentOperandsSnippet(int x, int y, int z) {
+        field = (x & y) == (x | z) ? 1 : 0;
+    }
+
+    @Test
+    public void testXorNotEquality() {
+        // (x ^ y) == ~x is equivalent to y == -1
+        StructuredGraph g = parseEager("testXorNotEqualsSnippet", AllowAssumptions.NO);
+        CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
+        Assert.assertEquals(0, g.getNodes().filter(n -> n instanceof XorNode).count());
+        Assert.assertEquals(0, g.getNodes().filter(n -> n instanceof NotNode).count());
+
+        test("testXorNotEqualsSnippet", "testXorNotEqualsReference");
+        test("testXorNotEqualsLongSnippet", "testXorNotEqualsLongReference");
+    }
+
+    public static void testXorNotEqualsSnippet(int x, int y) {
+        field = (x ^ y) == ~x ? 1 : 0;
+        field = (y ^ x) == ~x ? 1 : 0;
+        field = ~x == (x ^ y) ? 1 : 0;
+        field = ~x == (y ^ x) ? 1 : 0;
+    }
+
+    public static void testXorNotEqualsReference(@SuppressWarnings("unused") int x, int y) {
+        field = y == -1 ? 1 : 0;
+        field = y == -1 ? 1 : 0;
+        field = y == -1 ? 1 : 0;
+        field = y == -1 ? 1 : 0;
+    }
+
+    public static void testXorNotEqualsLongSnippet(long x, long y) {
+        field = (x ^ y) == ~x ? 1 : 0;
+        field = ~x == (y ^ x) ? 1 : 0;
+    }
+
+    public static void testXorNotEqualsLongReference(@SuppressWarnings("unused") long x, long y) {
+        field = y == -1 ? 1 : 0;
+        field = y == -1 ? 1 : 0;
+    }
+
+    @Test
+    public void testXorNotDifferentOperands() {
+        // (x ^ y) == ~z must not be simplified
+        StructuredGraph g = parseEager("testXorNotDifferentOperandsSnippet", AllowAssumptions.NO);
+        CanonicalizerPhase.create().apply(g, getDefaultHighTierContext());
+        Assert.assertEquals(1, g.getNodes().filter(n -> n instanceof XorNode).count());
+        Assert.assertEquals(1, g.getNodes().filter(n -> n instanceof NotNode).count());
+    }
+
+    public static void testXorNotDifferentOperandsSnippet(int x, int y, int z) {
+        field = (x ^ y) == ~z ? 1 : 0;
     }
 
     @Test
