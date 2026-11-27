@@ -73,6 +73,7 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
                     Map.entry("com.sun.org.apache.xerces.internal.xinclude.XIncludeMessageFormatter", List.of(XERCES_MESSAGES + "XIncludeMessages")),
                     Map.entry("com.sun.org.apache.xerces.internal.xpointer.XPointerMessageFormatter", List.of(XERCES_MESSAGES + "XPointerMessages")),
                     Map.entry("com.sun.org.apache.xerces.internal.impl.xpath.regex.RegexParser", List.of("com.sun.org.apache.xerces.internal.impl.xpath.regex.message")),
+                    Map.entry("com.sun.org.apache.xalan.internal.xsltc.compiler.util.ErrorMsg", List.of("com.sun.org.apache.xalan.internal.xsltc.compiler.util.ErrorMessages")),
                     Map.entry(SERIALIZER + "ToXMLStream", List.of(SERIALIZER + "XMLEntities")),
                     Map.entry(SERIALIZER + "ToHTMLStream", List.of(SERIALIZER + "HTMLEntities")),
                     Map.entry(SERIALIZER + "Encodings", List.of(SERIALIZER + "Encodings")),
@@ -98,6 +99,11 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
             registerApiReachabilityHandlers(access);
         }
         MESSAGE_BUNDLE_LOADERS.forEach((loader, bundles) -> access.registerReachabilityHandler(_ -> registerMessageBundles(bundles), type(access, loader)));
+    }
+
+    static void registerTransformerBundles() {
+        registerMessageBundles(MESSAGE_BUNDLE_LOADERS.values().stream().flatMap(List::stream).distinct().toList());
+        registerMessageBundles(List.of("com.sun.org.apache.xalan.internal.res.XSLTInfo"));
     }
 
     private static void registerMessageBundles(List<String> bundles) {

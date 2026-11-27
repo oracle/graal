@@ -40,6 +40,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.guest.staging.jdk.ProtectionDomainSupport;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.shared.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.util.GuestAccess;
 import com.oracle.svm.util.JVMCIReflectionUtil;
@@ -230,7 +231,8 @@ public class JDKInitializationFeature extends JNIRegistrationUtil implements Int
              */
             String catalogReason = "The JDK built-in XML catalog is loaded from a jrt: URL that images cannot open at run time";
             rci.initializeAtBuildTime("javax.xml.catalog", catalogReason);
-            rci.initializeAtBuildTime("jdk.xml.internal.JdkXmlConfig$CatalogHolder", catalogReason);
+            /* Parsing the catalog consults the builder's JAXP limits. Defer it until needed. */
+            ClassInitializationSupport.singleton().initializeAtBuildTimeWhenReached("jdk.xml.internal.JdkXmlConfig$CatalogHolder", catalogReason);
             /*
              * The contents of resource bundles are stored in the image heap, and the XResourceBundle
              * family holds these stateless array wrappers.

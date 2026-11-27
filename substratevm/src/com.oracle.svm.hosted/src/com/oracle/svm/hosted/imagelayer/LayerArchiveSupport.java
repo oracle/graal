@@ -39,6 +39,7 @@ import java.util.Properties;
 
 import org.graalvm.nativeimage.Platform;
 
+import com.oracle.svm.core.FutureDefaultsOptions;
 import com.oracle.svm.core.SharedConstants;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
@@ -154,6 +155,8 @@ public class LayerArchiveSupport {
         private static final String PROPERTY_KEY_LAYER_BUILDER_VM_PLATFORM = "BuilderVMPlatform";
         private static final String PROPERTY_KEY_IMAGE_LAYER_NAME = "LayerName";
 
+        private static final String PROPERTY_KEY_XML_RUNTIME_INIT = "XmlInitializedAtRunTime";
+
         private final Map<String, String> properties;
 
         LayerProperties(String layerName) {
@@ -247,7 +250,15 @@ public class LayerArchiveSupport {
             }
         }
 
+        void verifyXmlInitialization(boolean current) {
+            /* Images predating the XML future default initialized XML at build time. */
+            String previous = properties.getOrDefault(PROPERTY_KEY_XML_RUNTIME_INIT, "false");
+            UserError.guarantee(Boolean.toString(current).equals(previous),
+                            "Incompatible run-time-initialize-xml setting: previous layer %s, current layer %s.", previous, current);
+        }
+
         void write(Platform current) {
+            properties.put(PROPERTY_KEY_XML_RUNTIME_INIT, Boolean.toString(FutureDefaultsOptions.xmlInitializedAtRunTime()));
             properties.put(PROPERTY_KEY_LAYER_FILE_CREATION_TIMESTAMP, ArchiveSupport.currentTime());
             properties.put(PROPERTY_KEY_LAYER_BUILDER_VM_PLATFORM, asString(current));
             BuilderVMIdentifier.system().store(properties);
