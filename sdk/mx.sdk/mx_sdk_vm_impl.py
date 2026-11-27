@@ -2446,9 +2446,6 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         self.jvm_launcher = _skip_libraries(self.language_library_config) or not _get_svm_support().is_supported()
         _dependencies = [] if (self.jvm_launcher) else [GraalVmNativeImage.project_name(self.language_library_config)]
         self.jre_base = get_final_graalvm_distribution().path_substitutions.substitute('<jre_base>')
-        # We use our LLVM toolchain on Linux because we want to statically link the C++ standard library,
-        # and the system toolchain rarely has libstdc++.a installed (it would be an extra CI & dev dependency).
-        toolchain = 'sdk:LLVM_NINJA_TOOLCHAIN' if mx.is_linux() else 'mx:DEFAULT_NINJA_TOOLCHAIN'
         super().__init__(
             _suite,
             NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config),
@@ -2460,7 +2457,6 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             'executable',
             deliverable=self.language_library_config.language,
             use_jdk_headers=True,
-            toolchain=toolchain,
             **kwargs
         )
 
@@ -2478,19 +2474,20 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _exe_paths = _dist.find_source_location('dependency:' + NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config))
         _exe_dirs = {dirname(p) for p in _exe_paths}
         _dynamic_cflags = [
-            ('/std:c++17' if mx.is_windows() else '-std=c++17'),
             '-O3', # Note: no -g to save 0.2MB on Linux
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
             '-DGRAALVM_VERSION=' + _suite.release_version(),
         ]
         if not mx.is_windows():
+            # No /std:c11 on Windows: it enables the conforming preprocessor of MSVC, which crashes
+            # (internal compiler error) when stringizing the macros containing paths with backslashes.
+            # The default C mode of MSVC supports the C99 features the launcher uses.
+            _dynamic_cflags += ['-std=gnu11']
             _dynamic_cflags += ['-pthread']
             _dynamic_cflags += ['-Werror=undef'] # fail on undefined macro used in preprocessor
         if mx.is_linux():
-            _dynamic_cflags += ['-stdlib=libc++'] # to link libc++ statically, see ldlibs
-        if mx.is_darwin():
-            _dynamic_cflags += ['-ObjC++']
+            _dynamic_cflags += ['-fPIE'] # not all toolchains default to position-independent executables
 
         def escaped_path(path):
             if mx.is_windows():
@@ -2591,22 +2588,17 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _dynamic_ldflags = []
         if not mx.is_windows():
             _dynamic_ldflags += ['-pthread']
+        if mx.is_linux():
+            _dynamic_ldflags += ['-fPIE', '-pie']
         return super().ldflags + _dynamic_ldflags
 
     @property
     def ldlibs(self):
         _dynamic_ldlibs = []
-        if mx.is_linux():
-            # Link libc++ statically
-            _dynamic_ldlibs += [
-                '-stdlib=libc++',
-                '-static-libstdc++', # it looks weird but this does link libc++ statically
-                '-l:libc++abi.a',
-            ]
         if not mx.is_windows():
             _dynamic_ldlibs += ['-ldl']
             if mx.is_darwin():
-                _dynamic_ldlibs += ['-framework', 'Foundation']
+                _dynamic_ldlibs += ['-framework', 'CoreFoundation']
 
                 default_min_version = {'amd64': '10.13', 'aarch64': '11.0'}[mx.get_arch()]
                 min_version = os.getenv('MACOSX_DEPLOYMENT_TARGET', default_min_version)
