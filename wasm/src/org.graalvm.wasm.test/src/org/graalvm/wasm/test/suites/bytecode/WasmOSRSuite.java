@@ -172,13 +172,8 @@ public class WasmOSRSuite {
                         """, EnumSet.of(WasmBinaryTools.WabtOption.EXCEPTIONS)));
         final Source source = Source.newBuilder(WasmLanguage.ID, binary, "main").build();
 
-        var engineBuilder = Engine.newBuilder().allowExperimentalOptions(true);
+        var engineBuilder = synchronousOSREngineBuilder();
         engineBuilder.option("wasm.Exceptions", "true");
-        engineBuilder.option("engine.OSR", "true");
-        engineBuilder.option("engine.OSRCompilationThreshold", "1");
-        engineBuilder.option("engine.FirstTierCompilationThreshold", "1000000");
-        engineBuilder.option("engine.LastTierCompilationThreshold", "1000000");
-        engineBuilder.option("engine.BackgroundCompilation", "false");
 
         try (Engine engine = engineBuilder.build();
                         Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
