@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,6 +50,17 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Reference;
 
 public abstract class AArch64MacroAssembler extends AArch64Assembler {
+
+    // Retained across assembler resets when code emission is retried.
+    private boolean inlineJumpTables;
+
+    public boolean isInlineJumpTables() {
+        return inlineJumpTables;
+    }
+
+    public void setInlineJumpTables() {
+        inlineJumpTables = true;
+    }
 
     // Points to the next free scratch register
     private int nextFreeScratchRegister = 0;
