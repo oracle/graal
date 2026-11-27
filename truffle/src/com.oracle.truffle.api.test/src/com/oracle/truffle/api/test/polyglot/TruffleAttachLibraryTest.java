@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 
@@ -48,8 +49,10 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 
+import org.graalvm.polyglot.Engine;
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -57,6 +60,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.test.SubprocessTestUtils;
 import com.oracle.truffle.api.test.SubprocessTestUtils.WithSubprocess;
+import com.oracle.truffle.api.test.TestAPIAccessor;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class TruffleAttachLibraryTest {
@@ -71,6 +75,35 @@ public class TruffleAttachLibraryTest {
         SubprocessTestUtils.newBuilder(TruffleAttachLibraryTest.class, TruffleAttachLibraryTest::loadFromMultipleClassLoaders).postfixVmOption(
                         "-Dtruffle.UseFallbackRuntime=true",
                         "--enable-native-access=ALL-UNNAMED").run();
+    }
+
+    @Test
+    @WithSubprocess
+    public void testFirstEngineOnRestrictedThread() throws IOException, InterruptedException {
+        TruffleTestAssumptions.assumeNotAOT();
+        Assume.assumeTrue("Multiple optimized Truffle runtimes are not supported", Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+        Assume.assumeTrue("The FFM bootstrap requires JDK 22 or later", Runtime.version().feature() >= 22);
+        SubprocessTestUtils.newBuilder(TruffleAttachLibraryTest.class, () -> {
+            CompletableFuture.runAsync(() -> {
+                Engine.create().close();
+                assertNotNull(TestAPIAccessor.ENGINE.getModulesAccessor());
+            }, task -> new RestrictedThread(task).start()).join();
+            Engine.create().close();
+        }).postfixVmOption("-Dtruffle.UseFallbackRuntime=true", "--enable-native-access=ALL-UNNAMED").run();
+    }
+
+    private static final class RestrictedThread extends Thread {
+        RestrictedThread(Runnable task) {
+            super(task, "Restricted engine creator");
+            // Keep service providers visible, but force bootstrap to request a different loader.
+            super.setContextClassLoader(new ClassLoader(TruffleAttachLibraryTest.class.getClassLoader()) {
+            });
+        }
+
+        @Override
+        public void setContextClassLoader(ClassLoader loader) {
+            throw new SecurityException("Cannot change context class loader");
+        }
     }
 
     private static void loadFromMultipleClassLoaders() {

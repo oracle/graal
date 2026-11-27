@@ -49,6 +49,7 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
 final class TruffleAttachLibraryLoader {
@@ -87,30 +88,59 @@ final class TruffleAttachLibraryLoader {
             onError.accept(errorMessage, unsupported);
             return errorMessage;
         }
-        Thread t = Thread.currentThread();
-        ClassLoader prev = t.getContextClassLoader();
-        t.setContextClassLoader(TruffleAttachLibraryLoader.class.getClassLoader());
+        String reason;
+        try {
+            reason = initializeWithDefiningLoader(initHandle);
+        } catch (RuntimeException | Error e) {
+            String errorMessage = String.format("The TruffleAttach library at '%s' could not be loaded: Failed to initialize due to exception.", libTruffleAttachPath);
+            onError.accept(errorMessage, e);
+            return errorMessage;
+        }
+        if (reason != null) {
+            String errorMessage = String.format("The TruffleAttach library at '%s' could not be loaded: %s", libTruffleAttachPath, reason);
+            onError.accept(errorMessage, null);
+            return errorMessage;
+        }
+        return null;
+    }
+
+    private static String initializeWithDefiningLoader(MethodHandle initHandle) {
+        Thread caller = Thread.currentThread();
+        ClassLoader loader = TruffleAttachLibraryLoader.class.getClassLoader();
+        ClassLoader previous = caller.getContextClassLoader();
+        if (previous == loader) {
+            return initialize(initHandle);
+        }
+        try {
+            caller.setContextClassLoader(loader);
+        } catch (SecurityException denied) {
+            // Cleaner threads, for example, reject context loader changes. Only run the downcall
+            // on the worker: JDKSupport is being initialized by the waiting caller.
+            return CompletableFuture.supplyAsync(() -> initialize(initHandle), task -> {
+                Thread worker = Thread.ofPlatform().name("TruffleAttach bootstrap").inheritInheritableThreadLocals(false).unstarted(task);
+                worker.setContextClassLoader(loader);
+                worker.start();
+            }).join();
+        }
+        try {
+            return initialize(initHandle);
+        } finally {
+            caller.setContextClassLoader(previous);
+        }
+    }
+
+    private static String initialize(MethodHandle initHandle) {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment error = arena.allocate(ERROR_BUFFER_SIZE);
             int rc;
             try {
                 rc = (int) initHandle.invokeExact(error, ERROR_BUFFER_SIZE);
             } catch (RuntimeException | Error e) {
-                String errorMessage = String.format("The TruffleAttach library at '%s' could not be loaded: Failed to initialize due to exception.", libTruffleAttachPath);
-                onError.accept(errorMessage, e);
-                return errorMessage;
+                throw e;
             } catch (Throwable e) {
                 throw new AssertionError("Unexpected unchecked exception from a foreign call.", e);
             }
-            if (rc != 0) {
-                String errorMessage = String.format("The TruffleAttach library at '%s' could not be loaded: Failed to initialize (return code %d): %s",
-                                libTruffleAttachPath, rc, error.getString(0));
-                onError.accept(errorMessage, null);
-                return errorMessage;
-            }
-        } finally {
-            t.setContextClassLoader(prev);
+            return rc == 0 ? null : String.format("Failed to initialize (return code %d): %s", rc, error.getString(0));
         }
-        return null;
     }
 }
