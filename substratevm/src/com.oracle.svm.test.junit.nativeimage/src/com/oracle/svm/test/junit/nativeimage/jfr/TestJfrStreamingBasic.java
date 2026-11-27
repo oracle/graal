@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.test.junit.nativeimage.Stressor;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;

@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.test.junit.nativeimage.Stressor;
 import com.oracle.svm.test.junit.nativeimage.jfr.events.ClassEvent;
 import com.oracle.svm.test.junit.nativeimage.jfr.events.IntegerEvent;
 import com.oracle.svm.test.junit.nativeimage.jfr.events.StringEvent;
