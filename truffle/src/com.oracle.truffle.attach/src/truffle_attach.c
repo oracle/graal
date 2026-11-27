@@ -49,19 +49,17 @@
 #define CHECK_TRUE_ELSE_RETURN(cond, result, ...)                                                                                                    \
     do {                                                                                                                                             \
         if (!(cond)) {                                                                                                                               \
-            fprintf(stderr, "[engine::attach] ERROR: " __VA_ARGS__);                                                                                 \
-            fprintf(stderr, "\n");                                                                                                                   \
+            if (error != NULL && error_size > 0) {                                                                                                   \
+                snprintf(error, (size_t) error_size, __VA_ARGS__);                                                                                   \
+            }                                                                                                                                        \
             return result;                                                                                                                           \
         }                                                                                                                                            \
     } while (0)
 
-#define CHECK_TRUE_ELSE_POP(cond, result)                                                                                                            \
+#define CHECK_TRUE_ELSE_POP(cond, result, message)                                                                                                   \
     do {                                                                                                                                             \
         if (!(cond)) {                                                                                                                               \
-            if ((*env)->ExceptionCheck(env)) {                                                                                                       \
-                (*env)->ExceptionDescribe(env);                                                                                                      \
-                (*env)->ExceptionClear(env);                                                                                                         \
-            }                                                                                                                                        \
+            store_bootstrap_error(env, error, error_size, message);                                                                                  \
             (*env)->PopLocalFrame(env, NULL);                                                                                                        \
             return result;                                                                                                                           \
         }                                                                                                                                            \
@@ -388,7 +386,7 @@ static GetCreatedJavaVMs_t find_get_created_java_vms(void) {
     return getCreatedJavaVMs;
 }
 
-static JNIEnv *current_env(void) {
+static JNIEnv *current_env(char *error, jint error_size) {
     GetCreatedJavaVMs_t getCreatedJavaVMs = find_get_created_java_vms();
 #if defined(__linux__) || defined(__APPLE__)
     CHECK_TRUE_ELSE_RETURN(getCreatedJavaVMs != NULL, NULL,
@@ -417,44 +415,51 @@ static jclass load_class(JNIEnv *env, jclass classClass, jmethodID forName, jobj
     return (jclass) (*env)->CallStaticObjectMethod(env, classClass, forName, name, JNI_FALSE, loader);
 }
 
+static void store_bootstrap_error(JNIEnv *env, char *error, jint error_size, const char *message) {
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionClear(env);
+    }
+    if (error != NULL && error_size > 0) {
+        snprintf(error, (size_t) error_size, "%s", message);
+    }
+}
+
 /*
  * Loads the classes that declare truffleattach native methods through the calling thread's context
  * class loader and binds the methods to this library. This entry point is used when the library is
  * loaded using java foreign access (panama), which does not associate the library with a class loader
- * and does not invoke JNI_OnLoad.
+ * and does not invoke JNI_OnLoad. On failure, writes a NUL-terminated diagnostic if the caller
+ * supplied a buffer of at least one byte. The size includes the terminator.
  */
-JNIEXPORT jint JNICALL truffle_attach_init(void) {
-    JNIEnv *env = current_env();
+JNIEXPORT jint JNICALL truffle_attach_init(char *error, jint error_size) {
+    JNIEnv *env = current_env(error, error_size);
     if (env == NULL) {
         return 1;
     }
     if ((*env)->PushLocalFrame(env, 16) != JNI_OK) {
-        if ((*env)->ExceptionCheck(env)) {
-            (*env)->ExceptionDescribe(env);
-            (*env)->ExceptionClear(env);
-        }
+        store_bootstrap_error(env, error, error_size, "Failed to allocate a JNI local frame");
         return 2;
     }
 
-    CHECK_TRUE_ELSE_POP(initialize_shared_state(env, JNI_TRUE) == JNI_OK, 3);
+    CHECK_TRUE_ELSE_POP(initialize_shared_state(env, JNI_TRUE) == JNI_OK, 3, "Failed to initialize shared truffle attach state");
 
     jclass threadClass = (*env)->FindClass(env, "java/lang/Thread");
-    CHECK_TRUE_ELSE_POP(threadClass != NULL, 4);
+    CHECK_TRUE_ELSE_POP(threadClass != NULL, 4, "Cannot find java.lang.Thread");
     jmethodID currentThreadMethod = (*env)->GetStaticMethodID(env, threadClass, "currentThread", "()Ljava/lang/Thread;");
-    CHECK_TRUE_ELSE_POP(currentThreadMethod != NULL, 5);
+    CHECK_TRUE_ELSE_POP(currentThreadMethod != NULL, 5, "Cannot find Thread.currentThread");
     jmethodID getContextClassLoader = (*env)->GetMethodID(env, threadClass, "getContextClassLoader", "()Ljava/lang/ClassLoader;");
-    CHECK_TRUE_ELSE_POP(getContextClassLoader != NULL, 6);
+    CHECK_TRUE_ELSE_POP(getContextClassLoader != NULL, 6, "Cannot find Thread.getContextClassLoader");
     jobject thread = (*env)->CallStaticObjectMethod(env, threadClass, currentThreadMethod);
-    CHECK_TRUE_ELSE_POP(thread != NULL && !(*env)->ExceptionCheck(env), 7);
+    CHECK_TRUE_ELSE_POP(thread != NULL && !(*env)->ExceptionCheck(env), 7, "Cannot get the current thread");
     jobject loader = (*env)->CallObjectMethod(env, thread, getContextClassLoader);
-    CHECK_TRUE_ELSE_POP(!(*env)->ExceptionCheck(env), 8);
+    CHECK_TRUE_ELSE_POP(!(*env)->ExceptionCheck(env), 8, "Failed to obtain the context class loader");
     jclass classClass = (*env)->FindClass(env, "java/lang/Class");
-    CHECK_TRUE_ELSE_POP(classClass != NULL, 9);
+    CHECK_TRUE_ELSE_POP(classClass != NULL, 9, "Cannot find java.lang.Class");
     jmethodID forName = (*env)->GetStaticMethodID(env, classClass, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;");
-    CHECK_TRUE_ELSE_POP(forName != NULL, 10);
+    CHECK_TRUE_ELSE_POP(forName != NULL, 10, "Cannot find Class.forName");
 
     jclass jdkSupport = load_class(env, classClass, forName, loader, "com.oracle.truffle.polyglot.JDKSupport");
-    CHECK_TRUE_ELSE_POP(jdkSupport != NULL && !(*env)->ExceptionCheck(env), 11);
+    CHECK_TRUE_ELSE_POP(jdkSupport != NULL && !(*env)->ExceptionCheck(env), 11, "Failed to load com.oracle.truffle.polyglot.JDKSupport");
     JNINativeMethod jdkSupportMethods[] = {
         { "addExports0", "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V",
           (void *) Java_com_oracle_truffle_polyglot_JDKSupport_addExports0 },
@@ -462,8 +467,9 @@ JNIEXPORT jint JNICALL truffle_attach_init(void) {
         { "registerJVMTIHook0", "(Ljava/lang/Class;)V", (void *) Java_com_oracle_truffle_polyglot_JDKSupport_registerJVMTIHook0 },
         { "getPlatformStackEnd0", "()J", (void *) Java_com_oracle_truffle_polyglot_JDKSupport_getPlatformStackEnd0 },
     };
-    CHECK_TRUE_ELSE_POP(
-        (*env)->RegisterNatives(env, jdkSupport, jdkSupportMethods, sizeof(jdkSupportMethods) / sizeof(jdkSupportMethods[0])) == JNI_OK, 12);
+    CHECK_TRUE_ELSE_POP((*env)->RegisterNatives(env, jdkSupport, jdkSupportMethods, sizeof(jdkSupportMethods) / sizeof(jdkSupportMethods[0])) ==
+                            JNI_OK,
+                        12, "Failed to register native methods on com.oracle.truffle.polyglot.JDKSupport");
 
     (*env)->PopLocalFrame(env, NULL);
     return 0;

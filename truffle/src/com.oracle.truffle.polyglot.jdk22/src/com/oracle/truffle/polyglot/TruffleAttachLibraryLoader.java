@@ -55,6 +55,7 @@ final class TruffleAttachLibraryLoader {
 
     /* JVMTI retains callbacks into truffleattach for the lifetime of the VM. */
     private static final Arena ARENA = Arena.global();
+    private static final int ERROR_BUFFER_SIZE = 1024;
 
     @SuppressWarnings("restricted")
     static String load(Path libTruffleAttachPath, BiConsumer<String, Throwable> onError) {
@@ -68,7 +69,7 @@ final class TruffleAttachLibraryLoader {
                 onError.accept(errorMessage, null);
                 return errorMessage;
             }
-            initHandle = Linker.nativeLinker().downcallHandle(initAddress, FunctionDescriptor.of(ValueLayout.JAVA_INT));
+            initHandle = Linker.nativeLinker().downcallHandle(initAddress, FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
         } catch (IllegalCallerException illegalCaller) {
             String vmOption = "--enable-native-access=" + (TruffleAttachLibraryLoader.class.getModule().isNamed() ? "org.graalvm.truffle" : "ALL-UNNAMED");
             String errorMessage = String.format("Failed to load the TruffleAttach library. The Truffle module does not have native access enabled. " +
@@ -89,10 +90,11 @@ final class TruffleAttachLibraryLoader {
         Thread t = Thread.currentThread();
         ClassLoader prev = t.getContextClassLoader();
         t.setContextClassLoader(TruffleAttachLibraryLoader.class.getClassLoader());
-        try {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment error = arena.allocate(ERROR_BUFFER_SIZE);
             int rc;
             try {
-                rc = (int) initHandle.invokeExact();
+                rc = (int) initHandle.invokeExact(error, ERROR_BUFFER_SIZE);
             } catch (RuntimeException | Error e) {
                 String errorMessage = String.format("The TruffleAttach library at '%s' could not be loaded: Failed to initialize due to exception.", libTruffleAttachPath);
                 onError.accept(errorMessage, e);
@@ -101,8 +103,8 @@ final class TruffleAttachLibraryLoader {
                 throw new AssertionError("Unexpected unchecked exception from a foreign call.", e);
             }
             if (rc != 0) {
-                String errorMessage = String.format("The TruffleAttach library at '%s' could not be loaded: Failed to initialize with a return code %d.",
-                                libTruffleAttachPath, rc);
+                String errorMessage = String.format("The TruffleAttach library at '%s' could not be loaded: Failed to initialize (return code %d): %s",
+                                libTruffleAttachPath, rc, error.getString(0));
                 onError.accept(errorMessage, null);
                 return errorMessage;
             }
