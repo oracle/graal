@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.methodhandles;
 
+import java.util.HashMap;
+
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -37,6 +39,19 @@ import com.oracle.svm.shared.util.ReflectionUtil;
 
 @TargetClass(className = "java.lang.invoke.LambdaForm")
 public final class Target_java_lang_invoke_LambdaForm {
+
+    /*
+     * Debug names retain forms created by the builder, including handles to hosted-only classes.
+     * Start runtime debug naming with empty maps, preserving null when debugging is disabled.
+     * Recompute only the image fields: the builder still needs its original names and counters.
+     */
+    // Checkstyle: stop
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstanceWhenNotNull, declClass = HashMap.class, isFinal = true)//
+    private static HashMap<?, ?> DEBUG_NAMES;
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstanceWhenNotNull, declClass = HashMap.class, isFinal = true)//
+    private static HashMap<?, ?> DEBUG_NAME_COUNTERS;
+    // Checkstyle: resume
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Target_java_lang_invoke_MemberName vmentry;
