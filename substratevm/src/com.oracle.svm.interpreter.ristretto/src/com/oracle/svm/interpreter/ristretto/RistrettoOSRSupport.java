@@ -123,9 +123,13 @@ public final class RistrettoOSRSupport {
         if (rMethod.getProfile().getOSRBackedgeCount(targetBCI) > RistrettoOptions.getJITCompilerOSRBackedgeThreshold() && RistrettoOptions.matchesJITCompileOnly(method)) {
             int requestId = rMethod.claimOSRCompilationRequest(targetBCI);
             if (requestId != RistrettoMethod.NO_OSR_COMPILATION_REQUEST) {
-                RistrettoCompilationManager.get().submitCompilationRequestForCurrentMode(new RistrettoCompilationRequest(rMethod, RistrettoCompilationRequest.DEFAULT_OSR_COMPILATION_PRIORITY,
-                                targetBCI,
-                                requestId));
+                RistrettoCompilationManager manager = RistrettoCompilationManager.get();
+                if (manager == null) {
+                    rMethod.onOSRCompilationFailure(targetBCI, requestId);
+                } else {
+                    manager.submitCompilationRequestForCurrentMode(new RistrettoCompilationRequest(rMethod, RistrettoCompilationRequest.DEFAULT_OSR_COMPILATION_PRIORITY,
+                                    targetBCI, requestId));
+                }
             }
         }
 

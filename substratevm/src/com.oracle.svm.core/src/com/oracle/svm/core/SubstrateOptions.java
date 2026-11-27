@@ -70,6 +70,7 @@ import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.jdk.VectorAPIEnabled;
 import com.oracle.svm.core.option.GCOptionValue;
+import com.oracle.svm.core.thread.RecurringCallbackSupport;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.guest.staging.IsolateArgumentParser;
@@ -1609,6 +1610,9 @@ public class SubstrateOptions {
                 }
                 if (SubstrateOptions.SupportCompileInIsolates.getValue()) {
                     throw UserError.abort("Cannot enable Ristretto compilation if SupportCompileInIsolates is enabled.");
+                }
+                if (RecurringCallbackSupport.ConcealedOptions.SupportRecurringCallback.getValue()) {
+                    throw UserError.abort("Cannot enable Ristretto compilation if SupportRecurringCallback is enabled.");
                 }
             }
         }

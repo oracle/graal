@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import org.graalvm.nativeimage.Threading;
 import org.graalvm.nativeimage.impl.ThreadingSupport;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.shared.singletons.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.shared.option.SubstrateOptionsParser;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.RuntimeAccessOnly;
@@ -50,6 +51,13 @@ public class ThreadingSupportImpl implements ThreadingSupport {
     @Deprecated(since = "25.1")
     @SuppressWarnings("deprecation")
     public void registerRecurringCallback(long interval, TimeUnit unit, Threading.RecurringCallback callback) {
+        if (SubstrateOptions.useRistretto()) {
+            if (callback != null) {
+                throw new UnsupportedOperationException("Application-registered recurring callbacks are not supported with Ristretto compilation.");
+            }
+            // JFR can install its own timer. Leave it alone.
+            return;
+        }
         if (callback != null) {
             if (!RecurringCallbackSupport.isEnabled()) {
                 throw new UnsupportedOperationException("Recurring callbacks must be enabled during image build with option " + ENABLE_SUPPORT_OPTION);
