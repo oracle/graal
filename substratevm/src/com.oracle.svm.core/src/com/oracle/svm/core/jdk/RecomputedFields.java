@@ -66,7 +66,7 @@ final class Target_java_nio_charset_CharsetEncoder {
 
 @TargetClass(className = "java.util.concurrent.atomic.AtomicReferenceFieldUpdater$AtomicReferenceFieldUpdaterImpl")
 final class Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_AtomicReferenceFieldUpdaterImpl {
-    @Alias @RecomputeFieldValue(kind = AtomicFieldUpdaterOffset) //
+    @Alias @RecomputeFieldValue(kind = AtomicFieldUpdaterOffset, isFinal = true) //
     private long offset;
 
     /** the same as tclass, used for checks */
@@ -119,7 +119,7 @@ final class Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_Atomi
 
 @TargetClass(className = "java.util.concurrent.atomic.AtomicIntegerFieldUpdater$AtomicIntegerFieldUpdaterImpl")
 final class Target_java_util_concurrent_atomic_AtomicIntegerFieldUpdater_AtomicIntegerFieldUpdaterImpl {
-    @Alias @RecomputeFieldValue(kind = AtomicFieldUpdaterOffset) //
+    @Alias @RecomputeFieldValue(kind = AtomicFieldUpdaterOffset, isFinal = true) //
     private long offset;
 
     /** the same as tclass, used for checks */
@@ -156,7 +156,7 @@ final class Target_java_util_concurrent_atomic_AtomicIntegerFieldUpdater_AtomicI
 
 @TargetClass(className = "java.util.concurrent.atomic.AtomicLongFieldUpdater$CASUpdater")
 final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater {
-    @Alias @RecomputeFieldValue(kind = AtomicFieldUpdaterOffset) //
+    @Alias @RecomputeFieldValue(kind = AtomicFieldUpdaterOffset, isFinal = true) //
     private long offset;
 
     /** the same as tclass, used for checks */
