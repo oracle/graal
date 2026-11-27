@@ -594,7 +594,7 @@ def svm_gate_body(args, tasks):
 
     with Task('pgo unit tests', tasks, tags=[GraalTags.pgo]) as t:
         if t:
-            jvm_unittest(['com.oracle.svm.core.pgo', 'com.oracle.svm.hosted.pgo'])
+            _hosted_unittests(['com.oracle.svm.core.pgo', 'com.oracle.svm.hosted.pgo'])
 
     # The two checks below build --pgo-instrument images and are skipped on Windows, where such images are not tested.
     with Task('pgo recorder native tests', tasks, tags=[GraalTags.pgo]) as t:
@@ -960,8 +960,7 @@ def pgo_recorder_native_tests_task(native_image, extra_build_args=None):
     tables and the stack sampler runs. A snapshot that holds a lock across a safepoint hangs the
     image, so a safepoint that takes more than a minute fails the run instead.
     """
-    build_args = _compute_native_unittest_args(['--pgo-instrument'] + (extra_build_args or []), include_svm_test_features=False)
-    _native_unittest(native_image, ['com.oracle.svm.core.pgo.RecorderTableNativeTest'] + build_args +
+    _native_unittest(native_image, ['com.oracle.svm.core.pgo.RecorderTableNativeTest', '--build-args', '--pgo-instrument'] + (extra_build_args or []) +
                      ['--run-args', '-XX:SafepointPromptnessFailureNanos=60000000000', '--verbose'])
 
 
