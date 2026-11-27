@@ -69,7 +69,6 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.SingleLayer;
 import com.oracle.svm.shared.singletons.traits.SingletonLayeredInstallationKind.InitialLayerOnly;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
-import com.oracle.svm.shared.util.BasedOnJDKClass;
 import com.oracle.svm.shared.util.LogUtils;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.dynamicaccess.JVMCIRuntimeReflection;
@@ -91,8 +90,7 @@ final class Target_java_net_URL {
     private static volatile URLStreamHandlerFactory factory;
 
     @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
-    private static URLStreamHandlerFactory defaultFactory = new DefaultFactory();
+    private static URLStreamHandlerFactory defaultFactory;
 
     @Alias //
     private static Object streamHandlerLock;
@@ -166,46 +164,47 @@ final class Target_java_net_URL {
         return handler;
     }
 
-    /**
-     * Same as in the JDK except: it handles the configured embedded-resource protocol, it does not pull in the JAR
-     * provider by default, and it handles error messages related to metadata better.
-     */
-    @BasedOnJDKClass(className = "java.net.URL$DefaultFactory")
-    private static final class DefaultFactory implements URLStreamHandlerFactory {
-        @Override
-        public URLStreamHandler createURLStreamHandler(String protocol) {
-            if (JavaNetSubstitutions.isDisabledURLProtocol(protocol)) {
-                return null;
-            }
-            if (ResourceProtocol.getValue().equals(protocol)) {
-                return JavaNetSubstitutions.createResourceURLStreamHandler();
-            }
-            // Avoid using reflection during bootstrap.
-            switch (protocol) {
-                case "file":
-                    return new sun.net.www.protocol.file.Handler();
-                case "jrt":
-                    if (JRTSupport.Options.AllowJRTFileSystem.getValue()) {
-                        return JavaNetSubstitutions.newJRTURLStreamHandler();
-                    }
-                    break;
-            }
-            String name = JavaNetSubstitutions.handlerClassName(protocol);
-            try {
-                Object handler = Class.forName(name, false, ClassLoader.getSystemClassLoader()).getDeclaredConstructor().newInstance();
-                return (URLStreamHandler) handler;
-            } catch (ClassNotFoundException | NoSuchMethodException e) {
-                /* A reachable handler class can still lack constructor reflection metadata. */
-                if (JavaNetSubstitutions.KNOWN_JDK_PROTOCOLS.contains(protocol)) {
-                    JavaNetSubstitutions.unsupported(protocol, name, e);
-                }
-            } catch (Exception e) {
-                // For compatibility, all Exceptions are ignored.
-            }
+}
+
+/**
+ * Keep handler construction in java.base so reflection uses the JDK factory's caller module.
+ * Native Image uses its own embedded-resource handler and reachability metadata for JAR handlers.
+ */
+@TargetClass(value = java.net.URL.class, innerClass = "DefaultFactory", onlyWith = RuntimeClassLoading.NoRuntimeClassLoading.class)
+@SuppressWarnings("static-method") // The substitution must match the JDK's instance method.
+final class Target_java_net_URL_DefaultFactory {
+    @Substitute
+    public URLStreamHandler createURLStreamHandler(String protocol) {
+        if (JavaNetSubstitutions.isDisabledURLProtocol(protocol)) {
             return null;
         }
+        if (ResourceProtocol.getValue().equals(protocol)) {
+            return JavaNetSubstitutions.createResourceURLStreamHandler();
+        }
+        // Avoid using reflection during bootstrap.
+        switch (protocol) {
+            case "file":
+                return new sun.net.www.protocol.file.Handler();
+            case "jrt":
+                if (JRTSupport.Options.AllowJRTFileSystem.getValue()) {
+                    return JavaNetSubstitutions.newJRTURLStreamHandler();
+                }
+                break;
+        }
+        String name = JavaNetSubstitutions.handlerClassName(protocol);
+        try {
+            Object handler = Class.forName(name, false, ClassLoader.getSystemClassLoader()).getDeclaredConstructor().newInstance();
+            return (URLStreamHandler) handler;
+        } catch (ClassNotFoundException | NoSuchMethodException e) {
+            /* A reachable handler class can still lack constructor reflection metadata. */
+            if (JavaNetSubstitutions.KNOWN_JDK_PROTOCOLS.contains(protocol)) {
+                JavaNetSubstitutions.unsupported(protocol, name, e);
+            }
+        } catch (Exception e) {
+            // For compatibility, all Exceptions are ignored.
+        }
+        return null;
     }
-
 }
 
 @TargetClass(value = java.net.URL.class, onlyWith = RuntimeClassLoading.WithRuntimeClassLoading.class)

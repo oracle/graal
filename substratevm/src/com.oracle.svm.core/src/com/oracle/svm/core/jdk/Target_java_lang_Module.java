@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.shared.util.BasedOnJDKFile;
+import com.oracle.svm.shared.util.SubstrateUtil;
 
 /**
  * Substitution class for {@link java.lang.Module}. We need to substitute native methods
@@ -71,6 +72,28 @@ public final class Target_java_lang_Module {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.None, isFinal = true) //
     static Module EVERYONE_MODULE;
     // Checkstyle: resume
+
+    @Alias private volatile Set<Module> reads;
+
+    @Substitute
+    @BasedOnJDKFile("https://github.com/graalvm/labs-openjdk/blob/jdk-25+21/src/java.base/share/classes/java/lang/Module.java")
+    public boolean canRead(Module other) {
+        Objects.requireNonNull(other);
+        Module self = SubstrateUtil.cast(this, Module.class);
+        if (!self.isNamed() || self == other) {
+            return true;
+        }
+
+        // The image can store an ALL-UNNAMED read in the initial module read set.
+        Module target = other.isNamed() ? other : ALL_UNNAMED_MODULE;
+        Set<Module> initialReads = reads;
+        if (initialReads != null && initialReads.contains(target)) {
+            return true;
+        }
+
+        var reflectiveReads = Target_java_lang_Module_ReflectionData.reads;
+        return reflectiveReads.containsKeyPair(self, other) || (target != other && reflectiveReads.containsKeyPair(self, target));
+    }
 
     @Substitute
     @TargetElement(onlyWith = ForeignDisabled.class)

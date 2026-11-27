@@ -25,7 +25,6 @@
 package com.oracle.svm.core.methodhandles;
 
 import static com.oracle.svm.core.invoke.MethodHandleUtils.getResolvedMember;
-import static com.oracle.svm.shared.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.shared.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.CallSite;
@@ -65,7 +64,6 @@ import com.oracle.svm.shared.util.ReflectionUtil;
 import com.oracle.svm.shared.util.SubstrateUtil;
 import com.oracle.svm.shared.util.VMError;
 
-import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import sun.invoke.util.VerifyAccess;
 
@@ -280,9 +278,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         Class<?> declaringClass = self.getDeclaringClass();
         Target_java_lang_invoke_MemberName resolved = Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
         assert resolved == null || resolved.reflectAccess != null || resolved.intrinsic != null || getResolvedMember(resolved) != null;
+        // Call the JDK access check directly from the substitution, where it belongs to java.base.
         if (resolved != null && resolved.reflectAccess != null && caller != null &&
-                        !Util_java_lang_invoke_MethodHandleNatives.verifyAccess(declaringClass, resolved.reflectAccess.getDeclaringClass(), resolved.reflectAccess.getModifiers(), caller,
-                                        lookupMode)) {
+                        !VerifyAccess.isMemberAccessible(declaringClass, resolved.reflectAccess.getDeclaringClass(), resolved.reflectAccess.getModifiers(), caller, null, lookupMode)) {
             throw new IllegalAccessError(resolved + " is not accessible from " + caller);
         }
         return resolved;
@@ -510,23 +508,6 @@ final class Util_java_lang_invoke_MethodHandleNatives {
             } else {
                 throw new NoSuchFieldError(e.getMessage());
             }
-        }
-    }
-
-    private static Method verifyAccess;
-
-    static boolean verifyAccess(Class<?> refc, Class<?> defc, int mods, Class<?> lookupClass, int allowedModes) {
-        if (verifyAccess == null) {
-            try {
-                verifyAccess = VerifyAccess.class.getDeclaredMethod("isMemberAccessible", Class.class, Class.class, int.class, Class.class, Class.class, int.class);
-            } catch (NoSuchMethodException e) {
-                throw shouldNotReachHere(e);
-            }
-        }
-        try {
-            return (boolean) verifyAccess.invoke(null, refc, defc, mods, lookupClass, null, allowedModes);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new GraalError(e);
         }
     }
 }

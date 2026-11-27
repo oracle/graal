@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 final class Target_java_lang_Module_ReflectionData {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.WeakPairMap") //
-    private static Target_java_lang_WeakPairMap<Module, Module, Boolean> reads;
+    static Target_java_lang_WeakPairMap<Module, Module, Boolean> reads;
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.WeakPairMap") //
     private static Target_java_lang_WeakPairMap<Module, Module, Map<String, Boolean>> exports;

@@ -510,6 +510,9 @@ public final class NativeImageClassLoaderSupport {
 
     private HostedOptionParser hostedOptionParser;
     private OptionValues parsedHostedOptions;
+    private List<AddExportsAndOpensAndReadsFormatValue> imageExports = List.of();
+    private List<AddExportsAndOpensAndReadsFormatValue> imageOpens = List.of();
+    private List<AddExportsAndOpensAndReadsFormatValue> imageReads = List.of();
     private List<String> remainingArguments;
 
     public HostedOptionParser setupHostedOptionParser(List<String> arguments, Predicate<OptionDescriptors> builderOptionFilter) {
@@ -690,41 +693,35 @@ public final class NativeImageClassLoaderSupport {
             processListModulesOption(moduleLayerForImageBuild);
         }
 
-        processOption(NativeImageClassLoaderOptions.AddExports).forEach(val -> {
-            if (val.module.getPackages().contains(val.packageName)) {
-                if (val.targetModules.isEmpty()) {
-                    Modules.addExportsToAllUnnamed(val.module, val.packageName);
-                } else {
-                    for (Module targetModule : val.targetModules) {
-                        Modules.addExports(val.module, val.packageName, targetModule);
-                    }
-                }
+        imageExports = processOption(NativeImageClassLoaderOptions.AddExports).filter(NativeImageClassLoaderSupport::hasPackage).toList();
+        for (var export : imageExports) {
+            if (export.targetModules.isEmpty()) {
+                Modules.addExportsToAllUnnamed(export.module, export.packageName);
             } else {
-                warn("package " + val.packageName + " not in " + val.module.getName());
-            }
-        });
-        processOption(NativeImageClassLoaderOptions.AddOpens).forEach(val -> {
-            if (val.module.getPackages().contains(val.packageName)) {
-                if (val.targetModules.isEmpty()) {
-                    Modules.addOpensToAllUnnamed(val.module, val.packageName);
-                } else {
-                    for (Module targetModule : val.targetModules) {
-                        Modules.addOpens(val.module, val.packageName, targetModule);
-                    }
-                }
-            } else {
-                warn("package " + val.packageName + " not in " + val.module.getName());
-            }
-        });
-        processOption(NativeImageClassLoaderOptions.AddReads).forEach(val -> {
-            if (val.targetModules.isEmpty()) {
-                ReflectionUtil.invokeMethod(implAddReadsAllUnnamed, val.module);
-            } else {
-                for (Module targetModule : val.targetModules) {
-                    Modules.addReads(val.module, targetModule);
+                for (Module target : export.targetModules) {
+                    Modules.addExports(export.module, export.packageName, target);
                 }
             }
-        });
+        }
+        imageOpens = processOption(NativeImageClassLoaderOptions.AddOpens).filter(NativeImageClassLoaderSupport::hasPackage).toList();
+        for (var open : imageOpens) {
+            if (open.targetModules.isEmpty()) {
+                Modules.addOpensToAllUnnamed(open.module, open.packageName);
+            } else {
+                for (Module target : open.targetModules) {
+                    Modules.addOpens(open.module, open.packageName, target);
+                }
+            }
+        }
+        imageReads = processOption(NativeImageClassLoaderOptions.AddReads).toList();
+        for (var read : imageReads) {
+            if (read.allUnnamed) {
+                ReflectionUtil.invokeMethod(implAddReadsAllUnnamed, read.module);
+            }
+            for (Module targetModule : read.targetModules) {
+                Modules.addReads(read.module, targetModule);
+            }
+        }
         NativeImageClassLoaderOptions.EnableNativeAccess.getValue(parsedHostedOptions).values().forEach(moduleName -> {
             if (ALL_UNNAMED.equals(moduleName)) {
                 ReflectionUtil.invokeMethod(implAddEnableNativeAccessToAllUnnamed, null);
@@ -877,8 +874,28 @@ public final class NativeImageClassLoaderSupport {
         this.layerFile = layerFile;
     }
 
-    private record AddExportsAndOpensAndReadsFormatValue(Module module, String packageName,
-                    List<Module> targetModules) {
+    List<AddExportsAndOpensAndReadsFormatValue> getImageExports() {
+        return imageExports;
+    }
+
+    List<AddExportsAndOpensAndReadsFormatValue> getImageOpens() {
+        return imageOpens;
+    }
+
+    List<AddExportsAndOpensAndReadsFormatValue> getImageReads() {
+        return imageReads;
+    }
+
+    private static boolean hasPackage(AddExportsAndOpensAndReadsFormatValue value) {
+        if (value.module.getPackages().contains(value.packageName)) {
+            return true;
+        }
+        warn("package " + value.packageName + " not in " + value.module.getName());
+        return false;
+    }
+
+    record AddExportsAndOpensAndReadsFormatValue(Module module, String packageName,
+                    List<Module> targetModules, boolean allUnnamed) {
     }
 
     private AddExportsAndOpensAndReadsFormatValue asAddExportsAndOpensAndReadsFormatValue(OptionKey<?> option, ValueWithOrigin<String> valueOrigin) {
@@ -936,16 +953,18 @@ public final class NativeImageClassLoaderSupport {
         Module module = findModule(moduleName).orElseThrow(() -> {
             throw userWarningModuleNotFound(option, moduleName);
         });
+        boolean allUnnamed = targetModuleNamesList.contains(ALL_UNNAMED);
         List<Module> targetModules;
-        if (targetModuleNamesList.contains(ALL_UNNAMED)) {
+        if (allUnnamed && !reads) {
             targetModules = Collections.emptyList();
         } else {
             targetModules = targetModuleNamesList.stream()
+                            .filter(mn -> !mn.equals(ALL_UNNAMED))
                             .map(mn -> findModule(mn)
                                             .orElseThrow(() -> userWarningModuleNotFound(option, mn)))
                             .collect(Collectors.toList());
         }
-        return new AddExportsAndOpensAndReadsFormatValue(module, packageName, targetModules);
+        return new AddExportsAndOpensAndReadsFormatValue(module, packageName, targetModules, allUnnamed);
     }
 
     private static UserError.UserException userErrorAddExportsAndOpensAndReads(OptionKey<?> option, OptionOrigin origin, String value, String detailMessage) {
