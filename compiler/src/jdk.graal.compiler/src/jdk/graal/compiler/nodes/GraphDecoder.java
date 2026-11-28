@@ -97,7 +97,6 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -3593,18 +3592,33 @@ class LoopDetector implements Runnable {
      * {@link MethodScope#loopExplosionHead} is the loop header for the outer loop, and we ensured
      * that we have a {@link Loop} data object for it in {@link #irreducibleLoopHandler}.
      *
-     * Now we need to insert the state machine. We have several implementation restrictions to make
-     * that efficient:
-     * <ul>
-     * <li>There must be only one loop variable, i.e., one value that is different in the
-     * {@link FrameState} of the different loop headers.</li>
-     * <li>The loop variable must use the primitive {@code int} type, or the primitive {@code long}
-     * type with values that are representable as {@code int}, because the state machine uses an
-     * {@link IntegerSwitchNode switch node} with {@code int} keys. A {@code long} loop variable is
-     * narrowed only for the switch; the original value is preserved in the frame state.</li>
-     * <li>The values of the loop variable that are merged are {@link PrimitiveConstant compile time
-     * constants}.</li>
-     * </ul>
+     * Extend the state machine one decoded loop entry at a time. Each backedge in {@code loop.ends}
+     * currently targets {@code loop.header}. Redirect those backedges to the shared dispatcher
+     * header and add a switch case that leads back to {@code loop.header}. If execution deoptimizes
+     * using the shared header's frame state, the interpreter must recover the values for the entry
+     * selected by the incoming edge. In outline:
+     *
+     * <pre>
+     * entry = loop.header (original destination of the edges being redirected)
+     * label = explicit merge key at entry, or a synthetic ID for entry
+     * record label as the incoming value for the selector phi
+     * for each frame-state value, virtual-object entry, or materialized reference:
+     *     merge the dispatcher value with the value at entry, recording incoming values by phi
+     * for each redirected edge:
+     *     append each recorded value to its corresponding phi
+     *     redirect the edge to the dispatcher
+     * dispatch to entry when the selector equals label
+     * </pre>
+     *
+     * See {@link #mergeIrreducibleLoopState} for an example of the resulting phi inputs.
+     *
+     * An explicit merge key must have compile-time constant values of primitive type {@code int},
+     * or {@code long} values representable as {@code int}, because the state machine uses an
+     * {@link IntegerSwitchNode} with {@code int} keys. A {@code long} key is narrowed only for the
+     * switch; its original value is preserved in the frame state. Without an explicit key, the
+     * dispatcher assigns a synthetic integer ID to each decoded entry instead of inferring a key
+     * from differing frame values. In either case, differing compatible frame values and
+     * virtual-object fields are merged separately in the dispatcher's frame state.
      */
     private void handleIrreducibleLoop(Loop loop) {
         assert loop != irreducibleLoopHandler : Assertions.errorMessageContext("loop", loop, "irreducibleLoop", irreducibleLoopHandler);
@@ -3618,39 +3632,31 @@ class LoopDetector implements Runnable {
         assert loopValues.size() == explosionHeadValues.size() : Assertions.errorMessage(loopValues, explosionHeadValues);
 
         /*
-         * Find the loop variable, and the value of the loop variable for our loop and the outermost
-         * loop. There must be exactly one loop variable.
+         * entryKey is the switch label for loop.header, the destination of every edge in loop.ends.
+         * When those edges are redirected to the dispatcher, each contributes entryKey to the
+         * selector phi. The corresponding switch case leads to loop.header.
+         *
+         * dispatchKey describes the dispatcher before adding this entry. For the first switch, it
+         * is the label for the original outermost entry and seeds the selector phi. For subsequent
+         * switches, it is the existing selector phi, which we extend.
+         *
+         * With an explicit merge key, each entry's label is the key's constant value at that entry.
+         * Otherwise, the decoder assigns labels in order: 0 for the outermost entry, then 1, 2, ...
+         * for additional entries.
          */
-        int loopVariableIndex = -1;
-        ValueNode loopValue = null;
-        ValueNode explosionHeadValue = null;
+        ValueNode entryKey;
+        ValueNode dispatchKey;
         GraphDecoder.LoopExplosionMergeKeyFilter keyFilter = methodScope.loopExplosionHeadKeyFilter;
         if (keyFilter != null) {
-            if (!keyFilter.sameNonKeyState(loopState, explosionHeadState)) {
-                throw bailout("must have only one variable that is changed in loop: non-key state differs between loop headers");
-            }
-            loopValue = keyFilter.resolveMarkedValues(loopState).getFirst();
-            explosionHeadValue = keyFilter.resolveMarkedValues(explosionHeadState).getFirst();
+            entryKey = keyFilter.resolveMarkedValues(loopState).getFirst();
+            dispatchKey = keyFilter.resolveMarkedValues(explosionHeadState).getFirst();
         } else {
-            for (int i = 0; i < loopValues.size(); i++) {
-                ValueNode curLoopValue = loopValues.get(i);
-                ValueNode curExplosionHeadValue = explosionHeadValues.get(i);
-
-                if (curLoopValue != curExplosionHeadValue) {
-                    if (loopVariableIndex != -1) {
-                        throw bailout("must have only one variable that is changed in loop. " + loopValue + " != " + explosionHeadValue + " and " + curLoopValue + " != " + curExplosionHeadValue);
-                    }
-
-                    loopVariableIndex = i;
-                    loopValue = curLoopValue;
-                    explosionHeadValue = curExplosionHeadValue;
-                }
-            }
-            assert loopVariableIndex != -1;
+            entryKey = ConstantNode.forInt(irreducibleLoopSwitch == null ? 1 : irreducibleLoopSwitch.keyCount(), graph);
+            dispatchKey = irreducibleLoopSwitch == null ? ConstantNode.forInt(0, graph) : irreducibleLoopSwitch.value();
         }
-        assert explosionHeadValue != null;
+        assert dispatchKey != null;
 
-        ValuePhiNode loopVariablePhi;
+        ValuePhiNode dispatchPhi;
         ValueNode switchValue;
         SortedMap<Integer, AbstractBeginNode> dispatchTable = new TreeMap<>();
         AbstractBeginNode unreachableDefaultSuccessor;
@@ -3659,37 +3665,20 @@ class LoopDetector implements Runnable {
              * This is the first irreducible loop. We need to build the initial state machine
              * (dispatch for the loop header of the outermost loop).
              */
-            assert !irreducibleLoopHandler.header.isPhiAtMerge(explosionHeadValue);
+            assert !irreducibleLoopHandler.header.isPhiAtMerge(dispatchKey);
             assert irreducibleLoopHandler.header.phis().isEmpty();
 
-            /* The new phi function for the loop variable. */
-            loopVariablePhi = graph.addWithoutUnique(new ValuePhiNode(explosionHeadValue.stamp(NodeView.DEFAULT).unrestricted(), irreducibleLoopHandler.header));
+            /* The selector phi for the dispatcher. */
+            dispatchPhi = graph.addWithoutUnique(new ValuePhiNode(dispatchKey.stamp(NodeView.DEFAULT).unrestricted(), irreducibleLoopHandler.header));
             for (int i = 0; i < irreducibleLoopHandler.header.phiPredecessorCount(); i++) {
-                loopVariablePhi.addInput(explosionHeadValue);
+                dispatchPhi.addInput(dispatchKey);
             }
 
-            /*
-             * Build the new FrameState for the loop header. There is only one change in comparison
-             * to the old FrameState: the loop variable is replaced with the phi function.
-             */
-            FrameState newFrameState;
+            /* Only explicit keys are part of the frame state; synthetic IDs are not. */
             if (keyFilter != null) {
-                newFrameState = keyFilter.duplicateWithMarkedValue(explosionHeadState, loopVariablePhi);
-            } else {
-                int loopVariableIndexCopy = loopVariableIndex;
-                FrameState.ValueFunction valueFunction = new FrameState.ValueFunction() {
-                    @Override
-                    public ValueNode apply(int index, ValueNode node) {
-                        if (index == loopVariableIndexCopy) {
-                            return loopVariablePhi;
-                        } else {
-                            return node;
-                        }
-                    }
-                };
-                newFrameState = graph.add(explosionHeadState.duplicate(valueFunction));
+                FrameState newFrameState = keyFilter.duplicateWithMarkedValue(explosionHeadState, dispatchPhi);
+                explosionHeadState.replaceAtUsages(newFrameState);
             }
-            explosionHeadState.replaceAtUsages(newFrameState);
 
             /*
              * Disconnect the outermost loop header from its loop body, so that we can later on
@@ -3699,8 +3688,8 @@ class LoopDetector implements Runnable {
             irreducibleLoopHandler.header.setNext(null);
             BeginNode handlerBegin = graph.add(new BeginNode());
             handlerBegin.setNext(handlerNext);
-            dispatchTable.put(asInt(explosionHeadValue), handlerBegin);
-            switchValue = asIntSwitchValue(loopVariablePhi);
+            dispatchTable.put(asInt(dispatchKey), handlerBegin);
+            switchValue = asIntSwitchValue(dispatchPhi);
 
             /*
              * We know that there will always be a matching key in the switch. But Graal always
@@ -3716,14 +3705,12 @@ class LoopDetector implements Runnable {
              * switch node before. We re-create the dispatch state machine of that switch, so that
              * we can extend it with one more branch.
              */
-            assert irreducibleLoopHandler.header.isPhiAtMerge(explosionHeadValue);
-            assert irreducibleLoopHandler.header.phis().count() == 1 : Assertions.errorMessageContext("irrHeader.phis", irreducibleLoopHandler.header.phis());
-            assert irreducibleLoopHandler.header.phis().first() == explosionHeadValue : Assertions.errorMessageContext("irrHeader.phis", irreducibleLoopHandler.header.phis());
+            assert irreducibleLoopHandler.header.isPhiAtMerge(dispatchKey);
 
             /* We can modify the phi function used by the old switch node. */
-            loopVariablePhi = (ValuePhiNode) explosionHeadValue;
+            dispatchPhi = (ValuePhiNode) dispatchKey;
             switchValue = irreducibleLoopSwitch.value();
-            guarantee(isIntSwitchValue(switchValue, loopVariablePhi), "unexpected switch value %s for loop variable %s", switchValue, loopVariablePhi);
+            guarantee(isIntSwitchValue(switchValue, dispatchPhi), "unexpected switch value %s for dispatcher selector %s", switchValue, dispatchPhi);
 
             /*
              * We cannot modify the old switch node. Insert all information from the old switch node
@@ -3748,21 +3735,185 @@ class LoopDetector implements Runnable {
         EndNode dispatchEnd = graph.add(new EndNode());
         dispatchBegin.setNext(dispatchEnd);
         loop.header.addForwardEnd(dispatchEnd);
-        int intLoopValue = asInt(loopValue);
-        assert !dispatchTable.containsKey(intLoopValue);
-        dispatchTable.put(intLoopValue, dispatchBegin);
+        int intEntryKey = asInt(entryKey);
+        assert !dispatchTable.containsKey(intEntryKey);
+        dispatchTable.put(intEntryKey, dispatchBegin);
+
+        FrameState dispatchState = irreducibleLoopHandler.header.stateAfter();
+        FrameState mergedState = mergeIrreducibleLoopState(dispatchState, loopState, dispatchPhi, entryKey, loop.ends.size());
+        if (mergedState != dispatchState) {
+            dispatchState.replaceAtUsages(mergedState);
+        }
 
         /* Disconnect the ends of our loop and re-connect them to the outermost loop header. */
         for (EndNode end : loop.ends) {
             loop.header.removeEnd(end);
             irreducibleLoopHandler.ends.add(end);
             irreducibleLoopHandler.header.addForwardEnd(end);
-            loopVariablePhi.addInput(loopValue);
         }
 
         /* Build and insert the switch node. */
         irreducibleLoopSwitch = graph.add(createSwitch(switchValue, dispatchTable, unreachableDefaultSuccessor));
         irreducibleLoopHandler.header.setNext(irreducibleLoopSwitch);
+    }
+
+    /**
+     * Unlike loop-explosion merging, which merges states for the same key, the irreducible-loop
+     * dispatcher combines states for distinct entries. With an explicit merge key, non-key state
+     * must agree for occurrences of the same key, but need not agree between distinct keys: for
+     * example, a stack pointer can be fixed for each BCI while having different values at different
+     * BCIs. The dispatcher therefore needs phis for differing non-key values as well as the key,
+     * preserving their correlation for deoptimization at the shared header. These phis are
+     * introduced after loop explosion, so they do not prevent specialization of the interpreter's
+     * accesses (for example, accesses indexed by a virtualized stack pointer).
+     *
+     * Requiring distinct entries to have the same stack pointer would reject valid programs.
+     * Merging only the selector would instead leave incorrect values for deoptimization. For
+     * example, consider three predecessors P0, P1, and P2 and an unmarked dispatcher header H:
+     *
+     * <pre>
+     * Before:                         After:
+     * P0 ---------> A                 P0 ---+
+     * P1 ---+                         P1 ---+--> H --> switch(id) -- 0 --> A
+     * P2 ---+-----> B                 P2 ---+                |
+     *                                                        +------ 1 --> B
+     *
+     * At H, with inputs ordered by predecessor (P0, P1, P2):
+     *     id  = phi(  0,   1,   1)    // dispatch
+     *     BCI = phi(101, 202, 202)    // deoptimization
+     *     SP  = phi( 65,  66,  66)    // deoptimization
+     * </pre>
+     *
+     * P1 and P2 share one switch case because both originally targeted B, but each contributes its
+     * own input to every phi. Arriving from P1, for example, selects B during execution and
+     * restores BCI 202 and stack pointer 66 if execution deoptimizes at H.
+     *
+     * Both states must reference the same outer frame state, which is therefore not merged.
+     * {@link #handleIrreducibleLoop(Loop)} checks this identity before constructing the dispatcher.
+     * Installing the initial explicit-key phi may replace the dispatcher frame state with a copy,
+     * but that copy retains the same outer frame state.
+     *
+     * Copy the frame state and modified virtual-object mappings only when introducing a new phi:
+     * the original entry states must retain their specialized values. Extending an existing phi
+     * changes its inputs in place but does not replace any frame-state slot or object mapping, so
+     * no copy is required. Every phi gets one input per redirected backedge, including phis
+     * introduced for earlier entries and the dispatch key itself.
+     *
+     * @param dispatchState the current dispatcher header state; existing dispatcher phis referenced
+     *            by this state or its virtual-object mappings are extended in place
+     * @param entryState the specialized state for the loop entry being added to the dispatcher,
+     *            shared by all of its redirected backedges and left unchanged by this method
+     * @param dispatchPhi the dispatcher selector phi, which may be a synthetic ID absent from the
+     *            frame state
+     * @param entryKey the selector value for the entry being added
+     * @param newPredecessors the number of backedges being redirected from this entry to the
+     *            dispatcher; these must not yet have been added to the dispatcher header
+     * @return the merged dispatcher state: {@code dispatchState} if no state slot or object mapping
+     *         needs replacement, otherwise a copy containing the new phis and copied modified
+     *         object mappings
+     */
+    private FrameState mergeIrreducibleLoopState(FrameState dispatchState, FrameState entryState, ValuePhiNode dispatchPhi, ValueNode entryKey, int newPredecessors) {
+        assert dispatchState.outerFrameState() == entryState.outerFrameState() : Assertions.errorMessage(dispatchState, dispatchState.outerFrameState(), entryState, entryState.outerFrameState());
+        if (dispatchState.virtualObjectMappingCount() != entryState.virtualObjectMappingCount()) {
+            throw bailout("cannot merge different virtual-object layouts in the irreducible-loop dispatcher");
+        }
+        EconomicMap<ValuePhiNode, ValueNode> inputs = EconomicMap.create(Equivalence.IDENTITY);
+        inputs.put(dispatchPhi, entryKey);
+        FrameState result = dispatchState;
+        NodeInputList<ValueNode> dispatchValues = dispatchState.values();
+        NodeInputList<ValueNode> entryValues = entryState.values();
+        for (int i = 0; i < dispatchValues.size(); i++) {
+            ValueNode current = dispatchValues.get(i);
+            ValueNode incoming = entryValues.get(i);
+            ValueNode merged = mergeIrreducibleLoopValue(current, incoming, inputs);
+            if (merged != current) {
+                if (result == dispatchState) {
+                    result = dispatchState.duplicate();
+                }
+                result.values().set(i, merged);
+            }
+        }
+        for (int i = 0; i < dispatchState.virtualObjectMappingCount(); i++) {
+            EscapeObjectState current = dispatchState.virtualObjectMappings().get(i);
+            EscapeObjectState incoming = entryState.virtualObjectMappings().get(i);
+            if (current.object() != incoming.object() || current.getClass() != incoming.getClass()) {
+                throw bailout("cannot merge different virtual-object layouts in the irreducible-loop dispatcher");
+            }
+            if (current instanceof VirtualObjectState currentVirtual) {
+                VirtualObjectState incomingVirtual = (VirtualObjectState) incoming;
+                VirtualObjectState merged = currentVirtual;
+                for (int j = 0; j < currentVirtual.values().size(); j++) {
+                    ValueNode currentValue = currentVirtual.values().get(j);
+                    ValueNode incomingValue = incomingVirtual.values().get(j);
+                    ValueNode value = mergeIrreducibleLoopValue(currentValue, incomingValue, inputs);
+                    if (value != currentValue) {
+                        if (merged == currentVirtual) {
+                            merged = currentVirtual.duplicateWithVirtualState();
+                        }
+                        merged.values().set(j, value);
+                    }
+                }
+                if (merged != currentVirtual) {
+                    if (result == dispatchState) {
+                        result = dispatchState.duplicate();
+                    }
+                    result.virtualObjectMappings().set(i, merged);
+                }
+            } else if (current instanceof MaterializedObjectState currentMaterialized) {
+                MaterializedObjectState incomingMaterialized = (MaterializedObjectState) incoming;
+                ValueNode value = mergeIrreducibleLoopValue(currentMaterialized.materializedValue(), incomingMaterialized.materializedValue(), inputs);
+                if (value != currentMaterialized.materializedValue()) {
+                    if (result == dispatchState) {
+                        result = dispatchState.duplicate();
+                    }
+                    result.virtualObjectMappings().set(i, graph.addWithoutUnique(new MaterializedObjectState(current.object(), value)));
+                }
+            } else {
+                throw shouldNotReachHere("Unknown subclass of virtual object state " + current);
+            }
+        }
+        assert inputs.size() == irreducibleLoopHandler.header.phis().count() : Assertions.errorMessage(inputs, irreducibleLoopHandler.header.phis());
+        var cursor = inputs.getEntries();
+        while (cursor.advance()) {
+            for (int i = 0; i < newPredecessors; i++) {
+                cursor.getKey().addInput(cursor.getValue());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Merges one frame-state value, virtual-object entry, or materialized reference and returns the
+     * value to use at the dispatcher. If {@code current == incoming}, reuse the value unless it is
+     * already a phi at this header. An existing dispatcher phi must have its incoming value
+     * recorded even when {@code current == incoming}. For differing compatible values, create a phi
+     * with {@code current} as its input for every existing predecessor. Bail out if the two values
+     * cannot be merged.
+     *
+     * In both phi cases, {@code inputs} records the value for the entry being added. Repeated
+     * references to the same phi must supply the same incoming node; a consistency guarantee
+     * enforces this. This helper records, but does not append, the new predecessor inputs. The
+     * caller appends each recorded value once per redirected edge after processing all locations,
+     * so multiple locations sharing a phi do not append duplicate inputs for the same edge.
+     */
+    private ValueNode mergeIrreducibleLoopValue(ValueNode current, ValueNode incoming, EconomicMap<ValuePhiNode, ValueNode> inputs) {
+        if (current == incoming && !irreducibleLoopHandler.header.isPhiAtMerge(current)) {
+            return current;
+        }
+        if (current == null || incoming == null || current instanceof VirtualObjectNode || incoming instanceof VirtualObjectNode || current.getStackKind() != incoming.getStackKind()) {
+            throw bailout("cannot merge incompatible state values in the irreducible-loop dispatcher");
+        }
+        if (current instanceof ValuePhiNode phi && irreducibleLoopHandler.header.isPhiAtMerge(phi)) {
+            ValueNode previous = inputs.put(phi, incoming);
+            guarantee(previous == null || previous == incoming, "inconsistent inputs for dispatcher phi %s: %s and %s", phi, previous, incoming);
+            return phi;
+        }
+        ValuePhiNode phi = graph.addWithoutUnique(new ValuePhiNode(current.stamp(NodeView.DEFAULT).unrestricted(), irreducibleLoopHandler.header));
+        for (int i = 0; i < irreducibleLoopHandler.header.phiPredecessorCount(); i++) {
+            phi.addInput(current);
+        }
+        inputs.put(phi, incoming);
+        return phi;
     }
 
     private static int asInt(ValueNode node) {

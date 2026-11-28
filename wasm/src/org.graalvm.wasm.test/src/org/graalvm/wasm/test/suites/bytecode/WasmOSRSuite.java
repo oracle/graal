@@ -42,7 +42,9 @@ package org.graalvm.wasm.test.suites.bytecode;
 
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 
 import org.graalvm.polyglot.Context;
@@ -54,6 +56,7 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 public class WasmOSRSuite {
@@ -94,6 +97,7 @@ public class WasmOSRSuite {
         eb.option("wasm.Builtins", "wasi_snapshot_preview1");
         eb.option("engine.OSRCompilationThreshold", "100");
         eb.option("engine.BackgroundCompilation", "false");
+        eb.option("engine.CompilationFailureAction", "Throw");
         try (Engine engine = eb.build()) {
             for (int i = 0; i < N_CONTEXTS; i++) {
                 try (Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
@@ -129,14 +133,9 @@ public class WasmOSRSuite {
                         """, EnumSet.of(WasmBinaryTools.WabtOption.TAIL_CALLS)));
         final Source source = Source.newBuilder(WasmLanguage.ID, binary, "main").build();
 
-        var engineBuilder = Engine.newBuilder().allowExperimentalOptions(true);
+        var engineBuilder = synchronousOSREngineBuilder();
         engineBuilder.option("wasm.TailCalls", "true");
         engineBuilder.option("wasm.TailCallLoops", "true");
-        engineBuilder.option("engine.OSR", "true");
-        engineBuilder.option("engine.OSRCompilationThreshold", "1");
-        engineBuilder.option("engine.FirstTierCompilationThreshold", "1000000");
-        engineBuilder.option("engine.LastTierCompilationThreshold", "1000000");
-        engineBuilder.option("engine.BackgroundCompilation", "false");
 
         try (Engine engine = engineBuilder.build();
                         Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
@@ -173,13 +172,8 @@ public class WasmOSRSuite {
                         """, EnumSet.of(WasmBinaryTools.WabtOption.EXCEPTIONS)));
         final Source source = Source.newBuilder(WasmLanguage.ID, binary, "main").build();
 
-        var engineBuilder = Engine.newBuilder().allowExperimentalOptions(true);
+        var engineBuilder = synchronousOSREngineBuilder();
         engineBuilder.option("wasm.Exceptions", "true");
-        engineBuilder.option("engine.OSR", "true");
-        engineBuilder.option("engine.OSRCompilationThreshold", "1");
-        engineBuilder.option("engine.FirstTierCompilationThreshold", "1000000");
-        engineBuilder.option("engine.LastTierCompilationThreshold", "1000000");
-        engineBuilder.option("engine.BackgroundCompilation", "false");
 
         try (Engine engine = engineBuilder.build();
                         Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
@@ -188,5 +182,176 @@ public class WasmOSRSuite {
                             () -> exports.getMember("_main").execute(OSR_TRIGGER_ITERATIONS));
             Assert.assertTrue(exception.isGuestException());
         }
+    }
+
+    /**
+     * GR-81497: OSR into an inner loop can require irreducible-loop reconstruction. The operand
+     * retained below the inner loop gives its header a different stack height from the outer
+     * header, even though each bytecode offset has a consistent stack height.
+     */
+    @Test
+    public void testOSRInNestedLoopWithDifferentStackHeights() throws IOException, InterruptedException {
+        runNestedLoopOSR(true);
+    }
+
+    @Test
+    public void testOSRInNestedLoopWithSameStackHeight() throws IOException, InterruptedException {
+        runNestedLoopOSR(false);
+    }
+
+    private static void runNestedLoopOSR(boolean extraOperand) throws IOException, InterruptedException {
+        Assume.assumeTrue("Optimizing runtime is not available", Engine.supportsCompilation());
+        final ByteSequence binary = ByteSequence.create(compileWat("nested-loop-osr", """
+                        (module
+                            (func (export "run") (result i32)
+                                (local $remaining i32) (local $i i32) (local $sum i32)
+                                i32.const 2048
+                                local.set $remaining
+                                (loop $outer
+                                    local.get $remaining
+                                    i32.const 1
+                                    i32.sub
+                                    local.set $remaining
+                                    (block $skip_inner
+                                        ;; The outer loop can bypass the inner loop.
+                                        local.get $remaining
+                                        i32.const 1
+                                        i32.and
+                                        br_if $skip_inner
+                                        %s
+                                        i32.const 2
+                                        local.set $i
+                                        (loop $inner
+                                            local.get $sum
+                                            i32.const 1
+                                            i32.add
+                                            local.set $sum
+                                            local.get $i
+                                            i32.const 1
+                                            i32.sub
+                                            local.set $i
+                                            ;; Exit directly to the outer header or fall through.
+                                            local.get $remaining
+                                            i32.const 2
+                                            i32.and
+                                            if
+                                                local.get $i
+                                                i32.eqz
+                                                br_if $outer
+                                            end
+                                            local.get $i
+                                            br_if $inner
+                                        )
+                                        %s
+                                    )
+                                    local.get $remaining
+                                    br_if $outer
+                                )
+                                local.get $sum
+                            )
+                        )
+                        """.formatted(extraOperand ? "i32.const 42" : "", extraOperand ? "drop" : "")));
+        final Source source = Source.newBuilder(WasmLanguage.ID, binary, "nested-loop-osr").build();
+        // The first OSR poll after 1024 loop iterations targets the inner loop.
+        var engineBuilder = synchronousOSREngineBuilder();
+        try (Engine engine = engineBuilder.build(); Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
+            Value exports = context.eval(source).newInstance().getMember("exports");
+            Assert.assertEquals(2048, exports.getMember("run").execute().asInt());
+        }
+    }
+
+    @Test
+    public void testOSRPreservesTypedLocalsAndLiveStackSlots() throws IOException, InterruptedException {
+        Assume.assumeTrue("Optimizing runtime is not available", Engine.supportsCompilation());
+        final ByteSequence binary = ByteSequence.create(compileWat("typed-osr-locals", """
+                        (module
+                            (func (export "run")
+                                (param $i i32) (param $l i64) (param $f f32) (param $d f64)
+                                (param $reference externref) (result i32 externref)
+                                (local $vector v128) (local $remaining i32)
+                                v128.const i32x4 1 2 -3 -4
+                                local.set $vector
+                                i32.const 2048
+                                local.set $remaining
+                                ;; This operand remains live below the loop's temporary values.
+                                i64.const 0x1122334455667788
+                                (loop $loop (param i64) (result i64)
+                                    ;; Reuse one temporary slot for reference and primitive values.
+                                    local.get $reference
+                                    drop
+                                    i64.const -1
+                                    drop
+                                    f64.const -0.0
+                                    drop
+                                    local.get $remaining
+                                    i32.const 1
+                                    i32.sub
+                                    local.tee $remaining
+                                    br_if $loop
+                                )
+                                i64.const 0x1122334455667788
+                                i64.eq
+                                local.get $i
+                                i32.const 0x89abcdef
+                                i32.eq
+                                i32.and
+                                local.get $l
+                                i64.const 0xfedcba9876543210
+                                i64.eq
+                                i32.and
+                                local.get $f
+                                i32.reinterpret_f32
+                                i32.const 0x80000000
+                                i32.eq
+                                i32.and
+                                local.get $d
+                                i64.reinterpret_f64
+                                i64.const 0x8000000000000000
+                                i64.eq
+                                i32.and
+                                local.get $vector
+                                i32x4.extract_lane 2
+                                i32.const -3
+                                i32.eq
+                                i32.and
+                                local.get $vector
+                                i32x4.extract_lane 3
+                                i32.const -4
+                                i32.eq
+                                i32.and
+                                local.get $reference
+                            )
+                        )
+                        """));
+        final Source source = Source.newBuilder(WasmLanguage.ID, binary, "typed-osr-locals").build();
+        ByteArrayOutputStream compilationLog = new ByteArrayOutputStream();
+        var engineBuilder = synchronousOSREngineBuilder().logHandler(compilationLog);
+        engineBuilder.option("engine.TraceCompilation", "true");
+        try (Engine engine = engineBuilder.build(); Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
+            Value exports = context.eval(source).newInstance().getMember("exports");
+            Object reference = new Object();
+            Value result = exports.getMember("run").execute(0x89abcdef, 0xfedcba9876543210L, -0.0f, -0.0d, reference);
+            Assert.assertEquals(1, result.getArrayElement(0).asInt());
+            Assert.assertSame(reference, result.getArrayElement(1).asHostObject());
+        }
+        String log = compilationLog.toString(StandardCharsets.UTF_8);
+        Assert.assertTrue("Expected a successful OSR compilation: " + log,
+                        log.lines().anyMatch(line -> line.contains("opt done") && line.contains("run<OSR@")));
+        // The first invocation reaches the previously unprofiled loop exit only after OSR. The
+        // checks following the loop must therefore read the restored locals and live operand.
+        Assert.assertTrue("Expected OSR deoptimization at the unprofiled exit: " + log,
+                        log.lines().anyMatch(line -> line.contains("opt deopt") && line.contains("run<OSR@")));
+    }
+
+    private static Engine.Builder synchronousOSREngineBuilder() {
+        var engineBuilder = Engine.newBuilder().allowExperimentalOptions(true);
+        // Keep ordinary compilation thresholds high so only OSR compilation is exercised.
+        engineBuilder.option("engine.OSR", "true");
+        engineBuilder.option("engine.OSRCompilationThreshold", "1");
+        engineBuilder.option("engine.FirstTierCompilationThreshold", "1000000");
+        engineBuilder.option("engine.LastTierCompilationThreshold", "1000000");
+        engineBuilder.option("engine.BackgroundCompilation", "false");
+        engineBuilder.option("engine.CompilationFailureAction", "Throw");
+        return engineBuilder;
     }
 }
