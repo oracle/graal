@@ -71,6 +71,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.api.InternalResource.CPUArchitecture;
@@ -78,6 +79,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.Accessor.JavaLangSupport;
 import com.oracle.truffle.api.impl.Accessor.ModulesAccessor;
+import com.oracle.truffle.api.impl.JDKAccessor;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.FieldVisitor;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
@@ -125,6 +127,7 @@ final class JDKSupport {
 
     @SuppressWarnings("restricted")
     private static Pair<ModulesAccessor, String> initializeModuleAccessor() {
+        Path libAttach;
         String attachLibPath = System.getProperty("truffle.attach.library");
         if (attachLibPath == null) {
             if (isUnsupportedPlatform()) {
@@ -135,7 +138,7 @@ final class JDKSupport {
             InternalResource libTruffleAttachResource = new LibTruffleAttachResource();
             try {
                 Path truffleAttachRoot = InternalResourceCache.installRuntimeResource(libTruffleAttachResource, LibTruffleAttachResource.ID);
-                Path libAttach = truffleAttachRoot.resolve("bin").resolve(System.mapLibraryName("truffleattach"));
+                libAttach = truffleAttachRoot.resolve("bin").resolve(System.mapLibraryName("truffleattach"));
                 attachLibPath = libAttach.toString();
             } catch (IOException ioe) {
                 String errorMessage;
@@ -149,22 +152,12 @@ final class JDKSupport {
                 performTruffleAttachLoadFailureAction(errorMessage, ioe);
                 return Pair.create(null, errorMessage);
             }
+        } else {
+            libAttach = Path.of(attachLibPath);
         }
         try {
-            try {
-                System.load(attachLibPath);
-            } catch (UnsatisfiedLinkError failedToLoad) {
-                String errorMessage = String.format("The TruffleAttach library at '%s' could not be loaded: %s. " +
-                                "A common cause is that Truffle JARs are loaded by multiple class loaders. " +
-                                "Load polyglot languages and their dependencies from a common parent class loader, such as the application class path or module path.",
-                                attachLibPath, Objects.toString(failedToLoad.getMessage(), failedToLoad.toString()));
-                performTruffleAttachLoadFailureAction(errorMessage, failedToLoad);
-                return Pair.create(null, errorMessage);
-            } catch (IllegalCallerException illegalCaller) {
-                String vmOption = "--enable-native-access=" + (JDKSupport.class.getModule().isNamed() ? "org.graalvm.truffle" : "ALL-UNNAMED");
-                String errorMessage = String.format("Failed to load the TruffleAttach library. The Truffle module does not have native access enabled. " +
-                                "To resolve this, pass the following VM option: %s.", vmOption);
-                performTruffleAttachLoadFailureAction(errorMessage, illegalCaller);
+            String errorMessage = TruffleAttachLibraryLoader.load(libAttach, JDKSupport::performTruffleAttachLoadFailureAction);
+            if (errorMessage != null) {
                 return Pair.create(null, errorMessage);
             }
             ModulesAccessor accessor;
@@ -174,9 +167,22 @@ final class JDKSupport {
                 accessor = new IsolatedImpl(Accessor.ModulesAccessor.class);
             }
             Module javaBase = ModuleLayer.boot().findModule("java.base").orElseThrow();
-            addExports0(javaBase, "jdk.internal.module", accessor.getTargetModule());
-            addExports0(javaBase, "jdk.internal.access", accessor.getTargetModule());
-            addExports0(javaBase, "jdk.internal.misc", accessor.getTargetModule());
+            try {
+                addExports0(javaBase, "jdk.internal.module", accessor.getTargetModule());
+                addExports0(javaBase, "jdk.internal.access", accessor.getTargetModule());
+                addExports0(javaBase, "jdk.internal.misc", accessor.getTargetModule());
+            } catch (UnsatisfiedLinkError unsatisfiedLink) {
+                /*
+                 * The library was loaded, but its native methods were not bound to this class,
+                 * e.g. because the context class loader resolved JDKSupport to a copy in a
+                 * different class loader. Report it through the configured failure action instead
+                 * of failing the static initializer.
+                 */
+                String bindError = String.format("The TruffleAttach library at '%s' was loaded, but its native methods could not be bound: %s.",
+                                libAttach, Objects.toString(unsatisfiedLink.getMessage(), unsatisfiedLink.toString()));
+                performTruffleAttachLoadFailureAction(bindError, unsatisfiedLink);
+                return Pair.create(null, bindError);
+            }
             return Pair.create(accessor, null);
         } catch (ReflectiveOperationException re) {
             throw new InternalError(re);
@@ -196,8 +202,6 @@ final class JDKSupport {
         }
     }
 
-    private static native void addExports0(Module m1, String pn, Module m2);
-
     private static void performTruffleAttachLoadFailureAction(String reason, Throwable t) {
         String action = System.getProperty("polyglotimpl.AttachLibraryFailureAction", "warn");
         switch (action) {
@@ -210,7 +214,9 @@ final class JDKSupport {
                 StringWriter message = new StringWriter();
                 try (PrintWriter err = new PrintWriter(message)) {
                     err.println(formatErrorMessage(reason));
-                    t.printStackTrace(err);
+                    if (t != null) {
+                        t.printStackTrace(err);
+                    }
                 }
                 PolyglotEngineImpl.logFallback(message.toString());
             }
@@ -380,6 +386,71 @@ final class JDKSupport {
         USES
     }
 
+    private abstract static class BaseJavaLangSupport extends JavaLangSupport {
+
+        protected static volatile Consumer<? super Thread> onMountCallBack;
+        protected static volatile Consumer<? super Thread> onUnmountCallBack;
+
+        @Override
+        public final void registerVirtualThreadMountHooks(Consumer<? super Thread> onMount, Consumer<? super Thread> onUnmount) {
+            if (onMountCallBack != null) {
+                throw new IllegalStateException("OnMount callback is already set");
+            }
+            if (onUnmountCallBack != null) {
+                throw new IllegalStateException("OnUnmount callback is already set");
+            }
+            onMountCallBack = onMount;
+            onUnmountCallBack = onUnmount;
+            registerJVMTIHook0(BaseJavaLangSupport.class);
+        }
+
+        /** Called from a JVMTI VirtualThreadMount hook. */
+        @SuppressWarnings("unused")
+        private static void mountHook(Thread currentThread) {
+            if (Thread.currentThread() != currentThread) {
+                throw CompilerDirectives.shouldNotReachHere("Thread.currentThread() not matching");
+            }
+            onMountCallBack.accept(currentThread);
+        }
+
+        /** Called from a JVMTI VirtualThreadUnmount hook. */
+        @SuppressWarnings("unused")
+        private static void unmountHook(Thread currentThread) {
+            if (Thread.currentThread() != currentThread) {
+                throw CompilerDirectives.shouldNotReachHere("Thread.currentThread() not matching");
+            }
+            onUnmountCallBack.accept(currentThread);
+        }
+
+        /**
+         * Executes the given {@code action} while the current virtual thread is pinned to its
+         * carrier thread.
+         * <p>
+         * Pinning a virtual thread prevents the scheduler from mounting it on a different carrier
+         * thread for the duration of the {@code action}. This ensures that the carrier thread
+         * remains stable for operations that require thread local affinity or depend on native
+         * thread identity.
+         * <p>
+         * If the current thread is not a virtual thread, then no pinning is performed and the
+         * {@code action} is executed normally. In this case the call behaves as a simple
+         * {@code action.get()} invocation without any interaction with the virtual-thread
+         * scheduler.
+         * <p>
+         * Pinning is performed by the native method {@link JDKSupport#runPinned0(Supplier)}, which enters a
+         * region where the virtual-thread scheduler is prevented from unmounting the current
+         * virtual thread from its carrier thread. The virtual thread remains mounted on the same
+         * carrier for the duration of the call, and is unpinned when the native method returns.
+         */
+        @Override
+        public final <T> T runInPinnedVirtualThread(Supplier<T> action) {
+            if (JDKAccessor.isVirtualThread(Thread.currentThread())) {
+                return runPinned0(action);
+            } else {
+                return action.get();
+            }
+        }
+    }
+
     /*
      * When using a named module we do not need to do anything and we can just call the Modules
      * class. We used a qualified export to export it to this class.
@@ -447,7 +518,7 @@ final class JDKSupport {
             return JavaLangSupportImpl.INSTANCE;
         }
 
-        private static final class JavaLangSupportImpl extends JavaLangSupport {
+        private static final class JavaLangSupportImpl extends BaseJavaLangSupport {
 
             private static final JavaLangAccess JAVA_LANG_ACCESS = SharedSecrets.getJavaLangAccess();
             static final JavaLangSupport INSTANCE = new JavaLangSupportImpl();
@@ -843,7 +914,7 @@ final class JDKSupport {
             return JavaLangSupportImpl.INSTANCE;
         }
 
-        private static final class JavaLangSupportImpl extends JavaLangSupport {
+        private static final class JavaLangSupportImpl extends BaseJavaLangSupport {
 
             /*
              * For performance reasons, it is necessary for CURRENT_CARRIER_THREAD to be declared as
@@ -923,4 +994,14 @@ final class JDKSupport {
             return Path.of("META-INF", "resources", "engine", ID, env.getOS().toString(), env.getCPUArchitecture().toString());
         }
     }
+
+    // JNI Truffle Attach linkage
+    private static native void addExports0(Module m1, String pn, Module m2);
+
+    private static native void registerJVMTIHook0(Class<?> target);
+
+    private static native <T> T runPinned0(Supplier<T> action);
+
+    static native long getPlatformStackEnd0();
+
 }

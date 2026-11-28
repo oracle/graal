@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,12 @@
 
 #include <jni.h>
 #include <jvmti.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <string.h>
 
-#if defined(__linux__)
-#include <pthread.h>
-#elif defined(__APPLE__)
+#if defined(__linux__) || defined(__APPLE__)
+#include <dlfcn.h>
 #include <pthread.h>
 #elif defined(_WIN32)
 #include <windows.h>
@@ -46,18 +46,24 @@
         return NULL;                                                                                                                                 \
     }
 
-#define CHECK_NONZERO(cond)                                                                                                                          \
-    if (!(cond)) {                                                                                                                                   \
-        fprintf(stderr, "[engine::attach] ERROR in " #cond ", was unexpectedly 0\n");                                                                \
-        return;                                                                                                                                      \
-    }
+#define CHECK_TRUE_ELSE_RETURN(cond, result, ...)                                                                                                    \
+    do {                                                                                                                                             \
+        if (!(cond)) {                                                                                                                               \
+            if (error != NULL && error_size > 0) {                                                                                                   \
+                snprintf(error, (size_t) error_size, __VA_ARGS__);                                                                                   \
+            }                                                                                                                                        \
+            return result;                                                                                                                           \
+        }                                                                                                                                            \
+    } while (0)
 
-#define CHECK_ERROR(cond)                                                                                                                            \
-    err = cond;                                                                                                                                      \
-    if (err != 0) {                                                                                                                                  \
-        fprintf(stderr, "[engine::attach] ERROR in " #cond ": %d\n", err);                                                                           \
-        return;                                                                                                                                      \
-    }
+#define CHECK_TRUE_ELSE_POP(cond, result, message)                                                                                                   \
+    do {                                                                                                                                             \
+        if (!(cond)) {                                                                                                                               \
+            store_bootstrap_error(env, error, error_size, message);                                                                                  \
+            (*env)->PopLocalFrame(env, NULL);                                                                                                        \
+            return result;                                                                                                                           \
+        }                                                                                                                                            \
+    } while (0)
 
 // Library entry points
 
@@ -73,34 +79,96 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_polyglot_JDKSupport_addExports0(J
     (*env)->CallStaticVoidMethodA(env, modulesClass, addExports, args);
 }
 
+/* Published before enabling JVMTI events and never replaced, even after a weak reference clears. */
 static jobject virtualThreadHooksClass;
-static jmethodID mountMethod;
-static jmethodID unmountMethod;
-static jclass supplierClassGlobal;
+static jmethodID virtualThreadMountMethod;
+static jmethodID virtualThreadUnmountMethod;
+static jboolean libraryPinned;
+static jboolean jvmtiInitialized;
+static jvmtiEnv *sharedJvmti;
 static jmethodID supplierGetMethod;
+
+#if defined(__linux__) || defined(__APPLE__)
+static pthread_mutex_t initializationMutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void lock_initialization(void) {
+    pthread_mutex_lock(&initializationMutex);
+}
+
+static void unlock_initialization(void) {
+    pthread_mutex_unlock(&initializationMutex);
+}
+#elif defined(_WIN32)
+static SRWLOCK initializationLock = SRWLOCK_INIT;
+
+static void lock_initialization(void) {
+    AcquireSRWLockExclusive(&initializationLock);
+}
+
+static void unlock_initialization(void) {
+    ReleaseSRWLockExclusive(&initializationLock);
+}
+#endif
+
+/*
+ * SymbolLookup.libraryLookup does not invoke JNI_OnLoad, so initialization shared by regular JNI
+ * loading and the Foreign Function and Memory API bootstrap must be performed explicitly.
+ */
+static jint initialize_shared_state(JNIEnv *env, jboolean pinned) {
+    jint result = JNI_OK;
+    lock_initialization();
+    if (pinned) {
+        libraryPinned = JNI_TRUE;
+    }
+    if (supplierGetMethod == NULL) {
+        jclass supplierClass = (*env)->FindClass(env, "java/util/function/Supplier");
+        if (supplierClass == NULL) {
+            result = JNI_ERR;
+        } else {
+            jmethodID getMethod = (*env)->GetMethodID(env, supplierClass, "get", "()Ljava/lang/Object;");
+            if (getMethod == NULL) {
+                result = JNI_ERR;
+            } else {
+                supplierGetMethod = getMethod;
+            }
+        }
+    }
+    unlock_initialization();
+    return result;
+}
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     JNIEnv *env;
     if ((*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_21) != JNI_OK) {
         return JNI_ERR;
     }
-
-    jclass supplierClass = (*env)->FindClass(env, "java/util/function/Supplier");
-    if (supplierClass == NULL) {
+    if (initialize_shared_state(env, JNI_FALSE) != JNI_OK) {
         return JNI_ERR;
     }
-
-    supplierClassGlobal = (*env)->NewGlobalRef(env, supplierClass);
-    if (supplierClassGlobal == NULL) {
-        return JNI_ERR;
-    }
-
-    supplierGetMethod = (*env)->GetMethodID(env, supplierClassGlobal, "get", "()Ljava/lang/Object;");
-    if (supplierGetMethod == NULL) {
-        return JNI_ERR;
-    }
-
     return JNI_VERSION_21;
+}
+
+static void call_virtual_thread_hooks(JNIEnv *env, jthread vthread, jboolean mount) {
+    jclass hooksClass = (jclass) (*env)->NewLocalRef(env, virtualThreadHooksClass);
+    if (hooksClass == NULL) {
+        if ((*env)->ExceptionCheck(env)) {
+            (*env)->ExceptionClear(env);
+        }
+        return;
+    }
+    jmethodID method = mount ? virtualThreadMountMethod : virtualThreadUnmountMethod;
+    (*env)->CallStaticVoidMethod(env, hooksClass, method, vthread);
+    (*env)->DeleteLocalRef(env, hooksClass);
+    if ((*env)->ExceptionCheck(env)) {
+        fprintf(stderr, "[engine::attach] Exception in %s_callback\n", mount ? "mount" : "unmount");
+        /*
+         * ExceptionDescribe is not ideal here because it calls Throwable#printStackTrace,
+         * which uses locks. Not reporting the exception is worse because it leaves a pending
+         * exception on the carrier thread.
+         */
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
+    }
 }
 
 // Parameters: (jvmtiEnv *jvmti, JNIEnv* env, jthread vthread)
@@ -114,13 +182,7 @@ static void JNICALL mount_callback(jvmtiEnv *jvmti, ...) {
     vthread = va_arg(ap, jthread);
     va_end(ap);
 
-    (*env)->CallStaticVoidMethod(env, virtualThreadHooksClass, mountMethod, vthread);
-    if ((*env)->ExceptionCheck(env)) {
-        fprintf(stderr, "[engine::attach] Exception in mount_callback\n");
-        // Note: ExceptionDescribe is not ideal here because that calls Throwable#printStackTrace which uses locks.
-        // But not doing anything doesn't show any details about the exception and just hangs, which is worse.
-        (*env)->ExceptionDescribe(env);
-    }
+    call_virtual_thread_hooks(env, vthread, JNI_TRUE);
 }
 
 // Parameters: (jvmtiEnv *jvmti, JNIEnv* env, jthread vthread)
@@ -134,60 +196,147 @@ static void JNICALL unmount_callback(jvmtiEnv *jvmti, ...) {
     vthread = va_arg(ap, jthread);
     va_end(ap);
 
-    (*env)->CallStaticVoidMethod(env, virtualThreadHooksClass, unmountMethod, vthread);
-    if ((*env)->ExceptionCheck(env)) {
-        fprintf(stderr, "[engine::attach] Exception in unmount_callback\n");
-        // See comment in mount_callback()
-        (*env)->ExceptionDescribe(env);
-    }
+    call_virtual_thread_hooks(env, vthread, JNI_FALSE);
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_api_impl_Accessor_00024JavaLangSupport_registerJVMTIHook(JNIEnv *env, jclass clz) {
-    virtualThreadHooksClass = (*env)->NewGlobalRef(env, clz);
-    EXCEPTION_CHECK(env);
-    CHECK_NONZERO(virtualThreadHooksClass);
-
-    mountMethod = (*env)->GetStaticMethodID(env, virtualThreadHooksClass, "mountHook", "(Ljava/lang/Thread;)V");
-    EXCEPTION_CHECK(env);
-
-    unmountMethod = (*env)->GetStaticMethodID(env, virtualThreadHooksClass, "unmountHook", "(Ljava/lang/Thread;)V");
-    EXCEPTION_CHECK(env);
-
-    jint err;
-    JavaVM *jvm;
-    CHECK_ERROR((*env)->GetJavaVM(env, &jvm));
-
-    jvmtiEnv *jvmti;
-    CHECK_ERROR((*jvm)->GetEnv(jvm, (void **) &jvmti, JVMTI_VERSION_21));
-
-    jint eventsCount;
-    jvmtiExtensionEventInfo *events;
-    CHECK_ERROR((*jvmti)->GetExtensionEvents(jvmti, &eventsCount, &events));
-
-    jint mount_event_index = 0;
-    jint unmount_event_index = 0;
-    for (int i = 0; i < eventsCount; i++) {
-        if (strcmp(events[i].id, "com.sun.hotspot.events.VirtualThreadMount") == 0) {
-            mount_event_index = events[i].extension_event_index;
-        } else if (strcmp(events[i].id, "com.sun.hotspot.events.VirtualThreadUnmount") == 0) {
-            unmount_event_index = events[i].extension_event_index;
+static jboolean throw_illegal_state(JNIEnv *env, const char *format, ...) {
+    if (!(*env)->ExceptionCheck(env)) {
+        char message[512];
+        va_list args;
+        va_start(args, format);
+        vsnprintf(message, sizeof(message), format, args);
+        va_end(args);
+        jclass exceptionClass = (*env)->FindClass(env, "java/lang/IllegalStateException");
+        if (exceptionClass != NULL) {
+            (*env)->ThrowNew(env, exceptionClass, message);
+            (*env)->DeleteLocalRef(env, exceptionClass);
         }
     }
-    CHECK_NONZERO(mount_event_index);
-    CHECK_NONZERO(unmount_event_index);
-
-    CHECK_ERROR((*jvmti)->SetExtensionEventCallback(jvmti, mount_event_index, mount_callback));
-    CHECK_ERROR((*jvmti)->SetEventNotificationMode(jvmti, JVMTI_ENABLE, mount_event_index, NULL));
-
-    CHECK_ERROR((*jvmti)->SetExtensionEventCallback(jvmti, unmount_event_index, unmount_callback));
-    CHECK_ERROR((*jvmti)->SetEventNotificationMode(jvmti, JVMTI_ENABLE, unmount_event_index, NULL));
+    return JNI_FALSE;
 }
 
-JNIEXPORT jobject JNICALL Java_com_oracle_truffle_api_impl_Accessor_00024JavaLangSupport_runPinned0(JNIEnv *env, jclass clz, jobject action) {
+static jvmtiError uninstall_jvmti_hook(jint eventIndex) {
+    jvmtiError disableError = (*sharedJvmti)->SetEventNotificationMode(sharedJvmti, JVMTI_DISABLE, eventIndex, NULL);
+    jvmtiError clearError = (*sharedJvmti)->SetExtensionEventCallback(sharedJvmti, eventIndex, NULL);
+    return disableError != JVMTI_ERROR_NONE ? disableError : clearError;
+}
+
+/* Must be called with the initialization lock held. */
+static jboolean initialize_jvmti(JNIEnv *env) {
+    if (jvmtiInitialized) {
+        return JNI_TRUE;
+    }
+
+    jint err;
+    if (sharedJvmti == NULL) {
+        JavaVM *jvm = NULL;
+        err = (*env)->GetJavaVM(env, &jvm);
+        if (err != JNI_OK) {
+            return throw_illegal_state(env, "GetJavaVM failed while initializing JVMTI virtual thread hooks: %d", err);
+        }
+        err = (*jvm)->GetEnv(jvm, (void **) &sharedJvmti, JVMTI_VERSION_21);
+        if (err != JNI_OK) {
+            sharedJvmti = NULL;
+            return throw_illegal_state(env, "Failed to get the JVMTI environment: %d", err);
+        }
+    }
+
+    jint mountEventIndex = 0;
+    jint unmountEventIndex = 0;
+    jint eventsCount = 0;
+    jvmtiExtensionEventInfo *events = NULL;
+    err = (*sharedJvmti)->GetExtensionEvents(sharedJvmti, &eventsCount, &events);
+    if (err != JVMTI_ERROR_NONE) {
+        return throw_illegal_state(env, "JVMTI GetExtensionEvents failed: %d", err);
+    }
+    for (int i = 0; i < eventsCount; i++) {
+        if (strcmp(events[i].id, "com.sun.hotspot.events.VirtualThreadMount") == 0) {
+            mountEventIndex = events[i].extension_event_index;
+        } else if (strcmp(events[i].id, "com.sun.hotspot.events.VirtualThreadUnmount") == 0) {
+            unmountEventIndex = events[i].extension_event_index;
+        }
+    }
+    if (mountEventIndex == 0 || unmountEventIndex == 0) {
+        return throw_illegal_state(env, "JVMTI virtual thread extension events were not found");
+    }
+
+    err = (*sharedJvmti)->SetExtensionEventCallback(sharedJvmti, mountEventIndex, mount_callback);
+    if (err != JVMTI_ERROR_NONE) {
+        return throw_illegal_state(env, "Failed to set the JVMTI virtual thread mount callback: %d", err);
+    }
+    err = (*sharedJvmti)->SetEventNotificationMode(sharedJvmti, JVMTI_ENABLE, mountEventIndex, NULL);
+    if (err != JVMTI_ERROR_NONE) {
+        jvmtiError cleanupError = uninstall_jvmti_hook(mountEventIndex);
+        if (cleanupError != JVMTI_ERROR_NONE) {
+            return throw_illegal_state(env, "Failed to enable the JVMTI virtual thread mount callback: %d; failed to uninstall the mount hook: %d",
+                                       err, cleanupError);
+        }
+        return throw_illegal_state(env, "Failed to enable the JVMTI virtual thread mount callback: %d", err);
+    }
+    err = (*sharedJvmti)->SetExtensionEventCallback(sharedJvmti, unmountEventIndex, unmount_callback);
+    if (err != JVMTI_ERROR_NONE) {
+        jvmtiError cleanupError = uninstall_jvmti_hook(mountEventIndex);
+        if (cleanupError != JVMTI_ERROR_NONE) {
+            return throw_illegal_state(env, "Failed to set the JVMTI virtual thread unmount callback: %d; failed to uninstall the mount hook: %d",
+                                       err, cleanupError);
+        }
+        return throw_illegal_state(env, "Failed to set the JVMTI virtual thread unmount callback: %d", err);
+    }
+    err = (*sharedJvmti)->SetEventNotificationMode(sharedJvmti, JVMTI_ENABLE, unmountEventIndex, NULL);
+    if (err != JVMTI_ERROR_NONE) {
+        jvmtiError unmountCleanupError = uninstall_jvmti_hook(unmountEventIndex);
+        jvmtiError mountCleanupError = uninstall_jvmti_hook(mountEventIndex);
+        if (unmountCleanupError != JVMTI_ERROR_NONE || mountCleanupError != JVMTI_ERROR_NONE) {
+            return throw_illegal_state(env,
+                                       "Failed to enable the JVMTI virtual thread unmount callback: %d; hook removal errors: unmount=%d, mount=%d",
+                                       err, unmountCleanupError, mountCleanupError);
+        }
+        return throw_illegal_state(env, "Failed to enable the JVMTI virtual thread unmount callback: %d", err);
+    }
+
+    jvmtiInitialized = JNI_TRUE;
+    return JNI_TRUE;
+}
+
+JNIEXPORT void JNICALL Java_com_oracle_truffle_polyglot_JDKSupport_registerJVMTIHook0(JNIEnv *env, jclass clz, jclass target) {
+    jmethodID mountMethod = (*env)->GetStaticMethodID(env, target, "mountHook", "(Ljava/lang/Thread;)V");
+    EXCEPTION_CHECK(env);
+    jmethodID unmountMethod = (*env)->GetStaticMethodID(env, target, "unmountHook", "(Ljava/lang/Thread;)V");
+    EXCEPTION_CHECK(env);
+
+    lock_initialization();
+    if (virtualThreadHooksClass != NULL) {
+        unlock_initialization();
+        throw_illegal_state(env, "Truffle virtual thread hooks have already been registered. Multiple optimized Truffle runtimes are not supported.");
+        return;
+    }
+
+    /*
+     * System.load ties the library's lifetime to its loading class loader. Keep the hook class
+     * (defined by the same loader) strongly reachable so JVMTI never calls into an unloaded library.
+     * The FFM path pins the library with Arena.global(), so its hook class can be held weakly and
+     * the Truffle class loader can be collected independently of the native callbacks.
+     */
+    jobject hooksClass = libraryPinned ? (*env)->NewWeakGlobalRef(env, target) : (*env)->NewGlobalRef(env, target);
+    if (hooksClass == NULL) {
+        unlock_initialization();
+        return;
+    }
+    virtualThreadMountMethod = mountMethod;
+    virtualThreadUnmountMethod = unmountMethod;
+    virtualThreadHooksClass = hooksClass;
+    if (!initialize_jvmti(env)) {
+        unlock_initialization();
+        return;
+    }
+    unlock_initialization();
+}
+
+JNIEXPORT jobject JNICALL Java_com_oracle_truffle_polyglot_JDKSupport_runPinned0(JNIEnv *env, jclass clz, jobject action) {
     return (*env)->CallObjectMethod(env, action, supplierGetMethod);
 }
 
-JNIEXPORT jlong JNICALL Java_com_oracle_truffle_api_impl_DefaultTruffleRuntime_getPlatformStackEnd0(JNIEnv *env, jclass clz) {
+JNIEXPORT jlong JNICALL Java_com_oracle_truffle_polyglot_JDKSupport_getPlatformStackEnd0(JNIEnv *env, jclass clz) {
 #if defined(__linux__)
     pthread_attr_t attr;
     if (pthread_getattr_np(pthread_self(), &attr) != 0) {
@@ -220,4 +369,108 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_api_impl_DefaultTruffleRuntime_g
     }
     return (jlong) minfo.AllocationBase;
 #endif
+}
+
+typedef jint(JNICALL *GetCreatedJavaVMs_t)(JavaVM **, jsize, jsize *);
+
+static GetCreatedJavaVMs_t find_get_created_java_vms(void) {
+    GetCreatedJavaVMs_t getCreatedJavaVMs = NULL;
+#if defined(__linux__) || defined(__APPLE__)
+    getCreatedJavaVMs = (GetCreatedJavaVMs_t) dlsym(RTLD_DEFAULT, "JNI_GetCreatedJavaVMs");
+#elif defined(_WIN32)
+    HMODULE jvm = GetModuleHandleA("jvm.dll");
+    if (jvm != NULL) {
+        getCreatedJavaVMs = (GetCreatedJavaVMs_t) GetProcAddress(jvm, "JNI_GetCreatedJavaVMs");
+    }
+#endif
+    return getCreatedJavaVMs;
+}
+
+static JNIEnv *current_env(char *error, jint error_size) {
+    GetCreatedJavaVMs_t getCreatedJavaVMs = find_get_created_java_vms();
+#if defined(__linux__) || defined(__APPLE__)
+    CHECK_TRUE_ELSE_RETURN(getCreatedJavaVMs != NULL, NULL,
+                           "Cannot find the JNI_GetCreatedJavaVMs entry point. The Java VM library must be loaded with RTLD_GLOBAL");
+#else
+    CHECK_TRUE_ELSE_RETURN(getCreatedJavaVMs != NULL, NULL, "Cannot find the JNI_GetCreatedJavaVMs entry point of the loaded Java VM library");
+#endif
+
+    JavaVM *vm = NULL;
+    jsize numberOfVMs = 0;
+    jint err = getCreatedJavaVMs(&vm, 1, &numberOfVMs);
+    CHECK_TRUE_ELSE_RETURN(err == JNI_OK, NULL, "JNI_GetCreatedJavaVMs failed: %d", err);
+    CHECK_TRUE_ELSE_RETURN(numberOfVMs > 0, NULL, "No Java VM has been created in this process");
+
+    JNIEnv *env = NULL;
+    err = (*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_21);
+    CHECK_TRUE_ELSE_RETURN(err == JNI_OK, NULL, "GetEnv failed: %d", err);
+    return env;
+}
+
+static jclass load_class(JNIEnv *env, jclass classClass, jmethodID forName, jobject loader, const char *className) {
+    jstring name = (*env)->NewStringUTF(env, className);
+    if (name == NULL) {
+        return NULL;
+    }
+    return (jclass) (*env)->CallStaticObjectMethod(env, classClass, forName, name, JNI_FALSE, loader);
+}
+
+static void store_bootstrap_error(JNIEnv *env, char *error, jint error_size, const char *message) {
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionClear(env);
+    }
+    if (error != NULL && error_size > 0) {
+        snprintf(error, (size_t) error_size, "%s", message);
+    }
+}
+
+/*
+ * Loads the classes that declare truffleattach native methods through the calling thread's context
+ * class loader and binds the methods to this library. This entry point is used when the library is
+ * loaded using java foreign access (panama), which does not associate the library with a class loader
+ * and does not invoke JNI_OnLoad. On failure, writes a NUL-terminated diagnostic if the caller
+ * supplied a buffer of at least one byte. The size includes the terminator.
+ */
+JNIEXPORT jint JNICALL truffle_attach_init(char *error, jint error_size) {
+    JNIEnv *env = current_env(error, error_size);
+    if (env == NULL) {
+        return 1;
+    }
+    if ((*env)->PushLocalFrame(env, 16) != JNI_OK) {
+        store_bootstrap_error(env, error, error_size, "Failed to allocate a JNI local frame");
+        return 2;
+    }
+
+    CHECK_TRUE_ELSE_POP(initialize_shared_state(env, JNI_TRUE) == JNI_OK, 3, "Failed to initialize shared truffle attach state");
+
+    jclass threadClass = (*env)->FindClass(env, "java/lang/Thread");
+    CHECK_TRUE_ELSE_POP(threadClass != NULL, 4, "Cannot find java.lang.Thread");
+    jmethodID currentThreadMethod = (*env)->GetStaticMethodID(env, threadClass, "currentThread", "()Ljava/lang/Thread;");
+    CHECK_TRUE_ELSE_POP(currentThreadMethod != NULL, 5, "Cannot find Thread.currentThread");
+    jmethodID getContextClassLoader = (*env)->GetMethodID(env, threadClass, "getContextClassLoader", "()Ljava/lang/ClassLoader;");
+    CHECK_TRUE_ELSE_POP(getContextClassLoader != NULL, 6, "Cannot find Thread.getContextClassLoader");
+    jobject thread = (*env)->CallStaticObjectMethod(env, threadClass, currentThreadMethod);
+    CHECK_TRUE_ELSE_POP(thread != NULL && !(*env)->ExceptionCheck(env), 7, "Cannot get the current thread");
+    jobject loader = (*env)->CallObjectMethod(env, thread, getContextClassLoader);
+    CHECK_TRUE_ELSE_POP(!(*env)->ExceptionCheck(env), 8, "Failed to obtain the context class loader");
+    jclass classClass = (*env)->FindClass(env, "java/lang/Class");
+    CHECK_TRUE_ELSE_POP(classClass != NULL, 9, "Cannot find java.lang.Class");
+    jmethodID forName = (*env)->GetStaticMethodID(env, classClass, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;");
+    CHECK_TRUE_ELSE_POP(forName != NULL, 10, "Cannot find Class.forName");
+
+    jclass jdkSupport = load_class(env, classClass, forName, loader, "com.oracle.truffle.polyglot.JDKSupport");
+    CHECK_TRUE_ELSE_POP(jdkSupport != NULL && !(*env)->ExceptionCheck(env), 11, "Failed to load com.oracle.truffle.polyglot.JDKSupport");
+    JNINativeMethod jdkSupportMethods[] = {
+        { "addExports0", "(Ljava/lang/Module;Ljava/lang/String;Ljava/lang/Module;)V",
+          (void *) Java_com_oracle_truffle_polyglot_JDKSupport_addExports0 },
+        { "runPinned0", "(Ljava/util/function/Supplier;)Ljava/lang/Object;", (void *) Java_com_oracle_truffle_polyglot_JDKSupport_runPinned0 },
+        { "registerJVMTIHook0", "(Ljava/lang/Class;)V", (void *) Java_com_oracle_truffle_polyglot_JDKSupport_registerJVMTIHook0 },
+        { "getPlatformStackEnd0", "()J", (void *) Java_com_oracle_truffle_polyglot_JDKSupport_getPlatformStackEnd0 },
+    };
+    CHECK_TRUE_ELSE_POP((*env)->RegisterNatives(env, jdkSupport, jdkSupportMethods, sizeof(jdkSupportMethods) / sizeof(jdkSupportMethods[0])) ==
+                            JNI_OK,
+                        12, "Failed to register native methods on com.oracle.truffle.polyglot.JDKSupport");
+
+    (*env)->PopLocalFrame(env, NULL);
+    return 0;
 }

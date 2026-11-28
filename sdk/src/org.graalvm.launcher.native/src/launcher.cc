@@ -301,12 +301,16 @@ static void *load_jli_lib(std::string exeDir) {
 
 /* load the language library (either native library or libjvm) and return a
  * pointer to it */
-void* load_vm_lib(std::string liblangPath) {
+void* load_vm_lib(std::string liblangPath, bool jvmMode) {
     if (debug) {
         std::cout << "Loading library " << liblangPath << std::endl;
     }
 #if defined (__linux__) || defined (__APPLE__)
-        void* jvmHandle = dlopen(liblangPath.c_str(), RTLD_NOW);
+        int flags = RTLD_NOW;
+        if (jvmMode) {
+            flags |= RTLD_GLOBAL;
+        }
+        void* jvmHandle = dlopen(liblangPath.c_str(), flags);
         if (jvmHandle != NULL) {
             return jvmHandle;
         }
@@ -315,6 +319,7 @@ void* load_vm_lib(std::string liblangPath) {
             std::cerr << "Error while loading " << liblangPath << ":" << std::endl << errorString << std::endl;
         }
 #else
+        (void) jvmMode;
         HMODULE jvmHandle = LoadLibraryA(liblangPath.c_str());
         if (jvmHandle != NULL) {
             return (void*) jvmHandle;
@@ -978,7 +983,7 @@ static int jvm_main_thread(struct MainThreadArgs& parsedArgs) {
 
     /* load VM library - after parsing arguments s.t. NMT
      * tracking environment variables are already set */
-    void* library = load_vm_lib(libPath);
+    void* library = load_vm_lib(libPath, jvmMode);
     if (!library) {
         std::cerr << "Could not load VM library from " << libPath << "." << std::endl;
         return -1;
