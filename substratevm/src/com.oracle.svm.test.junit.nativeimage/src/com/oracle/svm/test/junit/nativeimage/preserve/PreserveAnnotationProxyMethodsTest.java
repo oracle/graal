@@ -59,13 +59,11 @@ import com.oracle.svm.test.api.NativeImageBuildArgs;
                 "--exact-reachability-metadata=com.oracle.svm.test.junit.nativeimage.preserve"
 })
 public class PreserveAnnotationProxyMethodsTest {
+    private static final String ANNOTATED_CLASS_NAME = "com.oracle.svm.test.preserve.PreserveAnnotationProxyMethodsAnnotated";
+
     @Retention(RetentionPolicy.RUNTIME)
     public @interface Marker {
         String value();
-    }
-
-    @Marker("hello")
-    static final class Annotated {
     }
 
     public static final class RegisterAnnotationMethod implements Feature {
@@ -82,7 +80,7 @@ public class PreserveAnnotationProxyMethodsTest {
                 registered = true;
                 // Register the annotated class only after the first analysis iteration. Its proxy
                 // can itself cause the annotation methods to be registered for invocation.
-                RuntimeReflection.register(Annotated.class);
+                RuntimeReflection.register(PreserveAnnotationProxyMethodsAnnotated.class);
                 RuntimeReflection.register(Marker.class.getDeclaredMethods());
                 access.requireAnalysisIteration();
             }
@@ -91,8 +89,9 @@ public class PreserveAnnotationProxyMethodsTest {
 
     @Test
     public void testInvocationRegisteredAfterLookup() throws ReflectiveOperationException {
-        // Read the annotation at run time so the image heap cannot supply a precomputed proxy.
-        Class<?> annotated = Class.forName(System.getProperty("annotation.test.class", Annotated.class.getName()));
+        // Read the annotation at run time so the image heap cannot supply a precomputed proxy. A
+        // class literal would make the annotated class reachable before it is registered.
+        Class<?> annotated = Class.forName(System.getProperty("annotation.test.class", ANNOTATED_CLASS_NAME));
         Marker marker = AnnotationAccess.getAnnotation(annotated, Marker.class);
         String name = elementName();
         assertEquals("hello", Marker.class.getDeclaredMethod(name).invoke(marker));

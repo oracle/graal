@@ -603,7 +603,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                      * Mirror every registration onto the proxy method, not only the first one: a
                      * later registration can raise the access level or add the preserved bit.
                      */
-                    processAnnotationMethod(accessibility, preserved, aMethod);
+                    processAnnotationMethod(cnd, accessibility, preserved, aMethod);
                 }
                 if (accessibility.includes(QUERIED) && (previous == null || !previous.includes(QUERIED)) && !throwMissingRegistrationErrors()) {
                     checkHidingMethods(aMethod);
@@ -894,12 +894,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     /*
      * Proxy classes for annotations present the annotation default methods and fields as their own.
      */
-    private void processAnnotationMethod(ConfigurationMemberAccessibility accessibility, boolean preserved, AnalysisMethod method) {
+    private void processAnnotationMethod(AccessCondition condition, ConfigurationMemberAccessibility accessibility, boolean preserved, AnalysisMethod method) {
         AnalysisType annotationType = method.getDeclaringClass();
         AnalysisType proxyType = classAccess.getProxyType(annotationType);
         AnalysisMethod proxyMethod = proxyType != null ? proxyType.findMethod(method.getName(), method.getSignature()) : null;
         if (proxyMethod != null) {
-            registerMethod(unconditional(), accessibility, preserved, proxyMethod);
+            registerMethod(condition, accessibility, preserved, proxyMethod);
         }
     }
 
