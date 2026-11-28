@@ -62,14 +62,33 @@ public class PrefixTree {
     private final Set<AnalysisMethod> sampledMethods = new HashSet<>();
     private final long totalTreeCount;
 
+    /**
+     * Builds the tree from the stack samples of a profile.
+     *
+     * @param profilesLookup the profile; without stack samples the tree is empty
+     */
     @SuppressWarnings("this-escape")
-    public PrefixTree(PGOProfilesLookup pgoProfiles) {
-        populatePrefixTree(pgoProfiles);
+    public PrefixTree(PGOProfilesLookup profilesLookup) {
+        this(profilesLookup.getSampleCounts().orElseGet(HashMap::new));
+    }
+
+    /**
+     * Builds the tree from sampled stacks.
+     *
+     * @param samples each sampled stack, with the outermost frame at its head, mapped to the number
+     *            of times it was seen
+     */
+    @SuppressWarnings("this-escape")
+    public PrefixTree(Map<NodeSourcePosition, Long> samples) {
+        populatePrefixTree(samples);
         this.totalTreeCount = updateSubtreeCounts();
     }
 
-    private void populatePrefixTree(PGOProfilesLookup pgoProfiles) {
-        Map<NodeSourcePosition, Long> samples = pgoProfiles.getSampleCounts().orElseGet(HashMap::new);
+    /**
+     * Adds every stack in {@code samples} that is not ignored under the entry point of its
+     * outermost method.
+     */
+    private void populatePrefixTree(Map<NodeSourcePosition, Long> samples) {
         Map<ResolvedJavaMethod, String> methodNameCache = new HashMap<>();
         for (Map.Entry<NodeSourcePosition, Long> entry : samples.entrySet()) {
             if (ignored(entry.getKey(), methodNameCache)) {

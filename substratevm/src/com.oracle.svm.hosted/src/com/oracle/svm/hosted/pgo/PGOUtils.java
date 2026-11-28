@@ -36,12 +36,16 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 
+import jdk.graal.compiler.options.OptionKey;
 import jdk.vm.ci.meta.AbstractJavaProfile;
 import jdk.vm.ci.meta.AbstractProfiledItem;
 import jdk.vm.ci.meta.JavaMethodProfile;
@@ -54,6 +58,28 @@ import jdk.vm.ci.meta.TriState;
 public final class PGOUtils {
 
     private PGOUtils() {
+    }
+
+    /**
+     * Raises the default optimization level to {@code -O3}: both PGO builds run at {@code -O3}.
+     * Below {@code -O3} the priority inliner explores less, so the instrumented build
+     * ({@code --pgo-instrument}) would profile code that only {@code -O3} inlines without its
+     * caller's context, and the optimized build ({@code --pgo}) would inline less than the profile
+     * was recorded for and leave those records unused.
+     * <p>
+     * The builder sets {@code -O} to its default before it parses the command line, so an explicit
+     * {@code -O2} cannot be told apart from none. A level that still holds the default is raised to
+     * {@code 3} through {@link SubstrateOptions#Optimize}, which also applies {@code -O3}'s own side
+     * effects, as {@code -O3} does. Any other level given before the PGO option, and any {@code -O}
+     * given after it, is kept.
+     *
+     * @param values the hosted option values being parsed
+     */
+    static void raiseDefaultToO3(EconomicMap<OptionKey<?>, Object> values) {
+        Object level = values.get(SubstrateOptions.Optimize);
+        if (level == null || SubstrateOptions.Optimize.getDefaultValue().equals(level)) {
+            SubstrateOptions.Optimize.update(values, "3");
+        }
     }
 
     /**

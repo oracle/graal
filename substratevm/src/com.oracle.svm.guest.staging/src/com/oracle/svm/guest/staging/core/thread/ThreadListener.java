@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,18 @@ import org.graalvm.nativeimage.IsolateThread;
 import com.oracle.svm.shared.Uninterruptible;
 
 public interface ThreadListener {
+    /**
+     * Called from {@code VMThreads.attachCurrentThread} once the thread is registered, before the
+     * thread can execute any Java code and before it has a {@link Thread} object. This is the only
+     * callback that precedes every possible Java execution on the thread, including constructing
+     * the {@link Thread} object of a foreign thread. Implementations may only access image-heap
+     * objects and native memory.
+     */
+    @Uninterruptible(reason = "Thread state not set up.")
+    @SuppressWarnings("unused")
+    default void afterThreadAttach(IsolateThread isolateThread) {
+    }
+
     @Uninterruptible(reason = "Only uninterruptible code may be executed before the thread is fully started.")
     @SuppressWarnings("unused")
     default void afterThreadStart(IsolateThread isolateThread, Thread javaThread) {

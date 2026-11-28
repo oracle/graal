@@ -45,6 +45,7 @@ import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.pgo.PGOInstrumentationFeature;
 import com.oracle.svm.hosted.pgo.phases.PGOApplyProfilesPhase;
 import com.oracle.svm.hosted.pgo.profiles.PGOProfilesLookup;
 import com.oracle.svm.hosted.phases.OOMEExceptionEdgePolicy;
@@ -163,7 +164,8 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
         }
     }
 
-    private final PGOProfilesLookup pgoProfiles;
+    /** The profiles to apply to expanded callees, or {@code null} without {@code --pgo}. */
+    private final PGOProfilesLookup profilesLookup;
     private final RuntimeConfiguration runtimeConfig;
     private final HostedUniverse universe;
     private final boolean layeredBuild;
@@ -172,21 +174,39 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
     static final InterProceduralPartialEscapeAnalysisStatistics IPEAStatistics = new InterProceduralPartialEscapeAnalysisStatistics();
 
     private SubstratePriorityInliningPhase(CanonicalizerPhase canonicalizer, OptionValues options, RuntimeConfiguration runtimeConfig,
-                    HostedUniverse universe, SubstrateInliningProvider inliningProvider, PGOProfilesLookup pgoProfiles) {
+                    HostedUniverse universe, SubstrateInliningProvider inliningProvider, PGOProfilesLookup profilesLookup) {
         super(canonicalizer, options, inliningProvider);
         this.runtimeConfig = runtimeConfig;
         this.universe = universe;
-        this.pgoProfiles = pgoProfiles;
+        this.profilesLookup = profilesLookup;
         this.layeredBuild = ImageLayerBuildingSupport.buildingExtensionLayer();
     }
 
-    public SubstratePriorityInliningPhase(SubstratePriorityInliningPhase oldPhase, SubstrateInliningProvider substrateInliningProvider, PGOProfilesLookup pgoProfiles) {
-        this(oldPhase.canonicalizer, HostedOptionValues.singleton().get(), oldPhase.runtimeConfig, oldPhase.universe, substrateInliningProvider, pgoProfiles);
+    /**
+     * Creates a copy of {@code oldPhase} with another inlining provider and profiles. With
+     * {@code --pgo}, the profile use feature installs this copy in place of the original phase.
+     *
+     * @param oldPhase the phase to copy the canonicalizer, runtime configuration and universe from
+     * @param substrateInliningProvider the inlining provider of the copy
+     * @param profilesLookup the profiles to apply to expanded callees, or {@code null} for none
+     */
+    public SubstratePriorityInliningPhase(SubstratePriorityInliningPhase oldPhase, SubstrateInliningProvider substrateInliningProvider, PGOProfilesLookup profilesLookup) {
+        this(oldPhase.canonicalizer, HostedOptionValues.singleton().get(), oldPhase.runtimeConfig, oldPhase.universe, substrateInliningProvider, profilesLookup);
     }
 
+    /**
+     * Creates the phase with the default inlining provider.
+     *
+     * @param canonicalizer the canonicalizer run on inlined graphs
+     * @param options the option values of the phase
+     * @param runtimeConfig the runtime configuration
+     * @param universe the hosted universe
+     * @param profilesLookup the profiles to apply to expanded callees, or {@code null} without
+     *            {@code --pgo}
+     */
     public SubstratePriorityInliningPhase(CanonicalizerPhase canonicalizer, OptionValues options, RuntimeConfiguration runtimeConfig,
-                    HostedUniverse universe, PGOProfilesLookup pgoProfiles) {
-        this(canonicalizer, options, runtimeConfig, universe, new SubstrateInliningProvider(universe, _ -> null), pgoProfiles);
+                    HostedUniverse universe, PGOProfilesLookup profilesLookup) {
+        this(canonicalizer, options, runtimeConfig, universe, new SubstrateInliningProvider(universe, _ -> null), profilesLookup);
     }
 
     private static void registerIPEAStatisticsShutdownHook(TrackIPEAMode trackIPEAMode) {
@@ -294,6 +314,16 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
             return OOMEExceptionEdgePolicy.supportsOOMEExceptionEdges(method);
         }
 
+        /**
+         * Leaves out the counters that {@code --pgo-instrument} adds. Counted, they make every
+         * instrumented root and expanded callee look larger, and the build inlines fewer methods
+         * than one without counters.
+         */
+        @Override
+        public int compilerNodeCount(StructuredGraph graph) {
+            return graph.getNodeCount() - PGOInstrumentationFeature.instrumentationNodeCount(graph);
+        }
+
         @Override
         public GraphCache.Ref<ResolvedJavaMethod, StructuredGraph> createGraph(ResolvedJavaMethod targetMethod, Invoke invoke, boolean withNodeSourcePosition,
                         NodeSourcePosition replaceePosition, boolean inOOMEProtectedInlineContext) {
@@ -303,7 +333,15 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
             CompileQueue.verifyInliningProviders((HostedMethod) root.getReadonlySubgraph().method(), inlinee, runtimeConfig);
 
             GraphCache<ResolvedJavaMethod, StructuredGraph> selectedGraphCache = getGraphCache(inOOMEProtectedInlineContext);
-            GraphCache.Ref<ResolvedJavaMethod, StructuredGraph> ref = UseGraphCache.getValue(getOptions()) ? selectedGraphCache.getRef(inlinee) : null;
+            /*
+             * Instrumented expansions carry counters, and with --pgo expansions carry profiles, keyed
+             * by this expansion's caller context, so a cached copy would serve every later
+             * expansion of the callee under the first context. Therefore the graph cache is not used
+             * with --pgo-instrument or --pgo. A cache per caller context would rarely hit: the same
+             * callee is seldom expanded twice under the same context.
+             */
+            boolean useCache = UseGraphCache.getValue(getOptions()) && !PGOInstrumentationFeature.enabled() && profilesLookup == null;
+            GraphCache.Ref<ResolvedJavaMethod, StructuredGraph> ref = useCache ? selectedGraphCache.getRef(inlinee) : null;
             if (ref == null) {
                 DecodeContext decodeContext = inOOMEProtectedInlineContext ? DecodeContext.OOME_EXCEPTION_EDGES : DecodeContext.DEFAULT;
                 StructuredGraph graphCopy = inlinee.compilationInfo.createGraph(getDebug(), getOptions(), CompilationIdentifier.INVALID_COMPILATION_ID, true, decodeContext);
@@ -312,8 +350,9 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
                 CallTree.mergeUnwinds(graphCopy);
 
                 applyPGOProfiles(graphCopy, getContext(), replaceePosition);
+                PGOInstrumentationFeature.instrumentExpandedGraph(graphCopy, replaceePosition);
 
-                ref = UseGraphCache.getValue(getOptions()) ? selectedGraphCache.createRef(inlinee, graphCopy) : selectedGraphCache.createNonCounted(graphCopy);
+                ref = useCache ? selectedGraphCache.createRef(inlinee, graphCopy) : selectedGraphCache.createNonCounted(graphCopy);
             }
             totalNodes += ref.readonly().getNodeCount();
             assert !withNodeSourcePosition || ref.readonly().trackNodeSourcePosition();
@@ -341,6 +380,9 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
                 if (isCFunctionInvoke(inlineCacheNode.invoke())) {
                     return;
                 }
+                if (!hasReceiverFrequencyProfile(inlineCacheNode.invoke())) {
+                    continue;
+                }
                 List<SubgraphNode> hotSubgraphNodes = inlineCacheNode.children().stream().filter(e -> !(e instanceof GenericNode)).filter(this::isCallSiteToHotCaller).map(this::expandIfCutoff).filter(
                                 Objects::nonNull).collect(Collectors.toList());
                 if (!hotSubgraphNodes.isEmpty()) {
@@ -349,6 +391,19 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
                                     });
                 }
             }
+        }
+
+        /**
+         * Hot-callee devirtualization guards an inline cache by receiver, so it has to know how
+         * often each receiver is dispatched. Stack samples do not carry that information: they weight
+         * a callee by the time spent under it, which favours long-running callees over frequently
+         * dispatched ones. Guarding a hot call site on a rarely dispatched receiver makes every
+         * dispatch pay for a failing guard, so only devirtualize when a frequency-based receiver
+         * profile backs the call site: the call target of {@code invoke} has a dynamic type
+         * profile.
+         */
+        private static boolean hasReceiverFrequencyProfile(Invoke invoke) {
+            return invoke.callTarget() instanceof SubstrateMethodCallTargetNode target && target.hasDynamicTypeProfile();
         }
 
         private void devirtualizeIndirectCallTargetInvokes(CoreProviders coreProviders) {
@@ -412,7 +467,7 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
         }
 
         private void applyPGOProfiles(StructuredGraph graphCopy, HighTierContext highTierContext, NodeSourcePosition replaceePosition) {
-            if (pgoProfiles == null) {
+            if (profilesLookup == null) {
                 return;
             }
             assert root.getOptions() != null;
@@ -426,9 +481,12 @@ public class SubstratePriorityInliningPhase extends PriorityInliningPhase {
                 applyProfilesPhase.apply(graphCopy, highTierContext);
                 return;
             }
-            assert !UseGraphCache.getValue(getOptions());
+            /*
+             * The profile is applied for this expansion's context. The graph cache is not used while
+             * a profile is applied (see createGraph), so no other expansion shares this graph.
+             */
             assert inliningProvider != null : "Provider must not be null";
-            PGOApplyProfilesPhase.createForExpandingCutoffs(replaceePosition, universe, pgoProfiles).apply(graphCopy, highTierContext);
+            PGOApplyProfilesPhase.createForExpandingCutoffs(replaceePosition, universe, profilesLookup).apply(graphCopy, highTierContext);
         }
 
         @Override
