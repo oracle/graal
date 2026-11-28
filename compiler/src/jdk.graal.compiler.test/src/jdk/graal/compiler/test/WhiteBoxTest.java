@@ -79,7 +79,6 @@ public class WhiteBoxTest {
         call("getHeapSpaceAlignment", whiteBox::getHeapSpaceAlignment);
         call("getHeapAlignment", whiteBox::getHeapAlignment);
         call("getMinimumJavaStackSize", whiteBox::getMinimumJavaStackSize);
-        call("hasExternalSymbolsStripped", whiteBox::hasExternalSymbolsStripped);
         call("isObjectInOldGen", () -> whiteBox.isObjectInOldGen(sampleObject));
         call("getObjectSize", () -> whiteBox.getObjectSize(sampleObject));
         call("printString", () -> whiteBox.printString("WhiteBoxTest", 64));
