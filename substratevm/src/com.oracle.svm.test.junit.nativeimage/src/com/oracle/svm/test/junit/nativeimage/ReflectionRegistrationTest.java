@@ -31,10 +31,14 @@ import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -44,6 +48,7 @@ import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.test.api.NativeImageBuildArgs;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -58,6 +63,46 @@ public class ReflectionRegistrationTest {
     }
 
     public static class UnsafeAllocationTarget {
+    }
+
+    public interface SuperclassInterface extends GrandSuperclassSuperinterface {
+        int SUPERCLASS_INTERFACE_FIELD = 1;
+
+        static void staticInterfaceMethod() {
+        }
+
+        default void superclassInterfaceMethod() {
+        }
+    }
+
+    public interface GrandSuperclassSuperinterface {
+        int GRAND_SUPERCLASS_SUPERINTERFACE_FIELD = 2;
+
+        default void grandSuperclassSuperinterfaceMethod() {
+        }
+    }
+
+    public interface GrandSuperclassInterface extends GrandSuperclassSuperinterface {
+        int GRAND_SUPERCLASS_INTERFACE_FIELD = 3;
+
+        default void grandSuperclassInterfaceMethod() {
+        }
+    }
+
+    public static class InheritanceGrandSuperclass implements GrandSuperclassInterface {
+    }
+
+    public static class InheritanceSuperclass extends InheritanceGrandSuperclass implements SuperclassInterface {
+    }
+
+    /**
+     * Implements no interface itself: it inherits every interface member through its superclasses.
+     */
+    public static class InheritanceTarget extends InheritanceSuperclass {
+        public int ownField;
+
+        public void ownMethod() {
+        }
     }
 
     public static class TestFeature implements Feature {
@@ -131,6 +176,7 @@ public class ReflectionRegistrationTest {
 
             RuntimeReflection.register(FieldLookupTarget.class);
             RuntimeReflection.registerFieldLookup(FieldLookupTarget.class, "value");
+            RuntimeReflection.register(InheritanceTarget.class);
         }
 
         @Override
@@ -151,6 +197,24 @@ public class ReflectionRegistrationTest {
     public void testFieldLookupAllowsAccess() throws ReflectiveOperationException {
         Field field = FieldLookupTarget.class.getDeclaredField("value");
         assertEquals(FIELD_LOOKUP_TEST_VALUE, field.get(new FieldLookupTarget()));
+    }
+
+    /**
+     * Registering a type for reflection exposes the public fields and methods it inherits through
+     * the interfaces of its superclasses, as {@link Class#getFields()} and {@link Class#getMethods()}
+     * return them on HotSpot.
+     */
+    @Test
+    public void testMembersInheritedThroughSuperclassInterfaces() {
+        // With exact metadata, a constant receiver would make the build register the queries itself.
+        Class<?> target = GraalDirectives.opaque(InheritanceTarget.class);
+
+        Set<String> fieldNames = Arrays.stream(target.getFields()).map(Field::getName).collect(Collectors.toSet());
+        assertEquals(Set.of("ownField", "SUPERCLASS_INTERFACE_FIELD", "GRAND_SUPERCLASS_INTERFACE_FIELD", "GRAND_SUPERCLASS_SUPERINTERFACE_FIELD"), fieldNames);
+
+        Set<String> methodNames = Arrays.stream(target.getMethods()).map(Method::getName).collect(Collectors.toSet());
+        Set<String> expectedMethodNames = Set.of("ownMethod", "superclassInterfaceMethod", "grandSuperclassInterfaceMethod", "grandSuperclassSuperinterfaceMethod");
+        assertTrue("getMethods() returned " + methodNames, methodNames.containsAll(expectedMethodNames));
     }
 
     private static Object unsafeAllocate(Class<?> clazz) throws ReflectiveOperationException {
@@ -183,12 +247,51 @@ public class ReflectionRegistrationTest {
         }
     }
 
+    static class LookupCondition {
+        static void reach() {
+        }
+    }
+
+    static class AccessConditionType {
+        static void reach() {
+        }
+    }
+
+    public interface ConditionalInterface {
+        int VALUE = 42;
+
+        default int value() {
+            return VALUE;
+        }
+    }
+
+    public static class ConditionalParent implements ConditionalInterface {
+    }
+
+    public static class ConditionalChild extends ConditionalParent {
+        public int own;
+    }
+
     @NativeImageBuildArgs({
                     "--exact-reachability-metadata=com.oracle.svm.test.junit.nativeimage",
+                    "--initialize-at-run-time=com.oracle.svm.test.junit.nativeimage.ReflectionRegistrationTest$LookupCondition,com.oracle.svm.test.junit.nativeimage.ReflectionRegistrationTest$AccessConditionType",
                     "--features=com.oracle.svm.test.junit.nativeimage.ReflectionRegistrationTest$ExactReachabilityTest$TestFeature"
     })
     public static class ExactReachabilityTest {
         public static class TestFeature implements Feature {
+            @Override
+            public void afterRegistration(AfterRegistrationAccess access) {
+                var reflection = access.getReflectiveAccess();
+                reflection.register(AccessCondition.typeReached(LookupCondition.class), ConditionalChild.class);
+                var accessCondition = AccessCondition.typeReached(AccessConditionType.class);
+                try {
+                    reflection.register(accessCondition, ConditionalInterface.class.getDeclaredMethod("value"));
+                    reflection.register(accessCondition, ConditionalInterface.class.getDeclaredField("VALUE"));
+                } catch (ReflectiveOperationException e) {
+                    throw new AssertionError(e);
+                }
+            }
+
             @Override
             public void beforeAnalysis(BeforeAnalysisAccess access) {
                 RuntimeReflection.registerFieldLookup(FieldLookupTarget.class, "value");
@@ -202,8 +305,34 @@ public class ReflectionRegistrationTest {
             assertThrows(MissingReflectionRegistrationError.class, () -> field.get(new FieldLookupTarget()));
         }
 
+        @Test
+        public void testConditionalMemberQueries() throws ReflectiveOperationException {
+            Class<?> child = GraalDirectives.opaque(ConditionalChild.class);
+            assertThrows(MissingReflectionRegistrationError.class, () -> child.getMethod("value"));
+            assertThrows(MissingReflectionRegistrationError.class, () -> child.getField("VALUE"));
+            assertThrows(MissingReflectionRegistrationError.class, () -> child.getDeclaredField("own"));
+            assertThrows(MissingReflectionRegistrationError.class, () -> child.getMethod("absent"));
+            LookupCondition.reach();
+            Field field = child.getField("VALUE");
+            Method method = child.getMethod("value");
+            assertEquals(ConditionalChild.class, child.getDeclaredField("own").getDeclaringClass());
+            assertThrows(NoSuchMethodException.class, () -> child.getMethod("absent"));
+            assertThrows(MissingReflectionRegistrationError.class, () -> field.get(null));
+            ConditionalChild instance = new ConditionalChild();
+            assertThrows(MissingReflectionRegistrationError.class, () -> method.invoke(instance));
+            AccessConditionType.reach();
+            assertEquals(42, field.get(null));
+            assertEquals(42, method.invoke(instance));
+        }
+
+        @Test
+        public void testStaticInterfaceMethodRequiresOwnRegistration() {
+            Class<?> declaringInterface = GraalDirectives.opaque(SuperclassInterface.class);
+            assertThrows(MissingReflectionRegistrationError.class, () -> declaringInterface.getDeclaredMethod("staticInterfaceMethod"));
+        }
+
         private static String fieldName() {
-            return System.nanoTime() == Long.MIN_VALUE ? "missing" : "value";
+            return GraalDirectives.opaque("value");
         }
     }
 }

@@ -210,6 +210,35 @@ public class RuntimeDynamicAccessMetadata {
         return satisfied;
     }
 
+    /**
+     * A member can be queried under any of its registrations. Reading a field or invoking an
+     * executable requires a registration that also grants access.
+     */
+    public RuntimeDynamicAccessMetadata queryConditions() {
+        return this;
+    }
+
+    public RuntimeDynamicAccessMetadata withQueryConditions(RuntimeDynamicAccessMetadata queryMetadata) {
+        if (Arrays.equals(conditions, queryMetadata.conditions)) {
+            return this;
+        }
+        return new MemberAccessMetadata(this, queryMetadata);
+    }
+
+    private static final class MemberAccessMetadata extends RuntimeDynamicAccessMetadata {
+        private final RuntimeDynamicAccessMetadata queryMetadata;
+
+        MemberAccessMetadata(RuntimeDynamicAccessMetadata access, RuntimeDynamicAccessMetadata queryMetadata) {
+            super(access.conditions, access.preserved);
+            this.queryMetadata = queryMetadata;
+        }
+
+        @Override
+        public RuntimeDynamicAccessMetadata queryConditions() {
+            return queryMetadata;
+        }
+    }
+
     public boolean isPreserved() {
         return preserved;
     }

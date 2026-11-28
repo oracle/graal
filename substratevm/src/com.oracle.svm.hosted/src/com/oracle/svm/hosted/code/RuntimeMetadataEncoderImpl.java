@@ -38,6 +38,7 @@ import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.IN_HEA
 import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.NEGATIVE_FLAG_MASK;
 import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.NO_DATA;
 import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.PRESERVED_FLAG_MASK;
+import static com.oracle.svm.guest.staging.reflect.RuntimeMetadataDecoder.SEPARATE_QUERY_CONDITIONS;
 import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.AccessibleObjectMetadata;
 import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.ClassMetadata;
 import static com.oracle.svm.hosted.code.ReflectionRuntimeMetadata.ConstructorMetadata;
@@ -447,9 +448,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         String deletedReason = (deleteAnnotation != null) ? deleteAnnotation.value() : null;
         RuntimeDynamicAccessMetadata dynamicAccessMetadata = conditionalReflectField.getDynamicAccessMetadata();
         /* Fill encoders with the necessary values. */
-        for (Class<?> conditionType : dynamicAccessMetadata.getTypesForEncoding()) {
-            encoders.classes.addObject(conditionType);
-        }
+        registerMemberConditionTypes(dynamicAccessMetadata);
         encoders.memberNames.addObject(name);
         encoders.classes.addObject(type.getJavaClass());
         encoders.otherStrings.addObject(signature);
@@ -479,9 +478,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         String signature = getSignature(reflectMethod);
 
         /* Fill encoders with the necessary values. */
-        for (Class<?> type : dynamicAccessMetadata.getTypesForEncoding()) {
-            encoders.classes.addObject(type);
-        }
+        registerMemberConditionTypes(dynamicAccessMetadata);
         if (isMethod) {
             encoders.memberNames.addObject(name);
             encoders.classes.addObject(returnType.getJavaClass());
@@ -1024,7 +1021,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         modifiers |= field.negative ? NEGATIVE_FLAG_MASK : 0;
         modifiers |= field.dynamicAccessMetadata.isPreserved() ? PRESERVED_FLAG_MASK : 0;
         buf.putUV(modifiers);
-        encodeConditions(buf, field.dynamicAccessMetadata);
+        encodeMemberConditions(buf, field.dynamicAccessMetadata);
 
         if (field.heapObject != null) {
             encodeObject(buf, field.heapObject);
@@ -1053,6 +1050,25 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         }
         buf.putU1(dynamicAccessMetadata.isPreserved() ? 1 : 0);
         encodeConditions(buf, dynamicAccessMetadata);
+    }
+
+    private void registerMemberConditionTypes(RuntimeDynamicAccessMetadata metadata) {
+        for (Class<?> type : metadata.getTypesForEncoding()) {
+            encoders.classes.addObject(type);
+        }
+        if (metadata.queryConditions() != metadata) {
+            for (Class<?> type : metadata.queryConditions().getTypesForEncoding()) {
+                encoders.classes.addObject(type);
+            }
+        }
+    }
+
+    private void encodeMemberConditions(UnsafeArrayTypeWriter buf, RuntimeDynamicAccessMetadata metadata) {
+        if (metadata.queryConditions() != metadata) {
+            buf.putSV(SEPARATE_QUERY_CONDITIONS);
+            encodeConditions(buf, metadata.queryConditions());
+        }
+        encodeConditions(buf, metadata);
     }
 
     private void encodeConditions(UnsafeArrayTypeWriter buf, RuntimeDynamicAccessMetadata dynamicAccessMetadata) {
@@ -1116,7 +1132,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         modifiers |= executable.dynamicAccessMetadata.isPreserved() ? PRESERVED_FLAG_MASK : 0;
         buf.putUV(modifiers);
 
-        encodeConditions(buf, executable.dynamicAccessMetadata);
+        encodeMemberConditions(buf, executable.dynamicAccessMetadata);
 
         if (executable.heapObject != null) {
             encodeObject(buf, executable.heapObject);

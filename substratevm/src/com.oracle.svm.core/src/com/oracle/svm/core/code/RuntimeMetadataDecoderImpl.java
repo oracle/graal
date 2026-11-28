@@ -427,7 +427,13 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
          * allocations would recursively decode their own dynamic-access metadata.
          */
         try (var _ = MetadataTracer.disableTracing("dynamic access metadata decoding")) {
-            var conditionTypes = decodeArray(buf, Class.class, _ -> decodeType(buf, layerId), layerId);
+            int length = buf.getSVInt();
+            if (length == SEPARATE_QUERY_CONDITIONS) {
+                var queryTypes = decodeArray(buf, Class.class, _ -> decodeType(buf, layerId), layerId);
+                var accessTypes = decodeArray(buf, Class.class, _ -> decodeType(buf, layerId), layerId);
+                return RuntimeDynamicAccessMetadata.createDecoded(accessTypes, preserved).withQueryConditions(RuntimeDynamicAccessMetadata.createDecoded(queryTypes, preserved));
+            }
+            var conditionTypes = decodeArray(Class.class, _ -> decodeType(buf, layerId), length);
             return RuntimeDynamicAccessMetadata.createDecoded(conditionTypes, preserved);
         }
     }

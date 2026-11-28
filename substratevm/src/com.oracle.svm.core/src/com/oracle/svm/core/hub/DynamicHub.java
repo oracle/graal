@@ -1705,7 +1705,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata == null, metadataRegisteredForReplay)) {
                 traceFieldLookup(fieldName, field, publicOnly, negative);
             }
-            if (throwMissingErrors && hiding) {
+            if (throwMissingErrors && (hiding || (dynamicAccessMetadata != null && !dynamicAccessMetadata.queryConditions().satisfied()))) {
                 MissingReflectionRegistrationUtils.reportFieldQuery(clazz, fieldName);
             }
             if (negative || hiding) {
@@ -1797,7 +1797,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             if (MetadataTracer.enabled() && MetadataTracer.shouldTraceMetadata(dynamicAccessMetadata == null, metadataRegisteredForReplay)) {
                 traceMethodLookup(methodName, parameterTypes, method, publicOnly, negative);
             }
-            if (throwMissingErrors && hiding) {
+            if (throwMissingErrors && (hiding || (dynamicAccessMetadata != null && !dynamicAccessMetadata.queryConditions().satisfied()))) {
                 MissingReflectionRegistrationUtils.reportMethodQuery(clazz, methodName, parameterTypes);
             }
             return !(negative || hiding);
@@ -1822,7 +1822,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     private boolean allElementsRegistered(boolean publicOnly, int allDeclaredElementsFlag, int allPublicElementsFlag) {
-        return isClassFlagSet(allDeclaredElementsFlag) || (publicOnly && isClassFlagSet(allPublicElementsFlag));
+        if (isClassFlagSet(allDeclaredElementsFlag) || (publicOnly && isClassFlagSet(allPublicElementsFlag))) {
+            RuntimeDynamicAccessMetadata metadata = getDynamicAccessMetadata();
+            return metadata == null || metadata.satisfied();
+        }
+        return false;
     }
 
     private static RuntimeDynamicAccessMetadata getDynamicAccessMetadata(AnnotatedElement element) {
