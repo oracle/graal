@@ -45,7 +45,7 @@ local common_json = import "../common.json";
     ,
   local get_labsjdk_jvmci_build_id(jdk) =
     local _parts = std.split(jdk.version, "-");
-    _parts[std.length(_parts) - 1]
+    std.join("-", _parts[3:5])
     ,
   local jdks_data = {
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 17 }

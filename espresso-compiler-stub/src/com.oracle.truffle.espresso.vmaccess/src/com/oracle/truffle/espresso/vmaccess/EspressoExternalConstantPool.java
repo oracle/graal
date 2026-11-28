@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,24 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
     }
 
     @Override
+    public int lookupMethodHandleReferenceKind(int cpi) {
+        try {
+            return cpMirror.invokeMember("lookupMethodHandleReferenceKind", cpi).asInt();
+        } catch (PolyglotException e) {
+            throw throwHostException(e);
+        }
+    }
+
+    @Override
+    public int lookupMethodHandleReferenceIndex(int cpi) {
+        try {
+            return cpMirror.invokeMember("lookupMethodHandleReferenceIndex", cpi).asInt();
+        } catch (PolyglotException e) {
+            throw throwHostException(e);
+        }
+    }
+
+    @Override
     protected boolean loadReferencedType0(int cpi, int opcode) {
         try {
             return cpMirror.invokeMember("loadReferencedType", cpi, opcode).asBoolean();
@@ -58,11 +76,16 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
 
     @Override
     protected AbstractEspressoResolvedJavaField lookupResolvedField(int cpi, AbstractEspressoResolvedJavaMethod method, int opcode) {
-        Value methodMirror = null;
-        if (method != null) {
-            methodMirror = ((EspressoExternalResolvedJavaMethod) method).getMirror();
+        if (!(method instanceof EspressoExternalResolvedJavaMethod externalMethod)) {
+            throw new IllegalArgumentException("Expected an external Espresso method");
         }
-        Value resolved = cpMirror.invokeMember("lookupResolvedField", cpi, opcode, methodMirror);
+        Value methodMirror = externalMethod.getMirror();
+        Value resolved;
+        try {
+            resolved = cpMirror.invokeMember("lookupResolvedField", cpi, opcode, methodMirror);
+        } catch (PolyglotException e) {
+            throw throwHostException(e);
+        }
         if (resolved.isNull()) {
             return null;
         }
@@ -93,16 +116,28 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
 
     @Override
     protected String lookupName(int cpi) {
-        return cpMirror.invokeMember("lookupName", cpi).asString();
+        try {
+            return cpMirror.invokeMember("lookupName", cpi).asString();
+        } catch (PolyglotException e) {
+            throw throwHostException(e);
+        }
     }
 
     @Override
     protected AbstractEspressoResolvedJavaMethod lookupResolvedMethod(int cpi, int opcode, AbstractEspressoResolvedJavaMethod caller) {
+        if (caller != null && !(caller instanceof EspressoExternalResolvedJavaMethod)) {
+            throw new IllegalArgumentException("Expected an external Espresso caller");
+        }
         Value callerMirror = null;
         if (caller != null) {
             callerMirror = ((EspressoExternalResolvedJavaMethod) caller).getMirror();
         }
-        Value resolved = cpMirror.invokeMember("lookupResolvedMethod", cpi, opcode, callerMirror);
+        Value resolved;
+        try {
+            resolved = cpMirror.invokeMember("lookupResolvedMethod", cpi, opcode, callerMirror);
+        } catch (PolyglotException e) {
+            throw throwHostException(e);
+        }
         if (resolved.isNull()) {
             return null;
         }
@@ -234,11 +269,18 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
         int cpi = value.getMember("cpi").asInt();
         Value methodMirror = value.getMember("bootstrapMethod");
         EspressoExternalVMAccess access = holder.getAccess();
-        EspressoExternalResolvedJavaMethod method = new EspressoExternalResolvedJavaMethod(methodMirror, access);
+        EspressoExternalResolvedJavaMethod method = methodMirror.isNull() ? null : new EspressoExternalResolvedJavaMethod(methodMirror, access);
         String name = value.getMember("name").asString();
-        EspressoExternalObjectConstant type = new EspressoExternalObjectConstant(access, value.getMember("type"));
-        int staticArgCount = (int) value.getArraySize() / 2;
-        JavaConstant[] staticArguments = new JavaConstant[staticArgCount];
+        Value typeMirror = value.getMember("type");
+        EspressoExternalObjectConstant type = typeMirror.isNull() ? null : new EspressoExternalObjectConstant(access, typeMirror);
+        Value argumentIndices = value.getMember("staticArgumentIndices");
+        int[] staticArgumentIndices = new int[(int) argumentIndices.getArraySize()];
+        for (int i = 0; i < staticArgumentIndices.length; i++) {
+            staticArgumentIndices[i] = argumentIndices.getArrayElement(i).asInt();
+        }
+        boolean hasResolvedArguments = value.hasArrayElements();
+        int staticArgCount = hasResolvedArguments ? (int) value.getArraySize() / 2 : 0;
+        JavaConstant[] staticArguments = hasResolvedArguments ? new JavaConstant[staticArgCount] : null;
         for (int i = 0; i < staticArgCount; i++) {
             Value maybeEntryCPI = value.getArrayElement(2 * i + 1);
             JavaConstant staticArgument;
@@ -251,14 +293,15 @@ final class EspressoExternalConstantPool extends AbstractEspressoConstantPool {
             }
             staticArguments[i] = staticArgument;
         }
-        return new EspressoBootstrapMethodInvocation(isIndy, method, name, type, staticArguments, cpi, this);
+        int methodHandleIndex = value.getMember("methodHandleIndex").asInt();
+        return new EspressoBootstrapMethodInvocation(isIndy, method, name, type, staticArguments, staticArgumentIndices, cpi, methodHandleIndex, this);
     }
 
     @Override
-    public BootstrapMethodInvocation lookupBootstrapMethodInvocation(int index, int opcode) {
+    public BootstrapMethodInvocation lookupBootstrapMethodInvocation(int index, int opcode, boolean resolve) {
         Value value;
         try {
-            value = cpMirror.invokeMember("lookupBootstrapMethodInvocation", index, opcode);
+            value = cpMirror.invokeMember("lookupBootstrapMethodInvocation", index, opcode, resolve);
         } catch (PolyglotException e) {
             throw throwHostException(e);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,16 +43,17 @@ import static com.oracle.truffle.espresso.impl.jvmci.JVMCIIndyData.indyCpi;
 import static com.oracle.truffle.espresso.impl.jvmci.JVMCIIndyData.isIndyCPI;
 import static com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils.LOGGER;
 import static com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils.findObjectType;
+import static com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils.findType;
+
+import java.lang.invoke.MethodHandleInfo;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.descriptors.Descriptor;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
@@ -92,6 +93,25 @@ public final class JVMCIConstantPoolUtils {
             throw meta.throwIndexOutOfBoundsExceptionBoundary("Invalid constant pool index", cpi, pool.length());
         }
         return pool.tagAt(cpi);
+    }
+
+    public static int lookupMethodHandleReferenceKind(RuntimeConstantPool pool, int cpi, Meta meta) {
+        checkMethodHandle(pool, cpi, meta);
+        return pool.methodHandleRefKind(cpi);
+    }
+
+    public static int lookupMethodHandleReferenceIndex(RuntimeConstantPool pool, int cpi, Meta meta) {
+        checkMethodHandle(pool, cpi, meta);
+        return pool.methodHandleMemberIndex(cpi);
+    }
+
+    private static void checkMethodHandle(RuntimeConstantPool pool, int cpi, Meta meta) {
+        if (cpi < 1 || cpi >= pool.length()) {
+            throw meta.throwIndexOutOfBoundsExceptionBoundary("Invalid constant pool index", cpi, pool.length());
+        }
+        if (pool.tagAt(cpi) != ConstantPool.Tag.METHODHANDLE) {
+            throw meta.throwIllegalArgumentExceptionBoundary("Expected a method handle constant pool index");
+        }
     }
 
     @TruffleBoundary
@@ -175,33 +195,52 @@ public final class JVMCIConstantPoolUtils {
             }
             return (Method) meta.java_lang_invoke_MemberName_0vmTarget.getHiddenObject(successfulCallSiteLink.getMemberName());
         }
-        if (!Bytecodes.isInvoke(opcode) || !(safeTagAt(constantPool, cpi, meta).isMethod())) {
-            LOGGER.fine(() -> "ECP.lookupResolvedMethod opcode=" + Bytecodes.nameOf(opcode) + " poolConstant=" + constantPool.toString(cpi));
-            throw meta.throwIllegalArgumentExceptionBoundary("Not an invoke or method ref");
+        int invokeOpcode;
+        int methodCpi;
+        boolean returnInvoker;
+        if (opcode == -1 || opcode == LDC || opcode == LDC_W) {
+            invokeOpcode = switch (lookupMethodHandleReferenceKind(constantPool, cpi, meta)) {
+                case MethodHandleInfo.REF_invokeVirtual -> INVOKEVIRTUAL;
+                case MethodHandleInfo.REF_invokeStatic -> INVOKESTATIC;
+                case MethodHandleInfo.REF_invokeSpecial, MethodHandleInfo.REF_newInvokeSpecial -> INVOKESPECIAL;
+                case MethodHandleInfo.REF_invokeInterface -> INVOKEINTERFACE;
+                default -> throw meta.throwIllegalArgumentExceptionBoundary("Expected a method handle referencing a method");
+            };
+            methodCpi = constantPool.methodHandleMemberIndex(cpi);
+            returnInvoker = false;
+        } else if (Bytecodes.isInvoke(opcode)) {
+            invokeOpcode = opcode;
+            methodCpi = cpi;
+            returnInvoker = true;
+        } else {
+            throw meta.throwIllegalArgumentExceptionBoundary("Invalid opcode " + opcode);
         }
-        Klass symbolicHolder = lookupSymbolicHolder(cpi, constantPool, meta);
+        if (!safeTagAt(constantPool, methodCpi, meta).isMethod()) {
+            throw meta.throwIllegalArgumentExceptionBoundary("Not a method ref");
+        }
+        Klass symbolicHolder = lookupSymbolicHolder(methodCpi, constantPool, meta);
         if (symbolicHolder == null) {
-            LOGGER.fine(() -> "ECP.lookupResolvedMethod couldn't find symbolic holder klass " + constantPool.memberClassName(cpi));
+            LOGGER.fine(() -> "ECP.lookupResolvedMethod couldn't find symbolic holder klass " + constantPool.memberClassName(methodCpi));
             return null;
         }
         Method symbolicResolution;
-        ResolvedConstant resolvedConstantOrNull = constantPool.peekResolvedOrNull(cpi, meta);
-        if (resolvedConstantOrNull != null) {
+        ResolvedConstant resolvedConstantOrNull = constantPool.peekResolvedOrNull(methodCpi, meta);
+        if (resolvedConstantOrNull != null && resolvedConstantOrNull.isSuccess()) {
             symbolicResolution = (Method) resolvedConstantOrNull.value();
         } else {
-            symbolicResolution = tryResolveMethod(cpi, symbolicHolder, constantPool, meta);
+            symbolicResolution = tryResolveMethod(methodCpi, symbolicHolder, constantPool, meta);
             if (symbolicResolution == null) {
-                LOGGER.fine(() -> "ECP.lookupResolvedMethod lookup method failed symbolic lookup for " + symbolicHolder + ", " + constantPool.toString(cpi));
+                LOGGER.fine(() -> "ECP.lookupResolvedMethod lookup method failed symbolic lookup for " + symbolicHolder + ", " + constantPool.toString(methodCpi));
                 return null;
             }
         }
-        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSiteOrNull(context, cpHolderKlass, symbolicResolution, CallSiteType.fromOpCode(opcode), symbolicHolder);
+        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSiteOrNull(context, cpHolderKlass, symbolicResolution, CallSiteType.fromOpCode(invokeOpcode), symbolicHolder);
         if (resolvedCall == null) {
-            LOGGER.fine(() -> "ECP.lookupResolvedMethod failed call site resolution for " + symbolicResolution + " from " + cpHolderKlass + " with " + Bytecodes.nameOf(opcode));
+            LOGGER.fine(() -> "ECP.lookupResolvedMethod failed call site resolution for " + symbolicResolution + " from " + cpHolderKlass + " with " + Bytecodes.nameOf(invokeOpcode));
             return null;
         }
         Method method;
-        if (resolvedConstantOrNull instanceof ResolvedWithInvokerClassMethodRefConstant withInvoker) {
+        if (returnInvoker && resolvedConstantOrNull instanceof ResolvedWithInvokerClassMethodRefConstant withInvoker) {
             MHInvokeGenericNode.MethodHandleInvoker invoker = withInvoker.invoker();
             method = invoker.method();
         } else {
@@ -211,6 +250,7 @@ public final class JVMCIConstantPoolUtils {
         // this seems to be in line with HotSpot
         if (method.isInvokeIntrinsic()) {
             LOGGER.fine(() -> "ECP.lookupResolvedMethod lookup method found InvokeGeneric that was not resolved yet: " + method);
+            return null;
         }
         LOGGER.finer(() -> "ECP.lookupResolvedMethod found " + symbolicResolution);
         return method;
@@ -248,18 +288,32 @@ public final class JVMCIConstantPoolUtils {
     public static Field lookupResolvedField(RuntimeConstantPool constantPool, int cpi, Method method, int opcode, EspressoContext context) {
         assert context.getLanguage().isJVMCIEnabled();
         Meta meta = context.getMeta();
-        if (!(opcode == GETSTATIC || opcode == PUTSTATIC || opcode == GETFIELD || opcode == PUTFIELD)) {
+        int fieldIndex;
+        int fieldOpcode;
+        if (opcode == -1 || opcode == LDC || opcode == LDC_W) {
+            fieldOpcode = switch (lookupMethodHandleReferenceKind(constantPool, cpi, meta)) {
+                case MethodHandleInfo.REF_getField -> GETFIELD;
+                case MethodHandleInfo.REF_getStatic -> GETSTATIC;
+                case MethodHandleInfo.REF_putField -> PUTFIELD;
+                case MethodHandleInfo.REF_putStatic -> PUTSTATIC;
+                default -> throw meta.throwIllegalArgumentExceptionBoundary("Expected a method handle referencing a field");
+            };
+            fieldIndex = constantPool.methodHandleMemberIndex(cpi);
+        } else if (opcode == GETSTATIC || opcode == PUTSTATIC || opcode == GETFIELD || opcode == PUTFIELD) {
+            fieldIndex = cpi;
+            fieldOpcode = opcode;
+        } else {
             throw meta.throwIllegalArgumentExceptionBoundary();
         }
-        if (safeTagAt(constantPool, cpi, meta) != ConstantPool.Tag.FIELD_REF) {
+        if (safeTagAt(constantPool, fieldIndex, meta) != ConstantPool.Tag.FIELD_REF) {
             throw meta.throwException(meta.java_lang_ClassFormatError);
         }
-        Klass symbolicHolder = lookupSymbolicHolder(cpi, constantPool, meta);
+        Klass symbolicHolder = lookupSymbolicHolder(fieldIndex, constantPool, meta);
         if (symbolicHolder == null) {
-            LOGGER.fine(() -> "ECP.lookupResolvedField cannot resolve symbolic holder: " + constantPool.memberClassName(cpi));
+            LOGGER.fine(() -> "ECP.lookupResolvedField cannot resolve symbolic holder: " + constantPool.memberClassName(fieldIndex));
             return null;
         }
-        Field resolved = lookupResolvedField(cpi, symbolicHolder, constantPool, method, opcode, meta);
+        Field resolved = lookupResolvedField(fieldIndex, symbolicHolder, constantPool, method, fieldOpcode, meta);
         if (resolved != null) {
             LOGGER.finer(() -> "ECP.lookupResolvedField found " + resolved);
         }
@@ -269,7 +323,7 @@ public final class JVMCIConstantPoolUtils {
     private static Field lookupResolvedField(int fieldIndex, Klass symbolicHolder, RuntimeConstantPool constantPool, Method method, int opcode, Meta meta) {
         Field symbolicResolution;
         ResolvedConstant resolvedConstant = constantPool.peekResolvedOrNull(fieldIndex, meta);
-        if (resolvedConstant != null) {
+        if (resolvedConstant != null && resolvedConstant.isSuccess()) {
             symbolicResolution = (Field) resolvedConstant.value();
         } else {
             symbolicResolution = tryResolveField(fieldIndex, symbolicHolder, constantPool, meta);
@@ -305,22 +359,24 @@ public final class JVMCIConstantPoolUtils {
     }
 
     @TruffleBoundary
-    public static Symbol<? extends Descriptor> lookupDescriptor(RuntimeConstantPool constantPool, int cpi, EspressoContext context) {
-        assert context.getLanguage().isJVMCIEnabled();
+    public static Symbol<?> lookupDescriptor(RuntimeConstantPool constantPool, int cpi, EspressoContext context) {
         Meta meta = context.getMeta();
         int index = isIndyCPI(cpi) ? indyCpi(cpi) : cpi;
         ConstantPool.Tag tag = safeTagAt(constantPool, index, meta);
+        if (tag == ConstantPool.Tag.METHODHANDLE) {
+            index = constantPool.methodHandleMemberIndex(index);
+            tag = safeTagAt(constantPool, index, meta);
+        }
         if (tag.isMember()) {
-            LOGGER.finer(() -> "ECP.lookupDescriptor found " + constantPool.memberDescriptor(index));
             return constantPool.memberDescriptor(index);
         }
-        if (tag == ConstantPool.Tag.INVOKEDYNAMIC) {
-            Symbol<Signature> indySignature = constantPool.invokeDynamicSignature(index);
-            LOGGER.finer(() -> "ECP.lookupDescriptor found " + indySignature);
-            return indySignature;
-        }
-        LOGGER.warning(() -> "Unsupported CP entry type for lookupDescriptor: " + tag);
-        throw meta.throwIllegalArgumentExceptionBoundary();
+        return switch (tag) {
+            case UTF8 -> constantPool.utf8At(index);
+            case METHODTYPE -> constantPool.methodTypeSignature(index);
+            case INVOKEDYNAMIC -> constantPool.invokeDynamicSignature(index);
+            case DYNAMIC -> constantPool.dynamicType(index);
+            default -> throw meta.throwIllegalArgumentExceptionBoundary("Entry has no descriptor");
+        };
     }
 
     @TruffleBoundary
@@ -329,16 +385,17 @@ public final class JVMCIConstantPoolUtils {
         Meta meta = context.getMeta();
         int index = isIndyCPI(cpi) ? indyCpi(cpi) : cpi;
         ConstantPool.Tag tag = safeTagAt(constantPool, index, meta);
+        if (tag == ConstantPool.Tag.METHODHANDLE) {
+            index = constantPool.methodHandleMemberIndex(index);
+            tag = safeTagAt(constantPool, index, meta);
+        }
         if (tag.isMember()) {
-            LOGGER.finer(() -> "ECP.lookupName found " + constantPool.memberName(index));
             return constantPool.memberName(index);
         }
-        if (tag == ConstantPool.Tag.INVOKEDYNAMIC) {
-            LOGGER.finer(() -> "ECP.lookupName found " + constantPool.invokeDynamicName(index));
-            return constantPool.invokeDynamicName(index);
+        if (tag == ConstantPool.Tag.INVOKEDYNAMIC || tag == ConstantPool.Tag.DYNAMIC) {
+            return constantPool.bsmName(index);
         }
-        LOGGER.warning(() -> "Unsupported CP entry type for lookupName: " + tag + " " + constantPool.toString(index));
-        throw meta.throwIllegalArgumentExceptionBoundary();
+        throw meta.throwIllegalArgumentExceptionBoundary("Entry has no name");
     }
 
     @TruffleBoundary
@@ -374,11 +431,36 @@ public final class JVMCIConstantPoolUtils {
     }
 
     @TruffleBoundary
-    public static Object lookupReferencedType(RuntimeConstantPool constantPool, int cpi, @SuppressWarnings("unused") int opcode, EspressoContext context) {
+    public static Object lookupReferencedType(RuntimeConstantPool constantPool, int rawIndex, int rawOpcode, EspressoContext context) {
         assert context.getLanguage().isJVMCIEnabled();
         Meta meta = context.getMeta();
+        int cpi = rawIndex;
+        int opcode = rawOpcode;
         int classCpi;
+        ConstantPool.Tag entryTag = safeTagAt(constantPool, cpi, meta);
+        if (entryTag == ConstantPool.Tag.DYNAMIC) {
+            Symbol<Type> type = constantPool.dynamicType(cpi);
+            Klass klass = findType(type, constantPool.getHolder(), false, false, meta);
+            return klass == null ? type : klass;
+        }
+        if (entryTag == ConstantPool.Tag.METHODHANDLE && (opcode == LDC || opcode == LDC_W)) {
+            opcode = -1;
+        }
         switch (opcode) {
+            case -1:
+                ConstantPool.Tag tag = safeTagAt(constantPool, cpi, meta);
+                if (tag == ConstantPool.Tag.METHODHANDLE) {
+                    cpi = constantPool.methodHandleMemberIndex(cpi);
+                    tag = safeTagAt(constantPool, cpi, meta);
+                }
+                if (tag == ConstantPool.Tag.CLASS) {
+                    classCpi = cpi;
+                } else if (tag.isMember()) {
+                    classCpi = constantPool.memberClassIndex(cpi);
+                } else {
+                    throw meta.throwIllegalArgumentExceptionBoundary("Entry has no referenced type");
+                }
+                break;
             case CHECKCAST:
             case INSTANCEOF:
             case NEW:
@@ -406,8 +488,6 @@ public final class JVMCIConstantPoolUtils {
                 classCpi = constantPool.memberClassIndex(cpi);
                 break;
             default:
-                LOGGER.warning(() -> "Unsupported CP entry type for lookupReferencedType: " + safeTagAt(constantPool, cpi, meta) + " " + constantPool.toString(cpi) + " for " +
-                                Bytecodes.nameOf(opcode));
                 throw meta.throwIllegalArgumentExceptionBoundary("Unsupported CP entry type");
         }
         Klass klass;
@@ -420,15 +500,15 @@ public final class JVMCIConstantPoolUtils {
             Symbol<Name> className = constantPool.className(classCpi);
             return TypeSymbols.nameToType(className);
         }
-        LOGGER.finer(() -> "ECP.lookupReferencedType found " + klass);
         return klass;
     }
 
     @TruffleBoundary
-    public static void lookupBootstrapMethodInvocation(RuntimeConstantPool constantPool, int cpi, int opcode, EspressoContext context, BootstrapMethodInvocationBuilder builder) {
+    public static void lookupBootstrapMethodInvocation(RuntimeConstantPool constantPool, int cpi, int opcode, boolean resolve, EspressoContext context,
+                    BootstrapMethodInvocationBuilder builder) {
         Meta meta = context.getMeta();
         int index;
-        if (opcode == -1) {
+        if (opcode == -1 || opcode == LDC || opcode == LDC_W || opcode == LDC2_W) {
             assert !isIndyCPI(cpi);
             index = cpi;
         } else if (opcode == INVOKEDYNAMIC) {
@@ -442,54 +522,60 @@ public final class JVMCIConstantPoolUtils {
         if (tag != ConstantPool.Tag.DYNAMIC && tag != ConstantPool.Tag.INVOKEDYNAMIC) {
             return;
         }
+        boolean isIndy = tag == ConstantPool.Tag.INVOKEDYNAMIC;
         BootstrapMethodsAttribute bms = cpHolderKlass.getAttribute(BootstrapMethodsAttribute.NAME, BootstrapMethodsAttribute.class);
         int bsmAttrIndex = constantPool.bsmBootstrapMethodAttrIndex(index);
         BootstrapMethodsAttribute.Entry bsmEntry = bms.at(bsmAttrIndex);
-        StaticObject methodHandle = constantPool.getMethodHandle(bsmEntry, cpHolderKlass);
-        methodHandle = (StaticObject) meta.java_lang_invoke_MethodHandle_asFixedArity.invokeDirectVirtual(methodHandle);
-        assert meta.java_lang_invoke_DirectMethodHandle.isAssignableFrom(methodHandle.getKlass());
-        StaticObject member = meta.java_lang_invoke_DirectMethodHandle_member.getObject(methodHandle);
-
-        boolean isIndy = tag == ConstantPool.Tag.INVOKEDYNAMIC;
-        Method bootstrapMethod = (Method) meta.java_lang_invoke_MemberName_0vmTarget.getHiddenObject(member);
-        Symbol<Name> name = constantPool.bsmName(index);
-        StaticObject type;
-        if (isIndy) {
-            Symbol<Signature> invokeSignature = SignatureSymbols.fromDescriptor(constantPool.invokeDynamicSignature(index));
-            Symbol<Type>[] parsedInvokeSignature = meta.getSignatures().parsed(invokeSignature);
-            type = RuntimeConstantPool.signatureToMethodType(parsedInvokeSignature, cpHolderKlass, meta.getContext().getJavaVersion().java8OrEarlier(), meta);
-        } else {
-            Symbol<Type> typeSymbol = TypeSymbols.fromSymbol(constantPool.dynamicType(index));
-            Klass klass = meta.resolveSymbolOrFail(typeSymbol, cpHolderKlass.getDefiningClassLoader(), cpHolderKlass.protectionDomain());
-            type = klass.mirror();
+        int handleIndex = bsmEntry.getBootstrapMethodRef();
+        int[] argumentIndices = new int[bsmEntry.numBootstrapArguments()];
+        for (int i = 0; i < argumentIndices.length; i++) {
+            argumentIndices[i] = bsmEntry.argAt(i);
         }
-        builder.setupStaticArguments(bsmEntry.numBootstrapArguments());
-        for (int i = 0; i < bsmEntry.numBootstrapArguments(); i++) {
-            char entryCPI = bsmEntry.argAt(i);
-            ConstantPool.Tag entryTag = safeTagAt(constantPool, entryCPI, meta);
-            if (entryTag == ConstantPool.Tag.DYNAMIC) {
-                ResolvedConstant resolvedConstant = constantPool.peekResolvedOrNull(entryCPI, meta);
-                if (resolvedConstant instanceof ResolvedDynamicConstant resolvedDynamicConstant) {
-                    builder.staticArgument(i, resolvedDynamicConstant.guestBoxedValue(meta));
-                } else {
-                    builder.staticArgumentUnresolvedDynamic(i, entryCPI);
-                }
+        StaticObject type = StaticObject.NULL;
+        if (resolve) {
+            constantPool.getMethodHandle(bsmEntry, cpHolderKlass);
+            if (isIndy) {
+                Symbol<Type>[] signature = meta.getSignatures().parsed(constantPool.invokeDynamicSignature(index));
+                type = RuntimeConstantPool.signatureToMethodType(signature, cpHolderKlass, meta.getContext().getJavaVersion().java8OrEarlier(), meta);
             } else {
-                StaticObject obj = switch (entryTag) {
-                    case METHODHANDLE -> constantPool.resolvedMethodHandleAt(cpHolderKlass, entryCPI);
-                    case METHODTYPE -> constantPool.resolvedMethodTypeAt(cpHolderKlass, entryCPI);
-                    case CLASS -> constantPool.resolvedKlassAt(cpHolderKlass, entryCPI).mirror();
-                    case STRING -> constantPool.resolvedStringAt(entryCPI);
-                    case INTEGER -> meta.boxInteger(constantPool.intAt(entryCPI));
-                    case LONG -> meta.boxLong(constantPool.longAt(entryCPI));
-                    case DOUBLE -> meta.boxDouble(constantPool.doubleAt(entryCPI));
-                    case FLOAT -> meta.boxFloat(constantPool.floatAt(entryCPI));
-                    default -> throw EspressoError.shouldNotReachHere(entryTag.toString());
-                };
-                builder.staticArgument(i, obj);
+                Klass klass = meta.resolveSymbolOrFail(constantPool.dynamicType(index), cpHolderKlass.getDefiningClassLoader(), cpHolderKlass.protectionDomain());
+                type = klass.mirror();
             }
         }
-        builder.finalize(isIndy, bootstrapMethod, name, type);
+        int referenceKind = lookupMethodHandleReferenceKind(constantPool, handleIndex, meta);
+        Method method = null;
+        if (referenceKind >= MethodHandleInfo.REF_invokeVirtual) {
+            method = lookupResolvedMethod(constantPool, handleIndex, -1, null, context);
+        }
+        if (resolve) {
+            builder.setupStaticArguments(argumentIndices.length);
+            for (int i = 0; i < argumentIndices.length; i++) {
+                int argumentIndex = argumentIndices[i];
+                ConstantPool.Tag argumentTag = safeTagAt(constantPool, argumentIndex, meta);
+                if (argumentTag == ConstantPool.Tag.DYNAMIC) {
+                    ResolvedConstant entry = constantPool.peekResolvedOrNull(argumentIndex, meta);
+                    if (entry instanceof ResolvedDynamicConstant dynamic && dynamic.isSuccess()) {
+                        builder.staticArgument(i, dynamic.guestBoxedValue(meta));
+                    } else {
+                        builder.staticArgumentUnresolvedDynamic(i, argumentIndex);
+                    }
+                } else {
+                    StaticObject value = switch (argumentTag) {
+                        case METHODHANDLE -> constantPool.resolvedMethodHandleAt(cpHolderKlass, argumentIndex);
+                        case METHODTYPE -> constantPool.resolvedMethodTypeAt(cpHolderKlass, argumentIndex);
+                        case CLASS -> constantPool.resolvedKlassAt(cpHolderKlass, argumentIndex).mirror();
+                        case STRING -> constantPool.resolvedStringAt(argumentIndex);
+                        case INTEGER -> meta.boxInteger(constantPool.intAt(argumentIndex));
+                        case LONG -> meta.boxLong(constantPool.longAt(argumentIndex));
+                        case DOUBLE -> meta.boxDouble(constantPool.doubleAt(argumentIndex));
+                        case FLOAT -> meta.boxFloat(constantPool.floatAt(argumentIndex));
+                        default -> throw EspressoError.shouldNotReachHere(argumentTag.toString());
+                    };
+                    builder.staticArgument(i, value);
+                }
+            }
+        }
+        builder.finalize(isIndy, method, constantPool.bsmName(index), type, handleIndex, argumentIndices);
     }
 
     public interface BootstrapMethodInvocationBuilder {
@@ -499,6 +585,6 @@ public final class JVMCIConstantPoolUtils {
 
         void staticArgumentUnresolvedDynamic(int i, int cpi);
 
-        void finalize(boolean isIndy, Method bootstrapMethod, Symbol<Name> name, StaticObject type);
+        void finalize(boolean isIndy, Method bootstrapMethod, Symbol<Name> name, StaticObject type, int methodHandleIndex, int[] staticArgumentIndices);
     }
 }

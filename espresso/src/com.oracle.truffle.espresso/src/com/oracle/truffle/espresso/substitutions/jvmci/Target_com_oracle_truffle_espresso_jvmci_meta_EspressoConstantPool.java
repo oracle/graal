@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static com.oracle.truffle.espresso.impl.jvmci.JVMCIUtils.LOGGER;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantReflectionProvider.wrapEspressoObjectConstant;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIInstanceType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIObjectType;
+import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIUnresolvedType;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType.toJVMCIField;
 import static com.oracle.truffle.espresso.substitutions.jvmci.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType.toJVMCIMethod;
@@ -68,6 +69,20 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         Meta meta = context.getMeta();
         RuntimeConstantPool constantPool = getRuntimeConstantPool(self, meta);
         return constantPool.length();
+    }
+
+    @Substitution(hasReceiver = true)
+    public static int lookupMethodHandleReferenceKind(StaticObject self, int cpi, @Inject EspressoContext context) {
+        assert context.getLanguage().isInternalJVMCIEnabled();
+        Meta meta = context.getMeta();
+        return JVMCIConstantPoolUtils.lookupMethodHandleReferenceKind(getRuntimeConstantPool(self, meta), cpi, meta);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static int lookupMethodHandleReferenceIndex(StaticObject self, int cpi, @Inject EspressoContext context) {
+        assert context.getLanguage().isInternalJVMCIEnabled();
+        Meta meta = context.getMeta();
+        return JVMCIConstantPoolUtils.lookupMethodHandleReferenceIndex(getRuntimeConstantPool(self, meta), cpi, meta);
     }
 
     private static RuntimeConstantPool getRuntimeConstantPool(StaticObject self, Meta meta) {
@@ -185,7 +200,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
 
         Object result = JVMCIConstantPoolUtils.lookupReferencedType(constantPool, cpi, opcode, context);
         if (result instanceof Klass klass) {
-            return toJVMCIObjectType(klass, meta);
+            return toJVMCIType(klass, meta);
         } else {
             ByteSequence type = (ByteSequence) result;
             return toJVMCIUnresolvedType(type, meta);
@@ -308,18 +323,18 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(cpHolder);
         JVMCIIndyData indyData = JVMCIIndyData.getExisting(cpHolderKlass, meta);
         int indyCpi = indyData.recoverFullCpi(siteIndex);
-        return lookupBootstrapMethodInvocation(self, indyCpi, INVOKEDYNAMIC, cpHolderKlass, cpHolder, context);
+        return lookupBootstrapMethodInvocation(self, indyCpi, INVOKEDYNAMIC, true, cpHolderKlass, cpHolder, context);
     }
 
     @Substitution(hasReceiver = true)
     public static @JavaType(internalName = "Lcom/oracle/truffle/espresso/jvmci/meta/EspressoBootstrapMethodInvocation;") StaticObject lookupBootstrapMethodInvocation(StaticObject self, int cpi,
-                    int opcode,
+                    int opcode, boolean resolve,
                     @Inject EspressoContext context) {
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         StaticObject cpHolder = meta.jvmci.EspressoConstantPool_holder.getObject(self);
         ObjectKlass cpHolderKlass = (ObjectKlass) meta.jvmci.EspressoResolvedInstanceType_0vmKlass.getHiddenObject(cpHolder);
-        return lookupBootstrapMethodInvocation(self, cpi, opcode, cpHolderKlass, cpHolder, context);
+        return lookupBootstrapMethodInvocation(self, cpi, opcode, resolve, cpHolderKlass, cpHolder, context);
     }
 
     @Substitution(hasReceiver = true)
@@ -351,6 +366,8 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         Method bootstrapMethod;
         Symbol<Name> name;
         StaticObject type;
+        int methodHandleIndex;
+        int[] staticArgumentIndices;
 
         private InternalBootstrapMethodInvocationBuilder(Meta meta) {
             this.meta = meta;
@@ -377,7 +394,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         }
 
         @Override
-        public void finalize(boolean finalIsIndy, Method finalBootstrapMethod, Symbol<Name> finalName, StaticObject finalType) {
+        public void finalize(boolean finalIsIndy, Method finalBootstrapMethod, Symbol<Name> finalName, StaticObject finalType, int finalMethodHandleIndex, int[] finalStaticArgumentIndices) {
             assert !this.isIndy;
             assert this.bootstrapMethod == null;
             assert this.name == null;
@@ -386,31 +403,38 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
             this.bootstrapMethod = finalBootstrapMethod;
             this.name = finalName;
             this.type = finalType;
+            this.methodHandleIndex = finalMethodHandleIndex;
+            this.staticArgumentIndices = finalStaticArgumentIndices;
         }
     }
 
-    private static StaticObject lookupBootstrapMethodInvocation(StaticObject self, int cpi, int opcode, ObjectKlass cpHolderKlass, StaticObject cpHolder, EspressoContext context) {
+    private static StaticObject lookupBootstrapMethodInvocation(StaticObject self, int cpi, int opcode, boolean resolve, ObjectKlass cpHolderKlass, StaticObject cpHolder, EspressoContext context) {
         Meta meta = context.getMeta();
         RuntimeConstantPool constantPool = cpHolderKlass.getConstantPool();
         InternalBootstrapMethodInvocationBuilder builder = new InternalBootstrapMethodInvocationBuilder(meta);
-        JVMCIConstantPoolUtils.lookupBootstrapMethodInvocation(constantPool, cpi, opcode, context, builder);
-        if (builder.bootstrapMethod == null) {
+        JVMCIConstantPoolUtils.lookupBootstrapMethodInvocation(constantPool, cpi, opcode, resolve, context, builder);
+        if (builder.staticArgumentIndices == null) {
             return StaticObject.NULL;
         }
-        StaticObject methodHolderMirror;
-        if (builder.bootstrapMethod.getDeclaringKlass() == cpHolderKlass) {
-            methodHolderMirror = cpHolder;
-        } else {
-            methodHolderMirror = toJVMCIInstanceType(builder.bootstrapMethod.getDeclaringKlass(), meta);
+        StaticObject methodMirror = StaticObject.NULL;
+        if (builder.bootstrapMethod != null) {
+            StaticObject methodHolderMirror;
+            if (builder.bootstrapMethod.getDeclaringKlass() == cpHolderKlass) {
+                methodHolderMirror = cpHolder;
+            } else {
+                methodHolderMirror = toJVMCIInstanceType(builder.bootstrapMethod.getDeclaringKlass(), meta);
+            }
+            methodMirror = toJVMCIMethod(builder.bootstrapMethod, methodHolderMirror, meta);
         }
-        StaticObject methodMirror = toJVMCIMethod(builder.bootstrapMethod, methodHolderMirror, meta);
-        StaticObject wrappedType = wrapEspressoObjectConstant(builder.type, meta);
+        StaticObject wrappedType = StaticObject.isNull(builder.type) ? StaticObject.NULL : wrapEspressoObjectConstant(builder.type, meta);
 
         StaticObject result = meta.jvmci.EspressoBootstrapMethodInvocation.allocateInstance(context);
         LOGGER.finer(() -> "ECP.lookupBootstrapMethodInvocation: returning EspressoBootstrapMethodInvocation isIndy: " + builder.isIndy + " method: " + builder.bootstrapMethod + " name: " +
                         builder.name + " type: " +
                         builder.type + " cpi:" + cpi);
-        meta.jvmci.EspressoBootstrapMethodInvocation_init.invokeDirectSpecial(result, builder.isIndy, methodMirror, meta.toGuestString(builder.name), wrappedType, builder.wrappedArgs, cpi, self);
+        meta.jvmci.EspressoBootstrapMethodInvocation_init.invokeDirectSpecial(result, builder.isIndy, methodMirror, meta.toGuestString(builder.name), wrappedType,
+                        builder.wrappedArgs == null ? StaticObject.NULL : builder.wrappedArgs, StaticObject.wrap(builder.staticArgumentIndices, meta), cpi, builder.methodHandleIndex,
+                        self);
         return result;
     }
 }

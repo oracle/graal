@@ -55,6 +55,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -162,6 +163,7 @@ public class ReplayCodecTest extends GraalCompilerTest {
         CompilationProxy.SymbolicMethod symbolicReadArrayLength = new CompilationProxy.SymbolicMethod(ConstantReflectionProvider.class, "readArrayLength", JavaConstant.class);
         CompilationProxy.SymbolicMethod symbolicGetHandlers = new CompilationProxy.SymbolicMethod(HotSpotResolvedJavaMethod.class, "getExceptionHandlers");
         CompilationProxy.SymbolicMethod symbolicGetOopMap = new CompilationProxy.SymbolicMethod(HotSpotResolvedJavaMethod.class, "getOopMapAt", int.class);
+        CompilationProxy.SymbolicMethod symbolicGetTag = new CompilationProxy.SymbolicMethod(ConstantPool.class, "getTag", int.class);
 
         JavaConstant constant = getSnippetReflection().forObject(new Object());
         JavaConstant otherConstant = getSnippetReflection().forObject(new Object());
@@ -175,7 +177,8 @@ public class ReplayCodecTest extends GraalCompilerTest {
                                         new Assumptions.AssumptionResult<>(otherConstant, new Assumptions.CallSiteTargetValue(constant, otherConstant))),
                         new OperationRecorder.RecordedOperation(getConstantReflection(), symbolicReadArrayLength, new Object[]{constant}, exceptionMarker),
                         new OperationRecorder.RecordedOperation(dummyMethod, symbolicGetHandlers, null, dummyMethod.getExceptionHandlers()),
-                        new OperationRecorder.RecordedOperation(dummyMethod, symbolicGetOopMap, new Object[]{0}, bitSet));
+                        new OperationRecorder.RecordedOperation(dummyMethod, symbolicGetOopMap, new Object[]{0}, bitSet),
+                        new OperationRecorder.RecordedOperation(dummyMethod.getConstantPool(), symbolicGetTag, new Object[]{1}, ConstantPool.Tag.METHODHANDLE));
 
         return new RecordedCompilationUnit(
                         new HotSpotCompilationRequest(dummyMethod, INVOCATION_ENTRY_BCI, 0L, 1),

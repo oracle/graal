@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.hotspot.replaycomp.proxy;
 
+import java.util.List;
+
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -31,8 +33,6 @@ import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
-
-import java.util.List;
 
 public final class ConstantPoolProxy extends CompilationProxyBase implements ConstantPool {
     ConstantPoolProxy(InvocationHandler handler) {
@@ -94,6 +94,15 @@ public final class ConstantPoolProxy extends CompilationProxyBase implements Con
         return (BootstrapMethodInvocation) handle(lookupBootstrapMethodInvocationMethod, lookupBootstrapMethodInvocationInvokable, index, opcode);
     }
 
+    private static final SymbolicMethod lookupBootstrapMethodInvocationResolveMethod = method("lookupBootstrapMethodInvocation", int.class, int.class, boolean.class);
+    private static final InvokableMethod lookupBootstrapMethodInvocationResolveInvokable = (receiver, args) -> ((ConstantPool) receiver).lookupBootstrapMethodInvocation((int) args[0], (int) args[1],
+                    (boolean) args[2]);
+
+    @Override
+    public BootstrapMethodInvocation lookupBootstrapMethodInvocation(int index, int opcode, boolean resolve) {
+        return (BootstrapMethodInvocation) handle(lookupBootstrapMethodInvocationResolveMethod, lookupBootstrapMethodInvocationResolveInvokable, index, opcode, resolve);
+    }
+
     private static final SymbolicMethod lookupBootstrapMethodInvocationsMethod = method("lookupBootstrapMethodInvocations", boolean.class);
     private static final InvokableMethod lookupBootstrapMethodInvocationsInvokable = (receiver, args) -> ((ConstantPool) receiver).lookupBootstrapMethodInvocations((boolean) args[0]);
 
@@ -119,12 +128,36 @@ public final class ConstantPoolProxy extends CompilationProxyBase implements Con
         return (String) handle(lookupUtf8Method, lookupUtf8Invokable, cpi);
     }
 
-    private static final SymbolicMethod lookupSignatureMethod = method("lookupSignature", int.class);
-    private static final InvokableMethod lookupSignatureInvokable = (receiver, args) -> ((ConstantPool) receiver).lookupSignature((int) args[0]);
+    private static final SymbolicMethod lookupNameMethod = method("lookupName", int.class, int.class);
+    private static final InvokableMethod lookupNameInvokable = (receiver, args) -> ((ConstantPool) receiver).lookupName((int) args[0], (int) args[1]);
 
     @Override
-    public Signature lookupSignature(int cpi) {
-        return (Signature) handle(lookupSignatureMethod, lookupSignatureInvokable, cpi);
+    public String lookupName(int cpi, int opcode) {
+        return (String) handle(lookupNameMethod, lookupNameInvokable, cpi, opcode);
+    }
+
+    private static final SymbolicMethod lookupSignatureMethod = method("lookupSignature", int.class, int.class);
+    private static final InvokableMethod lookupSignatureInvokable = (receiver, args) -> ((ConstantPool) receiver).lookupSignature((int) args[0], (int) args[1]);
+
+    @Override
+    public Signature lookupSignature(int cpi, int opcode) {
+        return (Signature) handle(lookupSignatureMethod, lookupSignatureInvokable, cpi, opcode);
+    }
+
+    private static final SymbolicMethod lookupMethodHandleReferenceKindMethod = method("lookupMethodHandleReferenceKind", int.class);
+    private static final InvokableMethod lookupMethodHandleReferenceKindInvokable = (receiver, args) -> ((ConstantPool) receiver).lookupMethodHandleReferenceKind((int) args[0]);
+
+    @Override
+    public int lookupMethodHandleReferenceKind(int cpi) {
+        return (int) handle(lookupMethodHandleReferenceKindMethod, lookupMethodHandleReferenceKindInvokable, cpi);
+    }
+
+    private static final SymbolicMethod lookupMethodHandleReferenceIndexMethod = method("lookupMethodHandleReferenceIndex", int.class);
+    private static final InvokableMethod lookupMethodHandleReferenceIndexInvokable = (receiver, args) -> ((ConstantPool) receiver).lookupMethodHandleReferenceIndex((int) args[0]);
+
+    @Override
+    public int lookupMethodHandleReferenceIndex(int cpi) {
+        return (int) handle(lookupMethodHandleReferenceIndexMethod, lookupMethodHandleReferenceIndexInvokable, cpi);
     }
 
     private static final SymbolicMethod lookupConstantMethod = method("lookupConstant", int.class);
@@ -149,5 +182,21 @@ public final class ConstantPoolProxy extends CompilationProxyBase implements Con
     @Override
     public JavaConstant lookupAppendix(int rawIndex, int opcode) {
         return (JavaConstant) handle(lookupAppendixMethod, lookupAppendixInvokable, rawIndex, opcode);
+    }
+
+    private static final SymbolicMethod getTagMethod = method("getTag", int.class);
+    private static final InvokableMethod getTagInvokable = (receiver, args) -> ((ConstantPool) receiver).getTag((int) args[0]);
+
+    @Override
+    public Tag getTag(int cpi) {
+        return (Tag) handle(getTagMethod, getTagInvokable, cpi);
+    }
+
+    private static final SymbolicMethod decodeIndexMethod = method("decodeIndex", int.class, int.class);
+    private static final InvokableMethod decodeIndexInvokable = (receiver, args) -> ((ConstantPool) receiver).decodeIndex((int) args[0], (int) args[1]);
+
+    @Override
+    public int decodeIndex(int rawIndex, int opcode) {
+        return (int) handle(decodeIndexMethod, decodeIndexInvokable, rawIndex, opcode);
     }
 }

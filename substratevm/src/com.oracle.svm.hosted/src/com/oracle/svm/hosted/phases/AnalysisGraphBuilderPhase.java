@@ -167,18 +167,20 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                 bootstrapMethodHandler.handleBootstrapException(ex, "invoke dynamic");
                 return;
             }
-            if (bootstrap != null && tryNodePluginForDynamicInvocation(bootstrap)) {
+            ResolvedJavaMethod bootstrapMethod = bootstrap == null ? null : bootstrap.getMethod();
+            if (bootstrapMethod != null && tryNodePluginForDynamicInvocation(bootstrap)) {
                 return;
             }
             JavaMethod calleeMethod = lookupMethodInPool(cpi, opcode);
-            if (bootstrap == null || calleeMethod instanceof ResolvedJavaMethod || BootstrapMethodConfiguration.singleton().isIndyAllowedAtBuildTime(bootstrap.getMethod())) {
+            /* Let normal linkage report invalid handles, including signature-polymorphic targets. */
+            if (bootstrapMethod == null || calleeMethod instanceof ResolvedJavaMethod || BootstrapMethodConfiguration.singleton().isIndyAllowedAtBuildTime(bootstrapMethod)) {
                 super.genInvokeDynamic(cpi, opcode);
                 return;
             }
 
-            int parameterLength = bootstrap.getMethod().getParameters().length;
+            int parameterLength = bootstrapMethod.getParameters().length;
             List<JavaConstant> staticArgumentsList = bootstrap.getStaticArguments();
-            boolean isVarargs = bootstrap.getMethod().isVarArgs();
+            boolean isVarargs = bootstrapMethod.isVarArgs();
             int bci = bci();
             MethodType methodType = getSnippetReflection().asObject(MethodType.class, bootstrap.getType());
 
@@ -190,7 +192,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                 }
             }
 
-            if (!bootstrapMethodHandler.checkBootstrapParameters(bootstrap.getMethod(), staticArgumentsList, false)) {
+            if (!bootstrapMethodHandler.checkBootstrapParameters(bootstrapMethod, staticArgumentsList, false)) {
                 WrongMethodTypeException cause = new WrongMethodTypeException("Cannot convert " + methodType + " to correct MethodType");
                 replaceWithThrowingAtRuntime(this, new BootstrapMethodError("Bootstrap method initialization exception", cause));
                 return;

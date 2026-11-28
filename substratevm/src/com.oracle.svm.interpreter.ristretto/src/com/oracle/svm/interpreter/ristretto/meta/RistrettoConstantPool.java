@@ -282,8 +282,23 @@ public final class RistrettoConstantPool implements ConstantPool {
     }
 
     @Override
-    public Signature lookupSignature(int cpi) {
-        return interpreterConstantPool.lookupSignature(cpi);
+    public String lookupName(int rawIndex, int opcode) {
+        return interpreterConstantPool.lookupName(rawIndex, opcode);
+    }
+
+    @Override
+    public Signature lookupSignature(int cpi, int opcode) {
+        return interpreterConstantPool.lookupSignature(cpi, opcode);
+    }
+
+    @Override
+    public int lookupMethodHandleReferenceKind(int cpi) {
+        return interpreterConstantPool.lookupMethodHandleReferenceKind(cpi);
+    }
+
+    @Override
+    public int lookupMethodHandleReferenceIndex(int cpi) {
+        return interpreterConstantPool.lookupMethodHandleReferenceIndex(cpi);
     }
 
     @Override
@@ -328,6 +343,16 @@ public final class RistrettoConstantPool implements ConstantPool {
             return appendix == null ? null : SubstrateObjectConstant.forObject(appendix);
         }
         return null;
+    }
+
+    @Override
+    public int decodeIndex(int rawIndex, int opcode) {
+        return interpreterConstantPool.decodeIndex(rawIndex, opcode);
+    }
+
+    @Override
+    public Tag getTag(int cpi) {
+        return interpreterConstantPool.getTag(cpi);
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,10 +43,16 @@ public final class EspressoConstantPool extends AbstractEspressoConstantPool {
     public native int length();
 
     @Override
+    public native int lookupMethodHandleReferenceKind(int cpi);
+
+    @Override
+    public native int lookupMethodHandleReferenceIndex(int cpi);
+
+    @Override
     public native JavaType lookupReferencedType(int cpi, int opcode);
 
     @Override
-    public native EspressoBootstrapMethodInvocation lookupBootstrapMethodInvocation(int cpi, int opcode);
+    public native EspressoBootstrapMethodInvocation lookupBootstrapMethodInvocation(int cpi, int opcode, boolean resolve);
 
     @Override
     public JavaType lookupType(int cpi, @SuppressWarnings("unused") int opcode) {
@@ -69,7 +75,10 @@ public final class EspressoConstantPool extends AbstractEspressoConstantPool {
 
     @Override
     protected EspressoResolvedJavaField lookupResolvedField(int cpi, AbstractEspressoResolvedJavaMethod method, int opcode) {
-        return lookupResolvedField(cpi, (EspressoResolvedJavaMethod) method, opcode);
+        if (!(method instanceof EspressoResolvedJavaMethod espressoMethod)) {
+            throw new IllegalArgumentException("Expected an internal Espresso method");
+        }
+        return lookupResolvedField(cpi, espressoMethod, opcode);
     }
 
     private native EspressoResolvedJavaField lookupResolvedField(int cpi, EspressoResolvedJavaMethod method, int opcode);
@@ -82,6 +91,9 @@ public final class EspressoConstantPool extends AbstractEspressoConstantPool {
 
     @Override
     protected EspressoResolvedJavaMethod lookupResolvedMethod(int cpi, int opcode, AbstractEspressoResolvedJavaMethod caller) {
+        if (caller != null && !(caller instanceof EspressoResolvedJavaMethod)) {
+            throw new IllegalArgumentException("Expected an internal Espresso caller");
+        }
         return lookupResolvedMethod(cpi, opcode, (EspressoResolvedJavaMethod) caller);
     }
 

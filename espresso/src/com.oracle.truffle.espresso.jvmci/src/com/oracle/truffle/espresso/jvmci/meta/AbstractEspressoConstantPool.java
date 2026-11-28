@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,9 +56,15 @@ public abstract class AbstractEspressoConstantPool implements ConstantPool {
     protected static final byte CONSTANT_InvokeDynamic      = 18;
     protected static final byte CONSTANT_Module             = 19;
     protected static final byte CONSTANT_Package            = 20;
+    static final int LDC                  =  18;
+    static final int LDC_W                =  19;
+    static final int LDC2_W               =  20;
+    static final int INVOKEVIRTUAL        = 182;
+    static final int INVOKESPECIAL        = 183;
+    static final int INVOKESTATIC         = 184;
+    static final int INVOKEINTERFACE      = 185;
+    static final int INVOKEDYNAMIC        = 186;
     // @formatter:on
-
-    static final int INVOKEDYNAMIC = 186;
 
     @Override
     public final void loadReferencedType(int cpi, int opcode) {
@@ -80,12 +86,15 @@ public abstract class AbstractEspressoConstantPool implements ConstantPool {
 
     @Override
     public final JavaField lookupField(int cpi, ResolvedJavaMethod method, int opcode) {
-        AbstractEspressoResolvedJavaField field = lookupResolvedField(cpi, (AbstractEspressoResolvedJavaMethod) method, opcode);
+        if (!(method instanceof AbstractEspressoResolvedJavaMethod espressoMethod)) {
+            throw new IllegalArgumentException("Expected a non-null Espresso method");
+        }
+        AbstractEspressoResolvedJavaField field = lookupResolvedField(cpi, espressoMethod, opcode);
         if (field != null) {
             return field;
         }
         String name = lookupName(cpi);
-        JavaType type = lookupFieldType(cpi, ((AbstractEspressoResolvedJavaMethod) method).getDeclaringClass());
+        JavaType type = lookupFieldType(cpi, espressoMethod.getDeclaringClass());
         JavaType fieldHolder = lookupReferencedType(cpi, opcode);
         return new UnresolvedJavaField(fieldHolder, name, type);
     }
@@ -94,6 +103,9 @@ public abstract class AbstractEspressoConstantPool implements ConstantPool {
 
     @Override
     public final JavaMethod lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller) {
+        if (caller != null && !(caller instanceof AbstractEspressoResolvedJavaMethod)) {
+            throw new IllegalArgumentException("Expected an Espresso caller");
+        }
         AbstractEspressoResolvedJavaMethod method = lookupResolvedMethod(cpi, opcode, (AbstractEspressoResolvedJavaMethod) caller);
         if (method != null) {
             return method;
@@ -152,9 +164,30 @@ public abstract class AbstractEspressoConstantPool implements ConstantPool {
     protected abstract int getNumIndyEntries();
 
     @Override
-    public final Signature lookupSignature(int cpi) {
-        String rawSignature = lookupDescriptor(cpi);
-        return getSignature(rawSignature);
+    public final Signature lookupSignature(int cpi, int opcode) {
+        switch (opcode) {
+            case -1:
+            case LDC:
+            case LDC_W:
+            case LDC2_W:
+            case INVOKEVIRTUAL:
+            case INVOKESPECIAL:
+            case INVOKESTATIC:
+            case INVOKEINTERFACE:
+            case INVOKEDYNAMIC:
+                String rawSignature = lookupDescriptor(decodeIndex(cpi, opcode));
+                if (!rawSignature.startsWith("(")) {
+                    throw new IllegalArgumentException("Expected a method signature");
+                }
+                return getSignature(rawSignature);
+            default:
+                throw new IllegalArgumentException("unexpected opcode " + opcode + " at " + cpi);
+        }
+    }
+
+    @Override
+    public final String lookupName(int cpi, int opcode) {
+        return lookupName(decodeIndex(cpi, opcode));
     }
 
     @Override
@@ -164,29 +197,20 @@ public abstract class AbstractEspressoConstantPool implements ConstantPool {
 
     protected abstract byte getTagByteAt(int cpi);
 
-    @SuppressWarnings("unused")
-    private String getTagAt(int cpi) {
-        // Used in tests
-        return switch (getTagByteAt(cpi)) {
-            case CONSTANT_Invalid -> "Invalid";
-            case CONSTANT_Utf8 -> "Utf8";
-            case CONSTANT_Integer -> "Integer";
-            case CONSTANT_Float -> "Float";
-            case CONSTANT_Long -> "Long";
-            case CONSTANT_Double -> "Double";
-            case CONSTANT_Class -> "Class";
-            case CONSTANT_String -> "String";
-            case CONSTANT_Fieldref -> "Fieldref";
-            case CONSTANT_Methodref -> "Methodref";
-            case CONSTANT_InterfaceMethodref -> "InterfaceMethodref";
-            case CONSTANT_NameAndType -> "NameAndType";
-            case CONSTANT_MethodHandle -> "MethodHandle";
-            case CONSTANT_MethodType -> "MethodType";
-            case CONSTANT_Dynamic -> "Dynamic";
-            case CONSTANT_InvokeDynamic -> "InvokeDynamic";
-            case CONSTANT_Module -> "Module";
-            case CONSTANT_Package -> "Package";
-            default -> null;
-        };
+    @Override
+    public int decodeIndex(int rawIndex, int opcode) {
+        if (opcode == INVOKEDYNAMIC) {
+            // The rewritten operand packs the pool index in the high half and the site index in the low half.
+            return rawIndex >>> 16;
+        }
+        return rawIndex;
+    }
+
+    @Override
+    public Tag getTag(int cpi) {
+        if (cpi < 1 || cpi >= length()) {
+            throw new IndexOutOfBoundsException(cpi);
+        }
+        return Tag.fromValue(getTagByteAt(cpi));
     }
 }

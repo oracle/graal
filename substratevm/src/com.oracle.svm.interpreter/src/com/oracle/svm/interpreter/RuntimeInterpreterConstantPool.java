@@ -34,6 +34,7 @@ import com.oracle.svm.core.hub.DynamicHubUtils;
 import com.oracle.svm.core.hub.crema.CremaSupport;
 import com.oracle.svm.core.hub.registry.SymbolsSupport;
 import com.oracle.svm.core.methodhandles.Target_java_lang_invoke_MethodHandleNatives;
+import com.oracle.svm.espresso.classfile.ConstantPool;
 import com.oracle.svm.espresso.classfile.JavaKind;
 import com.oracle.svm.espresso.classfile.ParserKlass;
 import com.oracle.svm.espresso.classfile.attributes.BootstrapMethodsAttribute;
@@ -68,7 +69,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
 
     @Override
     protected Object resolve(int cpi, InterpreterResolvedObjectType accessingClass) {
-        Tag tag = tagAt(cpi);
+        ConstantPool.Tag tag = tagAt(cpi);
         return switch (tag) {
             case STRING -> resolveStringConstant(cpi, accessingClass);
             case FIELD_REF -> resolveFieldRefConstant(cpi, accessingClass);
@@ -150,8 +151,8 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
 
         int memberIndex = this.methodHandleMemberIndex(cpi);
 
-        Tag refTag = this.tagAt(memberIndex);
-        if (refTag == Tag.METHOD_REF || refTag == Tag.INTERFACE_METHOD_REF) {
+        ConstantPool.Tag refTag = this.tagAt(memberIndex);
+        if (refTag == ConstantPool.Tag.METHOD_REF || refTag == ConstantPool.Tag.INTERFACE_METHOD_REF) {
             InterpreterResolvedJavaMethod target = this.resolvedMethodAt(accessingClass, memberIndex);
             Symbol<Type>[] parsed = target.getParsedSymbolicSignature(CremaRuntimeAccess.getInstance().getSymbolPool());
 
@@ -166,7 +167,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
             mklass = this.resolvedTypeAt(accessingClass, holderIndex);
             refName = target.getSymbolicName();
         } else {
-            assert refTag == Tag.FIELD_REF;
+            assert refTag == ConstantPool.Tag.FIELD_REF;
             InterpreterResolvedJavaField field = this.resolvedFieldAt(accessingClass, memberIndex);
             mtype = field.getResolvedType().getJavaClass();
             mklass = field.getDeclaringClass();
@@ -198,7 +199,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
 
     private Object resolveClassConstant(int classIndex, InterpreterResolvedObjectType accessingKlass) {
         assert accessingKlass != null;
-        assert tagAt(classIndex) == Tag.CLASS;
+        assert tagAt(classIndex) == ConstantPool.Tag.CLASS;
 
         Object entry = this.cachedEntries[classIndex];
         Symbol<Type> type = null;
@@ -239,7 +240,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
 
     private InterpreterResolvedJavaField resolveFieldRefConstant(int fieldIndex, InterpreterResolvedObjectType accessingClass) {
         assert accessingClass != null;
-        assert tagAt(fieldIndex) == Tag.FIELD_REF;
+        assert tagAt(fieldIndex) == ConstantPool.Tag.FIELD_REF;
 
         Object entry = this.cachedEntries[fieldIndex];
 
@@ -278,7 +279,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
 
     private Object resolveClassMethodRefConstant(int methodIndex, InterpreterResolvedObjectType accessingClass) {
         assert accessingClass != null;
-        assert this.tagAt(methodIndex) == Tag.METHOD_REF;
+        assert this.tagAt(methodIndex) == ConstantPool.Tag.METHOD_REF;
 
         Object entry = this.peekCachedEntry(methodIndex);
 
@@ -324,7 +325,7 @@ public final class RuntimeInterpreterConstantPool extends InterpreterConstantPoo
     }
 
     private Object resolveInterfaceMethodRefConstant(int interfaceMethodIndex, InterpreterResolvedObjectType accessingClass) {
-        assert tagAt(interfaceMethodIndex) == Tag.INTERFACE_METHOD_REF;
+        assert tagAt(interfaceMethodIndex) == ConstantPool.Tag.INTERFACE_METHOD_REF;
 
         Object entry = this.cachedEntries[interfaceMethodIndex];
 

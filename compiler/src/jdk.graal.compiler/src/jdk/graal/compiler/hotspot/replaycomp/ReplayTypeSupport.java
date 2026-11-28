@@ -37,6 +37,7 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaKind;
@@ -95,7 +96,7 @@ final class ReplayTypeSupport {
         Class<?>[] classes = {
                         // Needed to deserialize enum constants
                         AMD64.CPUFeature.class, AArch64.CPUFeature.class, RISCV64.CPUFeature.class, UnknownEnum.class,
-                        DeoptimizationReason.class, JavaKind.class, MethodHandleAccessProvider.IntrinsicMethod.class,
+                        ConstantPool.Tag.class, DeoptimizationReason.class, JavaKind.class, MethodHandleAccessProvider.IntrinsicMethod.class,
                         // Needed to deserialize array component types
                         HotSpotResolvedJavaMethod.class, HotSpotResolvedJavaField.class, HotSpotResolvedObjectType.class,
                         Object.class, ExceptionHandler.class, TriState.class, AllocatableValue.class, Value.class,

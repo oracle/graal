@@ -1435,7 +1435,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                     return ex;
                 }
 
-                if (bootstrap != null) {
+                // Handles without a method representation must go through normal constant resolution.
+                if (bootstrap != null && bootstrap.getMethod() != null) {
                     Executable bootstrapMethod = OriginalMethodProvider.getJavaMethod(bootstrap.getMethod());
 
                     /*

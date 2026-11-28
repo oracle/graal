@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -797,6 +797,7 @@ final class EspressoExternalVMAccess implements VMAccess {
             case "java.lang.CloneNotSupportedException" -> new CloneNotSupportedException(message);
             case "java.lang.IllegalAccessException" -> new IllegalAccessException(message);
             case "java.lang.IllegalArgumentException" -> new IllegalArgumentException(message);
+            case "java.lang.IllegalStateException" -> new IllegalStateException(message);
             case "java.lang.IndexOutOfBoundsException" -> new IndexOutOfBoundsException(message);
             case "java.lang.InstantiationException" -> new InstantiationException(message);
             case "java.lang.reflect.InaccessibleObjectException" -> new java.lang.reflect.InaccessibleObjectException(message);
@@ -807,6 +808,7 @@ final class EspressoExternalVMAccess implements VMAccess {
             case "java.lang.RuntimeException" -> new RuntimeException(message);
             case "java.lang.StringIndexOutOfBoundsException" -> new StringIndexOutOfBoundsException(message);
             case "java.lang.UnsupportedOperationException" -> new UnsupportedOperationException(message);
+            case "java.lang.invoke.WrongMethodTypeException" -> new java.lang.invoke.WrongMethodTypeException(message);
 
             // Errors
             case "java.lang.AbstractMethodError" -> new AbstractMethodError(message);
