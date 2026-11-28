@@ -51,16 +51,19 @@ function isExact(allowsnull, object, hub) {
  * arguments in the original Java method.
  *
  * Basically checks if hub is a supertype of checkedHub
+ *
+ * Type IDs, 'start', 'range', and 'slot' are unsigned 16-bit values stored in
+ * Java shorts and have to be zero-extended, as in the original Java method.
  */
 function slotTypeCheck(hub, checkedHub) {
     if (DEBUG_CHECKS) {
         Guarantee(!!hub, "slotTypeCheck: hub must be defined");
         Guarantee(!!checkedHub, "slotTypeCheck: checkedHub must be defined");
     }
-    const start = hub.$t["java.lang.Class"].$f["typeCheckStart"];
-    const range = hub.$t["java.lang.Class"].$f["typeCheckRange"];
-    const slot = hub.$t["java.lang.Class"].$f["typeCheckSlot"];
+    const start = hub.$t["java.lang.Class"].$f["typeCheckStart"] & 0xffff;
+    const range = hub.$t["java.lang.Class"].$f["typeCheckRange"] & 0xffff;
+    const slot = hub.$t["java.lang.Class"].$f["typeCheckSlot"] & 0xffff;
 
-    const checkedTypeID = checkedHub.$t["java.lang.Class"].$f["closedTypeWorldTypeCheckSlots"][slot];
+    const checkedTypeID = checkedHub.$t["java.lang.Class"].$f["closedTypeWorldTypeCheckSlots"][slot] & 0xffff;
     return unsignedCompareLessI32(checkedTypeID - start, range);
 }
