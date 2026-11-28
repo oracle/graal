@@ -1078,9 +1078,10 @@ public final class JNIFunctions {
         if (descriptor != null) {
             Class<?> clazz = jniMethod.getDeclaringClass().getClassObject();
             assert DynamicHub.fromClass(clazz).isJNIAccessible() : clazz.getName();
-            Class<?>[] parameter = MethodType.fromMethodDescriptorString(descriptor.getSignature(), JNIFunctions.class.getClassLoader()).parameterArray();
+            MethodType methodType = MethodType.fromMethodDescriptorString(descriptor.getSignature(), clazz.getClassLoader());
             try {
-                result = descriptor.isConstructor() ? clazz.getDeclaredConstructor(parameter) : clazz.getDeclaredMethod(descriptor.getName(), parameter);
+                result = descriptor.isConstructor() ? clazz.getDeclaredConstructor(methodType.parameterArray())
+                                : DynamicHub.fromClass(clazz).getDeclaredMethodByDescriptor(descriptor.getName(), methodType.returnType(), methodType.parameterArray());
             } catch (NoSuchMethodException e) {
                 /*
                  * The method might have been registered for JNI access but not for reflection. When
