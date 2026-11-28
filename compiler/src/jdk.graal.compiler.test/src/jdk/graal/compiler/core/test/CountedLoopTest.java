@@ -77,6 +77,65 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class CountedLoopTest extends GraalCompilerTest {
 
+    private static int trueBranchCount;
+    private static int falseBranchCount;
+
+    /** Both branches reach the loop, so neither proves its first iteration is protected. */
+    public static int mergedIfBeforeLoop(int i, int n, int[] values) {
+        if (i < n) {
+            trueBranchCount++;
+        } else {
+            falseBranchCount++;
+        }
+        int count = 0;
+        do {
+            values[count & 7]++;
+            count++;
+            i++;
+        } while (i < n);
+        return count;
+    }
+
+    /** The loop is reached only from the true successor of the entry test. */
+    public static int protectedIfBeforeLoop(int i, int n, int[] values) {
+        int count = 0;
+        if (i < n) {
+            do {
+                values[count & 7]++;
+                count++;
+                i++;
+            } while (i < n);
+        }
+        return count;
+    }
+
+    private void assertTailCounted(String snippet, boolean counted) {
+        OptionValues options = new OptionValues(getInitialOptions(), Loop.Options.DetectInvertedLoopsAsCounted, true);
+        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES, options);
+        LoopsData loops = getDefaultHighTierContext().getLoopsDataProvider().getLoopsData(graph);
+        Assert.assertEquals(1, loops.loops().size());
+        Assert.assertEquals(counted, loops.loops().get(0).detectCounted());
+    }
+
+    @Test
+    public void testMergedIfCountedLoopProtection() {
+        assertTailCounted("mergedIfBeforeLoop", false);
+        assertTailCounted("protectedIfBeforeLoop", true);
+    }
+
+    @Test
+    public void testMergedIfDoesNotProtectLoop() throws InvalidInstalledCodeException {
+        OptionValues options = new OptionValues(getInitialOptions(), Loop.Options.DetectInvertedLoopsAsCounted, true);
+        InstalledCode code = getCode(getResolvedJavaMethod("mergedIfBeforeLoop"), options);
+        int[] values = new int[8];
+        Assert.assertEquals(1, code.executeVarargs(10, 3, values));
+        Assert.assertEquals(1, values[0]);
+        int[] negativeValues = new int[8];
+        Assert.assertEquals(1, code.executeVarargs(-4, -9, negativeValues));
+        Assert.assertEquals(1, negativeValues[0]);
+        Assert.assertEquals(5, code.executeVarargs(0, 5, new int[8]));
+    }
+
     public static int negatedIntCounter(int start, int stride, int lowBit) {
         int result = 0;
         int step = stride | Integer.MIN_VALUE | lowBit;

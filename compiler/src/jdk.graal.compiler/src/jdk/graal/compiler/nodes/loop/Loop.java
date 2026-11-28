@@ -1397,10 +1397,13 @@ public class Loop {
                 }
                 LogicNode l = null;
                 boolean negated = false;
-                if (fg instanceof IfNode) {
-                    l = ((IfNode) fg).condition();
+                if (fg instanceof IfNode ifNode) {
                     GraalError.guarantee(prev != null, "need previous node when checking if successor");
-                    negated = prev == ((IfNode) fg).falseSuccessor();
+                    // A merge reached from both branches does not imply either condition.
+                    if (prev == ifNode.trueSuccessor() || prev == ifNode.falseSuccessor()) {
+                        l = ifNode.condition();
+                        negated = prev == ifNode.falseSuccessor();
+                    }
                 }
                 if (fg instanceof FixedGuardNode) {
                     l = ((FixedGuardNode) fg).condition();
