@@ -543,7 +543,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             try {
                 ClassAccess.checkPublicMethods(t);
                 for (var method : t.getDeclaredMethods(false)) {
-                    if (method.isPublic() && (t == type || !t.isInterface() || !method.isStatic())) {
+                    if (method.isPublic() && (t.equals(type) || !t.isInterface() || !method.isStatic())) {
                         checkMethodSignature(method);
                         registerMethod(condition, QUERIED, preserved, method);
                     }
