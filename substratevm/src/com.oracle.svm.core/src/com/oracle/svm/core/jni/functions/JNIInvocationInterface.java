@@ -44,6 +44,7 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jfr.events.ShutdownEvent;
+import com.oracle.svm.core.jfr.events.ThreadStartEvent;
 import com.oracle.svm.core.jni.JNIJavaVMList;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.JNIThreadLocalEnvironment;
@@ -469,6 +470,7 @@ public final class JNIInvocationInterface {
             });
             vmBuf.write(javaVm);
             penv.write(JNIThreadLocalEnvironment.getAddress());
+            ThreadStartEvent.emit(Thread.currentThread(), null);
             return JNIErrors.JNI_OK();
         }
 

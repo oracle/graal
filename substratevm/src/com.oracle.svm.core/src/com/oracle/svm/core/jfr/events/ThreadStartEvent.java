@@ -27,6 +27,7 @@ package com.oracle.svm.core.jfr.events;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.shared.Uninterruptible;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
@@ -37,7 +38,7 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 public class ThreadStartEvent {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit(Thread thread, Thread parentThread) {
-        if (JfrEvent.ThreadStart.shouldEmit()) {
+        if (HasJfrSupport.get() && JfrEvent.ThreadStart.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 

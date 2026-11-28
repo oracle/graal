@@ -26,11 +26,17 @@
 
 package com.oracle.svm.test.junit.nativeimage.jfr;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.locks.LockSupport;
 
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.ProcessProperties;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -41,9 +47,13 @@ import jdk.jfr.consumer.RecordedThread;
 
 public class TestThreadStartEvents extends JfrRecordingTest {
     private static final String THREAD_NAME = "TestThreadStartEvents-worker";
+    private static final String CHILD_PROCESS_PROPERTY = "svm.test.jfr.mainThreadStart.child";
 
     @Test
     public void test() throws Throwable {
+        if (Boolean.getBoolean(CHILD_PROCESS_PROPERTY)) {
+            return;
+        }
         String[] events = new String[]{JfrEvent.ThreadStart.getName()};
         Recording recording = startRecording(events);
 
@@ -53,6 +63,30 @@ public class TestThreadStartEvents extends JfrRecordingTest {
         worker.join();
 
         stopRecording(recording, TestThreadStartEvents::validateEvents);
+    }
+
+    @Test
+    public void testMainThread() throws Throwable {
+        Assume.assumeTrue("native image runtime only", ImageInfo.inImageRuntimeCode());
+        if (Boolean.getBoolean(CHILD_PROCESS_PROPERTY)) {
+            return;
+        }
+
+        Path path = createTempJfrFile();
+        Process process = new ProcessBuilder(
+                        ProcessProperties.getExecutableName(),
+                        "-XX:StartFlightRecording=filename=" + path,
+                        "-D" + CHILD_PROCESS_PROPERTY + "=true",
+                        "--run-explicit",
+                        TestThreadStartEvents.class.getName())
+                        .redirectErrorStream(true)
+                        .start();
+        String output = new String(process.getInputStream().readAllBytes());
+        int exitCode = process.waitFor();
+        assertEquals("Child native image failed:\n" + output, 0, exitCode);
+
+        String[] events = new String[]{JfrEvent.ThreadStart.getName()};
+        validateMainThreadEvents(getEvents(path, events, true));
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
@@ -66,5 +100,19 @@ public class TestThreadStartEvents extends JfrRecordingTest {
             checkTopStackFrame(event, "afterThreadStart");
         }
         assertTrue(foundEvent);
+    }
+
+    private static void validateMainThreadEvents(List<RecordedEvent> events) {
+        boolean foundMainEvent = false;
+        for (RecordedEvent event : events) {
+            RecordedThread thread = event.getThread("thread");
+            if (thread != null && "main".equals(thread.getJavaName())) {
+                foundMainEvent = true;
+                assertEquals("main", event.getThread("eventThread").getJavaName());
+                assertNull(event.getThread("parentThread"));
+                checkTopStackFrame(event, "initRunCore0");
+            }
+        }
+        assertTrue(foundMainEvent);
     }
 }
