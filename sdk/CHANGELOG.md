@@ -5,6 +5,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 ## Version 25.7
 * Custom target type mappings returning `null` for primitive conversions now throw `NullPointerException` during conversion.
 * Added `@HostAccess.Optimized` to improve Java-to-guest invocation performance with generated `Value.as` proxies, enabling Native Image runtime compilation to eliminate argument boxing and arrays across the transition.
+* GR-81717: Contexts using the `CONSTRAINED` sandbox policy or stricter now default to the UTC time zone unless explicitly configured with `Context.Builder.timeZone`.
 
 ## Version 25.5
 * GR-79961: [Auxiliary engine caching](https://github.com/oracle/graal/blob/master/truffle/docs/AuxiliaryEngineCaching.md) is now available in both Oracle GraalVM and GraalVM Community Edition.

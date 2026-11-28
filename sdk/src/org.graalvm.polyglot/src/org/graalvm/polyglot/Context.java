@@ -52,6 +52,7 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1828,8 +1829,9 @@ public final class Context implements AutoCloseable {
 
         /**
          * Sets the default time zone to be used for this context. If not set, or explicitly set to
-         * <code>null</code> then the {@link ZoneId#systemDefault() system default} zone will be
-         * used.
+         * <code>null</code>, then UTC is used with {@link SandboxPolicy#CONSTRAINED} or stricter
+         * sandbox policies, and the {@link ZoneId#systemDefault() system default} zone is used
+         * otherwise.
          *
          * @return the {@link Builder}
          * @see ZoneId#systemDefault()
@@ -2275,10 +2277,14 @@ public final class Context implements AutoCloseable {
             }
             Object logHandler = customLogHandler != null ? Engine.getImpl().newLogHandler(customLogHandler) : null;
             String tmpDir = Engine.getImpl().getIO().hasHostFileAccess(useIOAccess) ? System.getProperty("java.io.tmpdir") : null;
+            ZoneId useTimeZone = zone;
+            if (useTimeZone == null && useSandboxPolicy.isStricterOrEqual(SandboxPolicy.CONSTRAINED)) {
+                useTimeZone = ZoneOffset.UTC;
+            }
             ctx = engine.dispatch.createContext(engine.receiver, engine, useSandboxPolicy, contextOut, contextErr, contextIn, hostClassLookupEnabled,
                             hostAccess, polyglotAccess, nativeAccess, createThread, hostClassLoading, innerContextOptions,
                             experimentalOptions, localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
-                            permittedLanguages, useIOAccess, logHandler, createProcess, processHandler, exceptionHandler, useEnvironmentAccess, environment, zone,
+                            permittedLanguages, useIOAccess, logHandler, createProcess, processHandler, exceptionHandler, useEnvironmentAccess, environment, useTimeZone,
                             limits, localCurrentWorkingDirectory, tmpDir, hostClassLoader, allowValueSharing, useSystemExit, true);
             return ctx;
         }

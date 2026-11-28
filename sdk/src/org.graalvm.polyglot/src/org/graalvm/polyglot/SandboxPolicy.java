@@ -129,6 +129,8 @@ public enum SandboxPolicy {
      * not be enabled.</li>
      * <li>The {@link Context.Builder#allowEnvironmentAccess(EnvironmentAccess) environment access}
      * must be {@link EnvironmentAccess#NONE}.</li>
+     * <li>If the {@link Context.Builder#timeZone(java.time.ZoneId) time zone} is not specified, UTC
+     * is used instead of the host default time zone.</li>
      * <li>The {@link Context.Builder#useSystemExit(boolean) host System.exit} must not be
      * used.</li>
      * <li>The {@link Context.Builder#allowIO(IOAccess) access to the host file system} must be

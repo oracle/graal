@@ -57,6 +57,7 @@ The CONSTRAINED policy:
 * Disallows [host file](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/IOAccess.Builder.html#allowHostFileAccess-boolean-) or [socket](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/IOAccess.Builder.html#allowHostSocketAccess-boolean-) access. Only custom [polyglot file system](https://www.graalvm.org/sdk/javadoc/index.html?org/graalvm/polyglot/io/FileSystem.html) implementations are allowed.
   GraalVM trusts custom file systems supplied by the embedder. The embedder must ensure that their implementations do not expose the host file system or other resources prohibited by the selected sandbox policy.
 * Disallows [environment access](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowEnvironmentAccess-org.graalvm.polyglot.EnvironmentAccess-).
+* Defaults to the UTC time zone instead of the host default unless you explicitly set [`Context.Builder.timeZone`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#timeZone-java.time.ZoneId-).
 * Restricts host access:
   * Disallows [host class loading](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowHostClassLoading-boolean-).
   * Disallows [access to all public host classes and methods by default](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowPublicAccess-boolean-).

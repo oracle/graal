@@ -40,18 +40,22 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TimeZone;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -75,12 +79,16 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Parameterized.class)
@@ -1048,6 +1056,32 @@ public class SandboxPolicyTest {
         }
     }
 
+    @Test
+    public void testTimeZone() {
+        TimeZone previous = TimeZone.getDefault();
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("Pacific/Chatham"));
+            String expectedDefault = configuration.sandboxPolicy == SandboxPolicy.TRUSTED ? "Pacific/Chatham" : ZoneOffset.UTC.getId();
+            assertTimeZone(null, expectedDefault);
+            assertTimeZone(ZoneId.of("Europe/Vienna"), "Europe/Vienna");
+        } finally {
+            TimeZone.setDefault(previous);
+        }
+    }
+
+    private void assertTimeZone(ZoneId timeZone, String expected) {
+        for (boolean sharedEngine : new boolean[]{false, true}) {
+            try (Engine engine = sharedEngine ? newEngineBuilder(UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).build() : null;
+                            Context context = newContextBuilder(engine, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).timeZone(timeZone).build()) {
+                assertEquals(expected, context.eval(UntrustedLanguage.ID, "timeZone").asString());
+            } catch (IllegalArgumentException iae) {
+                if (filterUnsupportedIsolate(configuration, iae)) {
+                    throw iae;
+                }
+            }
+        }
+    }
+
     private Engine.Builder newEngineBuilder(String... permittedLanguages) {
         Engine.Builder builder = Engine.newBuilder(permittedLanguages).out(OutputStream.nullOutputStream()).err(OutputStream.nullOutputStream());
         if (configuration.sandboxPolicy.isStricterOrEqual(SandboxPolicy.ISOLATED) && configuration.supportsIsolatedPolicy) {
@@ -1171,9 +1205,32 @@ public class SandboxPolicyTest {
             return env;
         }
 
+        private static final ContextReference<Env> CONTEXT_REFERENCE = ContextReference.create(UntrustedLanguage.class);
+
         @Override
         protected OptionDescriptors getOptionDescriptors() {
             return new UntrustedLanguageOptionDescriptors();
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) {
+            String content = request.getSource().getCharacters().toString();
+            if ("timeZone".equals(content)) {
+                return new RootNode(this) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        Env env = CONTEXT_REFERENCE.get(this);
+                        return getZoneId(env);
+                    }
+
+                    @CompilerDirectives.TruffleBoundary
+                    private static String getZoneId(Env env) {
+                        return env.getTimeZone().getId();
+                    }
+                }.getCallTarget();
+            } else {
+                throw new AssertionError("Unexpected source: " + content);
+            }
         }
     }
 
