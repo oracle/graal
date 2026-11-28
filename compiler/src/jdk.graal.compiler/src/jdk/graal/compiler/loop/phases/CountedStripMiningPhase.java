@@ -1066,10 +1066,11 @@ public class CountedStripMiningPhase extends BasePhase<MidTierContext> {
      * bounds for the inner loop (it does not contain fixed control flow except the counted exit
      * check). To achieve this the strip mining transformation duplicates the original loop. In this
      * duplication it also duplicates any (floating) guards of the original loop (because it uses
-     * the {@link LoopFragment} API. The guards of the outer loop duplicate the guards of the inner
-     * loop. This is not necessary as we only need one set of the original guards and since we want
-     * to optimize the inner loop later to let guards float out we delete the duplicated guards of
-     * the outer loop.
+     * the {@link LoopFragment} API). The body guards of the outer loop duplicate the guards of the
+     * inner loop and can be removed so that the inner guards can float out later. Floating guards
+     * that can execute before the counted exit check of a head-counted loop must remain in the
+     * outer loop. The check can exit on its first evaluation, before the inner loop body runs.
+     * See {@link #mayExecuteBeforeLimitTest} for how the guard anchors are classified.
      */
     @SuppressWarnings("try")
     private static void cleanUpGuards(EconomicSetNodeEventListener ec, NodeBitMap obsoleteGuards, StructuredGraph graph, CoreProviders context, CanonicalizerPhase canonWithoutSimplification) {
@@ -1100,6 +1101,71 @@ public class CountedStripMiningPhase extends BasePhase<MidTierContext> {
             graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After deleting redundant guards on the outer loop body begin iteration %d", iterations - 1);
         }
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After deleting redundant guards on the outer loop body begin");
+    }
+
+    /**
+     * Determines whether a guard in the original head-counted loop may be checked before the
+     * counted limit test, so that its duplicate must be retained in the outer loop.
+     *
+     * <p>
+     * A head-counted loop checks its header before deciding whether to execute another body
+     * iteration. This includes the visit that exits the loop, even when the body executes zero
+     * times. Strip mining places the original loop behind the outer loop's limit test. If a
+     * required header check exists only in that inner loop, an outer exit can bypass it entirely.
+     *
+     * <p>
+     * For example, consider this logical check order (pseudocode):
+     *
+     * <pre>
+     * for (long i = start;; i++) {
+     *     guard(0 &lt;= i &amp;&amp; i &lt; length); // Header guard H.
+     *     if (i &gt;= limit) {           // Counted exit check.
+     *         break;
+     *     }
+     *     guard(bodyCondition(i));       // Body guard B.
+     *     body(i);
+     * }
+     * </pre>
+     *
+     * With {@code start == limit == length}, H must be checked and fail, although the body is
+     * never entered. Its outer duplicate must therefore remain.
+     * With {@code start == limit == 0} and {@code length > 0}, H passes and the loop exits without
+     * checking B, even if {@code bodyCondition(0)} is false. B's outer duplicate is redundant
+     * because the inner loop performs every required body check.
+     *
+     * <p>
+     * The anchor positions are classified as follows:
+     * <ul>
+     * <li>A guard with an outside anchor is a possible header check if its condition belongs to
+     * the loop.</li>
+     * <li>The {@link LoopBeginNode} and anchors on the predecessor chain between it and the
+     * counted limit test are header positions.</li>
+     * <li>An anchor in the body after the limit test, as for B above, is not a header position.</li>
+     * </ul>
+     * H can be checked in the loop header even with an outside anchor because its condition depends
+     * on the loop phi for {@code i}, which is unavailable in the preheader. When both the anchor
+     * and condition are outside the loop, the original guard suffices.
+     *
+     * <p>
+     * The caller uses this classification only for head-counted loops, before rewiring the
+     * original header. Inverted loops are handled separately by the caller.
+     *
+     * @param loop the original head-counted loop
+     * @param guard the original guard before loop rewiring
+     * @return {@code true} if the outer duplicate must conservatively be retained as a possible
+     *         header check
+     */
+    private static boolean mayExecuteBeforeLimitTest(Loop loop, GuardNode guard) {
+        Node anchor = guard.getAnchor().asNode();
+        if (loop.isOutsideLoop(anchor)) {
+            return !loop.isOutsideLoop(guard.getCondition());
+        }
+        for (Node node = loop.counted().getLimitTest().predecessor(); node != loop.loopBegin(); node = node.predecessor()) {
+            if (node == anchor) {
+                return true;
+            }
+        }
+        return anchor == loop.loopBegin();
     }
 
     /**
@@ -1148,13 +1214,11 @@ public class CountedStripMiningPhase extends BasePhase<MidTierContext> {
         LoopBeginNode outerBegin = outer.getDuplicatedNode(innerBegin);
         debug.dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After loop duplication (inner=%s, outer=%s)", innerBegin, outerBegin);
 
-        // We aggressively include floating guards inside loops, see LoopFragment.markFloating. Yet,
-        // during strip mining, we should only retain the control flow construct for the outer loop,
-        // but not the floating guards, as the guarded conditions are 1) checked in the inner loop,
-        // and 2) meaningless in the outer loop, which serves purely as a structural construct.
-        for (Node n : outer.nodes()) {
-            if (n instanceof GuardNode) {
-                obsoleteGuards.markAndGrow(n);
+        // Body guards are checked in the inner loop. A head-counted loop can exit before entering
+        // it, so its header guards must also remain in the outer loop.
+        for (Node n : loop.whole().nodes()) {
+            if (n instanceof GuardNode guard && (inverted || !mayExecuteBeforeLimitTest(loop, guard))) {
+                obsoleteGuards.markAndGrow(outer.getDuplicatedNode(guard));
             }
         }
 
