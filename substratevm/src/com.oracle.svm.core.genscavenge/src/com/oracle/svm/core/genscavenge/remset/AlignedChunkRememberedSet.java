@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import static com.oracle.svm.core.genscavenge.graal.BarrierSnippets.CARD_REMEMBERED_SET_LOCATION;
 import static com.oracle.svm.shared.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.shared.Uninterruptible.CORE_GC_CODE;
 
@@ -150,6 +151,15 @@ public final class AlignedChunkRememberedSet {
         }
     }
 
+    /** Updates the object's card using the state selected by the GC. */
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static void updateCardForObjectInGC(Object object, byte cardState) {
+        Pointer objectPointer = Word.objectToUntrackedPointer(object);
+        AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(objectPointer);
+        CardTable.setEntryInGC(getCardTableStart(chunk), getObjectIndex(chunk, objectPointer), cardState);
+    }
+
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void dirtyAllReferencesOf(Object obj) {
         ForcedSerialPostWriteBarrier.force(OffsetAddressNode.address(obj, 0), false);
@@ -158,6 +168,9 @@ public final class AlignedChunkRememberedSet {
     @Uninterruptible(reason = CORE_GC_CODE)
     static void walkDirtyObjects(AlignedHeader chunk, UninterruptibleObjectVisitor visitor, boolean clean) {
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
+        boolean skipOldOnlyCards = CardTable.shouldSkipOldOnlyCards(objectsStart, clean);
+        int skipMask = CardTable.skipMask(skipOldOnlyCards);
+        UnsignedWord skipWordMask = CardTable.skipWordMask(skipOldOnlyCards);
         Pointer objectsLimit = HeapChunk.getTopPointer(chunk);
         UnsignedWord memorySize = objectsLimit.subtract(objectsStart);
 
@@ -167,45 +180,50 @@ public final class AlignedChunkRememberedSet {
         assert cardTableStart.unsignedRemainder(wordSize()).equal(0);
         assert getCardTableSize().unsignedRemainder(wordSize()).equal(0);
 
-        Pointer dirtyHeapStart = objectsLimit;
-        Pointer dirtyHeapEnd = objectsLimit;
+        Pointer scanHeapStart = objectsLimit;
+        Pointer scanHeapEnd = objectsLimit;
         Pointer cardPos = cardTableLimit.subtract(1);
         Pointer heapPos = CardTable.cardToHeapAddress(cardTableStart, cardPos, objectsStart);
 
         while (cardPos.aboveOrEqual(cardTableStart)) {
-            if (cardPos.readByte(0) != CardTable.CLEAN_ENTRY) {
-                if (clean) {
-                    cardPos.writeByte(0, CardTable.CLEAN_ENTRY);
+            if (CardTable.needsScan(cardPos, Word.zero(), skipMask)) {
+                if (clean || skipOldOnlyCards) {
+                    cardPos.writeByte(0, CardTable.cardStateForScan(clean), CARD_REMEMBERED_SET_LOCATION);
                 }
-                dirtyHeapStart = heapPos;
+                scanHeapStart = heapPos;
             } else {
-                /* Hit a clean card, so process the dirty range. */
-                if (dirtyHeapStart.belowThan(dirtyHeapEnd)) {
-                    walkObjects(chunk, dirtyHeapStart, dirtyHeapEnd, visitor);
+                /* Process the accumulated scan range before skipping cards. */
+                if (scanHeapStart.belowThan(scanHeapEnd)) {
+                    walkObjects(chunk, scanHeapStart, scanHeapEnd, visitor);
                 }
 
                 if (PointerUtils.isAMultiple(cardPos, Word.unsigned(wordSize()))) {
-                    /* Fast forward through word-aligned continuous range of clean cards. */
+                    /* Skip whole words whose cards do not need scanning. */
                     cardPos = cardPos.subtract(wordSize());
-                    while (cardPos.aboveOrEqual(cardTableStart) && ((UnsignedWord) cardPos.readWord(0)).equal(CardTable.CLEAN_WORD)) {
+                    while (cardPos.aboveOrEqual(cardTableStart)) {
+                        UnsignedWord entries = cardPos.readWord(0, CARD_REMEMBERED_SET_LOCATION);
+                        /* The direct clean-word check is redundant but produces faster code for all-clean scans. */
+                        if (entries.notEqual(CardTable.CLEAN_WORD) && CardTable.anyCardNeedsScan(entries, skipWordMask)) {
+                            break;
+                        }
                         cardPos = cardPos.subtract(wordSize());
                     }
                     cardPos = cardPos.add(wordSize());
                     heapPos = CardTable.cardToHeapAddress(cardTableStart, cardPos, objectsStart);
                 }
 
-                /* Reset the dirty range. */
-                dirtyHeapEnd = heapPos;
-                dirtyHeapStart = heapPos;
+                /* Reset the scan range. */
+                scanHeapEnd = heapPos;
+                scanHeapStart = heapPos;
             }
 
             cardPos = cardPos.subtract(1);
             heapPos = heapPos.subtract(CardTable.BYTES_COVERED_BY_ENTRY);
         }
 
-        /* Process the remaining dirty range. */
-        if (dirtyHeapStart.belowThan(dirtyHeapEnd)) {
-            walkObjects(chunk, dirtyHeapStart, dirtyHeapEnd, visitor);
+        /* Process the remaining scan range. */
+        if (scanHeapStart.belowThan(scanHeapEnd)) {
+            walkObjects(chunk, scanHeapStart, scanHeapEnd, visitor);
         }
     }
 
@@ -293,7 +311,7 @@ public final class AlignedChunkRememberedSet {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static Pointer getCardTableStart(AlignedHeader chunk) {
+    public static Pointer getCardTableStart(AlignedHeader chunk) {
         return getCardTableStart(HeapChunk.asPointer(chunk));
     }
 

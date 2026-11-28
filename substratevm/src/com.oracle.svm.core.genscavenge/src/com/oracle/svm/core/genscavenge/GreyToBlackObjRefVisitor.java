@@ -65,6 +65,21 @@ public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectRefe
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
     public void visitObjectReferences(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
+        /*
+         * Pass constant compression flags so reference decoding and encoding specialize before the
+         * scan loop. The promotion code is too large for automatic loop unswitching to reliably do
+         * this.
+         */
+        if (compressed) {
+            visitObjectReferencesImpl(firstObjRef, true, referenceSize, holderObject, count);
+        } else {
+            visitObjectReferencesImpl(firstObjRef, false, referenceSize, holderObject, count);
+        }
+    }
+
+    @AlwaysInline("Specialize reference compression outside the scan loop")
+    @Uninterruptible(reason = CORE_GC_CODE, mayBeInlined = true)
+    private void visitObjectReferencesImpl(Pointer firstObjRef, boolean compressed, int referenceSize, Object holderObject, int count) {
         Pointer pos = firstObjRef;
         Pointer end = firstObjRef.add(Word.unsigned(count).multiply(referenceSize));
         while (pos.belowThan(end)) {
@@ -96,7 +111,7 @@ public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectRefe
 
         if (ObjectHeaderImpl.isMarkedHeader(header)) {
             // Note that marking is also used in copying collections in chunks with pinned objects.
-            RememberedSet.get().dirtyCardIfNecessaryInGC(holderObject, p.toObjectNonNull(), objRef);
+            RememberedSet.get().updateCardIfNecessaryInGC(holderObject, p.toObjectNonNull(), objRef);
             return;
         }
 
@@ -106,7 +121,7 @@ public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectRefe
                 // Update the reference to point to the forwarded Object.
                 Object obj = ohi.getForwardedObject(p, header);
                 ReferenceAccess.singleton().writeObjectAt(objRef, obj, compressed);
-                RememberedSet.get().dirtyCardIfNecessaryInGC(holderObject, obj, objRef);
+                RememberedSet.get().updateCardIfNecessaryInGC(holderObject, obj, objRef);
                 return;
             }
 
@@ -123,9 +138,9 @@ public final class GreyToBlackObjRefVisitor implements UninterruptibleObjectRefe
 
             /*
              * The reference will not be updated if a whole chunk is promoted or the object is
-             * pinned. However, we still might have to dirty the card.
+             * pinned. However, we still might have to update the card.
              */
-            RememberedSet.get().dirtyCardIfNecessaryInGC(holderObject, copy, objRef);
+            RememberedSet.get().updateCardIfNecessaryInGC(holderObject, copy, objRef);
         }
     }
 

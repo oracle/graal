@@ -2,6 +2,10 @@
 
 The documentation and manuals contained in this directory are describing Native Image internals. The information contained in these docs is meant for Native Image developers and contributors, **not** the end-users.
 
+## Runtime Development
+
+- [Pitfalls in `@Uninterruptible` code](uninterruptible-code.md): compiler-generated allocations, annotation boundaries, and validation.
+
 ## Running Tests
 
 See [Testing Native Image](Testing.md) for selecting a test project and running and debugging its tests.

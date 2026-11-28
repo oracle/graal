@@ -29,6 +29,7 @@ Do not run `mx` commands concurrently; parallel runs can produce misleading fail
 
 ## Change Hygiene
 
+- Before changing `@Uninterruptible` code, read [Pitfalls in `@Uninterruptible` code](docs/uninterruptible-code.md).
 - Avoid regular expressions in core runtime code when straightforward parsing suffices; regex support increases image code size.
 - When porting HotSpot code, preserve its names and structure where practical so reviewers and maintainers can compare the implementations.
 - If you touch documented behavior, update `docs/`.

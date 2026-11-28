@@ -183,7 +183,7 @@ public final class NoRememberedSet implements RememberedSet {
     @Override
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public void dirtyCardIfNecessaryInGC(Object holderObject, Object object, Pointer objRef) {
+    public void updateCardIfNecessaryInGC(Object holderObject, Object object, Pointer objRef) {
         // Nothing to do.
     }
 

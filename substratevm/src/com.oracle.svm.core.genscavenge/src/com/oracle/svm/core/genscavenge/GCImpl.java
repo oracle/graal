@@ -1016,8 +1016,8 @@ public final class GCImpl implements GC {
 
         if (SerialGCOptions.useRememberedSet()) {
             /*
-             * If we have a remembered set, only walk the dirty objects. Also, only clean and remark
-             * cards during complete collections (similar to the writable part of the image heap).
+             * Scan dirty cards and, during full collections, old-only cards. Only full collections
+             * clean cards because young collections must retain roots for later full scans.
              */
             boolean clean = completeCollection;
             MetaspaceImpl.singleton().walkDirtyObjects(greyToBlackObjectVisitor, greyToBlackObjRefVisitor, clean);
