@@ -244,7 +244,7 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getNativeMetadataSize(CodeInfo info) {
         CodeInfoImpl impl = cast(info);
-        UnsignedWord size = SizeOf.unsigned(CodeInfo.class);
+        UnsignedWord size = getSizeOfCodeInfo();
         if (!impl.getAllObjectsAreInImageHeap()) {
             size = size.add(NonmovableArrays.byteSizeOf(impl.getObjectFields()))
                             .add(NonmovableArrays.byteSizeOf(impl.getCodeInfoIndex()))

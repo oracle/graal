@@ -171,6 +171,29 @@ interface CodeInfoImpl extends CodeInfo {
     @RawField
     void setCodeAndDataMemorySize(UnsignedWord codeAndDataMemorySize);
 
+    /**
+     * The sizes that {@link RuntimeCodeInfoMemory} currently includes in its counters for this
+     * code info. The sizes of a runtime-compiled code info are only known after it was added to
+     * {@link RuntimeCodeInfoMemory}, so the counters must subtract exactly what they added.
+     */
+    @RawField
+    UnsignedWord getAccountedCodeSize();
+
+    @RawField
+    void setAccountedCodeSize(UnsignedWord size);
+
+    @RawField
+    UnsignedWord getAccountedCodeAndDataMemorySize();
+
+    @RawField
+    void setAccountedCodeAndDataMemorySize(UnsignedWord size);
+
+    @RawField
+    UnsignedWord getAccountedNativeMetadataSize();
+
+    @RawField
+    void setAccountedNativeMetadataSize(UnsignedWord size);
+
     @RawField
     void setRelativeIPOffset(UnsignedWord offset);
 

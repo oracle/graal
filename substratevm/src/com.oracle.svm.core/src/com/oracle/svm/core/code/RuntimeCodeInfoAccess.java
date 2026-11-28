@@ -68,6 +68,29 @@ public final class RuntimeCodeInfoAccess {
         return cast(info).getCodeObserverHandles();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static UnsignedWord getAccountedCodeSize(CodeInfo info) {
+        return cast(info).getAccountedCodeSize();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static UnsignedWord getAccountedCodeAndDataMemorySize(CodeInfo info) {
+        return cast(info).getAccountedCodeAndDataMemorySize();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static UnsignedWord getAccountedNativeMetadataSize(CodeInfo info) {
+        return cast(info).getAccountedNativeMetadataSize();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static void setAccountedSizes(CodeInfo info, UnsignedWord codeSize, UnsignedWord codeAndDataMemorySize, UnsignedWord nativeMetadataSize) {
+        CodeInfoImpl impl = cast(info);
+        impl.setAccountedCodeSize(codeSize);
+        impl.setAccountedCodeAndDataMemorySize(codeAndDataMemorySize);
+        impl.setAccountedNativeMetadataSize(nativeMetadataSize);
+    }
+
     public static void initialize(CodeInfo info, Pointer codeStart, int entryPointOffset, int codeSize, int dataOffset, int dataSize, int codeAndDataMemorySize,
                     int tier, NonmovableArray<InstalledCodeObserverHandle> observerHandles, boolean allObjectsAreInImageHeap) {
 

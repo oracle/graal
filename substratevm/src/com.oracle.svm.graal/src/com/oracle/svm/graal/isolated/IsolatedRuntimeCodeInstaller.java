@@ -35,6 +35,7 @@ import org.graalvm.word.impl.Word;
 import com.oracle.svm.guest.staging.c.function.CEntryPointOptions;
 import com.oracle.svm.guest.staging.core.code.CodeInfo;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
+import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.isolated.ClientHandle;
 import com.oracle.svm.core.graal.isolated.ClientIsolateThread;
@@ -113,6 +114,9 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
         CodeInfo codeInfo = RuntimeCodeInfoAccess.allocateMethodInfo();
         doPrepareInstall(adjuster, codeInfo);
         RuntimeCodeInfoAccess.guaranteeAllObjectsInImageHeap(codeInfo);
+
+        // Code memory was allocated in the client isolate. Only the metadata belongs to this isolate.
+        RuntimeCodeInfoMemory.singleton().updateSizeCounters(codeInfo, false);
 
         ClientHandle<CompilationIdentifier> id = IsolatedHandles.nullHandle();
         if (compilationId instanceof IsolatedObjectProxy<?>) {

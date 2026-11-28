@@ -51,6 +51,7 @@ import com.oracle.svm.core.code.InstantReferenceAdjuster;
 import com.oracle.svm.core.code.ReferenceAdjuster;
 import com.oracle.svm.core.code.RuntimeCodeCache;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
+import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.shared.config.ObjectLayout;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.NativeImagePatcher;
@@ -180,6 +181,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         // A freshly allocated CodeInfo object is protected from the GC until the tether is set.
         CodeInfo codeInfo = RuntimeCodeInfoAccess.allocateMethodInfo();
         doPrepareInstall(adjuster, codeInfo);
+        RuntimeCodeInfoMemory.singleton().updateSizeCounters(codeInfo, true);
         doInstallPrepared(method, codeInfo, installedCode);
     }
 

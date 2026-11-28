@@ -388,6 +388,36 @@ public class ImageCodeInfo {
         }
 
         @Override
+        public UnsignedWord getAccountedCodeSize() {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public void setAccountedCodeSize(UnsignedWord size) {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public UnsignedWord getAccountedCodeAndDataMemorySize() {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public void setAccountedCodeAndDataMemorySize(UnsignedWord size) {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public UnsignedWord getAccountedNativeMetadataSize() {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
+        public void setAccountedNativeMetadataSize(UnsignedWord size) {
+            throw VMError.shouldNotReachHere("not supported for image code");
+        }
+
+        @Override
         public void setObjectFields(NonmovableObjectArray<Object> fields) {
             throw VMError.shouldNotReachHere("not supported for image code");
         }
