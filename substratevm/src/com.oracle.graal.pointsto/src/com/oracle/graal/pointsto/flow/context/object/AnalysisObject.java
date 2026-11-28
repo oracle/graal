@@ -221,11 +221,11 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
 
     final FieldTypeStore getInstanceFieldTypeStore(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, PointsToAnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers()) : field;
-        assert bb != null && !bb.getUniverse().sealed() : "universe is sealed";
-
+        assert bb != null;
         checkField(bb, objectFlow, context, field);
 
         if (instanceFieldsTypeStore == null) {
+            assert !bb.getUniverse().sealed() : "universe is sealed";
             INSTANCE_FIELD_TYPE_STORE_UPDATER.compareAndSet(this, null, new AtomicReferenceArray<>(type.getInstanceFields(true).length));
         }
 
@@ -235,6 +235,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
 
         FieldTypeStore fieldStore = fieldStores.get(field.getPosition());
         if (fieldStore == null) {
+            assert !bb.getUniverse().sealed() : "universe is sealed";
             synchronized (fieldStores) {
                 fieldStore = fieldStores.get(field.getPosition());
                 if (fieldStore == null) {
