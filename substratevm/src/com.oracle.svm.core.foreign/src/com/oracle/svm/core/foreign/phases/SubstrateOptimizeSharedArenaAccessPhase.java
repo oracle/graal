@@ -948,7 +948,7 @@ public class SubstrateOptimizeSharedArenaAccessPhase extends BasePhase<MidTierCo
                         for (int i = 0; i < finalNewScopesToPop; i++) {
                             scopes.pop();
                         }
-                        for (int i = 0; i < scopesToRepush.size(); i++) {
+                        while (!scopesToRepush.isEmpty()) {
                             scopes.push(scopesToRepush.pop());
                         }
                     }
