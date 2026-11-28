@@ -59,7 +59,7 @@ import com.oracle.svm.test.api.NativeImageBuildArgs;
                 "--exact-reachability-metadata=com.oracle.svm.test.junit.nativeimage.preserve"
 })
 public class PreserveAnnotationProxyMethodsTest {
-    private static final String ANNOTATED_CLASS_NAME = "com.oracle.svm.test.preserve.PreserveAnnotationProxyMethodsAnnotated";
+    private static final String ANNOTATED_CLASS_NAME = "com.oracle.svm.test.junit.nativeimage.preserve.PreserveAnnotationProxyMethodsAnnotated";
 
     @Retention(RetentionPolicy.RUNTIME)
     public @interface Marker {
