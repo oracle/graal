@@ -59,7 +59,8 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
 
     /**
      * Least recently used cache for snippet templates. When a new element is added to this map, it
-     * evicts the least recently used element in case of full capacity.
+     * evicts the least recently used element in case of full capacity. Clients must use providers
+     * compatible with this instance's prepared snippets and cached templates.
      */
     Map<SnippetTemplate.CacheKey, SnippetTemplate> getTemplatesCache();
 
@@ -75,7 +76,10 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     DebugContext openSnippetDebugContext(String idPrefix, ResolvedJavaMethod method, DebugContext outer, OptionValues options);
 
     /**
-     * Gets the snippet graph derived from a given method.
+     * Gets the snippet graph for a given method. Source graph preparation may happen in another
+     * replacements instance; prepared graphs must use providers compatible with this instance, whose
+     * providers decode the graph and bind the supplied arguments. When preparation happens here, this
+     * instance's providers are used.
      *
      * @param recursiveEntry original method for which {@code method} is a substitute
      * @param args arguments to the snippet if available, otherwise {@code null}

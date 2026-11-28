@@ -222,7 +222,7 @@ import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.HostedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.NativeMethodSubstitutionProcessor;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl;
-import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
+import com.oracle.svm.hosted.code.SnippetCompilationPolicy;
 import com.oracle.svm.hosted.diagnostic.HostedHeapDumpHandler;
 import com.oracle.svm.hosted.heap.ObservableImageHeapMapProviderImpl;
 import com.oracle.svm.hosted.heap.SVMImageHeapScanner;
@@ -288,8 +288,6 @@ import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.JVMCIReflectionUtil;
 import com.oracle.svm.util.JVMCIRuntimeClassInitializationSupport;
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.bytecode.BytecodeProvider;
-import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
@@ -690,23 +688,23 @@ public class NativeImageGenerator {
                 BuildPhaseProviderImpl.markHostedUniverseBuilt();
                 ClassInitializationSupport classInitializationSupport = bb.getHostVM().getClassInitializationSupport();
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(hMetaAccess);
-                HostedProviders analysisProviders = bb.getProviders(MethodVariant.ORIGINAL_METHOD);
-                SubstrateReplacements analysisReplacements = (SubstrateReplacements) analysisProviders.getReplacements();
                 runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess,
-                                analysisReplacements, classInitializationSupport, platformConfig,
-                                bb.getSnippetReflectionProvider()).build();
+                                classInitializationSupport, platformConfig, bb.getSnippetReflectionProvider()).build();
                 if (GraalConfiguration.hostedInstance() instanceof HostedGraalConfiguration hostedGraalConfiguration) {
                     hostedGraalConfiguration.setRuntimeConfiguration(runtimeConfiguration);
                     hostedGraalConfiguration.setHostedUniverse(hUniverse);
                 }
 
-                ClassInitializationPlugin classInitializationPlugin = analysisProviders.getGraphBuilderPlugins().getClassInitializationPlugin();
-                GraphBuilderConfiguration.Plugins plugins = registerGraphBuilderPlugins(featureHandler, (HostedProviders) runtimeConfiguration.getProviders(), bb.getMetaAccess(), nativeLibraries,
-                                loader, ParsingReason.AOTCompilation, bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, SubstrateTarget.singleton(), this
-                                                .isStubBasedPluginsSupported());
-                /* HostedRuntimeConfigurationBuilder creates all AOT backends with HostedProviders. */
-                for (SubstrateBackend backend : runtimeConfiguration.getBackends()) {
-                    ((HostedProviders) backend.getProviders()).setGraphBuilderPlugins(plugins);
+                // HostedRuntimeConfigurationBuilder already created the default policy's providers.
+                for (SnippetCompilationPolicy policy : HostedConfiguration.instance().getSnippetCompilationPolicies()) {
+                    HostedProviders providers = (HostedProviders) runtimeConfiguration.getProviders();
+                    if (policy != HostedConfiguration.instance().getDefaultSnippetCompilationPolicy()) {
+                        providers = policy.createHostedProviders(providers, hUniverse);
+                    }
+                    ClassInitializationPlugin classInitializationPlugin = policy.getAnalysisProviders().getGraphBuilderPlugins().getClassInitializationPlugin();
+                    registerGraphBuilderPlugins(featureHandler, providers, bb.getMetaAccess(), nativeLibraries, loader, ParsingReason.AOTCompilation,
+                                    bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, SubstrateTarget.singleton(), this.isStubBasedPluginsSupported());
+                    policy.prepareBackendProviders(runtimeConfiguration);
                 }
 
                 if (NativeImageOptions.PrintUniverse.getValue()) {
@@ -1200,7 +1198,7 @@ public class NativeImageGenerator {
                 SVMHost hostVM = (SVMHost) aUniverse.hostVM();
                 ((ConditionalConfigurationRegistry) ImageSingletons.lookup(RuntimeSerializationSupport.class)).setHostVM(hostVM);
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(aMetaAccess);
-                HostedProviders analysisProviders = createAnalysisProviders(target, aUniverse, guestProviders, platformConfig, aMetaAccess, classInitializationSupport);
+                HostedProviders analysisProviders = createDefaultAnalysisProviders(aUniverse, guestProviders, platformConfig, aMetaAccess, classInitializationSupport);
                 aUniverse.hostVM().initializeProviders(analysisProviders);
 
                 SimulateClassInitializerSupport simulateClassInitializerSupport = hostVM.createSimulateClassInitializerSupport(aMetaAccess);
@@ -1472,12 +1470,13 @@ public class NativeImageGenerator {
         try (Indent _ = debug.logAndIndent("add initial classes/fields/methods")) {
             registerRootElements(bb);
 
+            List<SnippetCompilationPolicy> policies = HostedConfiguration.instance().getSnippetCompilationPolicies();
             SubstrateTarget target = SubstrateTarget.singleton();
-            NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, analysisProviders, aMetaAccess, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
-                            bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, target, supportsStubBasedPlugins);
-            registerReplacements(debug, featureHandler, null, analysisProviders, true, initForeignCalls, new GraphEncoder(target.arch));
-
-            performSnippetGraphAnalysis(bb, aReplacements, options, Function.identity());
+            for (SnippetCompilationPolicy policy : policies) {
+                registerGraphBuilderPlugins(featureHandler, policy.getAnalysisProviders(), aMetaAccess, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
+                                bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, target, supportsStubBasedPlugins);
+            }
+            prepareAnalysisSnippetPolicies(debug, featureHandler, bb, analysisProviders, policies, options, initForeignCalls);
         }
 
         bb.markInitializationFinished();
@@ -1567,7 +1566,7 @@ public class NativeImageGenerator {
         }
     }
 
-    private static HostedProviders createAnalysisProviders(TargetDescription target, AnalysisUniverse aUniverse,
+    private static HostedProviders createDefaultAnalysisProviders(AnalysisUniverse aUniverse,
                     Providers guestProviders, SubstratePlatformConfigurationProvider platformConfig, AnalysisMetaAccess aMetaAccess, ClassInitializationSupport classInitializationSupport) {
 
         ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider(aMetaAccess, null);
@@ -1589,12 +1588,7 @@ public class NativeImageGenerator {
                         aSnippetReflection,
                         aWordTypes, platformConfig, aMetaAccessExtensionProvider, guestProviders.getLoopsDataProvider());
 
-        BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        SubstrateReplacements aReplacements = new SubstrateReplacements(analysisProviders, bytecodeProvider, target, new SubstrateGraphMakerFactory());
-        analysisProviders = (HostedProviders) aReplacements.getProviders();
-        assert aReplacements == analysisProviders.getReplacements();
-
-        return analysisProviders;
+        return HostedConfiguration.instance().createSnippetAnalysisProviders(analysisProviders);
     }
 
     private static Inflation createBigBang(DebugContext debug, OptionValues options, AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, HostedProviders analysisProviders,
@@ -1672,10 +1666,8 @@ public class NativeImageGenerator {
     /**
      * Registers plugins on the supplied providers and their replacements. Snippet reflection uses
      * analysis metadata even when the supplied providers use hosted metadata for AOT compilation.
-     *
-     * @return the installed plugins, for reuse by additional backend provider bundles
      */
-    public static GraphBuilderConfiguration.Plugins registerGraphBuilderPlugins(FeatureHandler featureHandler, HostedProviders providers, AnalysisMetaAccess analysisMetaAccess,
+    public static void registerGraphBuilderPlugins(FeatureHandler featureHandler, HostedProviders providers, AnalysisMetaAccess analysisMetaAccess,
                     NativeLibraries nativeLibs, ImageClassLoader loader, ParsingReason reason, AnnotationSubstitutionProcessor annotationSubstitutionProcessor,
                     ClassInitializationPlugin classInitializationPlugin, TargetDescription target, boolean supportsStubBasedPlugins) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new SubstitutionInvocationPlugins(annotationSubstitutionProcessor));
@@ -1730,7 +1722,6 @@ public class NativeImageGenerator {
 
         providers.setGraphBuilderPlugins(plugins);
         replacements.setGraphBuilderPlugins(plugins);
-        return plugins;
     }
 
     /**
@@ -1754,8 +1745,43 @@ public class NativeImageGenerator {
         }
     }
 
-    public static void registerReplacements(DebugContext debug, FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, Providers providers,
-                    boolean hosted, boolean initForeignCalls, GraphEncoder encoder) {
+    /**
+     * Registers shared support using the default providers, then encodes each policy's snippets and
+     * registers their analysis dependencies.
+     */
+    private static void prepareAnalysisSnippetPolicies(DebugContext debug, FeatureHandler featureHandler, Inflation bb, HostedProviders defaultProviders,
+                    List<SnippetCompilationPolicy> policies, OptionValues options, boolean initForeignCalls) {
+        registerReplacementSupport(debug, featureHandler, null, defaultProviders, true, initForeignCalls);
+        for (SnippetCompilationPolicy policy : policies) {
+            SubstrateReplacements replacements = policy.getAnalysisReplacements();
+            assert checkInvocationPluginMethods(replacements);
+            replacements.encodeSnippets(new GraphEncoder(SubstrateTarget.getArchitecture()));
+            performSnippetGraphAnalysis(bb, replacements, options, Function.identity());
+        }
+    }
+
+    /** Initializes hosted lowering support, seals its shared registry, then transplants each policy's analyzed snippets. */
+    public static void prepareHostedSnippetPolicies(DebugContext debug, FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig) {
+        registerReplacementSupport(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), true, true);
+        HostedConfiguration configuration = HostedConfiguration.instance();
+        configuration.getDefaultSnippetCompilationPolicy().getHostedReplacements().sealSnippetTemplateRegistry();
+        for (SnippetCompilationPolicy policy : configuration.getSnippetCompilationPolicies()) {
+            policy.getHostedReplacements().transplantSnippets();
+        }
+    }
+
+    /** Registers runtime compiler foreign calls and lowerings, then encodes its snippets during image building. */
+    public static void prepareRuntimeReplacements(DebugContext debug, FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, GraphEncoder encoder) {
+        Providers providers = runtimeConfig.getProviders();
+        registerReplacementSupport(debug, featureHandler, runtimeConfig, providers, false, true);
+        SubstrateReplacements replacements = (SubstrateReplacements) providers.getReplacements();
+        assert checkInvocationPluginMethods(replacements);
+        replacements.encodeSnippets(encoder);
+    }
+
+    /** Registers shared foreign calls and lowerings once, independently of snippet encoding. */
+    private static void registerReplacementSupport(DebugContext debug, FeatureHandler featureHandler, RuntimeConfiguration runtimeConfig, Providers providers,
+                    boolean hosted, boolean initForeignCalls) {
         OptionValues options = hosted ? HostedOptionValues.singleton().get() : RuntimeOptionValues.singleton().get();
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) providers.getForeignCalls();
@@ -1773,10 +1799,6 @@ public class NativeImageGenerator {
         } catch (Throwable e) {
             throw debug.handle(e);
         }
-
-        SubstrateReplacements replacements = (SubstrateReplacements) providers.getReplacements();
-        assert checkInvocationPluginMethods(replacements);
-        replacements.encodeSnippets(encoder);
     }
 
     private static boolean checkInvocationPluginMethods(SubstrateReplacements replacements) {

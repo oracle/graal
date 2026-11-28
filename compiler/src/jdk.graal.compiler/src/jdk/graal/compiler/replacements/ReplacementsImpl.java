@@ -38,8 +38,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.Pair;
 
 import jdk.graal.compiler.annotation.AnnotationValue;
@@ -104,6 +102,11 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
         return providers;
     }
 
+    /**
+     * Updates the providers used by this replacements instance. Callers must preserve compatibility
+     * with prepared snippet graphs and cached templates. A different snippet policy requires its own
+     * replacements instance.
+     */
     public void setProviders(Providers providers) {
         this.providers = providers.copyWith(this);
     }
@@ -237,19 +240,38 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
         }
     }
 
-    // This map is key'ed by a class name instead of a Class object so that
-    // it is stable across VM executions (in support of replay compilation).
-    private final EconomicMap<String, SnippetTemplateCache> snippetTemplateCache;
+    /** The registration owner, or a live read-only view shared by another replacements instance. */
+    private final SnippetTemplateRegistry snippetTemplateRegistry;
 
-    @SuppressWarnings("this-escape")
     public ReplacementsImpl(DebugDumpHandlersFactory debugHandlersFactory, Providers providers, BytecodeProvider bytecodeProvider, TargetDescription target) {
+        this(debugHandlersFactory, providers, bytecodeProvider, target, SnippetTemplateRegistry.create());
+    }
+
+    /**
+     * Uses the supplied registry, which may be an owner or a shared read-only view. Registration
+     * must finish before concurrent lookup; hosted AOT enforces this by sealing its shared registry.
+     * Snippet graphs and caches of specialized templates remain local to this replacements instance.
+     */
+    @SuppressWarnings("this-escape")
+    protected ReplacementsImpl(DebugDumpHandlersFactory debugHandlersFactory, Providers providers, BytecodeProvider bytecodeProvider, TargetDescription target,
+                    SnippetTemplateRegistry templateRegistry) {
         this.providers = providers.copyWith(this);
         this.target = target;
         this.snippetGraphs = new ConcurrentHashMap<>();
-        this.snippetTemplateCache = EconomicMap.create(Equivalence.DEFAULT);
+        this.snippetTemplateRegistry = templateRegistry;
         this.defaultBytecodeProvider = bytecodeProvider;
         this.debugHandlersFactory = debugHandlersFactory;
         this.templatesCache = Collections.synchronizedMap(new SnippetTemplate.LRUCache<>());
+    }
+
+    /** Returns a live read-only registry for sharing during construction. */
+    public final SnippetTemplateRegistry getSnippetTemplateRegistry() {
+        return snippetTemplateRegistry.readOnlyView();
+    }
+
+    /** Seals the shared registry before concurrent lookup; hosted AOT uses this after registration. */
+    public final void sealSnippetTemplateRegistry() {
+        snippetTemplateRegistry.seal();
     }
 
     private static final TimerKey SnippetPreparationTime = DebugContext.timer("SnippetPreparationTime");
@@ -546,14 +568,12 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
 
     @Override
     public void registerSnippetTemplateCache(SnippetTemplateCache templates) {
-        assert snippetTemplateCache.get(templates.getClass().getName()) == null;
-        snippetTemplateCache.put(templates.getClass().getName(), templates);
+        snippetTemplateRegistry.register(templates);
     }
 
     @Override
     public <T extends SnippetTemplateCache> T getSnippetTemplateCache(Class<T> templatesClass) {
-        SnippetTemplateCache ret = snippetTemplateCache.get(templatesClass.getName());
-        return templatesClass.cast(ret);
+        return snippetTemplateRegistry.get(templatesClass);
     }
 
     @Override

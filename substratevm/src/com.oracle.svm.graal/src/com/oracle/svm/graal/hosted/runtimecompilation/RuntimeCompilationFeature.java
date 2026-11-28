@@ -463,7 +463,7 @@ public final class RuntimeCompilationFeature implements Feature, RuntimeCompilat
                         config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
                         new SubstrateClassInitializationPlugin(config.getHostVM()), target, supportsStubBasedPlugins);
 
-        NativeImageGenerator.registerReplacements(DebugContext.forCurrentThread(), featureHandler, runtimeConfig, runtimeConfig.getProviders(), false, true,
+        NativeImageGenerator.prepareRuntimeReplacements(DebugContext.forCurrentThread(), featureHandler, runtimeConfig,
                         RuntimeCompiledMethodSupport.singleton().createGraphEncoder(target.arch, config.getUniverse().getHeapScanner()));
 
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));

@@ -54,7 +54,6 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.common.meta.MethodVariant;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateTarget;
 import com.oracle.svm.core.UninterruptibleAnnotationUtils;
 import com.oracle.svm.core.deopt.DeoptTest;
 import com.oracle.svm.core.deopt.Specialize;
@@ -136,7 +135,6 @@ import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.nodes.GraphEncoder;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.IndirectCallTargetNode;
 import jdk.graal.compiler.nodes.Invoke;
@@ -447,7 +445,7 @@ public class CompileQueue {
         this.graphTransplanter = createGraphTransplanter();
         this.defaultParseHooks = new ParseHooks(this);
 
-        callForReplacements(debug, runtimeConfig);
+        NativeImageGenerator.prepareHostedSnippetPolicies(debug, featureHandler, runtimeConfig);
         generatedFoldInvocationPluginType = GuestAccess.get().getProviders().getMetaAccess().lookupJavaType(GeneratedFoldInvocationPlugin.class);
     }
 
@@ -457,10 +455,6 @@ public class CompileQueue {
 
     public static OptimisticOptimizations getOptimisticOpts() {
         return OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseLoopLimitChecks);
-    }
-
-    protected void callForReplacements(DebugContext debug, @SuppressWarnings("hiding") RuntimeConfiguration runtimeConfig) {
-        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), true, true, new GraphEncoder(SubstrateTarget.getArchitecture()));
     }
 
     public void finish(DebugContext debug) {
@@ -1557,10 +1551,8 @@ public class CompileQueue {
     }
 
     /**
-     * Selects an existing variant of {@code callee} for inlining into {@code caller}, using
-     * {@link HostedConfiguration#selectInlineeMethod}. The selected variant must represent the same
-     * Java method. This selects the graph to inline without changing the destination of a call
-     * that remains uninlined.
+     * Delegates variant selection to {@link HostedConfiguration#selectInlineeMethod} and validates
+     * the selected method and its graph preparation.
      */
     public static HostedMethod selectInlineeMethod(HostedMethod caller, HostedMethod callee) {
         HostedMethod inlinee = HostedConfiguration.instance().selectInlineeMethod(caller, callee);
@@ -1579,8 +1571,8 @@ public class CompileQueue {
 
     /**
      * Prepared graphs already contain decisions made with the callee's providers. Decoding with
-     * the caller's providers cannot undo them. Require identical services before importing such
-     * a graph, allowing the backend's original calling-convention code cache to differ.
+     * the caller's providers cannot undo them. Require the same provider service instances and
+     * graph-builder plugins before importing such a graph, allowing each backend's original code cache.
      */
     private static boolean hasCompatibleCompilationProviders(HostedMethod caller, HostedMethod callee, RuntimeConfiguration config) {
         HostedProviders callerProviders = selectCompilationProviders(caller, config);

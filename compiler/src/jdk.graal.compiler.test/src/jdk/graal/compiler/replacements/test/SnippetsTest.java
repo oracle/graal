@@ -47,7 +47,12 @@ public abstract class SnippetsTest extends ReplacementsTest {
     protected SnippetsTest() {
         ReplacementsImpl d = (ReplacementsImpl) getReplacements();
         bytecodeProvider = getSystemClassLoaderBytecodeProvider();
-        installer = new ReplacementsImpl(null, d.getProviders(), bytecodeProvider, d.target) {
+        installer = createInstaller(d.getProviders());
+    }
+
+    protected final ReplacementsImpl createInstaller(Providers providers) {
+        ReplacementsImpl d = (ReplacementsImpl) providers.getReplacements();
+        ReplacementsImpl result = new ReplacementsImpl(null, providers, bytecodeProvider, d.target) {
 
             @Override
             protected GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod original) {
@@ -62,7 +67,8 @@ public abstract class SnippetsTest extends ReplacementsTest {
             }
 
         };
-        installer.setGraphBuilderPlugins(d.getGraphBuilderPlugins());
+        result.setGraphBuilderPlugins(d.getGraphBuilderPlugins());
+        return result;
     }
 
     @Override

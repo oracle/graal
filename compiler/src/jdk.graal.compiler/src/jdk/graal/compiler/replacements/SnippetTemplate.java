@@ -772,6 +772,10 @@ public class SnippetTemplate {
         }
     }
 
+    /**
+     * Identifies a snippet specialization by its method, constant arguments, varargs lengths, and
+     * graph and lowering state. Each replacements instance owns the cache for its snippet policy.
+     */
     public static class CacheKey {
 
         private final ResolvedJavaMethod method;

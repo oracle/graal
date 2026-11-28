@@ -27,6 +27,7 @@ package com.oracle.svm.hosted;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -62,6 +63,7 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
+import com.oracle.svm.hosted.code.SnippetCompilationPolicy;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.LIRNativeImageCodeCache;
@@ -82,6 +84,7 @@ import com.oracle.svm.shared.singletons.traits.BuiltinTraits.BuildtimeAccessOnly
 import com.oracle.svm.shared.singletons.traits.BuiltinTraits.NoLayeredCallbacks;
 import com.oracle.svm.shared.singletons.traits.SingletonTraits;
 import com.oracle.svm.shared.util.ReflectionUtil;
+import com.oracle.svm.shared.util.VMError;
 import com.oracle.svm.util.GuestAnnotationAccess;
 
 import jdk.graal.compiler.code.CompilationResult;
@@ -96,6 +99,14 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 @SingletonTraits(access = BuildtimeAccessOnly.class, layeredCallbacks = NoLayeredCallbacks.class)
 public class HostedConfiguration {
+
+    /**
+     * Per-image default policy, using standard providers and folding behavior. Its template registry is
+     * shared with additional policies; provider sets, encodings and specialized-template caches are
+     * specific to this image.
+     */
+    private final SnippetCompilationPolicy defaultSnippetCompilationPolicy = new SnippetCompilationPolicy();
+    private List<SnippetCompilationPolicy> snippetCompilationPolicies;
 
     public HostedConfiguration() {
     }
@@ -327,17 +338,19 @@ public class HostedConfiguration {
     /**
      * Selects providers for post-analysis hosted graph preparation and compilation of a method variant.
      * Implementations must be thread-safe, leave the supplied providers unchanged, and preserve
-     * backend compatibility.
+     * backend compatibility. Selected providers must remain stable while graphs and templates use them.
+     * <p>
+     * Selecting different providers cannot undo folding or specialization already performed in
+     * application or snippet graphs. Changing constant-reflection, constant-field, or
+     * meta-access-extension providers requires a {@link SnippetCompilationPolicy} registered before
+     * analysis. Return its prepared providers for the method's backend, and ensure application graphs
+     * were also prepared with compatible providers.
+     * <p>
+     * Inlining requires the same instances of all provider services and graph-builder plugins for
+     * caller and inlinee, except that each may retain its original backend code cache. Incompatible
+     * graphs are rejected even for forced inlining.
      *
-     * Selected providers must be compatible with previously prepared graphs and snippets, including
-     * template-cache sharing. This hook cannot undo earlier folding or specialization.
-     *
-     * Hosted inlining requires identical selected provider services and graph-builder plugins for
-     * caller and selected inlinee. Copies sharing those services remain compatible. Importing an
-     * incompatible graph fails, including for forced inlining. Each backend may retain its original
-     * calling-convention code cache.
-     *
-     * @return the supplied providers, or a compatible bundle with selected services replaced
+     * @return the supplied providers, or a compatible bundle with selected providers replaced
      */
     public HostedProviders selectCompilationProviders(@SuppressWarnings("unused") HostedMethod method, HostedProviders providers) {
         return providers;
@@ -367,6 +380,35 @@ public class HostedConfiguration {
      */
     public HostedMethod selectInlineeMethod(@SuppressWarnings("unused") HostedMethod caller, HostedMethod callee) {
         return callee;
+    }
+
+    public final SnippetCompilationPolicy getDefaultSnippetCompilationPolicy() {
+        return defaultSnippetCompilationPolicy;
+    }
+
+    /** Returns additional policies in their build order. The default policy is added automatically. */
+    protected List<SnippetCompilationPolicy> getAdditionalSnippetCompilationPolicies() {
+        return List.of();
+    }
+
+    final HostedProviders createSnippetAnalysisProviders(HostedProviders original) {
+        assert snippetCompilationPolicies == null;
+        HostedProviders defaultProviders = defaultSnippetCompilationPolicy.createAnalysisProviders(original);
+        var policies = new ArrayList<SnippetCompilationPolicy>();
+        policies.add(defaultSnippetCompilationPolicy);
+        for (SnippetCompilationPolicy policy : getAdditionalSnippetCompilationPolicies()) {
+            VMError.guarantee(policies.stream().noneMatch(existing -> existing == policy), "Snippet compilation policies must be unique and must not repeat the default policy");
+            policy.createAnalysisProviders(defaultProviders);
+            policies.add(policy);
+        }
+        snippetCompilationPolicies = List.copyOf(policies);
+        return defaultProviders;
+    }
+
+    /** Returns the ordered policies established during analysis setup. */
+    public final List<SnippetCompilationPolicy> getSnippetCompilationPolicies() {
+        assert snippetCompilationPolicies != null;
+        return snippetCompilationPolicies;
     }
 
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {

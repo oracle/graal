@@ -38,6 +38,18 @@ import jdk.vm.ci.meta.PlatformKind;
 import java.util.List;
 
 public class WebImageNoRegisterConfig implements SubstrateRegisterConfig {
+    // Retain the backend kind for shared snippet-policy preparation.
+    private final ConfigKind configKind;
+
+    public WebImageNoRegisterConfig(ConfigKind configKind) {
+        this.configKind = configKind;
+    }
+
+    @Override
+    public ConfigKind getConfigKind() {
+        return configKind;
+    }
+
     @Override
     public Register getReturnRegister(JavaKind kind) {
         throw VMError.shouldNotReachHereAtRuntime();
