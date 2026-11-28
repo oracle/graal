@@ -407,10 +407,20 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
         buildVerifyFrameDescriptor(b, false);
         b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
         emitMaybeInvalidateLocalValue(b, "frameIndex");
+        emitMaybeRestoreDefaultLocalValue(b, "frameIndex", "value");
         b.startStatement();
         b.startCall("frame", BytecodeRootNodeElement.getSetMethod(type(Object.class))).string("frameIndex").string("value").end();
         b.end();
         return ex;
+    }
+
+    void emitMaybeRestoreDefaultLocalValue(CodeTreeBuilder b, String frameIndex, String value) {
+        if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
+            b.startIf().string(value, " == DEFAULT_LOCAL_VALUE").end().startBlock();
+            b.startStatement().startCall("frame", "setObject").string(frameIndex).string("DEFAULT_LOCAL_VALUE").end(2);
+            b.statement("return");
+            b.end();
+        }
     }
 
     void emitMaybeInvalidateLocalValue(CodeTreeBuilder b, String frameIndex) {
@@ -1381,9 +1391,16 @@ final class AbstractBytecodeNodeElement extends AbstractElement {
 
             b.startDeclaration(type(int.class), "localCount").startCall("bc.getLocalCount").string(transitionBciExpr).end(2);
             b.startFor().string("int localOffset = 0; localOffset < localCount; localOffset++").end().startBlock();
-            b.startIf().startCall("FRAMES.getTag").string("frame").string(BytecodeRootNodeElement.USER_LOCALS_START_INDEX + " + localOffset").end().string(" == ").staticReference(
-                            parent.frameTagsElement.getIllegal()).end().startBlock();
-            // Setting the cached tag for a cleared slot would pollute the tag to generic.
+            b.declaration(type(int.class), "frameIndex", BytecodeRootNodeElement.USER_LOCALS_START_INDEX + " + localOffset");
+            b.startDeclaration(type(byte.class), "frameTag").startCall("FRAMES.getTag").string("frame").string("frameIndex").end(2);
+            // Do not populate the cached tag if the slot is illegal or contains a default local value.
+            b.startIf().string("frameTag == ").staticReference(parent.frameTagsElement.getIllegal());
+            if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
+                // The slot can be illegal if explicitly cleared with a local accessor; check both.
+                b.string(" || (frameTag == ").staticReference(parent.frameTagsElement.getObject());
+                b.string(" && ").startCall("FRAMES.getObject").string("frame").string("frameIndex").end().string(" == DEFAULT_LOCAL_VALUE)");
+            }
+            b.end().startBlock();
             b.statement("continue");
             b.end();
 

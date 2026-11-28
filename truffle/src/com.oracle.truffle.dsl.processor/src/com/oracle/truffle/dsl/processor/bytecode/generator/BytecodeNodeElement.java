@@ -356,6 +356,18 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.startCase().staticReference(parent.frameTagsElement.get(boxingType)).end();
                 b.startCaseBlock();
 
+                if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
+                    /*
+                     * Updating the cached tag when the default value is observed (like load.local
+                     * is expensive in the interpreter because we don't have the local index.
+                     * Instead, we require compiled paths expecting a primitive tag to handle a
+                     * default value.
+                     */
+                    b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end();
+                    b.string(" && frame.isObject(frameIndex) && frame.getObject(frameIndex) == DEFAULT_LOCAL_VALUE").end().startBlock();
+                    b.statement("return DEFAULT_LOCAL_VALUE");
+                    b.end();
+                }
                 b.startReturn();
                 BytecodeRootNodeElement.startExpectFrame(b, "frame", boxingType, false).string("frameIndex").end();
                 b.end();
@@ -418,6 +430,7 @@ final class BytecodeNodeElement extends AbstractElement {
         AbstractBytecodeNodeElement.buildVerifyLocalsIndex(b);
         AbstractBytecodeNodeElement.buildVerifyFrameDescriptor(b, true);
         parent.abstractBytecodeNode.emitMaybeInvalidateLocalValue(b, "USER_LOCALS_START_INDEX + localOffset");
+        parent.abstractBytecodeNode.emitMaybeRestoreDefaultLocalValue(b, "USER_LOCALS_START_INDEX + localOffset", "value");
         if (parent.model.usesBoxingElimination() && tier.isCached()) {
             b.startStatement().startCall("setLocalValueImpl");
             b.string("frame").string("localOffset").string("value");
@@ -661,9 +674,7 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.startCase().staticReference(parent.frameTagsElement.getIllegal()).end();
                 b.startCaseBlock();
                 if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
-                    b.startReturn();
-                    b.string("DEFAULT_LOCAL_VALUE");
-                    b.end();
+                    b.statement("return DEFAULT_LOCAL_VALUE");
                 } else {
                     b.startThrow().startNew(types.FrameSlotTypeException).end().end();
                 }
@@ -676,6 +687,15 @@ final class BytecodeNodeElement extends AbstractElement {
                 b.end(); // switch block
                 b.end().startCatchBlock(types.UnexpectedResultException, "ex");
                 b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
+                    b.startIf().string("getCachedLocalTag(").string("localIndex").string(") != ").staticReference(parent.frameTagsElement.getObject()).end().startBlock();
+                    b.startStatement().startCall("setCachedLocalTagInternal");
+                    b.tree(readLocalTagsFastPath());
+                    b.string("localIndex");
+                    b.staticReference(parent.frameTagsElement.getObject());
+                    b.end(2);
+                    b.end();
+                }
                 b.startReturn().string("ex.getResult()").end();
                 b.end(); // catch
             } else {
@@ -788,13 +808,17 @@ final class BytecodeNodeElement extends AbstractElement {
         }
 
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "reconcileContinuationLocals");
+        String defaultLocalValueDetail = "";
+        if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
+            defaultLocalValueDetail = "\nObject slots containing the default local value are left unchanged.";
+        }
         BytecodeRootNodeElement.addJavadoc(ex, """
                         A continuation frame can become stale when cached local tags change after
                         the continuation was captured. Before resuming cached bytecode, reconcile
                         the frame slot tags with the current cached local tags. Compatible tag
                         mismatches are repaired in the frame; incompatible values generalize tags
-                        through the cached local tag update path.
-                        """);
+                        through the cached local tag update path.%s
+                        """.formatted(defaultLocalValueDetail));
         ex.addAnnotationMirror(new CodeAnnotationMirror(types.ExplodeLoop));
         ex.addParameter(new CodeVariableElement(type(int.class), "bci"));
         ex.addParameter(new CodeVariableElement(types.FrameWithoutBoxing, "frame"));
@@ -808,7 +832,12 @@ final class BytecodeNodeElement extends AbstractElement {
         b.declaration(type(int.class), "frameIndex", "USER_LOCALS_START_INDEX + localOffset");
         b.startDeclaration(type(byte.class), "frameTag").startCall("FRAMES", "getTag").string("frame").string("frameIndex").end(2);
 
-        b.startIf().string("frameTag == ").staticReference(parent.frameTagsElement.getIllegal()).end().startBlock();
+        b.startIf().string("frameTag == ").staticReference(parent.frameTagsElement.getIllegal());
+        if (parent.model.loadIllegalLocalStrategy == LoadIllegalLocalStrategy.DEFAULT_VALUE) {
+            b.string(" || (frameTag == ").staticReference(parent.frameTagsElement.getObject());
+            b.string(" && ").startCall("FRAMES.getObject").string("frame").string("frameIndex").end().string(" == DEFAULT_LOCAL_VALUE)");
+        }
+        b.end().startBlock();
         b.statement("continue");
         b.end();
 

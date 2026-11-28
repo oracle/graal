@@ -81,6 +81,7 @@ import com.oracle.truffle.api.bytecode.BytecodeNode;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.BytecodeRootNodes;
+import com.oracle.truffle.api.bytecode.BytecodeTier;
 import com.oracle.truffle.api.bytecode.BytecodeVersion;
 import com.oracle.truffle.api.bytecode.ConstantOperand;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
@@ -144,7 +145,7 @@ public class LocalHelpersTest {
     private boolean hasBoxingElimination() {
         Class<?> interpreterClass = bytecode.getGeneratedClass();
         return interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEObjectDefault.class || interpreterClass == BytecodeNodeWithLocalIntrospectionWithBENullDefault.class ||
-                        interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEIllegal.class;
+                        interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEIllegal.class || interpreterClass == BytecodeNodeWithLocalIntrospectionWithBEIllegalRootScoped.class;
     }
 
     private boolean capturesFrameForTrace() {
@@ -2326,6 +2327,175 @@ public class LocalHelpersTest {
         assertArrayEquals(new Object[]{null, null}, (Object[]) inner.call(false));
     }
 
+    @Test
+    public void testCopyUnsetLocalValues() {
+        testCopyUnsetLocalValues(false);
+    }
+
+    @Test
+    public void testCopyUnsetLocalValuesRange() {
+        testCopyUnsetLocalValues(true);
+    }
+
+    private static void copyLocalValues(BytecodeNode node, int bci, Frame source, Frame destination, boolean range) {
+        if (range) {
+            node.copyLocalValues(bci, source, destination, 0, 1);
+        } else {
+            node.copyLocalValues(bci, source, destination);
+        }
+    }
+
+    private void testCopyUnsetLocalValues(boolean range) {
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot();
+            BytecodeLocal local = b.createLocal();
+            b.beginYield();
+            b.emitLoadNull();
+            b.endYield();
+            b.beginReturn();
+            b.emitLoadLocal(local);
+            b.endReturn();
+            b.endRoot();
+        });
+        root.getBytecodeNode().setUncachedThreshold(0);
+        ContinuationResult result = (ContinuationResult) root.getCallTarget().call();
+        BytecodeNode node = root.getBytecodeNode();
+        int bci = result.getBytecodeLocation().getBytecodeIndex();
+        Frame source = result.getFrame();
+        Frame destination = Truffle.getRuntime().createMaterializedFrame(new Object[0], root.getFrameDescriptor());
+        copyLocalValues(node, bci, source, destination, range);
+        copyLocalValues(node, bci, source, source, range);
+        if (hasBoxingElimination()) {
+            assertEquals(FrameSlotKind.Illegal, node.getLocals().get(0).getTypeProfile());
+        }
+        node.setLocalValue(bci, destination, 0, 42L);
+        copyLocalValues(node, bci, source, destination, range);
+        if (hasBoxingElimination()) {
+            // Check that copying the default preserves the primitive profile.
+            assertEquals(FrameSlotKind.Long, node.getLocals().get(0).getTypeProfile());
+        }
+        assertSame(hasLocalDefaultValue() ? getLocalDefaultValue() : BytecodeNode.INVALID, node.getLocalValue(bci, destination, 0));
+        node.setLocalValue(bci, source, 0, 43L);
+        copyLocalValues(node, bci, source, destination, range);
+        assertEquals(43L, node.getLocalValue(bci, destination, 0));
+    }
+
+    @Test
+    public void testSetLocalDefaultValue() {
+        Assume.assumeTrue(hasLocalDefaultValue());
+        for (boolean cached : new boolean[]{false, true}) {
+            BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+                b.beginRoot();
+                BytecodeLocal local = b.createLocal();
+                b.beginYield();
+                b.emitLoadNull();
+                b.endYield();
+                b.beginReturn();
+                b.emitIsClearedLocalAccessor(local);
+                b.endReturn();
+                b.endRoot();
+            });
+            root.getBytecodeNode().setUncachedThreshold(cached ? 0 : Integer.MAX_VALUE);
+            ContinuationResult result = (ContinuationResult) root.getCallTarget().call();
+            BytecodeNode node = root.getBytecodeNode();
+            int bci = result.getBytecodeLocation().getBytecodeIndex();
+            Frame frame = result.getFrame();
+            Object defaultValue = getLocalDefaultValue();
+            node.setLocalValue(bci, frame, 0, defaultValue);
+            if (cached && hasBoxingElimination()) {
+                assertEquals(FrameSlotKind.Illegal, node.getLocals().get(0).getTypeProfile());
+            }
+            node.setLocalValue(bci, frame, 0, 42L);
+            node.setLocalValue(bci, frame, 0, defaultValue);
+            assertSame(defaultValue, node.getLocalValue(bci, frame, 0));
+            node.setLocalValue(bci, frame, 0, node.getLocalValue(bci, frame, 0));
+            assertSame(defaultValue, node.getLocalValue(bci, frame, 0));
+            assertEquals(false, result.continueWith(null));
+            if (cached && hasBoxingElimination()) {
+                assertEquals(FrameSlotKind.Long, node.getLocals().get(0).getTypeProfile());
+            }
+        }
+    }
+
+    /**
+     * An uncached-to-cached transition must not profile the default value of a live, unset local.
+     * Otherwise its cached tag becomes OBJECT before its first store and all subsequent long
+     * stores and loads remain generic, even though the default value is never read.
+     */
+    @Test
+    public void testUnsetDefaultLocalOnUncachedToCachedTransition() {
+        Assume.assumeTrue(hasBoxingElimination() && hasLocalDefaultValue());
+        BytecodeNodeWithLocalIntrospection root = createDefaultLocalValueRoot(false);
+        root.getBytecodeNode().setUncachedThreshold(1);
+        assertEquals(BytecodeTier.UNCACHED, root.getBytecodeNode().getTier());
+        assertEquals(42L, root.getCallTarget().call());
+        assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
+        assertDefaultLocalSpecializesToLong(root);
+    }
+
+    /**
+     * Reconciliation on cached continuation entry must not profile an unset local's default value.
+     * The local is overwritten before any load, so its default must not prevent long specialization.
+     */
+    @Test
+    public void testUnsetDefaultLocalOnContinuationResume() {
+        Assume.assumeTrue(hasBoxingElimination() && hasLocalDefaultValue());
+        BytecodeNodeWithLocalIntrospection root = createDefaultLocalValueRoot(true);
+        root.getBytecodeNode().setUncachedThreshold(0);
+        ContinuationResult result = (ContinuationResult) root.getCallTarget().call();
+        assertEquals(BytecodeTier.CACHED, root.getBytecodeNode().getTier());
+        assertEquals(FrameSlotKind.Illegal, root.getBytecodeNode().getLocals().get(0).getTypeProfile());
+        assertEquals(42L, result.continueWith(null));
+        assertDefaultLocalSpecializesToLong(root);
+    }
+
+    private BytecodeNodeWithLocalIntrospection createDefaultLocalValueRoot(boolean yield) {
+        return parseNode(b -> {
+            b.beginRoot();
+            BytecodeLocal local = b.createLocal();
+            if (yield) {
+                b.beginYield();
+                b.emitLoadNull();
+                b.endYield();
+            } else {
+                BytecodeLocal loop = b.createLocal();
+                b.beginStoreLocal(loop);
+                b.emitLoadConstant(true);
+                b.endStoreLocal();
+                // Take one backedge while the tested local is still unset.
+                b.beginWhile();
+                b.emitLoadLocal(loop);
+                b.beginStoreLocal(loop);
+                b.emitLoadConstant(false);
+                b.endStoreLocal();
+                b.endWhile();
+            }
+            b.beginStoreLocal(local);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+            b.beginReturn();
+            b.beginUnboxLong();
+            b.emitLoadLocal(local);
+            b.endUnboxLong();
+            b.endReturn();
+            b.endRoot();
+        });
+    }
+
+    private static void assertDefaultLocalSpecializesToLong(BytecodeNodeWithLocalIntrospection root) {
+        // Frame transfers with default values shouldn't pollute the tag/prevent a long profile.
+        for (int i = 0; i < 2; i++) {
+            Object result = root.getCallTarget().call();
+            if (result instanceof ContinuationResult continuation) {
+                result = continuation.continueWith(null);
+            }
+            assertEquals(42L, result);
+        }
+        assertEquals(FrameSlotKind.Long, root.getBytecodeNode().getLocals().get(0).getTypeProfile());
+        assertEquals("load.local$Long$unboxed", root.getBytecodeNode().getInstructionsAsList().stream().filter(instruction -> instruction.getName().startsWith(
+                        "load.local")).reduce((first, last) -> last).orElseThrow().getName());
+    }
+
 }
 
 @GenerateBytecodeTestVariants({
@@ -2904,6 +3074,15 @@ abstract class BytecodeNodeWithLocalIntrospection extends DebugBytecodeRootNode 
             return new CapturedFrameState(bytecode, frame.materialize());
         }
     }
+
+    @Operation
+    static final class UnboxLong {
+        @Specialization
+        static long perform(long value) {
+            return value;
+        }
+    }
+
 }
 
 record Pair(Object left, Object right) {
